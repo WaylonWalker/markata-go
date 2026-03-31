@@ -196,7 +196,7 @@ func TestAutoFeedsPlugin_GenerateTagFeedsForChanged_UsesCanonicalGroup(t *testin
 		{Path: "post2.md", Slug: "post2", Tags: []string{"open-source"}, Date: &date},
 	}
 
-	feeds := plugin.generateTagFeedsForChanged(posts, AutoFeedTypeConfig{SlugPrefix: "tags"}, map[string]string{}, map[string]bool{"post2": true})
+	feeds := plugin.generateTagFeedsForChanged(posts, AutoFeedTypeConfig{SlugPrefix: "tags"}, map[string]bool{"post2": true})
 	if len(feeds) != 1 {
 		t.Fatalf("expected 1 changed feed, got %d", len(feeds))
 	}
@@ -928,7 +928,7 @@ func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
 // Private Tag Feed Tests
 // =============================================================================
 
-func TestAutoFeedsPlugin_PrivateTagIncludesPrivate(t *testing.T) {
+func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
 	m := lifecycle.NewManager()
 
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -980,13 +980,13 @@ func TestAutoFeedsPlugin_PrivateTagIncludesPrivate(t *testing.T) {
 		configMap[fc.Slug] = fc
 	}
 
-	// Gratitude feed should have IncludePrivate: true
+	// Private tags must not opt auto-generated feeds into private content.
 	gratitudeFeed, ok := configMap["tags/gratitude"]
 	if !ok {
 		t.Fatal("tags/gratitude feed config not found")
 	}
-	if !gratitudeFeed.IncludePrivate {
-		t.Error("tags/gratitude feed should have IncludePrivate=true, got false")
+	if gratitudeFeed.IncludePrivate {
+		t.Error("tags/gratitude feed should keep IncludePrivate=false")
 	}
 
 	// Python feed should NOT have IncludePrivate
@@ -1008,7 +1008,7 @@ func TestAutoFeedsPlugin_PrivateTagIncludesPrivate(t *testing.T) {
 	}
 }
 
-func TestAutoFeedsPlugin_PrivateTagCaseInsensitive(t *testing.T) {
+func TestAutoFeedsPlugin_PrivateTagCaseInsensitiveStillExcludesPrivate(t *testing.T) {
 	m := lifecycle.NewManager()
 
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -1055,9 +1055,8 @@ func TestAutoFeedsPlugin_PrivateTagCaseInsensitive(t *testing.T) {
 		t.Fatalf("expected 1 feed config, got %d", len(feedConfigs))
 	}
 
-	// Tag "Gratitude" should match private_tags "gratitude" (case-insensitive)
-	if !feedConfigs[0].IncludePrivate {
-		t.Error("feed for tag 'Gratitude' should have IncludePrivate=true (case-insensitive match)")
+	if feedConfigs[0].IncludePrivate {
+		t.Error("feed for tag 'Gratitude' should keep IncludePrivate=false")
 	}
 }
 
@@ -1104,75 +1103,6 @@ func TestAutoFeedsPlugin_NoEncryptionConfig(t *testing.T) {
 
 	if feedConfigs[0].IncludePrivate {
 		t.Error("IncludePrivate should be false when no encryption config exists")
-	}
-}
-
-func TestGetPrivateTagsConfig(t *testing.T) {
-	tests := []struct {
-		name   string
-		config *lifecycle.Config
-		want   map[string]string
-	}{
-		{
-			name:   "nil config",
-			config: nil,
-			want:   map[string]string{},
-		},
-		{
-			name: "no models_config",
-			config: func() *lifecycle.Config {
-				c := lifecycle.NewConfig()
-				c.Extra = map[string]interface{}{}
-				return c
-			}(),
-			want: map[string]string{},
-		},
-		{
-			name: "no private_tags",
-			config: func() *lifecycle.Config {
-				c := lifecycle.NewConfig()
-				c.Extra = map[string]interface{}{
-					"models_config": &models.Config{
-						Encryption: models.EncryptionConfig{
-							Enabled: true,
-						},
-					},
-				}
-				return c
-			}(),
-			want: map[string]string{},
-		},
-		{
-			name: "with private_tags lowercased",
-			config: func() *lifecycle.Config {
-				c := lifecycle.NewConfig()
-				c.Extra = map[string]interface{}{
-					"models_config": &models.Config{
-						Encryption: models.EncryptionConfig{
-							Enabled:     true,
-							PrivateTags: map[string]string{"Gratitude": "default", "DIARY": "personal"},
-						},
-					},
-				}
-				return c
-			}(),
-			want: map[string]string{"gratitude": "default", "diary": "personal"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := getPrivateTagsConfig(tt.config)
-			if len(got) != len(tt.want) {
-				t.Errorf("getPrivateTagsConfig() returned %d entries, want %d", len(got), len(tt.want))
-				return
-			}
-			for k, v := range tt.want {
-				if got[k] != v {
-					t.Errorf("getPrivateTagsConfig()[%q] = %q, want %q", k, got[k], v)
-				}
-			}
-		})
 	}
 }
 

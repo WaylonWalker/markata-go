@@ -74,7 +74,6 @@ type autoStringGroup struct {
 
 type autoTagGroup struct {
 	autoStringGroup
-	IncludePrivate bool
 }
 
 // NewAutoFeedsPlugin creates a new AutoFeedsPlugin.
@@ -138,7 +137,7 @@ func (p *AutoFeedsPlugin) registerTagSyntheticPosts(m *lifecycle.Manager, posts 
 	if prefix == "" {
 		prefix = defaultTagsPrefix
 	}
-	groups := collectAutoTagGroups(posts, map[string]string{})
+	groups := collectAutoTagGroups(posts)
 
 	// Register synthetic post for each tag slug
 	for _, group := range groups {
@@ -301,16 +300,12 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 	autoConfig := getAutoFeedsConfig(config)
 
-	// Get private tags from encryption config so that tag feeds for
-	// private tags include encrypted posts on their feed pages.
-	privateTags := getPrivateTagsConfig(config)
-
 	// Collect only auto-generated feed configs
 	var autoFeedConfigs []models.FeedConfig
 
 	if useIncremental {
 		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, privateTags, changedSet)
+			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, changedSet)
 			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
 		}
 		if autoConfig.Categories.Enabled {
@@ -324,7 +319,7 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	} else {
 		// Generate tag feeds
 		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTags)
+			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags)
 			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
 		}
 
@@ -406,10 +401,8 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 }
 
 // generateTagFeeds creates feed configurations for each unique tag.
-// privateTags maps lowercased tag names to encryption key names; feeds for
-// these tags include private posts so their encrypted content appears on the page.
-func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig, privateTags map[string]string) []models.FeedConfig {
-	groups := collectAutoTagGroups(posts, privateTags)
+func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
+	groups := collectAutoTagGroups(posts)
 	feeds := make([]models.FeedConfig, 0, len(groups))
 	prefix := config.SlugPrefix
 	if prefix == "" {
@@ -419,21 +412,20 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	for _, group := range groups {
 		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
-			Slug:           slug,
-			Title:          fmt.Sprintf("Posts tagged: %s", group.Display),
-			Description:    fmt.Sprintf("All posts with the tag %q", group.Display),
-			Filter:         buildTagFilterExpression(group.Variants),
-			Sort:           "date",
-			Reverse:        true,
-			Formats:        config.Formats,
-			IncludePrivate: group.IncludePrivate,
+			Slug:        slug,
+			Title:       fmt.Sprintf("Posts tagged: %s", group.Display),
+			Description: fmt.Sprintf("All posts with the tag %q", group.Display),
+			Filter:      buildTagFilterExpression(group.Variants),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
 		})
 	}
 
 	return feeds
 }
 
-func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, privateTags map[string]string, changedSet map[string]bool) []models.FeedConfig {
+func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
 	if len(changedSet) == 0 {
 		return nil
 	}
@@ -441,7 +433,7 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 	if len(changedSlugs) == 0 {
 		return nil
 	}
-	groups := collectAutoTagGroups(posts, privateTags)
+	groups := collectAutoTagGroups(posts)
 	feeds := make([]models.FeedConfig, 0, len(changedSlugs))
 	prefix := config.SlugPrefix
 	if prefix == "" {
@@ -453,14 +445,13 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 		}
 		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
-			Slug:           slug,
-			Title:          fmt.Sprintf("Posts tagged: %s", group.Display),
-			Description:    fmt.Sprintf("All posts with the tag %q", group.Display),
-			Filter:         buildTagFilterExpression(group.Variants),
-			Sort:           "date",
-			Reverse:        true,
-			Formats:        config.Formats,
-			IncludePrivate: group.IncludePrivate,
+			Slug:        slug,
+			Title:       fmt.Sprintf("Posts tagged: %s", group.Display),
+			Description: fmt.Sprintf("All posts with the tag %q", group.Display),
+			Filter:      buildTagFilterExpression(group.Variants),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
 		})
 	}
 
@@ -751,7 +742,7 @@ func slugify(s string) string {
 	return models.Slugify(s)
 }
 
-func collectAutoTagGroups(posts []*models.Post, privateTags map[string]string) []autoTagGroup {
+func collectAutoTagGroups(posts []*models.Post) []autoTagGroup {
 	groups := make(map[string]*autoTagGroup)
 	for _, post := range posts {
 		for _, tag := range post.Tags {
@@ -766,9 +757,6 @@ func collectAutoTagGroups(posts []*models.Post, privateTags map[string]string) [
 			}
 			group.Display = pickPreferredAutoLabel(group.Display, tag)
 			group.Variants = appendUniqueSorted(group.Variants, tag)
-			if _, ok := privateTags[strings.ToLower(tag)]; ok {
-				group.IncludePrivate = true
-			}
 		}
 	}
 
@@ -901,22 +889,6 @@ func buildCategoryFilterExpression(variants []string) string {
 		parts = append(parts, fmt.Sprintf("category == %q", variant))
 	}
 	return strings.Join(parts, " or ")
-}
-
-// getPrivateTagsConfig returns the lowercased private_tags map from the
-// encryption configuration.  Returns an empty (non-nil) map when encryption
-// is not configured or has no private tags.
-func getPrivateTagsConfig(config *lifecycle.Config) map[string]string {
-	modelsConfig, ok := getModelsConfig(config)
-	if !ok || modelsConfig.Encryption.PrivateTags == nil {
-		return map[string]string{}
-	}
-	// Return a lowercased copy so callers can do case-insensitive lookups.
-	result := make(map[string]string, len(modelsConfig.Encryption.PrivateTags))
-	for tag, key := range modelsConfig.Encryption.PrivateTags {
-		result[strings.ToLower(tag)] = key
-	}
-	return result
 }
 
 // Ensure AutoFeedsPlugin implements the required interfaces.
