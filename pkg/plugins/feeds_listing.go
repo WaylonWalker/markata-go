@@ -42,6 +42,7 @@ type FeedListingSection struct {
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
 	Title           string
+	Slug            string
 	Description     string
 	Href            string
 	PostCount       int
@@ -116,9 +117,10 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 
 		postCount, latestDate := publicFeedStats(fc.Posts)
 		display, primary, archive, utility := splitFeedVariants(fc, syndication)
-		isConfigured := isConfiguredFeed(fc, configuredSlugs)
+		_, isConfigured := configuredSlugs[fc.Slug]
 		info := FeedListingInfo{
 			Title:           feedDisplayTitle(fc),
+			Slug:            fc.Slug,
 			Description:     fc.Description,
 			Href:            feedHTMLHref(fc),
 			PostCount:       postCount,
@@ -141,7 +143,15 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		}
 	}
 
-	sort.Slice(userDefined, func(i, j int) bool {
+	sort.SliceStable(userDefined, func(i, j int) bool {
+		leftOrder, leftOK := configuredSlugs[userDefined[i].Slug]
+		rightOrder, rightOK := configuredSlugs[userDefined[j].Slug]
+		if leftOK && rightOK {
+			return leftOrder < rightOrder
+		}
+		if leftOK != rightOK {
+			return leftOK
+		}
 		return userDefined[i].Title < userDefined[j].Title
 	})
 	sort.Slice(generated, func(i, j int) bool {
@@ -276,8 +286,8 @@ func feedSubscribeCount(fc *models.FeedConfig, syndication models.SyndicationCon
 	return syndication.MaxItems
 }
 
-func configuredFeedSlugs(config *lifecycle.Config) map[string]struct{} {
-	slugs := make(map[string]struct{})
+func configuredFeedSlugs(config *lifecycle.Config) map[string]int {
+	slugs := make(map[string]int)
 	if config == nil || config.Extra == nil {
 		return slugs
 	}
@@ -286,17 +296,9 @@ func configuredFeedSlugs(config *lifecycle.Config) map[string]struct{} {
 		return slugs
 	}
 	for i := range feeds {
-		slugs[feeds[i].Slug] = struct{}{}
+		slugs[feeds[i].Slug] = i
 	}
 	return slugs
-}
-
-func isConfiguredFeed(fc *models.FeedConfig, configuredSlugs map[string]struct{}) bool {
-	if fc == nil {
-		return false
-	}
-	_, ok := configuredSlugs[fc.Slug]
-	return ok
 }
 
 func buildFeedSparkline(posts []*models.Post) string {
