@@ -15,6 +15,8 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
+const homeFeedTitle = "Home"
+
 // FeedVariantLink describes one publicly accessible output for a feed.
 type FeedVariantLink struct {
 	Label string
@@ -108,8 +110,7 @@ func (p *FeedsListingPlugin) collectFeedInfos(feedConfigs []models.FeedConfig, c
 	return infos
 }
 
-func publicFeedStats(posts []*models.Post) (int, string) {
-	count := 0
+func publicFeedStats(posts []*models.Post) (count int, latestDate string) {
 	var latest time.Time
 	for _, post := range posts {
 		if post == nil || post.Private || post.Skip || post.Draft || !post.Published {
@@ -131,7 +132,7 @@ func feedDisplayTitle(fc *models.FeedConfig) string {
 		return fc.Title
 	}
 	if fc.Slug == "" {
-		return "Home"
+		return homeFeedTitle
 	}
 	return fc.Slug
 }

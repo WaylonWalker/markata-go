@@ -8,6 +8,8 @@ import (
 // The override values take precedence over base values.
 // For nested objects, a deep merge is performed.
 // Arrays replace by default (use *_append fields for appending).
+//
+//nolint:gocyclo // config merging is a flat field-by-field override map
 func MergeConfigs(base, override *models.Config) *models.Config {
 	if base == nil {
 		return override

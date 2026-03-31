@@ -94,9 +94,7 @@ func (p *SitemapPlugin) buildPagesSitemap(m *lifecycle.Manager, siteURL string) 
 		sitemap.URLs = append(sitemap.URLs, url)
 	}
 
-	for _, url := range p.generatedIndexPages(m, siteURL) {
-		sitemap.URLs = append(sitemap.URLs, url)
-	}
+	sitemap.URLs = append(sitemap.URLs, p.generatedIndexPages(m, siteURL)...)
 
 	return sitemap
 }

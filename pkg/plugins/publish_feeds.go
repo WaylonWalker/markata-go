@@ -468,6 +468,7 @@ func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interfac
 	bc.SetFeedHash(fc.Slug, hash)
 }
 
+//nolint:gocyclo // output path expansion is a direct format-to-path mapping
 func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outputDir string, config *lifecycle.Config) []string {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)

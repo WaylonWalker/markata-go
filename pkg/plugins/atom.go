@@ -13,9 +13,9 @@ import (
 // AtomFeed represents an Atom feed.
 type AtomFeed struct {
 	XMLName   xml.Name       `xml:"feed"`
-	Xmlns     string         `xml:"xmlns,attr"`
-	XmlLang   string         `xml:"xml:lang,attr,omitempty"`
-	XmlnsFH   string         `xml:"xmlns:fh,attr,omitempty"`
+	XMLNS     string         `xml:"xmlns,attr"`
+	XMLLang   string         `xml:"xml:lang,attr,omitempty"`
+	XMLNSFH   string         `xml:"xmlns:fh,attr,omitempty"`
 	Title     string         `xml:"title"`
 	ID        string         `xml:"id"`
 	Updated   string         `xml:"updated,omitempty"`
@@ -83,8 +83,8 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 	updatedTime := latestFeedTime(feed.Posts)
 
 	atomFeed := AtomFeed{
-		Xmlns:    "http://www.w3.org/2005/Atom",
-		XmlLang:  meta.Language,
+		XMLNS:    "http://www.w3.org/2005/Atom",
+		XMLLang:  meta.Language,
 		Title:    title,
 		ID:       feedURL,
 		Updated:  updatedTime.Format(time.RFC3339),
@@ -98,7 +98,7 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 		Entries:   make([]AtomEntry, 0, len(feed.Posts)),
 	}
 	if isArchiveFeedPath(feedPath) {
-		atomFeed.XmlnsFH = "http://purl.org/syndication/history/1.0"
+		atomFeed.XMLNSFH = "http://purl.org/syndication/history/1.0"
 		atomFeed.Complete = &AtomComplete{}
 	}
 

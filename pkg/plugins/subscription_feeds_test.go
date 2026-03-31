@@ -190,7 +190,10 @@ func TestSubscriptionFeedsPlugin_Collect_CanDisableSiteArchive(t *testing.T) {
 	if !ok {
 		t.Fatal("feed_configs not found in cache")
 	}
-	feedConfigs := cached.([]models.FeedConfig)
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatal("feed_configs is not []models.FeedConfig")
+	}
 	for _, fc := range feedConfigs {
 		if fc.Slug == "archive" {
 			t.Fatal("archive subscription feed should not be injected when disabled")
