@@ -56,6 +56,11 @@ type FeedListingPage struct {
 	PageURLs     []string
 }
 
+type sparklineWindow struct {
+	Start time.Time
+	End   time.Time
+}
+
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
 	Title           string
@@ -113,8 +118,9 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 	feedDefaults := getFeedDefaults(config)
+	sparklineRange := computeSparklineWindow(m.Posts())
 
-	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults)
+	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults, sparklineRange)
 	if len(sections) == 0 {
 		return nil
 	}
@@ -156,7 +162,13 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
-func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config, feedsPage *models.FeedsPageConfig, feedDefaults models.FeedDefaults) ([]FeedListingSection, []FeedListingPage) {
+func (p *FeedsListingPlugin) collectFeedSections(
+	feedConfigs []models.FeedConfig,
+	config *lifecycle.Config,
+	feedsPage *models.FeedsPageConfig,
+	feedDefaults models.FeedDefaults,
+	sparklineRange sparklineWindow,
+) ([]FeedListingSection, []FeedListingPage) {
 	syndication := getSyndicationConfig(config)
 	userDefined := make([]FeedListingInfo, 0, len(feedConfigs))
 	generated := make([]FeedListingInfo, 0, len(feedConfigs))
@@ -185,8 +197,8 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			PrimaryVariants: primary,
 			ArchiveVariants: archive,
 			UtilityVariants: utility,
-			SparklinePoints: buildFeedSparkline(fc.Posts),
-			SparklineTitle:  buildFeedSparklineTitle(fc.Posts),
+			SparklinePoints: buildFeedSparkline(fc.Posts, sparklineRange),
+			SparklineTitle:  buildFeedSparklineTitle(fc.Posts, sparklineRange),
 			GeneratedBySite: !isConfigured,
 		}
 
@@ -388,8 +400,8 @@ func configuredFeedSlugs(config *lifecycle.Config) map[string]int {
 	return slugs
 }
 
-func buildFeedSparkline(posts []*models.Post) string {
-	buckets := monthlyPostBuckets(posts)
+func buildFeedSparkline(posts []*models.Post, window sparklineWindow) string {
+	buckets := monthlyPostBuckets(posts, window)
 	if len(buckets) < 2 {
 		return ""
 	}
@@ -419,38 +431,93 @@ func buildFeedSparkline(posts []*models.Post) string {
 	return strings.Join(points, " ")
 }
 
-func buildFeedSparklineTitle(posts []*models.Post) string {
-	buckets := monthlyPostBuckets(posts)
+func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) string {
+	buckets := monthlyPostBuckets(posts, window)
 	if len(buckets) == 0 {
 		return ""
 	}
 	return "Posts published over time"
 }
 
-func monthlyPostBuckets(posts []*models.Post) []int {
+func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) []int {
+	if window.Start.IsZero() || window.End.IsZero() || window.End.Before(window.Start) {
+		return nil
+	}
 	counts := map[string]int{}
-	months := make([]string, 0)
-	seen := map[string]bool{}
 	for _, post := range posts {
 		if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
 			continue
 		}
-		monthKey := post.Date.UTC().Format("2006-01")
-		counts[monthKey]++
-		if !seen[monthKey] {
-			seen[monthKey] = true
-			months = append(months, monthKey)
+		month := firstOfMonth(post.Date.UTC())
+		if month.Before(window.Start) || month.After(window.End) {
+			continue
 		}
+		monthKey := month.Format("2006-01")
+		counts[monthKey]++
 	}
-	if len(months) == 0 {
-		return nil
-	}
-	sort.Strings(months)
-	buckets := make([]int, 0, len(months))
-	for _, month := range months {
-		buckets = append(buckets, counts[month])
+	buckets := make([]int, 0, monthsBetweenInclusive(window.Start, window.End))
+	for month := window.Start; !month.After(window.End); month = month.AddDate(0, 1, 0) {
+		buckets = append(buckets, counts[month.Format("2006-01")])
 	}
 	return buckets
+}
+
+func computeSparklineWindow(posts []*models.Post) sparklineWindow {
+	dates := make([]time.Time, 0, len(posts))
+	for _, post := range posts {
+		if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
+			continue
+		}
+		date := post.Date.UTC()
+		if !isSanePublishDate(date) {
+			continue
+		}
+		dates = append(dates, firstOfMonth(date))
+	}
+	if len(dates) == 0 {
+		return sparklineWindow{}
+	}
+	sort.Slice(dates, func(i, j int) bool {
+		return dates[i].Before(dates[j])
+	})
+	start := dates[0]
+	end := dates[len(dates)-1]
+	if len(dates) >= 50 {
+		start = dates[len(dates)/100]
+		endIndex := len(dates) - 1 - (len(dates) / 100)
+		if endIndex >= 0 && endIndex < len(dates) {
+			end = dates[endIndex]
+		}
+		if end.Before(start) {
+			start = dates[0]
+			end = dates[len(dates)-1]
+		}
+	}
+	return sparklineWindow{Start: start, End: end}
+}
+
+func isSanePublishDate(date time.Time) bool {
+	if date.IsZero() {
+		return false
+	}
+	if date.Before(time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		return false
+	}
+	if date.After(time.Now().AddDate(1, 0, 0)) {
+		return false
+	}
+	return true
+}
+
+func firstOfMonth(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
+func monthsBetweenInclusive(start, end time.Time) int {
+	if end.Before(start) {
+		return 0
+	}
+	return (end.Year()-start.Year())*12 + int(end.Month()-start.Month()) + 1
 }
 
 func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults, firstPageURL, baseURL string) []FeedListingPage {

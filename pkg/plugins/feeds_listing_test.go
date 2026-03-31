@@ -145,3 +145,27 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 		t.Fatalf("generated feeds page 2 should include remaining generated feeds")
 	}
 }
+
+func TestMonthlyPostBuckets_UsesSharedWindow(t *testing.T) {
+	window := sparklineWindow{
+		Start: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		End:   time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC),
+	}
+	title := "Post"
+	posts := []*models.Post{
+		{Title: &title, Published: true, Date: testDate(2024, 1, 15)},
+		{Title: &title, Published: true, Date: testDate(2024, 4, 2)},
+	}
+	buckets := monthlyPostBuckets(posts, window)
+	if len(buckets) != 4 {
+		t.Fatalf("expected 4 monthly buckets, got %d", len(buckets))
+	}
+	if buckets[0] != 1 || buckets[1] != 0 || buckets[2] != 0 || buckets[3] != 1 {
+		t.Fatalf("unexpected bucket distribution: %#v", buckets)
+	}
+}
+
+func testDate(year int, month time.Month, day int) *time.Time {
+	t := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	return &t
+}
