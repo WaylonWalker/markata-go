@@ -237,13 +237,15 @@
 
 .feed-sparkline-meta {
   min-height: 1rem;
-  font-size: 0.72rem;
-  color: var(--color-text-muted, #666);
+  width: 180px;
+  font-size: 0.76rem;
+  color: var(--color-text, #fff);
   text-align: right;
 }
 
 .feed-sparkline-value {
   display: inline-block;
+  font-weight: 600;
 }
 
 .feed-sparkline {
@@ -254,6 +256,7 @@
 
 .feed-sparkline-hit {
   fill: transparent;
+  pointer-events: all;
 }
 
 .feed-sparkline-guide,
@@ -281,6 +284,7 @@
 
 .feed-sparkline-point {
   cursor: crosshair;
+  pointer-events: all;
 }
 
 .feed-sparkline-point-title {
@@ -349,12 +353,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!value) return
 
     const defaultValue = value.textContent
-    wrap.querySelectorAll('.feed-sparkline-hit').forEach(function (hit) {
+    wrap.querySelectorAll('.feed-sparkline-point').forEach(function (point) {
       const update = function () {
-        value.textContent = hit.dataset.label || defaultValue
+        value.textContent = point.dataset.label || defaultValue
       }
-      hit.addEventListener('mouseenter', update)
-      hit.addEventListener('focus', update)
+      point.addEventListener('mouseenter', update)
+      point.addEventListener('focusin', update)
     })
 
     wrap.addEventListener('mouseleave', function () {
@@ -487,10 +491,10 @@ document.addEventListener('DOMContentLoaded', function () {
                   <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
                     <polyline points="{{ feed.SparklinePoints }}"></polyline>
                     {% for point in feed.SparklineData %}
-                    <g class="feed-sparkline-point">
+                    <g class="feed-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
                       <line class="feed-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
                       <circle class="feed-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
-                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28" data-label="{{ point.Month }} | {{ point.Value }} posts"></rect>
+                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28"></rect>
                     </g>
                     {% endfor %}
                   </svg>
