@@ -41,6 +41,7 @@ type FeedListingInfo struct {
 	LatestPostDate  string
 	SubscribeCount  int
 	ArchiveCount    int
+	DisplayVariants []FeedVariantLink
 	PrimaryVariants []FeedVariantLink
 	ArchiveVariants []FeedVariantLink
 	UtilityVariants []FeedVariantLink
@@ -107,7 +108,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		}
 
 		postCount, latestDate := publicFeedStats(fc.Posts)
-		primary, archive, utility := splitFeedVariants(fc, syndication)
+		display, primary, archive, utility := splitFeedVariants(fc, syndication)
 		isConfigured := isConfiguredFeed(fc, configuredSlugs)
 		info := FeedListingInfo{
 			Title:           feedDisplayTitle(fc),
@@ -117,6 +118,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			LatestPostDate:  latestDate,
 			SubscribeCount:  feedSubscribeCount(fc, syndication, postCount),
 			ArchiveCount:    postCount,
+			DisplayVariants: display,
 			PrimaryVariants: primary,
 			ArchiveVariants: archive,
 			UtilityVariants: utility,
@@ -237,11 +239,13 @@ func feedVariantLinks(fc *models.FeedConfig, syndication models.SyndicationConfi
 	return variants
 }
 
-func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConfig) (primary, archive, utility []FeedVariantLink) {
+func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConfig) (display, primary, archive, utility []FeedVariantLink) {
 	variants := feedVariantLinks(fc, syndication)
 	for _, variant := range variants {
 		switch variant.Kind {
-		case "page", "feed":
+		case "page", "export":
+			display = append(display, variant)
+		case "feed":
 			primary = append(primary, variant)
 		case "archive":
 			archive = append(archive, variant)
@@ -249,7 +253,7 @@ func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConf
 			utility = append(utility, variant)
 		}
 	}
-	return primary, archive, utility
+	return display, primary, archive, utility
 }
 
 func feedSubscribeCount(fc *models.FeedConfig, syndication models.SyndicationConfig, totalPosts int) int {

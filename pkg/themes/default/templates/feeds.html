@@ -25,8 +25,27 @@
         <article class="feed-row">
           <div class="feed-main">
             <header class="feed-row-header">
-              <h3><a href="{{ feed.Href }}">{{ feed.Title }}</a></h3>
-              {% if feed.GeneratedBySite %}<span class="feed-badge">Generated</span>{% endif %}
+              <div class="feed-row-header-main">
+                <div class="feed-row-titleline">
+                  <h3><a href="{{ feed.Href }}">{{ feed.Title }}</a></h3>
+                  {% if feed.GeneratedBySite %}<span class="feed-badge">Generated</span>{% endif %}
+                </div>
+                {% if feed.DisplayVariants %}
+                <div class="feed-links feed-links-display">
+                  {% for variant in feed.DisplayVariants %}
+                  <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% if feed.SparklinePoints %}
+              <div class="feed-sparkline-wrap">
+                <span class="feed-sparkline-label">Publishing rhythm</span>
+                <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
+                  <polyline points="{{ feed.SparklinePoints }}"></polyline>
+                </svg>
+              </div>
+              {% endif %}
             </header>
             {% if feed.Description %}<p class="feed-summary">{{ feed.Description }}</p>{% endif %}
 
@@ -58,22 +77,10 @@
             {% endif %}
 
             {% if feed.UtilityVariants %}
-            <div class="feed-links-row">
-              <span class="feed-links-label">Other</span>
-              <div class="feed-links feed-links-utility">
-                {% for variant in feed.UtilityVariants %}
-                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
-                {% endfor %}
-              </div>
-            </div>
-            {% endif %}
-
-            {% if feed.SparklinePoints %}
-            <div class="feed-sparkline-wrap">
-              <span class="feed-sparkline-label">Publishing rhythm</span>
-              <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
-                <polyline points="{{ feed.SparklinePoints }}"></polyline>
-              </svg>
+            <div class="feed-links feed-links-utility">
+              {% for variant in feed.UtilityVariants %}
+              <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+              {% endfor %}
             </div>
             {% endif %}
           </div>
@@ -160,6 +167,18 @@
 }
 
 .feed-row-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem 1rem;
+  align-items: start;
+}
+
+.feed-row-header-main {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.feed-row-titleline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -231,6 +250,10 @@
   gap: 0.35rem 0.8rem;
 }
 
+.feed-links-display {
+  gap: 0.3rem 0.8rem;
+}
+
 .feed-link {
   display: inline-flex;
   align-items: center;
@@ -247,15 +270,14 @@
 }
 
 .feed-links-utility {
-  margin-top: 0;
+  margin-top: -0.1rem;
 }
 
 .feed-sparkline-wrap {
   display: grid;
   gap: 0.45rem;
-  margin-top: 0.15rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid color-mix(in srgb, var(--color-border, #ddd) 85%, transparent);
+  justify-items: end;
+  min-width: 180px;
 }
 
 .feed-sparkline-label {
@@ -266,8 +288,7 @@
 }
 
 .feed-sparkline {
-  width: 100%;
-  max-width: 240px;
+  width: 180px;
   height: 28px;
   overflow: visible;
 }
@@ -278,6 +299,21 @@
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+@media (max-width: 720px) {
+  .feed-row-header {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-sparkline-wrap {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .feed-sparkline {
+    width: min(220px, 100%);
+  }
 }
 
 </style>
