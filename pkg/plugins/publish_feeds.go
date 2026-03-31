@@ -809,6 +809,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 			modelsConfig = ToModelsConfig(config)
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		p.addFeedStatsContext(&ctx, fc)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -865,6 +866,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		p.addFeedStatsContext(&ctx, fc)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -889,6 +891,22 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 	// Fallback: Use built-in Go template
 	return p.generateFeedPageHTMLFallback(fc, page, config)
+}
+
+func (p *PublishFeedsPlugin) addFeedStatsContext(ctx *templates.Context, fc *models.FeedConfig) {
+	if ctx == nil || fc == nil {
+		return
+	}
+	totalPosts, latestPostDate, _ := publicFeedStats(fc.Posts)
+	window := computeSparklineWindow(fc.Posts)
+	ctx.Set("feed_stats_total_posts", totalPosts)
+	ctx.Set("feed_stats_latest_post", latestPostDate)
+	ctx.Set("feed_sparkline_points", buildFeedSparkline(fc.Posts, window))
+	ctx.Set("feed_sparkline_data", buildFeedSparklineData(fc.Posts, window))
+	ctx.Set("feed_sparkline_title", buildFeedSparklineTitle(fc.Posts, window))
+	ctx.Set("feed_sparkline_summary", buildFeedSparklineSummary(fc.Posts, window))
+	ctx.Set("feed_sparkline_start", buildFeedSparklineStart(window))
+	ctx.Set("feed_sparkline_end", buildFeedSparklineEnd(window))
 }
 
 // generateFeedPageHTMLFallback generates HTML using a built-in Go template.
