@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,15 +25,26 @@ type FeedVariantLink struct {
 	Kind  string
 }
 
+type FeedListingSection struct {
+	ID          string
+	Title       string
+	Description string
+	Feeds       []FeedListingInfo
+}
+
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
-	Title       string
-	Slug        string
-	Description string
-	Href        string
-	PostCount   int
-	LatestDate  string
-	Variants    []FeedVariantLink
+	Title           string
+	Description     string
+	Href            string
+	PostCount       int
+	LatestPostDate  string
+	PrimaryVariants []FeedVariantLink
+	ArchiveVariants []FeedVariantLink
+	UtilityVariants []FeedVariantLink
+	SparklinePoints string
+	SparklineTitle  string
+	GeneratedBySite bool
 }
 
 // FeedsListingPlugin generates a feeds listing page at /feeds.
@@ -72,21 +84,19 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	feedInfos := p.collectFeedInfos(feedConfigs, config)
-	if len(feedInfos) == 0 {
+	sections := p.collectFeedSections(feedConfigs, config)
+	if len(sections) == 0 {
 		return nil
 	}
 
-	sort.Slice(feedInfos, func(i, j int) bool {
-		return feedInfos[i].Title < feedInfos[j].Title
-	})
-
-	return p.renderFeedsPage(config, &feedsPage, feedInfos)
+	return p.renderFeedsPage(config, &feedsPage, sections)
 }
 
-func (p *FeedsListingPlugin) collectFeedInfos(feedConfigs []models.FeedConfig, config *lifecycle.Config) []FeedListingInfo {
+func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config) []FeedListingSection {
 	syndication := getSyndicationConfig(config)
-	infos := make([]FeedListingInfo, 0, len(feedConfigs))
+	userDefined := make([]FeedListingInfo, 0, len(feedConfigs))
+	generated := make([]FeedListingInfo, 0, len(feedConfigs))
+	configuredSlugs := configuredFeedSlugs(config)
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
@@ -95,19 +105,55 @@ func (p *FeedsListingPlugin) collectFeedInfos(feedConfigs []models.FeedConfig, c
 		}
 
 		postCount, latestDate := publicFeedStats(fc.Posts)
+		primary, archive, utility := splitFeedVariants(fc, syndication)
+		isConfigured := isConfiguredFeed(fc, configuredSlugs)
 		info := FeedListingInfo{
-			Title:       feedDisplayTitle(fc),
-			Slug:        fc.Slug,
-			Description: fc.Description,
-			Href:        feedHTMLHref(fc),
-			PostCount:   postCount,
-			LatestDate:  latestDate,
-			Variants:    feedVariantLinks(fc, syndication),
+			Title:           feedDisplayTitle(fc),
+			Description:     fc.Description,
+			Href:            feedHTMLHref(fc),
+			PostCount:       postCount,
+			LatestPostDate:  latestDate,
+			PrimaryVariants: primary,
+			ArchiveVariants: archive,
+			UtilityVariants: utility,
+			SparklinePoints: buildFeedSparkline(fc.Posts),
+			SparklineTitle:  buildFeedSparklineTitle(fc.Posts),
+			GeneratedBySite: !isConfigured,
 		}
-		infos = append(infos, info)
+
+		if isConfigured {
+			userDefined = append(userDefined, info)
+		} else {
+			generated = append(generated, info)
+		}
 	}
 
-	return infos
+	sort.Slice(userDefined, func(i, j int) bool {
+		return userDefined[i].Title < userDefined[j].Title
+	})
+	sort.Slice(generated, func(i, j int) bool {
+		return generated[i].Title < generated[j].Title
+	})
+
+	sections := make([]FeedListingSection, 0, 2)
+	if len(userDefined) > 0 {
+		sections = append(sections, FeedListingSection{
+			ID:          "configured-feeds",
+			Title:       "Configured Feeds",
+			Description: "Feeds you defined explicitly in your site config.",
+			Feeds:       userDefined,
+		})
+	}
+	if len(generated) > 0 {
+		sections = append(sections, FeedListingSection{
+			ID:          "generated-feeds",
+			Title:       "Generated Feeds",
+			Description: "Feeds markata-go created from built-in conventions or generated collections.",
+			Feeds:       generated,
+		})
+	}
+
+	return sections
 }
 
 func publicFeedStats(posts []*models.Post) (count int, latestDate string) {
@@ -187,6 +233,109 @@ func feedVariantLinks(fc *models.FeedConfig, syndication models.SyndicationConfi
 	return variants
 }
 
+func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConfig) (primary, archive, utility []FeedVariantLink) {
+	variants := feedVariantLinks(fc, syndication)
+	for _, variant := range variants {
+		switch variant.Kind {
+		case "page", "feed":
+			primary = append(primary, variant)
+		case "archive":
+			archive = append(archive, variant)
+		default:
+			utility = append(utility, variant)
+		}
+	}
+	return primary, archive, utility
+}
+
+func configuredFeedSlugs(config *lifecycle.Config) map[string]struct{} {
+	slugs := make(map[string]struct{})
+	if config == nil || config.Extra == nil {
+		return slugs
+	}
+	feeds, ok := config.Extra["feeds"].([]models.FeedConfig)
+	if !ok {
+		return slugs
+	}
+	for _, feed := range feeds {
+		slugs[feed.Slug] = struct{}{}
+	}
+	return slugs
+}
+
+func isConfiguredFeed(fc *models.FeedConfig, configuredSlugs map[string]struct{}) bool {
+	if fc == nil {
+		return false
+	}
+	_, ok := configuredSlugs[fc.Slug]
+	return ok
+}
+
+func buildFeedSparkline(posts []*models.Post) string {
+	buckets := monthlyPostBuckets(posts)
+	if len(buckets) < 2 {
+		return ""
+	}
+
+	maxValue := 0
+	for _, count := range buckets {
+		if count > maxValue {
+			maxValue = count
+		}
+	}
+	if maxValue == 0 {
+		return ""
+	}
+
+	const width = 96
+	const height = 28
+	step := float64(width) / float64(len(buckets)-1)
+	points := make([]string, 0, len(buckets))
+	for i, count := range buckets {
+		x := float64(i) * step
+		y := float64(height)
+		if maxValue > 0 {
+			y = float64(height) - ((float64(count) / float64(maxValue)) * float64(height-4))
+		}
+		points = append(points, fmt.Sprintf("%.1f,%.1f", x, y))
+	}
+	return strings.Join(points, " ")
+}
+
+func buildFeedSparklineTitle(posts []*models.Post) string {
+	buckets := monthlyPostBuckets(posts)
+	if len(buckets) == 0 {
+		return ""
+	}
+	return "Posts published over time"
+}
+
+func monthlyPostBuckets(posts []*models.Post) []int {
+	counts := map[string]int{}
+	months := make([]string, 0)
+	seen := map[string]bool{}
+	for _, post := range posts {
+		if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
+			continue
+		}
+		monthKey := post.Date.UTC().Format("2006-01")
+		counts[monthKey]++
+		if !seen[monthKey] {
+			seen[monthKey] = true
+			months = append(months, monthKey)
+		}
+	}
+	if len(months) == 0 {
+		return nil
+	}
+	sort.Strings(months)
+	buckets := make([]int, 0, len(months))
+	for _, month := range months {
+		buckets = append(buckets, counts[month])
+	}
+	return buckets
+}
+
 func pathJoinURL(base, suffix string) string {
 	if base == "/" {
 		return "/" + suffix
@@ -194,7 +343,7 @@ func pathJoinURL(base, suffix string) string {
 	return base + suffix
 }
 
-func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage *models.FeedsPageConfig, feedInfos []FeedListingInfo) error {
+func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage *models.FeedsPageConfig, sections []FeedListingSection) error {
 	feedsDir := filepath.Join(config.OutputDir, feedsPage.SlugPrefix)
 	if err := os.MkdirAll(feedsDir, 0o755); err != nil {
 		return fmt.Errorf("creating feeds directory: %w", err)
@@ -220,8 +369,12 @@ func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage
 	}
 
 	ctx := templates.NewContext(syntheticPost, "", modelsConfig)
-	ctx.Extra["feed_list"] = feedInfos
-	ctx.Extra["total_feeds"] = len(feedInfos)
+	ctx.Extra["feed_sections"] = sections
+	totalFeeds := 0
+	for _, section := range sections {
+		totalFeeds += len(section.Feeds)
+	}
+	ctx.Extra["total_feeds"] = totalFeeds
 
 	html, err := engine.Render(feedsPage.Template, ctx)
 	if err != nil {
@@ -233,7 +386,7 @@ func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage
 		return fmt.Errorf("writing feeds listing page: %w", err)
 	}
 
-	log.Printf("[feeds_listing] Generated /%s/ with %d feeds", feedsPage.SlugPrefix, len(feedInfos))
+	log.Printf("[feeds_listing] Generated /%s/ with %d feeds", feedsPage.SlugPrefix, totalFeeds)
 	return nil
 }
 

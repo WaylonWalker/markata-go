@@ -11,40 +11,78 @@
     <p class="feeds-count">{{ total_feeds }} feed{{ total_feeds|pluralize }} available</p>
   </header>
 
-  {% if feed_list %}
-  <div class="feed-grid">
-    {% for feed in feed_list %}
-    <article class="feed-card">
-      <header class="feed-card-header">
-        <h2>{{ feed.Title }}</h2>
-        {% if feed.Description %}<p>{{ feed.Description }}</p>{% endif %}
+  {% if feed_sections %}
+  <div class="feed-sections">
+    {% for section in feed_sections %}
+    <section class="feed-section" id="{{ section.ID }}">
+      <header class="feed-section-header">
+        <h2>{{ section.Title }}</h2>
+        {% if section.Description %}<p>{{ section.Description }}</p>{% endif %}
       </header>
 
-      <dl class="feed-stats">
-        <div>
-          <dt>Posts</dt>
-          <dd>{{ feed.PostCount }}</dd>
-        </div>
-        {% if feed.LatestDate %}
-        <div>
-          <dt>Updated</dt>
-          <dd>{{ feed.LatestDate }}</dd>
-        </div>
-        {% endif %}
-        <div>
-          <dt>Slug</dt>
-          <dd>{% if feed.Slug %}/{{ feed.Slug }}/{% else %}/{% endif %}</dd>
-        </div>
-      </dl>
+      <div class="feed-list">
+        {% for feed in section.Feeds %}
+        <article class="feed-row">
+          <div class="feed-main">
+            <header class="feed-row-header">
+              <h3><a href="{{ feed.Href }}">{{ feed.Title }}</a></h3>
+              {% if feed.GeneratedBySite %}<span class="feed-badge">Generated</span>{% endif %}
+            </header>
+            {% if feed.Description %}<p class="feed-summary">{{ feed.Description }}</p>{% endif %}
 
-      {% if feed.Variants %}
-      <div class="feed-variants">
-        {% for variant in feed.Variants %}
-        <a href="{{ variant.Href }}" class="feed-variant feed-variant-{{ variant.Kind }}">{{ variant.Label }}</a>
+            <div class="feed-meta">
+              <span><strong>{{ feed.PostCount }}</strong> posts</span>
+              {% if feed.LatestPostDate %}<span>latest post {{ feed.LatestPostDate }}</span>{% endif %}
+            </div>
+
+            {% if feed.PrimaryVariants %}
+            <div class="feed-links-row">
+              <span class="feed-links-label">Subscribe</span>
+              <div class="feed-links">
+                {% for variant in feed.PrimaryVariants %}
+                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+            {% if feed.ArchiveVariants %}
+            <div class="feed-links-row">
+              <span class="feed-links-label">Archive</span>
+              <div class="feed-links">
+                {% for variant in feed.ArchiveVariants %}
+                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+            {% if feed.UtilityVariants %}
+            <details class="feed-more">
+              <summary>More formats</summary>
+              <div class="feed-links feed-links-utility">
+                {% for variant in feed.UtilityVariants %}
+                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                {% endfor %}
+              </div>
+            </details>
+            {% endif %}
+          </div>
+
+          <div class="feed-aside">
+            {% if feed.SparklinePoints %}
+            <div class="feed-sparkline-wrap">
+              <span class="feed-sparkline-label">Publishing rhythm</span>
+              <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
+                <polyline points="{{ feed.SparklinePoints }}"></polyline>
+              </svg>
+            </div>
+            {% endif %}
+          </div>
+        </article>
         {% endfor %}
       </div>
-      {% endif %}
-    </article>
+    </section>
     {% endfor %}
   </div>
   {% else %}
@@ -54,13 +92,13 @@
 
 <style>
 .feeds-listing {
-  max-width: min(1100px, 100%);
+  width: min(960px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: var(--spacing-lg, 2rem);
+  padding: clamp(1.25rem, 2vw, 2rem) 0 3rem;
 }
 
 .page-header {
-  margin-bottom: var(--spacing-xl, 3rem);
+  margin-bottom: 2.5rem;
   text-align: center;
 }
 
@@ -69,78 +107,184 @@
   color: var(--color-text-muted, #666);
 }
 
-.feed-grid {
+.feed-sections {
   display: grid;
-  gap: var(--spacing-lg, 1.5rem);
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
 }
 
-.feed-card {
+.feed-section {
   display: grid;
-  gap: var(--spacing-md, 1rem);
-  padding: var(--spacing-lg, 1.5rem);
+  gap: 1rem;
+}
+
+.feed-section-header {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border, #ddd);
+}
+
+.feed-section-header h2 {
+  margin-bottom: 0.3rem;
+}
+
+.feed-section-header p {
+  margin: 0;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.feed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 1rem 1.5rem;
+  align-items: start;
+  padding: 1.15rem 1.25rem;
   border: 1px solid var(--color-border, #ddd);
   border-radius: var(--radius-lg, 0.75rem);
-  background: var(--color-surface, #f7f7f7);
+  background: color-mix(in srgb, var(--color-surface, #f7f7f7) 72%, transparent);
 }
 
-.feed-card-header h2 {
-  margin-bottom: 0.5rem;
-}
-
-.feed-card-header p {
-  margin: 0;
-  color: var(--color-text-muted, #666);
-}
-
-.feed-stats {
+.feed-main {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.feed-row-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.feed-row-header h3 {
   margin: 0;
 }
 
-.feed-stats div {
-  padding: 0.75rem;
-  border-radius: var(--radius-md, 0.5rem);
-  background: var(--color-background, #fff);
+.feed-row-header a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.feed-stats dt {
-  margin-bottom: 0.25rem;
-  font-size: 0.8rem;
+.feed-row-header a:hover {
+  text-decoration: underline;
+}
+
+.feed-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary, #007bff) 12%, transparent);
+  color: var(--color-text-muted, #666);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+.feed-summary {
+  margin: 0;
   color: var(--color-text-muted, #666);
 }
 
-.feed-stats dd {
-  margin: 0;
-  font-weight: 600;
+.feed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  color: var(--color-text-muted, #666);
+  font-size: 0.92rem;
 }
 
-.feed-variants {
+.feed-links-row {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.feed-links-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.feed-variant {
+.feed-link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-border, #ddd);
-  background: var(--color-background, #fff);
+  gap: 0.35rem;
+  padding: 0.1rem 0;
   color: inherit;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
-.feed-variant:hover {
-  border-color: var(--color-primary, #007bff);
+.feed-link:hover {
   color: var(--color-primary, #007bff);
+  text-decoration: underline;
+}
+
+.feed-more {
+  margin-top: 0.15rem;
+}
+
+.feed-more summary {
+  cursor: pointer;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-links-utility {
+  margin-top: 0.55rem;
+}
+
+.feed-aside {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.feed-sparkline-wrap {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+}
+
+.feed-sparkline-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-sparkline {
+  width: 96px;
+  height: 28px;
+  overflow: visible;
+}
+
+.feed-sparkline polyline {
+  fill: none;
+  stroke: var(--color-primary, #007bff);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 720px) {
+  .feed-row {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-aside,
+  .feed-sparkline-wrap {
+    justify-content: start;
+    justify-items: start;
+  }
 }
 </style>
 {% endblock %}
