@@ -48,14 +48,6 @@
   margin-top: 0.75rem;
 }
 
-.page-pagination {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.9rem;
-}
-
 .feeds-count {
   font-size: 0.98rem;
 }
@@ -223,11 +215,6 @@
   text-decoration: underline;
 }
 
-.feed-link-current {
-  color: var(--color-primary, #007bff);
-  text-decoration: underline;
-}
-
 .feed-links-utility {
   margin-top: -0.05rem;
   padding-top: 0.1rem;
@@ -296,16 +283,38 @@
       </div>
       {% endif %}
       {% if pagination and pagination.TotalPages > 1 %}
-      <nav class="page-pagination" aria-label="Generated feeds pages">
-        {% if pagination.HasPrev %}<a href="{{ pagination.PrevURL }}" class="feed-link">Previous</a>{% endif %}
-        {% for url in pagination.PageURLs %}
-          {% if forloop.counter == pagination.Number %}
-          <span class="feed-link feed-link-current">{{ forloop.counter }}</span>
-          {% else %}
-          <a href="{{ url }}" class="feed-link">{{ forloop.counter }}</a>
+      <nav class="pagination" aria-label="Pagination">
+        {% if pagination.HasPrev %}
+        <a href="{{ pagination.PrevURL }}" class="pagination-prev" rel="prev">&laquo; Newer</a>
+        {% else %}
+        <span class="pagination-prev disabled">&laquo; Newer</span>
+        {% endif %}
+        <div class="pagination-pages">
+          {% for url in pagination.PageURLs %}
+          {% with page_num=forloop.Counter %}
+          {% if page_num == 1 or page_num == pagination.TotalPages or (page_num >= pagination.Number|add:"-2" and page_num <= pagination.Number|add:"2") %}
+            {% if page_num == pagination.TotalPages and pagination.Number < pagination.TotalPages|add:"-3" %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% elif page_num > 1 and page_num == pagination.Number|add:"-2" and pagination.Number > 4 %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+            {% if page_num == pagination.Number %}
+            <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+            {% else %}
+            <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+            {% endif %}
+            {% if page_num == 1 and pagination.Number > 4 %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
           {% endif %}
-        {% endfor %}
-        {% if pagination.HasNext %}<a href="{{ pagination.NextURL }}" class="feed-link">Next</a>{% endif %}
+          {% endwith %}
+          {% endfor %}
+        </div>
+        {% if pagination.HasNext %}
+        <a href="{{ pagination.NextURL }}" class="pagination-next" rel="next">Older &raquo;</a>
+        {% else %}
+        <span class="pagination-next disabled">Older &raquo;</span>
+        {% endif %}
       </nav>
       {% endif %}
     </header>
@@ -322,16 +331,38 @@
             {% if section.MoreHref %}<a href="{{ section.MoreHref }}" class="feed-link">{{ section.MoreLabel }}</a>{% endif %}
           </div>
           {% if section.Pagination and section.Pagination.TotalPages > 1 %}
-          <nav class="page-pagination" aria-label="{{ section.Title }} pages">
-            {% if section.Pagination.HasPrev %}<a href="{{ section.Pagination.PrevURL }}" class="feed-link">Previous</a>{% endif %}
-            {% for url in section.Pagination.PageURLs %}
-              {% if forloop.counter == section.Pagination.Number %}
-              <span class="feed-link feed-link-current">{{ forloop.counter }}</span>
-              {% else %}
-              <a href="{{ url }}" class="feed-link">{{ forloop.counter }}</a>
+          <nav class="pagination" aria-label="{{ section.Title }} pages">
+            {% if section.Pagination.HasPrev %}
+            <a href="{{ section.Pagination.PrevURL }}" class="pagination-prev" rel="prev">&laquo; Newer</a>
+            {% else %}
+            <span class="pagination-prev disabled">&laquo; Newer</span>
+            {% endif %}
+            <div class="pagination-pages">
+              {% for url in section.Pagination.PageURLs %}
+              {% with page_num=forloop.Counter %}
+              {% if page_num == 1 or page_num == section.Pagination.TotalPages or (page_num >= section.Pagination.Number|add:"-2" and page_num <= section.Pagination.Number|add:"2") %}
+                {% if page_num == section.Pagination.TotalPages and section.Pagination.Number < section.Pagination.TotalPages|add:"-3" %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% elif page_num > 1 and page_num == section.Pagination.Number|add:"-2" and section.Pagination.Number > 4 %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% endif %}
+                {% if page_num == section.Pagination.Number %}
+                <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+                {% endif %}
+                {% if page_num == 1 and section.Pagination.Number > 4 %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% endif %}
               {% endif %}
-            {% endfor %}
-            {% if section.Pagination.HasNext %}<a href="{{ section.Pagination.NextURL }}" class="feed-link">Next</a>{% endif %}
+              {% endwith %}
+              {% endfor %}
+            </div>
+            {% if section.Pagination.HasNext %}
+            <a href="{{ section.Pagination.NextURL }}" class="pagination-next" rel="next">Older &raquo;</a>
+            {% else %}
+            <span class="pagination-next disabled">Older &raquo;</span>
+            {% endif %}
           </nav>
           {% endif %}
         </header>

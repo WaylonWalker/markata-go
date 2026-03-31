@@ -131,7 +131,7 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 		t.Fatalf("ReadFile(generated feeds page) error = %v", err)
 	}
 	generatedBody := string(generatedBodyBytes)
-	if !strings.Contains(generatedBody, `aria-label="Generated feeds pages"`) {
+	if !strings.Contains(generatedBody, `aria-label="Pagination"`) {
 		t.Fatalf("generated feeds page should include pagination controls")
 	}
 	if strings.Contains(generatedBody, "Generated 25") {

@@ -233,14 +233,20 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		generatedPages = paginateFeedListings(
 			generated,
 			feedDefaults,
+			"/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated"))+"/",
+			"/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")),
+		)
+		previewPages := paginateFeedListings(
+			generated,
+			feedDefaults,
 			"/"+feedsPage.SlugPrefix+"/",
 			"/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")),
 		)
 		preview := generated
 		truncated := false
-		if len(generatedPages) > 0 {
-			preview = generatedPages[0].Feeds
-			truncated = generatedPages[0].TotalPages > 1
+		if len(previewPages) > 0 {
+			preview = previewPages[0].Feeds
+			truncated = previewPages[0].TotalPages > 1
 		}
 
 		section := FeedListingSection{
@@ -252,7 +258,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			Pagination:  nil,
 		}
 		if truncated {
-			section.Pagination = &generatedPages[0]
+			section.Pagination = &previewPages[0]
 		}
 		sections = append(sections, section)
 	}
