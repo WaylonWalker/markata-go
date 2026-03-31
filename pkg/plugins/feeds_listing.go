@@ -436,7 +436,11 @@ func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) strin
 	if len(buckets) == 0 {
 		return ""
 	}
-	return "Posts published over time"
+	return fmt.Sprintf(
+		"Posts published per month from %s to %s",
+		window.Start.Format("2006-01"),
+		window.End.Format("2006-01"),
+	)
 }
 
 func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) []int {
