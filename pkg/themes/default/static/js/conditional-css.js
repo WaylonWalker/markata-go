@@ -21,7 +21,12 @@
     'cards':       '.card, .posts-list',
     'webmentions': '.webmentions',
     'encryption':  '.encrypted-content, [data-encrypted]',
-    'home':        '.home-hero, .home-feeds'
+    'home':        '.home-hero, .home-feeds',
+    'feeds':       '.feeds-page, .feed.h-feed, .feed.feed-simple'
+  };
+
+  var conditionalJS = {
+    'feed-sparklines': '.feed-sparkline-wrap, .feed-header-sparkline'
   };
 
   /**
@@ -50,6 +55,23 @@
     document.head.appendChild(link);
   }
 
+  function hasScript(baseName) {
+    var scripts = document.querySelectorAll('script[src]');
+    for (var i = 0; i < scripts.length; i++) {
+      if (scripts[i].src && scripts[i].src.indexOf(baseName) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function injectJS(baseName) {
+    var script = document.createElement('script');
+    script.src = '/js/' + baseName + '.js';
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   /**
    * Scan the current DOM and inject any missing conditional CSS.
    */
@@ -59,6 +81,14 @@
       var selector = conditionalCSS[baseName];
       if (document.querySelector(selector) && !hasCSS(baseName)) {
         injectCSS(baseName);
+      }
+    }
+
+    for (var scriptName in conditionalJS) {
+      if (!conditionalJS.hasOwnProperty(scriptName)) continue;
+      var scriptSelector = conditionalJS[scriptName];
+      if (document.querySelector(scriptSelector) && !hasScript(scriptName)) {
+        injectJS(scriptName);
       }
     }
 
@@ -95,5 +125,6 @@
   }
 
   // Run after view transitions complete
+  document.addEventListener('DOMContentLoaded', loadConditionalCSS);
   window.addEventListener('view-transition-complete', loadConditionalCSS);
 })();

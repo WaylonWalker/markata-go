@@ -4,171 +4,7 @@
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
 {% block head %}
 {{ block.Super() }}
-<style>
-.feed-header {
-  display: grid;
-  gap: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.feed-header-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: start;
-}
-
-.feed-header-copy {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.feed-header-copy h1 {
-  margin: 0;
-}
-
-.feed-header-copy p {
-  margin: 0;
-}
-
-.feed-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.9rem;
-  color: var(--color-text-muted, #666);
-  font-size: 0.9rem;
-}
-
-.feed-header-sparkline {
-  display: grid;
-  gap: 0.3rem;
-  justify-items: end;
-  min-width: 180px;
-  align-self: center;
-}
-
-.feed-header-sparkline-label {
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted, #666);
-}
-
-.feed-header-sparkline-meta {
-  width: 180px;
-  min-height: 1rem;
-  font-size: 0.76rem;
-  color: var(--color-text-muted, #666);
-  text-align: right;
-}
-
-.feed-header-sparkline-value {
-  display: inline-block;
-  font-weight: 500;
-}
-
-.feed-header-sparkline-chart {
-  width: 180px;
-  height: 28px;
-  overflow: visible;
-  outline: none;
-}
-
-.feed-header-sparkline-axis {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 180px;
-  font-size: 0.68rem;
-  color: var(--color-text-muted, #666);
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.feed-header-sparkline:hover .feed-header-sparkline-axis,
-.feed-header-sparkline:focus-within .feed-header-sparkline-axis {
-  opacity: 1;
-}
-
-.feed-header-sparkline polyline {
-  fill: none;
-  stroke: var(--color-primary, #007bff);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.feed-header-sparkline-hit {
-  fill: transparent;
-  pointer-events: all;
-}
-
-.feed-header-sparkline-point {
-  cursor: crosshair;
-  pointer-events: all;
-}
-
-.feed-header-sparkline-guide,
-.feed-header-sparkline-dot {
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.feed-header-sparkline-guide {
-  stroke: color-mix(in srgb, var(--color-text-muted, #666) 80%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 2 2;
-}
-
-.feed-header-sparkline-dot {
-  fill: var(--color-primary, #007bff);
-}
-
-.feed-header-sparkline-point:hover .feed-header-sparkline-guide,
-.feed-header-sparkline-point:hover .feed-header-sparkline-dot,
-.feed-header-sparkline-point:focus-within .feed-header-sparkline-guide,
-.feed-header-sparkline-point:focus-within .feed-header-sparkline-dot {
-  opacity: 1;
-}
-
-@media (max-width: 720px) {
-  .feed-header-top {
-    grid-template-columns: 1fr;
-  }
-
-  .feed-header-sparkline {
-    justify-items: start;
-  }
-
-  .feed-header-sparkline-meta,
-  .feed-header-sparkline-chart,
-  .feed-header-sparkline-axis {
-    width: min(220px, 100%);
-    text-align: left;
-  }
-}
-</style>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.feed-header-sparkline').forEach(function (wrap) {
-    const value = wrap.querySelector('.feed-header-sparkline-value')
-    if (!value) return
-
-    const defaultValue = value.textContent
-    wrap.querySelectorAll('.feed-header-sparkline-point').forEach(function (point) {
-      const update = function () {
-        value.textContent = point.dataset.label || defaultValue
-      }
-      point.addEventListener('mouseenter', update)
-      point.addEventListener('focusin', update)
-    })
-
-    wrap.addEventListener('mouseleave', function () {
-      value.textContent = defaultValue
-    })
-  })
-})
-</script>
+<link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
 {% endblock %}
 
 {% block htmx %}
@@ -222,7 +58,6 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
   </header>
   {% endif %}
-  {# Author h-card for the feed (representative) #}
   {% if config.author %}
   <div class="feed-author-card p-author h-card visually-hidden">
     {% if config.seo.author_image %}
@@ -236,12 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   <div class="posts posts-list" id="posts-list">
     {% if page.pagination_type == "js" %}
-    {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
     {% include "partials/cards/card-router.html" %}
     {% endfor %}
     {% else %}
-    {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
     {% include "partials/cards/card-router.html" %}
     {% endfor %}
