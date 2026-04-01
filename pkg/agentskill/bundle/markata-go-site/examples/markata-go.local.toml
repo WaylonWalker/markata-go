@@ -1,0 +1,6 @@
+[markata-go]
+url = "http://localhost:8000"
+concurrency = 2
+
+[markata-go.theme]
+custom_css = "custom.css"

@@ -1,0 +1,98 @@
+---
+name: markata-go-site
+description: Help agents work effectively in markata-go site repositories. Use this when the task involves site configuration, writing content, templates, themes, builds, deployment, or deciding whether a change belongs in config, content, templates, or plugins.
+---
+
+This skill helps an agent work inside a markata-go site repository without needing the markata-go source tree.
+
+It is written to be useful in a standalone site repo where only the generated project files, templates, and config are available.
+
+## Start Here
+
+Before making changes:
+- locate the active config file, usually `markata-go.toml`
+- inspect the site's content directories such as `posts/`, `pages/`, `docs/`, and `static/`
+- inspect `templates/` and `palettes/` before inventing new structure
+- prefer current command output and files over older examples or assumptions
+- when the site is minimal or brand new, use the topic files in this skill as the default markata-go playbook
+
+## Core Workflow
+
+1. Inspect the site config with `markata-go config show` and `markata-go config get <key>`.
+2. Inspect content with `markata-go list posts`, `markata-go list feeds`, and `markata-go list tags`.
+3. Use `markata-go explain <topic>` for built-in CLI context.
+4. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
+5. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
+
+## Topic Files
+
+Read only the topic files relevant to the task:
+- `topics/configuration.md`
+- `topics/writing-frontmatter.md`
+- `topics/cli-usage.md`
+- `topics/build-deployment.md`
+- `topics/faster-builds.md`
+- `topics/theme-creation.md`
+- `topics/template-management.md`
+- `topics/plugin-creation.md`
+
+## Reference Files
+
+Use these when you need exact shapes instead of narrative guidance:
+
+- `reference/template-context.md`
+- `reference/feed-patterns.md`
+
+## Example Files
+
+Use these as starter material for first sites or when a repo has no local examples yet:
+
+- `examples/fast.toml`
+- `examples/markata-go.local.toml`
+- `examples/templates/base.html`
+- `examples/templates/post.html`
+- `examples/templates/feed.html`
+
+## First-Site Defaults
+
+If the repository is a very small or first-time site and does not yet have clear patterns:
+
+- use `markata-go.toml` as the main config file
+- assume `templates/` is the project override directory
+- assume `static/` is the static asset directory
+- assume individual content items are Markdown files with YAML frontmatter
+- use `post.html` for single-post templates and `feed.html` for listing pages
+- prefer palette and CSS overrides before deeper template rewrites
+- prefer `markata-go new` for creating new content so starter frontmatter matches current CLI behavior
+
+## Recommended Reading Order
+
+- Template work: `topics/template-management.md`
+- Theme or styling work: `topics/theme-creation.md`
+- Content creation: `topics/writing-frontmatter.md`
+- Config debugging: `topics/configuration.md`
+- Build and CI work: `topics/build-deployment.md`
+- Performance work: `topics/faster-builds.md`
+- Extension work: `topics/plugin-creation.md`
+
+## Working Rules
+
+- Prefer the smallest correct change.
+- Preserve the site's existing layout, content model, and template style unless the task explicitly changes them.
+- When something is ambiguous, inspect the actual repo files before changing behavior.
+- Prefer CLI inspection over hand-parsing when `markata-go` already exposes the needed data.
+- If the task is performance-related, compare warm builds before claiming a regression or improvement.
+- If the site has no existing conventions yet, use the patterns documented in this skill rather than making up a new structure.
+
+## Common Repo Areas
+
+- `markata-go.toml`: main site configuration
+- `posts/`, `pages/`, `docs/`: markdown content
+- `templates/`: site template overrides
+- `palettes/`: site-local palettes
+- `static/`: copied static assets
+- `.markata-cache/`: build cache and timing context
+
+## Escalation Rule
+
+If the task cannot be done with frontmatter, config, templates, CSS, feeds, or existing commands, then read `topics/plugin-creation.md` and decide whether the work belongs in a custom plugin or in `markata-go` itself.
