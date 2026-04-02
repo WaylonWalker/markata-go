@@ -62,7 +62,9 @@ reverse = false
 items_per_page = 0
 ```
 
-## Useful Feed Formats
+## Global Feed Formats
+
+This is a top-level setting that controls which output formats are generated for all feeds. It is NOT placed inside a `[[markata-go.feeds]]` entry.
 
 ```toml
 [markata-go.feeds.formats]

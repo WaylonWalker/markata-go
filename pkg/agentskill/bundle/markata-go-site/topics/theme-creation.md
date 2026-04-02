@@ -9,6 +9,19 @@ Use this topic when the task is colors, palettes, styling, or overall site visua
 3. add `custom_css`
 4. only then override templates if structure must change
 
+## Decision Guide
+
+Use the smallest layer that can solve the task:
+
+- change the overall color system across the site: create or edit a palette
+- tweak a handful of design tokens: use `[markata-go.theme.variables]`
+- restyle specific selectors or components: use `custom_css`
+- change structure, markup, or layout composition: override templates
+
+If the task is "make links more vivid" or "soften surfaces site-wide", a palette or theme variables change is usually the right answer.
+
+If the task is "change card spacing" or "move the header layout", CSS or templates are usually better.
+
 ## Core Config Pattern
 
 ```toml
@@ -39,6 +52,8 @@ Follow this order unless the task explicitly requires a deeper redesign:
 - site CSS under `static/` or theme asset directories
 - theme settings in config
 
+For exact palette file structure, read `../reference/palette-reference.md`.
+
 ## Helpful Commands
 
 - `markata-go palette list`
@@ -58,6 +73,30 @@ Follow this order unless the task explicitly requires a deeper redesign:
 - When introducing a new palette, validate contrast instead of only checking aesthetics.
 - Keep theme work incremental: palette, then CSS, then template overrides if needed.
 - For first sites, a palette plus `custom_css` is usually enough.
+
+## Creating A Site-Local Palette
+
+Project-local palettes live in `palettes/` and can be selected by name:
+
+```toml
+[markata-go.theme]
+palette = "my-brand"
+```
+
+A starter file is included at `../examples/palettes/my-brand.toml`.
+
+## Theme Variables Vs Palette Files
+
+Use a palette file when you want semantic control such as:
+
+- `accent`
+- `text-primary`
+- `bg-primary`
+- `link`
+- `success`
+- `error`
+
+Use `theme.variables` when you want to override generated CSS variables directly for one site without maintaining a custom palette file.
 
 ## Light And Dark Pairing
 

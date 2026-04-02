@@ -42,6 +42,7 @@ Use these when you need exact shapes instead of narrative guidance:
 
 - `reference/template-context.md`
 - `reference/feed-patterns.md`
+- `reference/palette-reference.md`
 
 ## Example Files
 
@@ -49,6 +50,7 @@ Use these as starter material for first sites or when a repo has no local exampl
 
 - `examples/fast.toml`
 - `examples/markata-go.local.toml`
+- `examples/palettes/my-brand.toml`
 - `examples/templates/base.html`
 - `examples/templates/post.html`
 - `examples/templates/feed.html`

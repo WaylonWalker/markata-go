@@ -48,15 +48,66 @@ func TestSiteSkill_ContainsAllRequiredTopics(t *testing.T) {
 	}
 }
 
+func TestSiteSkill_ContainsReferenceFiles(t *testing.T) {
+	requiredRefs := []string{
+		"reference/template-context.md",
+		"reference/feed-patterns.md",
+	}
+
+	skillFS, err := SiteSkill()
+	if err != nil {
+		t.Fatalf("SiteSkill() error = %v", err)
+	}
+
+	for _, ref := range requiredRefs {
+		t.Run(ref, func(t *testing.T) {
+			info, err := fs.Stat(skillFS, ref)
+			if err != nil {
+				t.Fatalf("missing required reference file %q: %v", ref, err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("reference file %q is empty", ref)
+			}
+		})
+	}
+}
+
+func TestSiteSkill_ContainsExampleFiles(t *testing.T) {
+	requiredExamples := []string{
+		"examples/fast.toml",
+		"examples/markata-go.local.toml",
+		"examples/templates/base.html",
+		"examples/templates/post.html",
+		"examples/templates/feed.html",
+	}
+
+	skillFS, err := SiteSkill()
+	if err != nil {
+		t.Fatalf("SiteSkill() error = %v", err)
+	}
+
+	for _, example := range requiredExamples {
+		t.Run(example, func(t *testing.T) {
+			info, err := fs.Stat(skillFS, example)
+			if err != nil {
+				t.Fatalf("missing required example file %q: %v", example, err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("example file %q is empty", example)
+			}
+		})
+	}
+}
+
 func TestListFiles_ReturnsExpectedFiles(t *testing.T) {
 	files, err := ListFiles()
 	if err != nil {
 		t.Fatalf("ListFiles() error = %v", err)
 	}
 
-	// SKILL.md + 8 topic files = 9 minimum
-	if len(files) < 9 {
-		t.Fatalf("ListFiles() returned %d files, expected at least 9", len(files))
+	// SKILL.md + 8 topic files + 2 reference files + 5 example files = 16 minimum
+	if len(files) < 16 {
+		t.Fatalf("ListFiles() returned %d files, expected at least 16", len(files))
 	}
 
 	hasSkill := false
