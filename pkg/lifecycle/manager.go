@@ -92,6 +92,9 @@ type Feed struct {
 	// Title is the feed title.
 	Title string
 
+	// Description is the feed description.
+	Description string
+
 	// Posts are the posts included in the feed.
 	Posts []*models.Post
 

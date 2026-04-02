@@ -10,6 +10,7 @@ import (
 	"html"
 	"html/template"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -188,7 +189,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
+			skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 			if skip {
 				skippedCount++
 				continue
@@ -210,7 +211,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
+		skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 		if skip {
 			skippedCount++
 			continue
@@ -274,7 +275,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
+			skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 			if skip {
 				skippedCount++
 				continue
@@ -298,7 +299,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
-				skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
+				skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 				if skip {
 					skippedCount++
 					return
@@ -332,7 +333,12 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 // It includes post slugs (in feed order to detect sort changes), and all
 // configuration fields that affect feed output.
 func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
+	return p.computeFeedHashWithConfig(fc, nil)
+}
+
+func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, config *lifecycle.Config) string {
 	h := sha256.New()
+	syndication := getSyndicationConfig(config)
 	writeStringField := func(value string) {
 		fmt.Fprintf(h, "%d:", len(value))
 		h.Write([]byte(value))
@@ -381,6 +387,11 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 	writeIntField(fc.OrphanThreshold)
 	writeStringField(string(fc.PaginationType))
 	writeBoolField(fc.IncludePrivate)
+	writeBoolField(fc.ArchiveDisabled)
+	writeIntField(syndication.MaxItems)
+	writeBoolField(syndication.IncludeContent)
+	writeBoolField(syndication.SiteArchiveDisabled)
+	writeBoolField(syndication.FeedArchivesDisabled)
 
 	// Hash sidebar config
 	writeBoolField(fc.Sidebar)
@@ -414,8 +425,12 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 // Returns (skip bool, hash string) - hash is returned so callers can reuse it
 // for caching without recomputing.
 func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, outputDir string) (skip bool, hash string) {
+	return p.shouldSkipFeedWithConfig(fc, cache, outputDir, nil)
+}
+
+func (p *PublishFeedsPlugin) shouldSkipFeedWithConfig(fc *models.FeedConfig, cache interface{}, outputDir string, config *lifecycle.Config) (skip bool, hash string) {
 	// Always compute hash since we return it for caching
-	currentHash := p.computeFeedHash(fc)
+	currentHash := p.computeFeedHashWithConfig(fc, config)
 
 	if cache == nil {
 		return false, currentHash
@@ -432,7 +447,7 @@ func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interfa
 		return false, currentHash // Need to rebuild
 	}
 
-	for _, path := range p.expectedFeedOutputPaths(fc, outputDir) {
+	for _, path := range p.expectedFeedOutputPaths(fc, outputDir, config) {
 		if _, err := os.Stat(path); err != nil {
 			return false, currentHash
 		}
@@ -453,8 +468,10 @@ func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interfac
 	bc.SetFeedHash(fc.Slug, hash)
 }
 
-func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outputDir string) []string {
+//nolint:gocyclo // output path expansion is a direct format-to-path mapping
+func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outputDir string, config *lifecycle.Config) []string {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
+	syndication := getSyndicationConfig(config)
 	paths := make([]string, 0, len(fc.Pages)*2+8)
 	add := func(path string) {
 		if path != "" {
@@ -516,6 +533,17 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 		add(filepath.Join(feedDir, "sitemap.xml"))
 	}
 
+	archiveDir := feedArchiveDir(feedDir)
+	if fc.Formats.RSS && shouldGenerateFeedArchive(fc, syndication) {
+		add(filepath.Join(archiveDir, "rss.xml"))
+	}
+	if fc.Formats.Atom && shouldGenerateFeedArchive(fc, syndication) {
+		add(filepath.Join(archiveDir, "atom.xml"))
+	}
+	if fc.Formats.JSON && shouldGenerateFeedArchive(fc, syndication) {
+		add(filepath.Join(archiveDir, "feed.json"))
+	}
+
 	return paths
 }
 
@@ -532,6 +560,7 @@ type feedFormatPublisher struct {
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	modelsConfig := ToModelsConfig(config)
+	syndication := getSyndicationConfig(config)
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
@@ -541,9 +570,9 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	publishers := []feedFormatPublisher{
 		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, modelsConfig, feedDir) }},
 		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, modelsConfig, feedDir) }},
-		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
-		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
-		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
+		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir, false) }},
+		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir, false) }},
+		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
 		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
 		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
 		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(fc, config, feedDir) }},
@@ -552,6 +581,25 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	for _, pub := range publishers {
 		if err := p.publishFormat(pub, fc.Slug, outputDir); err != nil {
 			return err
+		}
+	}
+
+	if shouldGenerateFeedArchive(fc, syndication) {
+		archiveDir := feedArchiveDir(feedDir)
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			return fmt.Errorf("creating archive feed directory: %w", err)
+		}
+
+		archivePublishers := []feedFormatPublisher{
+			{name: "Archive RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, archiveDir, true) }},
+			{name: "Archive Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, archiveDir, true) }},
+			{name: "Archive JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, archiveDir, true) }},
+		}
+
+		for _, pub := range archivePublishers {
+			if err := pub.publish(); err != nil {
+				return fmt.Errorf("publishing %s for %q: %w", pub.name, fc.Slug, err)
+			}
 		}
 	}
 
@@ -761,6 +809,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 			modelsConfig = ToModelsConfig(config)
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		p.addFeedStatsContext(&ctx, fc)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -817,6 +866,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		p.addFeedStatsContext(&ctx, fc)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -841,6 +891,22 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 	// Fallback: Use built-in Go template
 	return p.generateFeedPageHTMLFallback(fc, page, config)
+}
+
+func (p *PublishFeedsPlugin) addFeedStatsContext(ctx *templates.Context, fc *models.FeedConfig) {
+	if ctx == nil || fc == nil {
+		return
+	}
+	totalPosts, latestPostDate, _ := publicFeedStats(fc.Posts)
+	window := computeSparklineWindow(fc.Posts)
+	ctx.Set("feed_stats_total_posts", totalPosts)
+	ctx.Set("feed_stats_latest_post", latestPostDate)
+	ctx.Set("feed_sparkline_points", buildFeedSparkline(fc.Posts, window))
+	ctx.Set("feed_sparkline_data", buildFeedSparklineData(fc.Posts, window))
+	ctx.Set("feed_sparkline_title", buildFeedSparklineTitle(fc.Posts, window))
+	ctx.Set("feed_sparkline_summary", buildFeedSparklineSummary(fc.Posts, window))
+	ctx.Set("feed_sparkline_start", buildFeedSparklineStart(window))
+	ctx.Set("feed_sparkline_end", buildFeedSparklineEnd(window))
 }
 
 // generateFeedPageHTMLFallback generates HTML using a built-in Go template.
@@ -941,8 +1007,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTMLFallback(fc *models.FeedConfig,
 }
 
 // publishRSS generates and writes an RSS feed.
-func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
-	rss, err := GenerateRSSFromFeedConfig(fc, config)
+func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle.Config, feedDir string, archive bool) error {
+	rssFeed := p.syndicationFeedConfig(fc, config, archive)
+	rss, err := GenerateRSSFromFeedConfig(rssFeed, config)
 	if err != nil {
 		return err
 	}
@@ -952,8 +1019,9 @@ func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle
 }
 
 // publishAtom generates and writes an Atom feed.
-func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
-	atom, err := GenerateAtomFromFeedConfig(fc, config)
+func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycle.Config, feedDir string, archive bool) error {
+	atomFeed := p.syndicationFeedConfig(fc, config, archive)
+	atom, err := GenerateAtomFromFeedConfig(atomFeed, config)
 	if err != nil {
 		return err
 	}
@@ -963,14 +1031,31 @@ func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycl
 }
 
 // publishJSON generates and writes a JSON feed.
-func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
-	jsonFeed, err := GenerateJSONFeedFromFeedConfig(fc, config)
+func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycle.Config, feedDir string, archive bool) error {
+	jsonFC := p.syndicationFeedConfig(fc, config, archive)
+	jsonFeed, err := GenerateJSONFeedFromFeedConfig(jsonFC, config)
 	if err != nil {
 		return err
 	}
 
 	jsonPath := filepath.Join(feedDir, "feed.json")
 	return p.safeWriteFile(jsonPath, []byte(jsonFeed))
+}
+
+func (p *PublishFeedsPlugin) syndicationFeedConfig(fc *models.FeedConfig, config *lifecycle.Config, archive bool) *models.FeedConfig {
+	if archive {
+		clone := cloneFeedConfigWithPosts(fc, fc.Posts)
+		clone.Slug = path.Join(fc.Slug, defaultArchivePrefix)
+		clone.Title = archiveTitleSuffix(clone.Title)
+		return clone
+	}
+
+	if isArchiveFeed(fc) {
+		return cloneFeedConfigWithPosts(fc, fc.Posts)
+	}
+
+	syndication := getSyndicationConfig(config)
+	return cloneFeedConfigWithPosts(fc, limitFeedPosts(fc.Posts, syndication.MaxItems))
 }
 
 // publishMarkdown generates and writes a Markdown feed listing.

@@ -484,6 +484,21 @@ type Config struct {
 	// Author is the site author
 	Author string `json:"author" yaml:"author" toml:"author"`
 
+	// Language is the site language used in feed and metadata outputs.
+	Language string `json:"language,omitempty" yaml:"language,omitempty" toml:"language,omitempty"`
+
+	// AuthorURL is the canonical URL for the site author.
+	AuthorURL string `json:"author_url,omitempty" yaml:"author_url,omitempty" toml:"author_url,omitempty"`
+
+	// ManagingEditor is the RSS managing editor contact.
+	ManagingEditor string `json:"managing_editor,omitempty" yaml:"managing_editor,omitempty" toml:"managing_editor,omitempty"`
+
+	// WebMaster is the RSS webmaster contact.
+	WebMaster string `json:"webmaster,omitempty" yaml:"webmaster,omitempty" toml:"webmaster,omitempty"`
+
+	// Copyright is the copyright notice for syndication outputs.
+	Copyright string `json:"copyright,omitempty" yaml:"copyright,omitempty" toml:"copyright,omitempty"`
+
 	// License controls the footer attribution (string key or false)
 	License LicenseValue `json:"license,omitempty" yaml:"license,omitempty" toml:"license,omitempty"`
 
@@ -597,6 +612,9 @@ type Config struct {
 
 	// Tags configures the tags listing page at /tags
 	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
+
+	// FeedsPage configures the feeds listing page at /feeds
+	FeedsPage FeedsPageConfig `json:"feeds_page" yaml:"feeds_page" toml:"feeds_page"`
 
 	// Garden configures the garden view plugin for knowledge graph export and visualization
 	Garden GardenConfig `json:"garden" yaml:"garden" toml:"garden"`
@@ -2683,6 +2701,44 @@ func (t *TagsConfig) IsPrivate(tag string) bool {
 	return false
 }
 
+// FeedsPageConfig configures the feeds listing page at /feeds.
+type FeedsPageConfig struct {
+	// Enabled controls whether the feeds listing page is generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Title is the title for the feeds listing page (default: "Feeds")
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Description is the description for the feeds listing page.
+	Description string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
+
+	// Template is the template file to use (default: "feeds.html")
+	Template string `json:"template,omitempty" yaml:"template,omitempty" toml:"template,omitempty"`
+
+	// SlugPrefix is the URL prefix for the feeds listing (default: "feeds")
+	SlugPrefix string `json:"slug_prefix,omitempty" yaml:"slug_prefix,omitempty" toml:"slug_prefix,omitempty"`
+}
+
+// NewFeedsPageConfig creates a new FeedsPageConfig with default values.
+func NewFeedsPageConfig() FeedsPageConfig {
+	enabled := true
+	return FeedsPageConfig{
+		Enabled:     &enabled,
+		Title:       "Feeds",
+		Description: "Browse the public feeds available on this site.",
+		Template:    "feeds.html",
+		SlugPrefix:  "feeds",
+	}
+}
+
+// IsEnabled returns whether the feeds listing page is enabled.
+func (f *FeedsPageConfig) IsEnabled() bool {
+	if f.Enabled == nil {
+		return true
+	}
+	return *f.Enabled
+}
+
 // TagAggregatorConfig configures the tag aggregator plugin for normalizing and expanding tags.
 type TagAggregatorConfig struct {
 	// Enabled controls whether tag aggregation is active (default: true)
@@ -3131,6 +3187,7 @@ func NewConfig() *Config {
 		Shortcuts:        NewShortcutsConfig(),
 		ViewTransitions:  NewViewTransitionsConfig(),
 		Tags:             NewTagsConfig(),
+		FeedsPage:        NewFeedsPageConfig(),
 		Garden:           NewGardenConfig(),
 		Assets:           NewAssetsConfig(),
 	}

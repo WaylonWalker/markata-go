@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -559,5 +560,62 @@ func TestPublishFeedsPlugin_ShouldSkipFeedWhenOutputsExist(t *testing.T) {
 	}
 	if skip, _ := plugin.shouldSkipFeed(feed, cache, outputDir); skip {
 		t.Fatalf("shouldSkipFeed() = true after deleting output, want false")
+	}
+}
+
+func TestPublishFeedsPlugin_GeneratesArchiveVariants(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishFeedsPlugin()
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = tempDir
+	defaults := models.NewFeedDefaults()
+	defaults.Syndication.MaxItems = 1
+	cfg.Extra = map[string]interface{}{
+		"url":           "https://example.com",
+		"title":         "Test Site",
+		"feed_defaults": defaults,
+	}
+
+	firstTitle := "First"
+	secondTitle := "Second"
+	firstDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+	secondDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	feedConfigs := []models.FeedConfig{{
+		Slug:        "blog",
+		Title:       "Blog",
+		Description: "All posts",
+		Formats:     models.FeedFormats{RSS: true, Atom: true, JSON: true},
+		Posts: []*models.Post{
+			{Slug: "first", Href: "/first/", Title: &firstTitle, Published: true, Date: &firstDate, ArticleHTML: "<p>first</p>"},
+			{Slug: "second", Href: "/second/", Title: &secondTitle, Published: true, Date: &secondDate, ArticleHTML: "<p>second</p>"},
+		},
+	}}
+	m.Cache().Set("feed_configs", feedConfigs)
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	primaryRSS, err := os.ReadFile(filepath.Join(tempDir, "blog", "rss.xml"))
+	if err != nil {
+		t.Fatalf("ReadFile(primary rss) error = %v", err)
+	}
+	archiveRSS, err := os.ReadFile(filepath.Join(tempDir, "blog", "archive", "rss.xml"))
+	if err != nil {
+		t.Fatalf("ReadFile(archive rss) error = %v", err)
+	}
+
+	if strings.Contains(string(primaryRSS), "/second/") {
+		t.Fatalf("primary rss should be truncated to max_items=1")
+	}
+	if !strings.Contains(string(archiveRSS), "/second/") {
+		t.Fatalf("archive rss should include older entries")
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "blog", "archive", "atom.xml")); err != nil {
+		t.Fatalf("archive atom not written: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "blog", "archive", "feed.json")); err != nil {
+		t.Fatalf("archive json not written: %v", err)
 	}
 }

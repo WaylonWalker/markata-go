@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Feeds" }}{% endblock %}
+{% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
+{% block body_class %}page-feeds{% endblock %}
+{% block head %}
+{{ block.Super() }}
+<link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+{% endblock %}
+
+{% block main %}
+<main class="main-content" id="main-content" tabindex="-1">
+<article class="post feeds-page">
+  <div class="feeds-listing">
+    <header class="page-header">
+      <h1>{{ title | default:"Feeds" }}</h1>
+      {% if description %}<p class="page-description">{{ description }}</p>{% endif %}
+      <p class="feeds-count">{{ total_feeds }} feed{{ total_feeds|pluralize }} available</p>
+      {% if page_links %}
+      <div class="page-links">
+        {% for link in page_links %}
+        <a href="{{ link.Href }}" class="feed-link">{{ link.Label }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if pagination and pagination.TotalPages > 1 %}
+      <nav class="pagination" aria-label="Pagination">
+        {% if pagination.HasPrev %}
+        <a href="{{ pagination.PrevURL }}" class="pagination-prev" rel="prev">&laquo; Newer</a>
+        {% else %}
+        <span class="pagination-prev disabled">&laquo; Newer</span>
+        {% endif %}
+        <div class="pagination-pages">
+          {% for url in pagination.PageURLs %}
+          {% with page_num=forloop.Counter %}
+          {% if page_num == 1 or page_num == pagination.TotalPages or (page_num >= pagination.Number|add:"-2" and page_num <= pagination.Number|add:"2") %}
+            {% if page_num == pagination.TotalPages and pagination.Number < pagination.TotalPages|add:"-3" %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% elif page_num > 1 and page_num == pagination.Number|add:"-2" and pagination.Number > 4 %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+            {% if page_num == pagination.Number %}
+            <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+            {% else %}
+            <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+            {% endif %}
+            {% if page_num == 1 and pagination.Number > 4 %}
+            <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+          {% endif %}
+          {% endwith %}
+          {% endfor %}
+        </div>
+        {% if pagination.HasNext %}
+        <a href="{{ pagination.NextURL }}" class="pagination-next" rel="next">Older &raquo;</a>
+        {% else %}
+        <span class="pagination-next disabled">Older &raquo;</span>
+        {% endif %}
+      </nav>
+      {% endif %}
+    </header>
+
+    {% if feed_sections %}
+    <div class="feed-sections">
+      {% for section in feed_sections %}
+      <section class="feed-section" id="{{ section.ID }}">
+        <header class="feed-section-header">
+          <h2>{{ section.Title }}</h2>
+          {% if section.Description %}<p>{{ section.Description }}</p>{% endif %}
+          <div class="feed-section-summary">
+            <span>{{ section.TotalCount }} feed{{ section.TotalCount|pluralize }}</span>
+            {% if section.MoreHref %}<a href="{{ section.MoreHref }}" class="feed-link">{{ section.MoreLabel }}</a>{% endif %}
+          </div>
+          {% if section.Pagination and section.Pagination.TotalPages > 1 %}
+          <nav class="pagination" aria-label="{{ section.Title }} pages">
+            {% if section.Pagination.HasPrev %}
+            <a href="{{ section.Pagination.PrevURL }}" class="pagination-prev" rel="prev">&laquo; Newer</a>
+            {% else %}
+            <span class="pagination-prev disabled">&laquo; Newer</span>
+            {% endif %}
+            <div class="pagination-pages">
+              {% for url in section.Pagination.PageURLs %}
+              {% with page_num=forloop.Counter %}
+              {% if page_num == 1 or page_num == section.Pagination.TotalPages or (page_num >= section.Pagination.Number|add:"-2" and page_num <= section.Pagination.Number|add:"2") %}
+                {% if page_num == section.Pagination.TotalPages and section.Pagination.Number < section.Pagination.TotalPages|add:"-3" %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% elif page_num > 1 and page_num == section.Pagination.Number|add:"-2" and section.Pagination.Number > 4 %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% endif %}
+                {% if page_num == section.Pagination.Number %}
+                <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+                {% endif %}
+                {% if page_num == 1 and section.Pagination.Number > 4 %}
+                <span class="pagination-ellipsis" aria-hidden="true">…</span>
+                {% endif %}
+              {% endif %}
+              {% endwith %}
+              {% endfor %}
+            </div>
+            {% if section.Pagination.HasNext %}
+            <a href="{{ section.Pagination.NextURL }}" class="pagination-next" rel="next">Older &raquo;</a>
+            {% else %}
+            <span class="pagination-next disabled">Older &raquo;</span>
+            {% endif %}
+          </nav>
+          {% endif %}
+        </header>
+
+        <div class="feed-list">
+          {% for feed in section.Feeds %}
+          <article class="feed-row">
+            <div class="feed-main">
+              <header class="feed-row-header">
+                <div class="feed-row-header-main">
+                  <div class="feed-row-titleline">
+                    <h3><a href="{{ feed.Href }}">{{ feed.Title }}</a></h3>
+                    {% if feed.GeneratedBySite %}<span class="feed-badge">Generated</span>{% endif %}
+                  </div>
+                  {% if feed.Description %}<p class="feed-summary">{{ feed.Description }}</p>{% endif %}
+                  <div class="feed-meta">
+                    <span><strong>{{ feed.PostCount }}</strong> posts</span>
+                    {% if feed.LatestPostDate %}<span>latest post {{ feed.LatestPostDate }}</span>{% endif %}
+                  </div>
+                </div>
+                {% if feed.SparklinePoints %}
+                <div class="feed-sparkline-wrap">
+                  <span class="feed-sparkline-label">Publishing rhythm</span>
+                  <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
+                    <polyline points="{{ feed.SparklinePoints }}"></polyline>
+                    {% for point in feed.SparklineData %}
+                    <g class="feed-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
+                      <line class="feed-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
+                      <circle class="feed-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
+                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28"></rect>
+                    </g>
+                    {% endfor %}
+                  </svg>
+                  <div class="feed-sparkline-meta" aria-live="polite">
+                    <span class="feed-sparkline-value">{{ feed.SparklineSummary }}</span>
+                  </div>
+                  {% if feed.SparklineStart and feed.SparklineEnd %}
+                  <div class="feed-sparkline-axis" aria-hidden="true">
+                    <span>{{ feed.SparklineStart }}</span>
+                    <span>{{ feed.SparklineEnd }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </header>
+
+              {% if feed.DisplayVariants %}
+              <div class="feed-links feed-links-display">
+                {% for variant in feed.DisplayVariants %}
+                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if feed.PrimaryVariants %}
+              <div class="feed-links-row">
+                <span class="feed-links-label">Subscribe <span class="feed-links-count">{{ feed.SubscribeCount }}</span></span>
+                <div class="feed-links">
+                  {% for variant in feed.PrimaryVariants %}
+                  <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if feed.ArchiveVariants %}
+              <div class="feed-links-row">
+                <span class="feed-links-label">Archive <span class="feed-links-count">{{ feed.ArchiveCount }}</span></span>
+                <div class="feed-links">
+                  {% for variant in feed.ArchiveVariants %}
+                  <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if feed.UtilityVariants %}
+              <div class="feed-links feed-links-utility">
+                {% for variant in feed.UtilityVariants %}
+                <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="no-feeds">No public feeds found.</p>
+    {% endif %}
+  </div>
+</article>
+</main>
+{% endblock %}

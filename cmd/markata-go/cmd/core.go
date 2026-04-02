@@ -66,6 +66,11 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["title"] = cfg.Title
 	lcConfig.Extra["description"] = cfg.Description
 	lcConfig.Extra["author"] = cfg.Author
+	lcConfig.Extra["language"] = cfg.Language
+	lcConfig.Extra["author_url"] = cfg.AuthorURL
+	lcConfig.Extra["managing_editor"] = cfg.ManagingEditor
+	lcConfig.Extra["webmaster"] = cfg.WebMaster
+	lcConfig.Extra["copyright"] = cfg.Copyright
 	lcConfig.Extra["templates_dir"] = cfg.TemplatesDir
 	lcConfig.Extra["assets_dir"] = cfg.AssetsDir
 	lcConfig.Extra["feeds"] = cfg.Feeds

@@ -28,6 +28,7 @@ type configSource interface {
 	getHeader() headerConverter
 	getBlogroll() blogrollConverter
 	getTags() tagsConverter
+	getFeedsPage() feedsPageConverter
 	getEncryption() encryptionConverter
 	getTagAggregator() tagAggregatorConverter
 	getMentions() mentionsConverter
@@ -41,24 +42,29 @@ type configSource interface {
 
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
-	OutputDir     string
-	URL           string
-	Title         string
-	Description   string
-	Author        string
-	License       interface{}
-	AssetsDir     string
-	TemplatesDir  string
-	Hooks         []string
-	DisabledHooks []string
-	GlobPatterns  []string
-	UseGitignore  *bool
-	SlugMode      string
-	SlugRules     []models.SlugRule
-	Extensions    []string
-	Concurrency   int
-	Theme         models.ThemeConfig
-	Footer        models.FooterConfig
+	OutputDir      string
+	URL            string
+	Title          string
+	Description    string
+	Author         string
+	Language       string
+	AuthorURL      string
+	ManagingEditor string
+	WebMaster      string
+	Copyright      string
+	License        interface{}
+	AssetsDir      string
+	TemplatesDir   string
+	Hooks          []string
+	DisabledHooks  []string
+	GlobPatterns   []string
+	UseGitignore   *bool
+	SlugMode       string
+	SlugRules      []models.SlugRule
+	Extensions     []string
+	Concurrency    int
+	Theme          models.ThemeConfig
+	Footer         models.FooterConfig
 }
 
 // navItemData holds nav item fields.
@@ -125,6 +131,10 @@ type tagsConverter interface {
 	toTagsConfig() models.TagsConfig
 }
 
+type feedsPageConverter interface {
+	toFeedsPageConfig() models.FeedsPageConfig
+}
+
 type encryptionConverter interface {
 	toEncryptionConfig() models.EncryptionConfig
 }
@@ -166,15 +176,20 @@ type templatesConverter interface {
 func buildConfig(src configSource) *models.Config {
 	base := src.getBaseConfig()
 	config := &models.Config{
-		OutputDir:     base.OutputDir,
-		URL:           base.URL,
-		Title:         base.Title,
-		Description:   base.Description,
-		Author:        base.Author,
-		AssetsDir:     base.AssetsDir,
-		TemplatesDir:  base.TemplatesDir,
-		Hooks:         base.Hooks,
-		DisabledHooks: base.DisabledHooks,
+		OutputDir:      base.OutputDir,
+		URL:            base.URL,
+		Title:          base.Title,
+		Description:    base.Description,
+		Author:         base.Author,
+		Language:       base.Language,
+		AuthorURL:      base.AuthorURL,
+		ManagingEditor: base.ManagingEditor,
+		WebMaster:      base.WebMaster,
+		Copyright:      base.Copyright,
+		AssetsDir:      base.AssetsDir,
+		TemplatesDir:   base.TemplatesDir,
+		Hooks:          base.Hooks,
+		DisabledHooks:  base.DisabledHooks,
 		GlobConfig: models.GlobConfig{
 			Patterns:  base.GlobPatterns,
 			SlugMode:  base.SlugMode,
@@ -243,6 +258,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert Tags config
 	config.Tags = src.getTags().toTagsConfig()
+
+	// Convert Feeds page config
+	config.FeedsPage = src.getFeedsPage().toFeedsPageConfig()
 
 	// Convert Encryption config
 	config.Encryption = src.getEncryption().toEncryptionConfig()
@@ -399,6 +417,11 @@ type tomlConfig struct {
 	Title           string                    `toml:"title"`
 	Description     string                    `toml:"description"`
 	Author          string                    `toml:"author"`
+	Language        string                    `toml:"language"`
+	AuthorURL       string                    `toml:"author_url"`
+	ManagingEditor  string                    `toml:"managing_editor"`
+	WebMaster       string                    `toml:"webmaster"`
+	Copyright       string                    `toml:"copyright"`
 	License         interface{}               `toml:"license"`
 	AssetsDir       string                    `toml:"assets_dir"`
 	TemplatesDir    string                    `toml:"templates_dir"`
@@ -424,6 +447,7 @@ type tomlConfig struct {
 	Header          tomlHeaderLayoutConfig    `toml:"header"`
 	Blogroll        tomlBlogrollConfig        `toml:"blogroll"`
 	Tags            tomlTagsConfig            `toml:"tags"`
+	FeedsPage       tomlFeedsPageConfig       `toml:"feeds_page"`
 	Encryption      tomlEncryptionConfig      `toml:"encryption"`
 	TagAggregator   tomlTagAggregatorConfig   `toml:"tag_aggregator"`
 	Mentions        tomlMentionsConfig        `toml:"mentions"`
@@ -543,6 +567,7 @@ type tomlFeedConfig struct {
 	Limit           int               `toml:"limit"`
 	Offset          int               `toml:"offset"`
 	PaginationType  string            `toml:"pagination_type"`
+	ArchiveDisabled bool              `toml:"archive_disabled"`
 	Formats         tomlFeedFormats   `toml:"formats"`
 	Templates       tomlFeedTemplates `toml:"templates"`
 }
@@ -578,8 +603,10 @@ type tomlFeedDefaults struct {
 }
 
 type tomlSyndicationConfig struct {
-	MaxItems       int  `toml:"max_items"`
-	IncludeContent bool `toml:"include_content"`
+	MaxItems             int  `toml:"max_items"`
+	IncludeContent       bool `toml:"include_content"`
+	SiteArchiveDisabled  bool `toml:"site_archive_disabled"`
+	FeedArchivesDisabled bool `toml:"feed_archives_disabled"`
 }
 
 type tomlPostFormatsConfig struct {
@@ -627,6 +654,14 @@ type tomlTagsConfig struct {
 	SlugPrefix  string   `toml:"slug_prefix"`
 }
 
+type tomlFeedsPageConfig struct {
+	Enabled     *bool  `toml:"enabled"`
+	Title       string `toml:"title"`
+	Description string `toml:"description"`
+	Template    string `toml:"template"`
+	SlugPrefix  string `toml:"slug_prefix"`
+}
+
 func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
 	defaults := models.NewTagsConfig()
 
@@ -646,6 +681,36 @@ func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+func (t *tomlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -1644,24 +1709,29 @@ func (w *tomlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for tomlConfig.
 func (c *tomlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 
@@ -1694,6 +1764,7 @@ func (c *tomlConfig) getToc() tocConverter                         { return &c.T
 func (c *tomlConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *tomlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *tomlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *tomlConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *tomlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *tomlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *tomlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
@@ -1794,6 +1865,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -1848,8 +1920,10 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }
@@ -1861,6 +1935,11 @@ type yamlConfig struct {
 	Title           string                    `yaml:"title"`
 	Description     string                    `yaml:"description"`
 	Author          string                    `yaml:"author"`
+	Language        string                    `yaml:"language"`
+	AuthorURL       string                    `yaml:"author_url"`
+	ManagingEditor  string                    `yaml:"managing_editor"`
+	WebMaster       string                    `yaml:"webmaster"`
+	Copyright       string                    `yaml:"copyright"`
 	License         interface{}               `yaml:"license"`
 	AssetsDir       string                    `yaml:"assets_dir"`
 	TemplatesDir    string                    `yaml:"templates_dir"`
@@ -1886,6 +1965,7 @@ type yamlConfig struct {
 	Header          yamlHeaderLayoutConfig    `yaml:"header"`
 	Blogroll        yamlBlogrollConfig        `yaml:"blogroll"`
 	Tags            yamlTagsConfig            `yaml:"tags"`
+	FeedsPage       yamlFeedsPageConfig       `yaml:"feeds_page"`
 	Encryption      yamlEncryptionConfig      `yaml:"encryption"`
 	TagAggregator   yamlTagAggregatorConfig   `yaml:"tag_aggregator"`
 	Mentions        yamlMentionsConfig        `yaml:"mentions"`
@@ -1952,6 +2032,7 @@ type yamlFeedConfig struct {
 	Limit           int               `yaml:"limit"`
 	Offset          int               `yaml:"offset"`
 	PaginationType  string            `yaml:"pagination_type"`
+	ArchiveDisabled bool              `yaml:"archive_disabled"`
 	Formats         yamlFeedFormats   `yaml:"formats"`
 	Templates       yamlFeedTemplates `yaml:"templates"`
 }
@@ -1987,8 +2068,10 @@ type yamlFeedDefaults struct {
 }
 
 type yamlSyndicationConfig struct {
-	MaxItems       int  `yaml:"max_items"`
-	IncludeContent bool `yaml:"include_content"`
+	MaxItems             int  `yaml:"max_items"`
+	IncludeContent       bool `yaml:"include_content"`
+	SiteArchiveDisabled  bool `yaml:"site_archive_disabled"`
+	FeedArchivesDisabled bool `yaml:"feed_archives_disabled"`
 }
 
 type yamlPostFormatsConfig struct {
@@ -2055,6 +2138,44 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+type yamlFeedsPageConfig struct {
+	Enabled     *bool  `yaml:"enabled"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
+	Template    string `yaml:"template"`
+	SlugPrefix  string `yaml:"slug_prefix"`
+}
+
+func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -3138,24 +3259,29 @@ func (w *yamlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for yamlConfig.
 func (c *yamlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 
@@ -3188,6 +3314,7 @@ func (c *yamlConfig) getToc() tocConverter                         { return &c.T
 func (c *yamlConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *yamlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *yamlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *yamlConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *yamlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *yamlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *yamlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
@@ -3222,6 +3349,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -3276,8 +3404,10 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }
@@ -3289,6 +3419,11 @@ type jsonConfig struct {
 	Title           string                    `json:"title"`
 	Description     string                    `json:"description"`
 	Author          string                    `json:"author"`
+	Language        string                    `json:"language"`
+	AuthorURL       string                    `json:"author_url"`
+	ManagingEditor  string                    `json:"managing_editor"`
+	WebMaster       string                    `json:"webmaster"`
+	Copyright       string                    `json:"copyright"`
 	License         interface{}               `json:"license"`
 	AssetsDir       string                    `json:"assets_dir"`
 	TemplatesDir    string                    `json:"templates_dir"`
@@ -3314,6 +3449,7 @@ type jsonConfig struct {
 	Header          jsonHeaderLayoutConfig    `json:"header"`
 	Blogroll        jsonBlogrollConfig        `json:"blogroll"`
 	Tags            jsonTagsConfig            `json:"tags"`
+	FeedsPage       jsonFeedsPageConfig       `json:"feeds_page"`
 	Encryption      jsonEncryptionConfig      `json:"encryption"`
 	TagAggregator   jsonTagAggregatorConfig   `json:"tag_aggregator"`
 	Mentions        jsonMentionsConfig        `json:"mentions"`
@@ -3404,6 +3540,7 @@ type jsonFeedConfig struct {
 	Limit           int               `json:"limit"`
 	Offset          int               `json:"offset"`
 	PaginationType  string            `json:"pagination_type"`
+	ArchiveDisabled bool              `json:"archive_disabled"`
 	Formats         jsonFeedFormats   `json:"formats"`
 	Templates       jsonFeedTemplates `json:"templates"`
 }
@@ -3439,8 +3576,10 @@ type jsonFeedDefaults struct {
 }
 
 type jsonSyndicationConfig struct {
-	MaxItems       int  `json:"max_items"`
-	IncludeContent bool `json:"include_content"`
+	MaxItems             int  `json:"max_items"`
+	IncludeContent       bool `json:"include_content"`
+	SiteArchiveDisabled  bool `json:"site_archive_disabled"`
+	FeedArchivesDisabled bool `json:"feed_archives_disabled"`
 }
 
 type jsonPostFormatsConfig struct {
@@ -3488,6 +3627,14 @@ type jsonTagsConfig struct {
 	SlugPrefix  string   `json:"slug_prefix"`
 }
 
+type jsonFeedsPageConfig struct {
+	Enabled     *bool  `json:"enabled"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Template    string `json:"template"`
+	SlugPrefix  string `json:"slug_prefix"`
+}
+
 func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 	defaults := models.NewTagsConfig()
 
@@ -3507,6 +3654,36 @@ func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+func (t *jsonFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -4590,24 +4767,29 @@ func (w *jsonWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for jsonConfig.
 func (c *jsonConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 
@@ -4640,6 +4822,7 @@ func (c *jsonConfig) getToc() tocConverter                         { return &c.T
 func (c *jsonConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *jsonConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *jsonConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *jsonConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *jsonConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *jsonConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *jsonConfig) getMentions() mentionsConverter               { return &c.Mentions }
@@ -4674,6 +4857,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -4728,8 +4912,10 @@ func (d *jsonFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }

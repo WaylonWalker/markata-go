@@ -594,7 +594,11 @@ url = "https://example.com"      # Base URL for absolute links
 title = "My Site"                 # Site title
 description = "A great site"      # Site description
 author = "Jane Doe"               # Default author
-lang = "en"                       # Site language
+language = "en"                   # Site language for feeds and metadata
+author_url = "https://example.com/about/"
+managing_editor = "editor@example.com (Jane Doe)"
+webmaster = "webmaster@example.com (Jane Doe)"
+copyright = "Copyright 2026 Jane Doe"
 
 # Plugin loading
 hooks = ["default"]               # Plugins to load
@@ -644,6 +648,15 @@ sitemap = true
 [my-ssg.feeds.syndication]
 max_items = 20
 include_content = false
+site_archive_disabled = false
+feed_archives_disabled = false
+
+[my-ssg.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
 
 [[my-ssg.feeds]]
 slug = "archive"
@@ -654,6 +667,10 @@ sort = "date"
 reverse = true
 limit = 0
 offset = 0
+
+[[my-ssg.feeds]]
+slug = "blog"
+archive_disabled = true
 ```
 
 ### Serve (`[my-ssg.serve]`)
