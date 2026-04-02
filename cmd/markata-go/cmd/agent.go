@@ -164,6 +164,10 @@ func runAgentWriteCommand(args []string, targetFlag, name string, dryRun, force 
 		return fmt.Errorf("site path %q is not a directory", root)
 	}
 
+	if err := validateSkillName(name); err != nil {
+		return err
+	}
+
 	target, err := normalizeAgentInstallTarget(targetFlag)
 	if err != nil {
 		return err
@@ -208,6 +212,23 @@ func pastTenseForAgentOperation(operation string) string {
 	default:
 		return "Installed"
 	}
+}
+
+// validateSkillName rejects names containing path separators or traversal components.
+func validateSkillName(name string) error {
+	if name == "" {
+		return fmt.Errorf("skill name must not be empty")
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return fmt.Errorf("skill name %q must not contain path separators", name)
+	}
+	if name == ".." || strings.HasPrefix(name, "..") {
+		return fmt.Errorf("skill name %q must not contain path traversal components", name)
+	}
+	if name == "." {
+		return fmt.Errorf("skill name %q is not valid", name)
+	}
+	return nil
 }
 
 func normalizeAgentInstallTarget(target string) (string, error) {
@@ -316,6 +337,10 @@ func runAgentDoctorCommand(cmd *cobra.Command, args []string) error {
 		return newExitCodeError(doctorExitError, fmt.Errorf("site path %q is not a directory", root))
 	}
 
+	if err := validateSkillName(agentDoctorName); err != nil {
+		return newExitCodeError(doctorExitError, err)
+	}
+
 	target, err := normalizeAgentInstallTarget(agentDoctorTarget)
 	if err != nil {
 		return newExitCodeError(doctorExitError, err)
@@ -395,6 +420,10 @@ func runAgentRemoveCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("site path %q is not a directory", root)
 	}
 
+	if err := validateSkillName(agentRemoveName); err != nil {
+		return err
+	}
+
 	target, err := normalizeAgentInstallTarget(agentRemoveTarget)
 	if err != nil {
 		return err
@@ -404,12 +433,25 @@ func runAgentRemoveCommand(cmd *cobra.Command, args []string) error {
 	info, err = os.Stat(skillDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("skill not installed at %s", skillDir)
+			return fmt.Errorf("skill not installed at %s; run 'markata-go agent install' first", skillDir)
 		}
 		return fmt.Errorf("stat skill directory %q: %w", skillDir, err)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("skill path %q is not a directory", skillDir)
+	}
+
+	// Safety check: verify the directory looks like an installed skill before
+	// removing it. Require SKILL.md or .manifest.json to be present.
+	hasSkillMarker := false
+	for _, marker := range []string{"SKILL.md", ".manifest.json"} {
+		if _, statErr := os.Stat(filepath.Join(skillDir, marker)); statErr == nil {
+			hasSkillMarker = true
+			break
+		}
+	}
+	if !hasSkillMarker {
+		return fmt.Errorf("directory %q does not appear to be an installed skill (missing SKILL.md and .manifest.json)", skillDir)
 	}
 
 	if err := os.RemoveAll(skillDir); err != nil {

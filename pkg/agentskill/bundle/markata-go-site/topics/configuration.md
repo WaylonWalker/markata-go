@@ -14,10 +14,7 @@ When `--config` is not passed, markata-go looks for config in this order:
 2. `markata-go.yaml`
 3. `markata-go.yml`
 4. `markata-go.json`
-5. `.markata-go.toml`
-6. `.markata-go.yaml`
-7. `.markata-go.yml`
-8. `.markata-go.json`
+5. `~/.config/markata-go/config.toml` (user-level fallback)
 
 ## High-Value Commands
 
@@ -155,6 +152,17 @@ Examples:
 MARKATA_GO_URL=https://staging.example.com markata-go build
 MARKATA_GO_OUTPUT_DIR=dist markata-go build
 ```
+
+## Config Merging
+
+Local override files like `markata-go.local.toml` are NOT auto-discovered. They must be passed explicitly via the `--merge-config` / `-m` flag:
+
+```bash
+markata-go build -m markata-go.local.toml
+markata-go serve -m markata-go.local.toml
+```
+
+Multiple merge files can be specified and are applied in order on top of the base config.
 
 ## Guidance
 

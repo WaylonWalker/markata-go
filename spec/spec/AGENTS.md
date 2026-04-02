@@ -35,11 +35,13 @@ The initial reference files are:
 
 - `template-context.md`
 - `feed-patterns.md`
+- `palette-reference.md`
 
 The initial example files are:
 
 - `fast.toml`
 - `markata-go.local.toml`
+- `palettes/my-brand.toml`
 - `templates/base.html`
 - `templates/post.html`
 - `templates/feed.html`

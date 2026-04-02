@@ -152,9 +152,12 @@ topics/
 reference/
   template-context.md
   feed-patterns.md
+  palette-reference.md
 examples/
   fast.toml
   markata-go.local.toml
+  palettes/
+    my-brand.toml
   templates/
     base.html
     post.html

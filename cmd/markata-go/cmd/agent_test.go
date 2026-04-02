@@ -454,3 +454,101 @@ func TestAgentRemoveCmd_HasUninstallAlias(t *testing.T) {
 		t.Fatal("expected uninstall alias on agent remove command")
 	}
 }
+
+func TestValidateSkillName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "valid name", input: "markata-go-site", wantErr: false},
+		{name: "valid simple", input: "my-skill", wantErr: false},
+		{name: "empty", input: "", wantErr: true},
+		{name: "dot dot", input: "..", wantErr: true},
+		{name: "dot dot prefix", input: "..foo", wantErr: true},
+		{name: "single dot", input: ".", wantErr: true},
+		{name: "forward slash", input: "foo/bar", wantErr: true},
+		{name: "backslash", input: "foo\\bar", wantErr: true},
+		{name: "traversal path", input: "../../etc", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSkillName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateSkillName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRunAgentRemoveCommand_RejectsTraversalName(t *testing.T) {
+	root := t.TempDir()
+
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	command := &cobra.Command{Use: "remove"}
+	command.SetOut(stdout)
+	command.SetErr(stderr)
+
+	originalTarget := agentRemoveTarget
+	originalName := agentRemoveName
+	defer func() {
+		agentRemoveTarget = originalTarget
+		agentRemoveName = originalName
+		currentCmd = nil
+	}()
+
+	agentRemoveTarget = agentTargetAgents
+	agentRemoveName = "../.."
+
+	err := runAgentRemoveCommand(command, []string{root})
+	if err == nil {
+		t.Fatal("expected error for path traversal name")
+	}
+	if !strings.Contains(err.Error(), "path separator") && !strings.Contains(err.Error(), "path traversal") {
+		t.Fatalf("expected path validation error, got %v", err)
+	}
+}
+
+func TestRunAgentRemoveCommand_RejectsNonSkillDirectory(t *testing.T) {
+	root := t.TempDir()
+	// Create a directory that is NOT a skill (no SKILL.md, no .manifest.json).
+	notASkill := filepath.Join(root, ".agents", "skills", "not-a-skill")
+	if err := os.MkdirAll(notASkill, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(notASkill, "random.txt"), []byte("hi"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	command := &cobra.Command{Use: "remove"}
+	command.SetOut(stdout)
+	command.SetErr(stderr)
+
+	originalTarget := agentRemoveTarget
+	originalName := agentRemoveName
+	defer func() {
+		agentRemoveTarget = originalTarget
+		agentRemoveName = originalName
+		currentCmd = nil
+	}()
+
+	agentRemoveTarget = agentTargetAgents
+	agentRemoveName = "not-a-skill"
+
+	err := runAgentRemoveCommand(command, []string{root})
+	if err == nil {
+		t.Fatal("expected error for non-skill directory")
+	}
+	if !strings.Contains(err.Error(), "does not appear to be an installed skill") {
+		t.Fatalf("expected skill marker error, got %v", err)
+	}
+
+	// Verify the directory was NOT deleted.
+	if _, statErr := os.Stat(notASkill); os.IsNotExist(statErr) {
+		t.Fatal("expected non-skill directory to be preserved")
+	}
+}

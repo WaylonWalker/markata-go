@@ -52,6 +52,7 @@ func TestSiteSkill_ContainsReferenceFiles(t *testing.T) {
 	requiredRefs := []string{
 		"reference/template-context.md",
 		"reference/feed-patterns.md",
+		"reference/palette-reference.md",
 	}
 
 	skillFS, err := SiteSkill()
@@ -76,6 +77,7 @@ func TestSiteSkill_ContainsExampleFiles(t *testing.T) {
 	requiredExamples := []string{
 		"examples/fast.toml",
 		"examples/markata-go.local.toml",
+		"examples/palettes/my-brand.toml",
 		"examples/templates/base.html",
 		"examples/templates/post.html",
 		"examples/templates/feed.html",
@@ -105,9 +107,9 @@ func TestListFiles_ReturnsExpectedFiles(t *testing.T) {
 		t.Fatalf("ListFiles() error = %v", err)
 	}
 
-	// SKILL.md + 8 topic files + 2 reference files + 5 example files = 16 minimum
-	if len(files) < 16 {
-		t.Fatalf("ListFiles() returned %d files, expected at least 16", len(files))
+	// SKILL.md + 8 topic files + 3 reference files + 6 example files = 18 minimum
+	if len(files) < 18 {
+		t.Fatalf("ListFiles() returned %d files, expected at least 18", len(files))
 	}
 
 	hasSkill := false
