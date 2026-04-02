@@ -38,6 +38,42 @@
 
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
   const prefetchedDocuments = new Map();
+  let navigationInFlight = false;
+
+  function getNavigationPath(url) {
+    if (!url) return '';
+    return url.pathname || '';
+  }
+
+  function getNavigationKey(url) {
+    if (!url) return '';
+    return `${url.pathname || ''}${url.search || ''}`;
+  }
+
+  function createSharedTransitionToken(path) {
+    const token = String(path || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return token || 'post';
+  }
+
+  function createSharedTransitionNames(path) {
+    const token = createSharedTransitionToken(path);
+    return {
+      shell: `post-shell-${token}`,
+      title: `post-title-${token}`,
+    };
+  }
+
+  function createSidebarTransitionNames(path) {
+    const token = createSharedTransitionToken(path);
+    return {
+      shell: `sidebar-header-${token}`,
+      title: `sidebar-title-${token}`,
+    };
+  }
 
   function getNow() {
     if (window.performance && typeof window.performance.now === 'function') {
@@ -149,6 +185,21 @@
     return !HTML_EXTENSIONS.has(ext);
   }
 
+  function shouldTransitionToURL(url) {
+    if (!url) return false;
+
+    if (url.origin !== window.location.origin) return false;
+    if (shouldSkipSpecialRoutes(url)) return false;
+    if (isNonHTMLDocumentURL(url)) return false;
+
+    if (url.pathname === window.location.pathname &&
+        url.search === window.location.search) {
+      return false;
+    }
+
+    return true;
+  }
+
   // Merge with user config
   const config = Object.assign({}, DEFAULT_CONFIG, window.VIEW_TRANSITIONS_CONFIG || {});
 
@@ -182,21 +233,10 @@
     }
 
     // Only handle same-origin links
-    if (url.origin !== window.location.origin) return false;
-
-    // Skip special routes that must use full navigation
-    if (shouldSkipSpecialRoutes(url)) return false;
-
-    // Only transition between HTML documents
-    // (Non-HTML resources like .md/.txt/.xml/.json should use native browser navigation.)
-    if (isNonHTMLDocumentURL(url)) {
-      if (config.debug) console.log('Skipping non-HTML navigation:', url.href);
-      return false;
-    }
-
-    // Skip if same page (just hash changes)
-    if (url.pathname === window.location.pathname &&
-        url.search === window.location.search) {
+    if (!shouldTransitionToURL(url)) {
+      if (config.debug && isNonHTMLDocumentURL(url)) {
+        console.log('Skipping non-HTML navigation:', url.href);
+      }
       return false;
     }
 
@@ -241,6 +281,212 @@
     }
 
     return true;
+  }
+
+  function resolveCardRoot(link) {
+    if (!link) return null;
+    return link.closest('.card, .photo-figure');
+  }
+
+  function resolvePrimaryCardLink(cardRoot) {
+    if (!cardRoot) return null;
+
+    return cardRoot.querySelector([
+      'a.u-url[href]',
+      '.card-title a[href]',
+      'a.card-cover[href]',
+      'a.card-video-link[href]',
+      'a.card-image-link[href]',
+      'a.card-link[href]',
+      'a[href]'
+    ].join(', '));
+  }
+
+  function resolveCardTitleElement(cardRoot) {
+    if (!cardRoot) return null;
+
+    return cardRoot.querySelector([
+      '.card-title',
+      '.card-caption',
+      'figcaption'
+    ].join(', '));
+  }
+
+  function getSharedTransitionContext(link, targetURL) {
+    const cardRoot = resolveCardRoot(link);
+    if (!cardRoot) return null;
+
+    const primaryLink = resolvePrimaryCardLink(cardRoot);
+    if (!primaryLink) return null;
+
+    let primaryURL;
+    try {
+      primaryURL = new URL(primaryLink.href, window.location.href);
+    } catch (_) {
+      return null;
+    }
+
+    if (getNavigationKey(primaryURL) !== getNavigationKey(targetURL)) {
+      return null;
+    }
+
+    return {
+      path: getNavigationPath(targetURL),
+      names: createSharedTransitionNames(getNavigationPath(targetURL)),
+      shell: cardRoot,
+      title: resolveCardTitleElement(cardRoot),
+      incomingShellSelector: '[data-shared-transition-path]',
+      incomingTitleSelector: '[data-shared-transition-title]',
+    };
+  }
+
+  function getSidebarSharedTransitionContext(link, targetURL) {
+    if (!link || !link.closest('.feed-sidebar')) return null;
+
+    const row = link.closest('[data-sidebar-transition-path]');
+    if (!row) return null;
+
+    if (row.getAttribute('data-sidebar-transition-path') !== getNavigationPath(targetURL)) {
+      return null;
+    }
+
+    return {
+      path: getNavigationPath(targetURL),
+      names: createSidebarTransitionNames(getNavigationPath(targetURL)),
+      shell: row.querySelector('.feed-nav-link[href]') || row,
+      title: row.querySelector('[data-sidebar-transition-title]'),
+      incomingShellSelector: '[data-sidebar-transition-header]',
+      incomingTitleSelector: '[data-shared-transition-title]',
+    };
+  }
+
+  function markSharedTransitionElement(element, name) {
+    if (!element || !name) return;
+
+    element.style.setProperty('view-transition-name', name);
+    element.setAttribute('data-shared-transition-active', 'true');
+  }
+
+  function setSharedTransitionState(active) {
+    if (active) {
+      document.documentElement.setAttribute('data-shared-transition-active', 'true');
+      return;
+    }
+
+    document.documentElement.removeAttribute('data-shared-transition-active');
+  }
+
+  function setPostNavigationState(context) {
+    if (!context) return;
+
+    document.documentElement.setAttribute('data-post-transition-active', 'true');
+    document.documentElement.setAttribute('data-post-transition-source', context.source);
+    document.documentElement.setAttribute('data-post-transition-direction', context.direction);
+  }
+
+  function clearPostNavigationState() {
+    document.documentElement.removeAttribute('data-post-transition-active');
+    document.documentElement.removeAttribute('data-post-transition-source');
+    document.documentElement.removeAttribute('data-post-transition-direction');
+  }
+
+  function resolveSidebarFeedLinks() {
+    return Array.from(document.querySelectorAll('.feed-sidebar a[href]')).filter((link) => {
+      try {
+        const url = new URL(link.href, window.location.href);
+        return shouldTransitionToURL(url);
+      } catch (_) {
+        return false;
+      }
+    });
+  }
+
+  function getSidebarDirection(link) {
+    if (!link || !link.closest('.feed-sidebar')) return null;
+
+    const links = resolveSidebarFeedLinks();
+    if (!links.length) return null;
+
+    const currentPath = window.location.pathname;
+    const activeIndex = links.findIndex((candidate) => {
+      try {
+        return new URL(candidate.href, window.location.href).pathname === currentPath;
+      } catch (_) {
+        return false;
+      }
+    });
+    const targetIndex = links.indexOf(link);
+
+    if (activeIndex === -1 || targetIndex === -1 || activeIndex === targetIndex) {
+      return null;
+    }
+
+    return targetIndex > activeIndex ? 'next' : 'prev';
+  }
+
+  function getPostNavigationContext(link) {
+    if (!link) return null;
+
+    if (link.closest('.post-nav')) {
+      if (link.matches('.next, [data-action="next"]')) {
+        return { source: 'post-nav', direction: 'next' };
+      }
+
+      if (link.matches('.prev, [data-action="prev"]')) {
+        return { source: 'post-nav', direction: 'prev' };
+      }
+    }
+
+    const sidebarDirection = getSidebarDirection(link);
+    if (sidebarDirection) {
+      return { source: 'sidebar', direction: sidebarDirection };
+    }
+
+    return null;
+  }
+
+  function clearSharedTransitionElements(root) {
+    if (!root || !root.querySelectorAll) return;
+
+    root.querySelectorAll('[data-shared-transition-active]').forEach((element) => {
+      element.style.removeProperty('view-transition-name');
+      element.removeAttribute('data-shared-transition-active');
+    });
+  }
+
+  function findIncomingSharedTransitionTarget(newDoc, context) {
+    const selector = context && context.incomingShellSelector ? context.incomingShellSelector : '[data-shared-transition-path]';
+    const candidates = newDoc.querySelectorAll(selector);
+
+    for (const candidate of candidates) {
+      if (!context || !context.path || !candidate.hasAttribute('data-shared-transition-path')) {
+        return candidate;
+      }
+
+      if (candidate.getAttribute('data-shared-transition-path') === context.path) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  function activateSharedTransitionContext(context) {
+    if (!context) return;
+
+    setSharedTransitionState(true);
+    markSharedTransitionElement(context.shell, context.names.shell);
+    markSharedTransitionElement(context.title, context.names.title);
+  }
+
+  function prepareIncomingSharedTransition(newDoc, context) {
+    if (!context) return;
+
+    const target = findIncomingSharedTransitionTarget(newDoc, context);
+    if (!target) return;
+
+    markSharedTransitionElement(target, context.names.shell);
+    markSharedTransitionElement(target.querySelector(context.incomingTitleSelector || '[data-shared-transition-title]'), context.names.title);
   }
 
   /**
@@ -318,6 +564,74 @@
     });
   }
 
+  function syncDocumentElementAttributes(newDoc) {
+    if (!newDoc || !newDoc.documentElement) return;
+
+    const currentAttributes = Array.from(document.documentElement.attributes);
+    for (const attribute of currentAttributes) {
+      if (!newDoc.documentElement.hasAttribute(attribute.name)) {
+        document.documentElement.removeAttribute(attribute.name);
+      }
+    }
+
+    Array.from(newDoc.documentElement.attributes).forEach((attribute) => {
+      document.documentElement.setAttribute(attribute.name, attribute.value);
+    });
+  }
+
+  function stylesheetKey(node) {
+    if (!node) return '';
+
+    if (node.tagName === 'LINK') {
+      return ['link', node.getAttribute('rel') || '', node.getAttribute('href') || '', node.getAttribute('media') || ''].join('::');
+    }
+
+    if (node.tagName === 'STYLE') {
+      return ['style', node.textContent || ''].join('::');
+    }
+
+    return '';
+  }
+
+  function syncHeadStyles(newDoc) {
+    if (!newDoc || !newDoc.head) return;
+
+    const selector = 'link[rel="stylesheet"], style';
+    const currentNodes = Array.from(document.head.querySelectorAll(selector));
+    const nextNodes = Array.from(newDoc.head.querySelectorAll(selector));
+    const nextKeys = new Set(nextNodes.map(stylesheetKey).filter(Boolean));
+
+    currentNodes.forEach((node) => {
+      const key = stylesheetKey(node);
+      if (!key) return;
+      if (!nextKeys.has(key)) {
+        node.remove();
+      }
+    });
+
+    const head = document.head;
+    let previousInserted = null;
+
+    nextNodes.forEach((node) => {
+      const key = stylesheetKey(node);
+      if (!key) return;
+
+      const existing = Array.from(head.querySelectorAll(selector)).find((candidate) => stylesheetKey(candidate) === key);
+      if (existing) {
+        previousInserted = existing;
+        return;
+      }
+
+      const clone = node.cloneNode(true);
+      if (previousInserted && previousInserted.parentNode === head) {
+        previousInserted.insertAdjacentElement('afterend', clone);
+      } else {
+        head.appendChild(clone);
+      }
+      previousInserted = clone;
+    });
+  }
+
   function replaceElementContents(selector, newDoc) {
     const currentElement = document.querySelector(selector);
     const nextElement = newDoc.querySelector(selector);
@@ -359,7 +673,9 @@
   function updateDocument(newDoc, metrics) {
     const swapStartedAt = getNow();
 
+    syncDocumentElementAttributes(newDoc);
     syncBodyAttributes(newDoc);
+    syncHeadStyles(newDoc);
 
     // Update title
     document.title = newDoc.title;
@@ -476,6 +792,85 @@
     initNavigationInterceptor();
   }
 
+  async function navigateWithViewTransition(url, options) {
+    const navOptions = Object.assign({
+      source: 'script',
+      pushState: true,
+      triggerElement: null,
+      bypassTransition: false,
+    }, options || {});
+
+    if (navigationInFlight) {
+      if (config.debug) console.log('Skipping navigation while transition is active:', url);
+      return false;
+    }
+
+    let targetURL;
+    try {
+      targetURL = new URL(url, window.location.href);
+    } catch (_) {
+      window.location.href = url;
+      return false;
+    }
+
+    if (!shouldTransitionToURL(targetURL)) {
+      window.location.href = targetURL.href;
+      return false;
+    }
+
+    if (navOptions.bypassTransition) {
+      const metrics = createNavigationMetrics(targetURL.href, navOptions.source);
+      const newDoc = await resolveDocument(targetURL.href, metrics);
+
+      updateDocument(newDoc, metrics);
+
+      if (navOptions.pushState) {
+        history.pushState(null, '', targetURL.href);
+      }
+
+      finalizeNavigationMetrics(metrics);
+      return true;
+    }
+
+    navigationInFlight = true;
+
+    const metrics = createNavigationMetrics(targetURL.href, navOptions.source);
+    const newDoc = await resolveDocument(targetURL.href, metrics);
+    const sharedContext = getSidebarSharedTransitionContext(navOptions.triggerElement, targetURL) || getSharedTransitionContext(navOptions.triggerElement, targetURL);
+    const postNavigationContext = getPostNavigationContext(navOptions.triggerElement);
+
+    if (sharedContext) {
+      activateSharedTransitionContext(sharedContext);
+    }
+
+    if (postNavigationContext) {
+      setPostNavigationState(postNavigationContext);
+    }
+
+    try {
+      const transition = document.startViewTransition(() => {
+        prepareIncomingSharedTransition(newDoc, sharedContext);
+        updateDocument(newDoc, metrics);
+
+        if (navOptions.pushState) {
+          history.pushState(null, '', targetURL.href);
+        }
+      });
+
+      await transition.finished;
+      finalizeNavigationMetrics(metrics);
+
+      if (config.debug) console.log('View transition completed');
+
+      return true;
+    } finally {
+      clearSharedTransitionElements(document);
+      setSharedTransitionState(false);
+      clearPostNavigationState();
+      navigationInFlight = false;
+    }
+  }
+
   /**
    * Handle navigation click with view transition
    */
@@ -497,26 +892,14 @@
     if (config.debug) console.log('Starting view transition to:', url);
 
     try {
-      // 1. Fetch the new document first so the screen doesn't freeze
-      // waiting for the network request.
-      const metrics = createNavigationMetrics(url, 'click');
-      const newDoc = await resolveDocument(url, metrics);
-
-      // 2. Start view transition with the parsed document
-      const transition = document.startViewTransition(() => {
-        updateDocument(newDoc, metrics);
-        // Update URL after content is loaded
-        history.pushState(null, '', url);
+      await navigateWithViewTransition(url, {
+        source: 'click',
+        pushState: true,
+        triggerElement: link,
       });
-
-      // Wait for transition to complete
-      await transition.finished;
-
-      finalizeNavigationMetrics(metrics);
-
-      if (config.debug) console.log('View transition completed');
     } catch (error) {
       console.error('View transition failed:', error);
+      clearSharedTransitionElements(document);
       // Fallback to normal navigation
       window.location.href = url;
     }
@@ -627,6 +1010,7 @@
     // Expose reinitialization function for other scripts
     window.reinitViewTransitions = initNavigationInterceptor;
     window.prefetchViewTransitionUrl = prefetchUrl;
+    window.navigateWithViewTransition = navigateWithViewTransition;
 
     // Expose config for runtime inspection
     window.VIEW_TRANSITIONS_CONFIG = config;

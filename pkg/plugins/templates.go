@@ -1,7 +1,9 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -564,15 +566,22 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 		ctx.Set("sidebar_posts", sidebarPosts)
 		if sidebarFeed != nil {
 			ctx.Set("sidebar_feed", sidebarFeed)
+			ctx.Set("sidebar_feed_query", sidebarFeedQuery(sidebarFeed.Slug))
 		}
 
 		// Calculate prev/next within the sidebar feed
 		sidebarPrev, sidebarNext := p.getSidebarPrevNext(post, sidebarPosts)
 		if sidebarPrev != nil {
 			ctx.Set("sidebar_prev", sidebarPrev)
+			if sidebarFeed != nil {
+				ctx.Set("sidebar_prev_href", appendFeedParamToHref(sidebarPrev.Href, sidebarFeed.Slug))
+			}
 		}
 		if sidebarNext != nil {
 			ctx.Set("sidebar_next", sidebarNext)
+			if sidebarFeed != nil {
+				ctx.Set("sidebar_next_href", appendFeedParamToHref(sidebarNext.Href, sidebarFeed.Slug))
+			}
 		}
 	}
 
@@ -592,16 +601,173 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	return html, nil
 }
 
-// getFeedSidebarPosts returns the posts for the feed sidebar if the post belongs to a configured feed.
-// It checks if the post's tags match any of the configured feed_sidebar.feeds.
-// The function directly computes feed membership from tags since feed_configs may not be
-// available during the Render stage (feeds are built during Collect stage, which runs after Render).
+type matchedSidebarFeed struct {
+	Feed     *models.FeedConfig
+	Posts    []*models.Post
+	Priority string
+}
+
+func sidebarFeedDisplayTitle(fc *models.FeedConfig) string {
+	if fc == nil {
+		return "In this feed"
+	}
+	if fc.Title != "" {
+		return fc.Title
+	}
+	if fc.Slug != "" {
+		return fc.Slug
+	}
+	return "In this feed"
+}
+
+func sidebarFeedQuery(feedSlug string) string {
+	if feedSlug == "" {
+		return ""
+	}
+	return "?feed=" + url.QueryEscape(feedSlug)
+}
+
+func appendFeedParamToHref(href, feedSlug string) string {
+	if href == "" || feedSlug == "" {
+		return href
+	}
+	parsed, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+	query := parsed.Query()
+	query.Set("feed", feedSlug)
+	parsed.RawQuery = query.Encode()
+	result := parsed.EscapedPath()
+	if result == "" {
+		result = parsed.Path
+	}
+	if parsed.RawQuery != "" {
+		result += "?" + parsed.RawQuery
+	}
+	if parsed.Fragment != "" {
+		result += "#" + parsed.Fragment
+	}
+	return result
+}
+
+// getFeedSidebarPosts returns the server-rendered feed sidebar.
+// Default selection is the first matching primary feed, then the first matching
+// non-primary feed using the existing candidate priority order.
 func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
-	seriesPosts, seriesFeed := p.getSeriesSidebarPosts(post, config, m)
-	if seriesPosts != nil {
-		return seriesPosts, seriesFeed
+	matches := p.getMatchedCandidateFeeds(post, config, m)
+	if len(matches) == 0 {
+		return nil, nil
 	}
 
+	for _, match := range matches {
+		if match.Feed != nil && match.Feed.Primary {
+			return match.Posts, match.Feed
+		}
+	}
+
+	return matches[0].Posts, matches[0].Feed
+}
+
+func (p *TemplatesPlugin) getMatchedCandidateFeeds(
+	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
+) []matchedSidebarFeed {
+	if post == nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	feeds := make([]matchedSidebarFeed, 0, 8)
+
+	addFeed := func(fc *models.FeedConfig, posts []*models.Post, priority string) {
+		if fc == nil || len(posts) == 0 || seen[fc.Slug] {
+			return
+		}
+		seen[fc.Slug] = true
+		feeds = append(feeds, matchedSidebarFeed{Feed: fc, Posts: posts, Priority: priority})
+	}
+
+	seriesPosts, seriesFeed := p.getSeriesSidebarPosts(post, config, m)
+	if seriesPosts != nil {
+		addFeed(seriesFeed, seriesPosts, "series")
+	}
+
+	configs := getCachedFeedConfigs(m)
+	for i := range configs {
+		fc := &configs[i]
+		if !fc.Primary || fc.IncludePrivate || len(fc.Posts) == 0 {
+			continue
+		}
+		for _, fp := range fc.Posts {
+			if fp.Slug == post.Slug {
+				addFeed(fc, fc.Posts, "primary")
+				break
+			}
+		}
+	}
+
+	if explicitSlug := p.getExplicitFeedSlug(post); explicitSlug != "" {
+		explicitPosts, explicitFeed := p.feedFromCachedConfigs(explicitSlug, post, m)
+		if explicitPosts != nil {
+			addFeed(explicitFeed, explicitPosts, "explicit")
+		}
+	}
+
+	p.collectTagFeeds(post, config, m, addFeed)
+	p.collectAutoDiscoveredFeeds(post, config, m, seen, addFeed)
+
+	return feeds
+}
+
+// getExplicitFeedSlug returns a feed slug from post frontmatter, if any.
+// Checks post.Extra["sidebar_feed"] first, then post.PrevNextFeed.
+func (p *TemplatesPlugin) getExplicitFeedSlug(post *models.Post) string {
+	if post == nil {
+		return ""
+	}
+	if post.Extra != nil {
+		if sf, ok := post.Extra["sidebar_feed"].(string); ok && sf != "" {
+			return sf
+		}
+	}
+	if post.PrevNextFeed != "" {
+		return post.PrevNextFeed
+	}
+	return ""
+}
+
+// feedFromCachedConfigs looks up a feed by slug in cached feed_configs and
+// returns its posts if the current post is a member.
+func (p *TemplatesPlugin) feedFromCachedConfigs(slug string, post *models.Post, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return nil, nil
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return nil, nil
+	}
+	fc := GetFeedBySlug(slug, configs)
+	if fc == nil || len(fc.Posts) == 0 {
+		return nil, nil
+	}
+	// Verify the post is actually in the feed
+	found := false
+	for _, fp := range fc.Posts {
+		if fp.Slug == post.Slug {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, nil
+	}
+	return fc.Posts, fc
+}
+
+// getTagFeedSidebarPosts is the original tag-based feed sidebar logic extracted
+// from the old getFeedSidebarPosts.
+func (p *TemplatesPlugin) getTagFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
 	// Get components config
 	components, ok := config.Extra["components"].(models.ComponentsConfig)
 	if !ok {
@@ -762,6 +928,337 @@ func (p *TemplatesPlugin) getSidebarPrevNext(currentPost *models.Post, sidebarPo
 	}
 
 	return prev, next
+}
+
+// sidebarFeedJSON is the JSON structure for a single feed candidate
+// used by the client-side feed cycling feature.
+type sidebarFeedJSON struct {
+	Slug                string            `json:"slug"`
+	Title               string            `json:"title"`
+	Priority            string            `json:"priority"`
+	Primary             bool              `json:"primary,omitempty"`
+	ContainsCurrentPost bool              `json:"containsCurrentPost,omitempty"`
+	Posts               []sidebarPostJSON `json:"posts"`
+	TotalPosts          int               `json:"totalPosts"`
+	Prev                *sidebarPostJSON  `json:"prev,omitempty"`
+	Next                *sidebarPostJSON  `json:"next,omitempty"`
+}
+
+type sidebarPostJSON struct {
+	Slug   string `json:"slug"`
+	Title  string `json:"title"`
+	Href   string `json:"href"`
+	Active bool   `json:"active,omitempty"`
+}
+
+// sidebarFeedsDataJSON is the top-level JSON structure embedded in the page.
+type sidebarFeedsDataJSON struct {
+	Feeds             []sidebarFeedJSON `json:"feeds"`
+	RotationFeedSlugs []string          `json:"rotationFeedSlugs"`
+	CurrentFeedIndex  int               `json:"currentFeedIndex"`
+	CurrentPostSlug   string            `json:"currentPostSlug"`
+}
+
+func (p *TemplatesPlugin) getAllPublicSidebarFeeds(
+	post *models.Post, m *lifecycle.Manager, matched map[string]string,
+) []sidebarFeedJSON {
+	configs := getCachedFeedConfigs(m)
+	if len(configs) == 0 {
+		return nil
+	}
+
+	feeds := make([]sidebarFeedJSON, 0, len(configs))
+	for i := range configs {
+		fc := &configs[i]
+		if fc.IncludePrivate || fc.Slug == "" || len(fc.Posts) == 0 {
+			continue
+		}
+		priority := matched[fc.Slug]
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, priority))
+	}
+
+	sort.SliceStable(feeds, func(i, j int) bool {
+		if feeds[i].Primary != feeds[j].Primary {
+			return feeds[i].Primary
+		}
+		if feeds[i].ContainsCurrentPost != feeds[j].ContainsCurrentPost {
+			return feeds[i].ContainsCurrentPost
+		}
+		if feeds[i].Title != feeds[j].Title {
+			return feeds[i].Title < feeds[j].Title
+		}
+		return feeds[i].Slug < feeds[j].Slug
+	})
+
+	return feeds
+}
+
+// buildSidebarFeedEntry constructs a sidebarFeedJSON for a single feed,
+// windowing the post list around the current post for large feeds.
+func (p *TemplatesPlugin) buildSidebarFeedEntry(
+	currentPost *models.Post, fc *models.FeedConfig,
+	posts []*models.Post, priority string,
+) sidebarFeedJSON {
+	const maxWindowPosts = 50
+
+	prev, next := p.getSidebarPrevNext(currentPost, posts)
+
+	// Find current post position for windowing
+	currentPos := -1
+	for i, fp := range posts {
+		if fp.Slug == currentPost.Slug {
+			currentPos = i
+			break
+		}
+	}
+
+	// Window the posts if the feed is large
+	windowedPosts := posts
+	if len(posts) > maxWindowPosts && currentPos >= 0 {
+		half := maxWindowPosts / 2
+		start := currentPos - half
+		end := currentPos + half + 1
+		if start < 0 {
+			end -= start
+			start = 0
+		}
+		if end > len(posts) {
+			start -= end - len(posts)
+			end = len(posts)
+		}
+		if start < 0 {
+			start = 0
+		}
+		windowedPosts = posts[start:end]
+	}
+
+	feed := sidebarFeedJSON{
+		Slug:                fc.Slug,
+		Title:               sidebarFeedDisplayTitle(fc),
+		Priority:            priority,
+		Primary:             fc.Primary,
+		ContainsCurrentPost: currentPos >= 0,
+		TotalPosts:          len(posts),
+		Posts:               make([]sidebarPostJSON, 0, len(windowedPosts)),
+	}
+
+	for _, fp := range windowedPosts {
+		feed.Posts = append(feed.Posts, postToSidebarJSON(fp, fc.Slug, fp.Slug == currentPost.Slug))
+	}
+
+	if prev != nil {
+		pj := postToSidebarJSON(prev, fc.Slug, false)
+		feed.Prev = &pj
+	}
+	if next != nil {
+		nj := postToSidebarJSON(next, fc.Slug, false)
+		feed.Next = &nj
+	}
+
+	return feed
+}
+
+// postToSidebarJSON converts a Post to a sidebarPostJSON.
+func postToSidebarJSON(fp *models.Post, feedSlug string, active bool) sidebarPostJSON {
+	title := fp.Slug
+	if fp.Title != nil {
+		title = *fp.Title
+	}
+	return sidebarPostJSON{
+		Slug:   fp.Slug,
+		Title:  title,
+		Href:   appendFeedParamToHref(fp.Href, feedSlug),
+		Active: active,
+	}
+}
+
+// collectTagFeeds finds all tag-based feeds from the sidebar config that
+// contain the given post and calls addFeed for each.
+func (p *TemplatesPlugin) collectTagFeeds(
+	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
+	addFeed func(*models.FeedConfig, []*models.Post, string),
+) {
+	components, ok := config.Extra["components"].(models.ComponentsConfig)
+	if !ok {
+		return
+	}
+	if components.FeedSidebar.Enabled == nil || !*components.FeedSidebar.Enabled {
+		return
+	}
+
+	for _, feedSlug := range components.FeedSidebar.Feeds {
+		if !strings.HasPrefix(feedSlug, "tags/") {
+			continue
+		}
+		tagName := strings.TrimPrefix(feedSlug, "tags/")
+		if !postHasTag(post, tagName) {
+			continue
+		}
+		tagPosts := filterPostsByTag(m.Posts(), tagName)
+		sortPostsByDate(tagPosts, true)
+		tagFc := &models.FeedConfig{
+			Slug:  feedSlug,
+			Title: fmt.Sprintf("Posts tagged: %s", tagName),
+			Posts: tagPosts,
+		}
+		addFeed(tagFc, tagPosts, "tag")
+	}
+}
+
+// postHasTag returns true if the post has the given tag.
+func postHasTag(post *models.Post, tag string) bool {
+	for _, t := range post.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// filterPostsByTag returns all published, non-draft, non-skip posts with the given tag.
+func filterPostsByTag(allPosts []*models.Post, tag string) []*models.Post {
+	var result []*models.Post
+	for _, fp := range allPosts {
+		if !fp.Published || fp.Draft || fp.Skip {
+			continue
+		}
+		for _, t := range fp.Tags {
+			if t == tag {
+				result = append(result, fp)
+				break
+			}
+		}
+	}
+	return result
+}
+
+// collectAutoDiscoveredFeeds finds feeds from the cache that contain the given
+// post, sorted by size (smallest first), skipping catch-all feeds. Results are
+// capped at maxAutoFeeds.
+func (p *TemplatesPlugin) collectAutoDiscoveredFeeds(
+	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
+	seen map[string]bool,
+	addFeed func(*models.FeedConfig, []*models.Post, string),
+) {
+	const maxAutoFeedPosts = 5000
+	const maxAutoFeeds = 10
+
+	components, ok := config.Extra["components"].(models.ComponentsConfig)
+	if !ok || components.FeedSidebar.Enabled == nil || !*components.FeedSidebar.Enabled {
+		return
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return
+	}
+
+	skipSlugs := map[string]bool{
+		"archive": true, "all": true, "sitemap": true, "search": true,
+	}
+	skipPrefixes := []string{"subscription-", "tags/"}
+
+	type autoCandidate struct {
+		fc    *models.FeedConfig
+		count int
+	}
+	var candidates []autoCandidate
+
+	for i := range configs {
+		fc := &configs[i]
+		if skipSlugs[fc.Slug] || seen[fc.Slug] || len(fc.Posts) > maxAutoFeedPosts {
+			continue
+		}
+		if hasAnyPrefix(fc.Slug, skipPrefixes) {
+			continue
+		}
+		for _, fp := range fc.Posts {
+			if fp.Slug == post.Slug {
+				candidates = append(candidates, autoCandidate{fc: fc, count: len(fc.Posts)})
+				break
+			}
+		}
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].count < candidates[j].count
+	})
+
+	if len(candidates) > maxAutoFeeds {
+		candidates = candidates[:maxAutoFeeds]
+	}
+
+	for _, ac := range candidates {
+		addFeed(ac.fc, ac.fc.Posts, "auto")
+	}
+}
+
+// hasAnyPrefix returns true if s starts with any of the given prefixes.
+func hasAnyPrefix(s string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(s, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// buildSidebarFeedsJSON builds the JSON string for all candidate feeds,
+// for embedding in the page for client-side feed cycling.
+func (p *TemplatesPlugin) buildSidebarFeedsJSON(
+	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
+	primaryFeed *models.FeedConfig,
+) string {
+	matches := p.getMatchedCandidateFeeds(post, config, m)
+	if len(matches) == 0 {
+		return ""
+	}
+
+	matchedPriorities := make(map[string]string, len(matches))
+	for _, match := range matches {
+		matchedPriorities[match.Feed.Slug] = match.Priority
+	}
+
+	feeds := p.getAllPublicSidebarFeeds(post, m, matchedPriorities)
+	if len(feeds) <= 1 {
+		// No point in cycling or switching with only 0 or 1 public feed.
+		return ""
+	}
+
+	rotationFeedSlugs := make([]string, 0, len(feeds))
+	for _, feed := range feeds {
+		if feed.Primary {
+			rotationFeedSlugs = append(rotationFeedSlugs, feed.Slug)
+		}
+	}
+
+	// Find the index of the primary (currently displayed) feed
+	currentIndex := 0
+	if primaryFeed != nil {
+		for i, f := range feeds {
+			if f.Slug == primaryFeed.Slug {
+				currentIndex = i
+				break
+			}
+		}
+	}
+
+	data := sidebarFeedsDataJSON{
+		Feeds:             feeds,
+		RotationFeedSlugs: rotationFeedSlugs,
+		CurrentFeedIndex:  currentIndex,
+		CurrentPostSlug:   post.Slug,
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // getDiscoveryFeed returns the discovery feed for a post.

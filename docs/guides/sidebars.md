@@ -183,6 +183,7 @@ sidebar = true              # Enable sidebar generation
 sidebar_title = "Docs"      # Override title in sidebar
 sidebar_order = 1           # Position in multi-feed sidebars
 sidebar_group_by = "category"  # Group by frontmatter field
+primary = true              # Include in post-page primary feed rotation
 ```
 
 ### Link Path to Feed
@@ -333,6 +334,7 @@ max_items = 5
 | `sidebar_title` | string | feed title | Display title in sidebar |
 | `sidebar_order` | int | 0 | Sort order in multi-feed mode |
 | `sidebar_group_by` | string | - | Group posts by frontmatter field |
+| `primary` | bool | `false` | Include feed in post-page sidebar rotation |
 
 ---
 

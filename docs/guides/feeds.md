@@ -158,7 +158,30 @@ card = "partials/card.html"        # Template for post cards in list
 rss = "rss.xml"                    # Template for RSS
 atom = "atom.xml"                  # Template for Atom
 json = "feed.json"                 # Template for JSON
+
+# Sidebar behavior on post pages
+primary = false                     # Include this feed in primary sidebar rotation
 ```
+
+### Primary Sidebar Rotation
+
+Set `primary = true` on the feeds you want post pages to rotate through with the sidebar buttons and the `{` / `}` shortcuts.
+
+```toml
+[[markata-go.feeds]]
+slug = "journal"
+title = "Journal"
+filter = "published == True and 'journal' in tags"
+primary = true
+```
+
+On post pages, markata-go resolves the visible sidebar feed in this order:
+
+1. `?feed=<slug>` from the URL
+2. The first matching primary feed
+3. The first matching non-private feed
+
+The sidebar's feed picker lists all non-private feeds, so you can search for a feed directly without expanding the primary rotation set.
 
 ## Filtering Posts
 

@@ -1141,6 +1141,30 @@ The following site-level fields are available to syndication outputs:
 
 ---
 
+## Primary Sidebar Feeds
+
+Feeds may opt into stable post-page sidebar rotation with `primary = true`.
+
+```toml
+[[markata-go.feeds]]
+slug = "notes"
+title = "Notes"
+filter = "published == True and 'note' in tags"
+primary = true
+```
+
+When a post page renders the feed sidebar, feed selection MUST follow this order:
+
+1. `?feed=<slug>` from the current URL, if it matches a non-private feed
+2. The first matching feed with `primary = true`
+3. The first remaining matching non-private feed
+
+Keyboard feed rotation (`{` and `}`) and the sidebar counter MUST only rotate through matching primary feeds.
+
+The sidebar UI SHOULD also expose a searchable feed picker listing all non-private feeds so readers can jump directly to any public feed without changing the primary rotation set.
+
+---
+
 ## Configuration Inheritance
 
 Feed configuration follows a **defaults → override** pattern. Global defaults apply to all feeds, and individual feeds can override any setting.

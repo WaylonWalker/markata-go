@@ -562,6 +562,7 @@ type tomlFeedConfig struct {
 	Filter          string            `toml:"filter"`
 	Sort            string            `toml:"sort"`
 	Reverse         bool              `toml:"reverse"`
+	Primary         bool              `toml:"primary"`
 	ItemsPerPage    int               `toml:"items_per_page"`
 	OrphanThreshold int               `toml:"orphan_threshold"`
 	Limit           int               `toml:"limit"`
@@ -1860,6 +1861,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
+		Primary:         f.Primary,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
 		Limit:           f.Limit,
@@ -2027,6 +2029,7 @@ type yamlFeedConfig struct {
 	Filter          string            `yaml:"filter"`
 	Sort            string            `yaml:"sort"`
 	Reverse         bool              `yaml:"reverse"`
+	Primary         bool              `yaml:"primary"`
 	ItemsPerPage    int               `yaml:"items_per_page"`
 	OrphanThreshold int               `yaml:"orphan_threshold"`
 	Limit           int               `yaml:"limit"`
@@ -3344,6 +3347,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
+		Primary:         f.Primary,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
 		Limit:           f.Limit,
@@ -3535,6 +3539,7 @@ type jsonFeedConfig struct {
 	Filter          string            `json:"filter"`
 	Sort            string            `json:"sort"`
 	Reverse         bool              `json:"reverse"`
+	Primary         bool              `json:"primary"`
 	ItemsPerPage    int               `json:"items_per_page"`
 	OrphanThreshold int               `json:"orphan_threshold"`
 	Limit           int               `json:"limit"`
@@ -4852,6 +4857,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
+		Primary:         f.Primary,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
 		Limit:           f.Limit,

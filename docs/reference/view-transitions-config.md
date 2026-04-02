@@ -17,6 +17,8 @@ Complete reference for configuring the View Transitions API behavior in markata-
 
 View Transitions can be configured via your `markata.toml` or YAML config file. All settings are optional - sensible defaults are provided.
 
+Archive/feed cards that open internal posts automatically use shared-element transitions when possible. That behavior does not need additional config.
+
 ## Configuration Options
 
 Add a `[markata-go.view_transitions]` section to your config:
@@ -164,6 +166,8 @@ update_meta = false  # Skip meta tag updates
 - Body content
 
 **Use case**: Set to `false` for slightly better performance if you don't rely on meta tags changing.
+
+This setting does not affect shared-element matching for archive-to-post transitions.
 
 ---
 

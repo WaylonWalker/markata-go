@@ -1210,6 +1210,21 @@ View-transition navigations SHOULD fetch and parse the destination document befo
 
 When possible, implementations SHOULD replace only the primary view-transition regions (for example the progress area and page wrapper) instead of replacing the entire `<body>`. The runtime MUST still synchronize `<body>` attributes such as classes so page-specific layout state remains correct after navigation.
 
+Same-document navigation runtimes MUST also synchronize destination `<html>` attributes and page-scoped stylesheet links from `<head>`. This prevents page-specific layouts such as a custom home page from rendering with stale styles after client-side navigation.
+
+Archive/feed cards that navigate to internal post pages SHOULD participate in shared-element transitions when the clicked link is the card's primary permalink. Implementations SHOULD at minimum animate the card shell and post title as matched elements so archive-to-post navigation feels spatially connected instead of snapping between unrelated layouts.
+
+Post templates MUST expose stable shared-transition hooks for the destination article shell and title so the runtime can attach per-navigation `view-transition-name` values before swapping DOM. Keyboard-triggered navigation that opens highlighted cards SHOULD use the same transition runtime as pointer clicks so archive-to-post transitions remain consistent regardless of input method.
+
+When post pages provide local navigation affordances such as prev/next links or a feed sidebar, those links MAY opt into shared-element title transitions. Keyboard shortcuts like `[` and `]` SHOULD remain visually legible even when persistent sidebar chrome stays fixed.
+
+Post headers SHOULD render author and publication-date metadata consistently across post types, including article, photo, shot, note, and ping templates. Reading time MAY remain conditional when it is unavailable or semantically unhelpful for short-form content.
+
+Keyboard-driven prev/next post navigation such as `[` and `]` SHOULD be allowed to bypass view transitions entirely when the primary goal is rapid traversal. Implementations MAY still animate click-driven navigation while keeping keyboard paging instant.
+
+Feed sidebar post navigation SHOULD also support a shared-element handoff between the active sidebar row and the destination post header/title so the selected item feels connected to the article it opens.
+
+
 ### CSS File Categories
 
 | Category | Files | Loading Condition |

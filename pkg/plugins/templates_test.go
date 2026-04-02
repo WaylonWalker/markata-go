@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,168 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersPrimaryFeed(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	m.Config().Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled},
+	}
+
+	title := "Post"
+	post := &models.Post{Slug: "post", Title: &title, Href: "/post/"}
+	secondary := models.FeedConfig{
+		Slug:  "secondary",
+		Title: "Secondary",
+		Posts: []*models.Post{post},
+	}
+	primary := models.FeedConfig{
+		Slug:    "primary",
+		Title:   "Primary",
+		Primary: true,
+		Posts:   []*models.Post{post},
+	}
+	m.Cache().Set("feed_configs", []models.FeedConfig{secondary, primary})
+
+	posts, feed := p.getFeedSidebarPosts(post, m.Config(), m)
+	if feed == nil {
+		t.Fatal("expected a sidebar feed")
+	}
+	if feed.Slug != "primary" {
+		t.Fatalf("expected primary feed, got %q", feed.Slug)
+	}
+	if len(posts) != 1 || posts[0].Slug != post.Slug {
+		t.Fatalf("unexpected sidebar posts: %#v", posts)
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationIncludesOnlyPrimary(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	config := m.Config()
+	config.Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled},
+	}
+
+	title := "Post"
+	post := &models.Post{Slug: "post", Title: &title, Href: "/post/"}
+	primary := models.FeedConfig{Slug: "primary", Title: "Primary", Primary: true, Posts: []*models.Post{post}}
+	secondary := models.FeedConfig{Slug: "secondary", Title: "Secondary", Posts: []*models.Post{post}}
+	publicOnly := models.FeedConfig{Slug: "public", Title: "Public", Posts: []*models.Post{post}}
+	private := models.FeedConfig{Slug: "private", Title: "Private", IncludePrivate: true, Posts: []*models.Post{post}}
+	m.Cache().Set("feed_configs", []models.FeedConfig{secondary, primary, publicOnly, private})
+
+	jsonText := p.buildSidebarFeedsJSON(post, config, m, &primary)
+	if jsonText == "" {
+		t.Fatal("expected sidebar feeds JSON")
+	}
+
+	var data sidebarFeedsDataJSON
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("unmarshal sidebar feeds JSON: %v", err)
+	}
+
+	if len(data.RotationFeedSlugs) != 1 || data.RotationFeedSlugs[0] != "primary" {
+		t.Fatalf("unexpected rotation feeds: %#v", data.RotationFeedSlugs)
+	}
+
+	for _, feed := range data.Feeds {
+		if feed.Slug == "private" {
+			t.Fatal("private feed should not be included in picker feeds")
+		}
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationIncludesAllPublicPrimaryFeeds(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	config := m.Config()
+	config.Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled},
+	}
+
+	title := "Post"
+	post := &models.Post{Slug: "post", Title: &title, Href: "/post/"}
+	matchingPrimary := models.FeedConfig{Slug: "primary-a", Title: "Primary A", Primary: true, Posts: []*models.Post{post}}
+	otherMatching := models.FeedConfig{Slug: "primary-b", Title: "Primary B", Primary: true, Posts: []*models.Post{post}}
+	nonMatchingPrimary := models.FeedConfig{Slug: "primary-c", Title: "Primary C", Primary: true, Posts: []*models.Post{{Slug: "other", Href: "/other/"}}}
+	privatePrimary := models.FeedConfig{Slug: "primary-private", Title: "Private", Primary: true, IncludePrivate: true, Posts: []*models.Post{{Slug: "hidden", Href: "/hidden/"}}}
+	m.Cache().Set("feed_configs", []models.FeedConfig{matchingPrimary, otherMatching, nonMatchingPrimary, privatePrimary})
+
+	jsonText := p.buildSidebarFeedsJSON(post, config, m, &matchingPrimary)
+	if jsonText == "" {
+		t.Fatal("expected sidebar feeds JSON")
+	}
+
+	var data sidebarFeedsDataJSON
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("unmarshal sidebar feeds JSON: %v", err)
+	}
+
+	want := []string{"primary-a", "primary-b", "primary-c"}
+	if len(data.RotationFeedSlugs) != len(want) {
+		t.Fatalf("rotation feeds = %#v, want %#v", data.RotationFeedSlugs, want)
+	}
+	for i := range want {
+		if data.RotationFeedSlugs[i] != want[i] {
+			t.Fatalf("rotation feeds = %#v, want %#v", data.RotationFeedSlugs, want)
+		}
+	}
+}
+
+func TestAppendFeedParamToHref_PreservesSidebarFlow(t *testing.T) {
+	tests := []struct {
+		name string
+		href string
+		feed string
+		want string
+	}{
+		{name: "plain path", href: "/nope/", feed: "snippets/home-posts", want: "/nope/?feed=snippets%2Fhome-posts"},
+		{name: "existing query", href: "/nope/?foo=bar", feed: "snippets/home-posts", want: "/nope/?feed=snippets%2Fhome-posts&foo=bar"},
+		{name: "fragment", href: "/nope/#section", feed: "snippets/home-posts", want: "/nope/?feed=snippets%2Fhome-posts#section"},
+		{name: "empty feed", href: "/nope/", feed: "", want: "/nope/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := appendFeedParamToHref(tt.href, tt.feed); got != tt.want {
+				t.Fatalf("appendFeedParamToHref(%q, %q) = %q, want %q", tt.href, tt.feed, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedEntry_AppendsFeedParamToLinks(t *testing.T) {
+	p := NewTemplatesPlugin()
+	title := "Current"
+	prevTitle := "Prev"
+	current := &models.Post{Slug: "current", Title: &title, Href: "/current/"}
+	prev := &models.Post{Slug: "prev", Title: &prevTitle, Href: "/prev/"}
+	feed := &models.FeedConfig{
+		Slug:  "snippets/home-posts",
+		Title: "Home Posts",
+		Posts: []*models.Post{prev, current},
+	}
+
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary")
+	if len(entry.Posts) != 2 {
+		t.Fatalf("expected 2 posts, got %d", len(entry.Posts))
+	}
+	for _, post := range entry.Posts {
+		if !strings.Contains(post.Href, "feed=snippets%2Fhome-posts") {
+			t.Fatalf("expected sidebar href to preserve feed, got %q", post.Href)
+		}
+	}
+	if entry.Prev == nil || !strings.Contains(entry.Prev.Href, "feed=snippets%2Fhome-posts") {
+		t.Fatalf("expected prev href to preserve feed, got %#v", entry.Prev)
+	}
+}
 
 func TestTemplatesPlugin_Name(t *testing.T) {
 	p := NewTemplatesPlugin()
