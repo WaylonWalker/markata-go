@@ -41,6 +41,7 @@ func (p *SubscriptionFeedsPlugin) Priority(stage lifecycle.Stage) int {
 // These feeds generate RSS/Atom at root (/) and /archive without HTML pages.
 func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
+	syndication := getSyndicationConfig(config)
 
 	// Check if subscription feeds are disabled
 	if config.Extra != nil {
@@ -89,7 +90,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	}
 
 	// Create archive subscription feed (slug="archive") if not already defined
-	if !hasArchiveFeed {
+	if !hasArchiveFeed && !syndication.SiteArchiveDisabled {
 		archiveFeed := models.FeedConfig{
 			Slug:        defaultArchivePrefix,
 			Title:       getSubscriptionFeedTitle(config, defaultArchivePrefix),

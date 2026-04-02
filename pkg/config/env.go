@@ -64,6 +64,16 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.Description = value
 	case "author":
 		config.Author = value
+	case "language":
+		config.Language = value
+	case "author_url":
+		config.AuthorURL = value
+	case "managing_editor":
+		config.ManagingEditor = value
+	case "webmaster":
+		config.WebMaster = value
+	case "copyright":
+		config.Copyright = value
 	case "assets_dir":
 		config.AssetsDir = value
 	case "templates_dir":
@@ -112,6 +122,10 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		}
 	case "feed_defaults_syndication_include_content", "feeds_defaults_syndication_include_content":
 		config.FeedDefaults.Syndication.IncludeContent = parseBool(value)
+	case "feed_defaults_syndication_site_archive_disabled", "feeds_defaults_syndication_site_archive_disabled":
+		config.FeedDefaults.Syndication.SiteArchiveDisabled = parseBool(value)
+	case "feed_defaults_syndication_feed_archives_disabled", "feeds_defaults_syndication_feed_archives_disabled":
+		config.FeedDefaults.Syndication.FeedArchivesDisabled = parseBool(value)
 	// Pagefind search settings
 	case "search_pagefind_auto_install":
 		if config.Extra == nil {

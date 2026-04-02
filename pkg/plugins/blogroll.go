@@ -386,7 +386,7 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 	}
 
 	// Check if it's actually an Atom feed
-	if feed.XMLName.Local != "feed" {
+	if feed.XMLName.Local != DefaultFeedPath {
 		return nil, nil, fmt.Errorf("not an Atom feed")
 	}
 

@@ -216,11 +216,12 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewPublishFeedsPlugin(),
 		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
-		NewRandomPostPlugin(),  // Generate /random/ client-side redirect endpoint
-		NewRedirectsPlugin(),   // Generate redirect pages
-		NewErrorPagesPlugin(),  // Generate static 404 page
-		NewTagsListingPlugin(), // Generate /tags listing page
-		NewGardenViewPlugin(),  // Generate knowledge graph + garden page
+		NewRandomPostPlugin(),   // Generate /random/ client-side redirect endpoint
+		NewRedirectsPlugin(),    // Generate redirect pages
+		NewErrorPagesPlugin(),   // Generate static 404 page
+		NewTagsListingPlugin(),  // Generate /tags listing page
+		NewFeedsListingPlugin(), // Generate /feeds listing page
+		NewGardenViewPlugin(),   // Generate knowledge graph + garden page
 		// NewResourceHintsPlugin(), // Inject resource hints (after HTML written) // DISABLED: Performance issue on large sites
 		NewSitemapPlugin(),
 

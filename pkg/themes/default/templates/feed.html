@@ -2,6 +2,10 @@
 
 {% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block head %}
+{{ block.Super() }}
+<link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+{% endblock %}
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
@@ -18,11 +22,42 @@
 <div class="feed h-feed">
   {% if feed.title %}
   <header class="feed-header">
-    <h1 class="p-name">{{ feed.title }}</h1>
-    {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
+    <div class="feed-header-top">
+      <div class="feed-header-copy">
+        <h1 class="p-name">{{ feed.title }}</h1>
+        {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
+        <div class="feed-stats">
+          <span><strong>{{ feed_stats_total_posts }}</strong> posts</span>
+          {% if feed_stats_latest_post %}<span>latest post {{ feed_stats_latest_post }}</span>{% endif %}
+        </div>
+      </div>
+      {% if feed_sparkline_points %}
+      <div class="feed-header-sparkline">
+        <span class="feed-header-sparkline-label">Publishing rhythm</span>
+        <svg class="feed-header-sparkline-chart" viewBox="0 0 96 28" role="img" aria-label="{{ feed_sparkline_title }}">
+          <polyline points="{{ feed_sparkline_points }}"></polyline>
+          {% for point in feed_sparkline_data %}
+          <g class="feed-header-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
+            <line class="feed-header-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
+            <circle class="feed-header-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
+            <rect class="feed-header-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28"></rect>
+          </g>
+          {% endfor %}
+        </svg>
+        <div class="feed-header-sparkline-meta" aria-live="polite">
+          <span class="feed-header-sparkline-value">{{ feed_sparkline_summary }}</span>
+        </div>
+        {% if feed_sparkline_start and feed_sparkline_end %}
+        <div class="feed-header-sparkline-axis" aria-hidden="true">
+          <span>{{ feed_sparkline_start }}</span>
+          <span>{{ feed_sparkline_end }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
   </header>
   {% endif %}
-  {# Author h-card for the feed (representative) #}
   {% if config.author %}
   <div class="feed-author-card p-author h-card visually-hidden">
     {% if config.seo.author_image %}
@@ -36,12 +71,10 @@
 
   <div class="posts posts-list" id="posts-list">
     {% if page.pagination_type == "js" %}
-    {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
     {% include "partials/cards/card-router.html" %}
     {% endfor %}
     {% else %}
-    {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
     {% include "partials/cards/card-router.html" %}
     {% endfor %}

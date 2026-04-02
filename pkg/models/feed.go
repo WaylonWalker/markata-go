@@ -90,6 +90,9 @@ type FeedConfig struct {
 	// IncludePrivate allows including private posts in this feed (default: false)
 	IncludePrivate bool `json:"include_private,omitempty" yaml:"include_private,omitempty" toml:"include_private,omitempty"`
 
+	// ArchiveDisabled disables the generated archive syndication endpoints for this feed.
+	ArchiveDisabled bool `json:"archive_disabled,omitempty" yaml:"archive_disabled,omitempty" toml:"archive_disabled,omitempty"`
+
 	// Posts holds the filtered posts at runtime (not serialized)
 	Posts []*Post `json:"-" yaml:"-" toml:"-"`
 
@@ -226,6 +229,12 @@ type SyndicationConfig struct {
 
 	// IncludeContent determines if full content is included in feeds
 	IncludeContent bool `json:"include_content" yaml:"include_content" toml:"include_content"`
+
+	// SiteArchiveDisabled disables the built-in site archive feeds.
+	SiteArchiveDisabled bool `json:"site_archive_disabled,omitempty" yaml:"site_archive_disabled,omitempty" toml:"site_archive_disabled,omitempty"`
+
+	// FeedArchivesDisabled disables generated archive syndication endpoints for non-root feeds.
+	FeedArchivesDisabled bool `json:"feed_archives_disabled,omitempty" yaml:"feed_archives_disabled,omitempty" toml:"feed_archives_disabled,omitempty"`
 }
 
 // NewFeedDefaults creates FeedDefaults with sensible default values.
@@ -252,8 +261,10 @@ func NewFeedDefaults() FeedDefaults {
 			Sitemap:    "sitemap.xml",
 		},
 		Syndication: SyndicationConfig{
-			MaxItems:       20,
-			IncludeContent: true,
+			MaxItems:             20,
+			IncludeContent:       true,
+			SiteArchiveDisabled:  false,
+			FeedArchivesDisabled: false,
 		},
 	}
 }
