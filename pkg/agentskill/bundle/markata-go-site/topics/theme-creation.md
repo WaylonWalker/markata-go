@@ -58,21 +58,72 @@ For exact palette file structure, read `../reference/palette-reference.md`.
 
 - `markata-go palette list`
 - `markata-go palette info <name>`
-- `markata-go palette check <name>`
+- `markata-go palette check <name>` (WCAG AA contrast validation)
+- `markata-go palette check <name> --strict` (WCAG AAA)
+- `markata-go palette check --all` (check all palettes at once)
+- `markata-go palette check --all --json` (machine-readable output)
 - `markata-go palette preview <name>`
 - `markata-go palette new <name>`
 - `markata-go palette clone <source>`
 - `markata-go theme render-all`
 - `markata-go theme gallery`
-- `markata-go theme check-all`
+- `markata-go theme check-all` (checks 16 contrast combos per palette)
+- `markata-go theme check-all --colorblindness` (simulate color vision deficiencies)
+- `markata-go aesthetic list`
+- `markata-go aesthetic show <name>`
+
+## Palette Validation
+
+Always run `palette check` after creating or modifying a palette:
+
+```bash
+markata-go palette check my-brand
+markata-go palette check my-brand --strict   # AAA level
+```
+
+`palette check` validates WCAG contrast ratios between key color pairs (text on background, links on background, etc.). Without `--strict` it checks WCAG AA (4.5:1 for normal text). With `--strict` it checks AAA (7:1).
+
+`theme check-all` tests 16 contrast combinations across all palettes and can simulate color vision deficiencies (`--colorblindness`) to catch accessibility issues beyond normal contrast.
+
+## Font Configuration
+
+Fonts are configured under the theme namespace:
+
+```toml
+[markata-go.theme.fonts]
+heading = "Inter"
+body = "Source Sans Pro"
+code = "JetBrains Mono"
+```
+
+In templates, use the `google_fonts_url` filter to generate a Google Fonts import URL from the configured font names.
+
+## Aesthetics
+
+Aesthetics control structural design tokens like border radius, spacing, border styles, and shadow effects. They are separate from color palettes.
+
+Built-in aesthetics: `brutal`, `precision`, `balanced`, `elevated`, `minimal`.
+
+```bash
+markata-go aesthetic list
+markata-go aesthetic show balanced
+```
+
+Configure in TOML:
+
+```toml
+[markata-go.aesthetics]
+style = "balanced"
+```
 
 ## Guidance
 
 - Prefer palette and CSS changes before replacing whole templates.
 - Preserve the site's current typography and layout language unless the task is a redesign.
-- When introducing a new palette, validate contrast instead of only checking aesthetics.
+- When introducing a new palette, validate contrast with `palette check` instead of only eyeballing aesthetics.
 - Keep theme work incremental: palette, then CSS, then template overrides if needed.
 - For first sites, a palette plus `custom_css` is usually enough.
+- Run `palette check --strict` for sites that need AAA accessibility compliance.
 
 ## Creating A Site-Local Palette
 
@@ -108,6 +159,12 @@ palette = "catppuccin-latte"
 palette_dark = "catppuccin-mocha"
 fallback_mode = "dark"
 ```
+
+`fallback_mode` controls what happens when the user's system preference is unknown or the browser does not support `prefers-color-scheme`:
+
+- `"dark"`: use the dark palette as fallback
+- `"light"`: use the light palette as fallback
+- `"system"`: respect the OS/browser preference (no explicit fallback)
 
 ## First-Site Recommendation
 

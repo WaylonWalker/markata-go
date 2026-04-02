@@ -140,7 +140,33 @@ hooks = ["default"]
 disabled_hooks = []
 ```
 
-Use `disabled_hooks` to isolate plugin-related issues.
+Use `disabled_hooks` to isolate plugin-related issues. Use `markata-go explain plugins` to see available hook names.
+
+## Authors Config
+
+If the site has multiple authors, configure them under `[markata-go.authors]`:
+
+```toml
+[markata-go.authors]
+generate_pages = true
+url_pattern = "/authors/{author}/"
+feeds_enabled = true
+
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+bio = "Software engineer"
+avatar = "/images/waylon.jpg"
+url = "https://waylonwalker.com"
+default = true
+active = true
+
+[markata-go.authors.authors.waylon.social]
+github = "https://github.com/waylonwalker"
+```
+
+Key fields per author: `name`, `bio`, `email`, `avatar`, `url`, `social` (map), `guest`, `active`, `default`, `role`, `contributions` (CReDiT roles).
+
+When `generate_pages = true`, author profile pages are auto-generated. When `feeds_enabled = true`, per-author feeds are created.
 
 ## Environment Overrides
 

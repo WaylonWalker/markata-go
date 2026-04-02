@@ -2,6 +2,16 @@
 
 This reference is for agents working in a markata-go site repo without the markata-go source tree.
 
+## Important: Variable Casing
+
+All template variables use **lowercase/snake_case**. Pongo2 does exact-match key lookups, so PascalCase silently produces empty output.
+
+Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ page.has_next }}`
+
+Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
+
+The only PascalCase key is `post.Extra` (and `config.Extra`), which provides access to custom frontmatter and config values.
+
 ## Core Template Variables
 
 Usually available in HTML templates:
@@ -99,6 +109,36 @@ Markata-go also injects convenient top-level aliases:
 - `sidebar_items`
 - `sidebar_title`
 - `resolved_content_sidebar`
+
+## Discovery Feed Context
+
+- `discovery_feed.slug`
+- `discovery_feed.title`
+- `discovery_feed.rss_url`
+- `discovery_feed.atom_url`
+- `discovery_feed.json_url`
+- `discovery_feed.has_rss`
+- `discovery_feed.has_atom`
+- `discovery_feed.has_json`
+
+Used in `<head>` for `<link rel="alternate">` feed discovery tags. Automatically populated per post based on the post's sidebar feed or the root subscription feed.
+
+## Feed Helper Functions
+
+- `feed_posts(slug, [limit])`: returns a list of post maps for the given feed slug
+- `render_feed(slug, [limit], [variant], [{options}])`: returns rendered HTML for a feed preview
+
+See `topics/template-management.md` for usage examples.
+
+## For Loop Variables
+
+Inside `{% for %}` blocks, pongo2 provides `forloop`:
+
+- `forloop.Counter`: 1-indexed iteration number
+- `forloop.Counter0`: 0-indexed iteration number
+- `forloop.First`: true on first iteration
+- `forloop.Last`: true on last iteration
+- `forloop.Revcounter`: iterations remaining (1-indexed)
 
 ## Common Filters
 

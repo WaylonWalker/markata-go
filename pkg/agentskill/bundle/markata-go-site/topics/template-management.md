@@ -18,6 +18,16 @@ Core syntax:
 {% include "partials/header.html" %}
 ```
 
+## Variable Casing
+
+Template variables are **lowercase/snake_case**. This is critical: pongo2 does exact-match key lookups, so `post.Title` silently produces empty output.
+
+Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ config.url }}`, `{{ page.has_next }}`
+
+Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
+
+The only PascalCase key is `post.Extra` (and `config.Extra`), which is intentional for the dynamic extras namespace: `{{ post.Extra.image }}`, `{{ config.Extra.custom_key }}`.
+
 ## Search Order
 
 Templates are resolved in this order:
@@ -268,9 +278,48 @@ Hardcoded fallbacks include:
 - For a first site, start by copying and editing `post.html`, `feed.html`, or a single partial instead of rebuilding the entire template tree.
 - If a task sounds like sidebar placement, TOC behavior, or page shell selection, check `[markata-go.layout]` before creating new template files.
 
+## Embedding Feeds In Content Pages
+
+Two template helper functions are available for embedding feed content inside other pages:
+
+### `feed_posts(slug, [limit])`
+
+Returns a list of post maps for a given feed slug. Useful when you need raw data for custom rendering:
+
+```django
+{% with feed_posts("blog", 5) as recent %}
+  {% for p in recent %}
+    <a href="{{ p.href }}">{{ p.title }}</a>
+  {% endfor %}
+{% endwith %}
+```
+
+### `render_feed(slug, [limit], [variant], [{options}])`
+
+Returns rendered HTML for a feed preview. Accepts a variant name (default `"card"`) and optional options map with `template`, `variant`, and `limit` keys:
+
+```django
+{{ render_feed("blog", 3) }}
+{{ render_feed("blog", 5, "card") }}
+```
+
+The default template is `partials/feed_preview.html`. If that template is missing, a basic HTML fallback is used.
+
+## Text And Alternate Format Templates
+
+Markata-go can output posts in multiple formats beyond HTML. Alternate format templates follow the naming pattern:
+
+- `post.txt` for plain text
+- `post.ansi` for terminal-colored output
+- `post.md` for markdown pass-through
+- `post-og.html` for Open Graph card images
+
+Use the `plaintext` filter to strip HTML tags when producing text output. Hardcoded fallbacks: `default.txt` (text), `default.ansi` (ANSI), `raw.txt` (markdown), `og-card.html` (OG).
+
 ## Common Tasks
 
 - customize post or feed cards
 - add or adjust partials
 - create a new layout under `templates/layouts/`
 - apply a page-specific template via frontmatter
+- embed a feed listing inside a content page with `render_feed`

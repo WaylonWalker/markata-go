@@ -50,7 +50,7 @@ Write your content here.
 
 - `title`
 - `slug`
-- `date`
+- `date` (also recognized as `publishdate` or `pubdate`)
 - `published`
 - `draft`
 - `private`
@@ -60,8 +60,83 @@ Write your content here.
 - `layout`
 - `skip`
 - `authors`
-- `author`
-- `modified`
+- `author` (also recognized as `by` or `writer`)
+- `modified` (also recognized as `lastmod`, `updated`, `updated_at`, `last_modified`)
+- `aliases` (also recognized as `alias`, `handles`, `handle`)
+
+## Date Field Aliases
+
+Multiple frontmatter keys map to the same date fields. The first match wins:
+
+- **Publication date**: `publishdate` > `date` > `pubdate`
+- **Modified date**: `lastmod` > `modified` > `updated` > `updated_at` > `last_modified`
+
+Dates are parsed flexibly: RFC3339, `2006-01-02`, `January 2, 2006`, and other common formats all work.
+
+## Aliases Field
+
+The `aliases` field (a string list) registers alternate names for a post. These are used by:
+
+- **Wikilinks**: `[[JavaScript]]` resolves to a post with `aliases: ["JavaScript"]` even if its slug is `javascript-guide`
+- **Glossary**: terms can match on aliases in addition to the primary slug
+- **Mentions**: blogroll sources use aliases for `@mention` resolution
+
+All four keys (`aliases`, `alias`, `handles`, `handle`) are merged and deduplicated.
+
+## Media Fields
+
+Media fields are not typed on the Post model. They live in `post.Extra` and are read by various plugins. Common recognized keys:
+
+- `image` (primary, most widely used across plugins)
+- `cover_image` (cover image alias)
+- `og_image` (Open Graph image)
+- `featured_image` (wikilink hover previews)
+- `thumbnail` (wikilink hover previews)
+- `cover` (feed card helpers)
+- `video` (video URL for OG cards)
+
+For OG card generation, the first non-empty value from `image`, `cover_image`, `og_image` is used.
+
+## Extended Authors Format
+
+The `authors` field supports three formats:
+
+Simple string:
+
+```yaml
+authors: waylon
+```
+
+List of IDs:
+
+```yaml
+authors:
+  - waylon
+  - codex
+```
+
+Structured with per-post role overrides:
+
+```yaml
+authors:
+  - id: waylon
+    role: author
+    details: "wrote the introduction"
+  - id: codex
+    role: pair programmer
+    details: "wrote the code examples"
+  - guest
+```
+
+Accepted key aliases in structured entries:
+
+| Logical field | Accepted keys |
+|--------------|---------------|
+| id | `id`, `name`, `handle` |
+| role | `role`, `job`, `position`, `part`, `title` |
+| details | `details`, `detail`, `description` |
+
+Author IDs are resolved against `[markata-go.authors]` config to produce full `post.author_objects` for templates.
 
 ## Slug Guidance
 
