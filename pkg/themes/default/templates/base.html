@@ -308,11 +308,17 @@
       scrollingScript.src = '{{ 'js/scrolling-shortcuts.js' | theme_asset_hashed }}';
       document.body.appendChild(scrollingScript);
 
-      // Navigation Shortcuts - load if feed, post cards, or prev/next navigation exist
-      if (document.querySelector('.feed, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
+      // Navigation Shortcuts - load if feed/sidebar/card pagination affordances exist
+      if (document.querySelector('.feed, .feed-sidebar, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);
+      }
+
+      if (document.getElementById('feed-sidebar-data')) {
+        const feedCyclingScript = document.createElement('script');
+        feedCyclingScript.src = '{{ 'js/feed-cycling.js' | theme_asset_hashed }}';
+        document.body.appendChild(feedCyclingScript);
       }
 
       // History Shortcuts - always available (go back/forward)

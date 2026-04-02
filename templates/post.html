@@ -63,13 +63,13 @@
 
 {% block content %}
 <div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
-    <article class="post h-entry" data-pagefind-body data-shared-transition-path="{{ post.href }}">
+    <article class="post h-entry" data-pagefind-body>
         {# Hidden canonical URL for microformats parsers #}
         <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
 
         <header class="post-header">
             <div class="post-header__title-row">
-                <h1 class="p-name" data-pagefind-meta="title" data-shared-transition-title>{{ post.title }}</h1>
+                <h1 class="p-name" data-pagefind-meta="title">{{ post.title }}</h1>
 
                 {# Author byline and post metadata #}
                 {% include "components/post_byline.html" %}

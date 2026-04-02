@@ -7,8 +7,10 @@
 
 {% block meta %}
 {{ block.Super() }}
+{# Canonical URL for SEO #}
 <link rel="canonical" href="{{ config.url }}{{ post.href }}">
 
+{# Alternate format links #}
 {% if config.post_formats.markdown %}
 <link rel="alternate" type="text/markdown" title="Markdown Source" href="/{{ post.slug }}.md">
 {% endif %}
@@ -22,17 +24,20 @@
 <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
 {% endif %}
 
+{# Structured Data: JSON-LD #}
 {% if post.structured_data.jsonld %}
 <script type="application/ld+json">
 {{ post.structured_data.jsonld | safe }}
 </script>
 {% endif %}
 
+{# Structured Data: OpenGraph meta tags #}
 {% if post.structured_data.opengraph %}
 {% for meta in post.structured_data.opengraph %}
 <meta property="{{ meta.property }}" content="{{ meta.content }}">
 {% endfor %}
 {% else %}
+{# Fallback to basic OG tags if no structured data #}
 <meta property="og:title" content="{{ post.title }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ config.url }}{{ post.href }}">
@@ -47,6 +52,7 @@
 {% endif %}
 {% endif %}
 
+{# Structured Data: Twitter Card meta tags #}
 {% if post.structured_data.twitter %}
 {% for meta in post.structured_data.twitter %}
 <meta name="{{ meta.name }}" content="{{ meta.content }}">
@@ -63,11 +69,13 @@
 {% block content %}
 {% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}
 <article class="post h-entry post-type-{{ card_type }}{% if post.template %} post-template-{{ post.template }}{% endif %}" data-pagefind-body data-shared-transition-path="{{ post.href }}">
+  {# Hidden canonical URL for microformats parsers #}
   <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
 
   <header class="post-header" data-sidebar-transition-header>
     <div class="post-header__title-row">
       <h1 class="p-name" data-pagefind-meta="title" data-shared-transition-title>{{ post.title }}</h1>
+
       {% include "components/post_byline.html" %}
     </div>
 
@@ -75,6 +83,7 @@
     <p class="post-description p-summary visually-hidden" data-pagefind-meta="excerpt">{{ post.description }}</p>
     {% endif %}
 
+    {# Copy button - show only for article/guide/default #}
     {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
     {% include "components/post_copy.html" %}
     {% endif %}
@@ -84,10 +93,12 @@
     {{ body | safe }}
   </div>
 
+  {# Graph - show only for article/guide/link/default #}
   {% if card_type == "article" or card_type == "guide" or card_type == "link" or card_type == "default" %}
   {% include "components/post_graph.html" %}
   {% endif %}
 
+  {# Share - show only for article/guide/default #}
   {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
   {% if config.components.share.enabled %}
   {% include "components/share.html" %}
@@ -104,6 +115,7 @@
   </footer>
   {% endif %}
 
+  {# Hidden filters for Pagefind #}
   {% if post.feeds %}
   <div class="pagefind-filters" style="display:none" data-pagefind-ignore>
     {% for feed in post.feeds %}
@@ -112,13 +124,15 @@
   </div>
   {% endif %}
 
+  {# Webmentions #}
   {% include "partials/webmentions.html" %}
 </article>
 
+{# Use sidebar prev/next if available (for feed-based navigation), otherwise fall back to post.prev/post.next #}
 {% if sidebar_prev or sidebar_next %}
 <nav class="post-nav">
-  {% if sidebar_prev %}<a href="{{ sidebar_prev_href | default:sidebar_prev.href }}" class="prev" data-action="prev">{{ sidebar_prev.title }}</a>{% endif %}
-  {% if sidebar_next %}<a href="{{ sidebar_next_href | default:sidebar_next.href }}" class="next" data-action="next">{{ sidebar_next.title }}</a>{% endif %}
+  {% if sidebar_prev %}<a href="{{ sidebar_prev.href }}" class="prev" data-action="prev">{{ sidebar_prev.title }}</a>{% endif %}
+  {% if sidebar_next %}<a href="{{ sidebar_next.href }}" class="next" data-action="next">{{ sidebar_next.title }}</a>{% endif %}
 </nav>
 {% elif post.prev or post.next %}
 <nav class="post-nav">

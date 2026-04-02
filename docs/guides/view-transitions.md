@@ -34,7 +34,6 @@ The View Transitions API automatically adds smooth animations when users navigat
 
 - **Wikilinks** (`[[slug]]`) - Smooth transitions between related content
 - **Card clicks** - Polished navigation from feeds to full posts
-- **Archive to post morphs** - Feed/archive cards can visually expand into the destination post shell and title
 - **Navigation links** - Stable header/footer during transitions
 - **Post navigation** - Smooth prev/next post transitions
 - **Breadcrumbs** - Contextual navigation animations
@@ -90,26 +89,6 @@ document.startViewTransition(() => {
   history.pushState(null, '', url);
 });
 ```
-
-### 3a. Shared Archive-to-Post Elements
-
-When a user opens a post from a feed/archive card, the transition runtime detects the card root and reuses it as a shared element for the destination post. The effect is similar to the Chrome "off the beaten path" demo: the card shell and title feel like they grow into the full post instead of disappearing and being replaced by a different page.
-
-This works best when navigation starts from the card's primary permalink, including keyboard-driven card opening. markata-go routes those interactions through the same transition helper so mouse clicks and shortcuts produce the same animation path.
-
-The shared-element effect is automatic for feed cards that link to internal posts. If a card links somewhere else, or the clicked link is a tag/external/action link inside the card, markata-go falls back to the normal page transition.
-
-markata-go also syncs page-scoped stylesheet links and root/body attributes during same-document navigation. That keeps special layouts such as the homepage from losing their custom CSS after you navigate to them from another page.
-
-### 3b. Directional Post Navigation
-
-Post-to-post navigation from feed sidebars and prev/next controls uses a stronger transition than the default page fade. The outgoing article falls back slightly, then the incoming post drops in from the header area and covers it. This makes `[` and `]` shortcuts readable even when the surrounding sidebar remains fixed.
-
-When navigation starts from the feed sidebar, markata-go reuses the clicked sidebar title as a shared element. That keeps a clear visual handoff without relying on heavier whole-article motion.
-
-For keyboard navigation, markata-go keeps `[` and `]` instant so you can move through a feed quickly.
-
-Across post types, the post header still carries the standard byline metadata. Author and date should remain visible on shots, pings, and other non-article posts even when the surrounding layout differs from a long-form article.
 
 ### 4. Script Re-initialization
 
@@ -263,10 +242,6 @@ Give each card a unique transition name:
 ```
 
 Now cards will morph smoothly when navigating!
-
-### Archive-to-Post Shared Elements
-
-markata-go now applies this pattern automatically for internal post cards by matching the clicked card with the destination post shell and title. You do not need custom CSS to get the effect, but you can refine it by overriding the base transition timing in your theme CSS.
 
 ## Performance
 

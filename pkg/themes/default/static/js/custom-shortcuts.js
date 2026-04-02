@@ -45,11 +45,6 @@
    * @param {string} url - The destination URL
    */
   function navigateTo(url) {
-    if (window.navigateWithViewTransition && typeof window.navigateWithViewTransition === 'function') {
-      window.navigateWithViewTransition(url, { source: 'custom-shortcut' });
-      return;
-    }
-
     window.location.href = url;
   }
 

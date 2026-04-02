@@ -121,32 +121,6 @@
     highlightCard(state.cards[prevIndex]);
   }
 
-  function navigateToURL(url, options) {
-    if (!url) return;
-
-    if (window.navigateWithViewTransition && typeof window.navigateWithViewTransition === 'function') {
-      window.navigateWithViewTransition(url, Object.assign({
-        source: 'shortcut'
-      }, options || {}));
-      return;
-    }
-
-    window.location.href = url;
-  }
-
-  function getSidebarAdjacentLink(direction) {
-    var activeItem = document.querySelector('.feed-nav-item--active');
-    if (!activeItem) return null;
-
-    var sibling = direction === 'next'
-      ? activeItem.nextElementSibling
-      : activeItem.previousElementSibling;
-
-    if (!sibling) return null;
-
-    return sibling.querySelector('a.feed-nav-link[href]');
-  }
-
   /**
    * Open highlighted post
    */
@@ -181,6 +155,27 @@
     } else {
       navigateToURL('/');
     }
+  }
+
+  function navigateToURL(url, options) {
+    if (!url) return;
+
+    if (window.navigateWithViewTransition && typeof window.navigateWithViewTransition === 'function') {
+      window.navigateWithViewTransition(url, Object.assign({ source: 'shortcut' }, options || {}));
+      return;
+    }
+
+    window.location.href = url;
+  }
+
+  function getSidebarAdjacentLink(direction) {
+    var activeItem = document.querySelector('.feed-nav-item--active');
+    if (!activeItem) return null;
+
+    var sibling = direction === 'next' ? activeItem.nextElementSibling : activeItem.previousElementSibling;
+    if (!sibling) return null;
+
+    return sibling.querySelector('a.feed-nav-link[href]');
   }
 
   /**
@@ -458,6 +453,8 @@
       window.prefetchViewTransitionUrl(prevLink.href);
     }
   }
+
+  window.preloadNavigationShortcuts = preloadAdjacentPages;
 
   /**
    * Initialize navigation shortcuts

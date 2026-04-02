@@ -125,6 +125,44 @@ func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationIncludesAllPublicPrimaryF
 	}
 }
 
+func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationFollowsConfigOrder(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	config := m.Config()
+	config.Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled},
+	}
+
+	title := "Post"
+	post := &models.Post{Slug: "post", Title: &title, Href: "/post/"}
+	archive := models.FeedConfig{Slug: "archive", Title: "Archive", Primary: true, Posts: []*models.Post{post}}
+	blog := models.FeedConfig{Slug: "blog", Title: "Blog", Primary: true, Posts: []*models.Post{post}}
+	pings := models.FeedConfig{Slug: "pings", Title: "Pings", Primary: true, Posts: []*models.Post{post}}
+	m.Cache().Set("feed_configs", []models.FeedConfig{archive, blog, pings})
+
+	jsonText := p.buildSidebarFeedsJSON(post, config, m, &pings)
+	if jsonText == "" {
+		t.Fatal("expected sidebar feeds JSON")
+	}
+
+	var data sidebarFeedsDataJSON
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("unmarshal sidebar feeds JSON: %v", err)
+	}
+
+	want := []string{"archive", "blog", "pings"}
+	if len(data.RotationFeedSlugs) != len(want) {
+		t.Fatalf("rotation feeds = %#v, want %#v", data.RotationFeedSlugs, want)
+	}
+	for i := range want {
+		if data.RotationFeedSlugs[i] != want[i] {
+			t.Fatalf("rotation feeds = %#v, want %#v", data.RotationFeedSlugs, want)
+		}
+	}
+}
+
 func TestAppendFeedParamToHref_PreservesSidebarFlow(t *testing.T) {
 	tests := []struct {
 		name string

@@ -22,15 +22,67 @@
   var feedState = {
     data: null,        // Parsed sidebarFeedsDataJSON
     currentIndex: 0,   // Current feed index
-    initialized: false
+    initialized: false,
+    shortcutsRegistered: false,
+    explicitFeedSelection: false
   };
+
+  function currentFeedQuerySlug(feed) {
+    var requestedFeed = getFeedParam();
+    if (requestedFeed && feed && requestedFeed === feed.slug) {
+      return requestedFeed;
+    }
+
+    if (feedState.data && feedState.currentIndex !== feedState.data.currentFeedIndex && feed) {
+      return feed.slug || '';
+    }
+
+    return '';
+  }
+
+  function getRotationFeedIndexes() {
+    if (!feedState.data || !feedState.data.feeds) return [];
+
+    var slugs = feedState.data.rotationFeedSlugs || [];
+    if (!slugs.length) return [];
+
+    var indexes = [];
+    for (var i = 0; i < slugs.length; i++) {
+      for (var j = 0; j < feedState.data.feeds.length; j++) {
+        if (feedState.data.feeds[j].slug === slugs[i]) {
+          indexes.push(j);
+          break;
+        }
+      }
+    }
+
+    return indexes;
+  }
+
+  function getPickerFeedIndexes() {
+    var rotationIndexes = getRotationFeedIndexes();
+    if (rotationIndexes.length) {
+      return rotationIndexes;
+    }
+
+    if (!feedState.data || !feedState.data.feeds) return [];
+
+    var indexes = [];
+    for (var i = 0; i < feedState.data.feeds.length; i++) {
+      if (feedState.data.feeds[i].primary) {
+        indexes.push(i);
+      }
+    }
+
+    return indexes;
+  }
 
   /**
    * Known feed output formats with labels.
    * The engine generates these files for each feed.
    */
   var FEED_FORMATS = [
-    { key: 'web',  path: '/',          label: 'web' },
+    { key: 'html', path: '/',          label: 'html' },
     { key: 'rss',  path: '/rss.xml',   label: 'rss' },
     { key: 'atom', path: '/atom.xml',  label: 'atom' },
     { key: 'json', path: '/feed.json', label: 'json' },
@@ -67,10 +119,11 @@
   /**
    * Update the URL with ?feed= parameter (without triggering navigation).
    */
-  function setFeedParam(slug) {
+  function setFeedParam(slug, forceParam) {
     try {
       var url = new URL(window.location.href);
-      if (slug && feedState.data && feedState.currentIndex !== feedState.data.currentFeedIndex) {
+      var requestedFeed = getFeedParam();
+      if (slug && feedState.data && (forceParam || feedState.currentIndex !== feedState.data.currentFeedIndex || requestedFeed === slug)) {
         url.searchParams.set('feed', slug);
       } else {
         // If back to default feed, remove the param for cleaner URLs
@@ -104,7 +157,44 @@
   function updateCounter() {
     var counter = document.getElementById('feed-nav-counter');
     if (!counter || !feedState.data) return;
-    counter.textContent = (feedState.currentIndex + 1) + '/' + feedState.data.feeds.length;
+
+    var rotationIndexes = getRotationFeedIndexes();
+    if (!rotationIndexes.length) {
+      counter.textContent = (feedState.currentIndex + 1) + '/' + feedState.data.feeds.length;
+      return;
+    }
+
+    var rotationPosition = rotationIndexes.indexOf(feedState.currentIndex);
+    if (rotationPosition === -1) {
+      counter.textContent = '-/' + rotationIndexes.length;
+      return;
+    }
+
+    counter.textContent = (rotationPosition + 1) + '/' + rotationIndexes.length;
+  }
+
+  function updateFeedPicker() {
+    var select = document.getElementById('feed-nav-select');
+    if (!select || !feedState.data) return;
+
+    var pickerIndexes = getPickerFeedIndexes();
+    if (!pickerIndexes.length) {
+      select.innerHTML = '';
+      return;
+    }
+
+    var selectedIndex = feedState.currentIndex;
+    if (pickerIndexes.indexOf(selectedIndex) === -1) {
+      selectedIndex = pickerIndexes[0];
+    }
+
+    var currentSlug = feedState.data.feeds[selectedIndex] ? feedState.data.feeds[selectedIndex].slug : '';
+    var html = '';
+    for (var i = 0; i < pickerIndexes.length; i++) {
+      var feed = feedState.data.feeds[pickerIndexes[i]];
+      html += '<option value="' + escapeHtml(feed.slug) + '"' + (feed.slug === currentSlug ? ' selected' : '') + '>' + escapeHtml(feed.title) + '</option>';
+    }
+    select.innerHTML = html;
   }
 
   /**
@@ -138,8 +228,10 @@
   /**
    * Re-render the sidebar with the feed at the given index.
    */
-  function renderFeed(index) {
+  function renderFeed(index, options) {
     if (!feedState.data || !feedState.data.feeds.length) return;
+
+    var renderOptions = options || {};
 
     var feed = feedState.data.feeds[index];
     if (!feed) return;
@@ -162,11 +254,13 @@
     var listEl = document.getElementById('feed-nav-list');
     if (listEl) {
       var html = '';
+      var selectedFeedSlug = currentFeedQuerySlug(feed);
       for (var i = 0; i < feed.posts.length; i++) {
         var p = feed.posts[i];
         var isActive = p.active;
-        html += '<li class="feed-nav-item' + (isActive ? ' feed-nav-item--active' : '') + '">';
-        html += '<a href="' + escapeHtml(p.href) + '" class="feed-nav-link"';
+        var href = appendFeedParam(p.href, selectedFeedSlug);
+        html += '<li class="feed-nav-item' + (isActive ? ' feed-nav-item--active' : '') + '" data-sidebar-transition-path="' + escapeHtml(p.href.replace(/\?.*$/, '')) + '">';
+        html += '<a href="' + escapeHtml(href) + '" class="feed-nav-link" data-sidebar-transition-title';
         if (isActive) html += ' aria-current="page"';
         html += '>' + escapeHtml(p.title) + '</a>';
         html += '</li>';
@@ -186,9 +280,14 @@
     // Update counter
     feedState.currentIndex = index;
     updateCounter();
+    updateFeedPicker();
 
     // Update URL with ?feed= param so [/] navigation preserves feed selection
-    setFeedParam(feed.slug);
+    setFeedParam(feed.slug, !!renderOptions.forceFeedParam);
+
+    if (typeof window.preloadNavigationShortcuts === 'function') {
+      window.preloadNavigationShortcuts();
+    }
 
     // Scroll active item into view
     if (window.initFeedSidebarScroll) {
@@ -203,7 +302,7 @@
    */
   function updatePrevNextLinks(feed) {
     var postNav = document.querySelector('.post-nav');
-    var feedSlug = feed.slug || '';
+    var feedSlug = currentFeedQuerySlug(feed);
 
     if (!feed.prev && !feed.next) {
       if (postNav) postNav.classList.add('post-nav--hidden');
@@ -274,18 +373,30 @@
    * Cycle to the next feed (wrapping around).
    */
   function nextFeed() {
-    if (!feedState.data || feedState.data.feeds.length <= 1) return;
-    var next = (feedState.currentIndex + 1) % feedState.data.feeds.length;
-    renderFeed(next);
+    var rotationIndexes = getRotationFeedIndexes();
+    if (rotationIndexes.length <= 1) return;
+
+    var currentRotation = rotationIndexes.indexOf(feedState.currentIndex);
+    if (currentRotation === -1) currentRotation = 0;
+
+    var nextRotation = (currentRotation + 1) % rotationIndexes.length;
+    feedState.explicitFeedSelection = true;
+    renderFeed(rotationIndexes[nextRotation], { forceFeedParam: true });
   }
 
   /**
    * Cycle to the previous feed (wrapping around).
    */
   function prevFeed() {
-    if (!feedState.data || feedState.data.feeds.length <= 1) return;
-    var prev = (feedState.currentIndex - 1 + feedState.data.feeds.length) % feedState.data.feeds.length;
-    renderFeed(prev);
+    var rotationIndexes = getRotationFeedIndexes();
+    if (rotationIndexes.length <= 1) return;
+
+    var currentRotation = rotationIndexes.indexOf(feedState.currentIndex);
+    if (currentRotation === -1) currentRotation = 0;
+
+    var prevRotation = (currentRotation - 1 + rotationIndexes.length) % rotationIndexes.length;
+    feedState.explicitFeedSelection = true;
+    renderFeed(rotationIndexes[prevRotation], { forceFeedParam: true });
   }
 
   /**
@@ -302,10 +413,11 @@
    * Register { and } shortcuts with the shortcuts registry.
    */
   function registerShortcuts() {
-    if (!window.shortcutsRegistry) return;
+    if (!window.shortcutsRegistry || feedState.shortcutsRegistered) return;
 
     // Only register if feed data exists and has multiple feeds
-    if (!feedState.data || feedState.data.feeds.length <= 1) return;
+    if (!feedState.data) return;
+    if (!feedState.data.rotationFeedSlugs || feedState.data.rotationFeedSlugs.length <= 1) return;
 
     window.shortcutsRegistry.register({
       key: '{',
@@ -330,6 +442,8 @@
       },
       priority: 56
     });
+
+    feedState.shortcutsRegistered = true;
   }
 
   /**
@@ -337,6 +451,7 @@
    */
   function init() {
     feedState.data = parseData();
+    feedState.shortcutsRegistered = false;
     if (!feedState.data || feedState.data.feeds.length <= 1) {
       feedState.initialized = false;
       return;
@@ -357,17 +472,11 @@
     }
 
     feedState.initialized = true;
+    feedState.explicitFeedSelection = !!requestedFeed;
 
-    // If we need to switch from default, re-render the sidebar
-    if (feedState.currentIndex !== feedState.data.currentFeedIndex) {
-      renderFeed(feedState.currentIndex);
-    } else {
-      // Default feed -- still patch prev/next links with ?feed= so that
-      // [/] navigation preserves feed context across pages.
-      updateCounter();
-      updateFeedLinks(feedState.data.feeds[feedState.currentIndex]);
-      updatePrevNextLinks(feedState.data.feeds[feedState.currentIndex]);
-    }
+    // Always render the selected feed so sidebar title, picker, and controls
+    // match the current feed even when the server rendered fallback chrome.
+    renderFeed(feedState.currentIndex, { forceFeedParam: feedState.explicitFeedSelection });
 
     // Register keyboard shortcuts
     registerShortcuts();
@@ -387,24 +496,48 @@
         nextFeed();
       });
     }
+
+    var select = document.getElementById('feed-nav-select');
+    if (select) {
+      select.addEventListener('change', function() {
+        var slug = select.value;
+        var pickerIndexes = getPickerFeedIndexes();
+        for (var i = 0; i < pickerIndexes.length; i++) {
+          var feedIndex = pickerIndexes[i];
+          if (feedState.data.feeds[feedIndex].slug === slug) {
+            feedState.explicitFeedSelection = true;
+            renderFeed(feedIndex, { forceFeedParam: true });
+            select.blur();
+            var header = document.querySelector('.feed-nav-header');
+            if (header && typeof header.focus === 'function') {
+              header.focus({ preventScroll: true });
+            }
+            break;
+          }
+        }
+      });
+    }
   }
 
   // Expose for view-transitions reinitializeScripts()
   window.initFeedCycling = init;
 
-  // Wait for shortcuts registry, then initialize
-  function waitAndInit(attempts) {
+  function waitForShortcutsRegistry(attempts) {
     attempts = attempts || 0;
     if (window.shortcutsRegistry) {
-      init();
+      registerShortcuts();
     } else if (attempts < 50) {
-      setTimeout(function() { waitAndInit(attempts + 1); }, 10);
+      setTimeout(function() { waitForShortcutsRegistry(attempts + 1); }, 10);
     }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { waitAndInit(); });
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      waitForShortcutsRegistry();
+    });
   } else {
-    waitAndInit();
+    init();
+    waitForShortcutsRegistry();
   }
 })();

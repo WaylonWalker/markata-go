@@ -417,12 +417,16 @@
 }
 
 .feed-nav-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.feed-nav-heading {
+  min-width: 0;
 }
 
 .feed-nav-title {
@@ -435,6 +439,15 @@
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
+  overflow-wrap: anywhere;
+}
+
+.feed-nav-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .feed-nav-counter {
@@ -456,6 +469,20 @@
   align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.feed-nav-picker {
+  display: flex;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.feed-nav-picker-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .feed-nav-cycle-btn {
@@ -496,6 +523,7 @@
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
   margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
   /* Hidden by default -- revealed on hover/focus/touch */
@@ -510,10 +538,15 @@
 
 .feed-nav-chrome:hover .feed-nav-links,
 .feed-nav-chrome:focus-within .feed-nav-links,
+.feed-nav-header:hover + .feed-nav-links,
+.feed-nav-header:focus-within + .feed-nav-links,
+.feed-nav-links:hover,
+.feed-nav-links:focus-within,
 .feed-sidebar.feed-sidebar--expanded .feed-nav-links {
-  max-height: 4rem;
+  max-height: 12rem;
   opacity: 1;
   margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }

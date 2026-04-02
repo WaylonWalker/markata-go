@@ -232,7 +232,6 @@
       return false;
     }
 
-    // Only handle same-origin links
     if (!shouldTransitionToURL(url)) {
       if (config.debug && isNonHTMLDocumentURL(url)) {
         console.log('Skipping non-HTML navigation:', url.href);
@@ -463,7 +462,8 @@
         return candidate;
       }
 
-      if (candidate.getAttribute('data-shared-transition-path') === context.path) {
+      if (candidate.getAttribute('data-sidebar-transition-path') === context.path ||
+          candidate.getAttribute('data-shared-transition-path') === context.path) {
         return candidate;
       }
     }
@@ -581,15 +581,12 @@
 
   function stylesheetKey(node) {
     if (!node) return '';
-
     if (node.tagName === 'LINK') {
       return ['link', node.getAttribute('rel') || '', node.getAttribute('href') || '', node.getAttribute('media') || ''].join('::');
     }
-
     if (node.tagName === 'STYLE') {
       return ['style', node.textContent || ''].join('::');
     }
-
     return '';
   }
 
@@ -603,8 +600,7 @@
 
     currentNodes.forEach((node) => {
       const key = stylesheetKey(node);
-      if (!key) return;
-      if (!nextKeys.has(key)) {
+      if (key && !nextKeys.has(key)) {
         node.remove();
       }
     });
@@ -657,10 +653,21 @@
   }
 
   function updateLayoutRegions(newDoc) {
+    // Preserve feed sidebar scroll position across DOM swap so
+    // the list doesn't jump to top before scrollIntoView runs.
+    var feedList = document.querySelector('#feed-nav-collapsible');
+    var savedScrollTop = feedList ? feedList.scrollTop : 0;
+
     const replacedPage = replaceElementContents('#view-transition-page', newDoc);
     if (!replacedPage) {
       document.body.innerHTML = newDoc.body.innerHTML;
       return false;
+    }
+
+    // Restore feed sidebar scroll position after content swap
+    var newFeedList = document.querySelector('#feed-nav-collapsible');
+    if (newFeedList && savedScrollTop > 0) {
+      newFeedList.scrollTop = savedScrollTop;
     }
 
     replaceElement('#view-transition-progress', newDoc);
@@ -750,6 +757,26 @@
     });
   }
 
+  function preserveFeedContext(rawUrl, triggerElement) {
+    try {
+      const currentURL = new URL(window.location.href);
+      const targetURL = new URL(rawUrl, window.location.href);
+      const currentFeed = currentURL.searchParams.get('feed');
+
+      if (!currentFeed) return targetURL.href;
+      if (targetURL.searchParams.get('feed')) return targetURL.href;
+      if (!triggerElement) return targetURL.href;
+
+      if (triggerElement.closest('.feed-sidebar, .post-nav')) {
+        targetURL.searchParams.set('feed', currentFeed);
+      }
+
+      return targetURL.href;
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
   /**
    * Re-initialize scripts after content replacement
    */
@@ -783,6 +810,30 @@
       window.initNavigationShortcuts();
     }
 
+    // Re-scroll feed sidebar active item into view (inline scripts don't re-run after DOM swap)
+    if (window.initFeedSidebarScroll && typeof window.initFeedSidebarScroll === 'function') {
+      window.initFeedSidebarScroll();
+    }
+
+    // Re-initialize feed cycling (parses new page's feed data)
+    if (window.initFeedCycling && typeof window.initFeedCycling === 'function') {
+      window.initFeedCycling();
+    }
+
+    // Re-bind feed sidebar collapse toggle (tablet/mobile)
+    if (window.initSidebarToggle && typeof window.initSidebarToggle === 'function') {
+      window.initSidebarToggle();
+    }
+
+    // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
+    var openHamburger = document.querySelector('.hamburger-toggle--open');
+    if (openHamburger) {
+      openHamburger.classList.remove('hamburger-toggle--open');
+      openHamburger.setAttribute('aria-expanded', 'false');
+      var navGroup = document.querySelector('.mobile-nav-group--open');
+      if (navGroup) navGroup.classList.remove('mobile-nav-group--open');
+    }
+
     // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
     if (window.initMermaid && typeof window.initMermaid === 'function') {
       window.initMermaid();
@@ -807,7 +858,7 @@
 
     let targetURL;
     try {
-      targetURL = new URL(url, window.location.href);
+      targetURL = new URL(preserveFeedContext(url, navOptions.triggerElement), window.location.href);
     } catch (_) {
       window.location.href = url;
       return false;
@@ -821,7 +872,6 @@
     if (navOptions.bypassTransition) {
       const metrics = createNavigationMetrics(targetURL.href, navOptions.source);
       const newDoc = await resolveDocument(targetURL.href, metrics);
-
       updateDocument(newDoc, metrics);
 
       if (navOptions.pushState) {
@@ -851,7 +901,6 @@
       const transition = document.startViewTransition(() => {
         prepareIncomingSharedTransition(newDoc, sharedContext);
         updateDocument(newDoc, metrics);
-
         if (navOptions.pushState) {
           history.pushState(null, '', targetURL.href);
         }
@@ -859,9 +908,6 @@
 
       await transition.finished;
       finalizeNavigationMetrics(metrics);
-
-      if (config.debug) console.log('View transition completed');
-
       return true;
     } finally {
       clearSharedTransitionElements(document);
@@ -887,7 +933,7 @@
     // Prevent default navigation
     event.preventDefault();
 
-    const url = link.href;
+    const url = preserveFeedContext(link.href, link);
 
     if (config.debug) console.log('Starting view transition to:', url);
 
@@ -897,9 +943,13 @@
         pushState: true,
         triggerElement: link,
       });
+
+      if (config.debug) console.log('View transition completed');
     } catch (error) {
       console.error('View transition failed:', error);
       clearSharedTransitionElements(document);
+      setSharedTransitionState(false);
+      clearPostNavigationState();
       // Fallback to normal navigation
       window.location.href = url;
     }
@@ -1016,10 +1066,30 @@
     window.VIEW_TRANSITIONS_CONFIG = config;
   }
 
+  // ── Feed Sidebar: scroll active item into view ──
+  // Defined outside init() so it's available even if view transitions are disabled.
+  // Uses manual scrollTop math so that only the sidebar container scrolls --
+  // scrollIntoView() would scroll every ancestor including the page viewport.
+  window.initFeedSidebarScroll = function() {
+    var active = document.querySelector('.feed-nav-item--active');
+    if (!active) return;
+    var container = document.getElementById('feed-nav-collapsible');
+    if (!container) return;
+    var activeTop = active.offsetTop - container.offsetTop;
+    var activeHeight = active.offsetHeight;
+    var containerHeight = container.clientHeight;
+    // Center the active item within the scrollable container
+    container.scrollTop = activeTop - (containerHeight / 2) + (activeHeight / 2);
+  };
+
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      window.initFeedSidebarScroll();
+    });
   } else {
     init();
+    window.initFeedSidebarScroll();
   }
 })();
