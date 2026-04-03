@@ -352,7 +352,7 @@
     return {
       path: getNavigationPath(targetURL),
       names: createSidebarTransitionNames(getNavigationPath(targetURL)),
-      shell: row.querySelector('.feed-nav-link[href]') || row,
+      shell: row,
       title: row.querySelector('[data-sidebar-transition-title]'),
       incomingShellSelector: '[data-sidebar-transition-header]',
       incomingTitleSelector: '[data-shared-transition-title]',

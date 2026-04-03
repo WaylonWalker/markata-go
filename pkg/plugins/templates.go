@@ -672,10 +672,45 @@ func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecyc
 		return tagPosts, tagFeed
 	}
 
-	// 4. Auto-discovery: find the best feed containing this post
+	// 4. Prefer a primary feed from cached feed configs when available.
+	primaryPosts, primaryFeed := p.getPrimaryFeedSidebarPosts(post, m)
+	if primaryPosts != nil {
+		return primaryPosts, primaryFeed
+	}
+
+	// 5. Auto-discovery: find the best feed containing this post
 	autoPosts, autoFeed := p.autoDiscoverFeed(post, config, m)
 	if autoPosts != nil {
 		return autoPosts, autoFeed
+	}
+
+	return nil, nil
+}
+
+func (p *TemplatesPlugin) getPrimaryFeedSidebarPosts(post *models.Post, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	if post == nil || post.Slug == "" {
+		return nil, nil
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return nil, nil
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	for i := range configs {
+		fc := &configs[i]
+		if !fc.Primary || fc.IncludePrivate {
+			continue
+		}
+		for _, fp := range fc.Posts {
+			if fp.Slug == post.Slug {
+				return fc.Posts, fc
+			}
+		}
 	}
 
 	return nil, nil
@@ -1337,56 +1372,22 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 	primaryFeed *models.FeedConfig,
 ) string {
 	feeds := p.getAllCandidateFeeds(post, config, m)
-	publicFeeds := feeds[:0]
-	for _, feed := range feeds {
-		if feed.Priority == "private" {
-			continue
-		}
-		publicFeeds = append(publicFeeds, feed)
-	}
-	feeds = publicFeeds
-
-	seen := make(map[string]bool, len(feeds))
-	for _, feed := range feeds {
-		seen[feed.Slug] = true
-	}
-
-	if cached, ok := m.Cache().Get("feed_configs"); ok {
-		if configs, ok := cached.([]models.FeedConfig); ok {
-			for i := range configs {
-				fc := &configs[i]
-				if seen[fc.Slug] || !fc.Primary || fc.IncludePrivate {
-					continue
-				}
-				feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", getSyndicationConfig(config)))
-				seen[fc.Slug] = true
-			}
-		}
-	}
+	feeds = filterPublicSidebarFeeds(feeds)
+	seen := makeSidebarFeedSet(feeds)
+	feeds = p.appendMissingPrimarySidebarFeeds(feeds, seen, post, config, m)
 
 	if len(feeds) <= 1 {
 		// No point in cycling with only 0 or 1 feed
 		return ""
 	}
 
-	rotationFeedSlugs := make([]string, 0, len(feeds))
-	if cached, ok := m.Cache().Get("feed_configs"); ok {
-		if configs, ok := cached.([]models.FeedConfig); ok {
-			for i := range configs {
-				fc := &configs[i]
-				if !fc.Primary || fc.IncludePrivate || !seen[fc.Slug] {
-					continue
-				}
-				rotationFeedSlugs = append(rotationFeedSlugs, fc.Slug)
-			}
-		}
-	}
+	rotationFeedSlugs := p.buildRotationFeedSlugs(m, seen)
 
 	// Find the index of the primary (currently displayed) feed
 	currentIndex := 0
 	if primaryFeed != nil {
-		for i, f := range feeds {
-			if f.Slug == primaryFeed.Slug {
+		for i := range feeds {
+			if feeds[i].Slug == primaryFeed.Slug {
 				currentIndex = i
 				break
 			}
@@ -1405,6 +1406,73 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 		return ""
 	}
 	return string(b)
+}
+
+func filterPublicSidebarFeeds(feeds []sidebarFeedJSON) []sidebarFeedJSON {
+	publicFeeds := feeds[:0]
+	for i := range feeds {
+		if feeds[i].Priority == "private" {
+			continue
+		}
+		publicFeeds = append(publicFeeds, feeds[i])
+	}
+	return publicFeeds
+}
+
+func makeSidebarFeedSet(feeds []sidebarFeedJSON) map[string]bool {
+	seen := make(map[string]bool, len(feeds))
+	for i := range feeds {
+		seen[feeds[i].Slug] = true
+	}
+	return seen
+}
+
+func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
+	feeds []sidebarFeedJSON, seen map[string]bool, post *models.Post,
+	config *lifecycle.Config, m *lifecycle.Manager,
+) []sidebarFeedJSON {
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return feeds
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return feeds
+	}
+
+	syndication := getSyndicationConfig(config)
+	for i := range configs {
+		fc := &configs[i]
+		if seen[fc.Slug] || !fc.Primary || fc.IncludePrivate {
+			continue
+		}
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication))
+		seen[fc.Slug] = true
+	}
+
+	return feeds
+}
+
+func (p *TemplatesPlugin) buildRotationFeedSlugs(m *lifecycle.Manager, seen map[string]bool) []string {
+	rotationFeedSlugs := make([]string, 0, len(seen))
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return rotationFeedSlugs
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return rotationFeedSlugs
+	}
+
+	for i := range configs {
+		fc := &configs[i]
+		if !fc.Primary || fc.IncludePrivate || !seen[fc.Slug] {
+			continue
+		}
+		rotationFeedSlugs = append(rotationFeedSlugs, fc.Slug)
+	}
+
+	return rotationFeedSlugs
 }
 
 // getDiscoveryFeed returns the discovery feed for a post.
