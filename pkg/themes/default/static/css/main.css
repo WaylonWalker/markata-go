@@ -1047,19 +1047,14 @@ body:has(.background-decoration) article.post {
   flex: 1 1 0;
   min-height: 3.5rem;
   padding: 0.875rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   text-decoration: none;
   line-height: 1.35;
   display: flex;
   align-items: center;
-  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .post-nav a:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   transform: translateY(-1px);
 }
 

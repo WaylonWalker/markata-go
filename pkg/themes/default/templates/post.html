@@ -83,10 +83,8 @@
     <p class="post-description p-summary visually-hidden" data-pagefind-meta="excerpt">{{ post.description }}</p>
     {% endif %}
 
-    {# Copy button - show only for article/guide/default #}
-    {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
+    {# Copy button - available on all post types #}
     {% include "components/post_copy.html" %}
-    {% endif %}
   </header>
 
   <div class="post-content e-content{% if post.css_class %} {{ post.css_class }}{% endif %}">

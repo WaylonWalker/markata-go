@@ -28,6 +28,9 @@
 /* ── Hero ── */
 
 .home-hero {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
   padding: var(--space-16, 5rem) 0 var(--space-12, 3.5rem);
   position: relative;
   z-index: 10;
@@ -105,6 +108,20 @@
   padding: var(--space-6) 0;
 }
 
+.home-section.home-intro-grid {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  padding: var(--space-12) 0;
+  background: color-mix(in srgb, var(--color-surface) 35%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 35%, transparent);
+}
+
+.home-section.home-intro-grid .home-width {
+  width: 100%;
+}
+
 .home-two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -165,7 +182,19 @@
 .home-feeds {
   position: relative;
   z-index: 10;
-  padding: var(--space-4) 0 var(--space-12);
+  padding: var(--space-10) 0 var(--space-12);
+}
+
+.home-feeds-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+  align-items: start;
+  margin-top: var(--space-8);
+}
+
+.home-feeds-grid__col {
+  min-width: 0;
 }
 
 /* ── Section headings ── */
@@ -476,7 +505,13 @@
 
 @media (max-width: 768px) {
   .home-hero {
+    min-height: auto;
     padding: var(--space-10, 3rem) 0 var(--space-6);
+  }
+
+  .home-section.home-intro-grid {
+    min-height: auto;
+    padding: var(--space-8) 0;
   }
 
   .home-hero__inner {
@@ -504,6 +539,11 @@
 
   .home-two-col {
     grid-template-columns: 1fr;
+  }
+
+  .home-feeds-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
   }
 
   /* Sidebar moves below main content on mobile */

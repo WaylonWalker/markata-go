@@ -41,14 +41,20 @@
                 <span class="feed-nav-counter" id="feed-nav-counter" title="Press { or } to switch primary feeds"></span>
                 <button class="feed-nav-cycle-btn" id="feed-nav-next-feed" aria-label="Next primary feed" title="Next primary feed (})">&rsaquo;</button>
             </span>
-            <label class="feed-nav-picker" for="feed-nav-select">
-                <select id="feed-nav-select" class="feed-nav-picker-input" aria-label="Choose a configured feed"></select>
-            </label>
             </div>
             {% endif %}
         </div>
 
-        {% if sidebar_feed.slug %}
+        <div class="feed-nav-drawer">
+        {% if sidebar_feeds_json %}
+        <label class="feed-nav-picker" for="feed-nav-select">
+            <select id="feed-nav-select" class="feed-nav-picker-input" aria-label="Choose a configured feed"></select>
+        </label>
+        {% endif %}
+
+        {% if sidebar_feeds_json %}
+        <div class="feed-nav-links feed-nav-links--hidden" id="feed-nav-links"></div>
+        {% elif sidebar_feed.slug %}
         <div class="feed-nav-links" id="feed-nav-links">
             <a href="/{{ sidebar_feed.slug }}/" class="feed-nav-format-link" data-feed-format="html">html</a>
             <a href="/{{ sidebar_feed.slug }}/rss.xml" class="feed-nav-format-link" data-feed-format="rss">rss</a>
@@ -72,6 +78,7 @@
             </span>
             {% endif %}
         </div>
+        </div>{# /feed-nav-drawer #}
         </div>{# /feed-nav-chrome #}
 
         <div id="feed-nav-collapsible">

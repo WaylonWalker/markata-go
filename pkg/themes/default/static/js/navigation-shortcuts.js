@@ -170,7 +170,11 @@
 
   function getSidebarAdjacentLink(direction) {
     var activeItem = document.querySelector('.feed-nav-item--active');
-    if (!activeItem) return null;
+    if (!activeItem) {
+      var links = Array.from(document.querySelectorAll('.feed-nav-list a.feed-nav-link[href]'));
+      if (!links.length) return null;
+      return direction === 'next' ? links[0] : links[links.length - 1];
+    }
 
     var sibling = direction === 'next' ? activeItem.nextElementSibling : activeItem.previousElementSibling;
     if (!sibling) return null;

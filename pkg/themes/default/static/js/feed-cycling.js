@@ -78,19 +78,6 @@
   }
 
   /**
-   * Known feed output formats with labels.
-   * The engine generates these files for each feed.
-   */
-  var FEED_FORMATS = [
-    { key: 'html', path: '/',          label: 'html' },
-    { key: 'rss',  path: '/rss.xml',   label: 'rss' },
-    { key: 'atom', path: '/atom.xml',  label: 'atom' },
-    { key: 'json', path: '/feed.json', label: 'json' },
-    { key: 'txt',  path: '/index.txt', label: 'txt' },
-    { key: 'md',   path: '/index.md',  label: 'md' }
-  ];
-
-  /**
    * Parse the embedded JSON data from #feed-sidebar-data.
    * Returns null if no data is available.
    */
@@ -160,16 +147,19 @@
 
     var rotationIndexes = getRotationFeedIndexes();
     if (!rotationIndexes.length) {
-      counter.textContent = (feedState.currentIndex + 1) + '/' + feedState.data.feeds.length;
+      counter.textContent = '';
+      counter.hidden = true;
       return;
     }
 
     var rotationPosition = rotationIndexes.indexOf(feedState.currentIndex);
     if (rotationPosition === -1) {
-      counter.textContent = '-/' + rotationIndexes.length;
+      counter.textContent = '';
+      counter.hidden = true;
       return;
     }
 
+    counter.hidden = false;
     counter.textContent = (rotationPosition + 1) + '/' + rotationIndexes.length;
   }
 
@@ -184,12 +174,14 @@
     }
 
     var selectedIndex = feedState.currentIndex;
-    if (pickerIndexes.indexOf(selectedIndex) === -1) {
-      selectedIndex = pickerIndexes[0];
-    }
-
     var currentSlug = feedState.data.feeds[selectedIndex] ? feedState.data.feeds[selectedIndex].slug : '';
     var html = '';
+
+    if (pickerIndexes.indexOf(selectedIndex) === -1 && feedState.data.feeds[selectedIndex]) {
+      var currentFeed = feedState.data.feeds[selectedIndex];
+      html += '<option value="' + escapeHtml(currentFeed.slug) + '" selected>' + escapeHtml(currentFeed.title) + '</option>';
+    }
+
     for (var i = 0; i < pickerIndexes.length; i++) {
       var feed = feedState.data.feeds[pickerIndexes[i]];
       html += '<option value="' + escapeHtml(feed.slug) + '"' + (feed.slug === currentSlug ? ' selected' : '') + '>' + escapeHtml(feed.title) + '</option>';
@@ -200,13 +192,13 @@
   /**
    * Build feed format links HTML for a given feed slug.
    */
-  function buildFeedLinksHTML(slug) {
-    if (!slug) return '';
+  function buildFeedLinksHTML(feed) {
+    if (!feed || !feed.variants || !feed.variants.length) return '';
     var html = '';
-    for (var i = 0; i < FEED_FORMATS.length; i++) {
-      var fmt = FEED_FORMATS[i];
+    for (var i = 0; i < feed.variants.length; i++) {
+      var fmt = feed.variants[i];
       if (i > 0) html += ' ';
-      html += '<a href="/' + escapeHtml(slug) + escapeHtml(fmt.path) + '" class="feed-nav-format-link" data-feed-format="' + fmt.key + '">' + fmt.label + '</a>';
+      html += '<a href="' + escapeHtml(fmt.href) + '" class="feed-nav-format-link" data-feed-format="' + escapeHtml(fmt.key) + '">' + escapeHtml(fmt.label) + '</a>';
     }
     return html;
   }
@@ -217,10 +209,11 @@
   function updateFeedLinks(feed) {
     var linksEl = document.getElementById('feed-nav-links');
     if (!linksEl) return;
-    if (feed && feed.slug) {
-      linksEl.innerHTML = buildFeedLinksHTML(feed.slug);
+    if (feed && feed.variants && feed.variants.length) {
+      linksEl.innerHTML = buildFeedLinksHTML(feed);
       linksEl.classList.remove('feed-nav-links--hidden');
     } else {
+      linksEl.innerHTML = '';
       linksEl.classList.add('feed-nav-links--hidden');
     }
   }

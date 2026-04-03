@@ -781,49 +781,37 @@
    * Re-initialize scripts after content replacement
    */
   function reinitializeScripts() {
+    function callInit(name, fn) {
+      if (typeof fn !== 'function') return;
+      try {
+        fn();
+      } catch (error) {
+        if (config.debug) console.warn('View transition init failed:', name, error);
+      }
+    }
+
     // Dispatch custom event for other scripts to listen to
     window.dispatchEvent(new CustomEvent('view-transition-complete'));
 
     // Pagefind Search (navbar) - needs re-init after DOM swap
-    if (window.initPagefindSearch && typeof window.initPagefindSearch === 'function') {
-      window.initPagefindSearch();
-    }
+    callInit('initPagefindSearch', window.initPagefindSearch);
+
+    // Re-initialize feed cycling first so sidebar chrome is hydrated before
+    // other scripts inspect feed-aware DOM state.
+    callInit('initFeedCycling', window.initFeedCycling);
 
     // Re-initialize common scripts if they exist
-    if (window.initScrollSpy && typeof window.initScrollSpy === 'function') {
-      window.initScrollSpy();
-    }
-
-    if (window.initTooltips && typeof window.initTooltips === 'function') {
-      window.initTooltips();
-    }
-
-    if (window.initMentionCards && typeof window.initMentionCards === 'function') {
-      window.initMentionCards();
-    }
-
-    if (window.initPagination && typeof window.initPagination === 'function') {
-      window.initPagination();
-    }
-
-    if (window.initNavigationShortcuts && typeof window.initNavigationShortcuts === 'function') {
-      window.initNavigationShortcuts();
-    }
+    callInit('initScrollSpy', window.initScrollSpy);
+    callInit('initTooltips', window.initTooltips);
+    callInit('initMentionCards', window.initMentionCards);
+    callInit('initPagination', window.initPagination);
+    callInit('initNavigationShortcuts', window.initNavigationShortcuts);
 
     // Re-scroll feed sidebar active item into view (inline scripts don't re-run after DOM swap)
-    if (window.initFeedSidebarScroll && typeof window.initFeedSidebarScroll === 'function') {
-      window.initFeedSidebarScroll();
-    }
-
-    // Re-initialize feed cycling (parses new page's feed data)
-    if (window.initFeedCycling && typeof window.initFeedCycling === 'function') {
-      window.initFeedCycling();
-    }
+    callInit('initFeedSidebarScroll', window.initFeedSidebarScroll);
 
     // Re-bind feed sidebar collapse toggle (tablet/mobile)
-    if (window.initSidebarToggle && typeof window.initSidebarToggle === 'function') {
-      window.initSidebarToggle();
-    }
+    callInit('initSidebarToggle', window.initSidebarToggle);
 
     // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
     var openHamburger = document.querySelector('.hamburger-toggle--open');
@@ -835,9 +823,7 @@
     }
 
     // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
-    if (window.initMermaid && typeof window.initMermaid === 'function') {
-      window.initMermaid();
-    }
+    callInit('initMermaid', window.initMermaid);
 
     // Re-attach event listeners
     initNavigationInterceptor();

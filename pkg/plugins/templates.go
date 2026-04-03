@@ -979,10 +979,17 @@ type sidebarFeedJSON struct {
 	Priority            string            `json:"priority"`
 	Primary             bool              `json:"primary,omitempty"`
 	ContainsCurrentPost bool              `json:"containsCurrentPost,omitempty"`
+	Variants            []sidebarVariant  `json:"variants,omitempty"`
 	Posts               []sidebarPostJSON `json:"posts"`
 	TotalPosts          int               `json:"totalPosts"`
 	Prev                *sidebarPostJSON  `json:"prev,omitempty"`
 	Next                *sidebarPostJSON  `json:"next,omitempty"`
+}
+
+type sidebarVariant struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Href  string `json:"href"`
 }
 
 type sidebarPostJSON struct {
@@ -1010,6 +1017,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 		return nil
 	}
 
+	syndication := getSyndicationConfig(config)
 	seen := make(map[string]bool)
 	var feeds []sidebarFeedJSON
 
@@ -1018,7 +1026,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 			return
 		}
 		seen[fc.Slug] = true
-		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority))
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication))
 	}
 
 	// 1. Series
@@ -1048,7 +1056,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 // windowing the post list around the current post for large feeds.
 func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	currentPost *models.Post, fc *models.FeedConfig,
-	posts []*models.Post, priority string,
+	posts []*models.Post, priority string, syndication models.SyndicationConfig,
 ) sidebarFeedJSON {
 	const maxWindowPosts = 50
 
@@ -1089,6 +1097,7 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 		Priority:            priority,
 		Primary:             fc.Primary,
 		ContainsCurrentPost: currentPos >= 0,
+		Variants:            buildSidebarVariants(fc, syndication),
 		TotalPosts:          len(posts),
 		Posts:               make([]sidebarPostJSON, 0, len(windowedPosts)),
 	}
@@ -1107,6 +1116,49 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	}
 
 	return feed
+}
+
+func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationConfig) []sidebarVariant {
+	if fc == nil {
+		return nil
+	}
+
+	baseHref := "/"
+	if fc.Slug != "" {
+		baseHref = "/" + strings.Trim(fc.Slug, "/") + "/"
+	}
+
+	variants := make([]sidebarVariant, 0, 8)
+	add := func(key, label, href string) {
+		variants = append(variants, sidebarVariant{Key: key, Label: label, Href: href})
+	}
+
+	if fc.Formats.Markdown {
+		add("md", "md", baseHref+"index.md")
+	}
+	if fc.Formats.JSON {
+		add("json", "json", baseHref+"feed.json")
+	}
+	if shouldGenerateFeedArchive(fc, syndication) && fc.Formats.RSS {
+		add("archive-rss", "archive-rss", feedArchiveURL(fc.Slug, "rss.xml"))
+	}
+	if fc.Formats.RSS {
+		add("rss", "rss", baseHref+"rss.xml")
+	}
+	if fc.Formats.Atom {
+		add("atom", "atom", baseHref+"atom.xml")
+	}
+	if fc.Formats.HTML {
+		add("html", "html", baseHref)
+	}
+	if fc.Formats.SimpleHTML {
+		add("simple", "simple", baseHref+"simple/")
+	}
+	if fc.Formats.Text {
+		add("txt", "txt", baseHref+"index.txt")
+	}
+
+	return variants
 }
 
 func appendFeedParamToHref(href, feedSlug string) string {
@@ -1306,7 +1358,7 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 				if seen[fc.Slug] || !fc.Primary || fc.IncludePrivate {
 					continue
 				}
-				feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary"))
+				feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", getSyndicationConfig(config)))
 				seen[fc.Slug] = true
 			}
 		}

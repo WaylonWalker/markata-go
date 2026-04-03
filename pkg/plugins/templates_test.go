@@ -197,7 +197,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_AppendsFeedParamToLinks(t *testin
 		Posts: []*models.Post{prev, current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary")
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication)
 	if len(entry.Posts) != 2 {
 		t.Fatalf("expected 2 posts, got %d", len(entry.Posts))
 	}
@@ -208,6 +208,41 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_AppendsFeedParamToLinks(t *testin
 	}
 	if entry.Prev == nil || !strings.Contains(entry.Prev.Href, "feed=snippets%2Fhome-posts") {
 		t.Fatalf("expected prev href to preserve feed, got %#v", entry.Prev)
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedEntry_IncludesEnabledVariants(t *testing.T) {
+	p := NewTemplatesPlugin()
+	title := "Current"
+	current := &models.Post{Slug: "current", Title: &title, Href: "/current/"}
+	feed := &models.FeedConfig{
+		Slug:  "til-feed",
+		Title: "Today I Learned",
+		Formats: models.FeedFormats{
+			HTML:       true,
+			SimpleHTML: true,
+			RSS:        true,
+			Atom:       true,
+			JSON:       true,
+			Markdown:   true,
+		},
+		Posts: []*models.Post{current},
+	}
+
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication)
+	got := make([]string, 0, len(entry.Variants))
+	for _, variant := range entry.Variants {
+		got = append(got, variant.Key)
+	}
+
+	want := []string{"md", "json", "archive-rss", "rss", "atom", "html", "simple"}
+	if len(got) != len(want) {
+		t.Fatalf("variant count = %d, want %d (%#v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("variant order = %#v, want %#v", got, want)
+		}
 	}
 }
 

@@ -143,6 +143,13 @@
   scrollbar-color: var(--color-border) var(--color-background);
 }
 
+.search-container--navbar .pagefind-ui__drawer.pagefind-ui__hidden,
+.search--navbar .pagefind-ui__drawer.pagefind-ui__hidden,
+.search-container--navbar .pagefind-ui__drawer[class*="svelte-"].pagefind-ui__hidden,
+.search--navbar .pagefind-ui__drawer[class*="svelte-"].pagefind-ui__hidden {
+  display: none !important;
+}
+
 /* Webkit scrollbar styling for search drawer */
 .search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar,
 .search--navbar .pagefind-ui__drawer::-webkit-scrollbar {
