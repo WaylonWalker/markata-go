@@ -25,6 +25,24 @@
   max-width: 100%;
 }
 
+.page-wrapper--content-only,
+.page-wrapper--feed-only {
+  display: block;
+}
+
+.page-wrapper--content-only > .main-content,
+.page-wrapper--feed-only > .main-content {
+  width: min(100%, var(--page-width, 1200px));
+  max-width: min(100%, var(--page-width, 1200px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.page-wrapper--feed-only > .main-content {
+  width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+  max-width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+}
+
 /* ==========================================================================
    Navigation Component
    ========================================================================== */

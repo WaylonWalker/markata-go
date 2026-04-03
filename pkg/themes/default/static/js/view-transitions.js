@@ -671,6 +671,7 @@
     }
 
     replaceElement('#view-transition-progress', newDoc);
+    replaceElementContents('.site-footer', newDoc);
     return true;
   }
 

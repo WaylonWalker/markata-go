@@ -199,7 +199,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper" id="view-transition-page">
+  <div class="page-wrapper{% if not feed and not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% if feed and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not feed %}
@@ -207,7 +207,7 @@
       {% endif %}
 
       {# Left content sidebar (if enabled and position is left) #}
-      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left' %}
+      {% if not feed and resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left' %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
@@ -216,7 +216,7 @@
       </main>
 
       {# Right content sidebar (if enabled and position is right) #}
-      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right' %}
+      {% if not feed and resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right' %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
@@ -413,18 +413,31 @@
 
       function loadPagefind(callback) {
         if (loaded) {
+          if (window.initPagefindSearch) {
+            window.initPagefindSearch();
+          }
           if (callback) callback();
           return;
         }
         loaded = true;
 
         // Inject pagefind CSS
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = bundleDir + '/pagefind-ui.css';
-        document.head.appendChild(link);
+        if (!document.querySelector('link[href*="/pagefind-ui.css"]')) {
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = bundleDir + '/pagefind-ui.css';
+          document.head.appendChild(link);
+        }
 
         // Inject pagefind JS
+        if (document.querySelector('script[src*="/pagefind-ui.js"]')) {
+          if (window.initPagefindSearch) {
+            window.initPagefindSearch();
+          }
+          if (callback) callback();
+          return;
+        }
+
         var script = document.createElement('script');
         script.src = bundleDir + '/pagefind-ui.js';
         script.onload = function() {

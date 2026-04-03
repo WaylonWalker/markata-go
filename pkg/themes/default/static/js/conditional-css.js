@@ -124,7 +124,26 @@
     }
   }
 
+  function refreshNavbarSearchLayout() {
+    var root = document.getElementById('pagefind-search');
+    if (!root) return;
+
+    var container = root.closest('.search-container--navbar, .search--navbar');
+    if (!container) return;
+
+    window.requestAnimationFrame(function() {
+      void container.offsetWidth;
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+
   // Run after view transitions complete
-  document.addEventListener('DOMContentLoaded', loadConditionalCSS);
-  window.addEventListener('view-transition-complete', loadConditionalCSS);
+  document.addEventListener('DOMContentLoaded', function() {
+    loadConditionalCSS();
+    refreshNavbarSearchLayout();
+  });
+  window.addEventListener('view-transition-complete', function() {
+    loadConditionalCSS();
+    refreshNavbarSearchLayout();
+  });
 })();

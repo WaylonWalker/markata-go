@@ -1,3 +1,34 @@
+.page-wrapper:has(> .main-content > .feed.h-feed):not(:has(.feed-sidebar, .content-sidebar, .doc-sidebar)) {
+  display: block;
+}
+
+.page-wrapper:has(> .main-content > .feed.h-feed):not(:has(.feed-sidebar, .content-sidebar, .doc-sidebar)) > .main-content {
+  width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+  max-width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feed.h-feed {
+  --feed-content-width: min(100%, 750px);
+  width: 100%;
+  max-width: min(100%, var(--page-width));
+  margin: 0 auto;
+  display: grid;
+  justify-items: center;
+}
+
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .feed-header,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .pagination,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .pagination-infinite {
+  width: min(100%, var(--feed-content-width));
+  max-width: min(100%, var(--feed-content-width));
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .feeds-page {
   max-width: var(--content-width);
   margin: 0 auto;

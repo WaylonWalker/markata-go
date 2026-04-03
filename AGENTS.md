@@ -178,6 +178,32 @@ Before completing any feature, verify:
 
 ## Build/Lint/Test Commands
 
+## Agent Gotchas
+
+### Template trees
+
+- This repo has two active template trees:
+  - `pkg/themes/default/templates/`
+  - `templates/`
+- When a template change appears to have no effect, check both trees before assuming the build or cache is wrong.
+
+### Shared template rebuilds
+
+- Incremental builds may not refresh pages affected only by shared templates or global CSS.
+- For changes to `base.html`, shared components, or layout CSS, prefer a clean rebuild of the target site:
+  - remove `output/`, `cache/`, `.markata-cache/`, and `.markata/`
+  - then rebuild from the site directory
+
+### Feed page layout
+
+- Feed pages should be treated differently from post pages when debugging layout.
+- Before changing feed centering rules, inspect the rendered HTML for sidebars like `content-sidebar` or `feed-sidebar`; those can shift `main` even when the inner feed content is centered.
+
+### Verify rendered output first
+
+- When source changes and browser output disagree, inspect generated HTML and the exact hashed CSS/JS assets linked by the page.
+- This codebase can produce stale-looking results from incremental rebuilds even when source files are correct.
+
 ### Building
 
 ```bash
