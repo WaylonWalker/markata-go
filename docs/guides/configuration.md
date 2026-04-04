@@ -13,6 +13,48 @@ tags:
 
 markata-go uses a flexible configuration system that supports multiple file formats, environment variable overrides, and intelligent merging from multiple sources.
 
+## Compose Config Files
+
+Use `include` when one config file gets too large.
+
+```toml
+[markata-go]
+title = "Example Site"
+include = [
+  "config/common/*.toml",
+  "config/feeds/*.toml",
+  "config/rss.toml",
+]
+```
+
+Rules:
+
+- paths are resolved relative to the file that declared the include
+- explicit files are loaded as written
+- glob matches are loaded in lexicographic order
+- repeated includes are loaded once
+- cycles fail with a clear error
+
+Precedence:
+
+1. built-in defaults
+2. the root config file
+3. included files in declaration order
+4. glob matches in lexicographic order
+5. environment variables
+
+Later values win.
+
+### Merge Behavior
+
+- scalar values replace earlier values
+- explicit `false` and `0` are preserved
+- tables merge deeply
+- arrays of scalars replace earlier arrays
+- `[[markata-go.feeds]]` merges by `slug`
+
+That last rule makes feed-heavy sites much easier to manage.
+
 ## Configuration File Locations
 
 markata-go searches for configuration files in the following order (first found wins):

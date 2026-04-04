@@ -89,6 +89,40 @@ json = "feed.json"                 # Template for JSON
 sitemap = "sitemap.xml"            # Template for sitemap
 ```
 
+### Split Feed Definitions Across Files
+
+Feed definitions may be split across composed config files. Repeated feed slugs merge into one resolved feed.
+
+```toml
+# markata-go.toml
+[markata-go]
+include = ["config/feeds/blog.toml", "config/feeds/blog.outputs.toml"]
+```
+
+```toml
+# config/feeds/blog.toml
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+filter = "published == True"
+sort = "date"
+reverse = true
+```
+
+```toml
+# config/feeds/blog.outputs.toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 15
+
+[markata-go.feeds.formats]
+rss = true
+atom = true
+json = false
+```
+
+The resolved config contains one `blog` feed with values merged by `slug`.
+
 ---
 
 ## Feed Model
@@ -111,6 +145,15 @@ sitemap = "sitemap.xml"            # Template for sitemap
 | `page_posts` | List[Post] | Posts for current page |
 | `pagination` | Pagination | Pagination info |
 | `formats` | FeedFormats | Enabled output formats (html, simple_html, rss, atom, json, markdown, text, sitemap) |
+
+### Feed Merge Rule
+
+When composed config files contribute multiple `[[markata-go.feeds]]` entries with the same `slug`:
+
+- the first matching slug creates the feed
+- later entries with the same slug deep-merge into that feed
+- nested tables such as `formats` and `templates` also merge
+- later explicit values win
 
 ### Feed Timestamps
 

@@ -338,7 +338,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
-			"authors": true, "garden": true, "tailwind": false, "css_purge": false,
+			"authors": true, "garden": true, "include": true, "tailwind": false, "css_purge": false,
 		}
 
 		// Copy unknown sections to Extra

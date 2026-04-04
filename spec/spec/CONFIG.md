@@ -32,6 +32,48 @@ The system searches for configuration files in this order (first found wins):
 | `.json` | JSON | Strict, good for programmatic generation |
 | `.jsonc` | JSON with comments | JSON + `//` and `/* */` comments |
 
+## Config Composition
+
+markata-go supports config composition through an `include` key under `[markata-go]`.
+
+```toml
+[markata-go]
+include = [
+  "config/base/*.toml",
+  "config/feeds/*.toml",
+  "config/rss.toml",
+]
+```
+
+`include` supports explicit file paths, glob patterns, recursive includes, and paths resolved relative to the file that declared the include.
+
+### Composition Order
+
+Resolved precedence is:
+
+1. built-in defaults
+2. the root config selected by discovery or `--config`
+3. included files in declaration order
+4. glob matches in lexicographic order
+5. environment variable overrides
+
+Later values win over earlier values.
+
+### Repeated Includes And Cycles
+
+- A file included more than once in the same resolution graph is loaded once.
+- Include cycles are rejected with a clear error that shows the cycle path.
+
+### Merge Semantics
+
+- scalar values: last explicit value wins
+- explicit `false`, `0`, and `""` count as real overrides
+- tables/maps: deep merge
+- arrays of scalars: replace
+- `[[markata-go.feeds]]`: merge by `slug`
+
+For feeds, a new `slug` appends a new feed. A repeated `slug` merges into the existing feed, and later fragments win on conflicts.
+
 ### Format Examples
 
 **TOML (recommended):**
