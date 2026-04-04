@@ -6,6 +6,8 @@ Use this topic when the task involves `markata-go.toml`, environment overrides, 
 
 For standalone sites, prefer `markata-go.toml` unless the repo is already using YAML or JSON.
 
+When a site has many feeds or environment-specific settings, keep `markata-go.toml` as the entrypoint and split the rest with `[markata-go].include`.
+
 ## Config Discovery
 
 When `--config` is not passed, markata-go looks for config in this order:
@@ -189,6 +191,23 @@ markata-go serve -m markata-go.local.toml
 ```
 
 Multiple merge files can be specified and are applied in order on top of the base config.
+
+## Config Composition
+
+The main config can include other config files:
+
+```toml
+[markata-go]
+include = ["config/common/*.toml", "config/feeds/*.toml"]
+```
+
+Key rules:
+
+- include paths are relative to the file that declared them
+- glob matches load in lexicographic order
+- repeated includes are loaded once
+- feed entries merge by `slug`
+- environment variables still win last
 
 ## Guidance
 

@@ -56,34 +56,10 @@ func Load(configPath string) (*models.Config, error) {
 		}
 	}
 
-	// Read the file
-	data, err := os.ReadFile(configPath)
+	config, err = loadResolvedConfig(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+		return nil, err
 	}
-
-	// Determine format from extension
-	format := formatFromPath(configPath)
-
-	// Parse based on format
-	switch format {
-	case FormatTOML:
-		config, err = ParseTOML(data)
-	case FormatYAML:
-		config, err = ParseYAML(data)
-	case FormatJSON:
-		config, err = ParseJSON(data)
-	default:
-		return nil, fmt.Errorf("unsupported config format: %s", format)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
-	}
-
-	// Merge with defaults to fill in any missing values
-	defaults := DefaultConfig()
-	config = MergeConfigs(defaults, config)
 
 	// Apply environment variable overrides
 	if err := ApplyEnvOverrides(config); err != nil {
@@ -160,19 +136,16 @@ func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, er
 	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
 
 	// Load base config (or use empty config if no base path provided)
-	var baseConfig *models.Config
 	var err error
+	var mergedRaw map[string]any
 	if basePath != "" {
-		baseConfig, err = LoadSingleConfig(basePath)
+		mergedRaw, err = loadResolvedRawConfig(basePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load base config %s: %w", basePath, err)
 		}
 	} else {
-		baseConfig = &models.Config{}
+		mergedRaw = map[string]any{}
 	}
-
-	// Merge with defaults first
-	baseConfig = MergeConfigs(DefaultConfig(), baseConfig)
 
 	// Apply each override config in order
 	for _, overridePath := range overridePaths {
@@ -180,13 +153,24 @@ func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, er
 			continue
 		}
 
-		overrideConfig, err := LoadSingleConfig(overridePath)
+		overrideRaw, err := loadResolvedRawConfig(overridePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load override config %s: %w", overridePath, err)
 		}
 
-		// Merge override into base (override takes precedence)
-		baseConfig = MergeConfigs(baseConfig, overrideConfig)
+		mergedRaw = mergeRawMaps(nil, mergedRaw, overrideRaw)
+	}
+
+	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode default config: %w", err)
+	}
+
+	mergedRaw = mergeRawMaps(nil, defaultRaw, mergedRaw)
+
+	baseConfig, err := configFromRawWrapper(mergedRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode merged config: %w", err)
 	}
 
 	// Apply environment variable overrides last (highest precedence)
@@ -228,16 +212,18 @@ func LoadSingleConfig(configPath string) (*models.Config, error) {
 
 // LoadFromString parses configuration from a string with the specified format.
 func LoadFromString(data string, format Format) (*models.Config, error) {
-	var config *models.Config
-	var err error
+	resolvedRaw, err := loadRawConfigData([]byte(data), format)
+	if err != nil {
+		return nil, err
+	}
 
 	switch format {
 	case FormatTOML:
-		config, err = ParseTOML([]byte(data))
+		_, err = ParseTOML([]byte(data))
 	case FormatYAML:
-		config, err = ParseYAML([]byte(data))
+		_, err = ParseYAML([]byte(data))
 	case FormatJSON:
-		config, err = ParseJSON([]byte(data))
+		_, err = ParseJSON([]byte(data))
 	default:
 		return nil, fmt.Errorf("unsupported config format: %s", format)
 	}
@@ -246,9 +232,15 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 		return nil, err
 	}
 
-	// Merge with defaults
-	defaults := DefaultConfig()
-	config = MergeConfigs(defaults, config)
+	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode default config: %w", err)
+	}
+
+	config, err := configFromRawWrapper(mergeRawMaps(nil, defaultRaw, resolvedRaw))
+	if err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }
@@ -303,48 +295,23 @@ func LoadAndValidateWithPositions(configPath string) (*models.Config, *ConfigErr
 		actualPath = configPath
 	}
 
-	// Read the file for both parsing and position tracking
+	// Read the root file for position tracking.
 	data, err := os.ReadFile(actualPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read config file %s: %w", actualPath, err)
 	}
 
-	// Create position tracker for the config file
 	tracker := NewPositionTracker(data, actualPath)
 
-	// Determine format and parse
-	format := formatFromPath(actualPath)
-	var config *models.Config
-
-	switch format {
-	case FormatTOML:
-		config, err = ParseTOML(data)
-	case FormatYAML:
-		config, err = ParseYAML(data)
-	case FormatJSON:
-		config, err = ParseJSON(data)
-	default:
-		return nil, nil, fmt.Errorf("unsupported config format: %s", format)
-	}
-
+	config, err := Load(actualPath)
 	if err != nil {
-		// Create a config error for parse failures
 		configErrors := &ConfigErrors{}
 		configErrors.Add(&ConfigError{
 			File:    actualPath,
 			Message: fmt.Sprintf("failed to parse configuration: %v", err),
 			Field:   "syntax",
 		})
-		return nil, configErrors, fmt.Errorf("failed to parse config file %s: %w", actualPath, err)
-	}
-
-	// Merge with defaults
-	defaults := DefaultConfig()
-	config = MergeConfigs(defaults, config)
-
-	// Apply environment variable overrides
-	if err := ApplyEnvOverrides(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to apply environment overrides: %w", err)
+		return nil, configErrors, err
 	}
 
 	// Validate with position tracking
