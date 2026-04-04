@@ -329,14 +329,19 @@ func mergeFeedSlices(base, override []any) []any {
 			continue
 		}
 
-		slug, _ := feedMap["slug"].(string)
-		if slug == "" {
+		slugValue := feedMap["slug"]
+		slug, ok := slugValue.(string)
+		if !ok || slug == "" {
 			result = append(result, cloneValue(feedMap))
 			continue
 		}
 
 		if index, ok := indexes[slug]; ok {
-			baseMap, _ := result[index].(map[string]any)
+			baseMap, ok := result[index].(map[string]any)
+			if !ok {
+				result[index] = cloneValue(feedMap)
+				continue
+			}
 			result[index] = mergeRawMaps([]string{"markata-go", "feeds", slug}, baseMap, feedMap)
 			continue
 		}

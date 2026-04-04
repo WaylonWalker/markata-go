@@ -12,9 +12,9 @@ import (
 
 func findFeedBySlug(t *testing.T, feeds []models.FeedConfig, slug string) models.FeedConfig {
 	t.Helper()
-	for _, feed := range feeds {
-		if feed.Slug == slug {
-			return feed
+	for i := range feeds {
+		if feeds[i].Slug == slug {
+			return feeds[i]
 		}
 	}
 	t.Fatalf("feed %q not found in %+v", slug, feeds)

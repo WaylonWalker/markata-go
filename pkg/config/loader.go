@@ -217,15 +217,13 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 		return nil, err
 	}
 
-	var config *models.Config
-
 	switch format {
 	case FormatTOML:
-		config, err = ParseTOML([]byte(data))
+		_, err = ParseTOML([]byte(data))
 	case FormatYAML:
-		config, err = ParseYAML([]byte(data))
+		_, err = ParseYAML([]byte(data))
 	case FormatJSON:
-		config, err = ParseJSON([]byte(data))
+		_, err = ParseJSON([]byte(data))
 	default:
 		return nil, fmt.Errorf("unsupported config format: %s", format)
 	}
@@ -239,7 +237,7 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
 	}
 
-	config, err = configFromRawWrapper(mergeRawMaps(nil, defaultRaw, resolvedRaw))
+	config, err := configFromRawWrapper(mergeRawMaps(nil, defaultRaw, resolvedRaw))
 	if err != nil {
 		return nil, err
 	}
