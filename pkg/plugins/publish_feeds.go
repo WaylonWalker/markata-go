@@ -383,6 +383,7 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, co
 	writeStringField(fc.Filter)
 	writeStringField(fc.Sort)
 	writeBoolField(fc.Reverse)
+	writeBoolField(fc.Primary)
 	writeIntField(fc.ItemsPerPage)
 	writeIntField(fc.OrphanThreshold)
 	writeStringField(string(fc.PaginationType))

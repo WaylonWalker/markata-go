@@ -8,7 +8,7 @@
  * - `Shift+O` - Open in new tab
  * - `g h` - Go to home
  * - `g s` - Focus search
- * - `s` - Toggle simple/rich feed view (on feed pages only)
+ * - `s` - Toggle simple/rich feed view (feed pages) or reader mode (post pages)
  * - `[` - Previous page
  * - `]` - Next page
  * - `y y` - Copy URL to clipboard
@@ -47,11 +47,12 @@
    };
 
    /**
-    * Check if we're on a feed page
-    * Feed pages have a <div class="feed"> wrapper
+    * Check if we're on a dedicated feed page (not a post page with an embedded feed widget).
+    * Feed pages have <div class="feed"> but NOT <article class="post">.
     */
-   function isFeedPage() {
-     return document.querySelector('div.feed') !== null;
+   function isDedicatedFeedPage() {
+     return document.querySelector('div.feed') !== null &&
+            document.querySelector('article.post') === null;
    }
 
    /**
@@ -140,7 +141,7 @@
     if (newTab) {
       window.open(link.href, '_blank');
     } else {
-      window.location.href = link.href;
+      navigateToURL(link.href, { triggerElement: link });
     }
   }
 
@@ -150,10 +151,35 @@
   function goHome() {
     var homeLink = document.querySelector('[data-nav="home"], a[href="/"], nav a:first-child');
     if (homeLink) {
-      window.location.href = homeLink.href;
+      navigateToURL(homeLink.href, { triggerElement: homeLink });
     } else {
-      window.location.href = '/';
+      navigateToURL('/');
     }
+  }
+
+  function navigateToURL(url, options) {
+    if (!url) return;
+
+    if (window.navigateWithViewTransition && typeof window.navigateWithViewTransition === 'function') {
+      window.navigateWithViewTransition(url, Object.assign({ source: 'shortcut' }, options || {}));
+      return;
+    }
+
+    window.location.href = url;
+  }
+
+  function getSidebarAdjacentLink(direction) {
+    var activeItem = document.querySelector('.feed-nav-item--active');
+    if (!activeItem) {
+      var links = Array.from(document.querySelectorAll('.feed-nav-list a.feed-nav-link[href]'));
+      if (!links.length) return null;
+      return direction === 'next' ? links[0] : links[links.length - 1];
+    }
+
+    var sibling = direction === 'next' ? activeItem.nextElementSibling : activeItem.previousElementSibling;
+    if (!sibling) return null;
+
+    return sibling.querySelector('a.feed-nav-link[href]');
   }
 
   /**
@@ -172,40 +198,119 @@
     }
   }
 
+    /**
+     * Toggle between simple and rich feed views.
+     * On feed pages: toggles between /feed/ and /feed/simple/.
+     * On post pages: toggles reader mode (hides chrome for distraction-free reading).
+     */
+    function toggleFeedView() {
+      // Case 1: On a dedicated feed page -- toggle between simple and rich
+      if (isDedicatedFeedPage()) {
+        var path = window.location.pathname;
+        var feedEl = document.querySelector('div.feed');
+        var isSimple = feedEl.classList.contains('feed-simple');
+
+        if (isSimple) {
+          // On simple feed -> go to rich feed: remove /simple/ from path
+          var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
+          // Preserve page number if present
+          var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
+          if (pageMatch) {
+            richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+          }
+          navigateToURL(richPath);
+        } else {
+          // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
+          var simplePath;
+          var richPageMatch = path.match(/\/page\/(\d+)\/$/);
+          if (richPageMatch) {
+            simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+          } else {
+            // Ensure trailing slash
+            simplePath = path.replace(/\/?$/, '/') + 'simple/';
+          }
+          navigateToURL(simplePath);
+        }
+        return;
+      }
+
+      // Case 2: On a post page -- toggle reader mode
+      if (document.querySelector('article.post')) {
+        toggleReaderMode();
+      }
+    }
+
+    /**
+     * Toggle reader mode on post pages.
+     * Strips chrome (sidebar, nav, footer) for distraction-free reading.
+     * Press 's' again to restore normal view.
+     * Persists via ?reader=1 URL parameter across navigation.
+     */
+    function toggleReaderMode() {
+      var body = document.body;
+      var isReaderMode = body.classList.toggle('reader-mode');
+
+      // Update URL parameter to persist across navigation
+      var url = new URL(window.location.href);
+      if (isReaderMode) {
+        url.searchParams.set('reader', '1');
+      } else {
+        url.searchParams.delete('reader');
+      }
+      history.replaceState(null, '', url.toString());
+
+      // Show a brief notification
+      if (isReaderMode) {
+        showNotification('Reader mode -- press s to exit');
+      } else {
+        showNotification('Reader mode off');
+      }
+    }
+
+    /**
+     * Check for ?reader=1 URL param and apply reader-mode class.
+     * Called on init (page load and after view transitions).
+     */
+    function applyReaderModeFromURL() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('reader') === '1' && document.querySelector('article.post')) {
+        document.body.classList.add('reader-mode');
+      } else {
+        document.body.classList.remove('reader-mode');
+      }
+    }
+
    /**
-    * Toggle between simple and rich feed views.
-    * On simple feed pages (URL contains /simple/), navigates to the rich feed.
-    * On rich feed pages, navigates to the simple feed variant.
-    * Only works on feed pages (div.feed element).
+    * Get the active feed slug when on a post page.
+    * Checks feed-cycling state first, then falls back to the sidebar title link.
     */
-   function toggleFeedView() {
-     if (!isFeedPage()) return;
-
-     var path = window.location.pathname;
-     var feedEl = document.querySelector('div.feed');
-     var isSimple = feedEl.classList.contains('feed-simple');
-
-     if (isSimple) {
-       // On simple feed -> go to rich feed: remove /simple/ from path
-       var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
-       // Preserve page number if present
-       var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
-       if (pageMatch) {
-         richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+   function getPostPageFeedSlug() {
+     // Try feed-cycling JS state (if feed cycling is active)
+     try {
+       var dataEl = document.getElementById('feed-sidebar-data');
+       if (dataEl) {
+         var data = JSON.parse(dataEl.textContent);
+         // Check URL for ?feed= param (user may have cycled)
+         var params = new URLSearchParams(window.location.search);
+         var feedParam = params.get('feed');
+         if (feedParam) return feedParam;
+         // Fall back to the default feed from JSON
+         if (data.feeds && data.feeds[data.currentFeedIndex]) {
+           return data.feeds[data.currentFeedIndex].slug;
+         }
        }
-       window.location.href = richPath;
-     } else {
-       // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
-       var simplePath;
-       var richPageMatch = path.match(/\/page\/(\d+)\/$/);
-       if (richPageMatch) {
-         simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
-       } else {
-         // Ensure trailing slash
-         simplePath = path.replace(/\/?$/, '/') + 'simple/';
-       }
-       window.location.href = simplePath;
+     } catch (e) { /* ignore parse errors */ }
+
+     // Fall back to sidebar title link href
+     var titleLink = document.querySelector('.feed-nav-title a[href]');
+     if (titleLink) {
+       // Extract slug from href like "/blog/" -> "blog"
+       var href = titleLink.getAttribute('href');
+       var match = href.match(/^\/([^?#]+?)\/?$/);
+       if (match) return match[1];
      }
+
+     return null;
    }
 
   /**
@@ -214,6 +319,12 @@
    * manual/htmx pagination links (.pagination-next).
    */
   function nextPage() {
+    var sidebarNextLink = getSidebarAdjacentLink('next');
+    if (sidebarNextLink) {
+      navigateToURL(sidebarNextLink.href, { triggerElement: sidebarNextLink, bypassTransition: true, source: 'shortcut' });
+      return;
+    }
+
     // Try JS pagination button first
     var nextBtn = document.querySelector('[data-action="next"]:not(:disabled)');
     if (nextBtn) {
@@ -233,6 +344,12 @@
    * manual/htmx pagination links (.pagination-prev).
    */
   function previousPage() {
+    var sidebarPrevLink = getSidebarAdjacentLink('prev');
+    if (sidebarPrevLink) {
+      navigateToURL(sidebarPrevLink.href, { triggerElement: sidebarPrevLink, bypassTransition: true, source: 'shortcut' });
+      return;
+    }
+
     // Try JS pagination button first
     var prevBtn = document.querySelector('[data-action="prev"]:not(:disabled)');
     if (prevBtn) {
@@ -341,6 +458,8 @@
     }
   }
 
+  window.preloadNavigationShortcuts = preloadAdjacentPages;
+
   /**
    * Initialize navigation shortcuts
    */
@@ -348,14 +467,16 @@
     // Clean up previous state
     cleanup();
 
+    // Apply reader mode from URL param (persists across view transitions)
+    applyReaderModeFromURL();
+
     // Preload adjacent pages for instant pagination via keyboard shortcuts
     preloadAdjacentPages();
 
-    // Initialize cards
+    // Initialize cards -- but do NOT auto-highlight or scroll on page load.
+    // The first card will be highlighted when the user presses j/k.
     state.cards = getCards();
-    if (state.cards.length > 0) {
-      highlightCard(state.cards[0]);
-    }
+    state.selectedCard = null;
 
     // Only register these shortcuts once (they use document-level listeners internally)
     if (!state.initialized) {
@@ -399,35 +520,62 @@
       });
 
       // [ and ] - Previous/Next page
-      // Only register when pagination elements exist on the page.
       // Priority 55: higher than palette-switcher (50) so pagination wins.
-      // Without this guard, palette cycling ([/]) would be shadowed on all
-      // feed pages even when no pagination is present.
-      if (document.querySelector('[data-action="prev"], [data-action="next"], a.pagination-prev, a.pagination-next')) {
-        window.shortcutsRegistry.register({
-          key: '[',
-          modifiers: [],
-          description: 'Previous page',
-          group: 'navigation',
-          handler: function(e) {
-            e.preventDefault();
-            previousPage();
-          },
-          priority: 55
-        });
+      // Registered unconditionally -- handlers gracefully no-op when prev/next
+      // elements aren't on the current page. This ensures [/] work after
+      // view-transition navigation from a page without pagination (e.g. homepage)
+      // to a page with pagination (e.g. a post).
+      window.shortcutsRegistry.register({
+        key: '[',
+        modifiers: [],
+        description: 'Previous page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 55
+      });
 
-        window.shortcutsRegistry.register({
-          key: ']',
-          modifiers: [],
-          description: 'Next page',
-          group: 'navigation',
-          handler: function(e) {
-            e.preventDefault();
-            nextPage();
-          },
-          priority: 55
-        });
-      }
+      window.shortcutsRegistry.register({
+        key: ']',
+        modifiers: [],
+        description: 'Next page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 55
+      });
+
+      // J and K (Shift+j/k) - Previous/Next post in feed
+      // Vim-like list navigation: j/k move within the view (scroll or card
+      // select), J/K move to the adjacent item (prev/next post).
+      // Same handlers as [/] -- an additional binding for muscle-memory.
+      window.shortcutsRegistry.register({
+        key: 'K',
+        modifiers: [],
+        description: 'Previous post in feed',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 55
+      });
+
+      window.shortcutsRegistry.register({
+        key: 'J',
+        modifiers: [],
+        description: 'Next post in feed',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 55
+      });
 
       // Handle multi-key sequences: g h, g s, and standalone s for feed toggle
       document.addEventListener('keydown', function(e) {
@@ -453,11 +601,9 @@
           state.lastKey = null;
           state.lastKeyTime = 0;
          } else if (e.key === 's' && state.lastKey !== 'g') {
-           // Standalone s - toggle simple/rich feed view (only on feed pages)
-           if (isFeedPage()) {
-             e.preventDefault();
-             toggleFeedView();
-           }
+           // Standalone s - toggle simple/rich feed view (feed pages) or reader mode (post pages)
+           e.preventDefault();
+           toggleFeedView();
            state.lastKey = null;
            state.lastKeyTime = 0;
         } else {
@@ -488,6 +634,26 @@
           yKeyTime = 0;
         }
       });
+
+      // Propagate ?reader=1 to navigation links when reader mode is active.
+      // Uses capture phase so it runs before the view transition click handler.
+      document.addEventListener('click', function(e) {
+        if (!document.body.classList.contains('reader-mode')) return;
+
+        var link = e.target.closest('a');
+        if (!link || !link.href) return;
+
+        try {
+          var linkUrl = new URL(link.href);
+          // Only modify same-origin links
+          if (linkUrl.origin !== window.location.origin) return;
+          // Don't add if already present
+          if (linkUrl.searchParams.get('reader') === '1') return;
+
+          linkUrl.searchParams.set('reader', '1');
+          link.href = linkUrl.toString();
+        } catch (ex) { /* ignore invalid URLs */ }
+      }, true); // capture phase
 
       state.initialized = true;
     }

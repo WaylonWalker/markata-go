@@ -3,56 +3,123 @@
 {# Shows navigation links for posts in the same feed/series #}
 {# Requires: config.components.feed_sidebar (FeedSidebarConfig) #}
 {# Optional: sidebar_posts, sidebar_feed - injected by templates plugin for post pages #}
+{# Optional: sidebar_feeds_json - JSON blob of all candidate feeds for {/} cycling #}
 
 {% with sidebar = config.components.feed_sidebar %}
 {# Only show sidebar if enabled AND we have posts to display #}
 {# sidebar_posts is injected when the current post belongs to a configured feed #}
 {% if sidebar.enabled and (sidebar_posts or feed.posts or posts) %}
-<aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation">
+<aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="--feed-sidebar-width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation">
     <nav class="feed-nav">
-        {% if sidebar.title %}
-        <h2 class="feed-nav-title">{{ sidebar.title }}</h2>
-        {% elif sidebar_feed.title %}
-        <h2 class="feed-nav-title">{{ sidebar_feed.title }}</h2>
-        {% elif feed.title %}
-        <h2 class="feed-nav-title">{{ feed.title }}</h2>
-        {% else %}
-        <h2 class="feed-nav-title">In this series</h2>
+        {# Chrome: header + links + hotkeys -- sticky on desktop so they stay visible #}
+        <div class="feed-nav-chrome">
+        <div class="feed-nav-header" role="button" tabindex="0" aria-expanded="false" aria-controls="feed-nav-collapsible">
+            <div class="feed-nav-heading">
+            {% if sidebar.title %}
+            <h2 class="feed-nav-title" id="feed-nav-title">
+                {% if sidebar_feed.slug %}<a href="/{{ sidebar_feed.slug }}/">{{ sidebar.title }}</a>{% else %}{{ sidebar.title }}{% endif %}
+            </h2>
+            {% elif sidebar_feed.title %}
+            <h2 class="feed-nav-title" id="feed-nav-title">
+                {% if sidebar_feed.slug %}<a href="/{{ sidebar_feed.slug }}/">{{ sidebar_feed.title }}</a>{% else %}{{ sidebar_feed.title }}{% endif %}
+            </h2>
+            {% elif sidebar_feed.slug %}
+            <h2 class="feed-nav-title" id="feed-nav-title">
+                <a href="/{{ sidebar_feed.slug }}/">{{ sidebar_feed.slug }}</a>
+            </h2>
+            {% elif feed.title %}
+            <h2 class="feed-nav-title" id="feed-nav-title">{{ feed.title }}</h2>
+            {% else %}
+            <h2 class="feed-nav-title" id="feed-nav-title">In this series</h2>
+            {% endif %}
+            </div>
+
+            {% if sidebar_feeds_json %}
+            <div class="feed-nav-controls">
+            <span class="feed-nav-cycle" id="feed-nav-cycle">
+                <button class="feed-nav-cycle-btn" id="feed-nav-prev-feed" aria-label="Previous primary feed" title="Previous primary feed ({)">&lsaquo;</button>
+                <span class="feed-nav-counter" id="feed-nav-counter" title="Press { or } to switch primary feeds"></span>
+                <button class="feed-nav-cycle-btn" id="feed-nav-next-feed" aria-label="Next primary feed" title="Next primary feed (})">&rsaquo;</button>
+            </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="feed-nav-drawer">
+        {% if sidebar_feeds_json %}
+        <label class="feed-nav-picker" for="feed-nav-select">
+            <select id="feed-nav-select" class="feed-nav-picker-input" aria-label="Choose a configured feed"></select>
+        </label>
         {% endif %}
 
+        {% if sidebar_feeds_json %}
+        <div class="feed-nav-links feed-nav-links--hidden" id="feed-nav-links"></div>
+        {% elif sidebar_feed.slug %}
+        <div class="feed-nav-links" id="feed-nav-links">
+            <a href="/{{ sidebar_feed.slug }}/" class="feed-nav-format-link" data-feed-format="html">html</a>
+            <a href="/{{ sidebar_feed.slug }}/rss.xml" class="feed-nav-format-link" data-feed-format="rss">rss</a>
+            <a href="/{{ sidebar_feed.slug }}/atom.xml" class="feed-nav-format-link" data-feed-format="atom">atom</a>
+            <a href="/{{ sidebar_feed.slug }}/feed.json" class="feed-nav-format-link" data-feed-format="json">json</a>
+            <a href="/{{ sidebar_feed.slug }}/index.txt" class="feed-nav-format-link" data-feed-format="txt">txt</a>
+            <a href="/{{ sidebar_feed.slug }}/index.md" class="feed-nav-format-link" data-feed-format="md">md</a>
+        </div>
+        {% endif %}
+
+        <div class="feed-nav-hotkeys">
+            {% if sidebar_prev or sidebar_next %}
+            <span class="feed-nav-hotkey-group feed-nav-hotkey-group--nav">
+                {% if sidebar_prev %}<span class="feed-nav-hotkey"><kbd>[</kbd> prev</span>{% endif %}
+                {% if sidebar_next %}<span class="feed-nav-hotkey"><kbd>]</kbd> next</span>{% endif %}
+            </span>
+            {% endif %}
+            {% if sidebar_feeds_json %}
+            <span class="feed-nav-hotkey-group feed-nav-hotkey-group--cycle">
+                <span class="feed-nav-hotkey"><kbd>{</kbd><kbd>}</kbd> feeds</span>
+            </span>
+            {% endif %}
+        </div>
+        </div>{# /feed-nav-drawer #}
+        </div>{# /feed-nav-chrome #}
+
+        <div id="feed-nav-collapsible">
         {# Priority: sidebar_posts (injected for post pages) > feed.posts (feed pages) > posts (generic) #}
         {% if sidebar_posts %}
-        <ul class="feed-nav-list">
+        <ul class="feed-nav-list" id="feed-nav-list">
             {% for p in sidebar_posts %}
-            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}">
-                <a href="{{ p.href }}" class="feed-nav-link">
+            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}" data-sidebar-transition-path="{{ p.href }}">
+                <a href="{{ p.href }}{{ sidebar_feed_query | default:'' }}" class="feed-nav-link" data-sidebar-transition-title{% if post.slug == p.slug %} aria-current="page"{% endif %}>
                     {{ p.title | default:p.slug }}
                 </a>
             </li>
             {% endfor %}
         </ul>
         {% elif feed.posts %}
-        <ul class="feed-nav-list">
+        <ul class="feed-nav-list" id="feed-nav-list">
             {% for p in feed.posts %}
-            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}">
-                <a href="{{ p.href }}" class="feed-nav-link">
+            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}" data-sidebar-transition-path="{{ p.href }}">
+                <a href="{{ p.href }}" class="feed-nav-link" data-sidebar-transition-title{% if post.slug == p.slug %} aria-current="page"{% endif %}>
                     {{ p.title | default:p.slug }}
                 </a>
             </li>
             {% endfor %}
         </ul>
         {% elif posts %}
-        <ul class="feed-nav-list">
+        <ul class="feed-nav-list" id="feed-nav-list">
             {% for p in posts %}
-            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}">
-                <a href="{{ p.href }}" class="feed-nav-link">
+            <li class="feed-nav-item{% if post.slug == p.slug %} feed-nav-item--active{% endif %}" data-sidebar-transition-path="{{ p.href }}">
+                <a href="{{ p.href }}" class="feed-nav-link" data-sidebar-transition-title{% if post.slug == p.slug %} aria-current="page"{% endif %}>
                     {{ p.title | default:p.slug }}
                 </a>
             </li>
             {% endfor %}
         </ul>
         {% endif %}
+        </div>{# /feed-nav-collapsible #}
     </nav>
+
+    {% if sidebar_feeds_json %}
+    <script type="application/json" id="feed-sidebar-data">{{ sidebar_feeds_json | safe }}</script>
+    {% endif %}
 </aside>
 {% endif %}
 {% endwith %}

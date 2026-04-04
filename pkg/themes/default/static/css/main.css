@@ -624,7 +624,7 @@ main.content-bg {
 
 .site-header .container {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
   max-width: var(--page-width);
@@ -1039,10 +1039,23 @@ body:has(.background-decoration) article.post {
   margin-top: var(--space-8);
   padding-top: var(--space-6);
   border-top: 1px solid var(--color-border);
+  align-items: stretch;
 }
 
 .post-nav a {
-  max-width: 45%;
+  max-width: 48%;
+  flex: 1 1 0;
+  min-height: 3.5rem;
+  padding: 0.875rem 1rem;
+  text-decoration: none;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.post-nav a:hover {
+  transform: translateY(-1px);
 }
 
 .post-nav .prev::before {

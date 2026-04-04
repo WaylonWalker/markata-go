@@ -28,7 +28,7 @@
 }
 
 .header-controls .search-container--navbar {
-  width: 16rem;
+  width: clamp(10rem, 18vw, 16rem);
   max-width: 100%;
   margin-left: 0;
   position: relative;
@@ -38,6 +38,7 @@
 .header-controls .search-container--navbar #pagefind-search,
 .header-controls .search-container--navbar .pagefind-ui {
   width: 100%;
+  position: relative;
 }
 
 .search-container--navbar .pagefind-ui__search-input,
@@ -65,6 +66,7 @@
 .pagefind-ui__search-input,
 .pagefind-ui__search-input[class*="svelte-"] {
   padding-left: 0.75rem !important;
+  padding-right: 2.5rem !important;
 }
 
 /* Override Pagefind UI variables to use theme colors */
@@ -143,6 +145,13 @@
   scrollbar-color: var(--color-border) var(--color-background);
 }
 
+.search-container--navbar .pagefind-ui__drawer.pagefind-ui__hidden,
+.search--navbar .pagefind-ui__drawer.pagefind-ui__hidden,
+.search-container--navbar .pagefind-ui__drawer[class*="svelte-"].pagefind-ui__hidden,
+.search--navbar .pagefind-ui__drawer[class*="svelte-"].pagefind-ui__hidden {
+  display: none !important;
+}
+
 /* Webkit scrollbar styling for search drawer */
 .search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar,
 .search--navbar .pagefind-ui__drawer::-webkit-scrollbar {
@@ -181,9 +190,12 @@
   margin-top: 0;
 }
 
-/* Keyboard shortcut hint */
-.search-container--navbar::after,
-.search--navbar::after {
+/* Keyboard shortcut hint: anchor it to the actual search UI box, not the
+   outer navbar container, so transition reflows don't leave it floating. */
+.search-container--navbar #pagefind-search:empty::after,
+.search--navbar #pagefind-search:empty::after,
+.search-container--navbar .pagefind-ui::after,
+.search--navbar .pagefind-ui::after {
   content: '/';
   position: absolute;
   right: 0.75rem;
@@ -200,8 +212,10 @@
 }
 
 /* Hide hint when input is focused */
-.search-container--navbar:focus-within::after,
-.search--navbar:focus-within::after {
+.search-container--navbar:focus-within #pagefind-search:empty::after,
+.search--navbar:focus-within #pagefind-search:empty::after,
+.search-container--navbar:focus-within .pagefind-ui::after,
+.search--navbar:focus-within .pagefind-ui::after {
   display: none;
 }
 
@@ -237,8 +251,10 @@
     bottom: auto !important;
   }
 
-  .search-container--navbar::after,
-  .search--navbar::after {
+  .search-container--navbar #pagefind-search:empty::after,
+  .search--navbar #pagefind-search:empty::after,
+  .search-container--navbar .pagefind-ui::after,
+  .search--navbar .pagefind-ui::after {
     display: none;
   }
 

@@ -12,10 +12,13 @@ import (
 )
 
 type postCopyPayloads struct {
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	Markdown string `json:"markdown"`
-	Text     string `json:"text"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Markdown    string `json:"markdown"`
+	Text        string `json:"text"`
+	MarkdownURL string `json:"markdown_url"`
+	TextURL     string `json:"text_url"`
+	ANSICurl    string `json:"ansi_curl"`
 }
 
 func (p postCopyPayloads) JSON() string {
@@ -31,11 +34,41 @@ func buildPostCopyPayloads(post *models.Post, config *lifecycle.Config, baseURL 
 	title := resolvePostTitle(post, "")
 
 	return postCopyPayloads{
-		Title:    title,
-		URL:      postURL,
-		Markdown: buildPostCopyMarkdown(post, postURL),
-		Text:     buildPostCopyText(post, config, postURL),
+		Title:       title,
+		URL:         postURL,
+		Markdown:    buildPostCopyMarkdown(post, postURL),
+		Text:        buildPostCopyText(post, config, postURL),
+		MarkdownURL: buildAbsolutePostFormatURL(baseURL, post, ".md"),
+		TextURL:     buildAbsolutePostFormatURL(baseURL, post, ".txt"),
+		ANSICurl:    buildPostCurlCommand(baseURL, post, ".ansi"),
 	}
+}
+
+func buildAbsolutePostFormatURL(baseURL string, post *models.Post, ext string) string {
+	if post == nil {
+		return ""
+	}
+
+	href := strings.TrimSpace(post.Href)
+	if href == "" {
+		return ""
+	}
+
+	formattedHref := strings.TrimSuffix(href, "/") + ext
+	if baseURL == "" {
+		return formattedHref
+	}
+
+	base := strings.TrimRight(baseURL, "/")
+	return base + formattedHref
+}
+
+func buildPostCurlCommand(baseURL string, post *models.Post, ext string) string {
+	url := buildAbsolutePostFormatURL(baseURL, post, ext)
+	if url == "" {
+		return ""
+	}
+	return "curl " + url
 }
 
 func buildAbsolutePostURL(baseURL string, post *models.Post) string {

@@ -21,6 +21,15 @@ func TestBuildPostCopyPayloads(t *testing.T) {
 	if payloads.URL != "https://example.com/hello-world/" {
 		t.Fatalf("unexpected url payload: %q", payloads.URL)
 	}
+	if payloads.MarkdownURL != "https://example.com/hello-world.md" {
+		t.Fatalf("unexpected markdown url payload: %q", payloads.MarkdownURL)
+	}
+	if payloads.TextURL != "https://example.com/hello-world.txt" {
+		t.Fatalf("unexpected text url payload: %q", payloads.TextURL)
+	}
+	if payloads.ANSICurl != "curl https://example.com/hello-world.ansi" {
+		t.Fatalf("unexpected ansi curl payload: %q", payloads.ANSICurl)
+	}
 	if !strings.Contains(payloads.Markdown, "# Hello World") {
 		t.Fatalf("expected markdown payload to contain title, got %q", payloads.Markdown)
 	}

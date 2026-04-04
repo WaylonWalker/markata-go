@@ -181,7 +181,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper" id="view-transition-page">
+  <div class="page-wrapper{% if not feed and not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% if feed and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}

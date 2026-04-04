@@ -347,6 +347,30 @@
   overflow: hidden;
 }
 
+/* Standalone photo figures rendered directly in feed lists should center
+   their media and caption within the feed column, not hug the left edge. */
+.feed .posts-list > .photo-figure {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.feed .posts-list > .photo-figure > a {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.feed .posts-list > .photo-figure img,
+.feed .posts-list > .photo-figure video {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ==========================================================================
    Video Card - Video/thumbnail prominent for video, clip, stream posts
    Video thumbnail with play indicator, title below
