@@ -117,6 +117,48 @@ filter = "published == True"
 
 If you use the default config, markata-go already includes an archive feed at `/archive/`.
 
+## Split Feeds Across Config Files
+
+Large sites often keep each feed in its own file.
+
+```toml
+# markata-go.toml
+[markata-go]
+include = ["config/feeds/*.toml"]
+```
+
+```toml
+# config/feeds/blog.toml
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+filter = "published == True"
+sort = "date"
+reverse = true
+```
+
+You can also split one feed across multiple files:
+
+```toml
+# markata-go.toml
+[markata-go]
+include = ["config/feeds/blog.toml", "config/feeds/blog.outputs.toml"]
+```
+
+```toml
+# config/feeds/blog.outputs.toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 15
+
+[markata-go.feeds.formats]
+rss = true
+atom = true
+json = false
+```
+
+Feeds merge by `slug`, so both fragments resolve to one `blog` feed.
+
 ### Full Configuration Example
 
 ```toml
