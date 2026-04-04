@@ -19,6 +19,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/contentedit"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/plugins"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	gmhtml "github.com/yuin/goldmark/renderer/html"
@@ -39,6 +40,7 @@ type PageData struct {
 	KnownTags      []string
 	KnownPalettes  []string
 	KnownDirs      []string
+	KnownAuthors   []adminAuthorOption
 	NewPostContext template.JS
 	Post           PostEditData
 	Settings       SettingsEditData
@@ -50,6 +52,7 @@ type PostInfo struct {
 	Title     string `json:"title"`
 	Slug      string `json:"slug"`
 	Date      string `json:"date"`
+	Type      string `json:"type,omitempty"`
 	Published bool   `json:"published"`
 	Modified  string `json:"modified,omitempty"`
 }
@@ -90,9 +93,12 @@ type adminFrontmatterForm struct {
 	Title       string               `json:"title"`
 	Slug        string               `json:"slug"`
 	Date        string               `json:"date"`
+	Modified    string               `json:"modified"`
 	Description string               `json:"description"`
 	Published   bool                 `json:"published"`
-	Layout      string               `json:"layout"`
+	TemplateKey string               `json:"template_key"`
+	Author      string               `json:"author"`
+	Authors     []string             `json:"authors"`
 	Tags        []string             `json:"tags"`
 	Extras      []adminKeyValueField `json:"extras"`
 }
@@ -304,7 +310,7 @@ func handleEditor(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	renderPage(w, "editor", PageData{Title: "Editor", IsEditor: true, Post: postData, KnownTags: collectKnownTags(), KnownPalettes: collectKnownPalettes(), KnownDirs: collectKnownDirs(), NewPostContext: buildNewPostContextJSON()})
+	renderPage(w, "editor", PageData{Title: "Editor", IsEditor: true, Post: postData, KnownTags: collectKnownTags(), KnownPalettes: collectKnownPalettes(), KnownDirs: collectKnownDirs(), KnownAuthors: discoverAuthorOptions(), NewPostContext: buildNewPostContextJSON()})
 }
 
 func handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -628,13 +634,14 @@ func renderPage(w http.ResponseWriter, name string, data PageData) {
 func buildNewPostContextJSON() template.JS {
 	payload := map[string]interface{}{
 		"templates":   discoverAdminTemplates(),
+		"aliases":     discoverAdminTemplateAliases(),
 		"directories": collectKnownDirs(),
 		"tags":        collectKnownTags(),
 		"authors":     discoverAuthorOptions(),
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return template.JS(`{"templates":[],"directories":[],"tags":[],"authors":[]}`)
+		return template.JS(`{"templates":[],"aliases":{},"directories":[],"tags":[],"authors":[]}`)
 	}
 	return template.JS(data)
 }
@@ -642,7 +649,7 @@ func buildNewPostContextJSON() template.JS {
 func listPostInfos() ([]PostInfo, error) {
 	sitePosts := GetSitePosts()
 	if len(sitePosts) == 0 {
-		posts, err := contentedit.ListPosts(GetContentDir())
+		posts, err := loadEditorPostsFromBuildGlob()
 		if err != nil {
 			return nil, err
 		}
@@ -652,7 +659,7 @@ func listPostInfos() ([]PostInfo, error) {
 			if info, err := os.Stat(post.Path); err == nil {
 				modified = info.ModTime().UTC().Format(time.RFC3339)
 			}
-			infos = append(infos, PostInfo{Path: toDisplayPath(post.Path), Title: valueOr(post.GetTitle(), filepath.Base(post.Path)), Slug: post.Slug, Date: post.GetDate(), Published: post.IsPublished(), Modified: modified})
+			infos = append(infos, PostInfo{Path: toDisplayPath(post.Path), Title: valueOr(post.GetTitle(), filepath.Base(post.Path)), Slug: post.Slug, Date: post.GetDate(), Type: inferPostType(post.Frontmatter), Published: post.IsPublished(), Modified: modified})
 		}
 		return infos, nil
 	}
@@ -674,9 +681,64 @@ func listPostInfos() ([]PostInfo, error) {
 		if post.Date != nil {
 			date = post.Date.UTC().Format(time.RFC3339)
 		}
-		infos = append(infos, PostInfo{Path: toDisplayPath(post.Path), Title: title, Slug: post.Slug, Date: date, Published: post.Published && !post.Draft, Modified: modified})
+		infos = append(infos, PostInfo{Path: toDisplayPath(post.Path), Title: title, Slug: post.Slug, Date: date, Type: inferPostTypeFromModel(post), Published: post.Published && !post.Draft, Modified: modified})
 	}
 	return infos, nil
+}
+
+func loadEditorPostsFromBuildGlob() ([]*contentedit.Post, error) {
+	cfg := GetSiteConfig()
+	patterns := []string{"**/*.md"}
+	useGitignore := true
+	if cfg != nil {
+		if len(cfg.GlobConfig.Patterns) > 0 {
+			patterns = append([]string(nil), cfg.GlobConfig.Patterns...)
+		}
+		useGitignore = cfg.GlobConfig.UseGitignore
+	}
+	files, err := plugins.DiscoverFiles(GetContentDir(), patterns, useGitignore)
+	if err != nil {
+		return nil, err
+	}
+	posts := make([]*contentedit.Post, 0, len(files))
+	for _, relPath := range files {
+		post, loadErr := contentedit.LoadPost(ResolveContentPath(relPath))
+		if loadErr != nil {
+			continue
+		}
+		posts = append(posts, post)
+	}
+	return posts, nil
+}
+
+func inferPostType(frontmatter string) string {
+	var data map[string]any
+	if err := yaml.Unmarshal([]byte(frontmatter), &data); err != nil {
+		return ""
+	}
+	if value, ok := data["templateKey"].(string); ok && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value)
+	}
+	if value, ok := data["template"].(string); ok && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value)
+	}
+	if value, ok := data["layout"].(string); ok && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value)
+	}
+	return ""
+}
+
+func inferPostTypeFromModel(post *models.Post) string {
+	if post == nil {
+		return ""
+	}
+	if value, ok := post.Get("templateKey").(string); ok && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value)
+	}
+	if strings.TrimSpace(post.Template) != "" {
+		return strings.TrimSpace(post.Template)
+	}
+	return ""
 }
 
 func collectKnownTags() []string {
@@ -701,7 +763,7 @@ func collectKnownTags() []string {
 		return tags
 	}
 
-	posts, err := contentedit.ListPosts(GetContentDir())
+	posts, err := loadEditorPostsFromBuildGlob()
 	if err != nil {
 		return nil
 	}
@@ -814,6 +876,38 @@ func discoverAdminTemplates() map[string]adminTemplateDefinition {
 	}
 	applyAdminTemplateOverrides(templates)
 	return templates
+}
+
+func discoverAdminTemplateAliases() map[string][]string {
+	return map[string][]string{
+		"post":    {"blog-post", "essay", "tutorial"},
+		"note":    {"ping", "thought", "status", "tweet"},
+		"photo":   {"shot", "shots", "image", "gallery"},
+		"video":   {"clip", "cast", "stream"},
+		"link":    {"bookmark", "til", "stars"},
+		"quote":   {"quotation"},
+		"guide":   {"series", "step", "chapter"},
+		"inline":  {"gratitude", "micro"},
+		"contact": {"character", "person"},
+	}
+}
+
+func isKnownAdminTemplateType(templateKey string) bool {
+	trimmed := strings.TrimSpace(templateKey)
+	if trimmed == "" {
+		return true
+	}
+	if _, ok := discoverAdminTemplates()[trimmed]; ok {
+		return true
+	}
+	for _, aliases := range discoverAdminTemplateAliases() {
+		for _, alias := range aliases {
+			if trimmed == alias {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func applyAdminTemplateOverrides(templates map[string]adminTemplateDefinition) {
@@ -1042,6 +1136,14 @@ func savePostFromRequest(r *http.Request, requireExisting bool) (map[string]any,
 	if !requireExisting && exists {
 		return nil, fmt.Errorf("post already exists: %s", displayPath)
 	}
+	if exists {
+		if form, parseErr := parseFrontmatterForm(payload.Frontmatter); parseErr == nil {
+			form.Modified = time.Now().UTC().Format(time.RFC3339)
+			if rendered, renderErr := renderFrontmatterForm(form); renderErr == nil {
+				payload.Frontmatter = rendered
+			}
+		}
+	}
 	post := contentedit.NewPost(fullPath, payload.Frontmatter, payload.Body)
 	if exists {
 		post.Exists = true
@@ -1248,8 +1350,9 @@ func adminSlugify(input string) string {
 func buildThemeCSS(cfg *models.Config) template.CSS {
 	lightVars := defaultThemeVars(false)
 	darkVars := defaultThemeVars(true)
+	typographyVars := adminTypographyVars(cfg)
 	if cfg == nil {
-		return template.CSS(renderThemeCSS(lightVars, darkVars, "light"))
+		return template.CSS(renderThemeCSS(lightVars, darkVars, typographyVars, "light"))
 	}
 	loader := palettes.NewLoader()
 	lightName, darkName, fallbackMode := resolvePaletteNames(cfg)
@@ -1265,7 +1368,36 @@ func buildThemeCSS(cfg *models.Config) template.CSS {
 		defaultVars = darkVars
 		otherVars = lightVars
 	}
-	return template.CSS(renderThemeCSS(defaultVars, otherVars, fallbackMode))
+	return template.CSS(renderThemeCSS(defaultVars, otherVars, typographyVars, fallbackMode))
+}
+
+func adminTypographyVars(cfg *models.Config) map[string]string {
+	font := models.NewFontConfig()
+	if cfg != nil {
+		if cfg.Theme.Font.Family != "" {
+			font.Family = cfg.Theme.Font.Family
+		}
+		if cfg.Theme.Font.HeadingFamily != "" {
+			font.HeadingFamily = cfg.Theme.Font.HeadingFamily
+		}
+		if cfg.Theme.Font.CodeFamily != "" {
+			font.CodeFamily = cfg.Theme.Font.CodeFamily
+		}
+		if cfg.Theme.Font.Size != "" {
+			font.Size = cfg.Theme.Font.Size
+		}
+		if cfg.Theme.Font.LineHeight != "" {
+			font.LineHeight = cfg.Theme.Font.LineHeight
+		}
+	}
+
+	return map[string]string{
+		"font-body":    font.Family,
+		"font-heading": font.GetHeadingFamily(),
+		"font-code":    font.CodeFamily,
+		"font-size":    font.Size,
+		"line-height":  font.LineHeight,
+	}
 }
 
 func resolvePaletteNames(cfg *models.Config) (lightName, darkName, fallbackMode string) {
@@ -1326,7 +1458,7 @@ func themeVarsFromPalette(p *palettes.Palette, dark bool) map[string]string {
 	return vars
 }
 
-func renderThemeCSS(primaryVars, alternateVars map[string]string, fallbackMode string) string {
+func renderThemeCSS(primaryVars, alternateVars, typographyVars map[string]string, fallbackMode string) string {
 	primaryMode := "light"
 	alternateMode := "dark"
 	mediaMode := "dark"
@@ -1335,16 +1467,28 @@ func renderThemeCSS(primaryVars, alternateVars map[string]string, fallbackMode s
 		alternateMode = "light"
 		mediaMode = "light"
 	}
-	return fmt.Sprintf(`:root { %s --admin-fallback-mode: %s; }
+	return fmt.Sprintf(`:root { %s %s --admin-fallback-mode: %s; }
 @media (prefers-color-scheme: %s) { :root:not([data-theme]) { %s } }
 :root[data-theme="%s"] { %s }
-:root[data-theme="%s"] { %s }`, cssVarBlock(primaryVars), primaryMode, mediaMode, cssVarBlock(alternateVars), primaryMode, cssVarBlock(primaryVars), alternateMode, cssVarBlock(alternateVars))
+:root[data-theme="%s"] { %s }`, cssVarBlock(primaryVars), typographyVarBlock(typographyVars), primaryMode, mediaMode, cssVarBlock(alternateVars), primaryMode, cssVarBlock(primaryVars), alternateMode, cssVarBlock(alternateVars))
 }
 
 func cssVarBlock(vars map[string]string) string {
 	keys := []string{"bg", "surface", "surfaceAlt", "text", "muted", "border", "accent", "accentHover", "accentContrast", "success", "warning", "error", "shadow"}
 	parts := make([]string, 0, len(keys))
 	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("--admin-%s: %s;", key, vars[key]))
+	}
+	return strings.Join(parts, " ")
+}
+
+func typographyVarBlock(vars map[string]string) string {
+	keys := []string{"font-body", "font-heading", "font-code", "font-size", "line-height"}
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if vars[key] == "" {
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("--admin-%s: %s;", key, vars[key]))
 	}
 	return strings.Join(parts, " ")
@@ -1384,15 +1528,15 @@ func renderLivePreview(frontmatter, body string) (string, error) {
     %s
     :root { color-scheme: light dark; }
     html, body { margin: 0; min-height: 100%%; background: radial-gradient(circle at top, color-mix(in srgb, var(--admin-accent) 12%%, transparent) 0%%, transparent 36%%), linear-gradient(180deg, color-mix(in srgb, var(--admin-bg) 90%%, var(--admin-surfaceAlt)) 0%%, var(--admin-bg) 100%%); color: var(--admin-text); }
-    body { padding: clamp(1rem, 3vw, 2rem); font: 16px/1.8 "Iowan Old Style", "Palatino Linotype", serif; }
+    body { padding: clamp(1rem, 3vw, 2rem); font: var(--admin-font-size, 16px)/calc(var(--admin-line-height, 1.6) + 0.15) var(--admin-font-body, "Iowan Old Style", "Palatino Linotype", serif); }
     main { max-width: 78ch; margin: 0 auto; background: color-mix(in srgb, var(--admin-surface) 92%%, transparent); border: 1px solid color-mix(in srgb, var(--admin-border) 70%%, transparent); border-radius: 24px; padding: clamp(1.1rem, 2vw, 2rem); box-shadow: 0 28px 60px -44px var(--admin-shadow); }
-    h1, h2, h3 { line-height: 1.15; font-family: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif; }
+    h1, h2, h3 { line-height: 1.15; font-family: var(--admin-font-heading, "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif); }
     h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 0 0 0.35rem; }
     h2 { margin-top: 2.2rem; font-size: clamp(1.4rem, 2vw, 1.9rem); }
     h3 { margin-top: 1.7rem; font-size: 1.15rem; }
     a { color: var(--admin-accent, #2563eb); }
     p, li { max-width: 72ch; }
-    pre, code { font-family: "SFMono-Regular", "JetBrains Mono", monospace; }
+    pre, code { font-family: var(--admin-font-code, "SFMono-Regular", "JetBrains Mono", monospace); }
     pre { overflow-x: auto; padding: 1rem; border-radius: 14px; background: color-mix(in srgb, var(--admin-surfaceAlt, #f3f4f6) 85%%, white); border: 1px solid color-mix(in srgb, var(--admin-border) 70%%, transparent); }
     blockquote { border-left: 4px solid var(--admin-accent); margin: 1.5rem 0; padding: 0.2rem 0 0.2rem 1rem; color: var(--admin-muted, #6b7280); }
     img { max-width: 100%%; height: auto; border-radius: 16px; }
@@ -1423,7 +1567,7 @@ func renderDescription(description string) string {
 }
 
 func parseFrontmatterForm(frontmatter string) (adminFrontmatterForm, error) {
-	result := adminFrontmatterForm{Tags: []string{}, Extras: []adminKeyValueField{}}
+	result := adminFrontmatterForm{Tags: []string{}, Authors: []string{}, Extras: []adminKeyValueField{}}
 	if strings.TrimSpace(frontmatter) == "" {
 		return result, nil
 	}
@@ -1437,22 +1581,34 @@ func parseFrontmatterForm(frontmatter string) (adminFrontmatterForm, error) {
 	if value, ok := data["slug"].(string); ok {
 		result.Slug = value
 	}
-	if value, ok := data["date"].(string); ok {
-		result.Date = value
-	}
+	result.Date = stringifyFrontmatterScalar(data["date"])
+	result.Modified = stringifyFrontmatterScalar(data["modified"])
 	if value, ok := data["description"].(string); ok {
 		result.Description = value
 	}
 	if value, ok := data["published"].(bool); ok {
 		result.Published = value
 	}
-	if value, ok := data["layout"].(string); ok {
-		result.Layout = value
+	if value, ok := data["templateKey"].(string); ok {
+		result.TemplateKey = value
+	} else if value, ok := data["template"].(string); ok {
+		result.TemplateKey = value
+	} else if value, ok := data["layout"].(string); ok {
+		result.TemplateKey = value
+	}
+	if value, ok := data["author"].(string); ok {
+		result.Author = strings.TrimSpace(value)
+		if result.Author != "" && len(result.Authors) == 0 {
+			result.Authors = []string{result.Author}
+		}
+	}
+	if rawAuthors, ok := data["authors"]; ok {
+		result.Authors = interfaceSliceToStrings(rawAuthors)
 	}
 	if rawTags, ok := data["tags"]; ok {
 		result.Tags = interfaceSliceToStrings(rawTags)
 	}
-	known := map[string]bool{"title": true, "slug": true, "date": true, "description": true, "published": true, "layout": true, "tags": true}
+	known := map[string]bool{"title": true, "slug": true, "date": true, "modified": true, "description": true, "published": true, "layout": true, "template": true, "templateKey": true, "author": true, "authors": true, "tags": true}
 	for key, value := range data {
 		if known[key] {
 			continue
@@ -1463,6 +1619,9 @@ func parseFrontmatterForm(frontmatter string) (adminFrontmatterForm, error) {
 }
 
 func renderFrontmatterForm(form adminFrontmatterForm) (string, error) {
+	if err := validateFrontmatterForm(form); err != nil {
+		return "", err
+	}
 	data := make(map[string]any)
 	if strings.TrimSpace(form.Title) != "" {
 		data["title"] = strings.TrimSpace(form.Title)
@@ -1473,12 +1632,30 @@ func renderFrontmatterForm(form adminFrontmatterForm) (string, error) {
 	if strings.TrimSpace(form.Date) != "" {
 		data["date"] = strings.TrimSpace(form.Date)
 	}
+	if strings.TrimSpace(form.Modified) != "" {
+		data["modified"] = strings.TrimSpace(form.Modified)
+	}
 	if strings.TrimSpace(form.Description) != "" {
 		data["description"] = strings.TrimSpace(form.Description)
 	}
 	data["published"] = form.Published
-	if strings.TrimSpace(form.Layout) != "" {
-		data["layout"] = strings.TrimSpace(form.Layout)
+	if strings.TrimSpace(form.TemplateKey) != "" {
+		data["templateKey"] = strings.TrimSpace(form.TemplateKey)
+	}
+	if strings.TrimSpace(form.Author) != "" {
+		data["author"] = strings.TrimSpace(form.Author)
+	}
+	if len(form.Authors) > 0 {
+		authors := make([]string, 0, len(form.Authors))
+		for _, author := range form.Authors {
+			author = strings.TrimSpace(author)
+			if author != "" {
+				authors = append(authors, author)
+			}
+		}
+		if len(authors) > 0 {
+			data["authors"] = authors
+		}
 	}
 	if len(form.Tags) > 0 {
 		tags := make([]string, 0, len(form.Tags))
@@ -1505,6 +1682,58 @@ func renderFrontmatterForm(form adminFrontmatterForm) (string, error) {
 		return "", err
 	}
 	return contentedit.FormatFrontmatter(string(raw))
+}
+
+func stringifyFrontmatterScalar(value any) string {
+	switch typed := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return typed
+	case time.Time:
+		return typed.UTC().Format(time.RFC3339)
+	default:
+		return fmt.Sprint(value)
+	}
+}
+
+func validateFrontmatterForm(form adminFrontmatterForm) error {
+	if strings.TrimSpace(form.Title) == "" {
+		return fmt.Errorf("title is required")
+	}
+	if slug := strings.TrimSpace(form.Slug); slug != "" && slug != adminSlugify(slug) {
+		return fmt.Errorf("slug must be lowercase, URL-safe text")
+	}
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{name: "date", value: form.Date},
+		{name: "modified", value: form.Modified},
+	} {
+		if strings.TrimSpace(field.value) == "" {
+			continue
+		}
+		if _, err := parseFrontmatterDate(field.value); err != nil {
+			return fmt.Errorf("%s must be YYYY-MM-DD or RFC3339", field.name)
+		}
+	}
+	if templateKey := strings.TrimSpace(form.TemplateKey); templateKey != "" {
+		if !isKnownAdminTemplateType(templateKey) {
+			return fmt.Errorf("type must be one of the known templates")
+		}
+	}
+	return nil
+}
+
+func parseFrontmatterDate(value string) (time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	for _, layout := range []string{time.RFC3339, "2006-01-02", "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+		if parsed, err := time.Parse(layout, trimmed); err == nil {
+			return parsed, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("invalid date")
 }
 
 func parseSettingsForm(content string) adminSettingsForm {
@@ -1816,11 +2045,14 @@ const pageHeadTemplate = `<!DOCTYPE html>
       --admin-panel: color-mix(in srgb, var(--admin-surface) 92%, var(--admin-bg));
       --admin-panel-strong: color-mix(in srgb, var(--admin-surfaceAlt) 86%, var(--admin-surface));
       --admin-glow: color-mix(in srgb, var(--admin-accent) 18%, transparent);
-      font-family: var(--font-body, Georgia, serif);
+      --admin-editor-page: color-mix(in srgb, var(--admin-surface) 94%, white);
+      --admin-editor-rule: color-mix(in srgb, var(--admin-border) 48%, transparent);
+      --admin-editor-ink: color-mix(in srgb, var(--admin-text) 94%, transparent);
+      font-family: var(--admin-font-body, Georgia, serif);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at top, color-mix(in srgb, var(--admin-glow) 45%, transparent) 0%, transparent 35%), linear-gradient(180deg, color-mix(in srgb, var(--admin-bg) 92%, var(--admin-surfaceAlt)) 0%, var(--admin-bg) 100%); color: var(--admin-text); }
-    body { font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; line-height: 1.5; }
+    body { font-family: var(--admin-font-body, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif); font-size: var(--admin-font-size, 16px); line-height: var(--admin-line-height, 1.6); }
     a { color: var(--admin-accent); }
     a:hover { color: var(--admin-accentHover); }
     button, input, textarea, select { font: inherit; }
@@ -1828,7 +2060,7 @@ const pageHeadTemplate = `<!DOCTYPE html>
     .card { background: linear-gradient(180deg, color-mix(in srgb, var(--admin-surface) 96%, white) 0%, var(--admin-panel) 100%); border: 1px solid var(--admin-line); border-radius: var(--admin-radius); box-shadow: 0 32px 60px -42px var(--admin-shadow); }
     .nav { display: flex; min-height: var(--admin-header-height); justify-content: space-between; align-items: center; gap: 1rem; padding: 0.95rem 1.1rem; margin-bottom: var(--admin-gap); backdrop-filter: blur(16px); }
     .brand { display: flex; flex-direction: column; gap: 0.1rem; text-decoration: none; color: var(--admin-text); }
-    .brand strong { font-family: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif; letter-spacing: 0.08em; font-size: 0.82rem; text-transform: uppercase; color: var(--admin-muted); }
+    .brand strong { font-family: var(--admin-font-heading, "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif); letter-spacing: 0.08em; font-size: 0.82rem; text-transform: uppercase; color: var(--admin-muted); }
     .brand span { font-size: 1.05rem; font-weight: 700; }
     .nav nav { display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
     .nav nav a { text-decoration: none; padding: 0.55rem 0.75rem; border-radius: 999px; color: var(--admin-muted); }
@@ -1840,7 +2072,7 @@ const pageHeadTemplate = `<!DOCTYPE html>
     .btn-link { text-decoration: none; display: inline-flex; align-items: center; }
     .btn:disabled, button:disabled { opacity: 0.68; cursor: wait; }
     .hero { padding: 1.1rem 1.2rem; margin-bottom: var(--admin-gap); }
-    .hero h1 { margin: 0 0 0.35rem; font-family: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif; font-size: clamp(1.75rem, 2vw, 2.7rem); line-height: 0.96; letter-spacing: 0.01em; }
+    .hero h1 { margin: 0 0 0.35rem; font-family: var(--admin-font-heading, "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif); font-size: clamp(1.75rem, 2vw, 2.7rem); line-height: 0.96; letter-spacing: 0.01em; }
     .hero p { margin: 0; max-width: 68ch; color: var(--admin-muted); }
     .stats { display: grid; gap: var(--admin-gap); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: var(--admin-gap); }
     .stat { padding: 1rem 1.1rem; }
@@ -1848,51 +2080,127 @@ const pageHeadTemplate = `<!DOCTYPE html>
     .stat-value { display: block; margin-top: 0.35rem; font-size: 1.15rem; font-weight: 700; }
     .panel { padding: 1rem; }
     .stack { display: grid; gap: var(--admin-gap); }
-    .workspace { display: grid; gap: var(--admin-gap); align-items: start; grid-template-columns: minmax(620px, 1.45fr) 10px minmax(var(--admin-center-pane, 420px), 1fr) 10px minmax(var(--admin-right-pane, 320px), 0.9fr); }
+    .workspace { display: grid; gap: var(--admin-gap); align-items: start; grid-template-columns: 1fr; }
+    .workspace[data-center-collapsed="false"][data-right-collapsed="false"] { grid-template-columns: minmax(280px, 22vw) minmax(0, 1fr) minmax(320px, 28vw); }
+    .workspace[data-center-collapsed="false"][data-right-collapsed="true"] { grid-template-columns: minmax(280px, 28vw) minmax(0, 1fr); }
+    .workspace[data-center-collapsed="true"][data-right-collapsed="false"] { grid-template-columns: minmax(0, 1fr) minmax(320px, 32vw); }
     .workspace-two { display: grid; gap: var(--admin-gap); align-items: start; grid-template-columns: minmax(320px, 24vw) minmax(540px, 1fr); }
-    .workspace[data-center-collapsed="true"] { grid-template-columns: minmax(760px, 1.7fr) 10px minmax(var(--admin-right-pane, 320px), 0.9fr); }
-    .workspace[data-center-collapsed="true"] .pane-preview { display: none; }
-    .workspace[data-right-collapsed="true"] { grid-template-columns: minmax(660px, 1.55fr) 10px minmax(var(--admin-center-pane, 420px), 1fr); }
-    .workspace[data-right-collapsed="true"] .pane-meta { display: none; }
-    .workspace[data-center-collapsed="true"][data-right-collapsed="true"] { grid-template-columns: minmax(840px, 1fr); }
-    .workspace[data-center-collapsed="true"][data-right-collapsed="true"] .pane-editor { grid-column: 1; }
-    .resize-handle { position: relative; width: 10px; border-radius: 999px; cursor: col-resize; background: transparent; }
-    .resize-handle::before { content: ""; position: absolute; inset: 0; margin: auto; width: 3px; height: 76px; border-radius: 999px; background: color-mix(in srgb, var(--admin-border) 75%, transparent); }
-    .resize-handle:hover::before, .resize-handle[data-active="true"]::before { background: var(--admin-accent); }
+    .resize-handle { display: none; }
     .pane { min-width: 0; }
     .pane-sticky { position: sticky; top: 1rem; }
     .pane-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; margin-bottom: 0.9rem; }
-    .pane-head h2, .pane-head h3 { margin: 0; font-family: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif; font-size: 1.02rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .pane-head h2, .pane-head h3 { margin: 0; font-family: var(--admin-font-heading, "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif); font-size: 1.02rem; letter-spacing: 0.05em; text-transform: uppercase; }
     .pane-subtitle { color: var(--admin-muted); font-size: 0.9rem; }
     .toolbar, .toolbar-actions, .toolbar-group, .segmented { display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: center; }
     .toolbar { justify-content: space-between; }
+    .shell-actions { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
     .segment { padding: 0.52rem 0.8rem; border-radius: 999px; border: 1px solid var(--admin-line); background: transparent; color: var(--admin-muted); }
     .segment.active { background: var(--admin-accent); border-color: transparent; color: var(--admin-accentContrast); }
     .icon-btn { width: 2.2rem; height: 2.2rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--admin-line); background: transparent; color: var(--admin-muted); }
     .icon-btn:hover { color: var(--admin-text); background: color-mix(in srgb, var(--admin-surfaceAlt) 80%, transparent); }
     .pill { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.33rem 0.68rem; background: color-mix(in srgb, var(--admin-surfaceAlt) 86%, transparent); color: var(--admin-muted); font-size: 0.85rem; }
+    .pill.active { background: color-mix(in srgb, var(--admin-accent) 88%, transparent); color: var(--admin-accentContrast); }
     .status { min-height: 1.3rem; padding: 0.9rem 1rem; border: 1px solid var(--admin-line); border-radius: var(--admin-radius-sm); background: color-mix(in srgb, var(--admin-surfaceAlt) 72%, transparent); }
     .status[data-state="success"] { color: var(--admin-success); }
     .status[data-state="error"] { color: var(--admin-error); }
     .status[data-state="building"] { color: var(--admin-warning); }
+    .status[data-state="dirty"] { color: var(--admin-accent); }
     .status-bar { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.85rem; border-top: 1px solid var(--admin-line); color: var(--admin-muted); font-size: 0.88rem; }
-    .field-grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .field-grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
     .field-grid-3 { display: grid; gap: 0.85rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .field-span-2 { grid-column: span 2; }
     .field-span-3 { grid-column: span 3; }
-    .field label, label { display: block; margin-bottom: 0.42rem; color: var(--admin-muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; font-family: "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif; }
+    .field { display: grid; gap: 0.45rem; min-width: 0; align-content: start; }
+    .field label, label { display: block; margin-bottom: 0.42rem; color: var(--admin-muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--admin-font-heading, "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow", sans-serif); }
     input, textarea, select { width: 100%; border-radius: var(--admin-radius-sm); border: 1px solid var(--admin-line); background: color-mix(in srgb, var(--admin-bg) 76%, var(--admin-surface)); color: var(--admin-text); padding: 0.8rem 0.92rem; }
+    input:hover, textarea:hover, select:hover { border-color: color-mix(in srgb, var(--admin-accent) 35%, var(--admin-line)); }
+    input:focus, textarea:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--admin-accent) 28%, transparent); border-color: var(--admin-accent); }
     textarea { min-height: 14rem; resize: vertical; }
-    .mono { font-family: "SFMono-Regular", "JetBrains Mono", Consolas, monospace; }
-    .editor-body { min-height: 55vh; line-height: 1.75; font-size: 1rem; }
+    .mono { font-family: var(--admin-font-code, "SFMono-Regular", "JetBrains Mono", Consolas, monospace); }
+    .editor-body { min-height: 62vh; border: 0; border-radius: calc(var(--admin-radius) - 6px); background: linear-gradient(180deg, color-mix(in srgb, var(--admin-editor-page) 96%, white) 0%, var(--admin-editor-page) 100%); color: var(--admin-editor-ink); padding: 1.6rem clamp(1rem, 2vw, 2rem); line-height: calc(var(--admin-line-height, 1.6) + 0.18); font-size: clamp(1.04rem, 0.95rem + 0.25vw, 1.15rem); font-family: var(--admin-font-body, Georgia, serif); box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 24px 50px -42px var(--admin-shadow); }
+    .editor-body::placeholder { color: color-mix(in srgb, var(--admin-muted) 75%, transparent); }
     .preview-frame { width: 100%; min-height: 62vh; border: 1px solid var(--admin-line); border-radius: var(--admin-radius); background: white; }
     .code-panel textarea { min-height: 48vh; }
     .meta-section { display: grid; gap: 0.85rem; }
     .meta-card { padding: 1rem; border: 1px solid var(--admin-line); border-radius: var(--admin-radius-sm); background: color-mix(in srgb, var(--admin-surfaceAlt) 75%, transparent); }
     .meta-card h3 { margin: 0 0 0.8rem; font-size: 0.95rem; }
+    .properties-card { overflow: visible; padding: 1.15rem; }
+    .properties-layout { display: grid; gap: 1rem; }
+    .properties-section { display: grid; gap: 0.85rem; padding-top: 0.9rem; border-top: 1px solid color-mix(in srgb, var(--admin-border) 28%, transparent); }
+    .properties-section:first-of-type { padding-top: 0; border-top: 0; }
+    .properties-section-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
+    .properties-section-title { margin: 0; font-family: var(--admin-font-heading, sans-serif); font-size: 0.96rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    .properties-section-copy { margin: 0.2rem 0 0; color: var(--admin-muted); font-size: 0.9rem; }
+    .field-label { display: flex; align-items: center; gap: 0.35rem; margin: 0; flex-wrap: wrap; }
+    .field[data-invalid="true"] input, .field[data-invalid="true"] textarea, .field[data-invalid="true"] select, .field[data-invalid="true"] .checkbox-field { border-color: var(--admin-error); outline-color: color-mix(in srgb, var(--admin-error) 22%, transparent); }
+    .field-help { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; border-radius: 999px; border: 1px solid var(--admin-line); background: transparent; color: var(--admin-muted); font-size: 0.72rem; cursor: help; }
+    .field-help::after { content: attr(data-help); position: absolute; left: 50%; top: calc(100% + 0.45rem); transform: translateX(-50%); width: min(18rem, 70vw); padding: 0.65rem 0.75rem; border-radius: 12px; border: 1px solid var(--admin-line); background: color-mix(in srgb, var(--admin-surface) 97%, white); box-shadow: 0 18px 32px -24px var(--admin-shadow); color: var(--admin-text); font-family: var(--admin-font-body, serif); font-size: 0.88rem; line-height: 1.45; text-transform: none; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 5; }
+    .field-help:hover::after, .field-help:focus-visible::after { opacity: 1; }
+    .field-inline-help { margin-top: 0.38rem; color: var(--admin-muted); font-size: 0.85rem; }
+    .field-default { color: color-mix(in srgb, var(--admin-muted) 88%, transparent); font-style: italic; }
+    .field-error { min-height: 1rem; color: var(--admin-error); font-size: 0.82rem; }
+    .field-with-action { display: grid; gap: 0.55rem; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    .field-with-action input, .field-with-action select { grid-column: 1; }
+    .field-with-action .btn { grid-column: 2; }
+    .field-with-action .field-default, .field-with-action .field-error { grid-column: 1 / -1; }
+    .dashboard-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .dashboard-filters input, .dashboard-filters select { max-width: 18rem; }
+    .posts-table-empty { padding: 1rem 0; color: var(--admin-muted); }
+    .checkbox-field { display: flex; align-items: center; gap: 0.7rem; min-height: 3.1rem; padding: 0.8rem 0.92rem; border-radius: var(--admin-radius-sm); border: 1px solid var(--admin-line); background: color-mix(in srgb, var(--admin-bg) 76%, var(--admin-surface)); }
+    .checkbox-field input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; accent-color: var(--admin-accent); }
+    .checkbox-copy { display: grid; gap: 0.18rem; }
+    .checkbox-copy strong { font-size: 0.95rem; }
+    .checkbox-copy span { color: var(--admin-muted); font-size: 0.85rem; }
+    .author-picker { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    .author-search { width: 100%; margin-bottom: 0.15rem; }
+    .author-chip { display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 999px; border: 1px solid var(--admin-line); background: color-mix(in srgb, var(--admin-surface) 76%, transparent); color: var(--admin-text); padding: 0.52rem 0.78rem; }
+    .author-chip.active { background: color-mix(in srgb, var(--admin-accent) 90%, transparent); color: var(--admin-accentContrast); border-color: transparent; }
+    .author-chip small { color: inherit; opacity: 0.78; }
+    .properties-footer { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.85rem; border-top: 1px solid color-mix(in srgb, var(--admin-border) 28%, transparent); color: var(--admin-muted); font-size: 0.84rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .editor-note { overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--admin-surface) 94%, white) 0%, color-mix(in srgb, var(--admin-surfaceAlt) 65%, var(--admin-surface)) 100%); }
+    .editor-note .pane-head { margin-bottom: 0.6rem; }
+    .note-kicker { display: inline-block; margin-bottom: 0.45rem; color: var(--admin-muted); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.12em; font-family: var(--admin-font-heading, sans-serif); }
+    .note-title { margin: 0; font-family: var(--admin-font-heading, sans-serif); font-size: clamp(1.6rem, 1.1rem + 1vw, 2.4rem); line-height: 0.98; }
+    .note-subtitle { margin: 0.4rem 0 0; max-width: 48rem; color: var(--admin-muted); }
+    .editor-meta-strip { display: flex; flex-wrap: wrap; gap: 0.55rem; margin: 0.75rem 0 1rem; }
+    .editor-meta-strip .pill { background: color-mix(in srgb, var(--admin-surface) 55%, transparent); }
+    .editor-topbar { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .shortcut-cluster { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
+    .shortcut-btn { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 999px; border: 1px solid var(--admin-line); background: color-mix(in srgb, var(--admin-surface) 70%, transparent); color: var(--admin-text); padding: 0.55rem 0.8rem; }
+    .shortcut-btn.active { background: color-mix(in srgb, var(--admin-accent) 92%, transparent); color: var(--admin-accentContrast); border-color: transparent; }
+    .shortcut-btn kbd, .command-empty kbd { font-family: var(--admin-font-code, monospace); font-size: 0.78rem; padding: 0.16rem 0.38rem; border-radius: 999px; background: color-mix(in srgb, var(--admin-bg) 55%, var(--admin-surface)); border: 1px solid color-mix(in srgb, var(--admin-border) 40%, transparent); }
+    .editor-sheet { position: relative; padding: 0.6rem; border-radius: var(--admin-radius); background: linear-gradient(180deg, color-mix(in srgb, var(--admin-surface) 84%, transparent) 0%, color-mix(in srgb, var(--admin-bg) 55%, var(--admin-surface)) 100%); border: 1px solid color-mix(in srgb, var(--admin-border) 45%, transparent); }
+    .editor-sheet::before { content: ""; position: absolute; inset: 0.75rem; border-radius: calc(var(--admin-radius) - 10px); border: 1px solid color-mix(in srgb, var(--admin-editor-rule) 55%, transparent); pointer-events: none; }
+    .command-palette { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; z-index: 3; border-radius: calc(var(--admin-radius) - 4px); border: 1px solid color-mix(in srgb, var(--admin-border) 50%, transparent); background: color-mix(in srgb, var(--admin-surface) 97%, white); box-shadow: 0 28px 48px -34px var(--admin-shadow); overflow: hidden; }
+    .command-palette[hidden] { display: none; }
+    .command-header { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--admin-line); }
+    .command-header strong { font-family: var(--admin-font-heading, sans-serif); font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .command-header span { color: var(--admin-muted); font-size: 0.9rem; }
+    .command-list { display: grid; gap: 0; max-height: 18rem; overflow: auto; }
+    .command-item { width: 100%; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--admin-border) 28%, transparent); border-radius: 0; padding: 0.85rem 1rem; background: transparent; text-align: left; color: var(--admin-text); }
+    .command-item:last-child { border-bottom: 0; }
+    .command-item strong { display: block; margin-bottom: 0.14rem; }
+    .command-item span { display: block; color: var(--admin-muted); font-size: 0.9rem; }
+    .command-item.active, .command-item:hover { background: color-mix(in srgb, var(--admin-accent) 10%, var(--admin-surfaceAlt)); }
+    .command-empty { padding: 1rem; color: var(--admin-muted); }
+    .preview-card .preview-frame { min-height: 66vh; background: color-mix(in srgb, var(--admin-surface) 80%, white); }
+    .preview-frame-shell { padding: 0.45rem; border-radius: var(--admin-radius); background: linear-gradient(180deg, color-mix(in srgb, var(--admin-surface) 82%, transparent) 0%, color-mix(in srgb, var(--admin-bg) 60%, var(--admin-surfaceAlt)) 100%); }
+    .overlay-panel { position: relative; width: 100%; padding: 0.7rem; background: transparent; box-shadow: none; overflow-y: visible; transform: none; transition: none; }
+    .overlay-panel[hidden] { display: none; }
+    .overlay-panel-left { border-right: 1px solid var(--admin-line); }
+    .overlay-panel-right { border-left: 1px solid var(--admin-line); }
+    .overlay-panel-card { min-height: calc(100vh - 1.4rem); }
+    .overlay-close { display: none; }
+    body.admin-focus-mode .nav, body.admin-focus-mode .hero, body.admin-focus-mode #post-status, body.admin-focus-mode .toolbar .toolbar-group { display: none; }
+    body.admin-focus-mode .shell { width: min(calc(100vw - 0.9rem), 1600px); }
+    body.admin-focus-mode .workspace { grid-template-columns: 1fr !important; }
+    body.admin-focus-mode .pane-editor { max-width: 1040px; margin: 0 auto; }
+    body.typewriter-mode .editor-body { padding-top: 28vh; padding-bottom: 42vh; }
     .list-editor { display: grid; gap: 0.6rem; }
     .list-row { display: grid; gap: 0.55rem; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
     .key-value-row { display: grid; gap: 0.55rem; grid-template-columns: minmax(0, 0.7fr) 120px minmax(0, 1.3fr) auto; align-items: start; }
+    .key-value-row > * { min-width: 0; }
     .tag-editor { display: grid; gap: 0.5rem; }
     .tag-pills { display: flex; flex-wrap: wrap; gap: 0.45rem; min-height: 2.2rem; padding: 0.2rem 0; }
     .tag-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.7rem; border-radius: 999px; background: color-mix(in srgb, var(--admin-accent) 14%, var(--admin-surfaceAlt)); color: var(--admin-text); border: 1px solid color-mix(in srgb, var(--admin-accent) 22%, var(--admin-line)); }
@@ -1915,23 +2223,28 @@ const pageHeadTemplate = `<!DOCTYPE html>
     .error { color: var(--admin-error); margin: 0 0 1rem; }
     .hide-desktop { display: none; }
     @media (max-width: 1279px) {
-      .workspace { grid-template-columns: minmax(420px, 1.15fr) minmax(360px, 1fr); }
-      .workspace .pane-meta { grid-column: 1 / -1; }
-      .workspace .resize-handle { display: none; }
-      .workspace[data-center-collapsed="true"], .workspace[data-right-collapsed="true"], .workspace[data-center-collapsed="true"][data-right-collapsed="true"] { grid-template-columns: 1fr; }
       .workspace-two { grid-template-columns: 1fr; }
     }
     @media (max-width: 959px) {
       .shell { width: min(calc(100vw - 0.75rem), var(--admin-shell-max)); padding: 0.4rem; }
       .nav { border-radius: 16px; }
       .workspace, .workspace-two, .field-grid, .field-grid-3 { grid-template-columns: 1fr; }
+      .workspace[data-center-collapsed="false"], .workspace[data-right-collapsed="false"] { grid-template-columns: 1fr; }
       .field-span-2, .field-span-3 { grid-column: span 1; }
+      .key-value-row { grid-template-columns: 1fr; }
       .pane-sticky { position: static; }
       .preview-frame { min-height: 50vh; }
       .hide-desktop { display: inline-flex; }
+      .overlay-panel { position: fixed; top: 0; bottom: 0; z-index: 30; width: min(34rem, calc(100vw - 1rem)); padding: 0.7rem; background: color-mix(in srgb, var(--admin-bg) 78%, rgba(5, 8, 15, 0.82)); backdrop-filter: blur(18px); box-shadow: 0 34px 80px -48px var(--admin-shadow); overflow-y: auto; transform: translateX(0); transition: transform 160ms ease, opacity 160ms ease; }
+      .overlay-panel[hidden] { display: block; pointer-events: none; opacity: 0; }
+      .overlay-panel-left { left: 0; border-right: 1px solid var(--admin-line); }
+      .overlay-panel-left[hidden] { transform: translateX(calc(-100% - 1rem)); }
+      .overlay-panel-right { right: 0; border-left: 1px solid var(--admin-line); }
+      .overlay-panel-right[hidden] { transform: translateX(calc(100% + 1rem)); }
+      .overlay-panel-card { min-height: calc(100vh - 1.4rem); }
+      .overlay-close { display: inline-flex; min-width: 6.5rem; }
     }
     @media (min-width: 1800px) {
-      .workspace { grid-template-columns: minmax(780px, 1.7fr) 10px minmax(520px, 1.05fr) 10px minmax(360px, 0.9fr); }
       .workspace-two { grid-template-columns: 420px minmax(920px, 1fr); }
       .editor-body { min-height: 62vh; }
     }
@@ -1985,12 +2298,50 @@ const dashboardTemplate = `{{define "dashboard"}}` + pageHeadTemplate + `
       <div><h2 style="margin:0;">Posts</h2><p class="muted" style="margin:0.25rem 0 0;">Open an existing file or start a new one.</p></div>
       <a class="btn btn-primary btn-link" href="/__admin/editor">New post</a>
     </div>
+    <div class="dashboard-filters">
+      <input id="post-search" type="search" placeholder="Search title, path, slug, or tag type">
+      <select id="post-status-filter"><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft</option></select>
+      <select id="post-type-filter"><option value="all">All types</option>{{range .Posts}}{{if .Type}}<option value="{{.Type}}">{{.Type}}</option>{{end}}{{end}}</select>
+    </div>
     <table>
-      <thead><tr><th>Title</th><th>Path</th><th>Date</th><th>Status</th></tr></thead>
-      <tbody>{{range .Posts}}<tr><td><a href="/__admin/editor?path={{.Path}}">{{.Title}}</a></td><td class="mono">{{.Path}}</td><td>{{.Date}}</td><td>{{if .Published}}Published{{else}}Draft{{end}}</td></tr>{{end}}</tbody>
+      <thead><tr><th>Title</th><th>Path</th><th>Type</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody id="posts-table-body">{{range .Posts}}<tr data-status="{{if .Published}}published{{else}}draft{{end}}" data-type="{{.Type}}"><td><a href="/__admin/editor?path={{.Path}}">{{.Title}}</a></td><td class="mono">{{.Path}}</td><td>{{.Type}}</td><td>{{.Date}}</td><td>{{if .Published}}Published{{else}}Draft{{end}}</td></tr>{{end}}</tbody>
     </table>
+    <div id="posts-empty" class="posts-table-empty" hidden>No posts match the current filters.</div>
   </section>
-</main>` + pageFootTemplate + `{{end}}`
+</main>
+<script>
+(() => {
+  const search = document.getElementById('post-search');
+  const status = document.getElementById('post-status-filter');
+  const type = document.getElementById('post-type-filter');
+  const rows = Array.from(document.querySelectorAll('#posts-table-body tr'));
+  const empty = document.getElementById('posts-empty');
+  const seen = new Set();
+  Array.from(type.options).forEach((option) => {
+    if (!option.value || option.value === 'all') { return; }
+    if (seen.has(option.value)) { option.remove(); return; }
+    seen.add(option.value);
+  });
+  function applyFilters() {
+    const query = search.value.trim().toLowerCase();
+    const statusValue = status.value;
+    const typeValue = type.value;
+    let visible = 0;
+    rows.forEach((row) => {
+      const haystack = row.textContent.toLowerCase();
+      const matchesQuery = !query || haystack.includes(query);
+      const matchesStatus = statusValue === 'all' || row.dataset.status === statusValue;
+      const matchesType = typeValue === 'all' || row.dataset.type === typeValue;
+      const show = matchesQuery && matchesStatus && matchesType;
+      row.hidden = !show;
+      if (show) { visible += 1; }
+    });
+    empty.hidden = visible !== 0;
+  }
+  [search, status, type].forEach((element) => element.addEventListener('input', applyFilters));
+})();
+</script>` + pageFootTemplate + `{{end}}`
 
 const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
 <main class="shell">
@@ -2000,7 +2351,7 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
   </header>
   <section class="card hero">
     <h1>{{if .Post.Exists}}{{if .Post.Title}}{{.Post.Title}}{{else}}{{.Post.Path}}{{end}}{{else}}New post{{end}}</h1>
-    <p>Obsidian-inspired writing flow: editor first, preview right beside it, properties in a separate inspector so the writing surface stays primary.</p>
+    <p>Writing-first markdown workspace with content front and center, plus optional properties and preview when you need them.</p>
   </section>
   {{if not .Post.Exists}}
   <section class="card panel stack">
@@ -2023,61 +2374,91 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
       <div class="toolbar-actions">
         <button id="save-post" class="btn btn-primary" type="button">{{if .Post.Exists}}Save changes{{else}}Create post{{end}}</button>
         <a id="preview-link" class="btn btn-secondary btn-link" href="{{.Post.PreviewURL}}" target="_blank" rel="noreferrer">Open built page</a>
+        <button id="toggle-editor-fullscreen" class="btn btn-secondary" type="button">Fullscreen</button>
       </div>
-      <div class="toolbar-group">
-        <span class="pill">{{if .Post.Exists}}Existing file{{else}}New file{{end}}</span>
-        <span class="pill mono">{{.Post.Path}}</span>
+      <div class="shell-actions">
+        <button id="open-properties-panel" class="btn btn-secondary" type="button">Properties</button>
+        <button id="open-preview-panel" class="btn btn-secondary" type="button">Live</button>
+        <span class="pill">{{if .Post.Exists}}Existing file{{else}}New file{{end}}</span><span class="pill" id="dirty-indicator">Saved</span>
       </div>
     </div>
     <div id="post-status" class="status muted">Ready.</div>
-    <div id="editor-workspace" class="workspace" data-center-collapsed="false" data-right-collapsed="false">
-      <section class="pane pane-editor stack">
-        <section class="meta-card">
-          <div class="pane-head"><div><h3>Markdown</h3><span class="pane-subtitle">Write first, inspect later</span></div><div class="toolbar-group"><button id="toggle-preview-pane" class="icon-btn" type="button" aria-label="Toggle preview pane">P</button><button id="toggle-meta" class="icon-btn" type="button" aria-label="Toggle properties pane">I</button></div></div>
-          <textarea id="body" class="mono editor-body">{{.Post.Body}}</textarea>
-          <div class="status-bar"><span id="body-stats">0 words</span><span>Cmd/Ctrl+S saves to file</span></div>
-        </section>
-      </section>
-      <div id="resize-left" class="resize-handle" aria-hidden="true"></div>
-      <aside class="pane pane-preview pane-sticky stack">
-        <section class="meta-card">
-          <div class="pane-head"><div><h3 id="preview-label">Live Preview</h3><div id="preview-help" class="pane-subtitle">Draft rendering updates as you type</div></div><div class="toolbar-group"><div class="segmented"><button id="live-preview-toggle" class="segment active" type="button">Live</button><button id="built-preview-toggle" class="segment" type="button">Built</button></div><button id="collapse-preview" class="icon-btn hide-desktop" type="button" aria-label="Toggle preview pane">&rarr;</button></div></div>
-          <iframe id="preview-frame" class="preview-frame" src="{{.Post.PreviewURL}}"></iframe>
-        </section>
-      </aside>
-      <div id="resize-right" class="resize-handle" aria-hidden="true"></div>
-      <aside class="pane pane-meta pane-sticky stack">
-        <section class="meta-card">
-          <div class="pane-head"><div><h3>Document</h3><span class="pane-subtitle">Structured fields</span></div><button id="collapse-meta" class="icon-btn hide-desktop" type="button" aria-label="Toggle metadata pane">&larr;</button></div>
-          <div class="field field-span-2"><label for="post-path">Path</label><input id="post-path" class="mono" value="{{.Post.Path}}"></div>
-        </section>
-        <section class="meta-card">
-          <div class="pane-head"><div><h3>Outline</h3><span class="pane-subtitle">Headings in this note</span></div></div>
-          <ul id="editor-outline" class="outline-list muted"></ul>
-        </section>
-        <section class="meta-card">
+    <div id="editor-workspace" class="workspace" data-center-collapsed="true" data-right-collapsed="true">
+      <aside id="properties-panel" class="overlay-panel overlay-panel-left" hidden>
+        <section class="meta-card properties-card overlay-panel-card">
+          <div class="pane-head"><div><h3>Properties</h3><span class="pane-subtitle">Publishing fields and page metadata</span></div><button id="close-properties-panel" class="btn btn-ghost overlay-close" type="button">Close</button></div>
           <div class="tabs" data-tabs="frontmatter-tabs">
             <button class="tab active" type="button" data-tab="frontmatter-form">Properties</button>
             <button class="tab" type="button" data-tab="frontmatter-raw">Raw YAML</button>
           </div>
-          <div id="frontmatter-form" class="tab-panel stack">
-            <div class="field-grid">
-              <div class="field"><label for="fm-title">Title</label><input id="fm-title"></div>
-              <div class="field"><label for="fm-slug">Slug</label><input id="fm-slug"></div>
-              <div class="field"><label for="fm-date">Date</label><input id="fm-date" class="mono" placeholder="2026-03-26"></div>
-              <div class="field"><label for="fm-layout">Layout</label><input id="fm-layout"></div>
-              <div class="field field-span-2"><label for="fm-description">Description</label><textarea id="fm-description" style="min-height: 7rem;"></textarea></div>
-              <div class="field field-span-2 tag-editor"><label for="fm-tag-input">Tags</label><div id="fm-tag-pills" class="tag-pills"></div><div class="tag-input-row"><input id="fm-tag-input" list="known-tags" placeholder="Add a tag and press Enter"><button id="fm-tag-add" class="btn btn-secondary" type="button">Add</button></div><datalist id="known-tags">{{range .KnownTags}}<option value="{{.}}"></option>{{end}}</datalist><input id="fm-tags" type="hidden"></div>
-            </div>
-            <div class="field"><label><input id="fm-published" type="checkbox" style="width:auto; margin-right:0.5rem;"> Published</label></div>
-            <div class="meta-section">
-              <div class="pane-head"><h3>Extra Fields</h3><button id="fm-add-extra" class="btn btn-ghost" type="button">Add field</button></div>
+          <div id="frontmatter-form" class="tab-panel properties-layout">
+            <section class="properties-section">
+              <div class="field"><label class="field-label" for="post-path">Path <span class="field-help" tabindex="0" data-help="The source markdown file path inside your content directory. Renaming this moves the file on save.">?</span></label><input id="post-path" class="mono" value="{{.Post.Path}}"><div class="field-inline-help">Source file location for this page.</div></div>
+            </section>
+            <section class="properties-section">
+              <div>
+                <h4 class="properties-section-title">Core Metadata</h4>
+                <p class="properties-section-copy">The fields readers and templates depend on most.</p>
+              </div>
+              <div class="field-grid">
+                <div class="field" id="fm-title-field"><label class="field-label" for="fm-title">Title <span class="field-help" tabindex="0" data-help="Human-facing page title used in templates, lists, and feeds.">?</span></label><input id="fm-title"><div id="fm-title-error" class="field-error"></div></div>
+                <div class="field" id="fm-slug-field"><label class="field-label" for="fm-slug">Slug <span class="field-help" tabindex="0" data-help="URL path segment for the page. Use lowercase letters, numbers, and hyphens.">?</span></label><div class="field-with-action"><input id="fm-slug"><button id="fm-slug-reset" class="btn btn-ghost" type="button">Reset</button><div id="fm-slug-default" class="field-inline-help field-default"></div><div id="fm-slug-error" class="field-error"></div></div></div>
+                <div class="field" id="fm-date-field"><label class="field-label" for="fm-date">Published Date <span class="field-help" tabindex="0" data-help="Primary publish date for sorting and feeds. Accepts YYYY-MM-DD or a full RFC3339 timestamp.">?</span></label><input id="fm-date" class="mono" placeholder="YYYY-MM-DD or RFC3339"><div id="fm-date-error" class="field-error"></div></div>
+                <div class="field" id="fm-modified-field"><label class="field-label" for="fm-modified">Updated Date <span class="field-help" tabindex="0" data-help="Optional last-updated timestamp. Existing posts are auto-filled on save.">?</span></label><input id="fm-modified" class="mono"><div id="fm-modified-default" class="field-inline-help field-default"></div><div id="fm-modified-error" class="field-error"></div></div>
+                <div class="field" id="fm-template-key-field"><label class="field-label" for="fm-template-key">Type <span class="field-help" tabindex="0" data-help="The content type or template family for this page, such as post, note, photo, or guide.">?</span></label><select id="fm-template-key"></select><div id="fm-template-key-error" class="field-error"></div></div>
+                <div class="field"><label class="field-label" for="fm-published">Visibility <span class="field-help" tabindex="0" data-help="Published pages appear in the built site and feeds unless another field like private excludes them.">?</span></label><div class="checkbox-field"><input id="fm-published" type="checkbox"><div class="checkbox-copy"><strong>Published</strong><span>Include this page in the normal published output.</span></div></div></div>
+              </div>
+            </section>
+            <section class="properties-section">
+              <div>
+                <h4 class="properties-section-title">Summary And Attribution</h4>
+                <p class="properties-section-copy">Describe the page and connect it to people and taxonomy.</p>
+              </div>
+              <div class="field-grid">
+                <div class="field field-span-2"><label class="field-label" for="fm-description">Description <span class="field-help" tabindex="0" data-help="Short summary used for SEO, previews, and feed descriptions.">?</span></label><textarea id="fm-description" style="min-height: 7rem;"></textarea></div>
+                <div class="field field-span-2"><label class="field-label" for="fm-authors">Authors <span class="field-help" tabindex="0" data-help="Select one or more configured site authors for this post.">?</span></label><input id="fm-author-search" class="author-search" type="search" placeholder="Search authors"><div id="fm-author-picker" class="author-picker">{{range .KnownAuthors}}<button class="author-chip" type="button" data-author-id="{{.ID}}" data-author-name="{{.Name}}">{{.Name}}{{if .Default}} <small>default</small>{{end}}</button>{{end}}</div><select id="fm-authors" multiple hidden>{{range .KnownAuthors}}<option value="{{.ID}}">{{.Name}}{{if .Default}} (default){{end}}</option>{{end}}</select><div class="field-inline-help">Choose one or more authors for attribution.</div></div>
+                <div class="field field-span-2 tag-editor"><label class="field-label" for="fm-tag-input">Tags <span class="field-help" tabindex="0" data-help="Tags group related posts and can power feeds, filters, and taxonomy pages.">?</span></label><div id="fm-tag-pills" class="tag-pills"></div><div class="tag-input-row"><input id="fm-tag-input" list="known-tags" placeholder="Add a tag and press Enter"><button id="fm-tag-add" class="btn btn-secondary" type="button">Add</button></div><datalist id="known-tags">{{range .KnownTags}}<option value="{{.}}"></option>{{end}}</datalist><input id="fm-tags" type="hidden"></div>
+              </div>
+            </section>
+            <section class="properties-section">
+              <div class="properties-section-head"><div><h4 class="properties-section-title">Extra Fields</h4><p class="properties-section-copy">Keep uncommon or template-specific frontmatter here.</p></div><button id="fm-add-extra" class="btn btn-ghost" type="button">Add field</button></div>
               <div id="fm-extra-fields" class="list-editor"></div>
-            </div>
+            </section>
+            <div class="properties-footer"><span id="frontmatter-state">Frontmatter matches the saved file.</span><span id="last-autosaved">No autosave yet.</span></div>
           </div>
           <div id="frontmatter-raw" class="tab-panel" hidden>
             <div class="code-panel"><label for="frontmatter">Frontmatter</label><textarea id="frontmatter" class="mono">{{.Post.Frontmatter}}</textarea></div>
           </div>
+        </section>
+      </aside>
+      <section class="pane pane-editor stack">
+        <section class="meta-card editor-note">
+          <div class="pane-head"><div><span class="note-kicker">Markdown draft</span><h2 class="note-title">{{if .Post.Title}}{{.Post.Title}}{{else}}{{if .Post.Exists}}Untitled draft{{else}}Start a new note{{end}}{{end}}</h2><p class="note-subtitle">Draft in the site&apos;s own type and palette system, then open properties or live preview only when you need them.</p></div></div>
+          <div class="editor-meta-strip"><span class="pill">{{if .Post.Exists}}Existing file{{else}}New file{{end}}</span><span class="pill mono">{{.Post.Path}}</span><span class="pill" id="reading-time">0 min read</span></div>
+          <div class="editor-topbar">
+            <div class="shortcut-cluster">
+              <button id="open-command-palette" class="shortcut-btn" type="button"><span>/ commands</span><kbd>/</kbd></button>
+              <span class="muted">Start a new line with <kbd>/</kbd> or press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd></span>
+            </div>
+            <div class="shortcut-cluster">
+              <button id="toggle-focus-mode" class="shortcut-btn" type="button">Focus</button>
+              <button id="toggle-typewriter-mode" class="shortcut-btn" type="button">Typewriter</button>
+            </div>
+          </div>
+          <div class="editor-sheet">
+            <textarea id="body" class="editor-body" placeholder="Start with a title, a scene, a list, or just a single sentence.">{{.Post.Body}}</textarea>
+            <div id="command-palette" class="command-palette" hidden>
+              <div class="command-header"><div><strong>Commands</strong><span id="command-context">Markdown inserts</span></div><span id="command-query" class="mono">/</span></div>
+              <div id="command-list" class="command-list"></div>
+            </div>
+          </div>
+          <div class="status-bar"><span id="body-stats">0 words</span><span>Cmd/Ctrl+S saves to file</span></div>
+        </section>
+      </section>
+      <aside id="preview-panel" class="overlay-panel overlay-panel-right" hidden>
+        <section class="meta-card preview-card overlay-panel-card">
+          <div class="pane-head"><div><h3 id="preview-label">Live Preview</h3><div id="preview-help" class="pane-subtitle">Draft rendering updates as you type</div></div><div class="toolbar-group"><div class="segmented"><button id="live-preview-toggle" class="segment active" type="button">Live</button><button id="built-preview-toggle" class="segment" type="button">Built</button></div><button id="close-preview-panel" class="btn btn-ghost overlay-close" type="button">Close</button></div></div>
+          <div class="preview-frame-shell"><iframe id="preview-frame" class="preview-frame" src="{{.Post.PreviewURL}}"></iframe></div>
         </section>
       </aside>
     </div>
@@ -2099,6 +2480,19 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
       });
     });
   }
+  function escapeHTML(value) {
+    return String(value || '').replace(/[&<>"']/g, (char) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
+  }
+  const slashCommands = [
+    {id: 'h1', label: 'Heading 1', description: 'Insert a top-level heading', snippet: '# '},
+    {id: 'h2', label: 'Heading 2', description: 'Insert a section heading', snippet: '## '},
+    {id: 'todo', label: 'Task List', description: 'Insert a markdown checklist item', snippet: '- [ ] '},
+    {id: 'quote', label: 'Blockquote', description: 'Insert a quoted passage', snippet: '> '},
+    {id: 'code', label: 'Code Block', description: 'Insert a fenced code block', snippet: '~~~text\n\n~~~', cursorOffset: 8},
+    {id: 'link', label: 'Link', description: 'Insert a markdown link', snippet: '[title](https://example.com)', cursorOffset: 1},
+    {id: 'image', label: 'Image', description: 'Insert an image embed', snippet: '![alt text](/images/example.png)', cursorOffset: 2},
+    {id: 'divider', label: 'Divider', description: 'Insert a horizontal rule', snippet: '---'},
+  ];
   async function postJSON(url, payload) {
     const response = await fetch(url, {
       method: 'POST',
@@ -2126,6 +2520,7 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
         syncTagsInput();
         renderTagPills();
         syncFrontmatterFromForm();
+        markDirty();
       });
       container.appendChild(pill);
     });
@@ -2142,6 +2537,7 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
     syncTagsInput();
     renderTagPills();
     syncFrontmatterFromForm();
+    markDirty();
   }
   function renderNewTagPills() {
     const container = document.getElementById('new-tag-pills');
@@ -2242,10 +2638,10 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
     row.className = 'key-value-row fm-extra-row';
     row.innerHTML = '<input data-role="key" placeholder="custom_key" value="' + (key || '') + '"><select data-role="kind"><option value="string">string</option><option value="bool">bool</option><option value="list">list</option><option value="object">object</option></select><textarea data-role="value" placeholder="value" style="min-height:4.5rem;">' + (value || '') + '</textarea><button class="btn btn-ghost" type="button">Remove</button>';
     row.querySelector('[data-role="kind"]').value = kind || 'string';
-    row.querySelector('button').addEventListener('click', () => { row.remove(); syncFrontmatterFromForm(); });
+    row.querySelector('button').addEventListener('click', () => { row.remove(); syncFrontmatterFromForm(); markDirty(); });
     row.querySelectorAll('input, textarea, select').forEach((input) => {
-      input.addEventListener('input', syncFrontmatterFromForm);
-      input.addEventListener('change', syncFrontmatterFromForm);
+      input.addEventListener('input', () => { syncFrontmatterFromForm(); markDirty(); });
+      input.addEventListener('change', () => { syncFrontmatterFromForm(); markDirty(); });
     });
     container.appendChild(row);
   }
@@ -2254,23 +2650,36 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
     document.getElementById('fm-title').value = parsed.title;
     document.getElementById('fm-slug').value = parsed.slug;
     document.getElementById('fm-date').value = parsed.date;
+    document.getElementById('fm-modified').value = parsed.modified;
     document.getElementById('fm-description').value = parsed.description;
     document.getElementById('fm-published').checked = parsed.published;
-    document.getElementById('fm-layout').value = parsed.layout;
+    document.getElementById('fm-template-key').value = parsed.template_key;
+    populateTemplateTypeOptions();
+    setSelectedValues(document.getElementById('fm-authors'), parsed.authors || []);
     setTags(parsed.tags || []);
     document.getElementById('fm-extra-fields').innerHTML = '';
     parsed.extras.forEach((field) => addExtraField(field.key, field.value, field.kind));
+    syncNoteTitle();
+    validateEditorFields();
+    updatePropertiesStatus();
   }
   async function syncFrontmatterFromForm() {
     try {
+      validateEditorFields();
+      const fieldIDs = ['fm-title', 'fm-slug', 'fm-date', 'fm-modified', 'fm-template-key'];
+      if (fieldIDs.some((id) => !document.getElementById(id).checkValidity())) {
+        return;
+      }
       const extras = Array.from(document.querySelectorAll('.fm-extra-row')).map((row) => ({ key: row.querySelector('[data-role="key"]').value, kind: row.querySelector('[data-role="kind"]').value, value: row.querySelector('[data-role="value"]').value }));
       const result = await postJSON('/__admin/api/frontmatter/render', {
         title: document.getElementById('fm-title').value,
         slug: document.getElementById('fm-slug').value,
         date: document.getElementById('fm-date').value,
+        modified: document.getElementById('fm-modified').value,
         description: document.getElementById('fm-description').value,
         published: document.getElementById('fm-published').checked,
-        layout: document.getElementById('fm-layout').value,
+        template_key: document.getElementById('fm-template-key').value,
+        authors: selectedValues(document.getElementById('fm-authors')),
         tags: tagState.slice(),
         extras: extras
       });
@@ -2283,35 +2692,12 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
   function applyWorkspaceState() {
     workspace.dataset.centerCollapsed = String(centerCollapsed);
     workspace.dataset.rightCollapsed = String(rightCollapsed);
+    propertiesPanel.hidden = centerCollapsed;
+    previewPanel.hidden = rightCollapsed;
+    propertiesButton.classList.toggle('active', !centerCollapsed);
+    previewButton.classList.toggle('active', !rightCollapsed);
     localStorage.setItem('admin-workspace-center', String(centerCollapsed));
     localStorage.setItem('admin-workspace-right', String(rightCollapsed));
-  }
-  function applyPaneWidths() {
-    const centerWidth = Number(localStorage.getItem('admin-workspace-center-width') || 480);
-    const rightWidth = Number(localStorage.getItem('admin-workspace-right-width') || 420);
-    workspace.style.setProperty('--admin-center-pane', Math.max(360, Math.min(centerWidth, 760)) + 'px');
-    workspace.style.setProperty('--admin-right-pane', Math.max(320, Math.min(rightWidth, 760)) + 'px');
-  }
-  function enableResize(handleId, storageKey, min, max, side) {
-    const handle = document.getElementById(handleId);
-    handle.addEventListener('pointerdown', (event) => {
-      handle.dataset.active = 'true';
-      const startX = event.clientX;
-      const startValue = Number(localStorage.getItem(storageKey) || (side === 'left' ? 320 : 420));
-      const onMove = (moveEvent) => {
-        const delta = side === 'left' ? moveEvent.clientX - startX : startX - moveEvent.clientX;
-        const next = Math.max(min, Math.min(startValue + delta, max));
-        localStorage.setItem(storageKey, String(next));
-        applyPaneWidths();
-      };
-      const onUp = () => {
-        handle.dataset.active = 'false';
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-      };
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    });
   }
   const statusEl = document.getElementById('post-status');
   const workspace = document.getElementById('editor-workspace');
@@ -2325,10 +2711,33 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
   const baseHash = document.getElementById('post-base-hash');
   const existsInput = document.getElementById('post-exists');
   const body = document.getElementById('body');
+  const noteTitle = document.querySelector('.note-title');
+  const commandPalette = document.getElementById('command-palette');
+  const commandList = document.getElementById('command-list');
+  const commandQuery = document.getElementById('command-query');
+  const commandContext = document.getElementById('command-context');
+  const commandButton = document.getElementById('open-command-palette');
+  const focusButton = document.getElementById('toggle-focus-mode');
+  const typewriterButton = document.getElementById('toggle-typewriter-mode');
+  const fullscreenButton = document.getElementById('toggle-editor-fullscreen');
+  const propertiesPanel = document.getElementById('properties-panel');
+  const previewPanel = document.getElementById('preview-panel');
+  const propertiesButton = document.getElementById('open-properties-panel');
+  const previewButton = document.getElementById('open-preview-panel');
+  const dirtyIndicator = document.getElementById('dirty-indicator');
   let previewMode = 'live';
   let livePreviewTimer = null;
   let centerCollapsed = localStorage.getItem('admin-workspace-center') === 'true';
-  let rightCollapsed = localStorage.getItem('admin-workspace-right') === 'true';
+  let rightCollapsed = localStorage.getItem('admin-workspace-right');
+  rightCollapsed = rightCollapsed == null ? true : rightCollapsed === 'true';
+  let focusMode = localStorage.getItem('admin-editor-focus') === 'true';
+  let typewriterMode = localStorage.getItem('admin-editor-typewriter') === 'true';
+  let commandState = {open: false, query: '', selected: 0, fromKeyboard: false};
+  let dirty = false;
+  let isSaving = false;
+  let autosaveTimer = null;
+  let lastSavedFrontmatter = document.getElementById('frontmatter').value || '';
+  let lastSavedAt = null;
   function setStatus(message, state) { statusEl.textContent = message; statusEl.dataset.state = state || ''; }
   function setPreviewMode(mode) {
     previewMode = mode;
@@ -2363,9 +2772,276 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
   function updateWordCount() {
     const words = body.value.trim() ? body.value.trim().split(/\s+/).length : 0;
     document.getElementById('body-stats').textContent = words + ' words';
+    document.getElementById('reading-time').textContent = Math.max(1, Math.ceil(words / 220)) + ' min read';
+  }
+  function filteredCommands() {
+    const query = commandState.query.trim().toLowerCase();
+    if (!query) { return slashCommands; }
+    return slashCommands.filter((command) => command.label.toLowerCase().includes(query) || command.description.toLowerCase().includes(query) || command.id.includes(query));
+  }
+  function renderCommandPalette() {
+    const commands = filteredCommands();
+    commandQuery.textContent = '/' + commandState.query;
+    commandContext.textContent = commandState.fromKeyboard ? 'Quick inserts from Ctrl/Cmd+K' : 'Markdown inserts for the current line';
+    commandList.innerHTML = '';
+    if (!commands.length) {
+      commandList.innerHTML = '<div class="command-empty">No command matches <kbd>/' + escapeHTML(commandState.query) + '</kbd></div>';
+      return;
+    }
+    commandState.selected = Math.max(0, Math.min(commandState.selected, commands.length - 1));
+    commands.forEach((command, index) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'command-item' + (index === commandState.selected ? ' active' : '');
+      item.innerHTML = '<strong>' + command.label + '</strong><span>' + command.description + '</span>';
+      item.addEventListener('click', () => applySlashCommand(command));
+      commandList.appendChild(item);
+    });
+  }
+  function openCommandPalette(fromKeyboard) {
+    commandState.open = true;
+    commandState.fromKeyboard = !!fromKeyboard;
+    commandPalette.hidden = false;
+    commandButton.classList.add('active');
+    renderCommandPalette();
+  }
+  function closeCommandPalette() {
+    commandState.open = false;
+    commandState.query = '';
+    commandState.selected = 0;
+    commandState.fromKeyboard = false;
+    commandPalette.hidden = true;
+    commandButton.classList.remove('active');
+  }
+  function currentLineRange() {
+    const value = body.value;
+    const cursor = body.selectionStart;
+    const lineStart = value.lastIndexOf('\n', Math.max(0, cursor - 1)) + 1;
+    let lineEnd = value.indexOf('\n', cursor);
+    if (lineEnd === -1) { lineEnd = value.length; }
+    return {start: lineStart, end: lineEnd, text: value.slice(lineStart, lineEnd)};
+  }
+  function refreshSlashCommandState() {
+    const line = currentLineRange().text;
+    const match = line.match(/^\/([^\s]*)$/);
+    if (match) {
+      commandState.query = match[1] || '';
+      openCommandPalette(false);
+      return true;
+    }
+    if (!commandState.fromKeyboard) {
+      closeCommandPalette();
+    }
+    return false;
+  }
+  function insertSnippet(command) {
+    const value = body.value;
+    const cursor = body.selectionStart;
+    const line = currentLineRange();
+    const slashMatch = line.text.match(/^\/([^\s]*)$/);
+    let start = cursor;
+    let end = cursor;
+    if (slashMatch) {
+      start = line.start;
+      end = line.end;
+    }
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    const prefix = before && !before.endsWith('\n') ? '\n' : '';
+    const suffix = after && !after.startsWith('\n') && command.snippet.includes('\n') ? '\n' : '';
+    body.value = before + prefix + command.snippet + suffix + after;
+    const caret = before.length + prefix.length + (command.cursorOffset == null ? command.snippet.length : command.cursorOffset);
+    body.focus();
+    body.setSelectionRange(caret, caret);
+  }
+  function applySlashCommand(command) {
+    insertSnippet(command);
+    closeCommandPalette();
+    updateWordCount();
+    updateOutline();
+    queueLivePreview();
+  }
+  function applyEditorModes() {
+    document.body.classList.toggle('admin-focus-mode', focusMode);
+    document.body.classList.toggle('typewriter-mode', typewriterMode);
+    focusButton.classList.toggle('active', focusMode);
+    typewriterButton.classList.toggle('active', typewriterMode);
+    fullscreenButton.classList.toggle('active', focusMode);
+    localStorage.setItem('admin-editor-focus', String(focusMode));
+    localStorage.setItem('admin-editor-typewriter', String(typewriterMode));
+  }
+  function updateDirtyIndicator() {
+    dirtyIndicator.textContent = dirty ? 'Unsaved changes' : 'Saved';
+    dirtyIndicator.classList.toggle('active', dirty);
+  }
+  function updatePropertiesStatus() {
+    const frontmatterValue = document.getElementById('frontmatter').value || '';
+    const frontmatterState = document.getElementById('frontmatter-state');
+    const lastAutosaved = document.getElementById('last-autosaved');
+    frontmatterState.textContent = frontmatterValue === lastSavedFrontmatter ? 'Frontmatter matches the saved file.' : 'Frontmatter has unsaved changes.';
+    if (!lastSavedAt) {
+      lastAutosaved.textContent = 'No autosave yet.';
+      return;
+    }
+    lastAutosaved.textContent = 'Last saved ' + lastSavedAt;
+  }
+  function setDirty(next) {
+    dirty = next;
+    updateDirtyIndicator();
+    updatePropertiesStatus();
+    if (dirty) {
+      setStatus('Unsaved changes. Autosave starts after a short pause.', 'dirty');
+    }
+  }
+  function scheduleAutosave() {
+    if (autosaveTimer) { clearTimeout(autosaveTimer); }
+    autosaveTimer = setTimeout(() => {
+      if (dirty) {
+        savePost(true);
+      }
+    }, 1500);
+  }
+  function markDirty() {
+    setDirty(true);
+    scheduleAutosave();
+  }
+  function setSelectedValues(select, values) {
+    if (!select) { return; }
+    const selected = new Set((values || []).map((value) => String(value).trim()).filter(Boolean));
+    Array.from(select.options).forEach((option) => {
+      option.selected = selected.has(option.value);
+    });
+    syncAuthorChips();
+  }
+  function selectedValues(select) {
+    if (!select) { return []; }
+    return Array.from(select.selectedOptions).map((option) => option.value).filter(Boolean);
+  }
+  function syncAuthorChips() {
+    const selected = new Set(selectedValues(document.getElementById('fm-authors')));
+    const visibleButtons = Array.from(document.querySelectorAll('[data-author-id]')).filter((button) => !button.hidden);
+    document.querySelectorAll('[data-author-id]').forEach((button) => {
+      button.classList.toggle('active', selected.has(button.dataset.authorId));
+      button.setAttribute('aria-pressed', selected.has(button.dataset.authorId) ? 'true' : 'false');
+      button.tabIndex = button.hidden ? -1 : 0;
+    });
+    visibleButtons.forEach((button, index) => {
+      button.dataset.authorIndex = String(index);
+    });
+  }
+  function filterAuthorChips() {
+    const query = document.getElementById('fm-author-search').value.trim().toLowerCase();
+    document.querySelectorAll('[data-author-id]').forEach((button) => {
+      const haystack = (button.dataset.authorName || button.textContent || '').toLowerCase();
+      button.hidden = !!query && !haystack.includes(query);
+    });
+    syncAuthorChips();
+  }
+  function slugifyDraftValue(value) {
+    return String(value || '').trim().toLowerCase().replace(/\//g, '-').replace(/_/g, '-').replace(/\s+/g, '-').replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  }
+  function basenameWithoutExt(value) {
+    const cleaned = String(value || '').split('/').pop() || '';
+    return cleaned.replace(/\.[^.]+$/, '');
+  }
+  function refreshDefaultHints() {
+    const titleValue = document.getElementById('fm-title').value.trim();
+    const pathValue = document.getElementById('post-path').value.trim();
+    const slugField = document.getElementById('fm-slug');
+    const modifiedField = document.getElementById('fm-modified');
+    const defaultSlug = slugifyDraftValue(titleValue || basenameWithoutExt(pathValue) || 'untitled');
+    slugField.placeholder = defaultSlug;
+    document.getElementById('fm-slug-default').textContent = slugField.value.trim() ? 'Saved slug: ' + slugField.value.trim() : 'Default on save: ' + defaultSlug;
+    const defaultModified = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    modifiedField.placeholder = defaultModified;
+    document.getElementById('fm-modified-default').textContent = modifiedField.value.trim() ? '' : 'Default on save: ' + defaultModified;
+  }
+  function setFieldError(id, message) {
+    const field = document.getElementById(id);
+    const wrapper = document.getElementById(id + '-field');
+    const error = document.getElementById(id + '-error');
+    if (wrapper) {
+      wrapper.dataset.invalid = message ? 'true' : 'false';
+    }
+    if (field) {
+      field.setAttribute('aria-invalid', message ? 'true' : 'false');
+    }
+    if (error) {
+      error.textContent = message || '';
+    }
+  }
+  function populateTemplateTypeOptions() {
+    const select = document.getElementById('fm-template-key');
+    if (!select) { return; }
+    const templates = (NEW_POST_CONTEXT && NEW_POST_CONTEXT.templates) || {};
+    const aliases = (NEW_POST_CONTEXT && NEW_POST_CONTEXT.aliases) || {};
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Default (post)</option>';
+    Object.keys(templates).sort().forEach((name) => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    Object.keys(aliases).sort().forEach((name) => {
+      if (!(aliases[name] || []).includes(currentValue)) { return; }
+      if (Array.from(select.options).some((option) => option.value === currentValue)) { return; }
+      const option = document.createElement('option');
+      option.value = currentValue;
+      option.textContent = currentValue + ' -> ' + name;
+      select.appendChild(option);
+    });
+    select.value = currentValue;
+    if (currentValue && select.value !== currentValue) {
+      const fallback = Object.entries(aliases).find(([, values]) => (values || []).includes(currentValue));
+      if (fallback) {
+        const option = document.createElement('option');
+        option.value = currentValue;
+        option.textContent = currentValue + ' -> ' + fallback[0];
+        select.appendChild(option);
+        select.value = currentValue;
+      }
+    }
+  }
+  function validateEditorFields() {
+    const title = document.getElementById('fm-title');
+    const slug = document.getElementById('fm-slug');
+    const date = document.getElementById('fm-date');
+    const modified = document.getElementById('fm-modified');
+    const type = document.getElementById('fm-template-key');
+    const titleError = title.value.trim() ? '' : 'Title is required.';
+    title.setCustomValidity(titleError);
+    setFieldError('fm-title', titleError);
+    const slugError = !slug.value.trim() || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value.trim()) ? '' : 'Slug must use lowercase letters, numbers, and hyphens.';
+    slug.setCustomValidity(slugError);
+    setFieldError('fm-slug', slugError);
+    [date, modified].forEach((field) => {
+      const value = field.value.trim();
+      const valid = !value || /^\d{4}-\d{2}-\d{2}$/.test(value) || /^\d{4}-\d{2}-\d{2}T/.test(value);
+      const message = valid ? '' : 'Use YYYY-MM-DD or RFC3339 timestamp.';
+      field.setCustomValidity(message);
+      setFieldError(field.id, message);
+    });
+    const knownTypes = new Set(Array.from(type.options).map((option) => option.value).filter(Boolean));
+    const typeError = !type.value.trim() || knownTypes.has(type.value.trim()) ? '' : 'Choose a known content type.';
+    type.setCustomValidity(typeError);
+    setFieldError('fm-template-key', typeError);
+    refreshDefaultHints();
+  }
+  function maybeCenterTypewriter() {
+    if (!typewriterMode) { return; }
+    const ratio = body.selectionStart / Math.max(body.value.length, 1);
+    const target = Math.max(0, body.scrollHeight * ratio - body.clientHeight * 0.42);
+    body.scrollTop = target;
+  }
+  function syncNoteTitle() {
+    if (!noteTitle) { return; }
+    const title = document.getElementById('fm-title').value.trim();
+    noteTitle.textContent = title || (existsInput.value === 'true' ? 'Untitled draft' : 'Start a new note');
   }
   function updateOutline() {
     const outline = document.getElementById('editor-outline');
+    if (!outline) { return; }
     const headings = body.value.split(/\r?\n/).map((line) => line.match(/^(#{1,6})\s+(.+)$/)).filter(Boolean);
     outline.innerHTML = '';
     if (!headings.length) {
@@ -2403,60 +3079,127 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
     await refreshBuiltPreview();
     setStatus('Saved. Preview refreshed with current output.', 'success');
   }
-  async function savePost() {
+  async function savePost(isAutoSave) {
+    if (isSaving) { return; }
+    validateEditorFields();
+    const fieldIDs = ['fm-title', 'fm-slug', 'fm-date', 'fm-modified', 'fm-template-key'];
+    const invalidField = fieldIDs.map((id) => document.getElementById(id)).find((field) => !field.checkValidity());
+    if (invalidField) {
+      invalidField.reportValidity();
+      return;
+    }
+    isSaving = true;
     saveButton.disabled = true;
-    setStatus('Saving source file...', 'building');
+    setStatus(isAutoSave ? 'Autosaving source file...' : 'Saving source file...', 'building');
     const response = await fetch('/__admin/api/post', {
       method: existsInput.value === 'true' ? 'PUT' : 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ path: document.getElementById('post-path').value, frontmatter: document.getElementById('frontmatter').value, body: body.value, base_hash: baseHash.value })
     });
-    if (!response.ok) { setStatus(await response.text(), 'error'); saveButton.disabled = false; return; }
+    if (!response.ok) { setStatus(await response.text(), 'error'); saveButton.disabled = false; isSaving = false; return; }
     const result = await response.json();
     baseHash.value = result.new_hash || '';
     existsInput.value = 'true';
     document.getElementById('post-path').value = result.path || document.getElementById('post-path').value;
     if (result.preview_url) { previewLink.href = result.preview_url; }
     saveButton.textContent = 'Save changes';
+    lastSavedFrontmatter = document.getElementById('frontmatter').value || '';
+    lastSavedAt = new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit', second: '2-digit'});
+    setDirty(false);
     if (previewMode === 'built') {
-      setStatus('Saved. Waiting for preview build...', 'building');
+      setStatus(isAutoSave ? 'Autosaved. Waiting for preview build...' : 'Saved. Waiting for preview build...', 'building');
       await waitForBuild();
     } else {
-      setStatus('Saved source file. Live preview shows current draft.', 'success');
+      setStatus(isAutoSave ? 'Autosaved. Live preview shows current draft.' : 'Saved source file. Live preview shows current draft.', 'success');
       await refreshLivePreview();
     }
     saveButton.disabled = false;
+    isSaving = false;
   }
   enableTabs('frontmatter-tabs');
   applyWorkspaceState();
-  applyPaneWidths();
-  enableResize('resize-left', 'admin-workspace-center-width', 360, 760, 'right');
-  enableResize('resize-right', 'admin-workspace-right-width', 320, 760, 'right');
+  applyEditorModes();
+  populateTemplateTypeOptions();
   loadFrontmatterForm().catch((error) => setStatus(error.message, 'error'));
-  ['fm-title', 'fm-slug', 'fm-date', 'fm-description', 'fm-layout'].forEach((id) => document.getElementById(id).addEventListener('input', syncFrontmatterFromForm));
-  document.getElementById('fm-published').addEventListener('change', syncFrontmatterFromForm);
-  document.getElementById('fm-add-extra').addEventListener('click', () => { addExtraField('', '', 'string'); syncFrontmatterFromForm(); });
-  document.getElementById('fm-tag-add').addEventListener('click', () => { addTag(document.getElementById('fm-tag-input').value); document.getElementById('fm-tag-input').value = ''; });
+  ['fm-title', 'fm-slug', 'fm-date', 'fm-modified', 'fm-description', 'fm-template-key'].forEach((id) => document.getElementById(id).addEventListener('input', () => { syncFrontmatterFromForm(); markDirty(); }));
+  document.getElementById('fm-title').addEventListener('input', syncNoteTitle);
+  document.getElementById('post-path').addEventListener('input', refreshDefaultHints);
+  document.getElementById('fm-slug-reset').addEventListener('click', () => {
+    document.getElementById('fm-slug').value = '';
+    validateEditorFields();
+    refreshDefaultHints();
+    syncFrontmatterFromForm();
+    markDirty();
+  });
+  document.getElementById('fm-published').addEventListener('change', () => { syncFrontmatterFromForm(); markDirty(); });
+  document.getElementById('fm-authors').addEventListener('change', () => { syncFrontmatterFromForm(); markDirty(); });
+  document.getElementById('fm-author-search').addEventListener('input', filterAuthorChips);
+  document.querySelectorAll('[data-author-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const select = document.getElementById('fm-authors');
+      const option = Array.from(select.options).find((candidate) => candidate.value === button.dataset.authorId);
+      if (!option) { return; }
+      option.selected = !option.selected;
+      syncAuthorChips();
+      syncFrontmatterFromForm();
+      markDirty();
+    });
+    button.addEventListener('keydown', (event) => {
+      const visibleButtons = Array.from(document.querySelectorAll('[data-author-id]')).filter((candidate) => !candidate.hidden);
+      const currentIndex = visibleButtons.indexOf(button);
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const next = visibleButtons[currentIndex + 1] || visibleButtons[0];
+        if (next) { next.focus(); }
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prev = visibleButtons[currentIndex - 1] || visibleButtons[visibleButtons.length - 1];
+        if (prev) { prev.focus(); }
+      }
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        button.click();
+      }
+    });
+  });
+  document.getElementById('fm-add-extra').addEventListener('click', () => { addExtraField('', '', 'string'); syncFrontmatterFromForm(); markDirty(); });
+  document.getElementById('fm-tag-add').addEventListener('click', () => { addTag(document.getElementById('fm-tag-input').value); document.getElementById('fm-tag-input').value = ''; markDirty(); });
   document.getElementById('fm-tag-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       addTag(event.currentTarget.value);
       event.currentTarget.value = '';
+      markDirty();
     } else if (event.key === 'Backspace' && !event.currentTarget.value && tagState.length) {
       tagState.pop();
       syncTagsInput();
       renderTagPills();
       syncFrontmatterFromForm();
+      markDirty();
     }
   });
-  document.getElementById('frontmatter').addEventListener('input', () => { loadFrontmatterForm().catch((error) => setStatus(error.message, 'error')); queueLivePreview(); });
-  body.addEventListener('input', () => { updateWordCount(); updateOutline(); queueLivePreview(); });
+  document.getElementById('frontmatter').addEventListener('input', () => { loadFrontmatterForm().catch((error) => setStatus(error.message, 'error')); queueLivePreview(); markDirty(); });
+  body.addEventListener('input', () => { updateWordCount(); updateOutline(); queueLivePreview(); refreshSlashCommandState(); maybeCenterTypewriter(); markDirty(); });
+  body.addEventListener('click', () => { if (!commandState.fromKeyboard) { refreshSlashCommandState(); } });
   liveToggle.addEventListener('click', async () => { setPreviewMode('live'); await refreshLivePreview(); });
   builtToggle.addEventListener('click', async () => { setPreviewMode('built'); await refreshBuiltPreview(); });
-  document.getElementById('toggle-preview-pane').addEventListener('click', () => { centerCollapsed = !centerCollapsed; applyWorkspaceState(); });
-  document.getElementById('toggle-meta').addEventListener('click', () => { rightCollapsed = !rightCollapsed; applyWorkspaceState(); });
-  document.getElementById('collapse-preview').addEventListener('click', () => { centerCollapsed = !centerCollapsed; applyWorkspaceState(); });
-  document.getElementById('collapse-meta').addEventListener('click', () => { rightCollapsed = !rightCollapsed; applyWorkspaceState(); });
+  propertiesButton.addEventListener('click', () => { centerCollapsed = !centerCollapsed; applyWorkspaceState(); });
+  previewButton.addEventListener('click', () => { rightCollapsed = !rightCollapsed; applyWorkspaceState(); if (!rightCollapsed) { setPreviewMode('live'); refreshLivePreview().catch((error) => setStatus(error.message, 'error')); } });
+  document.getElementById('close-preview-panel').addEventListener('click', () => { rightCollapsed = true; applyWorkspaceState(); });
+  document.getElementById('close-properties-panel').addEventListener('click', () => { centerCollapsed = true; applyWorkspaceState(); });
+  commandButton.addEventListener('click', () => {
+    if (commandState.open) {
+      closeCommandPalette();
+      body.focus();
+      return;
+    }
+    openCommandPalette(true);
+    body.focus();
+  });
+  focusButton.addEventListener('click', () => { focusMode = !focusMode; applyEditorModes(); body.focus(); });
+  typewriterButton.addEventListener('click', () => { typewriterMode = !typewriterMode; applyEditorModes(); maybeCenterTypewriter(); body.focus(); });
+  fullscreenButton.addEventListener('click', () => { focusMode = !focusMode; applyEditorModes(); body.focus(); });
   if (document.getElementById('new-template')) {
     const templateSelect = document.getElementById('new-template');
     const dirSelect = document.getElementById('new-directory');
@@ -2499,12 +3242,44 @@ const editorTemplate = `{{define "editor"}}` + pageHeadTemplate + `
     });
     document.getElementById('generate-scaffold').addEventListener('click', () => { generateNewPostScaffold().catch((error) => setStatus(error.message, 'error')); });
   }
-  saveButton.addEventListener('click', savePost);
-  document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 's') { event.preventDefault(); savePost(); } });
+  saveButton.addEventListener('click', () => savePost(false));
+  document.addEventListener('click', (event) => {
+    if (!commandPalette.contains(event.target) && event.target !== commandButton && !commandButton.contains(event.target) && event.target !== body && !body.contains(event.target)) {
+      closeCommandPalette();
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') { event.preventDefault(); savePost(false); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openCommandPalette(true); body.focus(); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key === '.') { event.preventDefault(); focusMode = !focusMode; applyEditorModes(); body.focus(); return; }
+    if (event.key === 'Escape' && commandState.open) { closeCommandPalette(); return; }
+    if (commandState.open) {
+      const commands = filteredCommands();
+      if (event.key === 'ArrowDown') { event.preventDefault(); commandState.selected = Math.min(commandState.selected + 1, Math.max(0, commands.length - 1)); renderCommandPalette(); return; }
+      if (event.key === 'ArrowUp') { event.preventDefault(); commandState.selected = Math.max(commandState.selected - 1, 0); renderCommandPalette(); return; }
+      if (event.key === 'Enter' && commands.length) { event.preventDefault(); applySlashCommand(commands[commandState.selected]); return; }
+    }
+  });
   setPreviewMode('live');
+  updateDirtyIndicator();
+  updatePropertiesStatus();
   updateWordCount();
+  syncNoteTitle();
+  refreshDefaultHints();
+  syncAuthorChips();
+  filterAuthorChips();
   updateOutline();
+  renderCommandPalette();
   refreshLivePreview().catch((error) => setStatus(error.message, 'error'));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !centerCollapsed && !commandState.open) { centerCollapsed = true; applyWorkspaceState(); }
+    if (event.key === 'Escape' && !rightCollapsed && !commandState.open) { rightCollapsed = true; applyWorkspaceState(); }
+  });
+  window.addEventListener('beforeunload', (event) => {
+    if (!dirty) { return; }
+    event.preventDefault();
+    event.returnValue = '';
+  });
 })();
 </script>` + pageFootTemplate + `{{end}}`
 

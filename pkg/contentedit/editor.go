@@ -24,7 +24,8 @@ var (
 	// ErrFileNotFound indicates the file does not exist
 	ErrFileNotFound = fmt.Errorf("file not found")
 	// ErrConflict indicates the file was modified since last read
-	ErrConflict = fmt.Errorf("file conflict")
+	ErrConflict        = fmt.Errorf("file conflict")
+	slugCleanupPattern = regexp.MustCompile(`[^a-z0-9-]+`)
 )
 
 const (
@@ -241,8 +242,10 @@ func extractSlugFromContent(path, frontmatter string) string {
 
 func slugify(input string) string {
 	input = strings.TrimSpace(strings.ToLower(input))
+	input = strings.ReplaceAll(input, "/", "-")
 	input = strings.ReplaceAll(input, "_", "-")
 	input = strings.ReplaceAll(input, " ", "-")
+	input = slugCleanupPattern.ReplaceAllString(input, "-")
 	for strings.Contains(input, "--") {
 		input = strings.ReplaceAll(input, "--", "-")
 	}

@@ -60,6 +60,28 @@ func TestRenderPage_UsesThemeCSS(t *testing.T) {
 	}
 }
 
+func TestRenderPage_UsesConfiguredThemeFonts(t *testing.T) {
+	t.Helper()
+	SetSiteConfig(&models.Config{Theme: models.ThemeConfig{Font: models.FontConfig{Family: "'IBM Plex Serif', serif", HeadingFamily: "'Oswald', sans-serif", CodeFamily: "'Fira Code', monospace", Size: "18px", LineHeight: "1.8"}}})
+	recorder := httptest.NewRecorder()
+
+	renderPage(recorder, "auth", PageData{Title: "Login", NeedsLogin: true})
+
+	body := recorder.Body.String()
+	if !strings.Contains(body, "--admin-font-body: 'IBM Plex Serif', serif;") {
+		t.Fatal("rendered page should include configured body font")
+	}
+	if !strings.Contains(body, "--admin-font-heading: 'Oswald', sans-serif;") {
+		t.Fatal("rendered page should include configured heading font")
+	}
+	if !strings.Contains(body, "--admin-font-code: 'Fira Code', monospace;") {
+		t.Fatal("rendered page should include configured code font")
+	}
+	if !strings.Contains(body, "--admin-font-size: 18px;") || !strings.Contains(body, "--admin-line-height: 1.8;") {
+		t.Fatal("rendered page should include configured font size and line height")
+	}
+}
+
 func TestSavePostFromRequest_Create(t *testing.T) {
 	t.Helper()
 	root := t.TempDir()
@@ -106,6 +128,46 @@ func TestListPostInfos_PrefersSitePostsOverFilesystemWalk(t *testing.T) {
 	}
 	if posts[0].Slug != "real" {
 		t.Fatalf("Slug = %q, want real", posts[0].Slug)
+	}
+}
+
+func TestListPostInfos_FallbackUsesBuildGlobRules(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	SetContentDir(root)
+	SetSitePosts(nil)
+	SetSiteConfig(&models.Config{GlobConfig: models.GlobConfig{Patterns: []string{"posts/**/*.md"}, UseGitignore: true}})
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(".venv/\noutput/\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(.gitignore) error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "posts"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(posts) error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".venv"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(.venv) error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "output"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(output) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "posts", "real.md"), []byte("---\ntitle: Real\n---\nbody"), 0o644); err != nil {
+		t.Fatalf("WriteFile(real.md) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".venv", "ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o644); err != nil {
+		t.Fatalf("WriteFile(ignore.md) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "output", "also-ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o644); err != nil {
+		t.Fatalf("WriteFile(also-ignore.md) error = %v", err)
+	}
+
+	posts, err := listPostInfos()
+	if err != nil {
+		t.Fatalf("listPostInfos() error = %v", err)
+	}
+	if len(posts) != 1 {
+		t.Fatalf("len(posts) = %d, want 1", len(posts))
+	}
+	if posts[0].Path != "posts/real.md" {
+		t.Fatalf("Path = %q, want posts/real.md", posts[0].Path)
 	}
 }
 
@@ -159,6 +221,33 @@ func TestParseAndRenderFrontmatterForm_RoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(raw, "title: Hello") || !strings.Contains(raw, "published: true") {
 		t.Fatalf("rendered frontmatter missing expected content: %s", raw)
+	}
+}
+
+func TestParseFrontmatterForm_ParsesTimestampDateAndAuthors(t *testing.T) {
+	t.Helper()
+	form, err := parseFrontmatterForm("title: Hello\ndate: 2025-01-12T21:07:12Z\nmodified: 2025-01-13T08:00:00Z\nauthors:\n  - waylon\ntemplateKey: blog-post\npublished: true\n")
+	if err != nil {
+		t.Fatalf("parseFrontmatterForm() error = %v", err)
+	}
+	if form.Date != "2025-01-12T21:07:12Z" {
+		t.Fatalf("Date = %q, want timestamp", form.Date)
+	}
+	if form.Modified != "2025-01-13T08:00:00Z" {
+		t.Fatalf("Modified = %q, want timestamp", form.Modified)
+	}
+	if form.TemplateKey != "blog-post" {
+		t.Fatalf("TemplateKey = %q, want blog-post", form.TemplateKey)
+	}
+	if len(form.Authors) != 1 || form.Authors[0] != "waylon" {
+		t.Fatalf("Authors = %+v, want [waylon]", form.Authors)
+	}
+}
+
+func TestValidateFrontmatterForm_AllowsTemplateAliases(t *testing.T) {
+	t.Helper()
+	if err := validateFrontmatterForm(adminFrontmatterForm{Title: "Hello", TemplateKey: "blog-post"}); err != nil {
+		t.Fatalf("validateFrontmatterForm() error = %v, want alias accepted", err)
 	}
 }
 
@@ -233,5 +322,33 @@ func TestHandlePreviewPost_ReturnsHTML(t *testing.T) {
 	}
 	if !strings.Contains(recorder.Body.String(), "<strong>bold</strong>") {
 		t.Fatal("preview route should render markdown html")
+	}
+}
+
+func TestRenderPage_EditorIncludesCommandAndModeControls(t *testing.T) {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	renderPage(recorder, "editor", PageData{Title: "Editor", IsEditor: true, Post: PostEditData{Path: "pages/post/example.md", Exists: true}})
+	body := recorder.Body.String()
+	if !strings.Contains(body, "/ commands") {
+		t.Fatal("editor should include slash command controls")
+	}
+	if !strings.Contains(body, "toggle-focus-mode") || !strings.Contains(body, "toggle-typewriter-mode") {
+		t.Fatal("editor should include focus and typewriter mode controls")
+	}
+	if !strings.Contains(body, "command-palette") {
+		t.Fatal("editor should render the command palette container")
+	}
+	if !strings.Contains(body, "fm-author-picker") || !strings.Contains(body, "fm-author-search") || !strings.Contains(body, "fm-slug-default") || !strings.Contains(body, "fm-slug-reset") || !strings.Contains(body, "last-autosaved") {
+		t.Fatal("editor should render upgraded properties controls")
+	}
+	if !strings.Contains(body, "<select id=\"fm-template-key\"") {
+		t.Fatal("editor should render type as a select control")
+	}
+	if !strings.Contains(body, "open-properties-panel") || !strings.Contains(body, "open-preview-panel") {
+		t.Fatal("editor should render explicit panel buttons")
+	}
+	if strings.Contains(body, "id=\"toggle-preview-pane\"") || strings.Contains(body, "id=\"toggle-meta\"") {
+		t.Fatal("editor should not render cryptic P/I icon buttons")
 	}
 }

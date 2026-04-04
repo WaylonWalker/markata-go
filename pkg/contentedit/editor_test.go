@@ -70,6 +70,24 @@ func TestSavePost_FormatsFrontmatterAndUpdatesHash(t *testing.T) {
 	}
 }
 
+func TestSavePost_SlugifiesLeadingSlashTitlesForPreviewURL(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "post.md")
+	post := NewPost(path, "title: /now\ndate: 2026-03-26", "Body")
+
+	if err := SavePost(post, nil); err != nil {
+		t.Fatalf("SavePost() error = %v", err)
+	}
+
+	if post.Slug != "now" {
+		t.Fatalf("Slug = %q, want %q", post.Slug, "now")
+	}
+	if post.PreviewURL != "/now/" {
+		t.Fatalf("PreviewURL = %q, want %q", post.PreviewURL, "/now/")
+	}
+}
+
 func TestBuildContent_AddsClosingDelimiterOnNewLine(t *testing.T) {
 	t.Helper()
 	got := BuildContent("title: /verify\ndate: 2026-02-24T10:36:57Z", "body")
