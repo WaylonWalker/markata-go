@@ -122,6 +122,7 @@ For developers who want full control and customization.
 - [Self-Hosting](/docs/guides/self-hosting/) - nginx, Caddy, and manual deployment
 
 ### Advanced
+- [Agent Skills](/docs/guides/agent-skills/) - Install the bundled markata-go site skill for coding agents
 - [Plugin Development](/docs/guides/plugin-development/) - Creating custom plugins
 - [Migration](/docs/guides/migration/) - Migrating from other static site generators
 - [Performance and Profiling](/docs/guides/performance/) - Benchmarking and profiling builds
@@ -139,6 +140,7 @@ For developers who want full control and customization.
 | Fix excessive dns-prefetch | [Resource Hints Quick Fix](/docs/guides/resource-hints-quick-fix/) |
 | Deploy to GitHub Pages | [Deployment](/docs/guides/deployment/#deploying-to-github-pages) |
 | Create a custom template | [Templates](/docs/guides/templates/#template-inheritance) |
+| Install the agent skill | [Agent Skills](/docs/guides/agent-skills/) |
 | Filter posts by tag | [Feeds](/docs/guides/feeds/#filtering-posts) |
 
 ---

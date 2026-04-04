@@ -110,6 +110,7 @@ spec/
 1. **Spec defines behavior** - Technical specification in `spec/spec/*.md`
 2. **Docs explain usage** - User-friendly guides in `docs/guides/*.md`
 3. **Docs are part of the site** - All docs are Markdown files processed by markata-go itself
+4. **Bundled agent skill stays current** - The bundled site skill in `pkg/agentskill/bundle/markata-go-site/` is a user-facing artifact for coding agents working in markata-go site repositories
 
 ### Documentation Structure
 
@@ -165,6 +166,23 @@ tags:
 | Bug fix | Update docs if behavior was unclear |
 | Breaking change | Update all affected docs + migration guide |
 
+### Bundled Skill Maintenance
+
+**The bundled site skill is part of the product surface.** Any change that affects how an AI agent should work in a markata-go site repository MUST review the bundled skill and update it when needed.
+
+Common triggers include changes to:
+
+- configuration behavior or recommended config patterns
+- frontmatter semantics or content creation workflows
+- CLI usage, flags, or command output relied on by agents
+- build and deployment workflows
+- performance guidance such as `--fast`, caching, and benchmark workflows
+- theme, palette, or aesthetic workflows
+- template, layout, or template-context behavior
+- plugin authoring constraints or extension workflows
+
+When a change affects site-author workflows, the work is not complete until the bundled skill is updated or the PR explicitly documents why no skill update is needed.
+
 ### Documentation Checklist
 
 Before completing any feature, verify:
@@ -175,6 +193,7 @@ Before completing any feature, verify:
 - [ ] CLI commands are documented in `docs/reference/cli.md`
 - [ ] Examples are provided and tested
 - [ ] Cross-references link to related docs
+- [ ] Bundled agent skill reviewed and updated if the change affects site-building agents
 
 ## Build/Lint/Test Commands
 

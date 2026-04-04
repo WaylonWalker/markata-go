@@ -28,6 +28,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | Spec File | Required User Doc |
 |-----------|-------------------|
 | `CONFIG.md` | `docs/guides/configuration.md` |
+| `AGENTS.md` | `docs/guides/agent-skills.md`, `docs/reference/cli.md` |
 | `THEMES.md` | `docs/guides/themes.md` |
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
@@ -48,6 +49,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [CLI_UX.md](./spec/CLI_UX.md) | Shared CLI UX rules for streams, color, and prompts |
 | [CONTAINERS.md](./spec/CONTAINERS.md) | Container images and runtime environments |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
+| [AGENTS.md](./spec/AGENTS.md) | Agent skill packaging, install targets, and CLI |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |

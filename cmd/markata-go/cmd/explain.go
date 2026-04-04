@@ -25,6 +25,7 @@ Topics:
   new        Creating new content
   init       Initializing projects
   config     Configuration system
+  agents     Agent skill installation and usage
   plugins    Plugin system and development
   lifecycle  Build lifecycle stages
   templates  Template system
@@ -33,7 +34,8 @@ Topics:
 Example:
   markata-go explain              # General overview
   markata-go explain build        # Explain build command
-  markata-go explain plugins      # Explain plugin system`,
+  markata-go explain plugins      # Explain plugin system
+  markata-go explain agents       # Explain agent integrations`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: explainValidArgs,
 	RunE:              runExplain,
@@ -51,6 +53,7 @@ func explainValidArgs(_ *cobra.Command, _ []string, _ string) ([]string, cobra.S
 		"new\tCreating new content",
 		"init\tInitializing projects",
 		"config\tConfiguration system",
+		"agents\tAgent integrations and skills",
 		"plugins\tPlugin system",
 		"lifecycle\tBuild lifecycle stages",
 		"templates\tTemplate system",
@@ -79,6 +82,8 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		content = explainInit
 	case "config":
 		content = explainConfig
+	case "agents":
+		content = explainAgents
 	case "plugins":
 		content = explainPlugins
 	case "lifecycle":
@@ -630,6 +635,60 @@ Override config with MARKATA_GO_ prefix:
    - Check filter expression syntax
    - Verify field names match frontmatter
    - Use quotes around string values in filters`
+
+const explainAgents = `# markata-go Agent Integrations
+
+Markata-go can install a bundled, topic-based skill into a site repository so AI
+coding agents can work with markata-go sites more effectively.
+
+## Install the Bundled Skill
+
+    markata-go agent install
+
+By default this installs the skill into the portable agents layout:
+
+    .agents/skills/markata-go-site/
+
+To install for Claude Code instead:
+
+    markata-go agent install --target claude
+
+This installs to:
+
+    .claude/skills/markata-go-site/
+
+## Skill Layout
+
+The installed skill is intentionally split into focused topic files:
+
+- configuration
+- writing/frontmatter
+- cli usage
+- build and deployment
+- faster builds
+- theme creation
+- template creation and management
+- plugin creation
+
+The entrypoint is ` + "`SKILL.md`" + ` and the detailed guidance lives under ` + "`topics/`" + `.
+
+## Why a Command Group?
+
+The ` + "`agent`" + ` command group is intentionally generic so future subcommands can add:
+
+- alternate install/export targets
+- tool-specific packaging helpers
+- MCP-oriented integrations
+
+without changing the underlying bundled skill structure.
+
+## Useful Related Commands
+
+    markata-go explain config
+    markata-go explain templates
+    markata-go explain plugins
+    markata-go config show
+    markata-go list posts`
 
 const explainPlugins = `# markata-go Plugin System
 

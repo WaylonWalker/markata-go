@@ -75,6 +75,121 @@ Issues: https://github.com/WaylonWalker/markata-go/issues
 
 ## Commands
 
+### agent
+
+Install bundled agent integrations for markata-go site repositories.
+
+#### Usage
+
+```bash
+markata-go agent install [site-path] [flags]
+```
+
+#### Subcommands
+
+##### install
+
+Install the bundled `markata-go-site` skill into a repository.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--name` | Installed skill directory name | `markata-go-site` |
+| `--force` | Overwrite bundled skill files if they already exist | `false` |
+| `--dry-run` | Show what would be installed without writing files | `false` |
+
+##### update
+
+Update the installed `markata-go-site` skill in place.
+
+This is the user-friendly equivalent of reinstalling with `--force`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--name` | Installed skill directory name | `markata-go-site` |
+| `--dry-run` | Show what would be updated without writing files | `false` |
+
+##### doctor
+
+Check the installed skill for drift against the versions bundled in the current binary. Reports files that are modified, missing, or newly added since the skill was installed.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--name` | Installed skill directory name | `markata-go-site` |
+
+Exit codes:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Skill is up to date |
+| `1` | Drift detected |
+| `2` | Error (skill not installed, manifest unreadable) |
+
+##### remove
+
+Remove the installed `markata-go-site` skill directory.
+
+`uninstall` is an alias for `remove`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--name` | Installed skill directory name | `markata-go-site` |
+
+#### Examples
+
+```bash
+# Install into the portable .agents layout
+markata-go agent install
+
+# Install into Claude Code's .claude layout
+markata-go agent install --target claude
+
+# Preview files without writing
+markata-go agent install --dry-run
+
+# Install into a different repository
+markata-go agent install ../my-site
+
+# Replace an existing installed skill
+markata-go agent install --force
+
+# Update an installed skill in place
+markata-go agent update
+
+# Preview an update without writing
+markata-go agent update --dry-run
+
+# Check for drift after upgrading the binary
+markata-go agent doctor
+
+# Check a Claude Code layout
+markata-go agent doctor --target claude
+
+# Check a different repository
+markata-go agent doctor ../my-site
+
+# Remove an installed skill
+markata-go agent remove
+
+# Alias for remove
+markata-go agent uninstall
+
+# Remove a Claude Code install
+markata-go agent remove --target claude
+```
+
+#### Installed Layouts
+
+- `agents` target: `.agents/skills/markata-go-site/`
+- `claude` target: `.claude/skills/markata-go-site/`
+
+The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, and starter files under `examples/` so agents can read only the sections relevant to the current task. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
+
+The `agent` command group is intentionally generic so future subcommands can add export or MCP-oriented integrations without changing the bundled skill format.
+
 ### build
 
 Build the static site by processing all content files through the plugin lifecycle.
@@ -1425,6 +1540,7 @@ markata-go explain [topic]
 | `new` | Creating new content |
 | `init` | Initializing projects |
 | `config` | Configuration system |
+| `agents` | Agent skill installation and usage |
 | `plugins` | Plugin system and development |
 | `lifecycle` | Build lifecycle stages |
 | `templates` | Template system |
@@ -1442,6 +1558,9 @@ markata-go explain build
 # Learn about the plugin system
 markata-go explain plugins
 
+# Learn about the bundled agent skill
+markata-go explain agents
+
 # Understand the build lifecycle
 markata-go explain lifecycle
 
@@ -1454,6 +1573,7 @@ markata-go explain feeds
 The `explain` command is particularly useful for:
 
 - **AI coding agents**: Provides comprehensive context about markata-go's architecture and commands
+- **Site maintainers installing the bundled skill**: Shows how `markata-go agent install` fits into agent workflows
 - **New developers**: Quick reference for understanding how different parts work together
 - **Debugging**: Understanding the build process and configuration options
 - **Writing plugins**: Learning the plugin interfaces and lifecycle stages
