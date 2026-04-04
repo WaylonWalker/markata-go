@@ -50,6 +50,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [CONTAINERS.md](./spec/CONTAINERS.md) | Container images and runtime environments |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
 | [AGENTS.md](./spec/AGENTS.md) | Agent skill packaging, install targets, and CLI |
+| [ADMIN.md](./spec/ADMIN.md) | Local admin CMS, editing, preview, settings editor |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
