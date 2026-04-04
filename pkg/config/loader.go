@@ -212,8 +212,12 @@ func LoadSingleConfig(configPath string) (*models.Config, error) {
 
 // LoadFromString parses configuration from a string with the specified format.
 func LoadFromString(data string, format Format) (*models.Config, error) {
+	resolvedRaw, err := loadRawConfigData([]byte(data), format)
+	if err != nil {
+		return nil, err
+	}
+
 	var config *models.Config
-	var err error
 
 	switch format {
 	case FormatTOML:
@@ -233,11 +237,6 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
-	}
-
-	resolvedRaw, err := rawWrapperFromConfig(config)
-	if err != nil {
-		return nil, err
 	}
 
 	config, err = configFromRawWrapper(mergeRawMaps(nil, defaultRaw, resolvedRaw))

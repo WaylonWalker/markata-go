@@ -105,22 +105,32 @@ func loadRawConfigFile(configPath string) (map[string]any, error) {
 		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
 	}
 
+	rawWrapper, err := loadRawConfigData(data, formatFromPath(configPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+	}
+
+	return rawWrapper, nil
+}
+
+func loadRawConfigData(data []byte, format Format) (map[string]any, error) {
 	var rawWrapper map[string]any
-	switch formatFromPath(configPath) {
+
+	switch format {
 	case FormatTOML:
 		if err := toml.Unmarshal(data, &rawWrapper); err != nil {
-			return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+			return nil, err
 		}
 	case FormatYAML:
 		if err := yaml.Unmarshal(data, &rawWrapper); err != nil {
-			return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+			return nil, err
 		}
 	case FormatJSON:
 		if err := json.Unmarshal(data, &rawWrapper); err != nil {
-			return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unsupported config format: %s", formatFromPath(configPath))
+		return nil, fmt.Errorf("unsupported config format: %s", format)
 	}
 
 	normalized, ok := normalizeValue(rawWrapper).(map[string]any)

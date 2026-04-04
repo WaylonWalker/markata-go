@@ -255,6 +255,45 @@ func TestLoadFromString(t *testing.T) {
 	}
 }
 
+func TestLoadFromString_MergesDefaults(t *testing.T) {
+	config, err := LoadFromString("[markata-go]\noutput_dir = \"custom-output\"\n", FormatTOML)
+	if err != nil {
+		t.Fatalf("LoadFromString() error = %v", err)
+	}
+
+	defaults := DefaultConfig()
+	if config.OutputDir != "custom-output" {
+		t.Errorf("OutputDir = %q, want %q", config.OutputDir, "custom-output")
+	}
+	if config.TemplatesDir != defaults.TemplatesDir {
+		t.Errorf("TemplatesDir = %q, want default %q", config.TemplatesDir, defaults.TemplatesDir)
+	}
+	if config.AssetsDir != defaults.AssetsDir {
+		t.Errorf("AssetsDir = %q, want default %q", config.AssetsDir, defaults.AssetsDir)
+	}
+	if len(config.GlobConfig.Patterns) != len(defaults.GlobConfig.Patterns) {
+		t.Errorf("GlobConfig.Patterns = %v, want default %v", config.GlobConfig.Patterns, defaults.GlobConfig.Patterns)
+	}
+}
+
+func TestLoadFromString_PreservesUnknownPluginConfig(t *testing.T) {
+	config, err := LoadFromString("[markata-go]\n[markata-go.custom_plugin]\nenabled = true\nlabel = \"hello\"\n", FormatTOML)
+	if err != nil {
+		t.Fatalf("LoadFromString() error = %v", err)
+	}
+
+	pluginConfig, ok := config.Extra["custom_plugin"].(map[string]any)
+	if !ok {
+		t.Fatalf("config.Extra[custom_plugin] = %#v, want map[string]any", config.Extra["custom_plugin"])
+	}
+	if enabled, ok := pluginConfig["enabled"].(bool); !ok || !enabled {
+		t.Errorf("custom_plugin.enabled = %#v, want true", pluginConfig["enabled"])
+	}
+	if label, ok := pluginConfig["label"].(string); !ok || label != "hello" {
+		t.Errorf("custom_plugin.label = %#v, want %q", pluginConfig["label"], "hello")
+	}
+}
+
 //nolint:gosec // Test file permissions are fine at 0644
 func TestLoadAndValidate(t *testing.T) {
 	dir := t.TempDir()
@@ -1060,6 +1099,151 @@ rss = "rss.xml"
 }
 
 //nolint:gosec // Test file permissions are fine at 0644
+func TestLoad_WithIncludeAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	childPath := filepath.Join(dir, "blog.toml")
+	rootPath := filepath.Join(dir, "markata-go.toml")
+
+	childContent := `
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+`
+	if err := os.WriteFile(childPath, []byte(childContent), 0o644); err != nil {
+		t.Fatalf("failed to write child config: %v", err)
+	}
+
+	rootContent := "[markata-go]\ninclude = [\"" + filepath.ToSlash(childPath) + "\"]\n"
+	if err := os.WriteFile(rootPath, []byte(rootContent), 0o644); err != nil {
+		t.Fatalf("failed to write root config: %v", err)
+	}
+
+	config, err := Load(rootPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	feed := findFeedBySlug(t, config.Feeds, "blog")
+	if feed.Title != "Blog" {
+		t.Errorf("Title = %q, want %q", feed.Title, "Blog")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
+func TestLoad_WithNestedRelativeIncludeAcrossDirectories(t *testing.T) {
+	dir := t.TempDir()
+	sharedDir := filepath.Join(dir, "config", "shared")
+	feedsDir := filepath.Join(dir, "config", "feeds")
+	if err := os.MkdirAll(sharedDir, 0o755); err != nil {
+		t.Fatalf("failed to create shared dir: %v", err)
+	}
+	if err := os.MkdirAll(feedsDir, 0o755); err != nil {
+		t.Fatalf("failed to create feeds dir: %v", err)
+	}
+
+	rootPath := filepath.Join(dir, "markata-go.toml")
+	rootContent := `
+[markata-go]
+include = ["config/shared/base.toml"]
+`
+	if err := os.WriteFile(rootPath, []byte(rootContent), 0o644); err != nil {
+		t.Fatalf("failed to write root config: %v", err)
+	}
+
+	basePath := filepath.Join(sharedDir, "base.toml")
+	baseContent := `
+[markata-go]
+title = "Nested"
+include = ["../feeds/blog.toml"]
+`
+	if err := os.WriteFile(basePath, []byte(baseContent), 0o644); err != nil {
+		t.Fatalf("failed to write base config: %v", err)
+	}
+
+	blogPath := filepath.Join(feedsDir, "blog.toml")
+	blogContent := `
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+`
+	if err := os.WriteFile(blogPath, []byte(blogContent), 0o644); err != nil {
+		t.Fatalf("failed to write blog config: %v", err)
+	}
+
+	config, err := Load(rootPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if config.Title != "Nested" {
+		t.Errorf("Title = %q, want %q", config.Title, "Nested")
+	}
+	feed := findFeedBySlug(t, config.Feeds, "blog")
+	if feed.Title != "Blog" {
+		t.Errorf("feed.Title = %q, want %q", feed.Title, "Blog")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
+func TestLoad_WithIncludeSupportsCrossFormatConfigs(t *testing.T) {
+	dir := t.TempDir()
+	configDir := filepath.Join(dir, "config")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+
+	rootPath := filepath.Join(dir, "markata-go.toml")
+	rootContent := `
+[markata-go]
+title = "Root"
+include = ["config/site.yaml", "config/feed.json"]
+`
+	if err := os.WriteFile(rootPath, []byte(rootContent), 0o644); err != nil {
+		t.Fatalf("failed to write root config: %v", err)
+	}
+
+	yamlPath := filepath.Join(configDir, "site.yaml")
+	yamlContent := "markata-go:\n  output_dir: dist\n  description: YAML description\n"
+	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644); err != nil {
+		t.Fatalf("failed to write yaml config: %v", err)
+	}
+
+	jsonPath := filepath.Join(configDir, "feed.json")
+	jsonContent := `{
+  "markata-go": {
+    "feeds": [
+      {
+        "slug": "blog",
+        "title": "Blog"
+      }
+    ]
+  }
+}`
+	if err := os.WriteFile(jsonPath, []byte(jsonContent), 0o644); err != nil {
+		t.Fatalf("failed to write json config: %v", err)
+	}
+
+	config, err := Load(rootPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if config.Title != "Root" {
+		t.Errorf("Title = %q, want %q", config.Title, "Root")
+	}
+	if config.OutputDir != "dist" {
+		t.Errorf("OutputDir = %q, want %q", config.OutputDir, "dist")
+	}
+	if config.Description != "YAML description" {
+		t.Errorf("Description = %q, want %q", config.Description, "YAML description")
+	}
+	feed := findFeedBySlug(t, config.Feeds, "blog")
+	if feed.Title != "Blog" {
+		t.Errorf("feed.Title = %q, want %q", feed.Title, "Blog")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
 func TestLoad_WithIncludeGlobUsesLexicographicOrder(t *testing.T) {
 	dir := t.TempDir()
 	feedsDir := filepath.Join(dir, "config", "feeds")
@@ -1104,6 +1288,70 @@ title = "Second"
 	feed := findFeedBySlug(t, config.Feeds, "blog")
 	if feed.Title != "Second" {
 		t.Errorf("Title = %q, want %q", feed.Title, "Second")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
+func TestLoadWithMerge_ResolvesIncludesInBaseAndOverrides(t *testing.T) {
+	dir := t.TempDir()
+	baseIncludePath := filepath.Join(dir, "base-feed.toml")
+	overrideIncludePath := filepath.Join(dir, "override-feed.toml")
+	basePath := filepath.Join(dir, "base.toml")
+	overridePath := filepath.Join(dir, "override.toml")
+
+	baseIncludeContent := `
+[[markata-go.feeds]]
+slug = "blog"
+title = "Base Blog"
+`
+	if err := os.WriteFile(baseIncludePath, []byte(baseIncludeContent), 0o644); err != nil {
+		t.Fatalf("failed to write base include config: %v", err)
+	}
+
+	overrideIncludeContent := `
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 25
+`
+	if err := os.WriteFile(overrideIncludePath, []byte(overrideIncludeContent), 0o644); err != nil {
+		t.Fatalf("failed to write override include config: %v", err)
+	}
+
+	baseContent := `
+[markata-go]
+title = "Base"
+include = ["base-feed.toml"]
+`
+	if err := os.WriteFile(basePath, []byte(baseContent), 0o644); err != nil {
+		t.Fatalf("failed to write base config: %v", err)
+	}
+
+	overrideContent := `
+[markata-go]
+output_dir = "override-output"
+include = ["override-feed.toml"]
+`
+	if err := os.WriteFile(overridePath, []byte(overrideContent), 0o644); err != nil {
+		t.Fatalf("failed to write override config: %v", err)
+	}
+
+	config, err := LoadWithMerge(basePath, overridePath)
+	if err != nil {
+		t.Fatalf("LoadWithMerge() error = %v", err)
+	}
+
+	if config.Title != "Base" {
+		t.Errorf("Title = %q, want %q", config.Title, "Base")
+	}
+	if config.OutputDir != "override-output" {
+		t.Errorf("OutputDir = %q, want %q", config.OutputDir, "override-output")
+	}
+	feed := findFeedBySlug(t, config.Feeds, "blog")
+	if feed.Title != "Base Blog" {
+		t.Errorf("feed.Title = %q, want %q", feed.Title, "Base Blog")
+	}
+	if feed.ItemsPerPage != 25 {
+		t.Errorf("feed.ItemsPerPage = %d, want 25", feed.ItemsPerPage)
 	}
 }
 
