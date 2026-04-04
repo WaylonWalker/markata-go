@@ -7,6 +7,9 @@
             <button type="button" class="post-copy__option" data-copy-kind="rich" role="menuitem">Rich</button>
             <button type="button" class="post-copy__option" data-copy-kind="markdown" role="menuitem">Markdown</button>
             <button type="button" class="post-copy__option" data-copy-kind="text" role="menuitem">Text</button>
+            <button type="button" class="post-copy__option" data-copy-kind="markdown-url" role="menuitem">View Markdown</button>
+            <button type="button" class="post-copy__option" data-copy-kind="text-url" role="menuitem">View Text</button>
+            <button type="button" class="post-copy__option" data-copy-kind="ansi-curl" role="menuitem">curl .ansi</button>
         </div>
     </details>
     <span class="post-copy__status" aria-live="polite"></span>
@@ -190,7 +193,27 @@
         if (kind === 'markdown') {
             return 'Markdown copied';
         }
-        return 'Text copied';
+        if (kind === 'text') {
+            return 'Text copied';
+        }
+        if (kind === 'markdown-url') {
+            return 'Markdown URL copied';
+        }
+        if (kind === 'text-url') {
+            return 'Text URL copied';
+        }
+        if (kind === 'ansi-curl') {
+            return 'curl command copied';
+        }
+        return 'Copied';
+    }
+
+    function buildFormatPath(ext) {
+        var path = window.location.pathname || '/';
+        if (path !== '/' && path.endsWith('/')) {
+            path = path.slice(0, -1);
+        }
+        return path + ext;
     }
 
     document.addEventListener('click', function(event) {
@@ -208,12 +231,30 @@
         var data = readPayload(root);
         var action;
 
+        if (kind === 'markdown-url') {
+            if (details) {
+                details.open = false;
+            }
+            window.location.href = buildFormatPath('.md');
+            return;
+        }
+
+        if (kind === 'text-url') {
+            if (details) {
+                details.open = false;
+            }
+            window.location.href = buildFormatPath('.txt');
+            return;
+        }
+
         if (kind === 'url') {
             action = copyText(data.url || window.location.href);
         } else if (kind === 'rich') {
             action = copyRich(root);
         } else if (kind === 'markdown') {
             action = copyText(data.markdown || '');
+        } else if (kind === 'ansi-curl') {
+            action = copyText(data.ansi_curl || '');
         } else {
             action = copyText(data.text || '');
         }

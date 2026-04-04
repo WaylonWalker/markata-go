@@ -727,7 +727,13 @@
     if (def.startsWith("'") || def.startsWith('"')) {
       def = def.slice(1, -1);
     }
-    return def || 'balanced';
+
+    const manifest = getAestheticManifest();
+    const manifestNames = manifest.map(m => m.name);
+    if (def && manifestNames.includes(def)) {
+      return def;
+    }
+    return manifestNames[0] || '';
   }
 
   /**
@@ -757,8 +763,11 @@
     }
 
     if (!AESTHETICS.includes(aesthetic)) {
-      console.warn('[palette-switcher] Unknown aesthetic:', aesthetic);
-      return;
+      const fallback = getDefaultAesthetic();
+      if (!fallback || !AESTHETICS.includes(fallback)) {
+        return;
+      }
+      aesthetic = fallback;
     }
 
     const root = document.documentElement;

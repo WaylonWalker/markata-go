@@ -15,6 +15,7 @@ import (
 )
 
 const defaultFeedEmbedTemplate = "partials/feed_preview.html"
+const defaultFeedSortField = "date"
 
 const (
 	nilString             = "<nil>"
@@ -264,7 +265,7 @@ func feedSort(fc *models.FeedConfig) (string, bool) {
 		}
 	}
 	if sortField == "" {
-		sortField = "date"
+		sortField = defaultFeedSortField
 		reverse = true
 	}
 	return sortField, reverse
