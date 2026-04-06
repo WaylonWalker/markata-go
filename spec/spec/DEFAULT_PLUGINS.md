@@ -700,9 +700,12 @@ class = "heading-anchor"       # CSS class
 
 **Behavior:**
 1. Find all headings in `article_html`
-2. Generate ID from heading text (slugified)
-3. Handle duplicate IDs by appending numbers
-4. Insert anchor link at configured position
+2. Skip headings that already contain a goldmark anchor (`class="anchor"`) to prevent duplicates
+3. Generate ID from heading text (slugified)
+4. Handle duplicate IDs by appending numbers
+5. Insert anchor link at configured position
+
+**Note:** The goldmark markdown renderer has its own anchor extension (`[markdown.extensions] anchor`), which is disabled by default. The `heading_anchors` plugin is the recommended way to add heading anchors because it offers more configuration options. If the goldmark anchor extension is explicitly re-enabled, `heading_anchors` will detect and skip headings that already have goldmark anchors to avoid duplicates.
 
 **Example output:**
 ```html

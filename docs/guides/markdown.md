@@ -822,7 +822,7 @@ The anchor appears on hover and uses your theme's color scheme.
 
 ```toml
 [markdown.extensions]
-anchor = true  # default: true
+anchor = false  # default: false (use heading_anchors plugin instead)
 ```
 
 ---

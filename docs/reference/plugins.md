@@ -932,7 +932,7 @@ footnote = true          # PHP Markdown Extra footnotes (default: true)
 - **GFM** - GitHub Flavored Markdown (tables, strikethrough, autolinks, task lists)
 - **Syntax Highlighting** - Code block highlighting with Chroma
 - **Admonitions** - Note/warning blocks
-- **Auto Heading IDs** - Generates IDs for headings
+- **Auto Heading IDs** - Generates IDs for headings (anchor links disabled by default; use `heading_anchors` plugin instead)
 - **Typographer** - Smart quotes, dashes, ellipses
 - **Definition Lists** - PHP Markdown Extra style definition lists
 - **Footnotes** - PHP Markdown Extra style footnotes
@@ -1077,9 +1077,12 @@ class = "heading-anchor"  # CSS class for the anchor link (default: "heading-anc
 **Behavior:**
 1. Runs after `render_markdown` to process `ArticleHTML`
 2. Finds all heading tags within the configured level range
-3. Extracts existing IDs or generates URL-safe IDs from heading text
-4. Handles duplicate IDs by appending numbers (e.g., `my-heading`, `my-heading-1`)
-5. Inserts anchor link at the configured position (start or end of heading)
+3. Skips headings that already contain a goldmark anchor (`class="anchor"`) to prevent duplicate anchor links
+4. Extracts existing IDs or generates URL-safe IDs from heading text
+5. Handles duplicate IDs by appending numbers (e.g., `my-heading`, `my-heading-1`)
+6. Inserts anchor link at the configured position (start or end of heading)
+
+**Note:** The goldmark markdown renderer has its own anchor extension (`[markdown.extensions] anchor`), which is disabled by default. This plugin is the recommended way to add heading anchors because it offers more configuration (min/max level, position, symbol, CSS class). If the goldmark extension is re-enabled, this plugin detects and skips headings that already have goldmark anchors.
 
 **HTML output example:**
 ```html

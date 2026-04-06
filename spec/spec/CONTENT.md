@@ -497,7 +497,7 @@ Output:
 **Configuration:**
 ```toml
 [markdown.extensions]
-anchor = true  # Enable heading anchors (default: true)
+anchor = false  # Enable goldmark heading anchors (default: false; use heading_anchors plugin instead)
 ```
 
 ### Code Blocks
