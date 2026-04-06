@@ -533,7 +533,7 @@ jinja: true
 
 **Name:** `wikilinks`  
 **Stage:** Transform  
-**Purpose:** Transforms `[[slug]]` and `[[slug|text]]` wikilink syntax into HTML anchor tags.
+**Purpose:** Transforms `[[slug]]`, `[[slug|text]]`, and `[[slug#fragment]]` wikilink syntax into HTML anchor tags.
 
 **Configuration (TOML):**
 ```toml
@@ -545,13 +545,16 @@ wikilinks_warn_broken = true  # Warn about broken links (default: true)
 ```markdown
 Link to another post: [[other-post-slug]]
 With custom text: [[other-post-slug|Click here to read more]]
+Link to a section: [[other-post-slug#getting-started]]
+Section with custom text: [[other-post-slug#getting-started|See getting started]]
 ```
 
 **Behavior:**
 1. Finds all `[[...]]` patterns in content
-2. Looks up target post by slug (case-insensitive)
-3. If found: converts to `<a href="/slug/">Title</a>`
-4. If not found: keeps original syntax, adds warning to post
+2. Splits the target on the first `#` to extract slug and optional fragment
+3. Looks up target post by slug (case-insensitive), also checks aliases
+4. If found: converts to `<a href="/slug/#fragment">Title</a>` (fragment omitted if empty)
+5. If not found: keeps original syntax, adds warning to post
 
 **Post fields added (in `Extra`):**
 | Field | Type | Description |
@@ -562,12 +565,14 @@ With custom text: [[other-post-slug|Click here to read more]]
 ```markdown
 Check out my [[getting-started]] guide.
 You might also like [[advanced-topics|the advanced guide]].
+Jump to [[getting-started#installation]] for setup steps.
 ```
 
 Becomes:
 ```html
 Check out my <a href="/getting-started/">Getting Started</a> guide.
 You might also like <a href="/advanced-topics/">the advanced guide</a>.
+Jump to <a href="/getting-started/#installation">Getting Started</a> for setup steps.
 ```
 
 ---
