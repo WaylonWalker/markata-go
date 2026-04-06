@@ -987,3 +987,215 @@ func TestWikilinksPlugin_DataAttributesPartial(t *testing.T) {
 		t.Errorf("expected no data-date attribute when date is nil, got %q", source.Content)
 	}
 }
+
+// =============================================================================
+// Fragment Identifier Tests (Issue #990)
+// =============================================================================
+
+func TestWikilinksPlugin_FragmentIdentifier(t *testing.T) {
+	// Test that [[slug#section]] links to the correct post with fragment
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "Getting Started"
+	targetPost := &models.Post{
+		Slug:  "getting-started",
+		Title: &targetTitle,
+		Href:  "/getting-started/",
+	}
+	sourcePost := &models.Post{
+		Content: "See [[getting-started#installation]] for setup.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should link to the post with fragment appended after trailing slash
+	if !strings.Contains(source.Content, `href="/getting-started/#installation"`) {
+		t.Errorf("expected href with fragment, got %q", source.Content)
+	}
+	// Should use post title as display text
+	if !strings.Contains(source.Content, ">Getting Started</a>") {
+		t.Errorf("expected post title as display text, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_FragmentWithCustomText(t *testing.T) {
+	// Test that [[slug#section|Custom Text]] works
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "Configuration Guide"
+	targetPost := &models.Post{
+		Slug:  "config-guide",
+		Title: &targetTitle,
+		Href:  "/config-guide/",
+	}
+	sourcePost := &models.Post{
+		Content: "See [[config-guide#advanced|Advanced Config]] for details.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should have fragment in href
+	if !strings.Contains(source.Content, `href="/config-guide/#advanced"`) {
+		t.Errorf("expected href with fragment, got %q", source.Content)
+	}
+	// Should use custom display text
+	if !strings.Contains(source.Content, ">Advanced Config</a>") {
+		t.Errorf("expected custom display text, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_FragmentWithNoHref(t *testing.T) {
+	// Test fragment when target post has no Href (generated from slug)
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "My Post"
+	targetPost := &models.Post{
+		Slug:  "my-post",
+		Title: &targetTitle,
+		// No Href set - should be generated
+	}
+	sourcePost := &models.Post{
+		Content: "See [[my-post#details]] for more.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should generate href from slug with fragment
+	if !strings.Contains(source.Content, `href="/my-post/#details"`) {
+		t.Errorf("expected generated href with fragment, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_FragmentOnlyDoesNotBreakLookup(t *testing.T) {
+	// Test that fragment doesn't pollute slug lookup
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "Target Post"
+	targetPost := &models.Post{
+		Slug:  "target",
+		Title: &targetTitle,
+		Href:  "/target/",
+	}
+	sourcePost := &models.Post{
+		Content: "See [[target#section-one]] and [[target#section-two]]",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Both should resolve to the same post with different fragments
+	if !strings.Contains(source.Content, `href="/target/#section-one"`) {
+		t.Errorf("expected first fragment link, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, `href="/target/#section-two"`) {
+		t.Errorf("expected second fragment link, got %q", source.Content)
+	}
+	// Should not contain broken wikilink warnings
+	if strings.Contains(source.Content, "[[target#") {
+		t.Errorf("expected wikilinks to be resolved, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_FragmentWithAlias(t *testing.T) {
+	// Test that fragment works with alias resolution
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "ECMAScript Specification"
+	targetPost := &models.Post{
+		Slug:  "ecmascript",
+		Title: &targetTitle,
+		Href:  "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"js", "javascript"},
+		},
+	}
+	sourcePost := &models.Post{
+		Content: "See [[js#modules]] for module info.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should resolve via alias and include fragment
+	if !strings.Contains(source.Content, `href="/ecmascript/#modules"`) {
+		t.Errorf("expected alias resolution with fragment, got %q", source.Content)
+	}
+}
