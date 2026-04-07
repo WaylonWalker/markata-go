@@ -186,7 +186,7 @@ markata-go agent remove --target claude
 - `agents` target: `.agents/skills/markata-go-site/`
 - `claude` target: `.claude/skills/markata-go-site/`
 
-The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, and starter files under `examples/` so agents can read only the sections relevant to the current task. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
+The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, starter files under `examples/`, and regression prompts under `evals/` so agents can read only the sections relevant to the current task while maintainers still have a starter eval set for bundled-skill reviews. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
 
 The `agent` command group is intentionally generic so future subcommands can add export or MCP-oriented integrations without changing the bundled skill format.
 

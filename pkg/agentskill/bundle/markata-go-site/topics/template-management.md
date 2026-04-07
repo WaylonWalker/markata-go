@@ -26,7 +26,9 @@ Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ config.url }}`, `{{ 
 
 Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
 
-The only PascalCase key is `post.Extra` (and `config.Extra`), which is intentional for the dynamic extras namespace: `{{ post.Extra.image }}`, `{{ config.Extra.custom_key }}`.
+Known PascalCase compatibility aliases are limited. `post.Extra` and `config.Extra` are intentional for the dynamic extras namespace: `{{ post.Extra.image }}`, `{{ config.Extra.custom_key }}`.
+
+`post.templateKey` may also appear as a compatibility alias for older content and migrations. Prefer `post.template` for new template work, but do not assume `post.templateKey` is invalid when reading or debugging an existing site.
 
 ## Search Order
 
