@@ -165,6 +165,13 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecyc
 }
 
 func (p *WikilinksPlugin) renderWikilink(match, slug, displayText, attrBlock string, postIndex *lifecycle.PostIndex, warnings, dependencies *[]string) string {
+	// Extract fragment identifier if present (e.g., "my-post#section" -> slug="my-post", fragment="#section")
+	var fragment string
+	if idx := strings.Index(slug, "#"); idx >= 0 {
+		fragment = slug[idx:] // includes the "#"
+		slug = slug[:idx]
+	}
+
 	// Use the shared PostIndex for lookup
 	targetPost := postIndex.LookupBySlug(slug)
 
@@ -191,6 +198,10 @@ func (p *WikilinksPlugin) renderWikilink(match, slug, displayText, attrBlock str
 	href := targetPost.Href
 	if href == "" {
 		href = "/" + targetPost.Slug + "/"
+	}
+	// Append fragment identifier (e.g., "#section") after the trailing slash
+	if fragment != "" {
+		href += fragment
 	}
 
 	dataAttrs := p.renderWikilinkDataAttrs(targetPost)
