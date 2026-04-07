@@ -1,6 +1,6 @@
 ---
 name: markata-go-site
-description: Help agents work effectively in markata-go site repositories. Use this when the task involves site configuration, writing content, templates, themes, builds, deployment, or deciding whether a change belongs in config, content, templates, or plugins.
+description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins.
 ---
 
 This skill helps an agent work inside a markata-go site repository without needing the markata-go source tree.
@@ -54,6 +54,12 @@ Use these as starter material for first sites or when a repo has no local exampl
 - `examples/templates/base.html`
 - `examples/templates/post.html`
 - `examples/templates/feed.html`
+
+## Eval Files
+
+Use these only when reviewing or improving the bundled skill itself:
+
+- `evals/evals.json`
 
 ## First-Site Defaults
 

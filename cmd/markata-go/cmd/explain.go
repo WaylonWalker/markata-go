@@ -671,6 +671,7 @@ The installed skill is intentionally split into focused topic files:
 - plugin creation
 
 The entrypoint is ` + "`SKILL.md`" + ` and the detailed guidance lives under ` + "`topics/`" + `.
+Reference material lives under ` + "`reference/`" + `, starter files live under ` + "`examples/`" + `, and bundled regression prompts live under ` + "`evals/`" + `.
 
 ## Why a Command Group?
 
