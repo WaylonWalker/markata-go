@@ -1939,6 +1939,9 @@ enabled = false
 Display the resolved configuration:
 
 ```bash
+# Same as `markata-go config show`
+markata-go config
+
 # Show as YAML (default)
 markata-go config show
 
@@ -1947,7 +1950,14 @@ markata-go config show --json
 
 # Show as TOML
 markata-go config show --toml
+
+# Include merged override files
+markata-go config show -m fast-markata-go.toml
 ```
+
+`config show` uses the same config resolution path as `build` and `serve`, including any `--merge-config` overrides.
+
+Conflicting format requests such as `markata-go config show --json --toml` fail with usage exit code `2`.
 
 ### `config get`
 
@@ -1987,7 +1997,12 @@ markata-go config validate
 
 # Validate specific config file
 markata-go config validate -c custom.toml
+
+# Validate with merged overrides
+markata-go config validate -m fast-markata-go.toml
 ```
+
+`config validate` uses the same merged configuration resolution as `build` and `serve`.
 
 Example output:
 

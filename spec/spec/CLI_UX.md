@@ -145,6 +145,15 @@ Running `markata-go` with no arguments MUST display help.
 
 Commands SHOULD return errors instead of calling `os.Exit()` directly.
 
+Command invocation and usage errors MUST return exit code `2`.
+
+Examples:
+
+- unknown commands
+- unknown flags
+- conflicting flags
+- missing required positional arguments
+
 Error messages SHOULD:
 
 - explain what went wrong
