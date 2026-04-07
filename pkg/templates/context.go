@@ -635,6 +635,7 @@ func postFormatsToMap(p *models.PostFormatsConfig) map[string]interface{} {
 		"html":     htmlEnabled,
 		"markdown": p.Markdown,
 		"text":     p.Text,
+		"ansi":     p.ANSI,
 		"og":       p.OG,
 	}
 }
