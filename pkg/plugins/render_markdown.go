@@ -86,7 +86,7 @@ func DefaultMarkdownExtensionConfig() MarkdownExtensionConfig {
 		FootnoteEnabled:          true,
 		CJKEnabled:               true,
 		FigureEnabled:            true,
-		AnchorEnabled:            true,
+		AnchorEnabled:            false,
 		TypographerSubstitutions: nil, // nil means use goldmark defaults
 	}
 }
