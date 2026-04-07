@@ -650,12 +650,15 @@ broken_class = "broken-link"   # CSS class for broken links
 ```markdown
 Link to post: [[other-post-slug]]
 With custom text: [[other-post-slug|Click here]]
+Link to section: [[other-post-slug#section-id]]
+Section with text: [[other-post-slug#section-id|See this section]]
 ```
 
 **Resolution:**
-1. Find post where `slug == link_target`
-2. If found: `<a href="{post.href}">{text or post.title}</a>`
-3. If not found: Leave as `[[link]]` or wrap with broken-link class
+1. Split `link_target` on the first `#` into `slug` and optional `fragment`
+2. Find post where `slug == slug` (or alias match, case-insensitive)
+3. If found: `<a href="{post.href}#{fragment}">{text or post.title}</a>` (fragment omitted if empty)
+4. If not found: Leave as `[[link]]` or wrap with broken-link class
 
 **Hook behavior:**
 
