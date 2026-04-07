@@ -162,9 +162,11 @@ examples/
     base.html
     post.html
     feed.html
+evals/
+  evals.json
 ```
 
-Topic files provide narrative guidance for common tasks. Reference files give quick-lookup shapes (template variables, feed config patterns). Example files provide starter configs and templates for new sites or agents that need a concrete starting point.
+Topic files provide narrative guidance for common tasks. Reference files give quick-lookup shapes (template variables, feed config patterns). Example files provide starter configs and templates for new sites or agents that need a concrete starting point. `evals/evals.json` provides a starter regression prompt set for reviewing changes to the bundled skill itself.
 
 ## What The Skill Covers
 

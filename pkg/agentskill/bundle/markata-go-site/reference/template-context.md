@@ -10,7 +10,9 @@ Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ page.has_next }}`
 
 Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
 
-The only PascalCase key is `post.Extra` (and `config.Extra`), which provides access to custom frontmatter and config values.
+Known PascalCase compatibility aliases are limited. `post.Extra` and `config.Extra` provide access to custom frontmatter and config values.
+
+`post.templateKey` may also be present as a compatibility alias. Prefer `post.template` for new work, but expect `post.templateKey` in older content, migrations, and some template/debugging contexts.
 
 ## Core Template Variables
 
@@ -39,7 +41,7 @@ Usually available in HTML templates:
 - `post.skip`
 - `post.tags`
 - `post.template`
-- `post.templateKey`
+- `post.templateKey` (compatibility alias for `post.template`)
 - `post.html`
 - `post.article_html`
 - `post.title`

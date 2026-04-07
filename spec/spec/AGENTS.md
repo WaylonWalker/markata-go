@@ -19,6 +19,7 @@ The bundled skill MUST include:
 - a `topics/` directory with focused guidance files
 - a `reference/` directory with quick-lookup reference material
 - an `examples/` directory with starter config and template files
+- an `evals/` directory with starter regression prompts for the bundled skill itself
 
 The initial required topic files are:
 
@@ -46,7 +47,13 @@ The initial example files are:
 - `templates/post.html`
 - `templates/feed.html`
 
+The initial eval files are:
+
+- `evals/evals.json`
+
 The entrypoint SHOULD tell agents to read only the topic files relevant to the current task. Reference and example files SHOULD be used when agents need exact shapes or starter material rather than narrative guidance.
+
+The `SKILL.md` frontmatter description MUST name concrete site-repository tasks and decision contexts so the bundled skill triggers reliably for real work instead of only broad repository descriptions.
 
 ## Skill Content Requirements
 
@@ -57,6 +64,14 @@ The bundled skill MUST guide agents toward:
 - using built-in CLI inspection commands where possible
 - preserving the site's existing layout and conventions unless the task explicitly changes them
 - using warm-build comparisons for performance work
+
+The bundled skill MUST also include a starter eval set that covers at least:
+
+- config changes or debugging
+- frontmatter or content creation
+- template or layout edits
+- build or deploy debugging
+- deciding whether work belongs in config, templates, feeds, CSS, or plugins
 
 ## Skill Maintenance Requirement
 
