@@ -581,7 +581,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	}
 
 	// Create template context
-	modelsConfig := ToModelsConfig(config)
+	modelsConfig := applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config))
 	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
 	ctx = ctx.WithCore(m)
 	ctx.Set("feed_posts", createFeedPostsFunc(m))

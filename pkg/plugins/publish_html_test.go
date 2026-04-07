@@ -1210,3 +1210,100 @@ func TestPublishHTMLPlugin_NonPrivatePostGetsAllFormats(t *testing.T) {
 		t.Error("Public post .ansi file should be written")
 	}
 }
+
+func TestResolvePostFormats_MergesFrontmatterOverride(t *testing.T) {
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				ANSI:     false,
+				OG:       true,
+			},
+		},
+	}
+
+	post := &models.Post{
+		Extra: map[string]interface{}{
+			"post_formats": map[string]interface{}{
+				"ansi": true,
+				"og":   false,
+			},
+		},
+	}
+
+	resolved := resolvePostFormats(post, config)
+
+	if !resolved.IsHTMLEnabled() {
+		t.Fatal("expected html to inherit enabled site default")
+	}
+	if !resolved.Markdown {
+		t.Fatal("expected markdown to inherit enabled site default")
+	}
+	if !resolved.Text {
+		t.Fatal("expected text to inherit enabled site default")
+	}
+	if !resolved.ANSI {
+		t.Fatal("expected ansi to be enabled by post override")
+	}
+	if resolved.OG {
+		t.Fatal("expected og to be disabled by post override")
+	}
+}
+
+func TestPublishHTMLPlugin_PostFrontmatterDisablesInheritedFormats(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				ANSI:     false,
+				OG:       false,
+			},
+		},
+	}
+
+	title := "Frontmatter Override"
+	post := &models.Post{
+		Path:        "override.md",
+		Slug:        "override-post",
+		Title:       &title,
+		Content:     "body",
+		HTML:        "<html><body>html</body></html>",
+		Published:   true,
+		ArticleHTML: "<p>body</p>",
+		Extra: map[string]interface{}{
+			"post_formats": map[string]interface{}{
+				"markdown": false,
+				"text":     false,
+				"ansi":     true,
+			},
+		},
+	}
+
+	m := createTestManager(t, config)
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(tempDir, "override-post", "index.html")); os.IsNotExist(err) {
+		t.Fatal("expected html output to be written")
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "override-post.md")); !os.IsNotExist(err) {
+		t.Fatal("expected markdown output to be suppressed by post override")
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "override-post.txt")); !os.IsNotExist(err) {
+		t.Fatal("expected text output to be suppressed by post override")
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "override-post.ansi")); os.IsNotExist(err) {
+		t.Fatal("expected ansi output to be enabled by post override")
+	}
+}

@@ -220,11 +220,12 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		return fmt.Errorf("creating post directory %s: %w", postDir, err)
 	}
 
-	// Get post formats config from Extra
-	postFormats := getPostFormatsConfig(config)
+	// Resolve site defaults plus any per-post frontmatter override.
+	postFormats := resolvePostFormats(post, config)
 
 	// Get build cache for incremental builds
 	cache := GetBuildCache(m)
+	removeDisabledPostOutputs(config.OutputDir, post.Slug, postFormats)
 
 	// Write HTML format (default)
 	if postFormats.IsHTMLEnabled() {
@@ -376,7 +377,7 @@ func (p *PublishHTMLPlugin) buildFormatContent(post *models.Post, config *lifecy
 	// If we have an engine and the template exists, render it
 	if engine != nil && templateName != "" && engine.TemplateExists(templateName) {
 		// Create template context
-		ctx := templates.NewContext(post, post.Content, ToModelsConfig(config))
+		ctx := templates.NewContext(post, post.Content, applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config)))
 		ctx = ctx.WithCore(m)
 
 		// Render the template
@@ -447,7 +448,7 @@ func (p *PublishHTMLPlugin) renderTerminalContent(
 		return post.Content
 	}
 
-	ctx := templates.NewContext(post, body, ToModelsConfig(config))
+	ctx := templates.NewContext(post, body, applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config)))
 	result, err := engine.Render(templateName, ctx)
 	if err != nil {
 		return body
@@ -710,7 +711,7 @@ func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.
 // renderOGWithThemeTemplate renders the OG card using the theme's og-card.html template.
 func (p *PublishHTMLPlugin) renderOGWithThemeTemplate(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
 	// Build context for pongo2 template
-	ctx := templates.NewContext(post, "", ToModelsConfig(config))
+	ctx := templates.NewContext(post, "", applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config)))
 
 	result, err := engine.Render("og-card.html", ctx)
 	if err != nil {

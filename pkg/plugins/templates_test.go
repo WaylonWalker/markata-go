@@ -398,6 +398,65 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_Render_UsesResolvedPostFormatsInTemplateContext(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "templates-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	templateContent := `{% if config.post_formats.markdown %}md-on{% else %}md-off{% endif %} {% if config.post_formats.ansi %}ansi-on{% else %}ansi-off{% endif %}`
+	templatePath := filepath.Join(tmpDir, "post.html")
+
+	err = os.WriteFile(templatePath, []byte(templateContent), 0o600)
+	if err != nil {
+		t.Fatalf("Failed to write template: %v", err)
+	}
+
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.Extra["templates_dir"] = tmpDir
+	htmlEnabled := true
+	config.Extra["post_formats"] = models.PostFormatsConfig{
+		HTML:     &htmlEnabled,
+		Markdown: true,
+		Text:     true,
+		ANSI:     false,
+	}
+
+	err = p.Configure(m)
+	if err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	if !p.engine.TemplateExists("post.html") {
+		t.Fatalf("expected post.html template to be available from %s", templatePath)
+	}
+
+	title := "Test Post"
+	post := &models.Post{
+		Title:       &title,
+		Template:    "post.html",
+		ArticleHTML: "<p>Hello World</p>",
+		Extra: map[string]interface{}{
+			"post_formats": map[string]interface{}{
+				"markdown": false,
+				"ansi":     true,
+			},
+		},
+	}
+	m.AddPost(post)
+
+	err = p.Render(m)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	if !strings.Contains(post.HTML, "md-off ansi-on") {
+		t.Fatalf("expected template context to use resolved per-post post_formats, got %q", post.HTML)
+	}
+}
+
 func TestTemplatesPlugin_Render_SkippedPost(t *testing.T) {
 	p := NewTemplatesPlugin()
 	m := lifecycle.NewManager()

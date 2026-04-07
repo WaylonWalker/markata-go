@@ -1483,6 +1483,17 @@ og = true         # /slug/og/index.html (social card)
 
 **Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.
 
+**Per-post frontmatter overrides**: A post can override any of these format flags in frontmatter with a `post_formats` object. Overrides merge with the site defaults, so omitted keys continue to inherit from `[markata-go.post_formats]`.
+
+```yaml
+---
+title: "One-off terminal post"
+post_formats:
+  ansi: true
+  og: false
+---
+```
+
 OG card pages automatically include:
 - `<link rel="canonical">` pointing back to the original post
 - `<meta name="robots" content="noindex, nofollow">` to prevent search engine indexing

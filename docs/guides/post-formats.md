@@ -29,6 +29,26 @@ og = true         # OpenGraph card HTML (default: true)
 
 By default, HTML, Markdown, plain text, and OG formats are enabled. ANSI output is opt-in so you can add rich terminal rendering without introducing escape sequences into existing `.txt` endpoints.
 
+## Per-Post Overrides
+
+Site config sets the defaults, and individual posts can override them in frontmatter:
+
+```yaml
+---
+title: "Release Notes"
+post_formats:
+  markdown: false
+  ansi: true
+  og: false
+---
+```
+
+Merge rules:
+
+- omitted keys inherit the site-wide `[markata-go.post_formats]` setting
+- specified keys override only that post
+- template-visible `config.post_formats` follows the resolved per-post values, so alternate links and format switchers stay in sync with generated files
+
 ## Available Formats
 
 ### HTML (default)
