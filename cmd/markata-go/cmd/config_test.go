@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseValue(t *testing.T) {
@@ -257,44 +261,58 @@ func TestConfigToMap(t *testing.T) {
 	}
 }
 
-func TestIsKeyInMap(t *testing.T) {
+func TestHasPath(t *testing.T) {
 	tests := []struct {
 		name   string
 		m      map[string]interface{}
-		key    string
+		path   []string
 		expect bool
 	}{
 		{
 			name:   "nil map",
 			m:      nil,
-			key:    "foo",
+			path:   []string{"foo"},
 			expect: false,
 		},
 		{
-			name:   "key exists",
+			name:   "top level key exists",
 			m:      map[string]interface{}{"title": "Test"},
-			key:    "title",
+			path:   []string{"title"},
+			expect: true,
+		},
+		{
+			name: "nested key exists",
+			m: map[string]interface{}{
+				"glob": map[string]interface{}{"patterns": []interface{}{"posts/**/*.md"}},
+			},
+			path:   []string{"glob", "patterns"},
 			expect: true,
 		},
 		{
 			name:   "key does not exist",
 			m:      map[string]interface{}{"title": "Test"},
-			key:    "description",
+			path:   []string{"description"},
+			expect: false,
+		},
+		{
+			name:   "missing nested key",
+			m:      map[string]interface{}{"glob": map[string]interface{}{}},
+			path:   []string{"glob", "patterns"},
 			expect: false,
 		},
 		{
 			name:   "empty map",
 			m:      map[string]interface{}{},
-			key:    "title",
+			path:   []string{"title"},
 			expect: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isKeyInMap(tt.m, tt.key)
+			got := hasPath(tt.m, tt.path)
 			if got != tt.expect {
-				t.Errorf("isKeyInMap() = %v, want %v", got, tt.expect)
+				t.Errorf("hasPath() = %v, want %v", got, tt.expect)
 			}
 		})
 	}
@@ -304,54 +322,44 @@ func TestShowDiffConfig(t *testing.T) {
 	tests := []struct {
 		name           string
 		userMap        map[string]interface{}
-		userConfigFile string
+		configPaths    []string
 		expectContains []string
 	}{
 		{
 			name:           "nil user map",
 			userMap:        nil,
-			userConfigFile: "",
+			configPaths:    nil,
 			expectContains: []string{"No user configuration found", "All values are defaults"},
 		},
 		{
 			name:           "empty user map",
 			userMap:        map[string]interface{}{},
-			userConfigFile: "",
+			configPaths:    nil,
 			expectContains: []string{"No user configuration found"},
 		},
 		{
 			name:           "user config with values",
 			userMap:        map[string]interface{}{"title": "My Site", "url": "https://example.com"},
-			userConfigFile: "/path/to/markata-go.toml",
+			configPaths:    []string{"/path/to/markata-go.toml"},
 			expectContains: []string{"User configuration from:", "title: My Site"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
-			oldStdout := os.Stdout
-			r, w, err := os.Pipe()
-			if err != nil {
-				t.Fatalf("Failed to create pipe: %v", err)
-			}
-			os.Stdout = w
+			stdout := bytes.NewBuffer(nil)
+			command := &cobra.Command{Use: "config"}
+			command.SetOut(stdout)
+			currentCmd = command
+			defer func() { currentCmd = nil }()
 
-			err = showDiffConfig(tt.userMap, tt.userConfigFile)
-
-			w.Close()
-			os.Stdout = oldStdout
+			err := showDiffConfig(tt.userMap, tt.configPaths)
 
 			if err != nil {
 				t.Fatalf("showDiffConfig() error = %v", err)
 			}
 
-			buf := make([]byte, 4096)
-			n, err := r.Read(buf)
-			if err != nil && n == 0 {
-				t.Fatalf("Failed to read output: %v", err)
-			}
-			output := string(buf[:n])
+			output := stdout.String()
 
 			for _, expect := range tt.expectContains {
 				if !strings.Contains(output, expect) {
@@ -394,8 +402,11 @@ output_dir = "dist"
 		}
 	}()
 
-	// Test that runConfigShowWithSources works without errors
-	// We'll test in --diff mode since it's easier to verify
+	merged, _, configPaths, err := loadManagerConfig("")
+	if err != nil {
+		t.Fatalf("loadManagerConfig() error = %v", err)
+	}
+
 	configShowDiff = true
 	configShowAnnotate = false
 	defer func() {
@@ -403,29 +414,19 @@ output_dir = "dist"
 		configShowAnnotate = false
 	}()
 
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
-	}
-	os.Stdout = w
+	stdout := bytes.NewBuffer(nil)
+	command := &cobra.Command{Use: "config"}
+	command.SetOut(stdout)
+	currentCmd = command
+	defer func() { currentCmd = nil }()
 
-	err = runConfigShowWithSources("")
-
-	w.Close()
-	os.Stdout = oldStdout
+	err = runConfigShowWithSources(merged, configPaths)
 
 	if err != nil {
 		t.Fatalf("runConfigShowWithSources() error = %v", err)
 	}
 
-	buf := make([]byte, 8192)
-	n, err := r.Read(buf)
-	if err != nil && n == 0 {
-		t.Fatalf("Failed to read output: %v", err)
-	}
-	output := string(buf[:n])
+	output := stdout.String()
 
 	// Should contain user values
 	if !strings.Contains(output, "title") {
@@ -433,5 +434,92 @@ output_dir = "dist"
 	}
 	if !strings.Contains(output, "My Test Site") {
 		t.Errorf("Output should contain 'My Test Site', got:\n%s", output)
+	}
+}
+
+func TestResolveConfigShowFormat_RejectsConflictingFlags(t *testing.T) {
+	command := &cobra.Command{Use: "show"}
+	command.Flags().String("format", "yaml", "")
+	command.Flags().Bool("json", false, "")
+	command.Flags().Bool("toml", false, "")
+
+	if err := command.Flags().Set("json", "true"); err != nil {
+		t.Fatalf("set json flag: %v", err)
+	}
+	if err := command.Flags().Set("toml", "true"); err != nil {
+		t.Fatalf("set toml flag: %v", err)
+	}
+
+	configFormat = "yaml"
+	_, err := resolveConfigShowFormat(command)
+	if err == nil {
+		t.Fatal("expected conflicting flag error")
+	}
+
+	var exitErr *ExitCodeError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("expected ExitCodeError, got %T", err)
+	}
+	if exitErr.ExitCode() != exitCodeUsage {
+		t.Fatalf("exit code = %d, want %d", exitErr.ExitCode(), exitCodeUsage)
+	}
+}
+
+func TestConfigToMap_YAMLSafeKeys(t *testing.T) {
+	cfg := config.DefaultConfig()
+	m, err := configToMap(cfg)
+	if err != nil {
+		t.Fatalf("configToMap() error = %v", err)
+	}
+
+	if _, err := yaml.Marshal(m); err != nil {
+		t.Fatalf("yaml.Marshal(configToMap()) error = %v", err)
+	}
+}
+
+func TestLoadUserConfigMap_MergesConfigPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, "markata-go.toml")
+	overridePath := filepath.Join(tmpDir, "fast.toml")
+
+	base := `[markata-go]
+title = "Base"
+
+[markata-go.glob]
+patterns = ["posts/**/*.md"]
+`
+	override := `[markata-go]
+url = "https://example.com"
+
+[markata-go.glob]
+use_gitignore = false
+`
+
+	if err := os.WriteFile(basePath, []byte(base), 0o600); err != nil {
+		t.Fatalf("write base config: %v", err)
+	}
+	if err := os.WriteFile(overridePath, []byte(override), 0o600); err != nil {
+		t.Fatalf("write override config: %v", err)
+	}
+
+	userMap, err := loadUserConfigMap([]string{basePath, overridePath})
+	if err != nil {
+		t.Fatalf("loadUserConfigMap() error = %v", err)
+	}
+
+	if got, ok := getPathValue(userMap, []string{"title"}); !ok || got != "Base" {
+		t.Fatalf("title = %v, %v; want Base, true", got, ok)
+	}
+	if got, ok := getPathValue(userMap, []string{"url"}); !ok || got != "https://example.com" {
+		t.Fatalf("url = %v, %v; want https://example.com, true", got, ok)
+	}
+	if got, ok := getPathValue(userMap, []string{"glob", "use_gitignore"}); !ok || got != false {
+		t.Fatalf("glob.use_gitignore = %v, %v; want false, true", got, ok)
+	}
+}
+
+func TestExitCodeForError_UsageErrorReturnsTwo(t *testing.T) {
+	if got := ExitCodeForError(errors.New("accepts 1 arg(s), received 0")); got != exitCodeUsage {
+		t.Fatalf("ExitCodeForError() = %d, want %d", got, exitCodeUsage)
 	}
 }

@@ -26,6 +26,8 @@ When `--config` is not passed, markata-go looks for config in this order:
 - `markata-go config get <key>`
 - `markata-go config validate`
 
+Bare `markata-go config` behaves like `markata-go config show`.
+
 ## Core Namespace
 
 Most settings live under `[markata-go]` and nested namespaces like `[markata-go.glob]` and `[markata-go.theme]`.
@@ -188,6 +190,8 @@ Local override files like `markata-go.local.toml` are NOT auto-discovered. They 
 ```bash
 markata-go build -m markata-go.local.toml
 markata-go serve -m markata-go.local.toml
+markata-go config show -m markata-go.local.toml
+markata-go config validate -m markata-go.local.toml
 ```
 
 Multiple merge files can be specified and are applied in order on top of the base config.

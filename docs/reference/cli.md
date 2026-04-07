@@ -933,11 +933,15 @@ Configuration management commands for viewing, validating, and initializing conf
 markata-go config <subcommand> [flags]
 ```
 
+Running `markata-go config` with no subcommand behaves like `markata-go config show`.
+
 #### Subcommands
 
 ##### show
 
 Display the resolved configuration after merging defaults, config file, and environment variables.
+
+`config show` honors the root `--config` and `--merge-config` flags, so it reports the same effective configuration used by `build` and `serve`.
 
 ```bash
 markata-go config show [flags]
@@ -945,6 +949,7 @@ markata-go config show [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--format` | Output format: `yaml`, `json`, or `toml` | `yaml` |
 | `--json` | Output as JSON | `false` |
 | `--toml` | Output as TOML | `false` |
 | (none) | Output as YAML | default |
@@ -963,7 +968,16 @@ markata-go config show --toml
 
 # Show config from specific file
 markata-go config show -c production.toml
+
+# Show config with merged overrides
+markata-go config show -m fast.toml
 ```
+
+Notes:
+
+- `markata-go config` is equivalent to `markata-go config show`
+- `--json` and `--toml` are shorthands for `--format json` and `--format toml`
+- conflicting combinations such as `--json --toml` fail with usage error exit code `2`
 
 ##### get
 
@@ -1032,6 +1046,8 @@ Notes:
 
 Validate the configuration file and report any errors or warnings.
 
+`config validate` honors the root `--config` and `--merge-config` flags.
+
 ```bash
 markata-go config validate [flags]
 ```
@@ -1049,6 +1065,9 @@ markata-go config validate
 # Validate specific config file
 markata-go config validate -c production.toml
 markata-go config validate -c custom.yaml
+
+# Validate with merged overrides
+markata-go config validate -m fast.toml
 ```
 
 **Output:**
@@ -1348,14 +1367,13 @@ Configuration values are resolved in this order (later sources override earlier)
 
 ## Exit Codes
 
-All markata-go commands use standard exit codes:
+markata-go uses these common exit code patterns:
 
 | Code | Name | Description |
 |------|------|-------------|
 | `0` | Success | Command completed successfully |
 | `1` | Error | General error (configuration, plugin, I/O, etc.) |
-| `2` | No Content | No content files found matching glob patterns |
-| `3` | Validation Error | Configuration validation failed |
+| `2` | Usage / Command-specific | Invalid CLI usage such as unknown flags or missing args, or command-specific non-success states documented by that command |
 | `130` | Interrupted | Command interrupted by user (Ctrl+C) |
 
 ### Using Exit Codes in Scripts
