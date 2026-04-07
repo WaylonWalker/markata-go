@@ -873,6 +873,19 @@ This section controls what output formats are generated for each post:
 | `ansi` | `false` | `/slug.ansi` | ANSI-styled terminal page output |
 | `og` | `true` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
+Posts MAY override these site defaults in frontmatter with a `post_formats` mapping. Per-post overrides merge with `[my-ssg.post_formats]` key-by-key; omitted keys inherit the site setting.
+
+```yaml
+---
+title: "Terminal-first post"
+post_formats:
+  ansi: true
+  og: false
+---
+```
+
+In this example, the post inherits the site defaults for `html`, `markdown`, and `text`, enables `.ansi` for this post only, and suppresses OG output for this post only.
+
 `text` and `ansi` are separate explicit variants:
 
 - `text` MUST emit readable plain text with no ANSI escape sequences.
