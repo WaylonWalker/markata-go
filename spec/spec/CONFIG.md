@@ -474,6 +474,10 @@ patterns_append = ["pages/*.md"]
 
 Display resolved configuration:
 
+- bare `my-ssg config` MUST behave like `my-ssg config show`
+- `config show` MUST honor the same config resolution path as build commands, including `--config` and `--merge-config`
+- conflicting output flags such as `--json` with `--toml` MUST fail with a usage error (exit code `2`)
+
 ```bash
 $ my-ssg config show
 output_dir = "public"
@@ -582,6 +586,8 @@ Created my-ssg.toml with all options documented
 ### `config validate`
 
 Validate configuration:
+
+- `config validate` MUST honor the same config resolution path as build commands, including `--config` and `--merge-config`
 
 ```bash
 $ my-ssg config validate

@@ -23,6 +23,8 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go config show --diff`
 - `markata-go config get <key>`
 - `markata-go config validate`
+
+Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go list posts`
 - `markata-go list feeds`
 - `markata-go list tags`
@@ -136,6 +138,7 @@ markata-go lint --fix
 ## Operator Patterns
 
 - use `-m fast.toml` when you want a lighter dev build without rewriting main config
+- use the same `-m` overrides with `config show` and `config validate` when you need to inspect or verify the exact config that `build` or `serve` will use
 - use `-c` when a repo has multiple configs or examples and you need the exact active one
 - use `-o dist` in CI or preview contexts when you want a temporary artifact path
 - use `--no-input` for automation or when the agent must avoid prompts
