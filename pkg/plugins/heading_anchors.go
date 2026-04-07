@@ -148,6 +148,11 @@ func (p *HeadingAnchorsPlugin) processHeading(match string, idCounts map[string]
 	attrs := submatches[2]
 	content := submatches[3]
 
+	// Skip headings that already have an anchor link (e.g., from goldmark anchor extension)
+	if strings.Contains(content, `class="anchor"`) {
+		return match
+	}
+
 	// Parse level
 	level := int(levelStr[0] - '0')
 	if level < p.minLevel || level > p.maxLevel {

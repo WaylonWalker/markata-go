@@ -556,6 +556,54 @@ func TestHeadingAnchorsPlugin_CaseInsensitiveMatching(t *testing.T) {
 	}
 }
 
+func TestHeadingAnchorsPlugin_SkipsExistingGoldmarkAnchors(t *testing.T) {
+	p := NewHeadingAnchorsPlugin()
+
+	post := &models.Post{
+		ArticleHTML: `<h2 id="my-heading">My Heading <a class="anchor" href="#my-heading">¶</a></h2>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// Should NOT add a second anchor
+	if strings.Contains(post.ArticleHTML, `class="heading-anchor"`) {
+		t.Errorf("should not add heading-anchor to headings with existing goldmark anchor, got %q", post.ArticleHTML)
+	}
+}
+
+func TestHeadingAnchorsPlugin_SkipsExistingGoldmarkAnchors_MultipleHeadings(t *testing.T) {
+	p := NewHeadingAnchorsPlugin()
+
+	post := &models.Post{
+		ArticleHTML: `<h2 id="first">First <a class="anchor" href="#first">¶</a></h2>
+<h2 id="second">Second</h2>
+<h3 id="third">Third <a class="anchor" href="#third">¶</a></h3>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// Headings with goldmark anchors should be untouched
+	if strings.Contains(post.ArticleHTML, `First <a class="anchor" href="#first">¶</a> <a href="#first" class="heading-anchor">`) {
+		t.Error("should not add heading-anchor to first heading with existing goldmark anchor")
+	}
+
+	// Heading without goldmark anchor should get a heading-anchor
+	if !strings.Contains(post.ArticleHTML, `Second <a href="#second" class="heading-anchor">#</a>`) {
+		t.Errorf("second heading should have heading-anchor added, got %q", post.ArticleHTML)
+	}
+
+	// Third heading (h3) with goldmark anchor should be untouched
+	if strings.Contains(post.ArticleHTML, `Third <a class="anchor" href="#third">¶</a> <a href="#third" class="heading-anchor">`) {
+		t.Error("should not add heading-anchor to third heading with existing goldmark anchor")
+	}
+}
+
 // Interface compliance tests
 
 func TestHeadingAnchorsPlugin_Interfaces(_ *testing.T) {
