@@ -16,6 +16,7 @@ import (
 // required JavaScript and CSS.
 type ImageZoomPlugin struct {
 	config models.ImageZoomConfig
+	useCDN bool
 }
 
 // NewImageZoomPlugin creates a new ImageZoomPlugin with default settings.
@@ -49,9 +50,12 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	p.useCDN = p.config.CDN
+
 	// Check for image_zoom config in Extra
 	imageZoomConfig, ok := config.Extra["image_zoom"]
 	if !ok {
+		p.resolveAssetMode(config.Extra)
 		return nil
 	}
 
@@ -68,6 +72,7 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		}
 		if cdn, ok := cfgMap["cdn"].(bool); ok {
 			p.config.CDN = cdn
+			p.useCDN = cdn
 		}
 		if autoAllImages, ok := cfgMap["auto_all_images"].(bool); ok {
 			p.config.AutoAllImages = autoAllImages
@@ -92,7 +97,35 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		}
 	}
 
+	p.resolveAssetMode(config.Extra)
+
 	return nil
+}
+
+func (p *ImageZoomPlugin) resolveAssetMode(extra map[string]interface{}) {
+	if extra == nil {
+		p.useCDN = p.config.CDN
+		return
+	}
+
+	assetURLs := map[string]string{}
+	if direct, ok := extra["asset_urls"].(map[string]string); ok {
+		assetURLs = direct
+	}
+	if anyMap, ok := extra["asset_urls"].(map[string]interface{}); ok {
+		for key, value := range anyMap {
+			if v, ok := value.(string); ok {
+				assetURLs[key] = v
+			}
+		}
+	}
+
+	if assetURLs["glightbox-css"] != "" && assetURLs["glightbox-js"] != "" {
+		p.useCDN = false
+		return
+	}
+
+	p.useCDN = p.config.CDN
 }
 
 // Render processes images in the rendered HTML for all posts.
@@ -145,7 +178,7 @@ func (p *ImageZoomPlugin) Render(m *lifecycle.Manager) error {
 
 		config.Extra["glightbox_options"] = glightboxOptions
 		config.Extra["glightbox_enabled"] = true
-		config.Extra["glightbox_cdn"] = p.config.CDN
+		config.Extra["glightbox_cdn"] = p.useCDN
 	}
 
 	return nil
@@ -366,7 +399,7 @@ func (p *ImageZoomPlugin) Write(m *lifecycle.Manager) error {
 
 	config.Extra["glightbox_options"] = glightboxOptions
 	config.Extra["glightbox_enabled"] = true
-	config.Extra["glightbox_cdn"] = p.config.CDN
+	config.Extra["glightbox_cdn"] = p.useCDN
 
 	return nil
 }

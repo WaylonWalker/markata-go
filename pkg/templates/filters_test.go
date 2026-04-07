@@ -234,6 +234,55 @@ func TestFilterDefaultIfNone(t *testing.T) {
 	}
 }
 
+func TestFilterSlidesReveal_SplitsOnHeadingsAndRules(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", `<h2>Intro</h2><p>Welcome</p><h3>Details</h3><p>More</p><hr/><h2>End</h2><p>Bye</p>`)
+
+	result, err := engine.RenderString(`{{ html | slides_reveal }}`, ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	checks := []string{
+		`<section><section><div class="slide-content"><h2>Intro</h2><p>Welcome</p></div></section><section><div class="slide-content"><h3>Details</h3><p>More</p></div></section></section>`,
+		`<section><div class="slide-content"><h2>End</h2><p>Bye</p></div></section>`,
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(result, check) {
+			t.Fatalf("slides_reveal output missing %q in %q", check, result)
+		}
+	}
+
+	if strings.Contains(result, "<div class=&#34;slide-content&#34;>") {
+		t.Fatalf("expected safe HTML output, got escaped content: %q", result)
+	}
+}
+
+func TestFilterSlidesReveal_PreservesLeadingContentAsFirstSlide(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", `<p>Lead</p><h3>Deep Dive</h3><p>More</p>`)
+
+	result, err := engine.RenderString(`{{ html | slides_reveal }}`, ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if !strings.Contains(result, `<section><section><div class="slide-content"><p>Lead</p></div></section><section><div class="slide-content"><h3>Deep Dive</h3><p>More</p></div></section></section>`) {
+		t.Fatalf("unexpected reveal output: %q", result)
+	}
+}
+
 func TestFilterLength(t *testing.T) {
 	engine, err := NewEngine("")
 	if err != nil {

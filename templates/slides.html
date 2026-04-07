@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block body_class %}slides-page{% endblock %}
+
+{% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:'' }}{% endblock %}
+
+{% block header %}{% endblock %}
+{% block progress %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block head %}
+{{ block.Super() }}
+<link rel="canonical" href="{{ config.url }}{{ post.href }}">
+<link rel="stylesheet" href="{% with reveal_css=config.Extra.asset_urls|getitem:'revealjs-css' %}{% if reveal_css %}{{ reveal_css }}{% else %}https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css{% endif %}{% endwith %}">
+<link rel="stylesheet" href="{% with reveal_theme=config.Extra.asset_urls|getitem:'revealjs-theme-black' %}{% if reveal_theme %}{{ reveal_theme }}{% else %}https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css{% endif %}{% endwith %}" id="reveal-theme">
+<style>
+  body.slides-page {
+    background: #111;
+  }
+
+  body.slides-page .page-wrapper,
+  body.slides-page .main-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  body.slides-page .reveal {
+    min-height: 100vh;
+  }
+
+  body.slides-page .reveal .slides {
+    text-align: left;
+  }
+
+  body.slides-page .reveal .slide-content {
+    display: block;
+    text-align: left;
+  }
+
+  body.slides-page .reveal pre,
+  body.slides-page .reveal code {
+    text-transform: none;
+  }
+
+  body.slides-page .skip-link,
+  body.slides-page .site-header,
+  body.slides-page #view-transition-progress,
+  body.slides-page .shortcuts-modal-trigger {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block main %}
+<main class="main-content" id="main-content" tabindex="-1">
+  <div class="reveal">
+    <div class="slides">
+      {{ body | slides_reveal }}
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% with reveal_js=config.Extra.asset_urls|getitem:'revealjs-js' %}{% if reveal_js %}{{ reveal_js }}{% else %}https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js{% endif %}{% endwith %}"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    controls: true,
+    progress: true,
+    center: true,
+    transition: 'slide'
+  });
+</script>
+{% endblock %}

@@ -13,6 +13,7 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 - Filters and functions
 - Custom template per post
 - Format-specific templates for `.txt`, `.ansi`, `.md`, and OG outputs
+- Presentation templates such as `slides.html` for reveal.js decks
 
 ---
 
@@ -127,6 +128,41 @@ Template for individual posts:
 </article>
 {% endblock %}
 ```
+
+---
+
+## Slides Template
+
+Markata-go MAY render a post with `template: "slides.html"` for presentation-style decks.
+
+The default `slides.html` behavior is:
+
+1. Use [reveal.js](https://revealjs.com/) for keyboard navigation and slide rendering.
+2. Convert rendered article HTML into nested `<section>` elements.
+3. Start a new horizontal slide when the rendered body encounters:
+   - an `<h2>` heading
+   - an `<hr>` element, which matches the common `---` Markdown slide separator used by reveal.js and Marp
+4. Start a new vertical slide within the current horizontal stack when the rendered body encounters an `<h3>` heading.
+5. Preserve any leading content before the first `<h2>` as the first slide in the deck.
+6. Load reveal.js from the shared CDN asset registry when `[markata-go.assets].mode` is self-hosted or auto and the assets are available; otherwise fall back to CDN URLs.
+
+This allows authors to write decks in plain Markdown using common slide-authoring conventions:
+
+```markdown
+## Opening
+
+Welcome.
+
+### Details
+
+Vertical slide under Opening.
+
+---
+
+## Next Chapter
+```
+
+The template system MUST expose a `slides_reveal` filter that accepts rendered HTML and returns safe reveal.js section markup.
 
 ---
 

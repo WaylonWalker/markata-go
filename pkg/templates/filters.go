@@ -16,6 +16,8 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 
 	"github.com/flosch/pongo2/v6"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 var registerOnce sync.Once
@@ -161,6 +163,7 @@ func registerFilters() {
 
 		// Excerpt filter
 		pongo2.RegisterFilter("excerpt", filterExcerpt)
+		pongo2.RegisterFilter("slides_reveal", filterSlidesReveal)
 
 		// Type conversion filter
 		pongo2.RegisterFilter("string", filterString)
@@ -1088,6 +1091,158 @@ func stripHTMLTagsHelper(s string) string {
 	s = whitespaceRe.ReplaceAllString(s, " ")
 
 	return strings.TrimSpace(s)
+}
+
+type slideDeck struct {
+	Horizontal []slideGroup
+}
+
+type slideGroup struct {
+	Vertical []string
+}
+
+// filterSlidesReveal converts rendered article HTML into reveal.js sections.
+// Horizontal slides start at h2 or hr boundaries. H3 starts a vertical child slide.
+func filterSlidesReveal(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	htmlContent := in.String()
+	if strings.TrimSpace(htmlContent) == "" {
+		return pongo2.AsSafeValue(`<section><div class="slide-content"></div></section>`), nil
+	}
+
+	deck, err := buildRevealSlideDeck(htmlContent)
+	if err != nil {
+		return pongo2.AsSafeValue(`<section><div class="slide-content">` + htmlContent + `</div></section>`), nil
+	}
+
+	return pongo2.AsSafeValue(renderRevealSlideDeck(deck)), nil
+}
+
+func buildRevealSlideDeck(htmlContent string) (slideDeck, error) {
+	context := &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div}
+	fragment, err := html.ParseFragment(strings.NewReader(htmlContent), context)
+	if err != nil {
+		return slideDeck{}, err
+	}
+
+	deck := slideDeck{}
+	currentHorizontal := slideGroup{}
+	currentVertical := strings.Builder{}
+	hasVerticalContent := false
+	hasHorizontal := false
+
+	flushVertical := func() {
+		content := strings.TrimSpace(currentVertical.String())
+		if content == "" {
+			currentVertical.Reset()
+			hasVerticalContent = false
+			return
+		}
+		currentHorizontal.Vertical = append(currentHorizontal.Vertical, content)
+		currentVertical.Reset()
+		hasVerticalContent = false
+	}
+
+	flushHorizontal := func() {
+		flushVertical()
+		if len(currentHorizontal.Vertical) == 0 {
+			return
+		}
+		deck.Horizontal = append(deck.Horizontal, currentHorizontal)
+		currentHorizontal = slideGroup{}
+		hasHorizontal = false
+	}
+
+	for _, node := range fragment {
+		if isHorizontalRuleSeparator(node) {
+			flushHorizontal()
+			continue
+		}
+
+		if isHorizontalHeadingSeparator(node) {
+			if hasVerticalContent {
+				flushHorizontal()
+			}
+		}
+
+		if isVerticalSeparator(node) {
+			if hasVerticalContent {
+				flushVertical()
+			}
+			hasHorizontal = true
+		}
+
+		currentVertical.WriteString(renderNode(node))
+		hasVerticalContent = true
+		if !hasHorizontal {
+			hasHorizontal = true
+		}
+	}
+
+	flushHorizontal()
+
+	if len(deck.Horizontal) == 0 {
+		deck.Horizontal = append(deck.Horizontal, slideGroup{Vertical: []string{htmlContent}})
+	}
+
+	return deck, nil
+}
+
+func isHorizontalHeadingSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "h2"
+}
+
+func isHorizontalRuleSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "hr"
+}
+
+func isVerticalSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "h3"
+}
+
+func renderRevealSlideDeck(deck slideDeck) string {
+	var out strings.Builder
+	for _, horizontal := range deck.Horizontal {
+		if len(horizontal.Vertical) <= 1 {
+			out.WriteString("<section>")
+			if len(horizontal.Vertical) == 1 {
+				out.WriteString(`<div class="slide-content">`)
+				out.WriteString(horizontal.Vertical[0])
+				out.WriteString(`</div>`)
+			}
+			out.WriteString("</section>")
+			continue
+		}
+
+		out.WriteString("<section>")
+		for _, vertical := range horizontal.Vertical {
+			out.WriteString("<section>")
+			out.WriteString(`<div class="slide-content">`)
+			out.WriteString(vertical)
+			out.WriteString(`</div></section>`)
+		}
+		out.WriteString("</section>")
+	}
+	return out.String()
+}
+
+func renderNode(node *html.Node) string {
+	if node == nil {
+		return ""
+	}
+	var out strings.Builder
+	if err := html.Render(&out, node); err != nil {
+		return ""
+	}
+	return out.String()
 }
 
 // filterString converts a value to a string representation.

@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -435,5 +436,90 @@ func TestContext_Merge(t *testing.T) {
 	}
 	if ctx1.Get("key2") != "value2" {
 		t.Error("Merged extra key not added")
+	}
+}
+
+func TestEngine_Render_SlidesTemplate(t *testing.T) {
+	engine, err := NewEngine("../../templates")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	title := "Slides"
+	post := &models.Post{
+		Title: &title,
+		Slug:  "slides",
+		Href:  "/slides/",
+	}
+	config := models.NewConfig()
+	config.Title = "My Site"
+	config.URL = "https://example.com"
+
+	body := `<h2>Intro</h2><p>Welcome</p><h3>Details</h3><p>More</p><hr/><h2>Wrap Up</h2>`
+	ctx := NewContext(post, body, config)
+
+	rendered, err := engine.Render("slides.html", ctx)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+
+	checks := []string{
+		`<body class="slides-page">`,
+		`https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css`,
+		`<div class="reveal">`,
+		`<div class="slides">`,
+		`<section><section><div class="slide-content"><h2>Intro</h2><p>Welcome</p></div></section><section><div class="slide-content"><h3>Details</h3><p>More</p></div></section></section>`,
+		`<section><div class="slide-content"><h2>Wrap Up</h2></div></section>`,
+		`Reveal.initialize({`,
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(rendered, check) {
+			t.Fatalf("slides template output missing %q", check)
+		}
+	}
+
+	for _, hidden := range []string{`<header class="site-header">`, `<footer class="site-footer">`} {
+		if strings.Contains(rendered, hidden) {
+			t.Fatalf("slides template should not render %q, output: %q", hidden, rendered)
+		}
+	}
+}
+
+func TestEngine_Render_SlidesTemplate_UsesVendoredRevealAssets(t *testing.T) {
+	engine, err := NewEngine("../../templates")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	title := "Slides"
+	post := &models.Post{Title: &title, Slug: "slides", Href: "/slides/"}
+	config := models.NewConfig()
+	config.Title = "My Site"
+	config.URL = "https://example.com"
+	config.Extra = map[string]interface{}{
+		"asset_urls": map[string]interface{}{
+			"revealjs-css":         "/assets/vendor/revealjs/reveal.css",
+			"revealjs-theme-black": "/assets/vendor/revealjs/theme/black.css",
+			"revealjs-js":          "/assets/vendor/revealjs/reveal.js",
+		},
+	}
+
+	ctx := NewContext(post, `<h2>Intro</h2>`, config)
+	rendered, err := engine.Render("slides.html", ctx)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+
+	checks := []string{
+		`href="/assets/vendor/revealjs/reveal.css"`,
+		`href="/assets/vendor/revealjs/theme/black.css"`,
+		`src="/assets/vendor/revealjs/reveal.js"`,
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(rendered, check) {
+			t.Fatalf("slides template vendored output missing %q", check)
+		}
 	}
 }
