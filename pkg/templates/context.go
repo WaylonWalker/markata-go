@@ -1268,7 +1268,7 @@ func sidebarItemsToMaps(items []models.SidebarNavItem) []map[string]interface{} 
 func (c Context) ToPongo2() pongo2.Context {
 	postMap := postToMap(c.Post)
 	configMap := GetConfigMap(c.Config)
-	if c.Config != nil && c.Config.Theme.CustomCSS != "" {
+	if c.Config != nil {
 		configMap["theme"] = ThemeToMap(&c.Config.Theme)
 	}
 

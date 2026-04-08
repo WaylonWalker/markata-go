@@ -164,6 +164,32 @@ var assetRegistry = []Asset{
 		Version:   "cdn",
 		Type:      "js",
 	},
+
+	// Reveal.js - presentation framework for slides.html
+	{
+		Name:      "revealjs-css",
+		URL:       "https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css",
+		LocalPath: "revealjs/reveal.css",
+		Integrity: "",
+		Version:   "5",
+		Type:      "css",
+	},
+	{
+		Name:      "revealjs-theme-black",
+		URL:       "https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css",
+		LocalPath: "revealjs/theme/black.css",
+		Integrity: "",
+		Version:   "5",
+		Type:      "css",
+	},
+	{
+		Name:      "revealjs-js",
+		URL:       "https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js",
+		LocalPath: "revealjs/reveal.js",
+		Integrity: "",
+		Version:   "5",
+		Type:      "js",
+	},
 }
 
 // Registry returns a copy of all registered assets.

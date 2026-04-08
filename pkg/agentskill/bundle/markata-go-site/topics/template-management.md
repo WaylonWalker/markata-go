@@ -143,6 +143,7 @@ Useful feed/page fields:
 - `theme_asset`
 - `theme_asset_hashed`
 - `asset_url`
+- `slides_reveal`
 
 ## Common Patterns
 
@@ -201,6 +202,14 @@ Common frontmatter options:
 template: custom/special-page.html
 layout: landing
 ```
+
+For presentation decks, `template: slides.html` is available. The bundled default slides template uses reveal.js and splits rendered content with common markdown deck conventions while remaining compatible with the normal H1 content lint rule:
+
+- `##` / rendered `h2`: new horizontal slide
+- `###` / rendered `h3`: new vertical slide
+- `---` / rendered `hr`: new horizontal slide
+
+When a site self-hosts third-party assets with `[markata-go.assets]`, `slides.html` uses the shared `asset_urls` mappings for Reveal.js automatically.
 
 Use `layout` when the site has a base-driven layout system. Use `template` when you need an explicit file.
 
