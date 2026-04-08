@@ -499,9 +499,8 @@ func TestEngine_Render_SlidesTemplate_UsesVendoredRevealAssets(t *testing.T) {
 	config.URL = "https://example.com"
 	config.Extra = map[string]interface{}{
 		"asset_urls": map[string]interface{}{
-			"revealjs-css":         "/assets/vendor/revealjs/reveal.css",
-			"revealjs-theme-black": "/assets/vendor/revealjs/theme/black.css",
-			"revealjs-js":          "/assets/vendor/revealjs/reveal.js",
+			"revealjs-css": "/assets/vendor/revealjs/reveal.css",
+			"revealjs-js":  "/assets/vendor/revealjs/reveal.js",
 		},
 	}
 
@@ -513,7 +512,6 @@ func TestEngine_Render_SlidesTemplate_UsesVendoredRevealAssets(t *testing.T) {
 
 	checks := []string{
 		`href="/assets/vendor/revealjs/reveal.css"`,
-		`href="/assets/vendor/revealjs/theme/black.css"`,
 		`src="/assets/vendor/revealjs/reveal.js"`,
 	}
 
