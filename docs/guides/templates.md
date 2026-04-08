@@ -38,6 +38,7 @@ Templates wrap your rendered Markdown content in HTML layouts. The template syst
 - **Control flow** - Conditionals and loops
 - **Filters** - Transform data for display
 - **Custom templates per post** - Override templates in frontmatter
+- **Presentation templates** - Turn markdown into reveal.js slide decks
 
 ---
 
@@ -226,6 +227,12 @@ When rendering feeds/archives, these additional variables are available:
 ---
 
 ## Built-in Filters
+
+The built-in `slides_reveal` filter converts rendered HTML into reveal.js slide sections.
+
+- `h2` starts a new horizontal slide
+- `hr` starts a new horizontal slide, which aligns with the common Markdown `---` slide separator used by reveal.js and Marp
+- `h3` starts a new vertical slide under the current horizontal slide
 
 ### Date Formatting
 
@@ -530,6 +537,34 @@ template: "landing.html"
 ```
 
 This post will use `templates/landing.html` instead of the default `post.html`.
+
+### Creating a Slide Deck
+
+```yaml
+---
+title: "Platform Roadmap"
+template: "slides.html"
+---
+
+## Opening
+
+Intro slide.
+
+### Details
+
+Vertical follow-up slide.
+
+---
+
+## Next Section
+```
+
+`slides.html` renders the page as a reveal.js deck. In the default template:
+
+1. `##` headings become new horizontal slides.
+2. `###` headings become vertical slides nested under the current horizontal slide.
+3. `---` becomes a horizontal slide break because Markdown renders it as `<hr>`.
+4. Reveal assets use local `assets/vendor/revealjs/...` URLs automatically when `[markata-go.assets].mode` is self-hosted or auto and the assets are available. Run `markata-go assets download` to prefetch them.
 
 ### Creating a Landing Page Template
 

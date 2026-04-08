@@ -3,6 +3,7 @@ package plugins
 import (
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -259,6 +260,73 @@ func TestImageZoomPlugin_MultipleImages(t *testing.T) {
 	// It should still be a plain img tag
 	if containsSubstring(post.ArticleHTML, `<a href="b.jpg"`) {
 		t.Errorf("Second image should not be zoomable without marker")
+	}
+}
+
+func TestImageZoomPlugin_Configure_PrefersVendoredAssets(t *testing.T) {
+	p := NewImageZoomPlugin()
+	m := lifecycle.NewManager()
+	m.Config().Extra["image_zoom"] = map[string]interface{}{
+		"enabled": true,
+		"cdn":     true,
+	}
+	m.Config().Extra["asset_urls"] = map[string]string{
+		"glightbox-css": "/assets/vendor/glightbox/glightbox.min.css",
+		"glightbox-js":  "/assets/vendor/glightbox/glightbox.min.js",
+	}
+
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	if p.useCDN {
+		t.Fatal("expected vendored glightbox assets to disable CDN mode")
+	}
+}
+
+func TestImageZoomPlugin_Configure_UsesLegacyCDNWithoutVendoredAssets(t *testing.T) {
+	p := NewImageZoomPlugin()
+	m := lifecycle.NewManager()
+	m.Config().Extra["image_zoom"] = map[string]interface{}{
+		"enabled": true,
+		"cdn":     true,
+	}
+
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	if !p.useCDN {
+		t.Fatal("expected CDN mode when vendored glightbox assets are unavailable")
+	}
+}
+
+func TestImageZoomPlugin_Write_UsesResolvedAssetMode(t *testing.T) {
+	p := NewImageZoomPlugin()
+	p.SetConfig(models.ImageZoomConfig{
+		Enabled:       true,
+		Library:       "glightbox",
+		Selector:      ".glightbox",
+		AutoAllImages: false,
+		CDN:           true,
+	})
+	p.useCDN = false
+
+	m := lifecycle.NewManager()
+	m.Config().Extra = map[string]interface{}{}
+	m.SetPosts([]*models.Post{{
+		ArticleHTML: `<p><img src="test.jpg" alt="Test {data-zoomable}"></p>`,
+		Extra: map[string]interface{}{
+			"needs_image_zoom": true,
+		},
+	}})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	if got := m.Config().Extra["glightbox_cdn"]; got != false {
+		t.Fatalf("glightbox_cdn = %v, want false", got)
 	}
 }
 
