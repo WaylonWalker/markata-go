@@ -94,19 +94,64 @@ When such a change does not require modifying the bundled skill, the implementat
 
 ## Installation Targets
 
-The CLI MUST support installing the bundled skill into target-specific directory layouts.
+The CLI MUST support agent-specific directory layouts using the same agent identifiers documented by `vercel-labs/skills`.
 
-Initial targets:
+Required agent identifiers:
 
-1. `agents`
-Path:
-`.agents/skills/<skill-name>/`
+- `adal`
+- `amp`
+- `antigravity`
+- `augment`
+- `bob`
+- `claude-code`
+- `cline`
+- `codebuddy`
+- `codex`
+- `command-code`
+- `continue`
+- `cortex`
+- `crush`
+- `cursor`
+- `deepagents`
+- `droid`
+- `firebender`
+- `gemini-cli`
+- `github-copilot`
+- `goose`
+- `iflow-cli`
+- `junie`
+- `kimi-cli`
+- `kilo`
+- `kiro-cli`
+- `kode`
+- `mcpjam`
+- `mistral-vibe`
+- `mux`
+- `neovate`
+- `openclaw`
+- `opencode`
+- `openhands`
+- `pi`
+- `pochi`
+- `qoder`
+- `qwen-code`
+- `replit`
+- `roo`
+- `trae`
+- `trae-cn`
+- `universal`
+- `warp`
+- `windsurf`
+- `zencoder`
 
-2. `claude`
-Path:
-`.claude/skills/<skill-name>/`
+The CLI MUST resolve each agent to the same project and global skill directories used by `vercel-labs/skills`.
 
-The installed file contents MUST remain the same across targets unless a future target explicitly requires generated wrappers.
+Legacy compatibility aliases MAY be accepted for existing users:
+
+- `agents` -> `universal`
+- `claude` -> `claude-code`
+
+The installed file contents MUST remain the same across agents unless a future target explicitly requires generated wrappers.
 
 ## CLI
 
@@ -120,15 +165,23 @@ markata-go agent install [site-path]
 
 Required flags:
 
-- `--target`
+- `--agent`
 - `--name`
 - `--force`
 - `--dry-run`
 
+Optional flags:
+
+- `-g`, `--global`
+
 ### `install` behavior
 
 - `site-path` defaults to the current directory.
-- The command MUST install bundled files into the selected target layout.
+- When `--agent` is omitted for project installs, the command MUST default to the current agent when it can detect one from the environment. If no current agent can be detected, it MUST default to `universal`.
+- `--global` MUST require an explicit `--agent`.
+- `--global` MUST install into the selected agent's user-level skill directory instead of a repository path.
+- `site-path` MUST be rejected when `--global` is set.
+- The command MUST install bundled files into the selected agent layout.
 - The command MUST fail clearly when destination files already exist and `--force` is not set.
 - `--dry-run` MUST report what would be written without modifying the filesystem.
 - Primary results MUST be written to `stdout`.
@@ -142,15 +195,21 @@ markata-go agent update [site-path]
 
 Required flags:
 
-- `--target`
+- `--agent`
 - `--name`
 - `--dry-run`
+
+Optional flags:
+
+- `-g`, `--global`
 
 ### `update` behavior
 
 - `site-path` defaults to the current directory.
 - The command MUST update the installed skill in place using the currently bundled files.
-- `update` MUST behave like `install --force` with the same target and name resolution.
+- `update` MUST behave like `install --force` with the same agent and scope resolution.
+- `--global` MUST require an explicit `--agent`.
+- `site-path` MUST be rejected when `--global` is set.
 - `--dry-run` MUST report what would be updated without modifying the filesystem.
 - Primary results MUST be written to `stdout`.
 
@@ -163,13 +222,19 @@ markata-go agent uninstall [site-path]
 
 Required flags:
 
-- `--target`
+- `--agent`
 - `--name`
+
+Optional flags:
+
+- `-g`, `--global`
 
 ### `remove` behavior
 
 - `site-path` defaults to the current directory.
-- The command MUST remove the installed skill directory for the selected target and name.
+- The command MUST remove the installed skill directory for the selected agent, scope, and name.
+- `--global` MUST require an explicit `--agent`.
+- `site-path` MUST be rejected when `--global` is set.
 - `uninstall` MUST be a direct alias for `remove`.
 - The command MUST fail clearly when the skill is not installed at the resolved location.
 - Primary results MUST be written to `stdout`.
@@ -182,7 +247,8 @@ The manifest MUST contain:
 
 - `version` — the markata-go binary version string (from `cmd.Version`)
 - `installed_at` — RFC 3339 timestamp of installation
-- `target` — the install target used (`agents` or `claude`)
+- `target` — the selected agent identifier (for example `opencode` or `claude-code`)
+- `scope` — `project` or `global`
 - `files` — a map of relative file paths to their SHA-256 hex digests
 
 The manifest MUST NOT be included in the overwrite-protection check. It is always overwritten on install.
@@ -195,7 +261,8 @@ Example manifest:
 {
   "version": "0.5.0",
   "installed_at": "2026-04-01T12:00:00Z",
-  "target": "agents",
+  "target": "opencode",
+  "scope": "project",
   "files": {
     "SKILL.md": "a1b2c3...",
     "topics/configuration.md": "d4e5f6..."
@@ -211,15 +278,21 @@ markata-go agent doctor [site-path]
 
 Required flags:
 
-- `--target`
+- `--agent`
 - `--name`
+
+Optional flags:
+
+- `-g`, `--global`
 
 ### `doctor` behavior
 
 The `doctor` command detects drift between installed skill files and the bundled versions in the current binary.
 
 - `site-path` defaults to the current directory.
-- The command MUST locate the installed skill directory using the same target/name resolution as `install`.
+- The command MUST locate the installed skill directory using the same agent/scope/name resolution as `install`.
+- `--global` MUST require an explicit `--agent`.
+- `site-path` MUST be rejected when `--global` is set.
 - If no manifest file exists, the command MUST report that the skill was installed without a manifest and recommend re-installing with the current binary.
 - If the manifest exists, the command MUST compare:
   1. The `version` field against the current binary version.

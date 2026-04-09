@@ -93,7 +93,8 @@ Install the bundled `markata-go-site` skill into a repository.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Install for a specific agent such as `opencode`, `claude-code`, or `cursor` | auto-detected, else `universal` |
+| `-g`, `--global` | Install into the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 | `--force` | Overwrite bundled skill files if they already exist | `false` |
 | `--dry-run` | Show what would be installed without writing files | `false` |
@@ -106,7 +107,8 @@ This is the user-friendly equivalent of reinstalling with `--force`.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Update a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Update the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 | `--dry-run` | Show what would be updated without writing files | `false` |
 
@@ -116,7 +118,8 @@ Check the installed skill for drift against the versions bundled in the current 
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Check a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Check the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 
 Exit codes:
@@ -135,17 +138,21 @@ Remove the installed `markata-go-site` skill directory.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Remove a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Remove from the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 
 #### Examples
 
 ```bash
-# Install into the portable .agents layout
+# Install into the detected agent's project layout
 markata-go agent install
 
 # Install into Claude Code's .claude layout
-markata-go agent install --target claude
+markata-go agent install --agent claude-code
+
+# Install into OpenCode's global skill directory
+markata-go agent install --agent opencode -g
 
 # Preview files without writing
 markata-go agent install --dry-run
@@ -166,7 +173,10 @@ markata-go agent update --dry-run
 markata-go agent doctor
 
 # Check a Claude Code layout
-markata-go agent doctor --target claude
+markata-go agent doctor --agent claude-code
+
+# Check a global OpenCode install
+markata-go agent doctor --agent opencode -g
 
 # Check a different repository
 markata-go agent doctor ../my-site
@@ -178,15 +188,22 @@ markata-go agent remove
 markata-go agent uninstall
 
 # Remove a Claude Code install
-markata-go agent remove --target claude
+markata-go agent remove --agent claude-code
+
+# Remove a global OpenCode install
+markata-go agent remove --agent opencode -g
 ```
 
 #### Installed Layouts
 
-- `agents` target: `.agents/skills/markata-go-site/`
-- `claude` target: `.claude/skills/markata-go-site/`
+- detected agent or `universal`: project install into that agent's project skill path
+- `--agent claude-code`: `.claude/skills/markata-go-site/`
+- `--agent opencode`: `.agents/skills/markata-go-site/`
+- `--agent opencode -g`: `~/.config/opencode/skills/markata-go-site/`
 
 The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, starter files under `examples/`, and regression prompts under `evals/` so agents can read only the sections relevant to the current task while maintainers still have a starter eval set for bundled-skill reviews. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
+
+When `-g` is used, `--agent` is required and `site-path` is not accepted.
 
 The `agent` command group is intentionally generic so future subcommands can add export or MCP-oriented integrations without changing the bundled skill format.
 

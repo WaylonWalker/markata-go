@@ -21,12 +21,13 @@ type Manifest struct {
 	Version     string            `json:"version"`
 	InstalledAt time.Time         `json:"installed_at"`
 	Target      string            `json:"target"`
+	Scope       string            `json:"scope,omitempty"`
 	Files       map[string]string `json:"files"`
 }
 
 // ComputeBundledManifest builds a Manifest from the current bundled skill files.
-// The version and target fields are set by the caller.
-func ComputeBundledManifest(version, target string) (*Manifest, error) {
+// The version, target, and scope fields are set by the caller.
+func ComputeBundledManifest(version, target, scope string) (*Manifest, error) {
 	skillFS, err := SiteSkill()
 	if err != nil {
 		return nil, fmt.Errorf("load bundled skill: %w", err)
@@ -50,6 +51,7 @@ func ComputeBundledManifest(version, target string) (*Manifest, error) {
 		Version:     version,
 		InstalledAt: time.Now().UTC().Truncate(time.Second),
 		Target:      target,
+		Scope:       scope,
 		Files:       fileHashes,
 	}, nil
 }

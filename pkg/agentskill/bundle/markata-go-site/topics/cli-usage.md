@@ -84,7 +84,8 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go update` (self-update from GitHub releases)
 - `markata-go update --check` (check for updates without installing)
 - `markata-go benchmark --scenario small|medium|large` (performance benchmarks)
-- `markata-go agent install` (install bundled agent skill into site)
+- `markata-go agent install` (install bundled agent skill into the detected project agent or the universal layout)
+- `markata-go agent install --agent <name> [-g]` (choose a specific agent and optional global install scope)
 - `markata-go agent doctor` (check for drift after binary upgrades)
 - `markata-go version`
 

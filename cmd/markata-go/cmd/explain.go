@@ -645,17 +645,27 @@ coding agents can work with markata-go sites more effectively.
 
     markata-go agent install
 
-By default this installs the skill into the portable agents layout:
+By default this installs the skill into the current agent's project layout when
+markata-go can detect one from the environment. Otherwise it falls back to the
+portable universal layout:
 
     .agents/skills/markata-go-site/
 
-To install for Claude Code instead:
+To install for Claude Code explicitly:
 
-    markata-go agent install --target claude
+    markata-go agent install --agent claude-code
 
 This installs to:
 
     .claude/skills/markata-go-site/
+
+To install into OpenCode's global skill directory instead:
+
+    markata-go agent install --agent opencode --global
+
+This installs to:
+
+    ~/.config/opencode/skills/markata-go-site/
 
 ## Skill Layout
 
