@@ -155,6 +155,64 @@ Possible prompts:
 - {{ config.Extra.site_stats.average_words }} average words per post
 ```
 
+### Injecting variables into markdown
+
+Use `jinja: true` in frontmatter, then render values directly inside normal markdown or inside JSON fenced blocks.
+
+Guidance:
+
+- keep the surrounding JSON valid after Jinja renders
+- prefer simple loops and explicit commas
+- reuse existing repo patterns before inventing more dynamic logic
+- if a page only needs site totals, prefer `config.Extra.site_stats.*`
+
+### Contribution graph from post dates
+
+````markdown
+## Publishing activity
+
+```contribution-graph
+{
+  "data": [
+    {% for post in core.filter("published == true") %}
+    {"date": "{{ post.Date.Format \"2006-01-02\" }}", "value": 1}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "options": {
+    "domain": "year",
+    "subDomain": "day"
+  }
+}
+```
+````
+
+Use this when the author wants a calendar-like view of publishing cadence.
+
+### `chartjs` chart from built-in site stats
+
+````markdown
+## At a glance chart
+
+```chartjs
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Posts", "Words", "Code blocks"],
+    "datasets": [{
+      "label": "Site totals",
+      "data": [
+        {{ config.Extra.site_stats.total_posts }},
+        {{ config.Extra.site_stats.total_words }},
+        {{ config.Extra.site_stats.total_code_blocks }}
+      ]
+    }]
+  }
+}
+```
+````
+
+Use this pattern for simple KPI comparisons where the values already exist in built-in stats.
+
 ### Topic mix chart
 
 Agents may either:
