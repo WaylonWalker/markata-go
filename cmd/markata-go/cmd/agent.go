@@ -49,6 +49,21 @@ Examples:
 	RunE: runAgentInstallCommand,
 }
 
+var agentListAgentsCmd = &cobra.Command{
+	Use:   "list-agents",
+	Short: "List supported agent identifiers and install paths",
+	Long: `List the supported agent identifiers that markata-go can target.
+
+The output includes each agent's project-level and global skill directory so you
+can choose an explicit --agent value without scanning help text.
+
+Examples:
+  markata-go agent list-agents
+  markata-go agent list-agents | grep opencode`,
+	Args: cobra.NoArgs,
+	RunE: runAgentListAgentsCommand,
+}
+
 var agentDoctorCmd = &cobra.Command{
 	Use:   "doctor [site-path]",
 	Short: "Check installed skill for drift against the current binary",
@@ -125,6 +140,7 @@ var (
 func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.AddCommand(agentInstallCmd)
+	agentCmd.AddCommand(agentListAgentsCmd)
 	agentCmd.AddCommand(agentUpdateCmd)
 	agentCmd.AddCommand(agentDoctorCmd)
 	agentCmd.AddCommand(agentRemoveCmd)
@@ -168,6 +184,22 @@ func runAgentInstallCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return runAgentWriteCommand(args, target, agentInstallGlobal, agentInstallName, agentInstallDryRun, agentInstallForce, "install")
+}
+
+func runAgentListAgentsCommand(cmd *cobra.Command, args []string) error {
+	currentCmd = cmd
+
+	outlnf("Supported agents:")
+	for _, target := range supportedAgentTargets {
+		outlnf("- %s", target.Name)
+		outlnf("  project: %s", target.ProjectPath)
+		outlnf("  global:  %s", target.GlobalPath)
+		if len(target.Aliases) > 0 {
+			outlnf("  aliases: %s", strings.Join(target.Aliases, ", "))
+		}
+	}
+
+	return nil
 }
 
 func runAgentUpdateCommand(cmd *cobra.Command, args []string) error {

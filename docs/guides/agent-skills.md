@@ -15,6 +15,12 @@ markata-go can install a bundled skill into your site repository or an agent-spe
 
 ## Install
 
+See the supported agent ids and install paths directly in the CLI:
+
+```bash
+markata-go agent list-agents
+```
+
 Install into the current agent's project layout:
 
 ```bash
@@ -209,6 +215,8 @@ Topic files provide narrative guidance for common tasks. Reference files give qu
 ## Supported Agents
 
 `markata-go agent` mirrors the same agent identifiers as `vercel-labs/skills`, including `opencode`, `claude-code`, `codex`, `cursor`, `gemini-cli`, `qwen-code`, `warp`, `windsurf`, `github-copilot`, and the rest of that compatibility matrix.
+
+Use `markata-go agent list-agents` to print the full supported list with project and global install paths.
 
 For project installs, omitting `--agent` uses the current agent when markata-go can detect it from the environment. If no agent is detected, markata-go falls back to `universal`, which installs to `.agents/skills/markata-go-site/`.
 

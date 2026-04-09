@@ -87,6 +87,10 @@ markata-go agent install [site-path] [flags]
 
 #### Subcommands
 
+##### list-agents
+
+List the supported agent identifiers and their project/global skill directories.
+
 ##### install
 
 Install the bundled `markata-go-site` skill into a repository.
@@ -147,6 +151,9 @@ Remove the installed `markata-go-site` skill directory.
 ```bash
 # Install into the detected agent's project layout
 markata-go agent install
+
+# List supported agent ids and paths
+markata-go agent list-agents
 
 # Install into Claude Code's .claude layout
 markata-go agent install --agent claude-code

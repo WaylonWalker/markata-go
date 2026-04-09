@@ -643,6 +643,10 @@ coding agents can work with markata-go sites more effectively.
 
 ## Install the Bundled Skill
 
+List supported agent ids and install paths:
+
+    markata-go agent list-agents
+
     markata-go agent install
 
 By default this installs the skill into the current agent's project layout when

@@ -163,6 +163,20 @@ Initial command:
 markata-go agent install [site-path]
 ```
 
+Additional required subcommand:
+
+```bash
+markata-go agent list-agents
+```
+
+### `list-agents` behavior
+
+- The command MUST be read-only.
+- The command MUST write primary results to `stdout`.
+- The command MUST list each supported agent identifier.
+- The command MUST include the project and global skill directories for each agent.
+- When compatibility aliases exist, the command SHOULD show them.
+
 Required flags:
 
 - `--agent`

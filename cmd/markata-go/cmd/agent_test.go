@@ -259,6 +259,38 @@ func TestRunAgentInstallCommand_DryRunUsesCommandWriter(t *testing.T) {
 	}
 }
 
+func TestRunAgentListAgentsCommand_UsesCommandWriter(t *testing.T) {
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	command := &cobra.Command{Use: "list-agents"}
+	command.SetOut(stdout)
+	command.SetErr(stderr)
+
+	if err := runAgentListAgentsCommand(command, nil); err != nil {
+		t.Fatalf("runAgentListAgentsCommand() error = %v", err)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "Supported agents:") {
+		t.Fatalf("expected heading in output, got %q", output)
+	}
+	if !strings.Contains(output, "- opencode") {
+		t.Fatalf("expected opencode in output, got %q", output)
+	}
+	if !strings.Contains(output, "project: .agents/skills") {
+		t.Fatalf("expected project path in output, got %q", output)
+	}
+	if !strings.Contains(output, "global:  .config/opencode/skills") {
+		t.Fatalf("expected global path in output, got %q", output)
+	}
+	if !strings.Contains(output, "aliases: claude") {
+		t.Fatalf("expected alias information in output, got %q", output)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected no stderr output, got %q", stderr.String())
+	}
+}
+
 func TestRunAgentInstallCommand_GlobalRequiresAgent(t *testing.T) {
 	command := &cobra.Command{Use: "install"}
 
