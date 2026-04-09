@@ -17,6 +17,12 @@ Prefer content, templates, and built-in stats over custom plugin work.
 
 ## Built-In Data Surfaces
 
+This topic should distinguish between three categories:
+
+- built-in today: fields and blocks users can use directly now
+- derivable today: analytics agents can compute from posts, frontmatter, and link data with Jinja/templates
+- external-only: traffic and reader behavior that the build cannot know on its own
+
 ### Per-post stats
 
 Available on posts after the `stats` plugin runs:
@@ -54,6 +60,70 @@ Use these for analytics pages, about pages, and site summary components.
 ### Advanced helper
 
 `config.Extra.stats` exposes a helper object for site and feed KPIs. Prefer `config.Extra.site_stats` for straightforward template access. Reach for the helper only when the site already uses it or the task specifically needs helper-driven feed metrics.
+
+Common helper-driven feed access patterns:
+
+- `config.Extra.stats.ForFeed("blog").PostCount()`
+- `config.Extra.stats.ForFeed("blog").TotalWords()`
+- `config.Extra.stats.ForFeed("blog").TotalReadingTimeText()`
+- `config.Extra.stats.ForFeed("blog").PostsByYear()`
+- `config.Extra.stats.ForFeed("blog").PostsByTag()`
+
+### Link graph data
+
+Available on each post today:
+
+- `post.hrefs`: raw href values found in the post
+- `post.inlinks`: template-friendly links from other posts pointing to this post
+- `post.outlinks`: template-friendly links from this post to other pages
+
+Use these to derive:
+
+- orphan notes or posts with no inlinks
+- hub notes with many inlinks
+- heavily connected posts by total links
+- posts with many outbound references
+- internal link lists and backlink sections
+
+### Common built-ins available today
+
+The easiest analytics pages should start with these built-ins:
+
+- word count
+- reading time
+- code block metrics
+- posts by year
+- words by year
+- posts by tag
+- total site posts
+- total site reading time
+- feed-level totals through `config.Extra.stats.ForFeed(...)`
+- contribution graphs from post dates
+- `chartjs` blocks fed by built-in metrics
+
+### Derivable today with Jinja/templates
+
+These are not first-class dashboard features, but agents can build them with existing data:
+
+- posts per month
+- author contribution mix when author fields are present
+- draft/private/published counts
+- posts by template or layout when frontmatter is consistent
+- stale-content lists using `modified` or `lastmod`
+- inlink/outlink leaderboards
+- orphan notes or orphan posts
+- simple second-brain graph summaries
+
+### External-only analytics
+
+These require outside analytics tools or logs and should not be presented as build-derived facts:
+
+- pageviews
+- unique visitors
+- referrers
+- conversions
+- search queries
+- subscriber counts unless imported from elsewhere
 
 ## Chart And Graph Options
 
@@ -95,6 +165,7 @@ Use sections like:
 - `## At a glance`
 - `## Publishing activity`
 - `## Topic mix`
+- `## Link graph`
 - `## What changed this year`
 - `## Notes from the author`
 
@@ -165,6 +236,7 @@ Guidance:
 - prefer simple loops and explicit commas
 - reuse existing repo patterns before inventing more dynamic logic
 - if a page only needs site totals, prefer `config.Extra.site_stats.*`
+- in HTML templates, prefer lowercase map keys like `post.inlinks`; in Jinja markdown loops over `core.filter(...)`, many sites use object-style fields like `post.Inlinks` and `post.Title`
 
 ### Contribution graph from post dates
 
@@ -222,11 +294,66 @@ Agents may either:
 
 Keep the chart JSON valid and prefer a small number of clearly labeled datasets.
 
+### Feed KPI snippet
+
+````markdown
+## Blog feed totals
+
+- {{ config.Extra.stats.ForFeed("blog").PostCount() }} posts in the blog feed
+- {{ config.Extra.stats.ForFeed("blog").TotalWords() }} words in the blog feed
+- {{ config.Extra.stats.ForFeed("blog").TotalReadingTimeText() }} total reading time
+````
+
+Use this when the site has meaningful feed partitions such as `blog`, `docs`, or `notes`.
+
+### Orphan notes section
+
+An orphan note is usually a post with no `inlinks`. Agents should confirm the site's conventions before presenting this as a strong quality signal, because some sites intentionally publish standalone pages.
+
+````markdown
+## Orphan notes
+
+{% for post in core.filter("published == true") %}
+{% if post.Inlinks|length == 0 %}
+- [{{ post.Title }}]({{ post.Href }})
+{% endif %}
+{% endfor %}
+````
+
+If the site already uses a different field casing pattern in markdown/Jinja, mirror the local convention instead of forcing a rewrite. The important thing is the pattern: filter posts, check the inlink count, and render a list.
+
+### Most-linked posts
+
+````markdown
+## Most linked notes
+
+{% for post in core.filter("published == true") %}
+- [{{ post.Title }}]({{ post.Href }}) has {{ post.Inlinks|length }} inbound links and {{ post.Outlinks|length }} outbound links
+{% endfor %}
+````
+
+Agents should usually sort or pre-filter this in the site's preferred way if the repo already has helper patterns for ordered post collections.
+
+## Link Analytics Ideas
+
+Good build-side link analytics include:
+
+- orphan notes
+- most-linked notes
+- posts with the most outbound references
+- posts with no outbound links
+- dense hub pages for docs or second brains
+- backlink sections for related-post discovery
+- broken-wikilink follow-up lists when the site treats warnings as actionable
+
+For second-brain sites, these are often more valuable than pageview analytics because they describe knowledge structure rather than reader traffic.
+
 ## Storytelling Guidance
 
 Agents should help authors create stories from their data by:
 
 - identifying notable changes in publishing volume, topic mix, or reading-time distribution
+- identifying useful link graph patterns such as isolated notes, strong hubs, and unusually reference-heavy posts
 - suggesting section headings and narrative prompts grounded in the metrics
 - calling out where the data is strong and where it is only directional
 - keeping claims tied to visible charts or explicit metrics

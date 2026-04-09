@@ -82,6 +82,24 @@ Common site-wide stats in `config.Extra.site_stats`:
 
 Advanced helper access may also be available via `config.Extra.stats` for site and feed KPIs.
 
+Common feed-helper calls when the helper is exposed:
+
+- `config.Extra.stats.ForFeed("blog").PostCount()`
+- `config.Extra.stats.ForFeed("blog").TotalWords()`
+- `config.Extra.stats.ForFeed("blog").TotalReadingTimeText()`
+- `config.Extra.stats.ForFeed("blog").PostsByYear()`
+- `config.Extra.stats.ForFeed("blog").PostsByTag()`
+
+## Link Graph Fields
+
+Common link-analysis fields on `post`:
+
+- `post.hrefs`
+- `post.inlinks`
+- `post.outlinks`
+
+These are useful for backlink sections, related-note sections, hub-note detection, and orphan-note analysis.
+
 ## Common Top-Level Aliases
 
 Markata-go also injects convenient top-level aliases:
