@@ -30,6 +30,24 @@
       "prompt": "I want each post page to show a small computed reading estimate and a badge when it links to a GitHub repo. Should this live in frontmatter, config, templates, or a plugin? Please reason through the options for a normal markata-go site repo.",
       "expected_output": "Explains the config/content/template/plugin decision clearly, prefers lower-cost options first, and only recommends plugin work when the behavior cannot be expressed with existing fields, templates, or built-in features.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Please create an `analytics.md` page for my markata-go site. I want KPI callouts, a chart of publishing activity, and a topic-mix section, but I want to write the timeline story in my own voice. Use built-in stats or chart features when possible and leave me good prompts where I should add interpretation.",
+      "expected_output": "Creates or recommends a Jinja-enabled analytics page pattern, uses built-in stats and chart features instead of inventing a plugin, includes concrete metrics/chart structure, and leaves clear author-facing prompts for the narrative sections.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "On my markata-go site I want feed cards and post pages to show word count and reading time, and I also want an about page to show total posts and total reading time for the whole site. What template fields should I use and what is the smallest safe change?",
+      "expected_output": "Points to `post.Extra.word_count`, `post.Extra.reading_time_text`, and `config.Extra.site_stats` fields, keeps the change in templates or partials, and avoids suggesting unnecessary plugin work.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "I want an analytics page on my markata-go second brain that highlights orphan notes, the most-linked notes, and a simple publishing cadence chart. Please stay within built-in data the site already has and tell me what belongs in Jinja markdown versus external analytics.",
+      "expected_output": "Uses built-in or derivable build-side data such as `inlinks`, `outlinks`, post dates, and existing stats fields, clearly separates build-derived analytics from external traffic analytics, and gives a practical `analytics.md` structure for orphan-note and link-graph storytelling.",
+      "files": []
     }
   ]
 }

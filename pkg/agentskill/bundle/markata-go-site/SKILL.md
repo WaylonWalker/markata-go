@@ -1,6 +1,6 @@
 ---
 name: markata-go-site
-description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins.
+description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, analytics or stats pages, chartjs or contribution graphs, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins. Use it proactively for tasks like creating an `analytics.md` page, exposing reading time or word count in templates, or helping an author turn site metrics into a publishable story.
 ---
 
 This skill helps an agent work inside a markata-go site repository without needing the markata-go source tree.
@@ -13,6 +13,7 @@ Before making changes:
 - locate the active config file, usually `markata-go.toml`
 - inspect the site's content directories such as `posts/`, `pages/`, `docs/`, and `static/`
 - inspect `templates/` and `palettes/` before inventing new structure
+- inspect existing analytics pages, metrics partials, and chart code blocks before inventing a new data story pattern
 - prefer current command output and files over older examples or assumptions
 - when the site is minimal or brand new, use the topic files in this skill as the default markata-go playbook
 
@@ -34,6 +35,7 @@ Read only the topic files relevant to the task:
 - `topics/faster-builds.md`
 - `topics/theme-creation.md`
 - `topics/template-management.md`
+- `topics/analytics-storytelling.md`
 - `topics/plugin-creation.md`
 
 ## Reference Files
@@ -78,6 +80,7 @@ If the repository is a very small or first-time site and does not yet have clear
 - Template work: `topics/template-management.md`
 - Theme or styling work: `topics/theme-creation.md`
 - Content creation: `topics/writing-frontmatter.md`
+- Analytics pages or metrics storytelling: `topics/analytics-storytelling.md`
 - Config debugging: `topics/configuration.md`
 - Build and CI work: `topics/build-deployment.md`
 - Performance work: `topics/faster-builds.md`
@@ -90,6 +93,7 @@ If the repository is a very small or first-time site and does not yet have clear
 - When something is ambiguous, inspect the actual repo files before changing behavior.
 - Prefer CLI inspection over hand-parsing when `markata-go` already exposes the needed data.
 - If the task is performance-related, compare warm builds before claiming a regression or improvement.
+- For analytics storytelling work, separate computed facts from human narrative: agents should gather metrics, scaffold charts, and suggest story angles, while leaving first-person timeline details for the author unless the user asks for full prose.
 - If the site has no existing conventions yet, use the patterns documented in this skill rather than making up a new structure.
 
 ## Common Repo Areas

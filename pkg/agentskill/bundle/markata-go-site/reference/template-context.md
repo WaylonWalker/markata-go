@@ -52,6 +52,54 @@ Usually available in HTML templates:
 - `post.author_objects`
 - `post.Extra`
 
+## Stats And Analytics Fields
+
+Common per-post stats in `post.Extra`:
+
+- `post.Extra.word_count`
+- `post.Extra.char_count`
+- `post.Extra.reading_time`
+- `post.Extra.reading_time_text`
+- `post.Extra.code_lines`
+- `post.Extra.code_blocks`
+- `post.Extra.stats`
+
+Common site-wide stats in `config.Extra.site_stats`:
+
+- `config.Extra.site_stats.total_posts`
+- `config.Extra.site_stats.total_words`
+- `config.Extra.site_stats.total_chars`
+- `config.Extra.site_stats.total_reading_time`
+- `config.Extra.site_stats.total_reading_time_text`
+- `config.Extra.site_stats.average_words`
+- `config.Extra.site_stats.average_reading_time`
+- `config.Extra.site_stats.average_reading_time_text`
+- `config.Extra.site_stats.total_code_lines`
+- `config.Extra.site_stats.total_code_blocks`
+- `config.Extra.site_stats.posts_by_year`
+- `config.Extra.site_stats.words_by_year`
+- `config.Extra.site_stats.posts_by_tag`
+
+Advanced helper access may also be available via `config.Extra.stats` for site and feed KPIs.
+
+Common feed-helper calls when the helper is exposed:
+
+- `config.Extra.stats.ForFeed("blog").PostCount()`
+- `config.Extra.stats.ForFeed("blog").TotalWords()`
+- `config.Extra.stats.ForFeed("blog").TotalReadingTimeText()`
+- `config.Extra.stats.ForFeed("blog").PostsByYear()`
+- `config.Extra.stats.ForFeed("blog").PostsByTag()`
+
+## Link Graph Fields
+
+Common link-analysis fields on `post`:
+
+- `post.hrefs`
+- `post.inlinks`
+- `post.outlinks`
+
+These are useful for backlink sections, related-note sections, hub-note detection, and orphan-note analysis.
+
 ## Common Top-Level Aliases
 
 Markata-go also injects convenient top-level aliases:
