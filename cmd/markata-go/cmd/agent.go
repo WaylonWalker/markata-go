@@ -10,11 +10,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/agentskill"
 	"github.com/spf13/cobra"
-)
-
-const (
-	agentTargetAgents = "agents"
-	agentTargetClaude = "claude"
+	"github.com/spf13/pflag"
 )
 
 var agentCmd = &cobra.Command{
@@ -22,31 +18,51 @@ var agentCmd = &cobra.Command{
 	Short: "Install agent integrations for markata-go sites",
 	Long: `Manage installable agent integrations for markata-go sites.
 
-The initial workflow installs a bundled, topic-based skill into a site repository.
-The command group is intentionally generic so future subcommands can add export
-and MCP-oriented integrations without changing the bundled skill format.
+The initial workflow installs a bundled, topic-based skill into either a project
+repository or an agent-specific global skill directory. Agent identifiers and
+install locations follow the same naming model documented by vercel-labs/skills.
 
-Supported install targets:
-  agents  - installs to .agents/skills/<name>/
-  claude  - installs to .claude/skills/<name>/`,
+Examples:
+  markata-go agent install
+  markata-go agent install --agent claude-code
+  markata-go agent install --agent opencode --global`,
 }
 
 var agentInstallCmd = &cobra.Command{
 	Use:   "install [site-path]",
 	Short: "Install the bundled markata-go site skill",
-	Long: `Install the bundled markata-go site skill into a repository.
+	Long: `Install the bundled markata-go site skill.
 
-By default the skill is installed into the current directory using the portable
-.agents/skills layout. Use --target claude to install into Claude Code's
-.claude/skills layout instead.
+When --agent is omitted, markata-go installs into the current agent's project
+layout when it can detect one from the environment. Otherwise it falls back to
+the portable universal layout under .agents/skills.
+
+Use --global with an explicit --agent to install into that agent's user-level
+skill directory instead of a project repository.
 
 Examples:
   markata-go agent install
-  markata-go agent install --target claude
+  markata-go agent install --agent claude-code
+  markata-go agent install --agent opencode --global
   markata-go agent install ../my-site --dry-run
   markata-go agent install . --force`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAgentInstallCommand,
+}
+
+var agentListAgentsCmd = &cobra.Command{
+	Use:   "list-agents",
+	Short: "List supported agent identifiers and install paths",
+	Long: `List the supported agent identifiers that markata-go can target.
+
+The output includes each agent's project-level and global skill directory so you
+can choose an explicit --agent value without scanning help text.
+
+Examples:
+  markata-go agent list-agents
+  markata-go agent list-agents | grep opencode`,
+	Args: cobra.NoArgs,
+	RunE: runAgentListAgentsCommand,
 }
 
 var agentDoctorCmd = &cobra.Command{
@@ -58,7 +74,8 @@ since the skill was installed.
 
 Examples:
   markata-go agent doctor
-  markata-go agent doctor --target claude
+  markata-go agent doctor --agent claude-code
+  markata-go agent doctor --agent opencode --global
   markata-go agent doctor ../my-site`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAgentDoctorCommand,
@@ -73,8 +90,8 @@ This is the user-friendly equivalent of running 'markata-go agent install --forc
 
 Examples:
   markata-go agent update
-  markata-go agent update --target claude
-  markata-go agent update --dry-run
+  markata-go agent update --agent claude-code
+  markata-go agent update --agent opencode --global --dry-run
   markata-go agent update ../my-site`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAgentUpdateCommand,
@@ -84,101 +101,144 @@ var agentRemoveCmd = &cobra.Command{
 	Use:     "remove [site-path]",
 	Aliases: []string{"uninstall"},
 	Short:   "Remove an installed markata-go site skill",
-	Long: `Remove the installed markata-go site skill from a repository.
+	Long: `Remove the installed markata-go site skill.
 
 Examples:
   markata-go agent remove
   markata-go agent uninstall
-  markata-go agent remove --target claude
+  markata-go agent remove --agent claude-code
+  markata-go agent remove --agent opencode --global
   markata-go agent remove ../my-site`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAgentRemoveCommand,
 }
 
 var (
-	agentInstallTarget string
-	agentInstallName   string
-	agentInstallForce  bool
-	agentInstallDryRun bool
+	agentInstallAgent        string
+	agentInstallLegacyTarget string
+	agentInstallName         string
+	agentInstallForce        bool
+	agentInstallDryRun       bool
+	agentInstallGlobal       bool
 
-	agentDoctorTarget string
-	agentDoctorName   string
+	agentDoctorAgent        string
+	agentDoctorLegacyTarget string
+	agentDoctorName         string
+	agentDoctorGlobal       bool
 
-	agentUpdateTarget string
-	agentUpdateName   string
-	agentUpdateDryRun bool
+	agentUpdateAgent        string
+	agentUpdateLegacyTarget string
+	agentUpdateName         string
+	agentUpdateDryRun       bool
+	agentUpdateGlobal       bool
 
-	agentRemoveTarget string
-	agentRemoveName   string
+	agentRemoveAgent        string
+	agentRemoveLegacyTarget string
+	agentRemoveName         string
+	agentRemoveGlobal       bool
 )
 
 func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.AddCommand(agentInstallCmd)
+	agentCmd.AddCommand(agentListAgentsCmd)
 	agentCmd.AddCommand(agentUpdateCmd)
 	agentCmd.AddCommand(agentDoctorCmd)
 	agentCmd.AddCommand(agentRemoveCmd)
 
-	agentInstallCmd.Flags().StringVar(&agentInstallTarget, "target", agentTargetAgents, "install target: agents or claude")
-	agentInstallCmd.Flags().StringVar(&agentInstallName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	agentInstallCmd.Flags().BoolVar(&agentInstallForce, "force", false, "overwrite bundled skill files if they already exist")
-	agentInstallCmd.Flags().BoolVar(&agentInstallDryRun, "dry-run", false, "show what would be installed without writing files")
+	installFlags := agentInstallCmd.Flags()
+	installFlags.StringVar(&agentInstallAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
+	installFlags.StringVarP(&agentInstallLegacyTarget, "target", "", "", "legacy alias for --agent")
+	installFlags.BoolVarP(&agentInstallGlobal, "global", "g", false, "install into the selected agent's user-level skill directory")
+	installFlags.StringVar(&agentInstallName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	installFlags.BoolVar(&agentInstallForce, "force", false, "overwrite bundled skill files if they already exist")
+	installFlags.BoolVar(&agentInstallDryRun, "dry-run", false, "show what would be installed without writing files")
+	markTargetHidden(installFlags)
 
-	agentUpdateCmd.Flags().StringVar(&agentUpdateTarget, "target", agentTargetAgents, "install target: agents or claude")
-	agentUpdateCmd.Flags().StringVar(&agentUpdateName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	agentUpdateCmd.Flags().BoolVar(&agentUpdateDryRun, "dry-run", false, "show what would be updated without writing files")
+	updateFlags := agentUpdateCmd.Flags()
+	updateFlags.StringVar(&agentUpdateAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
+	updateFlags.StringVarP(&agentUpdateLegacyTarget, "target", "", "", "legacy alias for --agent")
+	updateFlags.BoolVarP(&agentUpdateGlobal, "global", "g", false, "update the selected agent's user-level skill directory")
+	updateFlags.StringVar(&agentUpdateName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	updateFlags.BoolVar(&agentUpdateDryRun, "dry-run", false, "show what would be updated without writing files")
+	markTargetHidden(updateFlags)
 
-	agentDoctorCmd.Flags().StringVar(&agentDoctorTarget, "target", agentTargetAgents, "install target: agents or claude")
-	agentDoctorCmd.Flags().StringVar(&agentDoctorName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	doctorFlags := agentDoctorCmd.Flags()
+	doctorFlags.StringVar(&agentDoctorAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
+	doctorFlags.StringVarP(&agentDoctorLegacyTarget, "target", "", "", "legacy alias for --agent")
+	doctorFlags.BoolVarP(&agentDoctorGlobal, "global", "g", false, "check the selected agent's user-level skill directory")
+	doctorFlags.StringVar(&agentDoctorName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	markTargetHidden(doctorFlags)
 
-	agentRemoveCmd.Flags().StringVar(&agentRemoveTarget, "target", agentTargetAgents, "install target: agents or claude")
-	agentRemoveCmd.Flags().StringVar(&agentRemoveName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	removeFlags := agentRemoveCmd.Flags()
+	removeFlags.StringVar(&agentRemoveAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
+	removeFlags.StringVarP(&agentRemoveLegacyTarget, "target", "", "", "legacy alias for --agent")
+	removeFlags.BoolVarP(&agentRemoveGlobal, "global", "g", false, "remove from the selected agent's user-level skill directory")
+	removeFlags.StringVar(&agentRemoveName, "name", agentskill.SiteSkillName, "installed skill directory name")
+	markTargetHidden(removeFlags)
+}
+
+func markTargetHidden(flags *pflag.FlagSet) {
+	if err := flags.MarkHidden("target"); err != nil {
+		// Flag existence errors are non-fatal; log in debug mode only
+		_ = err
+	}
 }
 
 func runAgentInstallCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
-	return runAgentWriteCommand(args, agentInstallTarget, agentInstallName, agentInstallDryRun, agentInstallForce, "install")
+	target, err := resolveAgentInstallTarget(agentInstallAgent, agentInstallLegacyTarget, agentInstallGlobal)
+	if err != nil {
+		return err
+	}
+	return runAgentWriteCommand(args, target, agentInstallGlobal, agentInstallName, agentInstallDryRun, agentInstallForce, "install")
+}
+
+func runAgentListAgentsCommand(cmd *cobra.Command, _ []string) error {
+	currentCmd = cmd
+
+	outlnf("Supported agents:")
+	for _, target := range supportedAgentTargets {
+		outlnf("- %s", target.Name)
+		outlnf("  project: %s", target.ProjectPath)
+		outlnf("  global:  %s", target.GlobalPath)
+		if len(target.Aliases) > 0 {
+			outlnf("  aliases: %s", strings.Join(target.Aliases, ", "))
+		}
+	}
+
+	return nil
 }
 
 func runAgentUpdateCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
-	return runAgentWriteCommand(args, agentUpdateTarget, agentUpdateName, agentUpdateDryRun, true, "update")
+	target, err := resolveAgentInstallTarget(agentUpdateAgent, agentUpdateLegacyTarget, agentUpdateGlobal)
+	if err != nil {
+		return err
+	}
+	return runAgentWriteCommand(args, target, agentUpdateGlobal, agentUpdateName, agentUpdateDryRun, true, "update")
 }
 
-func runAgentWriteCommand(args []string, targetFlag, name string, dryRun, force bool, operation string) error {
-	sitePath := "."
-	if len(args) > 0 {
-		sitePath = args[0]
-	}
-
-	root, err := filepath.Abs(sitePath)
+func runAgentWriteCommand(args []string, target agentInstallTarget, global bool, name string, dryRun, force bool, operation string) error {
+	root, err := resolveAgentProjectRoot(args, global)
 	if err != nil {
-		return fmt.Errorf("resolve site path %q: %w", sitePath, err)
-	}
-
-	info, err := os.Stat(root)
-	if err != nil {
-		return fmt.Errorf("stat site path %q: %w", root, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("site path %q is not a directory", root)
+		return err
 	}
 
 	if err := validateSkillName(name); err != nil {
 		return err
 	}
 
-	target, err := normalizeAgentInstallTarget(targetFlag)
+	destination, err := agentSkillInstallDir(root, name, target, global)
 	if err != nil {
 		return err
 	}
 
-	installedFiles, err := installAgentSkill(root, target, name, dryRun, force, Version)
+	installedFiles, err := installAgentSkill(destination, target.Name, agentScopeName(global), dryRun, force, Version)
 	if err != nil {
 		return err
 	}
 
-	destination := agentSkillInstallDir(root, target, name)
 	if dryRun {
 		outlnf("Dry run: would %s %d file(s) %s %s", operation, len(installedFiles), prepositionForAgentOperation(operation), destination)
 	} else {
@@ -186,14 +246,49 @@ func runAgentWriteCommand(args []string, targetFlag, name string, dryRun, force 
 	}
 
 	for _, filePath := range installedFiles {
-		relPath, relErr := filepath.Rel(root, filePath)
-		if relErr != nil {
-			relPath = filePath
+		if !global && root != "" {
+			relPath, relErr := filepath.Rel(root, filePath)
+			if relErr == nil {
+				filePath = filepath.ToSlash(relPath)
+			} else {
+				filePath = filepath.ToSlash(filePath)
+			}
+		} else {
+			filePath = filepath.ToSlash(filePath)
 		}
-		outlnf("- %s", filepath.ToSlash(relPath))
+		outlnf("- %s", filePath)
 	}
 
 	return nil
+}
+
+func resolveAgentProjectRoot(args []string, global bool) (string, error) {
+	if global {
+		if len(args) > 0 {
+			return "", fmt.Errorf("site path is not supported with --global")
+		}
+		return "", nil
+	}
+
+	sitePath := "."
+	if len(args) > 0 {
+		sitePath = args[0]
+	}
+
+	root, err := filepath.Abs(sitePath)
+	if err != nil {
+		return "", fmt.Errorf("resolve site path %q: %w", sitePath, err)
+	}
+
+	info, err := os.Stat(root)
+	if err != nil {
+		return "", fmt.Errorf("stat site path %q: %w", root, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("site path %q is not a directory", root)
+	}
+
+	return root, nil
 }
 
 func prepositionForAgentOperation(operation string) string {
@@ -231,27 +326,7 @@ func validateSkillName(name string) error {
 	return nil
 }
 
-func normalizeAgentInstallTarget(target string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(target)) {
-	case "", agentTargetAgents:
-		return agentTargetAgents, nil
-	case agentTargetClaude:
-		return agentTargetClaude, nil
-	default:
-		return "", fmt.Errorf("unknown agent install target %q; use 'agents' or 'claude'", target)
-	}
-}
-
-func agentSkillInstallDir(root, target, skillName string) string {
-	switch target {
-	case agentTargetClaude:
-		return filepath.Join(root, ".claude", "skills", skillName)
-	default:
-		return filepath.Join(root, ".agents", "skills", skillName)
-	}
-}
-
-func installAgentSkill(root, target, skillName string, dryRun, force bool, version string) ([]string, error) {
+func installAgentSkill(destinationRoot, agentName, scope string, dryRun, force bool, version string) ([]string, error) {
 	bundledFS, err := agentskill.SiteSkill()
 	if err != nil {
 		return nil, fmt.Errorf("load bundled skill: %w", err)
@@ -262,7 +337,6 @@ func installAgentSkill(root, target, skillName string, dryRun, force bool, versi
 		return nil, fmt.Errorf("list bundled skill files: %w", err)
 	}
 
-	destinationRoot := agentSkillInstallDir(root, target, skillName)
 	installedFiles := make([]string, 0, len(relativeFiles))
 	for _, relativePath := range relativeFiles {
 		installedFiles = append(installedFiles, filepath.Join(destinationRoot, filepath.FromSlash(relativePath)))
@@ -299,7 +373,7 @@ func installAgentSkill(root, target, skillName string, dryRun, force bool, versi
 		}
 	}
 
-	manifest, err := agentskill.ComputeBundledManifest(version, target)
+	manifest, err := agentskill.ComputeBundledManifest(version, agentName, scope)
 	if err != nil {
 		return nil, fmt.Errorf("compute manifest: %w", err)
 	}
@@ -319,35 +393,25 @@ const doctorExitError = 2
 func runAgentDoctorCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
 
-	sitePath := "."
-	if len(args) > 0 {
-		sitePath = args[0]
+	target, err := resolveAgentInstallTarget(agentDoctorAgent, agentDoctorLegacyTarget, agentDoctorGlobal)
+	if err != nil {
+		return newExitCodeError(doctorExitError, err)
 	}
 
-	root, err := filepath.Abs(sitePath)
+	root, err := resolveAgentProjectRoot(args, agentDoctorGlobal)
 	if err != nil {
-		return fmt.Errorf("resolve site path %q: %w", sitePath, err)
-	}
-
-	info, err := os.Stat(root)
-	if err != nil {
-		return newExitCodeError(doctorExitError, fmt.Errorf("stat site path %q: %w", root, err))
-	}
-	if !info.IsDir() {
-		return newExitCodeError(doctorExitError, fmt.Errorf("site path %q is not a directory", root))
+		return newExitCodeError(doctorExitError, err)
 	}
 
 	if err := validateSkillName(agentDoctorName); err != nil {
 		return newExitCodeError(doctorExitError, err)
 	}
 
-	target, err := normalizeAgentInstallTarget(agentDoctorTarget)
+	skillDir, err := agentSkillInstallDir(root, agentDoctorName, target, agentDoctorGlobal)
 	if err != nil {
 		return newExitCodeError(doctorExitError, err)
 	}
-
-	skillDir := agentSkillInstallDir(root, target, agentDoctorName)
-	info, err = os.Stat(skillDir)
+	info, err := os.Stat(skillDir)
 	if err != nil || !info.IsDir() {
 		return newExitCodeError(doctorExitError, fmt.Errorf("skill not installed at %s; run 'markata-go agent install' first", skillDir))
 	}
@@ -368,6 +432,8 @@ func runAgentDoctorCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	outlnf("Skill:     %s", agentDoctorName)
+	outlnf("Agent:     %s", target.Name)
+	outlnf("Scope:     %s", agentScopeName(agentDoctorGlobal))
 	outlnf("Location:  %s", skillDir)
 	outlnf("Installed: %s", manifest.Version)
 	outlnf("Current:   %s", Version)
@@ -402,35 +468,25 @@ func runAgentDoctorCommand(cmd *cobra.Command, args []string) error {
 func runAgentRemoveCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
 
-	sitePath := "."
-	if len(args) > 0 {
-		sitePath = args[0]
+	target, err := resolveAgentInstallTarget(agentRemoveAgent, agentRemoveLegacyTarget, agentRemoveGlobal)
+	if err != nil {
+		return err
 	}
 
-	root, err := filepath.Abs(sitePath)
+	root, err := resolveAgentProjectRoot(args, agentRemoveGlobal)
 	if err != nil {
-		return fmt.Errorf("resolve site path %q: %w", sitePath, err)
-	}
-
-	info, err := os.Stat(root)
-	if err != nil {
-		return fmt.Errorf("stat site path %q: %w", root, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("site path %q is not a directory", root)
+		return err
 	}
 
 	if err := validateSkillName(agentRemoveName); err != nil {
 		return err
 	}
 
-	target, err := normalizeAgentInstallTarget(agentRemoveTarget)
+	skillDir, err := agentSkillInstallDir(root, agentRemoveName, target, agentRemoveGlobal)
 	if err != nil {
 		return err
 	}
-
-	skillDir := agentSkillInstallDir(root, target, agentRemoveName)
-	info, err = os.Stat(skillDir)
+	info, err := os.Stat(skillDir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("skill not installed at %s; run 'markata-go agent install' first", skillDir)
@@ -444,24 +500,26 @@ func runAgentRemoveCommand(cmd *cobra.Command, args []string) error {
 	// Safety check: verify the directory looks like an installed skill before
 	// removing it. Require SKILL.md or .manifest.json to be present.
 	hasSkillMarker := false
-	for _, marker := range []string{"SKILL.md", ".manifest.json"} {
+	for _, marker := range []string{"SKILL.md", agentskill.ManifestFileName} {
 		if _, statErr := os.Stat(filepath.Join(skillDir, marker)); statErr == nil {
 			hasSkillMarker = true
 			break
 		}
 	}
 	if !hasSkillMarker {
-		return fmt.Errorf("directory %q does not appear to be an installed skill (missing SKILL.md and .manifest.json)", skillDir)
+		return fmt.Errorf("directory %q does not appear to be an installed skill (missing SKILL.md and %s)", skillDir, agentskill.ManifestFileName)
 	}
 
 	if err := os.RemoveAll(skillDir); err != nil {
 		return fmt.Errorf("remove skill directory %q: %w", skillDir, err)
 	}
 
-	relPath, relErr := filepath.Rel(root, skillDir)
-	if relErr != nil {
-		relPath = skillDir
+	if !agentRemoveGlobal && root != "" {
+		relPath, relErr := filepath.Rel(root, skillDir)
+		if relErr == nil {
+			skillDir = relPath
+		}
 	}
-	outlnf("Removed %s", filepath.ToSlash(relPath))
+	outlnf("Removed %s", filepath.ToSlash(skillDir))
 	return nil
 }
