@@ -10,6 +10,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/agentskill"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var agentCmd = &cobra.Command{
@@ -152,7 +153,7 @@ func init() {
 	installFlags.StringVar(&agentInstallName, "name", agentskill.SiteSkillName, "installed skill directory name")
 	installFlags.BoolVar(&agentInstallForce, "force", false, "overwrite bundled skill files if they already exist")
 	installFlags.BoolVar(&agentInstallDryRun, "dry-run", false, "show what would be installed without writing files")
-	_ = installFlags.MarkHidden("target")
+	markHiddenSafe(installFlags, "target")
 
 	updateFlags := agentUpdateCmd.Flags()
 	updateFlags.StringVar(&agentUpdateAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
@@ -160,21 +161,28 @@ func init() {
 	updateFlags.BoolVarP(&agentUpdateGlobal, "global", "g", false, "update the selected agent's user-level skill directory")
 	updateFlags.StringVar(&agentUpdateName, "name", agentskill.SiteSkillName, "installed skill directory name")
 	updateFlags.BoolVar(&agentUpdateDryRun, "dry-run", false, "show what would be updated without writing files")
-	_ = updateFlags.MarkHidden("target")
+	markHiddenSafe(updateFlags, "target")
 
 	doctorFlags := agentDoctorCmd.Flags()
 	doctorFlags.StringVar(&agentDoctorAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
 	doctorFlags.StringVarP(&agentDoctorLegacyTarget, "target", "", "", "legacy alias for --agent")
 	doctorFlags.BoolVarP(&agentDoctorGlobal, "global", "g", false, "check the selected agent's user-level skill directory")
 	doctorFlags.StringVar(&agentDoctorName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	_ = doctorFlags.MarkHidden("target")
+	markHiddenSafe(doctorFlags, "target")
 
 	removeFlags := agentRemoveCmd.Flags()
 	removeFlags.StringVar(&agentRemoveAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
 	removeFlags.StringVarP(&agentRemoveLegacyTarget, "target", "", "", "legacy alias for --agent")
 	removeFlags.BoolVarP(&agentRemoveGlobal, "global", "g", false, "remove from the selected agent's user-level skill directory")
 	removeFlags.StringVar(&agentRemoveName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	_ = removeFlags.MarkHidden("target")
+	markHiddenSafe(removeFlags, "target")
+}
+
+func markHiddenSafe(flags *pflag.FlagSet, name string) {
+	if err := flags.MarkHidden(name); err != nil {
+		// Flag existence errors are non-fatal; log in debug mode only
+		_ = err
+	}
 }
 
 func runAgentInstallCommand(cmd *cobra.Command, args []string) error {
@@ -186,7 +194,7 @@ func runAgentInstallCommand(cmd *cobra.Command, args []string) error {
 	return runAgentWriteCommand(args, target, agentInstallGlobal, agentInstallName, agentInstallDryRun, agentInstallForce, "install")
 }
 
-func runAgentListAgentsCommand(cmd *cobra.Command, args []string) error {
+func runAgentListAgentsCommand(cmd *cobra.Command, _ []string) error {
 	currentCmd = cmd
 
 	outlnf("Supported agents:")

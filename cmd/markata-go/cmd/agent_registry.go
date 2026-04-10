@@ -15,6 +15,9 @@ const (
 
 	agentScopeProject = "project"
 	agentScopeGlobal  = "global"
+
+	agentNameOpencode = "opencode"
+	envValueDisabled  = "false"
 )
 
 type agentInstallTarget struct {
@@ -138,7 +141,7 @@ func selectedAgentFlagValue(agentFlag, legacyTarget string) (string, bool, error
 func detectDefaultAgent() string {
 	switch {
 	case envVarEnabled("OPENCODE"):
-		return "opencode"
+		return agentNameOpencode
 	case envVarEnabled("CLAUDECODE"), envVarEnabled("CLAUDE_CODE"):
 		return "claude-code"
 	case envVarEnabled("CODEX"), envVarEnabled("OPENAI_CODEX"):
@@ -162,7 +165,7 @@ func envVarEnabled(name string) bool {
 		return false
 	}
 	value = strings.ToLower(value)
-	return value != "0" && value != "false" && value != "no"
+	return value != "0" && value != envValueDisabled && value != "no"
 }
 
 func agentSkillInstallDir(root, skillName string, target agentInstallTarget, global bool) (string, error) {

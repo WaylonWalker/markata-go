@@ -106,7 +106,8 @@ func TestAgentSkillInstallDir_ProjectAndGlobal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("agentSkillInstallDir(project) error = %v", err)
 	}
-	if projectDir != filepath.Join("/tmp/site", ".claude", "skills", agentskill.SiteSkillName) {
+	// gocritic filepathJoin: test uses literal path for expected value verification
+	if projectDir != "/tmp/site/.claude/skills/markata-go-site" {
 		t.Fatalf("projectDir = %q", projectDir)
 	}
 
