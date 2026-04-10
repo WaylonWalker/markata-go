@@ -153,7 +153,7 @@ func init() {
 	installFlags.StringVar(&agentInstallName, "name", agentskill.SiteSkillName, "installed skill directory name")
 	installFlags.BoolVar(&agentInstallForce, "force", false, "overwrite bundled skill files if they already exist")
 	installFlags.BoolVar(&agentInstallDryRun, "dry-run", false, "show what would be installed without writing files")
-	markHiddenSafe(installFlags, "target")
+	markTargetHidden(installFlags)
 
 	updateFlags := agentUpdateCmd.Flags()
 	updateFlags.StringVar(&agentUpdateAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
@@ -161,25 +161,25 @@ func init() {
 	updateFlags.BoolVarP(&agentUpdateGlobal, "global", "g", false, "update the selected agent's user-level skill directory")
 	updateFlags.StringVar(&agentUpdateName, "name", agentskill.SiteSkillName, "installed skill directory name")
 	updateFlags.BoolVar(&agentUpdateDryRun, "dry-run", false, "show what would be updated without writing files")
-	markHiddenSafe(updateFlags, "target")
+	markTargetHidden(updateFlags)
 
 	doctorFlags := agentDoctorCmd.Flags()
 	doctorFlags.StringVar(&agentDoctorAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
 	doctorFlags.StringVarP(&agentDoctorLegacyTarget, "target", "", "", "legacy alias for --agent")
 	doctorFlags.BoolVarP(&agentDoctorGlobal, "global", "g", false, "check the selected agent's user-level skill directory")
 	doctorFlags.StringVar(&agentDoctorName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	markHiddenSafe(doctorFlags, "target")
+	markTargetHidden(doctorFlags)
 
 	removeFlags := agentRemoveCmd.Flags()
 	removeFlags.StringVar(&agentRemoveAgent, "agent", "", fmt.Sprintf("target agent (%s)", strings.Join(supportedAgentNames(), ", ")))
 	removeFlags.StringVarP(&agentRemoveLegacyTarget, "target", "", "", "legacy alias for --agent")
 	removeFlags.BoolVarP(&agentRemoveGlobal, "global", "g", false, "remove from the selected agent's user-level skill directory")
 	removeFlags.StringVar(&agentRemoveName, "name", agentskill.SiteSkillName, "installed skill directory name")
-	markHiddenSafe(removeFlags, "target")
+	markTargetHidden(removeFlags)
 }
 
-func markHiddenSafe(flags *pflag.FlagSet, name string) {
-	if err := flags.MarkHidden(name); err != nil {
+func markTargetHidden(flags *pflag.FlagSet) {
+	if err := flags.MarkHidden("target"); err != nil {
 		// Flag existence errors are non-fatal; log in debug mode only
 		_ = err
 	}

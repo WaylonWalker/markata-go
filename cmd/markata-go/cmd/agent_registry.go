@@ -111,7 +111,7 @@ func resolveAgentInstallTarget(agentFlag, legacyTarget string, global bool) (age
 	return normalizeAgentInstallTarget(detectDefaultAgent())
 }
 
-func selectedAgentFlagValue(agentFlag, legacyTarget string) (string, bool, error) {
+func selectedAgentFlagValue(agentFlag, legacyTarget string) (selected string, explicit bool, err error) {
 	agentFlag = strings.TrimSpace(agentFlag)
 	legacyTarget = strings.TrimSpace(legacyTarget)
 	if agentFlag == "" && legacyTarget == "" {
