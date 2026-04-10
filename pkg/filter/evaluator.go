@@ -471,7 +471,7 @@ func getFieldFromValue(obj interface{}, field string) (interface{}, error) {
 	}
 }
 
-func compareTemplateAliasExprs(leftExpr, rightExpr Expr, left, right interface{}) (bool, bool) {
+func compareTemplateAliasExprs(leftExpr, rightExpr Expr, left, right interface{}) (result, ok bool) {
 	if !isTemplateIdentifier(leftExpr) && !isTemplateIdentifier(rightExpr) {
 		return false, false
 	}
