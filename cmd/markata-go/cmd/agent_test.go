@@ -112,6 +112,9 @@ func TestAgentSkillInstallDir_ProjectAndGlobal(t *testing.T) {
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("HOMEDRIVE", filepath.VolumeName(home))
+	t.Setenv("HOMEPATH", strings.TrimPrefix(home, filepath.VolumeName(home)))
 	globalTarget, err := normalizeAgentInstallTarget("opencode")
 	if err != nil {
 		t.Fatalf("normalizeAgentInstallTarget() error = %v", err)
