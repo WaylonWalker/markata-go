@@ -335,11 +335,11 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
   z-index: 10000 !important;
 }
 </style>
-<link rel="stylesheet" href="%s/cal-heatmap.css">
+<link rel="stylesheet" href="%s">
 <script src="%s"></script>
 <script src="%s"></script>
-<script src="%s/cal-heatmap.min.js"></script>
-<script src="%s/plugins/Tooltip.min.js"></script>
+<script src="%s"></script>
+<script src="%s"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize graphs
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
   observer.observe(document.documentElement, { attributes: true });
   observer.observe(document.body, { attributes: true });
 });
-</script>`, p.config.CDNURL, p.resolveAssetURL("d3", "https://d3js.org/d3.v7.min.js"), p.resolveAssetURL("popper", "https://unpkg.com/@popperjs/core@2"), p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, "\n"))
+</script>`, p.resolveAssetURL("cal-heatmap-css", p.config.CDNURL+"/cal-heatmap.css"), p.resolveAssetURL("d3", "https://d3js.org/d3.v7.min.js"), p.resolveAssetURL("popper", "https://unpkg.com/@popperjs/core@2"), p.resolveAssetURL("cal-heatmap-js", p.config.CDNURL+"/cal-heatmap.min.js"), p.resolveAssetURL("cal-heatmap-tooltip", p.config.CDNURL+"/plugins/Tooltip.min.js"), strings.Join(initScripts, "\n"))
 
 	// Append the script to the end of the content
 	return htmlContent + script
