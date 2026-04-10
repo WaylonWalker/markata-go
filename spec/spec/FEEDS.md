@@ -927,6 +927,8 @@ With custom template:
 │                                                                      │
 │  2. FILTER                                                           │
 │     - For each feed, run filter expression against all posts        │
+│     - `template` and `templateKey` MUST behave as the same field    │
+│     - Template equality checks MUST respect built-in aliases        │
 │     - Store matching posts in feed.posts                             │
 │                                                                      │
 │  3. SORT                                                             │
