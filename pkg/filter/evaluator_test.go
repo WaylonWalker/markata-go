@@ -63,6 +63,12 @@ func withDate(date time.Time) func(*models.Post) {
 	}
 }
 
+func withTemplate(template string) func(*models.Post) {
+	return func(p *models.Post) {
+		p.Template = template
+	}
+}
+
 func withExtra(key string, value interface{}) func(*models.Post) {
 	return func(p *models.Post) {
 		p.Set(key, value)
@@ -111,6 +117,24 @@ func TestEvaluate_BooleanComparison(t *testing.T) {
 			expr:     "author == 'waylon'",
 			post:     makePost(withAuthor("waylon")),
 			expected: true,
+		},
+		{
+			name:     "templateKey aliases template",
+			expr:     `templateKey == "photo"`,
+			post:     makePost(withTemplate("shots")),
+			expected: true,
+		},
+		{
+			name:     "template equality respects aliases",
+			expr:     `template == "shots"`,
+			post:     makePost(withTemplate("photo")),
+			expected: true,
+		},
+		{
+			name:     "template inequality respects aliases",
+			expr:     `template != "shots"`,
+			post:     makePost(withTemplate("photo")),
+			expected: false,
 		},
 	}
 
