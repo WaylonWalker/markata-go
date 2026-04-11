@@ -206,6 +206,8 @@ json = "feed.json"                 # Template for JSON
 
 The `filter` field uses a Python-like expression syntax to select which posts appear in a feed.
 
+For template-based filters, `template` and `templateKey` are interchangeable. Equality checks also respect built-in template aliases, so `templateKey == "shots"` matches posts using `shot`, `shots`, or `photo`.
+
 ### Filter Operators
 
 | Operator | Description | Example |
@@ -243,6 +245,9 @@ filter = "date >= '2024-01-01' and date < '2025-01-01'"
 
 # By slug
 filter = "slug != 'about'"
+
+# Template aliases
+filter = "templateKey == 'shots' and 'family' in tags"
 
 # Complex filter
 filter = "published == True and ('python' in tags or 'go' in tags) and featured == True"

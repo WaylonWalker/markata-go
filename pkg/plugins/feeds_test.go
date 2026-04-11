@@ -806,9 +806,9 @@ func TestFilterPosts(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	posts := []*models.Post{
-		{Slug: "post1", Tags: []string{"python"}, Date: &date},
-		{Slug: "post2", Tags: []string{"go"}, Date: &date},
-		{Slug: "post3", Tags: []string{"python", "go"}, Date: &date},
+		{Slug: "post1", Tags: []string{"python"}, Date: &date, Template: "photo"},
+		{Slug: "post2", Tags: []string{"go"}, Date: &date, Template: "video"},
+		{Slug: "post3", Tags: []string{"python", "go"}, Date: &date, Template: "shot"},
 	}
 
 	tests := []struct {
@@ -826,6 +826,12 @@ func TestFilterPosts(t *testing.T) {
 		{
 			name:      "filter by tag",
 			filter:    `'python' in tags`,
+			wantCount: 2,
+			wantSlugs: []string{"post1", "post3"},
+		},
+		{
+			name:      "filter by templateKey alias",
+			filter:    `templateKey == "shots"`,
 			wantCount: 2,
 			wantSlugs: []string{"post1", "post3"},
 		},
