@@ -6,7 +6,11 @@
 <article class="card card-article h-entry{% if media_src %} has-cover{% endif %}">
 {% if media_src %}
 <a href="{{ post.href }}" class="card-cover u-url">
-<img src="{{ media_src|with_size:"600" }}" alt="{{ post.title | default:post.slug }}" class="card-cover-img u-photo" loading="lazy">
+{% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="card-cover-img u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"600" }}"{% endif %}>
+<source src="{{ media_src|with_size:"600" }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
+</video>
+{% else %}<img src="{{ media_src|with_size:"600" }}" alt="{{ post.title | default:post.slug }}" class="card-cover-img u-photo" loading="lazy">
+{% endif %}
 </a>
 {% endif %}
 <div class="card-content">
