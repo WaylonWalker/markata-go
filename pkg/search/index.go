@@ -292,20 +292,36 @@ func buildMapping() mapping.IndexMapping {
 	return im
 }
 
+// synonymFields are the fields with SynonymSource configured.
+// MatchQuery must target specific fields for synonym expansion to work;
+// the default "_all" field has no synonym source.
+var synonymFields = []string{"title", "content", "description"}
+
 func buildQuery(queryStr string, opts QueryOptions) query.Query {
 	var textQuery query.Query
 	if opts.Fuzzy {
-		mq := query.NewMatchQuery(queryStr)
+		// Build per-field fuzzy queries so synonym expansion triggers
 		fuzziness := opts.Fuzziness
 		if fuzziness <= 0 {
 			fuzziness = 1
 		}
-		mq.SetFuzziness(fuzziness)
-		textQuery = mq
+		dq := query.NewDisjunctionQuery(nil)
+		for _, field := range synonymFields {
+			mq := query.NewMatchQuery(queryStr)
+			mq.SetFuzziness(fuzziness)
+			mq.SetField(field)
+			dq.AddQuery(mq)
+		}
+		textQuery = dq
 	} else {
-		mq := query.NewMatchQuery(queryStr)
-		mq.SetOperator(query.MatchQueryOperatorAnd)
-		textQuery = mq
+		// Build per-field match queries so synonym expansion triggers
+		dq := query.NewDisjunctionQuery(nil)
+		for _, field := range synonymFields {
+			mq := query.NewMatchQuery(queryStr)
+			mq.SetField(field)
+			dq.AddQuery(mq)
+		}
+		textQuery = dq
 	}
 
 	// If no additional filters, return the text query directly

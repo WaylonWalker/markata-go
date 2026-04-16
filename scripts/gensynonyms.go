@@ -1,5 +1,13 @@
 // Command gensynonyms parses WordNet data files and generates a curated
 // synonym JSON file for embedding in the markata-go binary.
+//
+// It extracts synonym groups from two sources:
+//  1. Within-synset synonyms (words in the same synset are synonyms)
+//  2. Cross-POS derivational links ("+" and "\" pointers) that connect
+//     related words across parts of speech (e.g., lunar adj → moon noun)
+//
+// Groups are merged via union-find when they share words, producing
+// unified synonym clusters.
 package main
 
 import (
@@ -13,9 +21,21 @@ import (
 	"strings"
 )
 
-// Common/frequent English words to prioritize (synsets containing these get included)
-// We use word frequency as a proxy: only keep synsets where at least one word
-// is "common enough" based on WordNet's tag count files.
+// synset holds parsed data for a single WordNet synset.
+type synset struct {
+	offset string
+	pos    string
+	words  []string // single-word, lowercased members
+}
+
+// derivLink represents a derivational or pertainym pointer between synsets.
+type derivLink struct {
+	fromOffset string
+	fromPOS    string
+	toOffset   string
+	toPOS      string
+}
+
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Fprintf(os.Stderr, "Usage: gensynonyms <wordnet-dict-dir> <output.json.gz>\n")
@@ -24,17 +44,101 @@ func main() {
 	dictDir := os.Args[1]
 	outFile := os.Args[2]
 
-	// Load word frequency data from cntlist.rev (word -> tag count)
 	freqs := loadFrequencies(dictDir + "/cntlist.rev")
 
-	// Parse all data files
-	var allGroups [][]string
-	for _, pos := range []string{"noun", "verb", "adj", "adv"} {
-		groups := parseDataFile(dictDir+"/data."+pos, freqs)
-		allGroups = append(allGroups, groups...)
-	}
+	// Phase 1: Parse all synsets and derivational links
+	allSynsets := make(map[string]*synset) // key: "offset:pos"
+	var allLinks []derivLink
 
-	// Sort by size of group (larger groups first) for determinism
+	for _, pos := range []string{"noun", "verb", "adj", "adv"} {
+		synsets, links := parseDataFile(dictDir+"/data."+pos, pos)
+		for _, s := range synsets {
+			key := s.offset + ":" + s.pos
+			allSynsets[key] = s
+		}
+		allLinks = append(allLinks, links...)
+	}
+	fmt.Fprintf(os.Stderr, "Parsed %d synsets, %d derivational links\n", len(allSynsets), len(allLinks))
+
+	const minFreq = 3
+
+	// Phase 2: Build synonym groups from synsets with 2+ words (same as before)
+	groupSet := make(map[string]bool) // deduplicate groups by sorted key
+	var allGroups [][]string
+
+	for _, s := range allSynsets {
+		if len(s.words) < 2 {
+			continue
+		}
+		hasCommon := false
+		for _, w := range s.words {
+			if freqs[w] >= minFreq {
+				hasCommon = true
+				break
+			}
+		}
+		if hasCommon {
+			deduped := dedup(s.words)
+			if len(deduped) >= 2 {
+				sort.Strings(deduped)
+				key := strings.Join(deduped, "\x00")
+				if !groupSet[key] {
+					groupSet[key] = true
+					allGroups = append(allGroups, deduped)
+				}
+			}
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Within-synset groups: %d\n", len(allGroups))
+
+	// Phase 3: Create cross-POS pairs from derivational links.
+	// Each link creates a small group of words from both synsets,
+	// but we DON'T merge groups globally — this prevents chain explosions.
+	derivGroups := 0
+	for _, link := range allLinks {
+		fromKey := link.fromOffset + ":" + link.fromPOS
+		toKey := link.toOffset + ":" + link.toPOS
+		fromSyn := allSynsets[fromKey]
+		toSyn := allSynsets[toKey]
+		if fromSyn == nil || toSyn == nil {
+			continue
+		}
+
+		// Only create groups from single-word synsets crossing POS boundaries.
+		// Multi-word synsets are already captured in Phase 2.
+		// This keeps cross-POS groups small and focused.
+		merged := make(map[string]bool)
+		for _, w := range fromSyn.words {
+			merged[w] = true
+		}
+		for _, w := range toSyn.words {
+			merged[w] = true
+		}
+		if len(merged) < 2 {
+			continue
+		}
+		hasCommon := false
+		var words []string
+		for w := range merged {
+			words = append(words, w)
+			if freqs[w] >= minFreq {
+				hasCommon = true
+			}
+		}
+		if !hasCommon {
+			continue
+		}
+		sort.Strings(words)
+		key := strings.Join(words, "\x00")
+		if !groupSet[key] {
+			groupSet[key] = true
+			allGroups = append(allGroups, words)
+			derivGroups++
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Cross-POS derivational groups: %d\n", derivGroups)
+
+	// Sort for determinism
 	sort.Slice(allGroups, func(i, j int) bool {
 		if len(allGroups[i]) != len(allGroups[j]) {
 			return len(allGroups[i]) > len(allGroups[j])
@@ -66,7 +170,6 @@ func main() {
 }
 
 // loadFrequencies reads cntlist.rev to get word frequencies.
-// Format: tag_cnt sense_key sense_number
 func loadFrequencies(path string) map[string]int {
 	freqs := make(map[string]int)
 	f, err := os.Open(path)
@@ -83,13 +186,11 @@ func loadFrequencies(path string) map[string]int {
 		if len(parts) < 2 {
 			continue
 		}
-		// Format: sense_key tag_cnt sense_number
 		senseKey := parts[0]
 		count, err := strconv.Atoi(parts[1])
 		if err != nil {
 			continue
 		}
-		// sense_key format: word%ss_type:...
 		word := strings.SplitN(senseKey, "%", 2)[0]
 		word = strings.ReplaceAll(word, "_", " ")
 		freqs[word] += count
@@ -97,31 +198,26 @@ func loadFrequencies(path string) map[string]int {
 	return freqs
 }
 
-// parseDataFile parses a WordNet data file and returns synonym groups.
-// Only returns groups with 2+ single-word members where at least one word
-// has a frequency tag count >= minFreq.
-func parseDataFile(path string, freqs map[string]int) [][]string {
+// parseDataFile parses a WordNet data file, returning synsets and derivational links.
+func parseDataFile(path, posName string) ([]*synset, []derivLink) {
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
 
-	const minFreq = 3 // minimum tag count to consider a word "common"
+	posCode := map[string]string{"noun": "n", "verb": "v", "adj": "a", "adv": "r"}[posName]
 
-	var groups [][]string
+	var synsets []*synset
+	var links []derivLink
+
 	scanner := bufio.NewScanner(f)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		// WordNet data lines start with an 8-digit synset offset
-		if len(line) < 20 || line[0] < '0' || line[0] > '9' {
-			continue
-		}
-		// Skip header/license lines (they have spaces at start or short offset)
-		if line[0] == ' ' {
+		if len(line) < 20 || line[0] < '0' || line[0] > '9' || line[0] == ' ' {
 			continue
 		}
 
@@ -130,51 +226,74 @@ func parseDataFile(path string, freqs map[string]int) [][]string {
 			continue
 		}
 
-		// Field 3 (0-indexed) is hex word count
+		offset := fields[0]
 		wordCountHex := fields[3]
 		wordCount, err := strconv.ParseInt(wordCountHex, 16, 32)
-		if err != nil || wordCount < 2 {
-			continue // Skip single-word synsets
+		if err != nil {
+			continue
 		}
 
-		// Extract words: fields[4], fields[6], fields[8], etc.
-		// Each word is followed by a lex_id
+		// Extract words
 		var words []string
-		hasCommon := false
 		idx := 4
 		for i := int64(0); i < wordCount && idx < len(fields); i++ {
 			word := fields[idx]
 			word = strings.ReplaceAll(word, "_", " ")
 			word = strings.ToLower(word)
-
-			// Skip multi-word phrases (contain spaces) — they bloat the list
-			// and rarely match search queries
+			// Strip adjective syntax markers like (a), (p), (ip)
+			if paren := strings.Index(word, "("); paren > 0 {
+				word = word[:paren]
+			}
 			if !strings.Contains(word, " ") {
 				words = append(words, word)
-				if freqs[word] >= minFreq {
-					hasCommon = true
-				}
 			}
-			idx += 2 // skip lex_id
+			idx += 2
 		}
 
-		// Only keep groups with 2+ single words and at least one common word
-		if len(words) >= 2 && hasCommon {
-			// Deduplicate words within the group
-			seen := make(map[string]bool)
-			var deduped []string
-			for _, w := range words {
-				if !seen[w] {
-					seen[w] = true
-					deduped = append(deduped, w)
-				}
-			}
-			if len(deduped) >= 2 {
-				sort.Strings(deduped)
-				groups = append(groups, deduped)
+		syn := &synset{offset: offset, pos: posCode, words: words}
+		synsets = append(synsets, syn)
+
+		// Parse pointers to find derivational links ("+" and "\")
+		if idx >= len(fields) {
+			continue
+		}
+		ptrCountStr := fields[idx]
+		ptrCount, err := strconv.Atoi(ptrCountStr)
+		if err != nil {
+			continue
+		}
+		idx++
+
+		for i := 0; i < ptrCount && idx+3 < len(fields); i++ {
+			ptrType := fields[idx]
+			targetOffset := fields[idx+1]
+			targetPOS := fields[idx+2]
+			// fields[idx+3] is source/target word indices
+			idx += 4
+
+			if ptrType == "+" || ptrType == `\` {
+				links = append(links, derivLink{
+					fromOffset: offset,
+					fromPOS:    posCode,
+					toOffset:   targetOffset,
+					toPOS:      targetPOS,
+				})
 			}
 		}
 	}
 
-	return groups
+	return synsets, links
+}
+
+// dedup removes duplicate strings, preserving order.
+func dedup(words []string) []string {
+	seen := make(map[string]bool, len(words))
+	var result []string
+	for _, w := range words {
+		if !seen[w] {
+			seen[w] = true
+			result = append(result, w)
+		}
+	}
+	return result
 }

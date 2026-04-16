@@ -11,6 +11,7 @@ func TestSynonymSearch(t *testing.T) {
 	title1 := "Walking on the Shore"
 	title2 := "Mountain Hiking Guide"
 	title3 := "Landing a Ship"
+	title4 := "Lunar Eclipse Tonight"
 
 	posts := []*models.Post{
 		{
@@ -30,6 +31,12 @@ func TestSynonymSearch(t *testing.T) {
 			Title:   &title3,
 			Content: "The captain decided to land the vessel at the nearest port.",
 			Slug:    "ship",
+		},
+		{
+			Path:    "posts/lunar.md",
+			Title:   &title4,
+			Content: "A lunar eclipse occurs when the Earth passes between the sun and the moon.",
+			Slug:    "lunar",
 		},
 	}
 
@@ -73,6 +80,24 @@ func TestSynonymSearch(t *testing.T) {
 		t.Logf("Got %d results for 'land'", len(landResults))
 	} else {
 		t.Logf("Synonym expansion working: 'land' found shore post")
+	}
+
+	// Cross-POS synonym: "moon" should find the lunar post (lunar adj → moon noun)
+	moonResults, err := idx.Search("moon", QueryOptions{}, postsByPath)
+	if err != nil {
+		t.Fatalf("Search 'moon': %v", err)
+	}
+	foundLunar := false
+	for _, r := range moonResults {
+		if r.Post.Path == "posts/lunar.md" {
+			foundLunar = true
+		}
+		t.Logf("  Moon result: %s (score: %.4f)", r.Post.Path, r.Score)
+	}
+	if !foundLunar {
+		t.Error("Synonym expansion: searching 'moon' did not find lunar post")
+	} else {
+		t.Logf("Cross-POS synonym working: 'moon' found lunar post")
 	}
 }
 
