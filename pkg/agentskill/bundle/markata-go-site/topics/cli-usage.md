@@ -39,6 +39,10 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go search <query> --limit 10` (cap results)
 - `markata-go search <query> --format path` (file paths only, for piping)
 - `markata-go search <query> --sort date` (sort by date instead of relevance)
+- `markata-go search-server` (standalone search API server)
+- `markata-go search-server --port 8081` (custom port)
+- During `markata-go serve`, the search API is auto-mounted at `/api/search`
+- `curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"` (query API)
 
 ### Content Creation
 

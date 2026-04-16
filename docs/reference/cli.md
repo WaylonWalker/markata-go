@@ -612,6 +612,73 @@ markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
 - Table output shows relevance scores when using ranked search
 - `--fuzzy` enables edit-distance matching for typo tolerance
 - **Synonym expansion** is enabled by default — searching "land" also finds posts about "shore" (powered by a bundled WordNet thesaurus with 10,000+ synonym groups)
+- **Privacy-safe** — private posts are indexed by metadata only (title, description, tags); content is never included in the search index
+
+---
+
+### search-server
+
+Start a standalone read-only search API server powered by bleve full-text search.
+
+#### Usage
+
+```bash
+markata-go search-server [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port` | Port to listen on | `3001` |
+| `--host` | Host to bind to | `localhost` |
+
+#### Examples
+
+```bash
+# Start the search API server
+markata-go search-server
+
+# Start on a custom port
+markata-go search-server --port 8081
+
+# Query the API
+curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"
+curl "http://localhost:3001/api/search?q=docker&tags=devops&from=2024-01-01"
+```
+
+#### API Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `q` | Search query (required) | — |
+| `fuzzy` | Enable fuzzy matching (`true`/`false`) | `false` |
+| `limit` | Max results | `20` |
+| `tags` | Comma-separated tag filter | none |
+| `from` | Date range start (`YYYY-MM-DD`) | none |
+| `to` | Date range end (`YYYY-MM-DD`) | none |
+
+#### Search API Behavior
+
+- Returns JSON with `query`, `total`, `results` fields
+- Private post content is never searchable — only metadata (title, description, tags)
+- CORS enabled for development
+- Also available at the configured endpoint during `markata-go serve`
+- Health check at `/health`
+
+#### Configuration
+
+```toml
+[search]
+backend = "bleve"           # "pagefind" (default) or "bleve"
+endpoint = "/api/search"    # API endpoint path
+
+[search.bleve]
+fuzzy = false               # Default fuzzy matching
+limit = 20                  # Default result limit
+max_limit = 100             # Maximum allowed limit
+cors_origins = ["*"]        # Allowed CORS origins
+```
 
 ---
 

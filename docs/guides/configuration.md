@@ -194,6 +194,41 @@ disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
 
+### Python Docs (`[markata-go.python_docs]`)
+
+Generate API reference pages from Python source files.
+
+This plugin is strict opt-in: add `python_docs` to `[markata-go].hooks` and set `enabled = true`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable source-backed Python docs generation |
+| `patterns` | string[] | `["**/*.py"]` | Python file glob patterns |
+| `directories` | string[] | `[]` | Directory roots expanded to `dir/**/*.py` |
+| `exclude` | string[] | venv/cache defaults | Globs to skip |
+| `slug_prefix` | string | `"api"` | Prefix for generated module pages |
+| `template` | string | `""` | Template used for generated docs posts |
+| `published` | bool | `false` | Include generated docs in feeds/search/sitemap |
+| `include_private` | bool | `false` | Include private `_symbols` |
+| `include_source` | bool | `true` | Include implementation snippets |
+| `include_module_code` | bool | `false` | Include module-level implementation source |
+| `tags` | string[] | `["python", "docs"]` | Tags added to generated docs posts |
+| `interpreter` | string | auto-detect | Python executable used for AST extraction |
+
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py"]
+slug_prefix = "api"
+template = "docs"
+include_source = true
+```
+
+See [Python Source Docs](./python-docs.md) for the full workflow.
+
 ### Embeds (`[embeds]`)
 
 Controls internal and external embed behavior, including oEmbed resolution and Open Graph fallback.
@@ -1614,11 +1649,13 @@ See [[cli-reference|CLI Reference]] for complete `new` command documentation.
 
 ### Search Settings (`[search]`)
 
-Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
+Site-wide search is enabled by default using [Pagefind](https://pagefind.app/). You can also use the built-in bleve search engine for a self-hosted API.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable search |
+| `backend` | string | `"pagefind"` | Search engine: `"pagefind"` or `"bleve"` |
+| `endpoint` | string | `"/api/search"` | API endpoint path for bleve search |
 | `position` | string | `"navbar"` | Where to show search: `navbar`, `sidebar`, `footer`, `custom` |
 | `placeholder` | string | `"Search..."` | Search input placeholder text |
 | `show_images` | bool | `true` | Show thumbnails in search results |
@@ -1627,6 +1664,8 @@ Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
 ```toml
 [search]
 enabled = true
+backend = "pagefind"        # or "bleve" for self-hosted API
+endpoint = "/api/search"    # API path (bleve only)
 position = "navbar"
 placeholder = "Search..."
 show_images = true
@@ -1637,7 +1676,18 @@ excerpt_length = 200
 bundle_dir = "_pagefind"    # Output directory for search index
 root_selector = "main"       # CSS selector for searchable content
 exclude_selectors = [".no-search", "nav", "footer"]  # Elements to exclude
+
+# Bleve search API options
+[search.bleve]
+fuzzy = false               # Default fuzzy matching
+limit = 20                  # Default result limit
+max_limit = 100             # Maximum allowed limit
+cors_origins = ["*"]        # Allowed CORS origins
 ```
+
+**Privacy:** Private posts are indexed by metadata only (title, description, tags). Content is never included in the search index, ensuring encrypted data cannot leak through search results.
+
+**Dev mode:** During `markata-go serve`, the bleve search API is automatically mounted at the configured endpoint. A dev-only script injects `window.__markataSearchEndpoint` so the frontend can use the local API — this is never included in production builds.
 
 **Requirements:** Pagefind CLI must be installed. Install the standalone binary from [GitHub releases](https://github.com/Pagefind/pagefind/releases), or enable `auto_install = true` under `[search.pagefind]` to let markata-go download it automatically. If not installed, search is skipped with a warning.
 

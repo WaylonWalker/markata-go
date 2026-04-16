@@ -88,6 +88,33 @@ func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Ctrl+F toggles fuzzy matching
+	if msg.String() == "ctrl+f" {
+		m.searchFuzzy = !m.searchFuzzy
+		if m.searchInput.Value() != "" {
+			return m, m.executeSearch()
+		}
+		return m, nil
+	}
+
+	// Ctrl+L cycles result limit: 20 → 50 → 100 → 200 → 20
+	if msg.String() == "ctrl+l" {
+		switch m.searchLimit {
+		case 0, 20:
+			m.searchLimit = 50
+		case 50:
+			m.searchLimit = 100
+		case 100:
+			m.searchLimit = 200
+		default:
+			m.searchLimit = 20
+		}
+		if m.searchInput.Value() != "" {
+			return m, m.executeSearch()
+		}
+		return m, nil
+	}
+
 	// Tab toggles advanced panel
 	if msg.String() == "tab" {
 		switch {
@@ -191,6 +218,11 @@ func (m Model) executeSearch() tea.Cmd {
 	queryStr := m.searchInput.Value()
 	filterExpr := m.searchAdvancedFilter
 	posts := m.posts
+	fuzzy := m.searchFuzzy
+	limit := m.searchLimit
+	if limit <= 0 {
+		limit = 50
+	}
 
 	return func() tea.Msg {
 		// Apply filter expression if set
@@ -212,15 +244,15 @@ func (m Model) executeSearch() tea.Cmd {
 		}
 
 		// Try bleve
-		results, err := searchPostsBleve(filteredPosts, queryStr)
+		results, err := searchPostsBleve(filteredPosts, queryStr, fuzzy, limit)
 		if err != nil {
-			results = searchPostsSubstring(filteredPosts, queryStr)
+			results = searchPostsSubstring(filteredPosts, queryStr, limit)
 		}
 		return searchResultsMsg{results: results, query: queryStr}
 	}
 }
 
-func searchPostsBleve(posts []*models.Post, queryStr string) ([]searchResultItem, error) {
+func searchPostsBleve(posts []*models.Post, queryStr string, fuzzy bool, limit int) ([]searchResultItem, error) {
 	idx, err := search.BuildIfNeeded(".markata/cache", posts)
 	if err != nil {
 		return nil, err
@@ -228,7 +260,7 @@ func searchPostsBleve(posts []*models.Post, queryStr string) ([]searchResultItem
 	defer idx.Close()
 
 	postsByPath := search.PostsByPath(posts)
-	hits, err := idx.Search(queryStr, search.QueryOptions{Limit: 50}, postsByPath)
+	hits, err := idx.Search(queryStr, search.QueryOptions{Limit: limit, Fuzzy: fuzzy}, postsByPath)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +272,7 @@ func searchPostsBleve(posts []*models.Post, queryStr string) ([]searchResultItem
 	return results, nil
 }
 
-func searchPostsSubstring(posts []*models.Post, queryStr string) []searchResultItem {
+func searchPostsSubstring(posts []*models.Post, queryStr string, limit int) []searchResultItem {
 	q := strings.ToLower(queryStr)
 	var results []searchResultItem
 	for _, p := range posts {
@@ -248,8 +280,8 @@ func searchPostsSubstring(posts []*models.Post, queryStr string) []searchResultI
 			results = append(results, searchResultItem{post: p, score: 1.0})
 		}
 	}
-	if len(results) > 50 {
-		results = results[:50]
+	if len(results) > limit {
+		results = results[:limit]
 	}
 	return results
 }
@@ -330,7 +362,25 @@ func (m Model) renderSearch() string {
 		Foreground(theme.Colors.Subtle).
 		Align(lipgloss.Center).
 		Width(m.width)
-	hints := "Tab: advanced filters • Esc: back • ↑/↓: navigate results • Enter: open"
+
+	// Status indicators for fuzzy and limit
+	limit := m.searchLimit
+	if limit <= 0 {
+		limit = 50
+	}
+	fuzzyLabel := "off"
+	if m.searchFuzzy {
+		fuzzyLabel = "on"
+	}
+	status := fmt.Sprintf("Fuzzy: %s • Limit: %d", fuzzyLabel, limit)
+	statusStyle := lipgloss.NewStyle().
+		Foreground(theme.Colors.Header).
+		Align(lipgloss.Center).
+		Width(m.width)
+	sb.WriteString(statusStyle.Render(status))
+	sb.WriteString("\n")
+
+	hints := "Tab: filters • Ctrl+F: fuzzy • Ctrl+L: limit • Esc: back • ↑/↓: navigate • Enter: open"
 	sb.WriteString(hintStyle.Render(hints))
 	sb.WriteString("\n\n")
 

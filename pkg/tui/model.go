@@ -131,6 +131,8 @@ type Model struct {
 	searchAdvancedFilter string             // Active filter expression
 	searchLastQuery      string             // Last query (for debounce)
 	searchDebounceTime   time.Time          // Timestamp for debounce
+	searchFuzzy          bool               // Fuzzy matching enabled
+	searchLimit          int                // Max results (0 = default 50)
 
 	// Config view state
 	configSections []configSection // Expanded config data

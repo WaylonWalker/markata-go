@@ -22,6 +22,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/searchapi"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +59,9 @@ var (
 
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
+
+	// serveSearchEndpoint is the search API endpoint path configured for this serve session.
+	serveSearchEndpoint string
 
 	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
 	isRebuilding atomic.Bool
@@ -215,9 +219,14 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	}
 	defer closeWatcher()
 
-	// Create HTTP server
+	// Create HTTP server with search API
 	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	handler := createHandler(outputPath)
+	searchEndpoint := "/api/search"
+	if mc := getModelsConfig(m); mc != nil {
+		searchEndpoint = mc.Search.SearchEndpoint()
+	}
+	serveSearchEndpoint = searchEndpoint
+	handler := createHandler(outputPath, m, searchEndpoint)
 
 	server, serverErr, serverStarted := startHTTPServer(addr, handler)
 
@@ -429,13 +438,35 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 	}
 }
 
-// createHandler creates an HTTP handler that serves files with live reload injection.
-func createHandler(outputDir string) http.Handler {
+// createHandler creates an HTTP handler that serves files with live reload injection
+// and mounts the bleve search API at the configured endpoint.
+func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
 	absOutputDir, err := filepath.Abs(outputDir)
 	if err != nil {
 		absOutputDir = outputDir
 	}
+
+	// Set up search API handler
+	apiCfg := searchapi.DefaultConfig()
+	if mc := getModelsConfig(m); mc != nil {
+		apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
+		apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
+		apiCfg.DefaultFuzzy = mc.Search.Bleve.IsFuzzy()
+		if len(mc.Search.Bleve.CORSOrigins) > 0 {
+			apiCfg.CORSOrigins = mc.Search.Bleve.CORSOrigins
+		}
+	}
+	cacheDir := filepath.Join(filepath.Dir(absOutputDir), ".markata", "cache")
+	searchHandler := searchapi.NewHandler(m.Posts(), cacheDir, apiCfg)
+
+	// Subscribe to post updates after rebuilds
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			searchHandler.UpdatePosts(m.Posts())
+		}
+	}()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		status := getBuildStatus()
@@ -447,6 +478,12 @@ func createHandler(outputDir string) http.Handler {
 		// Handle live reload endpoint
 		if r.URL.Path == "/__livereload" {
 			handleLiveReload(w, r)
+			return
+		}
+
+		// Handle search API endpoint (bleve-powered, read-only)
+		if r.URL.Path == searchEndpoint {
+			searchHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -549,13 +586,20 @@ func fallback404HTML() string {
 func injectDevScripts(html string, status BuildStatus) string {
 	devScript := buildDevScript(status)
 
+	// Inject search endpoint override for dev mode.
+	// This tells the frontend to use the local bleve API instead of pagefind.
+	// It's only injected during `serve` — production builds never see this.
+	searchScript := `<script>window.__markataSearchEndpoint = "` + serveSearchEndpoint + `";</script>`
+
+	injection := searchScript + devScript
+
 	switch {
 	case strings.Contains(html, "</body>"):
-		return strings.Replace(html, "</body>", devScript+"</body>", 1)
+		return strings.Replace(html, "</body>", injection+"</body>", 1)
 	case strings.Contains(html, "</html>"):
-		return strings.Replace(html, "</html>", devScript+"</html>", 1)
+		return strings.Replace(html, "</html>", injection+"</html>", 1)
 	default:
-		return html + devScript
+		return html + injection
 	}
 }
 

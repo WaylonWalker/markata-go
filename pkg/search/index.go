@@ -173,14 +173,20 @@ func (si *Index) Search(query string, opts QueryOptions, postsByPath map[string]
 }
 
 // indexPosts batch-indexes all posts into the bleve index.
+// Draft and skipped posts are excluded entirely.
 func (si *Index) indexPosts(posts []*models.Post) error {
 	batch := si.idx.NewBatch()
-	for i, post := range posts {
+	count := 0
+	for _, post := range posts {
+		if post.Skip || post.Draft {
+			continue
+		}
 		doc := toPostDoc(post)
 		if err := batch.Index(post.Path, doc); err != nil {
 			return fmt.Errorf("index post %s: %w", post.Path, err)
 		}
-		if (i+1)%batchSize == 0 {
+		count++
+		if count%batchSize == 0 {
 			if err := si.idx.Batch(batch); err != nil {
 				return fmt.Errorf("batch index: %w", err)
 			}
@@ -197,7 +203,6 @@ func (si *Index) indexPosts(posts []*models.Post) error {
 
 func toPostDoc(p *models.Post) postDoc {
 	doc := postDoc{
-		Content:   p.Content,
 		Tags:      p.Tags,
 		Path:      p.Path,
 		Slug:      p.Slug,
@@ -216,6 +221,11 @@ func toPostDoc(p *models.Post) postDoc {
 		if wc, ok := p.Extra["word_count"].(int); ok {
 			doc.WordCount = wc
 		}
+	}
+	// Private posts: index metadata only, never content.
+	// This prevents encrypted or sensitive content from leaking into the search index.
+	if !p.Private {
+		doc.Content = p.Content
 	}
 	return doc
 }
