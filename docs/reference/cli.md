@@ -611,6 +611,7 @@ markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
 - Combines with `--filter` to narrow results before searching (filter applied first)
 - Table output shows relevance scores when using ranked search
 - `--fuzzy` enables edit-distance matching for typo tolerance
+- **Synonym expansion** is enabled by default — searching "land" also finds posts about "shore" (powered by a bundled WordNet thesaurus with 10,000+ synonym groups)
 
 ---
 

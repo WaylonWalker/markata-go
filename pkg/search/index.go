@@ -96,6 +96,11 @@ func Build(dir string, posts []*models.Post) (*Index, error) {
 		return nil, err
 	}
 
+	// Index synonym definitions (best-effort — search works without them)
+	if synErr := indexSynonyms(idx); synErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: synonym indexing failed: %v\n", synErr)
+	}
+
 	return si, nil
 }
 
@@ -219,23 +224,37 @@ func buildMapping() mapping.IndexMapping {
 	im := bleve.NewIndexMapping()
 	im.DefaultAnalyzer = "en"
 
+	// Configure synonym source: link the "english" source to the "wordnet" collection
+	// using the "en" analyzer for term normalization.
+	err := im.AddSynonymSource(synonymSourceName, map[string]interface{}{
+		"collection": synonymCollection,
+		"analyzer":   synonymAnalyzer,
+	})
+	if err != nil {
+		// Non-fatal: search works without synonyms
+		fmt.Fprintf(os.Stderr, "warning: synonym source setup failed: %v\n", err)
+	}
+
 	dm := bleve.NewDocumentMapping()
 
 	title := bleve.NewTextFieldMapping()
 	title.Analyzer = "en"
 	title.Store = false
 	title.IncludeTermVectors = true
+	title.SynonymSource = synonymSourceName
 	dm.AddFieldMappingsAt("title", title)
 
 	content := bleve.NewTextFieldMapping()
 	content.Analyzer = "en"
 	content.Store = false
 	content.IncludeTermVectors = true
+	content.SynonymSource = synonymSourceName
 	dm.AddFieldMappingsAt("content", content)
 
 	desc := bleve.NewTextFieldMapping()
 	desc.Analyzer = "en"
 	desc.Store = false
+	desc.SynonymSource = synonymSourceName
 	dm.AddFieldMappingsAt("description", desc)
 
 	tags := bleve.NewTextFieldMapping()
@@ -276,13 +295,13 @@ func buildMapping() mapping.IndexMapping {
 func buildQuery(queryStr string, opts QueryOptions) query.Query {
 	var textQuery query.Query
 	if opts.Fuzzy {
-		fq := query.NewFuzzyQuery(queryStr)
+		mq := query.NewMatchQuery(queryStr)
 		fuzziness := opts.Fuzziness
 		if fuzziness <= 0 {
 			fuzziness = 1
 		}
-		fq.SetFuzziness(fuzziness)
-		textQuery = fq
+		mq.SetFuzziness(fuzziness)
+		textQuery = mq
 	} else {
 		mq := query.NewMatchQuery(queryStr)
 		mq.SetOperator(query.MatchQueryOperatorAnd)

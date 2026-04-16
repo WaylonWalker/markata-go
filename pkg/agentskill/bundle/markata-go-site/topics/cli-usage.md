@@ -31,7 +31,7 @@ Bare `markata-go config` behaves like `markata-go config show`.
 
 ### Search
 
-- `markata-go search <query>` (BM25-ranked full-text search)
+- `markata-go search <query>` (BM25-ranked full-text search with synonym expansion)
 - `markata-go search <query> --format json` (machine-readable output)
 - `markata-go search <query> --filter "published == True"` (combine with filter)
 - `markata-go search <query> --fields title,tags` (restrict fields)
