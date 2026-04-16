@@ -29,6 +29,14 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go list feeds`
 - `markata-go list tags`
 
+### Search
+
+- `markata-go search <query>` (full-text search across content, titles, descriptions, tags)
+- `markata-go search <query> --format json` (machine-readable output)
+- `markata-go search <query> --filter "published == True"` (combine with filter)
+- `markata-go search <query> --limit 10` (cap results)
+- `markata-go search <query> --format path` (file paths only, for piping)
+
 ### Content Creation
 
 - `markata-go new` (create content from built-in templates)
@@ -125,6 +133,7 @@ markata-go lint --fix
 ## What To Use When
 
 - inspect content inventory: `markata-go list posts`
+- search for content by keyword: `markata-go search <query>`
 - inspect feed definitions and sizes: `markata-go list feeds`
 - inspect resolved configuration: `markata-go config show`
 - create new content: `markata-go new`
@@ -150,6 +159,7 @@ markata-go lint --fix
 ## Guidance
 
 - Prefer `list` commands when you need structured inspection.
+- Prefer `search` when you need to find posts by content or keyword.
 - Prefer `explain` when you need command-specific or subsystem context.
 - Prefer `serve` for interactive local work and `build` for validation or CI-like runs.
 - Run `lint` before committing content changes.

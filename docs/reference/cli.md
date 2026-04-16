@@ -553,6 +553,53 @@ markata-go list feeds posts blog --format path
 
 ---
 
+### search
+
+Full-text search across post content, titles, descriptions, and tags.
+
+#### Usage
+
+```bash
+markata-go search <query> [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output format: `table`, `json`, `csv`, `path` | `table` |
+| `--sort` | Sort field: `date`, `title`, `words`, `path`, `reading_time`, `tags` | `date` |
+| `--order` | Sort order: `asc` or `desc` | `desc` |
+| `--filter` | Additional filter expression to narrow results | none |
+| `--limit` | Maximum number of results (0 = no limit) | `0` |
+
+#### Examples
+
+```bash
+# Search for posts about golang
+markata-go search golang
+
+# Search with JSON output for scripting
+markata-go search "error handling" --format json
+
+# Search with a filter and limit
+markata-go search docker --filter "published == True" --limit 10
+
+# Search and sort by title
+markata-go search cli --sort title --order asc
+
+# Get matching file paths for piping
+markata-go search kubernetes --format path
+```
+
+#### Search Behavior
+
+- Case-insensitive substring matching across title, description, content, and tags
+- Combines with `--filter` to narrow results (e.g., only published posts matching a query)
+- Uses the same loading and caching as `list` commands
+
+---
+
 ### init
 
 Initialize a new markata-go project with interactive setup.
