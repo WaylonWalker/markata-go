@@ -1,0 +1,371 @@
+package tui
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/search"
+	"github.com/WaylonWalker/markata-go/pkg/services"
+)
+
+// searchResultItem holds a post with its bleve relevance score.
+type searchResultItem struct {
+	post  *models.Post
+	score float64
+}
+
+// searchResultsMsg is sent when a search query completes.
+type searchResultsMsg struct {
+	results []searchResultItem
+	query   string
+}
+
+// searchModeType tracks which search panel is active.
+type searchModeType int
+
+const (
+	searchModeSimple   searchModeType = iota // Big search box only
+	searchModeAdvanced                       // Search box + filter panel
+)
+
+// initSearchView initializes search view state on the model.
+func (m *Model) initSearchView() {
+	if m.searchInput.Placeholder == "" {
+		m.searchInput = textinput.New()
+		m.searchInput.Placeholder = "Search posts..."
+		m.searchInput.CharLimit = 200
+		m.searchInput.Width = 60
+
+		m.searchFilterInput = textinput.New()
+		m.searchFilterInput.Placeholder = "e.g. published == True and 'go' in tags"
+		m.searchFilterInput.CharLimit = 200
+		m.searchFilterInput.Width = 60
+
+		m.searchTable = createSearchTableWithTheme(m.width, m.theme)
+	}
+}
+
+// createSearchTableWithTheme builds a results table with a SCORE column.
+func createSearchTableWithTheme(width int, theme *Theme) table.Model {
+	pathWidth := width - 8 - 35 - 12 - 8 - 8 - 18 - 10
+	if pathWidth < 10 {
+		pathWidth = 10
+	}
+	columns := []table.Column{
+		{Title: "SCORE", Width: 8},
+		{Title: "TITLE", Width: 35},
+		{Title: "DATE", Width: 12},
+		{Title: "WORDS", Width: 8},
+		{Title: "READ", Width: 8},
+		{Title: "TAGS", Width: 18},
+		{Title: "PATH", Width: pathWidth},
+	}
+	return createTableWithTheme(columns, theme)
+}
+
+// handleSearchViewKey processes keys while ViewSearch is active.
+func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Escape: leave search → posts
+	if key.Matches(msg, keyMap.Escape) {
+		if m.searchMode == searchModeAdvanced && m.searchFilterFocused {
+			m.searchFilterFocused = false
+			m.searchFilterInput.Blur()
+			m.searchInput.Focus()
+			return m, nil
+		}
+		m.view = ViewPosts
+		m.searchInput.Blur()
+		m.searchFilterInput.Blur()
+		return m, nil
+	}
+
+	// Tab toggles advanced panel
+	if msg.String() == "tab" {
+		switch {
+		case m.searchMode == searchModeSimple:
+			m.searchMode = searchModeAdvanced
+		case !m.searchFilterFocused:
+			m.searchFilterFocused = true
+			m.searchInput.Blur()
+			m.searchFilterInput.Focus()
+			return m, textinput.Blink
+		default:
+			m.searchFilterFocused = false
+			m.searchFilterInput.Blur()
+			m.searchInput.Focus()
+			return m, textinput.Blink
+		}
+		return m, nil
+	}
+
+	// Enter on search input → select result / apply filter
+	if msg.String() == "enter" {
+		if m.searchFilterFocused {
+			// Apply filter and re-search
+			m.searchAdvancedFilter = m.searchFilterInput.Value()
+			return m, m.executeSearch()
+		}
+		// If results exist, open selected post
+		if len(m.searchResults) > 0 {
+			selected := m.searchTable.Cursor()
+			if selected >= 0 && selected < len(m.searchResults) {
+				m.selectedPost = m.searchResults[selected].post
+				m.previousView = ViewSearch
+				m.view = ViewPostDetail
+				m.initializePostViewport()
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	// Navigate results with up/down/j/k when input is not focused on filter
+	if !m.searchFilterFocused {
+		switch msg.String() {
+		case "down", "ctrl+n":
+			m.searchTable.MoveDown(1)
+			return m, nil
+		case "up", "ctrl+p":
+			m.searchTable.MoveUp(1)
+			return m, nil
+		}
+	}
+
+	// Forward text input to the focused field
+	if m.searchFilterFocused {
+		var cmd tea.Cmd
+		m.searchFilterInput, cmd = m.searchFilterInput.Update(msg)
+		return m, cmd
+	}
+
+	// Update the search input and fire a debounced search
+	var cmd tea.Cmd
+	m.searchInput, cmd = m.searchInput.Update(msg)
+
+	newQuery := m.searchInput.Value()
+	if newQuery != m.searchLastQuery {
+		m.searchLastQuery = newQuery
+		m.searchDebounceTime = time.Now()
+		return m, tea.Batch(cmd, m.searchDebounceCmd())
+	}
+	return m, cmd
+}
+
+// searchDebounceCmd waits 200ms then fires if the query hasn't changed.
+func (m Model) searchDebounceCmd() tea.Cmd {
+	snapshot := m.searchDebounceTime
+	return tea.Tick(200*time.Millisecond, func(_ time.Time) tea.Msg {
+		return searchDebounceMsg{snapshot: snapshot}
+	})
+}
+
+// searchDebounceMsg carries the timestamp to compare against current debounce.
+type searchDebounceMsg struct {
+	snapshot time.Time
+}
+
+// handleSearchDebounce is called from Update when a debounce tick fires.
+func (m Model) handleSearchDebounce(msg searchDebounceMsg) (tea.Model, tea.Cmd) {
+	if msg.snapshot != m.searchDebounceTime {
+		return m, nil // query changed since this tick was scheduled
+	}
+	if m.searchInput.Value() == "" {
+		m.searchResults = nil
+		m.searchTable.SetRows(nil)
+		return m, nil
+	}
+	return m, m.executeSearch()
+}
+
+// executeSearch runs a bleve (or fallback substring) search.
+func (m Model) executeSearch() tea.Cmd {
+	queryStr := m.searchInput.Value()
+	filterExpr := m.searchAdvancedFilter
+	posts := m.posts
+
+	return func() tea.Msg {
+		// Apply filter expression if set
+		var filteredPosts []*models.Post
+		if filterExpr != "" {
+			opts := m.app.Posts
+			listed, err := opts.List(context.Background(), services.ListOptions{Filter: filterExpr})
+			if err != nil {
+				filteredPosts = posts
+			} else {
+				filteredPosts = listed
+			}
+		} else {
+			filteredPosts = posts
+		}
+
+		if queryStr == "" {
+			return searchResultsMsg{results: nil, query: ""}
+		}
+
+		// Try bleve
+		results, err := searchPostsBleve(filteredPosts, queryStr)
+		if err != nil {
+			results = searchPostsSubstring(filteredPosts, queryStr)
+		}
+		return searchResultsMsg{results: results, query: queryStr}
+	}
+}
+
+func searchPostsBleve(posts []*models.Post, queryStr string) ([]searchResultItem, error) {
+	idx, err := search.BuildIfNeeded(".markata/cache", posts)
+	if err != nil {
+		return nil, err
+	}
+	defer idx.Close()
+
+	postsByPath := search.PostsByPath(posts)
+	hits, err := idx.Search(queryStr, search.QueryOptions{Limit: 50}, postsByPath)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]searchResultItem, len(hits))
+	for i, h := range hits {
+		results[i] = searchResultItem{post: h.Post, score: h.Score}
+	}
+	return results, nil
+}
+
+func searchPostsSubstring(posts []*models.Post, queryStr string) []searchResultItem {
+	q := strings.ToLower(queryStr)
+	var results []searchResultItem
+	for _, p := range posts {
+		if matchesPostSubstring(p, q) {
+			results = append(results, searchResultItem{post: p, score: 1.0})
+		}
+	}
+	if len(results) > 50 {
+		results = results[:50]
+	}
+	return results
+}
+
+func matchesPostSubstring(p *models.Post, q string) bool {
+	if p.Title != nil && strings.Contains(strings.ToLower(*p.Title), q) {
+		return true
+	}
+	if p.Description != nil && strings.Contains(strings.ToLower(*p.Description), q) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(p.Content), q) {
+		return true
+	}
+	for _, tag := range p.Tags {
+		if strings.Contains(strings.ToLower(tag), q) {
+			return true
+		}
+	}
+	return false
+}
+
+// handleSearchResults processes search results arriving from executeSearch.
+func (m *Model) handleSearchResults(msg searchResultsMsg) {
+	m.searchResults = msg.results
+	m.searchTable.SetRows(m.searchResultsToRows())
+	if len(msg.results) > 0 {
+		m.searchTable.SetCursor(0)
+	}
+}
+
+func (m Model) searchResultsToRows() []table.Row {
+	rows := make([]table.Row, len(m.searchResults))
+	for i, r := range m.searchResults {
+		row := postToRow(r.post)
+		score := fmt.Sprintf("%.2f", r.score)
+		rows[i] = append(table.Row{score}, row...)
+	}
+	return rows
+}
+
+// renderSearch renders the Google-style search view.
+func (m Model) renderSearch() string {
+	theme := m.getTheme()
+	var sb strings.Builder
+
+	// Centered title
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.Colors.Header).
+		Align(lipgloss.Center).
+		Width(m.width)
+	sb.WriteString(titleStyle.Render("🔍 Search"))
+	sb.WriteString("\n\n")
+
+	// Big centered search box
+	inputWidth := 64
+	if m.width < 70 {
+		inputWidth = m.width - 6
+	}
+	m.searchInput.Width = inputWidth
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Colors.Border).
+		Padding(0, 1).
+		Width(inputWidth + 4).
+		Align(lipgloss.Left)
+
+	centeredBox := lipgloss.NewStyle().
+		Width(m.width).
+		Align(lipgloss.Center)
+	sb.WriteString(centeredBox.Render(boxStyle.Render(m.searchInput.View())))
+	sb.WriteString("\n")
+
+	// Hint line
+	hintStyle := lipgloss.NewStyle().
+		Foreground(theme.Colors.Subtle).
+		Align(lipgloss.Center).
+		Width(m.width)
+	hints := "Tab: advanced filters • Esc: back • ↑/↓: navigate results • Enter: open"
+	sb.WriteString(hintStyle.Render(hints))
+	sb.WriteString("\n\n")
+
+	// Advanced filter panel (if active)
+	if m.searchMode == searchModeAdvanced {
+		filterLabel := "Filter: "
+		if m.searchFilterFocused {
+			filterLabel = "Filter (editing): "
+		}
+		filterBox := lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(theme.Colors.Border).
+			Padding(0, 1).
+			Width(inputWidth + 4)
+		filterContent := filterLabel + m.searchFilterInput.View()
+		if m.searchAdvancedFilter != "" && !m.searchFilterFocused {
+			filterContent += "\n  Active: " + m.searchAdvancedFilter
+		}
+		sb.WriteString(centeredBox.Render(filterBox.Render(filterContent)))
+		sb.WriteString("\n\n")
+	}
+
+	// Results
+	if m.searchInput.Value() != "" {
+		countStyle := lipgloss.NewStyle().
+			Foreground(theme.Colors.Header).
+			Align(lipgloss.Center).
+			Width(m.width)
+		sb.WriteString(countStyle.Render(fmt.Sprintf("%d results", len(m.searchResults))))
+		sb.WriteString("\n\n")
+
+		if len(m.searchResults) > 0 {
+			sb.WriteString(m.searchTable.View())
+		}
+	}
+
+	return sb.String()
+}

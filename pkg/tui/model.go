@@ -32,6 +32,7 @@ const (
 	ViewHelp       View = "help"
 	ViewPostDetail View = "post_detail"
 	ViewConfig     View = "config"
+	ViewSearch     View = "search"
 )
 
 // Mode represents the input mode
@@ -119,6 +120,17 @@ type Model struct {
 	// Refresh state
 	lastRefresh time.Time // Track last refresh time
 	refreshing  bool      // Indicate refresh in progress
+
+	// Search view state
+	searchInput          textinput.Model    // Main search input
+	searchFilterInput    textinput.Model    // Advanced filter input
+	searchResults        []searchResultItem // Current search results
+	searchTable          table.Model        // Results table
+	searchMode           searchModeType     // Simple or advanced
+	searchFilterFocused  bool               // Whether filter input is focused
+	searchAdvancedFilter string             // Active filter expression
+	searchLastQuery      string             // Last query (for debounce)
+	searchDebounceTime   time.Time          // Timestamp for debounce
 
 	// Config view state
 	configSections []configSection // Expanded config data
@@ -346,6 +358,13 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.tagsTable.SetHeight(msg.Height - 10)
 	m.feedsTable = createFeedsTableWithTheme(msg.Width, m.theme)
 	m.feedsTable.SetHeight(msg.Height - 10)
+	if m.searchInput.Placeholder != "" {
+		m.searchTable = createSearchTableWithTheme(msg.Width, m.theme)
+		m.searchTable.SetHeight(msg.Height - 14)
+		if len(m.searchResults) > 0 {
+			m.searchTable.SetRows(m.searchResultsToRows())
+		}
+	}
 
 	// Repopulate table if we have posts
 	if len(m.posts) > 0 {
@@ -446,6 +465,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.postsTable.SetRows(m.postsToRows())
 		m.tagsTable.SetRows(m.tagsToRows())
 		return m, nil
+
+	case searchResultsMsg:
+		m.handleSearchResults(msg)
+		return m, nil
+
+	case searchDebounceMsg:
+		return m.handleSearchDebounce(msg)
 	}
 
 	return m, nil
@@ -658,6 +684,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfigViewKey(msg)
 	}
 
+	// Handle search view keys separately
+	if m.view == ViewSearch {
+		return m.handleSearchViewKey(msg)
+	}
+
 	// Normal mode key handling
 	return m.handleNormalModeKey(msg)
 }
@@ -812,6 +843,12 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Config):
 		return m.handleConfigKey()
+
+	case key.Matches(msg, keyMap.Search):
+		m.initSearchView()
+		m.view = ViewSearch
+		m.searchInput.Focus()
+		return m, textinput.Blink
 
 	case key.Matches(msg, keyMap.Enter):
 		return m.handleEnter()
@@ -1041,6 +1078,8 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	case ViewConfig:
 		// Toggle section expansion (handled in handleConfigViewKey)
 		return m.toggleConfigSection()
+	case ViewSearch:
+		// Handled in handleSearchViewKey
 	}
 	return m, nil
 }
@@ -1251,6 +1290,8 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 	case ViewConfig:
 		// Return to posts view
 		m.view = ViewPosts
+	case ViewSearch:
+		// Handled in handleSearchViewKey
 	}
 	return m, nil
 }
@@ -1419,6 +1460,7 @@ Views:
   p          Posts view
   t          Tags view
   f          Feeds view
+  S          Search view (full-text search with ranked results)
 
 Drill-Down Navigation:
   Enter      In tags view: show posts with selected tag
@@ -1468,6 +1510,13 @@ Help Search:
   Esc        Clear search / return
   n          Next match
   N          Previous match
+
+Search View:
+  S          Open search from any view
+  Tab        Toggle advanced filters panel
+  ↑/↓        Navigate results
+  Enter      Open selected post / apply filter
+  Esc        Return to previous view
 
 Press Esc to return.`
 
@@ -1800,6 +1849,8 @@ func (m Model) View() string {
 		return m.renderPostDetail()
 	case ViewConfig:
 		return m.renderConfig()
+	case ViewSearch:
+		content = m.renderSearch()
 	}
 
 	rendered := m.renderLayout(content)
@@ -1946,6 +1997,13 @@ func (m *Model) renderFooter(sortIndicator string) string {
 		addButton("filter", "/", func(model *Model) (tea.Model, tea.Cmd) {
 			model.mode = ModeFilter
 			model.filterInput.Focus()
+			return *model, textinput.Blink
+		})
+
+		addButton("search", "S", func(model *Model) (tea.Model, tea.Cmd) {
+			model.initSearchView()
+			model.view = ViewSearch
+			model.searchInput.Focus()
 			return *model, textinput.Blink
 		})
 

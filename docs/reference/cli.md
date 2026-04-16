@@ -555,7 +555,7 @@ markata-go list feeds posts blog --format path
 
 ### search
 
-Full-text search across post content, titles, descriptions, and tags.
+Full-text search across post content, titles, descriptions, and tags. Uses a bleve full-text index for BM25-ranked results with optional fuzzy matching.
 
 #### Usage
 
@@ -568,15 +568,17 @@ markata-go search <query> [flags]
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--format` | Output format: `table`, `json`, `csv`, `path` | `table` |
-| `--sort` | Sort field: `date`, `title`, `words`, `path`, `reading_time`, `tags` | `date` |
+| `--sort` | Sort field: `score`, `date`, `title`, `words`, `path`, `reading_time`, `tags` | `score` |
 | `--order` | Sort order: `asc` or `desc` | `desc` |
 | `--filter` | Additional filter expression to narrow results | none |
+| `--fields` | Fields to search: `title,content,description,tags` (default: all) | all |
+| `--fuzzy` | Enable fuzzy matching (tolerates typos) | `false` |
 | `--limit` | Maximum number of results (0 = no limit) | `0` |
 
 #### Examples
 
 ```bash
-# Search for posts about golang
+# Search for posts about golang (BM25-ranked)
 markata-go search golang
 
 # Search with JSON output for scripting
@@ -585,18 +587,30 @@ markata-go search "error handling" --format json
 # Search with a filter and limit
 markata-go search docker --filter "published == True" --limit 10
 
-# Search and sort by title
-markata-go search cli --sort title --order asc
+# Search only in titles and tags
+markata-go search golang --fields title,tags
+
+# Fuzzy search (tolerates typos like "tutoral" → "tutorial")
+markata-go search tutoral --fuzzy
+
+# Search and sort by date instead of relevance
+markata-go search cli --sort date --order desc
 
 # Get matching file paths for piping
 markata-go search kubernetes --format path
+
+# Combine filter expressions with search
+markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
 ```
 
 #### Search Behavior
 
-- Case-insensitive substring matching across title, description, content, and tags
-- Combines with `--filter` to narrow results (e.g., only published posts matching a query)
-- Uses the same loading and caching as `list` commands
+- Uses bleve full-text index with BM25 ranking (results sorted by relevance by default)
+- Falls back to substring matching if the bleve index cannot be built
+- Index is cached at `.markata/cache/search.bleve` and rebuilt when content changes
+- Combines with `--filter` to narrow results before searching (filter applied first)
+- Table output shows relevance scores when using ranked search
+- `--fuzzy` enables edit-distance matching for typo tolerance
 
 ---
 

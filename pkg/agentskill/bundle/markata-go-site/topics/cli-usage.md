@@ -31,11 +31,14 @@ Bare `markata-go config` behaves like `markata-go config show`.
 
 ### Search
 
-- `markata-go search <query>` (full-text search across content, titles, descriptions, tags)
+- `markata-go search <query>` (BM25-ranked full-text search)
 - `markata-go search <query> --format json` (machine-readable output)
 - `markata-go search <query> --filter "published == True"` (combine with filter)
+- `markata-go search <query> --fields title,tags` (restrict fields)
+- `markata-go search <query> --fuzzy` (typo-tolerant matching)
 - `markata-go search <query> --limit 10` (cap results)
 - `markata-go search <query> --format path` (file paths only, for piping)
+- `markata-go search <query> --sort date` (sort by date instead of relevance)
 
 ### Content Creation
 
