@@ -68,6 +68,18 @@ func DefaultDir(cacheDir string) string {
 	return filepath.Join(cacheDir, indexDir)
 }
 
+// NamedDir returns an index directory with a process-specific suffix.
+// Use this when multiple processes may share the same cache directory
+// (e.g., serve and search-server running simultaneously).
+func NamedDir(cacheDir, name string) string {
+	return filepath.Join(cacheDir, "search-"+name+".bleve")
+}
+
+// NamedHashFile returns a hash file path with a process-specific suffix.
+func NamedHashFile(cacheDir, name string) string {
+	return filepath.Join(cacheDir, "search-"+name+".hash")
+}
+
 // Open opens an existing bleve index. Returns an error if no index exists.
 func Open(dir string) (*Index, error) {
 	idx, err := bleve.Open(dir)
@@ -106,9 +118,22 @@ func Build(dir string, posts []*models.Post) (*Index, error) {
 
 // BuildIfNeeded creates or opens an index, rebuilding only if the content hash changed.
 func BuildIfNeeded(cacheDir string, posts []*models.Post) (*Index, error) {
-	dir := DefaultDir(cacheDir)
+	return BuildIfNeededNamed(cacheDir, "", posts)
+}
+
+// BuildIfNeededNamed creates or opens a named index, allowing multiple processes
+// to maintain separate indexes in the same cache directory.
+func BuildIfNeededNamed(cacheDir, name string, posts []*models.Post) (*Index, error) {
+	var dir, hf string
+	if name == "" {
+		dir = DefaultDir(cacheDir)
+		hf = filepath.Join(cacheDir, hashFile)
+	} else {
+		dir = NamedDir(cacheDir, name)
+		hf = NamedHashFile(cacheDir, name)
+	}
 	currentHash := ContentHash(posts)
-	storedHash := readHashFile(filepath.Join(cacheDir, hashFile))
+	storedHash := readHashFile(hf)
 
 	if currentHash == storedHash {
 		si, err := Open(dir)
@@ -125,7 +150,7 @@ func BuildIfNeeded(cacheDir string, posts []*models.Post) (*Index, error) {
 
 	// Persist hash for next run (best-effort, non-fatal)
 	if mkErr := os.MkdirAll(cacheDir, 0o755); mkErr == nil {
-		_ = os.WriteFile(filepath.Join(cacheDir, hashFile), []byte(currentHash), 0o600) //nolint:errcheck // best-effort cache
+		_ = os.WriteFile(hf, []byte(currentHash), 0o600) //nolint:errcheck // best-effort cache
 	}
 	return si, nil
 }

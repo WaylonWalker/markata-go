@@ -1,9 +1,11 @@
 package searchapi
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +16,8 @@ import (
 )
 
 // Handler serves the bleve search API.
+// The index is built lazily on first search and reused across requests.
+// It is only rebuilt when posts change (detected via count + path hash).
 type Handler struct {
 	posts       []*models.Post
 	postsByPath map[string]*models.Post
@@ -21,6 +25,8 @@ type Handler struct {
 	config      Config
 	mu          sync.RWMutex
 	idx         *search.Index
+	postsHash   string // cheap fingerprint of current post set
+	searchSem   chan struct{}
 }
 
 // Config controls search API behavior.
@@ -29,6 +35,7 @@ type Config struct {
 	MaxLimit     int
 	DefaultFuzzy bool
 	CORSOrigins  []string
+	IndexName    string // process-specific index name to avoid conflicts
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -66,21 +73,39 @@ type SearchResult struct {
 }
 
 // NewHandler creates a new search API handler.
+// The bleve index is built lazily on the first search request,
+// not at construction time, to avoid blocking server startup.
 func NewHandler(posts []*models.Post, cacheDir string, cfg Config) *Handler {
+	// Limit concurrent searches to prevent resource exhaustion.
+	// Default to 4 concurrent searches; large sites (3000+ posts) with
+	// bleve can use significant memory per query.
+	maxConcurrent := 4
 	return &Handler{
 		posts:       posts,
 		postsByPath: search.PostsByPath(posts),
 		cacheDir:    cacheDir,
 		config:      cfg,
+		postsHash:   postsFingerprint(posts),
+		searchSem:   make(chan struct{}, maxConcurrent),
 	}
 }
 
 // UpdatePosts replaces the post list (e.g., after a rebuild).
+// Only rebuilds the index if the post set actually changed.
 func (h *Handler) UpdatePosts(posts []*models.Post) {
+	newHash := postsFingerprint(posts)
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if newHash == h.postsHash {
+		return // nothing changed
+	}
+
 	h.posts = posts
 	h.postsByPath = search.PostsByPath(posts)
+	h.postsHash = newHash
+
 	// Close old index so it rebuilds on next search
 	if h.idx != nil {
 		h.idx.Close()
@@ -117,14 +142,42 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-	queryStr := q.Get("q")
+	queryStr := r.URL.Query().Get("q")
 	if queryStr == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing required parameter: q"})
 		return
 	}
 
-	// Parse options
+	opts, limit, fuzzy := h.parseQueryOptions(r)
+
+	// Acquire search semaphore to limit concurrent searches
+	select {
+	case h.searchSem <- struct{}{}:
+		defer func() { <-h.searchSem }()
+	default:
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many concurrent searches, try again"})
+		return
+	}
+
+	idx, postsByPath, err := h.getOrBuildIndex()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search index unavailable"})
+		return
+	}
+
+	results, err := idx.Search(queryStr, opts, postsByPath)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, buildResponse(queryStr, results, fuzzy, limit))
+}
+
+// parseQueryOptions extracts search parameters from the HTTP request.
+func (h *Handler) parseQueryOptions(r *http.Request) (search.QueryOptions, int, bool) {
+	q := r.URL.Query()
+
 	fuzzy := h.config.DefaultFuzzy
 	if f := q.Get("fuzzy"); f != "" {
 		fuzzy = f == "true" || f == "1"
@@ -145,12 +198,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Fuzzy: fuzzy,
 	}
 
-	// Tag filtering
 	if tags := q.Get("tags"); tags != "" {
 		opts.Tags = strings.Split(tags, ",")
 	}
-
-	// Date filtering
 	if from := q.Get("from"); from != "" {
 		if t, err := time.Parse("2006-01-02", from); err == nil {
 			opts.DateFrom = &t
@@ -162,29 +212,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Published filter (default: only published)
 	published := true
 	opts.Published = &published
 
-	h.mu.RLock()
-	posts := h.posts
-	postsByPath := h.postsByPath
-	h.mu.RUnlock()
+	return opts, limit, fuzzy
+}
 
-	// Build/open index
-	idx, err := search.BuildIfNeeded(h.cacheDir, posts)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search index unavailable"})
-		return
-	}
-	defer idx.Close()
-
-	results, err := idx.Search(queryStr, opts, postsByPath)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "search failed"})
-		return
-	}
-
+func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit int) SearchResponse {
 	resp := SearchResponse{
 		Query:   queryStr,
 		Total:   len(results),
@@ -195,11 +229,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for i, hit := range results {
 		sr := SearchResult{
-			Path:  hit.Post.Path,
-			Slug:  hit.Post.Slug,
-			Href:  hit.Post.Href,
-			Tags:  hit.Post.Tags,
-			Score: hit.Score,
+			Path:    hit.Post.Path,
+			Slug:    hit.Post.Slug,
+			Href:    hit.Post.Href,
+			Tags:    hit.Post.Tags,
+			Score:   hit.Score,
+			Private: hit.Post.Private,
 		}
 		if hit.Post.Title != nil {
 			sr.Title = *hit.Post.Title
@@ -216,11 +251,39 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				sr.ReadTime = readTime(wc)
 			}
 		}
-		sr.Private = hit.Post.Private
 		resp.Results[i] = sr
 	}
+	return resp
+}
 
-	writeJSON(w, http.StatusOK, resp)
+// getOrBuildIndex returns the current index, building it if needed.
+// The index is reused across requests and only rebuilt when posts change.
+func (h *Handler) getOrBuildIndex() (*search.Index, map[string]*models.Post, error) {
+	// Fast path: index already exists
+	h.mu.RLock()
+	if h.idx != nil {
+		idx := h.idx
+		postsByPath := h.postsByPath
+		h.mu.RUnlock()
+		return idx, postsByPath, nil
+	}
+	h.mu.RUnlock()
+
+	// Slow path: build index
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if h.idx != nil {
+		return h.idx, h.postsByPath, nil
+	}
+
+	idx, err := search.BuildIfNeededNamed(h.cacheDir, h.config.IndexName, h.posts)
+	if err != nil {
+		return nil, nil, err
+	}
+	h.idx = idx
+	return h.idx, h.postsByPath, nil
 }
 
 func (h *Handler) corsAllowed(origin string) bool {
@@ -246,5 +309,26 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	_ = enc.Encode(v)
+	//nolint:errcheck // HTTP response writer errors are handled by the framework
+	enc.Encode(v)
+}
+
+// postsFingerprint creates a cheap hash of the post set for change detection.
+// Uses count + sorted paths — NOT content (content hashing is too expensive
+// to run every 2 seconds on 3000+ posts).
+func postsFingerprint(posts []*models.Post) string {
+	if len(posts) == 0 {
+		return "empty"
+	}
+	h := sha256.New()
+	fmt.Fprintf(h, "n=%d\n", len(posts))
+	paths := make([]string, len(posts))
+	for i, p := range posts {
+		paths[i] = p.Path
+	}
+	sort.Strings(paths)
+	for _, p := range paths {
+		fmt.Fprintln(h, p)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }

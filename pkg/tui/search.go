@@ -76,16 +76,7 @@ func createSearchTableWithTheme(width int, theme *Theme) table.Model {
 func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Escape: leave search → posts
 	if key.Matches(msg, keyMap.Escape) {
-		if m.searchMode == searchModeAdvanced && m.searchFilterFocused {
-			m.searchFilterFocused = false
-			m.searchFilterInput.Blur()
-			m.searchInput.Focus()
-			return m, nil
-		}
-		m.view = ViewPosts
-		m.searchInput.Blur()
-		m.searchFilterInput.Blur()
-		return m, nil
+		return m.handleSearchEscape()
 	}
 
 	// Ctrl+F toggles fuzzy matching
@@ -99,16 +90,7 @@ func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Ctrl+L cycles result limit: 20 → 50 → 100 → 200 → 20
 	if msg.String() == "ctrl+l" {
-		switch m.searchLimit {
-		case 0, 20:
-			m.searchLimit = 50
-		case 50:
-			m.searchLimit = 100
-		case 100:
-			m.searchLimit = 200
-		default:
-			m.searchLimit = 20
-		}
+		m.searchLimit = nextSearchLimit(m.searchLimit)
 		if m.searchInput.Value() != "" {
 			return m, m.executeSearch()
 		}
@@ -117,42 +99,12 @@ func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Tab toggles advanced panel
 	if msg.String() == "tab" {
-		switch {
-		case m.searchMode == searchModeSimple:
-			m.searchMode = searchModeAdvanced
-		case !m.searchFilterFocused:
-			m.searchFilterFocused = true
-			m.searchInput.Blur()
-			m.searchFilterInput.Focus()
-			return m, textinput.Blink
-		default:
-			m.searchFilterFocused = false
-			m.searchFilterInput.Blur()
-			m.searchInput.Focus()
-			return m, textinput.Blink
-		}
-		return m, nil
+		return m.handleSearchTab()
 	}
 
 	// Enter on search input → select result / apply filter
 	if msg.String() == "enter" {
-		if m.searchFilterFocused {
-			// Apply filter and re-search
-			m.searchAdvancedFilter = m.searchFilterInput.Value()
-			return m, m.executeSearch()
-		}
-		// If results exist, open selected post
-		if len(m.searchResults) > 0 {
-			selected := m.searchTable.Cursor()
-			if selected >= 0 && selected < len(m.searchResults) {
-				m.selectedPost = m.searchResults[selected].post
-				m.previousView = ViewSearch
-				m.view = ViewPostDetail
-				m.initializePostViewport()
-				return m, nil
-			}
-		}
-		return m, nil
+		return m.handleSearchEnter()
 	}
 
 	// Navigate results with up/down/j/k when input is not focused on filter
@@ -185,6 +137,68 @@ func (m Model) handleSearchViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.searchDebounceCmd())
 	}
 	return m, cmd
+}
+
+func (m Model) handleSearchEscape() (tea.Model, tea.Cmd) {
+	if m.searchMode == searchModeAdvanced && m.searchFilterFocused {
+		m.searchFilterFocused = false
+		m.searchFilterInput.Blur()
+		m.searchInput.Focus()
+		return m, nil
+	}
+	m.view = ViewPosts
+	m.searchInput.Blur()
+	m.searchFilterInput.Blur()
+	return m, nil
+}
+
+func (m Model) handleSearchTab() (tea.Model, tea.Cmd) {
+	switch {
+	case m.searchMode == searchModeSimple:
+		m.searchMode = searchModeAdvanced
+	case !m.searchFilterFocused:
+		m.searchFilterFocused = true
+		m.searchInput.Blur()
+		m.searchFilterInput.Focus()
+		return m, textinput.Blink
+	default:
+		m.searchFilterFocused = false
+		m.searchFilterInput.Blur()
+		m.searchInput.Focus()
+		return m, textinput.Blink
+	}
+	return m, nil
+}
+
+func (m Model) handleSearchEnter() (tea.Model, tea.Cmd) {
+	if m.searchFilterFocused {
+		m.searchAdvancedFilter = m.searchFilterInput.Value()
+		return m, m.executeSearch()
+	}
+	if len(m.searchResults) > 0 {
+		selected := m.searchTable.Cursor()
+		if selected >= 0 && selected < len(m.searchResults) {
+			m.selectedPost = m.searchResults[selected].post
+			m.previousView = ViewSearch
+			m.view = ViewPostDetail
+			m.initializePostViewport()
+			return m, nil
+		}
+	}
+	return m, nil
+}
+
+func nextSearchLimit(current int) int {
+	switch current {
+	case 0, 20:
+		return 50
+	case 50:
+		return 100
+	case 100:
+		return 200
+	default:
+		return 20
+	}
 }
 
 // searchDebounceCmd waits 200ms then fires if the query hasn't changed.

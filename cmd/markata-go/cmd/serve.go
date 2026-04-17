@@ -449,6 +449,7 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 
 	// Set up search API handler
 	apiCfg := searchapi.DefaultConfig()
+	apiCfg.IndexName = "serve"
 	if mc := getModelsConfig(m); mc != nil {
 		apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
 		apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
@@ -460,10 +461,12 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 	cacheDir := filepath.Join(filepath.Dir(absOutputDir), ".markata", "cache")
 	searchHandler := searchapi.NewHandler(m.Posts(), cacheDir, apiCfg)
 
-	// Subscribe to post updates after rebuilds
+	// Subscribe to post updates after rebuilds.
+	// UpdatePosts is now change-aware: it only rebuilds the index
+	// when the post set actually changes (cheap path-based fingerprint).
 	go func() {
 		for {
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			searchHandler.UpdatePosts(m.Posts())
 		}
 	}()

@@ -46,7 +46,7 @@ func TestHandler_Search(t *testing.T) {
 	defer h.Close()
 
 	t.Run("basic search", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/search?q=go", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=go", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -67,7 +67,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("missing query", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/search", nil)
+		req := httptest.NewRequest("GET", "/api/search", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -77,7 +77,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("method not allowed", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/api/search?q=test", nil)
+		req := httptest.NewRequest("POST", "/api/search?q=test", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -92,7 +92,7 @@ func TestHandler_Search(t *testing.T) {
 		// The private post content has "Super secret encrypted content" but content is stripped.
 		// However, "secret" is a synonym of "private" (which is in the title), so we
 		// must search for terms that only exist in the content field, not metadata.
-		req := httptest.NewRequest("GET", "/api/search?q=searchable", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=searchable", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -108,7 +108,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("private post title is searchable", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/search?q=diary", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=diary", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -131,7 +131,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("fuzzy search", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/search?q=programing&fuzzy=true", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=programing&fuzzy=true", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -145,7 +145,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("limit enforcement", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/search?q=go&limit=999", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=go&limit=999", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
@@ -159,7 +159,7 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("CORS preflight", func(t *testing.T) {
-		req := httptest.NewRequest("OPTIONS", "/api/search", nil)
+		req := httptest.NewRequest("OPTIONS", "/api/search", http.NoBody)
 		req.Header.Set("Origin", "https://example.com")
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)

@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 32 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 slug: /docs/reference/plugins/
@@ -119,6 +119,52 @@ use_gitignore = true
 - European format: `15-01-2024`
 - Long format: `January 15, 2024`
 - Short format: `Jan 15, 2024`
+
+---
+
+### python_docs
+
+**Name:** `python_docs`  
+**Stage:** Load  
+**Purpose:** Generates documentation posts directly from Python source files by extracting module, class, function, and method docstrings.
+
+**Status:** Built-in and disabled by default. It only runs when `python_docs` is listed in `hooks` and `[markata-go.python_docs].enabled = true`.
+
+**Configuration (TOML):**
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py", "pkg/**/*.py"]
+slug_prefix = "api"
+template = "docs"
+include_source = true
+include_module_code = false
+published = false
+```
+
+**Behavior:**
+1. Discovers Python files using its own glob patterns so normal markdown content loading is unchanged.
+2. Parses source with Python's AST via `python3`/`python`.
+3. Creates one post per module, with slug based on the module path.
+4. Renders module docstrings as markdown and adds sections for classes, functions, and methods.
+5. Includes signatures, docstrings, collapsible implementation snippets, and import lists.
+6. Adds internal links when imported modules or referenced symbols are also documented.
+
+**Generated post fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `extra.python_docs` | bool | Always `true` for generated source docs |
+| `extra.python_module` | string | Canonical module name, e.g. `pkg.util` |
+| `extra.source_path` | string | Relative source path |
+
+**Notes:**
+- `python_docs` must be explicitly listed in `[markata-go].hooks`.
+- Generated docs are unpublished by default, so they render as shadow pages unless `published = true`.
+- Private `_symbols` are excluded unless `include_private = true`.
+- This plugin is useful for API reference sites that want source-backed docs inside the normal markata-go template pipeline.
 
 ---
 

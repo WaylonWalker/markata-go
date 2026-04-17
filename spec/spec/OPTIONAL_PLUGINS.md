@@ -22,6 +22,7 @@ This document specifies optional plugins that extend the static site generator w
 │                                                                      │
 │  OUTPUT GENERATION                                                   │
 │    ├─ image_optimization  Generate AVIF/WebP images               │
+│    ├─ python_docs         Generate docs from Python source         │
 │    └─ qrcode              Generate QR codes for posts              │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -625,6 +626,97 @@ The plugin MUST implement:
 - `ConfigurePlugin` - To read configuration
 - `RenderPlugin` - To process posts during the render stage
 - `PriorityPlugin` - To ensure late execution after markdown rendering
+
+---
+
+### `python_docs`
+
+**Stage:** `load`
+
+**Purpose:** Discover Python source files, extract API docs from docstrings, and create source-backed documentation posts for docs sites.
+
+**Dependencies:** Python 3 interpreter (`python3` or `python`) available on PATH.
+
+**Configuration:**
+
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py", "pkg/**/*.py"]
+exclude = ["**/tests/**", "**/.venv/**"]
+use_gitignore = true
+slug_prefix = "api"
+template = "docs"
+published = false
+include_private = false
+include_source = true
+include_module_code = false
+tags = ["python", "docs"]
+interpreter = "python3"
+```
+
+**Configuration fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Whether Python source docs are generated |
+| `patterns` | []string | `["**/*.py"]` | Glob patterns used for discovery |
+| `directories` | []string | `[]` | Convenience alias for directory roots (`dir/**/*.py`) |
+| `exclude` | []string | common venv/cache globs | Glob patterns to skip |
+| `use_gitignore` | bool | `true` | Respect `.gitignore` while scanning |
+| `slug_prefix` | string | `"api"` | URL prefix for generated module pages |
+| `template` | string | `""` | Template name for generated posts |
+| `published` | bool | `false` | Publish generated docs in feeds/search/sitemap |
+| `include_private` | bool | `false` | Include private `_symbols` |
+| `include_source` | bool | `true` | Include implementation snippets under symbols |
+| `include_module_code` | bool | `false` | Include module-level implementation source |
+| `tags` | []string | `["python", "docs"]` | Tags applied to generated posts |
+| `interpreter` | string | auto-detect | Python executable to use for AST extraction |
+
+**Behavior:**
+
+1. Scan configured Python files without replacing normal markdown content loading.
+2. Parse each module with Python's AST.
+3. Extract module, class, function, and method docstrings and signatures.
+4. Slice implementation source away from leading docstrings so prose and code render separately.
+5. Generate markdown posts with import lists and internal cross-links for discovered modules and symbols.
+6. Only run when the plugin is explicitly listed in `[markata-go].hooks` and `enabled = true`.
+7. Add generated posts to the normal lifecycle so existing templates, wikilinks, feeds, and HTML publishing still apply.
+
+**Generated post fields:**
+
+| Field | Description |
+|-------|-------------|
+| `title` | Python module name, e.g. `pkg.api.client` |
+| `path` | Original source path, e.g. `pkg/api/client.py` |
+| `slug` | Prefixed module path, e.g. `api/pkg/api/client` |
+| `extra.python_docs` | Always `true` for generated docs posts |
+| `extra.python_module` | Canonical module name |
+| `extra.source_path` | Relative source file path |
+
+**Generated markdown layout:**
+
+- Module heading and source path
+- Module docstring rendered as markdown
+- Import section with internal links when targets are also documented
+- API index for classes and functions
+- Per-symbol sections with signatures, docstrings, and collapsible source snippets
+
+**Cross-linking:**
+
+- Backticked references like `` `pkg.util` `` are linked when they resolve to discovered modules.
+- Sphinx-style refs such as `:func:`pkg.util.greet`` SHOULD link when the target symbol was discovered.
+- Import lists SHOULD link both modules and known imported symbols.
+
+**Interface requirements:**
+
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration and resolve the interpreter
+- `LoadPlugin` - To generate posts during the load stage
 
 ---
 

@@ -50,6 +50,7 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 
 	// Configure search API
 	apiCfg := searchapi.DefaultConfig()
+	apiCfg.IndexName = "server"
 	if mc := getModelsConfig(app.Manager); mc != nil {
 		apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
 		apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
