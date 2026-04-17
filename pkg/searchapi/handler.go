@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/search"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // Handler serves the bleve search API.
@@ -36,6 +38,10 @@ type Config struct {
 	DefaultFuzzy bool
 	CORSOrigins  []string
 	IndexName    string // process-specific index name to avoid conflicts
+	IndexDir     string
+	HashPath     string
+	ReadOnly     bool
+	Rebuild      bool
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -63,6 +69,10 @@ type SearchResult struct {
 	Path        string   `json:"path"`
 	Slug        string   `json:"slug"`
 	Href        string   `json:"href"`
+	MediaURL    string   `json:"media_url,omitempty"`
+	MediaType   string   `json:"media_type,omitempty"`
+	PosterURL   string   `json:"poster_url,omitempty"`
+	VideoMIME   string   `json:"video_mime,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Date        string   `json:"date,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
@@ -87,6 +97,19 @@ func NewHandler(posts []*models.Post, cacheDir string, cfg Config) *Handler {
 		config:      cfg,
 		postsHash:   postsFingerprint(posts),
 		searchSem:   make(chan struct{}, maxConcurrent),
+	}
+}
+
+// NewReadOnlyHandler creates a handler that serves from an existing bleve index
+// without loading or rebuilding site content.
+func NewReadOnlyHandler(indexDir string, cfg Config) *Handler {
+	cfg.ReadOnly = true
+	cfg.IndexDir = indexDir
+	maxConcurrent := 4
+	return &Handler{
+		cacheDir:  filepath.Dir(indexDir),
+		config:    cfg,
+		searchSem: make(chan struct{}, maxConcurrent),
 	}
 }
 
@@ -228,32 +251,112 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 	}
 
 	for i, hit := range results {
-		sr := SearchResult{
-			Path:    hit.Post.Path,
-			Slug:    hit.Post.Slug,
-			Href:    hit.Post.Href,
-			Tags:    hit.Post.Tags,
-			Score:   hit.Score,
-			Private: hit.Post.Private,
-		}
-		if hit.Post.Title != nil {
-			sr.Title = *hit.Post.Title
-		}
-		if hit.Post.Description != nil {
-			sr.Description = *hit.Post.Description
-		}
-		if hit.Post.Date != nil {
-			sr.Date = hit.Post.Date.Format(time.RFC3339)
-		}
-		if hit.Post.Extra != nil {
-			if wc, ok := hit.Post.Extra["word_count"].(int); ok {
-				sr.WordCount = wc
-				sr.ReadTime = readTime(wc)
+		doc := hit.Doc
+		if hit.Post != nil {
+			doc = search.Document{}
+			doc.Title = derefString(hit.Post.Title)
+			doc.Path = hit.Post.Path
+			doc.Slug = hit.Post.Slug
+			doc.Href = hit.Post.Href
+			doc.Tags = append([]string(nil), hit.Post.Tags...)
+			doc.Private = hit.Post.Private
+			if hit.Post.Description != nil && (!hit.Post.Private || explicitFrontmatterDescription(hit.Post)) {
+				doc.Description = *hit.Post.Description
 			}
+			if hit.Post.Date != nil {
+				doc.Date = *hit.Post.Date
+			}
+			if hit.Post.Extra != nil {
+				if wc, ok := hit.Post.Extra["word_count"].(int); ok {
+					doc.WordCount = wc
+				}
+			}
+			doc.MediaURL, doc.MediaType, doc.PosterURL, doc.VideoMIME = searchMedia(hit.Post)
+		}
+
+		sr := SearchResult{
+			Title:   doc.Title,
+			Path:    doc.Path,
+			Slug:    doc.Slug,
+			Href:    doc.Href,
+			Tags:    append([]string(nil), doc.Tags...),
+			Score:   hit.Score,
+			Private: doc.Private,
+		}
+		sr.Description = doc.Description
+		sr.MediaURL = doc.MediaURL
+		sr.MediaType = doc.MediaType
+		sr.PosterURL = doc.PosterURL
+		sr.VideoMIME = doc.VideoMIME
+		if !doc.Date.IsZero() {
+			sr.Date = doc.Date.Format(time.RFC3339)
+		}
+		if doc.WordCount > 0 {
+			sr.WordCount = doc.WordCount
+			sr.ReadTime = readTime(doc.WordCount)
 		}
 		resp.Results[i] = sr
 	}
 	return resp
+}
+
+func searchMedia(post *models.Post) (mediaURL, mediaType, posterURL, videoMIME string) {
+	if post == nil || post.Extra == nil {
+		return "", "", "", ""
+	}
+	if post.Private {
+		return "", "", "", ""
+	}
+
+	imageURL := firstExtraString(post.Extra, "image", "cover", "cover_image", "og_image")
+	videoURL := firstExtraString(post.Extra, "video")
+	mediaURL = imageURL
+	if mediaURL == "" {
+		mediaURL = videoURL
+	}
+	if mediaURL == "" {
+		return "", "", "", ""
+	}
+
+	if templates.IsVideoURL(mediaURL) {
+		mediaType = "video"
+		videoMIME = templates.VideoMIMEType(mediaURL)
+		posterURL = templates.PosterURLFromMap(post.Extra, mediaURL)
+		mediaURL = templates.WithSize(mediaURL, 320, 180)
+		if posterURL != "" {
+			posterURL = templates.WithSize(posterURL, 320, 180)
+		}
+		return mediaURL, mediaType, posterURL, videoMIME
+	}
+
+	mediaType = "image"
+	mediaURL = templates.WithSize(mediaURL, 320, 180)
+	return mediaURL, mediaType, "", ""
+}
+
+func firstExtraString(extra map[string]interface{}, keys ...string) string {
+	for _, key := range keys {
+		value, ok := extra[key].(string)
+		if ok && strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func explicitFrontmatterDescription(post *models.Post) bool {
+	if post == nil || post.Description == nil {
+		return false
+	}
+	if post.Extra == nil {
+		return false
+	}
+	value, ok := post.Extra["description"]
+	if !ok {
+		return false
+	}
+	text, ok := value.(string)
+	return ok && strings.TrimSpace(text) != ""
 }
 
 // getOrBuildIndex returns the current index, building it if needed.
@@ -278,12 +381,46 @@ func (h *Handler) getOrBuildIndex() (*search.Index, map[string]*models.Post, err
 		return h.idx, h.postsByPath, nil
 	}
 
-	idx, err := search.BuildIfNeededNamed(h.cacheDir, h.config.IndexName, h.posts)
+	idx, err := h.openOrBuildIndex()
 	if err != nil {
 		return nil, nil, err
 	}
 	h.idx = idx
 	return h.idx, h.postsByPath, nil
+}
+
+func (h *Handler) openOrBuildIndex() (*search.Index, error) {
+	indexDir := h.config.IndexDir
+	hashPath := h.config.HashPath
+	if indexDir == "" {
+		if h.config.IndexName == "" {
+			indexDir = search.DefaultDir(h.cacheDir)
+			hashPath = filepath.Join(h.cacheDir, "search.hash")
+		} else {
+			indexDir = search.NamedDir(h.cacheDir, h.config.IndexName)
+			hashPath = search.NamedHashFile(h.cacheDir, h.config.IndexName)
+		}
+	}
+	if hashPath == "" && !h.config.ReadOnly {
+		hashPath = filepath.Join(filepath.Dir(indexDir), filepath.Base(indexDir)+".hash")
+	}
+
+	if h.config.ReadOnly {
+		return search.Open(indexDir)
+	}
+
+	if h.config.Rebuild {
+		return search.Build(indexDir, h.posts)
+	}
+
+	return search.BuildIfNeededAt(indexDir, hashPath, h.posts)
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (h *Handler) corsAllowed(origin string) bool {

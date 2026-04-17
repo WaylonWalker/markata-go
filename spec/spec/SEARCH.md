@@ -1,6 +1,8 @@
 # Search Specification
 
-This document specifies the search functionality for markata-go sites using Pagefind.
+This document specifies the search functionality for markata-go sites.
+
+Pagefind is the default static search implementation. Bleve-backed search is also supported for server-backed and remote-hosted deployments.
 
 ## Overview
 
@@ -499,3 +501,206 @@ All auto-installed Pagefind binaries are verified:
 3. **Search Suggestions** - Autocomplete based on content
 4. **Federated Search** - Search across multiple sites
 5. **Voice Search** - Web Speech API integration
+
+## Bleve Search Server Plan
+
+### Goals
+
+The bleve search server exists to support deployment shapes that Pagefind does not cover well:
+
+- remote-hosted search APIs such as `search.example.com`
+- shared navbar search across multiple sites or environments
+- server-side ranking and filtering for large sites
+- production deployments where search should scale independently from the main site
+
+The bleve implementation MUST preserve the same privacy expectations as the rest of the system:
+
+- private posts MAY be searchable by intentionally public metadata such as title, description, tags, and date
+- private post body content MUST NOT be indexed
+- private media URLs, poster URLs, and other decryptable assets MUST NOT be exposed by search results
+
+### Required Server Modes
+
+The standalone search server MUST support three operating modes.
+
+#### 1. `runtime-index`
+
+This is the local-writer mode.
+
+- The server loads config and content at startup
+- The server builds or refreshes a local bleve index as needed
+- The server MAY write cache files and index files
+- This mode is suitable for local development, simple VPS deployments, and single-instance containers
+
+#### 2. `watch-content`
+
+This is the live-reload server mode for long-running processes.
+
+- The server loads config and content at startup
+- The server watches configured content and config roots for changes
+- The server ignores generated and cache directories such as `output/`, `.markata/`, `.markata-cache/`, `cache/`, `public/`, and `markout/`
+- On change, the server reloads posts, updates its in-memory view, and rebuilds or refreshes its local index
+- Rebuilds MUST be debounced and serialized to prevent rebuild storms
+
+#### 3. `read-only-index`
+
+This is the production scale-out mode.
+
+- The server opens a prebuilt index artifact and serves queries without rebuilding
+- The server MUST NOT write the bleve index directory or adjacent hash files in this mode
+- The server SHOULD fail fast on startup when the index is missing, unreadable, or version-incompatible
+- The server SHOULD be safe to run behind a load balancer across multiple pods when all replicas mount the same read-only artifact
+
+### Result Hydration Requirements
+
+The current search API hydrates results from loaded posts in memory. To support `read-only-index`, bleve documents MUST eventually store all fields needed to serve API responses directly.
+
+The stored result schema MUST include at least:
+
+- title
+- path
+- slug
+- href
+- description
+- date
+- tags
+- word count or read-time source fields
+- public media fields for non-private posts only
+- private flag when the result represents a private post discoverable by metadata
+
+In `read-only-index` mode the server SHOULD be able to answer queries without loading the full site content tree.
+
+### Index Ownership and Storage Rules
+
+#### Writable indexes
+
+When running in `runtime-index` or `watch-content` mode:
+
+- the search server MUST use a configurable cache dir and index dir
+- the search server MUST use a configurable `index_name`
+- defaults SHOULD avoid collisions between `serve`, `search-server`, and future workers
+
+#### Shared PVCs
+
+The system MUST NOT assume that multiple writers can safely mutate the same bleve index directory on a shared PVC.
+
+The implementation and docs MUST explicitly distinguish these deployment shapes:
+
+- safe: one writer per writable index path
+- safe: many readers mounting the same read-only prebuilt index artifact
+- unsafe: builder pods and search pods concurrently mutating the same writable bleve index path
+- unsafe: multiple search server replicas sharing the same writable index path without unique index names
+
+### Content Update Model
+
+The standalone search server MUST document and support clear update semantics.
+
+#### `runtime-index`
+
+- Content changes on disk are NOT automatically observed
+- A restart or explicit rebuild trigger is required
+
+#### `watch-content`
+
+- Content changes on disk are observed by the watcher
+- The server updates its in-memory post set and refreshes the local index automatically
+
+#### `read-only-index`
+
+- Content changes on disk do not affect the running server directly
+- A separate builder or indexer is responsible for publishing a new index artifact
+- The server reloads that artifact only via restart, explicit reopen, or future hot-swap support
+
+### Required CLI Surface
+
+The CLI MUST evolve to support standalone production deployments.
+
+Required flags or equivalent config for `search-server`:
+
+- `--mode=runtime-index|watch-content|read-only-index`
+- `--cache-dir`
+- `--index-dir`
+- `--index-name`
+- `--rebuild-index`
+- `--watch-debounce`
+
+Recommended future command:
+
+- `markata-go search build-index`
+
+The index-build command SHOULD:
+
+- build the bleve index without starting the HTTP server
+- produce a reusable artifact for containers or object storage
+- optionally emit a manifest with schema version and content fingerprint
+
+### Remote Search Endpoint Integration
+
+The search UI MUST support a config-driven remote endpoint.
+
+Example target configuration:
+
+```toml
+[search.bleve]
+endpoint = "https://search.example.com/api/search"
+cors_origins = ["https://example.com"]
+```
+
+Behavior requirements:
+
+- when a bleve endpoint is configured, the navbar search UI SHOULD use the bleve client instead of Pagefind
+- Pagefind SHOULD remain the fallback when no endpoint is configured
+- dev-mode endpoint injection used by `serve` is a convenience, not the long-term production mechanism
+
+### Kubernetes and Container Deployment Targets
+
+The implementation and docs MUST support three recommended deployment patterns.
+
+#### Pattern A: Single search pod with local writable cache
+
+- content and config mounted into the container
+- bleve index stored on ephemeral or pod-local writable storage
+- restart pod after new content is deployed
+
+#### Pattern B: Multiple search pods with per-pod writable cache
+
+- each pod mounts the same content/config artifact
+- each pod builds and owns its own local index
+- pods are safe to load balance because they do not share a writable index path
+
+#### Pattern C: Builder/indexer plus read-only search pods
+
+- a builder job creates the index artifact
+- search pods mount that artifact read-only
+- search pods run in `read-only-index` mode
+- this is the preferred production scale-out architecture
+
+### Privacy Requirements
+
+Bleve search MUST continue to enforce these rules across all modes:
+
+- draft and skipped posts are excluded entirely
+- private posts are searchable only by public metadata
+- private body content is never indexed
+- private search results never expose media URLs, poster URLs, or decryptable assets
+- if a private post description is returned, it MUST be explicit public metadata rather than a body-derived excerpt
+
+### Testing Requirements
+
+The search implementation MUST add regression coverage for:
+
+- private results discoverable by title/tags but not body content
+- private results never exposing media fields
+- remote endpoint selection overriding Pagefind in the navbar
+- `watch-content` ignoring generated/cache trees and rebuilding only from content/config changes
+- `read-only-index` mode opening an existing index without writing
+- multi-replica operation using unique writable indexes or shared read-only artifacts
+
+### Recommended Implementation Order
+
+1. add config-driven remote bleve endpoint selection in the frontend
+2. make `search-server` cache dir, index dir, and index name configurable
+3. add an explicit index build command
+4. implement `read-only-index` mode
+5. implement `watch-content` mode
+6. add deployment docs and regression tests

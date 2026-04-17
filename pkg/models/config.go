@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // NavItem represents a navigation link.
 type NavItem struct {
 	// Label is the display text for the nav link
@@ -787,6 +789,10 @@ func (s *SearchConfig) SearchEndpoint() string {
 
 // BleveSearchConfig configures bleve search API defaults.
 type BleveSearchConfig struct {
+	// Endpoint is the absolute or relative API URL used by the frontend bleve client.
+	// When set, the navbar search prefers bleve over Pagefind.
+	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint,omitempty"`
+
 	// Fuzzy enables fuzzy matching by default (default: false)
 	Fuzzy *bool `json:"fuzzy,omitempty" yaml:"fuzzy,omitempty" toml:"fuzzy,omitempty"`
 
@@ -798,6 +804,14 @@ type BleveSearchConfig struct {
 
 	// CORSOrigins is the list of allowed CORS origins (default: ["*"] in dev)
 	CORSOrigins []string `json:"cors_origins,omitempty" yaml:"cors_origins,omitempty" toml:"cors_origins,omitempty"`
+}
+
+// EndpointOrDefault returns the configured bleve endpoint or the top-level search endpoint.
+func (b *BleveSearchConfig) EndpointOrDefault(searchEndpoint string) string {
+	if strings.TrimSpace(b.Endpoint) != "" {
+		return b.Endpoint
+	}
+	return searchEndpoint
 }
 
 // IsFuzzy returns whether fuzzy matching is enabled by default.

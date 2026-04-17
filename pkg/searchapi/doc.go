@@ -3,7 +3,7 @@
 // # Privacy
 //
 // Private posts are indexed by metadata only (title, description, tags, date).
-// Content and encrypted data are never included in the search index.
+// Body content and media from private posts are never exposed by the search API.
 // Draft and skipped posts are excluded entirely.
 //
 // # Endpoints

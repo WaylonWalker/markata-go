@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/search"
 )
 
 func TestHandler_Search(t *testing.T) {
@@ -87,11 +89,6 @@ func TestHandler_Search(t *testing.T) {
 	})
 
 	t.Run("private post content not searchable", func(t *testing.T) {
-		// Search for words ONLY in the private post's content (not in title/description/tags).
-		// "practices" appears only in the public post, so use a unique content-only term.
-		// The private post content has "Super secret encrypted content" but content is stripped.
-		// However, "secret" is a synonym of "private" (which is in the title), so we
-		// must search for terms that only exist in the content field, not metadata.
 		req := httptest.NewRequest("GET", "/api/search?q=searchable", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
@@ -122,6 +119,9 @@ func TestHandler_Search(t *testing.T) {
 				found = true
 				if !r.Private {
 					t.Error("private flag should be set on result")
+				}
+				if r.MediaURL != "" || r.PosterURL != "" || r.VideoMIME != "" {
+					t.Error("private search result should not expose media")
 				}
 			}
 		}
@@ -171,4 +171,58 @@ func TestHandler_Search(t *testing.T) {
 			t.Error("expected CORS origin header")
 		}
 	})
+}
+
+func TestReadOnlyHandler_Search(t *testing.T) {
+	title := "Read Only Search"
+	description := "Index served without loading site content"
+	date := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
+
+	posts := []*models.Post{
+		{
+			Path:        "posts/read-only.md",
+			Title:       &title,
+			Description: &description,
+			Content:     "This post validates read only bleve serving.",
+			Slug:        "read-only",
+			Href:        "/read-only",
+			Tags:        []string{"search", "bleve"},
+			Published:   true,
+			Date:        &date,
+		},
+	}
+
+	indexDir := filepath.Join(t.TempDir(), "search.bleve")
+	idx, err := search.Build(indexDir, posts)
+	if err != nil {
+		t.Fatalf("build index: %v", err)
+	}
+	if err := idx.Close(); err != nil {
+		t.Fatalf("close index: %v", err)
+	}
+
+	h := NewReadOnlyHandler(indexDir, DefaultConfig())
+	defer h.Close()
+
+	req := httptest.NewRequest("GET", "/api/search?q=read", http.NoBody)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp SearchResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Total == 0 {
+		t.Fatal("expected read-only handler to return results")
+	}
+	if resp.Results[0].Title != title {
+		t.Fatalf("title = %q, want %q", resp.Results[0].Title, title)
+	}
+	if resp.Results[0].Href != "/read-only" {
+		t.Fatalf("href = %q, want %q", resp.Results[0].Href, "/read-only")
+	}
 }

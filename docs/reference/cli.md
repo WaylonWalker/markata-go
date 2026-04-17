@@ -612,13 +612,53 @@ markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
 - Table output shows relevance scores when using ranked search
 - `--fuzzy` enables edit-distance matching for typo tolerance
 - **Synonym expansion** is enabled by default — searching "land" also finds posts about "shore" (powered by a bundled WordNet thesaurus with 10,000+ synonym groups)
-- **Privacy-safe** — private posts are indexed by metadata only (title, description, tags); content is never included in the search index
+- **Privacy-safe** — private posts are searchable by public metadata, while their body content and media remain excluded from search
+
+---
+
+### search build-index
+
+Build a reusable bleve index artifact without starting the search server.
+
+#### Usage
+
+```bash
+markata-go search build-index [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--index-dir` | Directory to write the bleve index | `.markata/cache/search.bleve` |
+| `--hash-path` | Path for the content hash file | `.markata/cache/search.hash` |
+| `--index-name` | Named index suffix inside the default cache directory | `""` |
+| `--force` | Rebuild even if content hash is unchanged | `false` |
+
+#### Examples
+
+```bash
+# Build the default cached index
+markata-go search build-index
+
+# Build a reusable artifact at a custom path
+markata-go search build-index --index-dir /data/search.bleve --hash-path /data/search.hash
+
+# Build a named index alongside other local indexes
+markata-go search build-index --index-name server --force
+```
+
+#### Behavior
+
+- Loads the site content the same way as `markata-go search`
+- Writes or refreshes a bleve index on disk
+- Intended for CI, builder jobs, and future read-only search server deployments
 
 ---
 
 ### search-server
 
-Start a standalone read-only search API server powered by bleve full-text search.
+Start a standalone bleve-backed search API server.
 
 #### Usage
 
@@ -632,6 +672,12 @@ markata-go search-server [flags]
 |------|-------------|---------|
 | `--port` | Port to listen on | `3001` |
 | `--host` | Host to bind to | `localhost` |
+| `--mode` | Server mode: `runtime-index`, `watch-content`, or `read-only-index` | `runtime-index` |
+| `--index-dir` | Directory of the bleve index | runtime default |
+| `--hash-path` | Path for the content hash file in runtime-index mode | runtime default |
+| `--index-name` | Named index suffix inside the default cache directory | `server` |
+| `--rebuild-index` | Force a rebuild in runtime-index mode | `false` |
+| `--watch-debounce` | Debounce duration for watch-content reloads | `750ms` |
 
 #### Examples
 
@@ -641,6 +687,12 @@ markata-go search-server
 
 # Start on a custom port
 markata-go search-server --port 8081
+
+# Start in watch mode
+markata-go search-server --mode watch-content
+
+# Serve a prebuilt index artifact without loading content
+markata-go search-server --mode read-only-index --index-dir /data/search.bleve
 
 # Query the API
 curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"
@@ -662,9 +714,15 @@ curl "http://localhost:3001/api/search?q=docker&tags=devops&from=2024-01-01"
 
 - Returns JSON with `query`, `total`, `results` fields
 - Private post content is never searchable — only metadata (title, description, tags)
-- CORS enabled for development
+- CORS follows `search.bleve.cors_origins`
 - Also available at the configured endpoint during `markata-go serve`
 - Health check at `/health`
+
+#### Modes
+
+- `runtime-index` loads site content and builds or refreshes a local bleve index
+- `watch-content` reloads content and refreshes the local index when source files change
+- `read-only-index` opens an existing prebuilt index without loading or rebuilding site content
 
 #### Configuration
 
@@ -674,6 +732,7 @@ backend = "bleve"           # "pagefind" (default) or "bleve"
 endpoint = "/api/search"    # API endpoint path
 
 [search.bleve]
+endpoint = "https://search.example.com/api/search"  # Optional remote endpoint for navbar client
 fuzzy = false               # Default fuzzy matching
 limit = 20                  # Default result limit
 max_limit = 100             # Maximum allowed limit

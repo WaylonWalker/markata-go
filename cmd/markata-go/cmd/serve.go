@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -59,6 +60,9 @@ var (
 
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
+
+	// serveInternalPaths are generated/cache directories that should never trigger rebuilds.
+	serveInternalPaths []string
 
 	// serveSearchEndpoint is the search API endpoint path configured for this serve session.
 	serveSearchEndpoint string
@@ -211,6 +215,7 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	// Determine output directory
 	outputPath, absOutputPath := resolveServeOutputPath(m)
 	serveOutputPath = absOutputPath
+	initServeInternalPaths()
 
 	var wg sync.WaitGroup
 	rebuildCh, closeWatcher, err := setupWatcher(ctx, m, &wg)
@@ -271,6 +276,18 @@ func resolveServeOutputPath(m *lifecycle.Manager) (outputPath, absOutputPath str
 	}
 
 	return outputPath, absOutputPath
+}
+
+func initServeInternalPaths() {
+	paths := []string{".markata", ".markata-cache", "cache", "markout", "public", "output"}
+	serveInternalPaths = serveInternalPaths[:0]
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			absPath = p
+		}
+		serveInternalPaths = append(serveInternalPaths, absPath)
+	}
 }
 
 func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup) (rebuildCh chan struct{}, closeWatcher func(), err error) {
@@ -593,16 +610,22 @@ func injectDevScripts(html string, status BuildStatus) string {
 	// This tells the frontend to use the local bleve API instead of pagefind.
 	// It's only injected during `serve` — production builds never see this.
 	searchScript := `<script>window.__markataSearchEndpoint = "` + serveSearchEndpoint + `";</script>`
+	bodyInjection := devScript
+	headInjection := searchScript
 
-	injection := searchScript + devScript
+	if strings.Contains(html, "</head>") {
+		html = strings.Replace(html, "</head>", headInjection+"</head>", 1)
+	} else {
+		bodyInjection = headInjection + bodyInjection
+	}
 
 	switch {
 	case strings.Contains(html, "</body>"):
-		return strings.Replace(html, "</body>", injection+"</body>", 1)
+		return strings.Replace(html, "</body>", bodyInjection+"</body>", 1)
 	case strings.Contains(html, "</html>"):
-		return strings.Replace(html, "</html>", injection+"</html>", 1)
+		return strings.Replace(html, "</html>", bodyInjection+"</html>", 1)
 	default:
-		return html + injection
+		return html + bodyInjection
 	}
 }
 
@@ -1094,6 +1117,12 @@ func shouldIgnoreEvent(event fsnotify.Event) bool {
 		return true
 	}
 
+	for _, internalPath := range serveInternalPaths {
+		if isPathWithinDir(absEventPath, internalPath) {
+			return true
+		}
+	}
+
 	// Ignore temporary/backup files and hidden files
 	baseName := filepath.Base(event.Name)
 	return strings.HasSuffix(event.Name, "~") ||
@@ -1101,6 +1130,65 @@ func shouldIgnoreEvent(event fsnotify.Event) bool {
 		strings.HasSuffix(event.Name, ".swp") ||
 		strings.HasSuffix(event.Name, ".swo") ||
 		strings.HasSuffix(event.Name, ".tmp")
+}
+
+var globMagicPattern = regexp.MustCompile(`[*?\[{]`)
+
+func contentWatchRoots(config *lifecycle.Config) []string {
+	contentDir := config.ContentDir
+	if contentDir == "" {
+		contentDir = "."
+	}
+
+	if contentDir != "." || len(config.GlobPatterns) == 0 {
+		return []string{contentDir}
+	}
+
+	seen := map[string]struct{}{}
+	roots := make([]string, 0, len(config.GlobPatterns))
+	for _, pattern := range config.GlobPatterns {
+		root := watchRootFromPattern(pattern)
+		if root == "" {
+			continue
+		}
+		if _, ok := seen[root]; ok {
+			continue
+		}
+		seen[root] = struct{}{}
+		roots = append(roots, root)
+	}
+
+	if len(roots) == 0 {
+		return []string{contentDir}
+	}
+
+	sort.Strings(roots)
+	return roots
+}
+
+func watchRootFromPattern(pattern string) string {
+	cleaned := filepath.Clean(filepath.FromSlash(pattern))
+	if cleaned == "." || cleaned == string(filepath.Separator) {
+		return "."
+	}
+
+	parts := strings.Split(cleaned, string(filepath.Separator))
+	rootParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		if globMagicPattern.MatchString(part) {
+			break
+		}
+		rootParts = append(rootParts, part)
+	}
+
+	if len(rootParts) == 0 {
+		return "."
+	}
+
+	return filepath.Join(rootParts...)
 }
 
 // handleNewDirectory adds newly created directories to the watcher.
@@ -1520,13 +1608,15 @@ func addWatchPaths(watcher *fsnotify.Watcher, m *lifecycle.Manager) error {
 		return err
 	}
 
-	// Watch content directory
-	contentDir := config.ContentDir
-	if contentDir == "" {
-		contentDir = "."
-	}
-	if err := addDirRecursive(watcher, contentDir); err != nil {
-		return err
+	// Watch content roots derived from configured glob patterns.
+	// This avoids recursively watching generated trees when content_dir is ".".
+	for _, contentRoot := range contentWatchRoots(config) {
+		if _, err := os.Stat(contentRoot); err != nil {
+			continue
+		}
+		if err := addDirRecursive(watcher, contentRoot); err != nil {
+			return err
+		}
 	}
 
 	// Watch templates directory
@@ -1573,6 +1663,15 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 				return filepath.SkipDir
 			}
 			return nil
+		}
+
+		for _, internalPath := range serveInternalPaths {
+			if isPathWithinDir(absPath, internalPath) {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
 		}
 
 		// Skip hidden directories

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -19,6 +20,21 @@ func init() {
 }
 
 func searchCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "search",
+		Short: "Search posts and manage bleve indexes",
+		Args:  cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return searchRunCmd().RunE(cmd, args)
+		},
+	}
+
+	cmd.AddCommand(searchRunCmd())
+	cmd.AddCommand(searchBuildIndexCmd())
+	return cmd
+}
+
+func searchRunCmd() *cobra.Command {
 	var (
 		format string
 		sortBy string
@@ -30,8 +46,9 @@ func searchCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "search <query>",
-		Short: "Full-text search across posts",
+		Use:     "run <query>",
+		Short:   "Full-text search across posts",
+		Aliases: []string{"query"},
 		Long: `Search post content, titles, descriptions, and tags.
 
 Uses a bleve full-text index for BM25-ranked results with fuzzy matching.
@@ -116,6 +133,79 @@ Examples:
 	cmd.Flags().StringVar(&fields, "fields", "", "fields to search: title,content,description,tags (default: all)")
 	cmd.Flags().BoolVar(&fuzzy, "fuzzy", false, "enable fuzzy matching (tolerates typos)")
 	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of results (0 = no limit)")
+
+	return cmd
+}
+
+func searchBuildIndexCmd() *cobra.Command {
+	var (
+		indexDir  string
+		hashPath  string
+		indexName string
+		force     bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "build-index",
+		Short: "Build a reusable bleve index artifact",
+		Long: `Build a bleve index without starting the search server.
+
+This command is intended for builder jobs, CI, and container workflows that
+publish a search index artifact for later use by read-only search servers.
+
+Examples:
+  markata-go search build-index
+  markata-go search build-index --index-dir /data/search.bleve
+  markata-go search build-index --index-name web-1 --force`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			app, err := loadListApp(cmd.Context())
+			if err != nil {
+				return err
+			}
+
+			posts := app.Manager.Posts()
+			cacheDir := filepath.Join(".markata", "cache")
+			if indexDir == "" {
+				if indexName != "" {
+					indexDir = search.NamedDir(cacheDir, indexName)
+				} else {
+					indexDir = search.DefaultDir(cacheDir)
+				}
+			}
+			if hashPath == "" {
+				if indexName != "" {
+					hashPath = search.NamedHashFile(cacheDir, indexName)
+				} else {
+					hashPath = filepath.Join(cacheDir, "search.hash")
+				}
+			}
+
+			if force {
+				idx, buildErr := search.Build(indexDir, posts)
+				if buildErr != nil {
+					return buildErr
+				}
+				defer idx.Close()
+			} else {
+				idx, buildErr := search.BuildIfNeededAt(indexDir, hashPath, posts)
+				if buildErr != nil {
+					return buildErr
+				}
+				defer idx.Close()
+			}
+
+			outlnf("index_dir=%s", indexDir)
+			outlnf("hash_path=%s", hashPath)
+			outlnf("posts=%d", len(posts))
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&indexDir, "index-dir", "", "directory to write the bleve index")
+	cmd.Flags().StringVar(&hashPath, "hash-path", "", "path for the content hash file")
+	cmd.Flags().StringVar(&indexName, "index-name", "", "named index suffix inside the default cache directory")
+	cmd.Flags().BoolVar(&force, "force", false, "rebuild the index even if the content hash is unchanged")
 
 	return cmd
 }

@@ -1685,7 +1685,7 @@ max_limit = 100             # Maximum allowed limit
 cors_origins = ["*"]        # Allowed CORS origins
 ```
 
-**Privacy:** Private posts are indexed by metadata only (title, description, tags). Content is never included in the search index, ensuring encrypted data cannot leak through search results.
+**Privacy:** Private posts are searchable by public metadata such as title, description, tags, and date. Their body content and media are never included in the search index or exposed by the search API.
 
 **Dev mode:** During `markata-go serve`, the bleve search API is automatically mounted at the configured endpoint. A dev-only script injects `window.__markataSearchEndpoint` so the frontend can use the local API — this is never included in production builds.
 

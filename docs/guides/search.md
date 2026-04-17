@@ -1,6 +1,6 @@
 ---
 title: "Site Search"
-description: "Add full-text search to your markata-go site using Pagefind"
+description: "Add full-text search to your markata-go site using Pagefind or a bleve search server"
 date: 2024-01-15
 published: true
 slug: /docs/guides/search/
@@ -8,11 +8,38 @@ tags:
   - documentation
   - search
   - pagefind
+  - bleve
 ---
 
 # Site Search
 
-markata-go includes built-in full-text search powered by [Pagefind](https://pagefind.app/), a static site search library that generates an optimized search index during the build process.
+markata-go supports two search architectures:
+
+- [Pagefind](https://pagefind.app/) for static, client-side search built into the generated site
+- bleve for server-backed search APIs that can run locally or on a separate host such as `search.example.com`
+
+Pagefind is the default search implementation. Bleve is the path for remote-hosted search, Kubernetes deployments, and future server-side search features.
+
+## Choose a Search Mode
+
+### Pagefind
+
+Use Pagefind when you want:
+
+- a fully static site
+- no search server to operate
+- simple hosting on Netlify, Vercel, GitHub Pages, or object storage
+
+### Bleve Search Server
+
+Use bleve when you want:
+
+- a search API hosted separately from the main site
+- a navbar that queries `https://search.example.com/api/search`
+- server-side ranking and filtering
+- Kubernetes deployments with independently scalable search pods
+
+The current bleve implementation already works well for local development and simple standalone hosting. The production roadmap adds read-only index mode, content watching, and stronger container ergonomics.
 
 ## Features
 
@@ -33,6 +60,70 @@ markata-go build
 ```
 
 That's it! The search box appears in your navigation bar.
+
+## Bleve Search Server
+
+The standalone search API is available through:
+
+```bash
+markata-go search-server
+```
+
+Example:
+
+```bash
+markata-go search-server --host 0.0.0.0 --port 3001
+markata-go search-server --mode watch-content
+markata-go search-server --mode read-only-index --index-dir /data/search.bleve
+```
+
+The server exposes:
+
+- `/api/search`
+- `/health`
+
+### Separate Search Host
+
+You can host search separately from the main site, for example:
+
+- main site: `https://waylonwalker.com`
+- search API: `https://search.waylonwalker.com/api/search`
+
+To make that work cleanly, the site navbar needs a config-driven bleve endpoint and the search server must allow CORS from the main site origin.
+
+Recommended CORS configuration:
+
+```toml
+[search.bleve]
+cors_origins = ["https://waylonwalker.com"]
+```
+
+The long-term production shape is:
+
+1. host the site separately from the search API
+2. configure the navbar to query the remote bleve endpoint
+3. keep Pagefind as a fallback when no bleve endpoint is configured
+
+### Server Modes
+
+The standalone bleve server currently supports three modes:
+
+- `runtime-index` builds or refreshes a local index from mounted content
+- `watch-content` watches content/config roots and refreshes the local index when source files change
+- `read-only-index` serves a prebuilt index artifact without loading site content at runtime
+
+Examples:
+
+```bash
+# Build a reusable index artifact
+markata-go search build-index --index-dir /data/search.bleve --hash-path /data/search.hash
+
+# Load content and keep a local index fresh
+markata-go search-server --mode watch-content
+
+# Serve only from a prebuilt read-only index
+markata-go search-server --mode read-only-index --index-dir /data/search.bleve
+```
 
 ## Automatic Pagefind Installation
 
@@ -111,6 +202,28 @@ If Pagefind is not installed and auto-install is disabled, markata-go logs a war
 
 ## Configuration
 
+### Search Backends
+
+Pagefind remains the default backend today. The bleve server uses the same top-level search config plus additional server-side settings.
+
+Planned production-oriented bleve configuration:
+
+```toml
+[search]
+enabled = true
+position = "navbar"
+placeholder = "Search..."
+
+[search.bleve]
+endpoint = "https://search.example.com/api/search"
+fuzzy = false
+limit = 20
+max_limit = 100
+cors_origins = ["https://example.com"]
+```
+
+When `endpoint` is configured, the navbar should use the bleve client instead of Pagefind. When it is not configured, the site should fall back to Pagefind.
+
 ### Basic Configuration
 
 Configure search in your `markata-go.toml`:
@@ -178,6 +291,8 @@ For full control over search placement, set `position = "custom"` and include th
 
 ## What Gets Indexed
 
+### Pagefind
+
 By default, Pagefind indexes:
 
 - **Post content** - The main article body
@@ -209,7 +324,21 @@ Content with `data-pagefind-ignore` is excluded:
 </div>
 ```
 
+## Privacy Rules for Bleve
+
+Bleve search follows stricter privacy rules than a generic full-text index.
+
+- draft and skipped posts are excluded entirely
+- private posts may be searchable by intentionally public metadata such as title, description, tags, and date
+- private post body content is never indexed
+- private media URLs are never exposed in bleve search results
+- private descriptions shown in search results must be explicit public metadata, not body-derived excerpts
+
+This allows users to discover an encrypted post by title or tags while still requiring decryption to read the protected content.
+
 ## Search Results
+
+### Pagefind
 
 Results include:
 
@@ -220,6 +349,20 @@ Results include:
 ### Filtering Results
 
 Pagefind supports filtering by metadata. Users can click on tags or feeds in results to filter.
+
+### Bleve
+
+Bleve result payloads currently include:
+
+- title
+- href
+- description
+- date
+- tags
+- read time
+- media for non-private posts only
+
+The bleve navbar UI currently renders a compact card-style dropdown. It does not yet provide the same highlighted excerpt behavior as Pagefind.
 
 ## Theming
 
@@ -253,6 +396,16 @@ Override Pagefind styles in your custom CSS:
 
 ## Keyboard Navigation
 
+The current bleve navbar implementation supports:
+
+- `/` to focus search
+- `Escape` to dismiss results
+- arrow keys to move through results
+- `Enter` to open the active result
+- `Tab` and `Shift+Tab` to move between the input and result links
+
+Pagefind behavior depends on the upstream Pagefind UI implementation plus markata-go shortcut integration.
+
 | Key | Action |
 |-----|--------|
 | `/` | Focus search input (when implemented) |
@@ -278,6 +431,49 @@ For sites with thousands of pages, Pagefind handles it efficiently:
 - Typical search latency: 10-50ms
 
 ## Troubleshooting
+
+### Bleve result is missing from the navbar
+
+The current bleve navbar UI shows a limited number of results. A result may exist in the API response but rank below the visible dropdown cutoff for broad queries.
+
+Check the API directly:
+
+```bash
+curl "http://localhost:3001/api/search?q=kubernetes&limit=30"
+```
+
+If the result is present in the API but missing from the dropdown, increase the navbar result count or improve ranking for exact title and slug matches.
+
+### Private content is leaking through search
+
+Bleve should never expose private body content or private media.
+
+Check these first:
+
+1. Is the text an explicit frontmatter `description`? Those are intentionally public metadata.
+2. Is the leaked field a media URL, poster URL, or body-derived excerpt? That is a bug and should be fixed in the search API or indexer.
+
+Private posts should be discoverable by public metadata only.
+
+### Search server did not update after content changed
+
+The current standalone `search-server` snapshots posts at startup.
+
+- changing content on disk does not automatically update the running server
+- restart the server after content changes
+- future `watch-content` mode is intended to close this gap
+
+For production today, prefer a restart-on-deploy model.
+
+### Shared PVC or multiple pods
+
+Do not rely on multiple processes mutating the same writable bleve index directory.
+
+Safer patterns:
+
+1. one search pod with local writable cache
+2. many search pods, each with its own writable local cache
+3. one builder job producing a read-only index artifact consumed by many search pods
 
 ### Search box not appearing
 
@@ -416,14 +612,47 @@ RUN markata-go build
 RUN npm install -g pagefind
 RUN markata-go build
 ```
-```
+
+### Search Server Containers
+
+The current `search-server` works best in a restart-on-deploy model.
+
+Recommended today:
+
+1. mount content and config into the container
+2. give the server a writable local cache directory
+3. restart or redeploy search pods when content changes
+
+Recommended long-term production architecture:
+
+1. builder pod or CI job creates the bleve index artifact
+2. search pods mount that artifact read-only
+3. search pods run in `read-only-index` mode
+4. the main site navbar queries the remote API
+
+This avoids shared writable index problems and makes horizontal scaling safer.
 
 ## How It Works
+
+### Pagefind
 
 1. **Build stage**: markata-go generates HTML files with `data-pagefind-*` attributes
 2. **Cleanup stage**: PagefindPlugin runs `pagefind` CLI to index the output directory
 3. **Index generation**: Pagefind creates optimized search index in `_pagefind/`
 4. **Runtime**: Pagefind JS loads the index and handles search queries client-side
+
+### Bleve
+
+1. **Startup**: `search-server` loads config and content
+2. **Indexing**: bleve index is built or opened from cache
+3. **Runtime**: the navbar search UI queries `/api/search`
+4. **Results**: the API returns ranked JSON results with privacy filtering applied
+
+Planned future modes:
+
+- `runtime-index` for simple deployments
+- `watch-content` for long-running local-writer servers
+- `read-only-index` for builder-produced index artifacts and load-balanced search pods
 
 ## See Also
 

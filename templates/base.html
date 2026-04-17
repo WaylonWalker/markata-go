@@ -343,8 +343,11 @@
   <!-- Pagefind Search JS: lazy-loaded on user interaction -->
   {% if config.search.enabled %}
   <script>
-    // If bleve search endpoint is set (dev mode via markata-go serve),
-    // skip pagefind and load bleve search instead.
+    {% if config.search.backend == "bleve" or config.search.bleve.endpoint %}
+    window.__markataSearchEndpoint = window.__markataSearchEndpoint || '{{ config.search.bleve.endpoint | default:config.search.endpoint | default:"/api/search" }}';
+    {% endif %}
+
+    // If a bleve search endpoint is configured, skip pagefind and load bleve search instead.
     if (window.__markataSearchEndpoint) {
       (function() {
         var script = document.createElement('script');

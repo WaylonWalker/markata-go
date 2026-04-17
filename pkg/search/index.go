@@ -2,6 +2,7 @@ package search
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/blevesearch/bleve/v2/search/query"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // Index wraps a bleve index with post-aware operations.
@@ -29,7 +31,29 @@ const analyzerKeyword = "keyword"
 // Result represents a single search hit with relevance score.
 type Result struct {
 	Post  *models.Post
+	Doc   Document
 	Score float64
+}
+
+// Document is the stored bleve document used to answer search results safely.
+// It contains only fields that are allowed to be exposed by search.
+type Document struct {
+	Title       string    `json:"title"`
+	Content     string    `json:"content,omitempty"`
+	Description string    `json:"description,omitempty"`
+	Tags        []string  `json:"tags,omitempty"`
+	Path        string    `json:"path"`
+	Slug        string    `json:"slug,omitempty"`
+	Href        string    `json:"href,omitempty"`
+	Date        time.Time `json:"date,omitempty"`
+	Published   bool      `json:"published"`
+	Private     bool      `json:"private,omitempty"`
+	WordCount   int       `json:"word_count,omitempty"`
+	MediaURL    string    `json:"media_url,omitempty"`
+	MediaType   string    `json:"media_type,omitempty"`
+	PosterURL   string    `json:"poster_url,omitempty"`
+	VideoMIME   string    `json:"video_mime,omitempty"`
+	DocJSON     string    `json:"doc_json,omitempty"`
 }
 
 // QueryOptions configures a search query.
@@ -42,19 +66,6 @@ type QueryOptions struct {
 	DateTo    *time.Time
 	Tags      []string
 	Published *bool
-}
-
-// postDoc is the bleve-indexed document structure.
-type postDoc struct {
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`
-	Description string    `json:"description"`
-	Tags        []string  `json:"tags"`
-	Path        string    `json:"path"`
-	Slug        string    `json:"slug"`
-	Date        time.Time `json:"date"`
-	Published   bool      `json:"published"`
-	WordCount   int       `json:"word_count"`
 }
 
 const (
@@ -121,19 +132,10 @@ func BuildIfNeeded(cacheDir string, posts []*models.Post) (*Index, error) {
 	return BuildIfNeededNamed(cacheDir, "", posts)
 }
 
-// BuildIfNeededNamed creates or opens a named index, allowing multiple processes
-// to maintain separate indexes in the same cache directory.
-func BuildIfNeededNamed(cacheDir, name string, posts []*models.Post) (*Index, error) {
-	var dir, hf string
-	if name == "" {
-		dir = DefaultDir(cacheDir)
-		hf = filepath.Join(cacheDir, hashFile)
-	} else {
-		dir = NamedDir(cacheDir, name)
-		hf = NamedHashFile(cacheDir, name)
-	}
+// BuildIfNeededAt creates or opens an index at an explicit path, rebuilding only if the content hash changed.
+func BuildIfNeededAt(dir, hashPath string, posts []*models.Post) (*Index, error) {
 	currentHash := ContentHash(posts)
-	storedHash := readHashFile(hf)
+	storedHash := readHashFile(hashPath)
 
 	if currentHash == storedHash {
 		si, err := Open(dir)
@@ -148,11 +150,26 @@ func BuildIfNeededNamed(cacheDir, name string, posts []*models.Post) (*Index, er
 		return nil, err
 	}
 
-	// Persist hash for next run (best-effort, non-fatal)
-	if mkErr := os.MkdirAll(cacheDir, 0o755); mkErr == nil {
-		_ = os.WriteFile(hf, []byte(currentHash), 0o600) //nolint:errcheck // best-effort cache
+	if hashPath != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(hashPath), 0o755); mkErr == nil {
+			_ = os.WriteFile(hashPath, []byte(currentHash), 0o600) //nolint:errcheck // best-effort cache
+		}
 	}
 	return si, nil
+}
+
+// BuildIfNeededNamed creates or opens a named index, allowing multiple processes
+// to maintain separate indexes in the same cache directory.
+func BuildIfNeededNamed(cacheDir, name string, posts []*models.Post) (*Index, error) {
+	var dir, hf string
+	if name == "" {
+		dir = DefaultDir(cacheDir)
+		hf = filepath.Join(cacheDir, hashFile)
+	} else {
+		dir = NamedDir(cacheDir, name)
+		hf = NamedHashFile(cacheDir, name)
+	}
+	return BuildIfNeededAt(dir, hf, posts)
 }
 
 // Close closes the index.
@@ -175,7 +192,7 @@ func (si *Index) Search(query string, opts QueryOptions, postsByPath map[string]
 	} else {
 		req.Size = 1000
 	}
-	req.Fields = []string{"path"}
+	req.Fields = []string{"path", "doc_json"}
 
 	searchResult, err := si.idx.Search(req)
 	if err != nil {
@@ -184,15 +201,19 @@ func (si *Index) Search(query string, opts QueryOptions, postsByPath map[string]
 
 	results := make([]Result, 0, len(searchResult.Hits))
 	for _, hit := range searchResult.Hits {
+		doc := documentFromFields(hit.Fields)
 		path, ok := hit.Fields["path"].(string)
 		if !ok {
+			path = doc.Path
+		}
+		var post *models.Post
+		if postsByPath != nil {
+			post = postsByPath[path]
+		}
+		if post == nil && doc.Path == "" {
 			continue
 		}
-		post := postsByPath[path]
-		if post == nil {
-			continue
-		}
-		results = append(results, Result{Post: post, Score: hit.Score})
+		results = append(results, Result{Post: post, Doc: doc, Score: hit.Score})
 	}
 	return results, nil
 }
@@ -226,12 +247,14 @@ func (si *Index) indexPosts(posts []*models.Post) error {
 	return nil
 }
 
-func toPostDoc(p *models.Post) postDoc {
-	doc := postDoc{
+func toPostDoc(p *models.Post) Document {
+	doc := Document{
 		Tags:      p.Tags,
 		Path:      p.Path,
 		Slug:      p.Slug,
+		Href:      p.Href,
 		Published: p.Published,
+		Private:   p.Private,
 	}
 	if p.Title != nil {
 		doc.Title = *p.Title
@@ -242,15 +265,92 @@ func toPostDoc(p *models.Post) postDoc {
 	if p.Date != nil {
 		doc.Date = *p.Date
 	}
+	doc.MediaURL, doc.MediaType, doc.PosterURL, doc.VideoMIME = documentMedia(p)
 	if p.Extra != nil {
 		if wc, ok := p.Extra["word_count"].(int); ok {
 			doc.WordCount = wc
 		}
 	}
-	// Private posts: index metadata only, never content.
-	// This prevents encrypted or sensitive content from leaking into the search index.
+	// Private posts expose only metadata in search. Their body content remains hidden
+	// until the user visits the page and decrypts it.
 	if !p.Private {
 		doc.Content = p.Content
+	}
+	if p.Private && !explicitFrontmatterDescription(p) {
+		doc.Description = ""
+	}
+	stored := doc
+	stored.DocJSON = ""
+	if data, err := json.Marshal(stored); err == nil {
+		doc.DocJSON = string(data)
+	}
+	return doc
+}
+
+func documentMedia(post *models.Post) (mediaURL, mediaType, posterURL, videoMIME string) {
+	if post == nil || post.Extra == nil || post.Private {
+		return "", "", "", ""
+	}
+
+	imageURL := firstExtraString(post.Extra, "image", "cover", "cover_image", "og_image")
+	videoURL := firstExtraString(post.Extra, "video")
+	mediaURL = imageURL
+	if mediaURL == "" {
+		mediaURL = videoURL
+	}
+	if mediaURL == "" {
+		return "", "", "", ""
+	}
+
+	if templates.IsVideoURL(mediaURL) {
+		mediaType = "video"
+		videoMIME = templates.VideoMIMEType(mediaURL)
+		posterURL = templates.PosterURLFromMap(post.Extra, mediaURL)
+		mediaURL = templates.WithSize(mediaURL, 320, 180)
+		if posterURL != "" {
+			posterURL = templates.WithSize(posterURL, 320, 180)
+		}
+		return mediaURL, mediaType, posterURL, videoMIME
+	}
+
+	return templates.WithSize(mediaURL, 320, 180), "image", "", ""
+}
+
+func firstExtraString(extra map[string]interface{}, keys ...string) string {
+	for _, key := range keys {
+		value, ok := extra[key].(string)
+		if ok && strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func explicitFrontmatterDescription(post *models.Post) bool {
+	if post == nil || post.Description == nil || post.Extra == nil {
+		return false
+	}
+	value, ok := post.Extra["description"]
+	if !ok {
+		return false
+	}
+	text, ok := value.(string)
+	return ok && strings.TrimSpace(text) != ""
+}
+
+func documentFromFields(fields map[string]interface{}) Document {
+	if fields == nil {
+		return Document{}
+	}
+	if raw, ok := fields["doc_json"].(string); ok && strings.TrimSpace(raw) != "" {
+		var doc Document
+		if err := json.Unmarshal([]byte(raw), &doc); err == nil {
+			return doc
+		}
+	}
+	var doc Document
+	if path, ok := fields["path"].(string); ok {
+		doc.Path = path
 	}
 	return doc
 }
@@ -322,6 +422,11 @@ func buildMapping() mapping.IndexMapping {
 	wordCount := bleve.NewNumericFieldMapping()
 	wordCount.Store = false
 	dm.AddFieldMappingsAt("word_count", wordCount)
+
+	docJSON := bleve.NewTextFieldMapping()
+	docJSON.Store = true
+	docJSON.Index = false
+	dm.AddFieldMappingsAt("doc_json", docJSON)
 
 	im.DefaultMapping = dm
 	return im
@@ -429,6 +534,9 @@ func readHashFile(path string) string {
 func PostsByPath(posts []*models.Post) map[string]*models.Post {
 	m := make(map[string]*models.Post, len(posts))
 	for _, p := range posts {
+		if p.Draft || p.Skip {
+			continue
+		}
 		m[p.Path] = p
 	}
 	return m

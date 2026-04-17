@@ -108,6 +108,9 @@
     // Blur search input if focused
     var activeElement = document.activeElement;
     if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+      if (window.dismissBleveSearch && activeElement.id === 'pagefind-search-input') {
+        window.dismissBleveSearch();
+      }
       activeElement.blur();
       closed = true;
     }
