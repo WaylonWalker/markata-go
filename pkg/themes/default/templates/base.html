@@ -375,6 +375,15 @@
   <!-- Pagefind Search JS: lazy-loaded on user interaction -->
   {% if config.search.enabled %}
   <script>
+    // If bleve search endpoint is set (dev mode via markata-go serve),
+    // skip pagefind and load bleve search instead.
+    if (window.__markataSearchEndpoint) {
+      (function() {
+        var script = document.createElement('script');
+        script.src = '{{ 'js/bleve-search.js' | theme_asset_hashed }}';
+        document.body.appendChild(script);
+      })();
+    } else {
     // Expose globally so view transitions can re-initialize after DOM swap.
     window.initPagefindSearch = function initPagefindSearch() {
       var root = document.getElementById('pagefind-search');
@@ -470,6 +479,7 @@
       // Expose for view transitions re-initialization and search-shortcuts.js
       window.loadPagefind = loadPagefind;
     })();
+    } // end else (pagefind)
   </script>
   {% endif %}
 
