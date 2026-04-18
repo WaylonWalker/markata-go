@@ -1445,10 +1445,10 @@ func (p *BlogrollPlugin) readerDayGroups(entries []*models.ExternalEntry, feedIn
 		}
 
 		last := groups[len(groups)-1]
-		lastEntries, _ := last["entries"].([]map[string]interface{})
+		lastEntries := entriesValue(last)
 		lastEntries = append(lastEntries, entryMap)
 		last["entries"] = lastEntries
-		last["count"] = last["count"].(int) + 1
+		last["count"] = groupCount(last) + 1
 	}
 
 	return groups
@@ -1506,7 +1506,7 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 			sb.WriteString(`
           </time>
           <span class="reader-day-count">`)
-			count := group["count"].(int)
+			count := groupCount(group)
 			label := "stories"
 			if count == 1 {
 				label = "story"
@@ -1517,11 +1517,11 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
         <div class="reader-day-entries">
 `)
 
-			entries, _ := group["entries"].([]map[string]interface{})
+			entries := entriesValue(group)
 			for _, entry := range entries {
 				previewKind := stringValue(entry, "preview_kind")
 				sb.WriteString(`          <article class="reader-entry`)
-				if imageURL, _ := entry["image_url"].(string); imageURL != "" {
+				if imageURL := stringValue(entry, "image_url"); imageURL != "" {
 					sb.WriteString(` has-image`)
 				}
 				if previewKind != "" {
@@ -1534,7 +1534,7 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 				sb.WriteString(html.EscapeString(stringValue(entry, "feed_url")))
 				sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-source-link">
 `)
-				if iconURL, _ := entry["source_icon_url"].(string); iconURL != "" {
+				if iconURL := stringValue(entry, "source_icon_url"); iconURL != "" {
 					sb.WriteString(`                <img src="`)
 					sb.WriteString(html.EscapeString(iconURL))
 					sb.WriteString(`" alt="" class="reader-entry-source-icon" width="16" height="16" loading="lazy">
@@ -1548,7 +1548,7 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 				sb.WriteString(`</span>
               </a>`)
 
-				if publishedDatetime, _ := entry["published_datetime"].(string); publishedDatetime != "" {
+				if publishedDatetime := stringValue(entry, "published_datetime"); publishedDatetime != "" {
 					sb.WriteString(`
               <time datetime="`)
 					sb.WriteString(html.EscapeString(publishedDatetime))
@@ -1566,14 +1566,14 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 				sb.WriteString(`<span class="visually-hidden">(opens in new tab)</span></a></h2>
 `)
 
-				if description, _ := entry["description"].(string); description != "" {
+				if description := stringValue(entry, "description"); description != "" {
 					sb.WriteString(`            <p class="reader-entry-description">`)
 					sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(description), 200)))
 					sb.WriteString(`</p>
 `)
 				}
 
-				if imageURL, _ := entry["image_url"].(string); imageURL != "" {
+				if imageURL := stringValue(entry, "image_url"); imageURL != "" {
 					sb.WriteString(`            <a href="`)
 					sb.WriteString(html.EscapeString(stringValue(entry, "url")))
 					sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link reader-entry-image-link--`)
@@ -1592,7 +1592,7 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 					sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link reader-entry-image-link--source-tile">
               <span class="reader-entry-source-tile" aria-hidden="true">
                 <span class="reader-entry-source-tile-top">`)
-					if iconURL, _ := entry["source_icon_url"].(string); iconURL != "" {
+					if iconURL := stringValue(entry, "source_icon_url"); iconURL != "" {
 						sb.WriteString(`<img src="`)
 						sb.WriteString(html.EscapeString(iconURL))
 						sb.WriteString(`" alt="" class="reader-entry-source-tile-icon" width="20" height="20" loading="lazy">`)
@@ -1629,8 +1629,24 @@ func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, w
 }
 
 func stringValue(m map[string]interface{}, key string) string {
-	value, _ := m[key].(string)
-	return value
+	if value, ok := m[key].(string); ok {
+		return value
+	}
+	return ""
+}
+
+func groupCount(group map[string]interface{}) int {
+	if count, ok := group["count"].(int); ok {
+		return count
+	}
+	return 0
+}
+
+func entriesValue(group map[string]interface{}) []map[string]interface{} {
+	if entries, ok := group["entries"].([]map[string]interface{}); ok {
+		return entries
+	}
+	return nil
 }
 
 func (p *BlogrollPlugin) readerEntryMap(entry *models.ExternalEntry, feed *models.ExternalFeed, config models.BlogrollConfig) map[string]interface{} {
@@ -1709,7 +1725,7 @@ func buildFeedIndex(feeds []*models.ExternalFeed) map[string]*models.ExternalFee
 	return index
 }
 
-func readerPreviewForEntry(entry *models.ExternalEntry, sourceImageURL, fallbackImageService string) (string, string) {
+func readerPreviewForEntry(entry *models.ExternalEntry, sourceImageURL, fallbackImageService string) (previewURL, previewKind string) {
 	if entry != nil && entry.ImageURL != "" {
 		return entry.ImageURL, "article-image"
 	}

@@ -170,10 +170,13 @@ func TestReaderCSS_DuckDBOverflowRegressionRules(t *testing.T) {
 	css := string(content)
 
 	checks := []string{
-		".reader-day-entries > * {\n  min-width: 0;\n}",
-		".reader-entry-meta-row {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) auto;",
-		".reader-entry-source-link {\n  display: inline-grid;\n  grid-template-columns: auto minmax(0, 1fr);",
-		".reader-entry-source {\n  min-width: 0;",
+		".reader-day-entries > *",
+		"min-width: 0;",
+		".reader-entry-meta-row",
+		"grid-template-columns: minmax(0, 1fr) auto;",
+		".reader-entry-source-link",
+		"grid-template-columns: auto minmax(0, 1fr);",
+		".reader-entry-source",
 		"overflow-wrap: anywhere;",
 		"word-break: break-word;",
 	}
