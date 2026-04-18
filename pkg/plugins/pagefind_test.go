@@ -92,6 +92,30 @@ func TestPagefindPlugin_EnabledByDefault(t *testing.T) {
 	}
 }
 
+func TestPagefindPlugin_SkipsBleveBackend(t *testing.T) {
+	plugin := NewPagefindPlugin()
+
+	m := lifecycle.NewManager()
+	config := lifecycle.NewConfig()
+	config.OutputDir = t.TempDir()
+
+	indexPath := filepath.Join(config.OutputDir, "index.html")
+	if err := os.WriteFile(indexPath, []byte("<html><body>Test</body></html>"), 0o600); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	config.Extra["search"] = models.SearchConfig{Backend: "bleve"}
+	m.SetConfig(config)
+
+	if err := plugin.Cleanup(m); err != nil {
+		t.Fatalf("Cleanup() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(config.OutputDir, "_pagefind", "pagefind.js")); !os.IsNotExist(err) {
+		t.Fatalf("expected pagefind index to be skipped, stat err = %v", err)
+	}
+}
+
 func TestGetSearchConfig_Default(t *testing.T) {
 	config := lifecycle.NewConfig()
 

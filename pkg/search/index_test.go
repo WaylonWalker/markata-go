@@ -249,6 +249,72 @@ func TestContentHashChangesWhenSearchMetadataChanges(t *testing.T) {
 	}
 }
 
+func TestToPostDoc_PrivatePostStripsSensitiveFields(t *testing.T) {
+	title := "Private Post"
+	description := "Explicit description"
+	doc := toPostDoc(&models.Post{
+		Path:        "posts/private.md",
+		Title:       &title,
+		Description: &description,
+		Content:     "secret body https://cdn.example.com/secret.webp",
+		Slug:        "private",
+		Href:        "/private",
+		Tags:        []string{"secret", "journal"},
+		Published:   true,
+		Private:     true,
+		Extra: map[string]interface{}{
+			"_title_explicit":       true,
+			"_description_explicit": true,
+			"description":           description,
+			"cover_image":           "https://cdn.example.com/secret.webp",
+			"word_count":            321,
+		},
+	})
+
+	if doc.Title != title {
+		t.Fatalf("Title = %q, want %q", doc.Title, title)
+	}
+	if doc.Description != description {
+		t.Fatalf("Description = %q, want %q", doc.Description, description)
+	}
+	if doc.Content != "" {
+		t.Fatalf("Content = %q, want empty", doc.Content)
+	}
+	if len(doc.Tags) != 0 {
+		t.Fatalf("Tags = %v, want empty", doc.Tags)
+	}
+	if doc.WordCount != 0 {
+		t.Fatalf("WordCount = %d, want 0", doc.WordCount)
+	}
+	if doc.MediaURL != "" || doc.PosterURL != "" || doc.VideoMIME != "" || doc.MediaType != "" {
+		t.Fatalf("media fields leaked: %#v", doc)
+	}
+}
+
+func TestToPostDoc_PrivatePostWithoutExplicitDescriptionClearsDescription(t *testing.T) {
+	title := "Private Post"
+	description := "Derived description"
+	doc := toPostDoc(&models.Post{
+		Path:        "posts/private.md",
+		Title:       &title,
+		Description: &description,
+		Content:     "secret body",
+		Slug:        "private",
+		Href:        "/private",
+		Published:   true,
+		Private:     true,
+		Extra: map[string]interface{}{
+			"_title_explicit": true,
+			"cover_image":     "https://cdn.example.com/secret.webp",
+			"word_count":      321,
+		},
+	})
+
+	if doc.Description != "" {
+		t.Fatalf("Description = %q, want empty", doc.Description)
+	}
+}
+
 func ptrString(value string) *string {
 	return &value
 }
