@@ -252,13 +252,16 @@ Guidance:
   ],
   "options": {
     "domain": "year",
-    "subDomain": "day"
+    "subDomain": "day",
+    "maxPercentile": 95
   }
 }
 ```
 ````
 
 Use this when the author wants a calendar-like view of publishing cadence.
+`maxPercentile` is useful when a few unusually large days would otherwise wash out the rest of the heatmap.
+The built-in contribution graph runtime also fits graphs to narrow content columns, so agents should not add page-specific resize JavaScript unless the site has a special layout need.
 
 ### `chartjs` chart from built-in site stats
 

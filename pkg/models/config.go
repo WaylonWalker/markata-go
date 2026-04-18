@@ -1445,15 +1445,20 @@ type ContributionGraphConfig struct {
 
 	// Theme is the Cal-Heatmap color theme (default: "light")
 	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+
+	// ScaleMaxPercentile caps the color scale at this percentile when set to a value between 0 and 100.
+	// A value of 0 disables percentile-based outlier control.
+	ScaleMaxPercentile float64 `json:"scale_max_percentile,omitempty" yaml:"scale_max_percentile,omitempty" toml:"scale_max_percentile,omitempty"`
 }
 
 // NewContributionGraphConfig creates a new ContributionGraphConfig with default values.
 func NewContributionGraphConfig() ContributionGraphConfig {
 	return ContributionGraphConfig{
-		Enabled:        true,
-		CDNURL:         "/assets/vendor/cal-heatmap",
-		ContainerClass: "contribution-graph-container",
-		Theme:          "light",
+		Enabled:            true,
+		CDNURL:             "/assets/vendor/cal-heatmap",
+		ContainerClass:     "contribution-graph-container",
+		Theme:              "light",
+		ScaleMaxPercentile: 0,
 	}
 }
 

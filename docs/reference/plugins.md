@@ -1825,6 +1825,7 @@ enabled = true
 cdn_url = "/assets/vendor/cal-heatmap"                # Cal-Heatmap base URL (local by default)
 container_class = "contribution-graph-container"
 theme = "light"
+scale_max_percentile = 0
 ```
 
 **Options:**
@@ -1834,6 +1835,7 @@ theme = "light"
 | `cdn_url` | `/assets/vendor/cal-heatmap` | Cal-Heatmap base URL (local by default) |
 | `container_class` | `contribution-graph-container` | CSS class for wrapper div |
 | `theme` | `light` | Color theme (light, dark) |
+| `scale_max_percentile` | `0` | Global percentile cap for contribution graph color scaling |
 
 **Markdown syntax:**
 ````markdown
@@ -1885,6 +1887,10 @@ document.addEventListener('DOMContentLoaded', function() {
 | `subDomain` | string | `day` | Sub-domain: day, hour, minute |
 | `cellSize` | number | `10` | Cell size in pixels |
 | `range` | number | `1` | Number of domain units to display |
+| `maxValue` | number | unset | Explicit color-scale maximum |
+| `maxPercentile` | number | unset | Per-graph percentile cap for the color scale |
+
+The plugin also fits rendered graphs to narrow content columns automatically, so pages do not need custom resize JavaScript in markdown.
 
 **Use cases:**
 - Blog post publishing frequency
