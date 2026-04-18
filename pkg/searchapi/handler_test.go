@@ -123,23 +123,24 @@ func TestHandler_Search(t *testing.T) {
 		}
 		found := false
 		for _, r := range resp.Results {
-			if r.Path == "posts/diary.md" {
-				found = true
-				if !r.Private {
-					t.Error("private flag should be set on result")
-				}
-				if r.Description != desc2 {
-					t.Errorf("description = %q, want %q", r.Description, desc2)
-				}
-				if len(r.Tags) != 0 {
-					t.Errorf("private search result should not expose tags, got %v", r.Tags)
-				}
-				if r.WordCount != 0 || r.ReadTime != "" {
-					t.Errorf("private search result should not expose derived content stats, got word_count=%d read_time=%q", r.WordCount, r.ReadTime)
-				}
-				if r.MediaURL != "" || r.PosterURL != "" || r.VideoMIME != "" {
-					t.Error("private search result should not expose media")
-				}
+			if r.Path != "posts/diary.md" {
+				continue
+			}
+			found = true
+			if !r.Private {
+				t.Error("private flag should be set on result")
+			}
+			if r.Description != desc2 {
+				t.Errorf("description = %q, want %q", r.Description, desc2)
+			}
+			if len(r.Tags) != 0 {
+				t.Errorf("private search result should not expose tags, got %v", r.Tags)
+			}
+			if r.WordCount != 0 || r.ReadTime != "" {
+				t.Errorf("private search result should not expose derived content stats, got word_count=%d read_time=%q", r.WordCount, r.ReadTime)
+			}
+			if r.MediaURL != "" || r.PosterURL != "" || r.VideoMIME != "" {
+				t.Error("private search result should not expose media")
 			}
 		}
 		if !found {
