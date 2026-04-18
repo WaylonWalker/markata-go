@@ -29,6 +29,19 @@ Fast mode (`build --fast`, `serve --fast`) skips Pagefind indexing.
 3. User queries are matched against the pre-built index
 4. Results display with excerpts and highlighting
 
+### Private Content Rules
+
+Private posts use a reduced search surface.
+
+- Search may expose an explicit frontmatter title.
+- Search may expose an explicit frontmatter description.
+- Search may expose navigational fields needed to open the post.
+- Search must not expose post body content.
+- Search must not expose frontmatter media fields such as `image`, `cover_image`, `og_image`, `video`, or derived poster URLs.
+- Search must not expose tags or derived content fields such as word count or read time.
+
+If a private post has no explicit frontmatter title or description, search must not synthesize those fields for the result.
+
 ## Configuration
 
 ### Basic Configuration

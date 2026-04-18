@@ -40,6 +40,14 @@ func TestHandler_Search(t *testing.T) {
 			Published:   true,
 			Private:     true,
 			Date:        &date,
+			Extra: map[string]interface{}{
+				"_title_explicit":       true,
+				"_description_explicit": true,
+				"description":           descriptionValue(desc2),
+				"cover_image":           "https://cdn.example.com/private-cover.webp",
+				"thumbnail":             "https://cdn.example.com/private-thumb.webp",
+				"word_count":            777,
+			},
 		},
 	}
 
@@ -104,7 +112,7 @@ func TestHandler_Search(t *testing.T) {
 		}
 	})
 
-	t.Run("private post title is searchable", func(t *testing.T) {
+	t.Run("private post explicit title is searchable", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/search?q=diary", http.NoBody)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
@@ -120,13 +128,22 @@ func TestHandler_Search(t *testing.T) {
 				if !r.Private {
 					t.Error("private flag should be set on result")
 				}
+				if r.Description != desc2 {
+					t.Errorf("description = %q, want %q", r.Description, desc2)
+				}
+				if len(r.Tags) != 0 {
+					t.Errorf("private search result should not expose tags, got %v", r.Tags)
+				}
+				if r.WordCount != 0 || r.ReadTime != "" {
+					t.Errorf("private search result should not expose derived content stats, got word_count=%d read_time=%q", r.WordCount, r.ReadTime)
+				}
 				if r.MediaURL != "" || r.PosterURL != "" || r.VideoMIME != "" {
 					t.Error("private search result should not expose media")
 				}
 			}
 		}
 		if !found {
-			t.Error("private post should be findable by title")
+			t.Error("private post should be findable by explicit title")
 		}
 	})
 
@@ -171,6 +188,10 @@ func TestHandler_Search(t *testing.T) {
 			t.Error("expected CORS origin header")
 		}
 	})
+}
+
+func descriptionValue(value string) string {
+	return value
 }
 
 func TestReadOnlyHandler_Search(t *testing.T) {

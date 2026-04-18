@@ -41,6 +41,19 @@ Use bleve when you want:
 
 The current bleve implementation already works well for local development and simple standalone hosting. The production roadmap adds read-only index mode, content watching, and stronger container ergonomics.
 
+## Private Posts
+
+Bleve search treats private posts differently from public posts.
+
+- Private results may include an explicit frontmatter title.
+- Private results may include an explicit frontmatter description.
+- Private results keep the link fields needed to open the post.
+- Private results do not expose body content.
+- Private results do not expose image, cover, video, poster, or thumbnail URLs from frontmatter.
+- Private results do not expose tags, word count, or read time.
+
+If a private post has no explicit `title` or `description` in frontmatter, search does not synthesize those fields for the result.
+
 ## Features
 
 - **Enabled by default** - Search works out of the box with no configuration

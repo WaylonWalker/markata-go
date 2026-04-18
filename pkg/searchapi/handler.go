@@ -266,11 +266,15 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 		doc := hit.Doc
 		if hit.Post != nil {
 			doc = search.Document{}
-			doc.Title = derefString(hit.Post.Title)
+			if !hit.Post.Private || hit.Post.Has("_title_explicit") {
+				doc.Title = derefString(hit.Post.Title)
+			}
 			doc.Path = hit.Post.Path
 			doc.Slug = hit.Post.Slug
 			doc.Href = hit.Post.Href
-			doc.Tags = append([]string(nil), hit.Post.Tags...)
+			if !hit.Post.Private {
+				doc.Tags = append([]string(nil), hit.Post.Tags...)
+			}
 			doc.Private = hit.Post.Private
 			if hit.Post.Description != nil && (!hit.Post.Private || explicitFrontmatterDescription(hit.Post)) {
 				doc.Description = *hit.Post.Description
@@ -284,6 +288,12 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 				}
 			}
 			doc.MediaURL, doc.MediaType, doc.PosterURL, doc.VideoMIME = searchMedia(hit.Post)
+			if hit.Post.Private {
+				sanitizePrivateDocument(&doc, explicitFrontmatterDescription(hit.Post))
+			}
+		}
+		if doc.Private {
+			sanitizePrivateDocument(&doc, doc.Description != "")
 		}
 
 		sr := SearchResult{
@@ -310,6 +320,21 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 		resp.Results[i] = sr
 	}
 	return resp
+}
+
+func sanitizePrivateDocument(doc *search.Document, allowDescription bool) {
+	if doc == nil || !doc.Private {
+		return
+	}
+	if !allowDescription {
+		doc.Description = ""
+	}
+	doc.Tags = nil
+	doc.WordCount = 0
+	doc.MediaURL = ""
+	doc.MediaType = ""
+	doc.PosterURL = ""
+	doc.VideoMIME = ""
 }
 
 func searchMedia(post *models.Post) (mediaURL, mediaType, posterURL, videoMIME string) {

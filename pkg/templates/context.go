@@ -757,6 +757,14 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 		"root_selector":     s.Pagefind.RootSelector,
 	}
 
+	bleveMap := map[string]interface{}{
+		"endpoint":     s.Bleve.Endpoint,
+		"fuzzy":        s.Bleve.IsFuzzy(),
+		"limit":        s.Bleve.DefaultLimit(),
+		"max_limit":    s.Bleve.GetMaxLimit(),
+		"cors_origins": append([]string{}, s.Bleve.CORSOrigins...),
+	}
+
 	// Convert feed-specific search configs
 	feedConfigs := make([]map[string]interface{}, len(s.Feeds))
 	for i, feed := range s.Feeds {
@@ -770,10 +778,13 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 
 	return map[string]interface{}{
 		"enabled":        enabled,
+		"backend":        s.SearchBackend(),
+		"endpoint":       s.SearchEndpoint(),
 		"position":       position,
 		"placeholder":    placeholder,
 		"show_images":    showImages,
 		"excerpt_length": excerptLength,
+		"bleve":          bleveMap,
 		"pagefind":       pagefindMap,
 		"feeds":          feedConfigs,
 	}

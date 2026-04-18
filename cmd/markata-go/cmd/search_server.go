@@ -40,7 +40,7 @@ var searchServerCmd = &cobra.Command{
 	Long: `Start a standalone bleve-backed search API server.
 
 The server provides a single GET endpoint that returns JSON search results.
-Private post content is never indexed — only metadata (title, description, tags).
+Private post content is never indexed — only explicit frontmatter title and description, plus safe navigation fields.
 
 Modes:
   runtime-index    Load content and build or refresh a local index

@@ -278,17 +278,21 @@ func (si *Index) indexPosts(posts []*models.Post) error {
 
 func toPostDoc(p *models.Post) Document {
 	doc := Document{
-		Tags:      p.Tags,
 		Path:      p.Path,
 		Slug:      p.Slug,
 		Href:      p.Href,
 		Published: p.Published,
 		Private:   p.Private,
 	}
-	if p.Title != nil {
-		doc.Title = *p.Title
+	if !p.Private {
+		doc.Tags = p.Tags
 	}
-	if p.Description != nil {
+	if p.Title != nil && (!p.Private || explicitFrontmatterTitle(p)) {
+		doc.Title = *p.Title
+	} else if p.Private {
+		doc.Title = ""
+	}
+	if p.Description != nil && (!p.Private || explicitFrontmatterDescription(p)) {
 		doc.Description = *p.Description
 	}
 	if p.Date != nil {
@@ -305,8 +309,8 @@ func toPostDoc(p *models.Post) Document {
 	if !p.Private {
 		doc.Content = p.Content
 	}
-	if p.Private && !explicitFrontmatterDescription(p) {
-		doc.Description = ""
+	if p.Private {
+		sanitizePrivateDocument(&doc, explicitFrontmatterDescription(p))
 	}
 	stored := doc
 	stored.DocJSON = ""
@@ -314,6 +318,30 @@ func toPostDoc(p *models.Post) Document {
 		doc.DocJSON = string(data)
 	}
 	return doc
+}
+
+func sanitizePrivateDocument(doc *Document, allowDescription bool) {
+	if doc == nil || !doc.Private {
+		return
+	}
+	doc.Content = ""
+	if !allowDescription {
+		doc.Description = ""
+	}
+	doc.Tags = nil
+	doc.WordCount = 0
+	doc.MediaURL = ""
+	doc.MediaType = ""
+	doc.PosterURL = ""
+	doc.VideoMIME = ""
+}
+
+func explicitFrontmatterTitle(post *models.Post) bool {
+	return post != nil && post.Has("_title_explicit")
+}
+
+func explicitFrontmatterDescription(post *models.Post) bool {
+	return post != nil && post.Has("_description_explicit")
 }
 
 func documentMedia(post *models.Post) (mediaURL, mediaType, posterURL, videoMIME string) {
@@ -353,18 +381,6 @@ func firstExtraString(extra map[string]interface{}, keys ...string) string {
 		}
 	}
 	return ""
-}
-
-func explicitFrontmatterDescription(post *models.Post) bool {
-	if post == nil || post.Description == nil || post.Extra == nil {
-		return false
-	}
-	value, ok := post.Extra["description"]
-	if !ok {
-		return false
-	}
-	text, ok := value.(string)
-	return ok && strings.TrimSpace(text) != ""
 }
 
 func documentFromFields(fields map[string]interface{}) Document {

@@ -2,8 +2,9 @@
 //
 // # Privacy
 //
-// Private posts are indexed by metadata only (title, description, tags, date).
-// Body content and media from private posts are never exposed by the search API.
+// Private posts are indexed with a narrow safe subset.
+// Only explicit frontmatter title, explicit frontmatter description, and navigational fields are exposed.
+// Body content, tags, media, and derived content fields are never exposed by the search API.
 // Draft and skipped posts are excluded entirely.
 //
 // # Endpoints
