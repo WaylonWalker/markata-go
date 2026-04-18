@@ -1393,6 +1393,7 @@ refresh attempts fail.
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel feed fetches |
 | `max_entries_per_feed` | int | `50` | Max entries per feed |
+| `fallback_image_service` | string | `""` | Last-resort screenshot template for Reader previews after article and source images |
 
 ```toml
 [markata-go.blogroll]
@@ -1448,7 +1449,7 @@ tags = ["css", "frontend"]
 
 **Generated pages:**
 - `/blogroll/` - Directory of all feeds grouped by category
-- `/reader/` - River-of-news style page with latest posts from all feeds
+- `/reader/` - Curated reader page with day grouping, source favicons, and columns
 
 See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and customization.
 
