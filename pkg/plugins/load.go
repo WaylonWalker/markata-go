@@ -645,6 +645,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	// Title
 	if title := GetString(metadata, "title"); title != "" {
 		post.Title = &title
+		post.Set("_title_explicit", true)
 	}
 
 	if err := applyDateFields(post, metadata); err != nil {
@@ -673,6 +674,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		if value, ok := desc.(string); ok {
 			cleaned := strings.TrimSpace(value)
 			post.Description = &cleaned
+			post.Set("_description_explicit", true)
 		}
 	}
 

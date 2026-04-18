@@ -13,6 +13,7 @@ type keyMapType struct {
 	Tags    key.Binding
 	Feeds   key.Binding
 	Config  key.Binding
+	Search  key.Binding
 	Enter   key.Binding
 	Escape  key.Binding
 	Edit    key.Binding
@@ -60,6 +61,10 @@ var keyMap = keyMapType{
 	Config: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "config"),
+	),
+	Search: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "search"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),

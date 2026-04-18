@@ -1,0 +1,20 @@
+[markata-go]
+title = "My Site"
+description = "markata-go demo site"
+url = "http://localhost:8000"
+output_dir = "output"
+templates_dir = "templates"
+assets_dir = "static"
+
+[markata-go.glob]
+patterns = [
+  "pages/**/*.md",
+  "docs/**/*.md",
+]
+use_gitignore = true
+
+[markata-go.theme]
+palette = "everforest-dark"
+
+[markata-go.search]
+enabled = true

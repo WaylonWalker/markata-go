@@ -22,6 +22,7 @@ type configSource interface {
 	getIndieAuth() indieAuthConverter
 	getWebmention() webmentionConverter
 	getComponents() componentsConverter
+	getSearch() models.SearchConfig
 	getLayout() layoutConverter
 	getSidebar() sidebarConverter
 	getToc() tocConverter
@@ -241,6 +242,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Components config
 	config.Components = src.getComponents().toComponentsConfig()
 
+	// Convert Search config
+	config.Search = src.getSearch()
+
 	// Convert Layout config
 	config.Layout = src.getLayout().toLayoutConfig()
 
@@ -440,6 +444,7 @@ type tomlConfig struct {
 	SEO             tomlSEOConfig             `toml:"seo"`
 	IndieAuth       tomlIndieAuthConfig       `toml:"indieauth"`
 	Webmention      tomlWebmentionConfig      `toml:"webmention"`
+	Search          models.SearchConfig       `toml:"search"`
 	Components      tomlComponentsConfig      `toml:"components"`
 	Layout          tomlLayoutConfig          `toml:"layout"`
 	Sidebar         tomlSidebarConfig         `toml:"sidebar"`
@@ -1758,6 +1763,7 @@ func (c *tomlConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *tomlConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *tomlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *tomlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *tomlConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *tomlConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *tomlConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *tomlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
@@ -1959,6 +1965,7 @@ type yamlConfig struct {
 	WellKnown       yamlWellKnownConfig       `yaml:"well_known"`
 	IndieAuth       yamlIndieAuthConfig       `yaml:"indieauth"`
 	Webmention      yamlWebmentionConfig      `yaml:"webmention"`
+	Search          models.SearchConfig       `yaml:"search"`
 	SEO             yamlSEOConfig             `yaml:"seo"`
 	Components      yamlComponentsConfig      `yaml:"components"`
 	Layout          yamlLayoutConfig          `yaml:"layout"`
@@ -3310,6 +3317,7 @@ func (c *yamlConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *yamlConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *yamlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *yamlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *yamlConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *yamlConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *yamlConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *yamlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
@@ -3445,6 +3453,7 @@ type jsonConfig struct {
 	WellKnown       jsonWellKnownConfig       `json:"well_known"`
 	IndieAuth       jsonIndieAuthConfig       `json:"indieauth"`
 	Webmention      jsonWebmentionConfig      `json:"webmention"`
+	Search          models.SearchConfig       `json:"search"`
 	SEO             jsonSEOConfig             `json:"seo"`
 	Components      jsonComponentsConfig      `json:"components"`
 	Layout          jsonLayoutConfig          `json:"layout"`
@@ -4820,6 +4829,7 @@ func (c *jsonConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *jsonConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *jsonConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *jsonConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *jsonConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *jsonConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *jsonConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *jsonConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }

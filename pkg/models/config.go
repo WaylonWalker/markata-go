@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // NavItem represents a navigation link.
 type NavItem struct {
 	// Label is the display text for the nav link
@@ -736,10 +738,16 @@ func (f *AlternateFeed) GetMIMEType() string {
 	}
 }
 
-// SearchConfig configures site-wide search functionality using Pagefind.
+// SearchConfig configures site-wide search functionality.
 type SearchConfig struct {
 	// Enabled controls whether search is active (default: true)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Backend selects the search engine: "pagefind" (default) or "bleve"
+	Backend string `json:"backend,omitempty" yaml:"backend,omitempty" toml:"backend,omitempty"`
+
+	// Endpoint is the API path for bleve search (default: "/api/search")
+	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint,omitempty"`
 
 	// Position controls where search UI appears: "navbar", "sidebar", "footer", "custom"
 	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
@@ -756,8 +764,78 @@ type SearchConfig struct {
 	// Pagefind configures the Pagefind CLI options
 	Pagefind PagefindConfig `json:"pagefind,omitempty" yaml:"pagefind,omitempty" toml:"pagefind,omitempty"`
 
+	// Bleve configures the bleve search API options
+	Bleve BleveSearchConfig `json:"bleve,omitempty" yaml:"bleve,omitempty" toml:"bleve,omitempty"`
+
 	// Feeds configures feed-specific search instances
 	Feeds []SearchFeedConfig `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+}
+
+// SearchBackend returns the configured search backend, defaulting to "pagefind".
+func (s *SearchConfig) SearchBackend() string {
+	if s.Backend == "" {
+		return "pagefind"
+	}
+	return s.Backend
+}
+
+// SearchEndpoint returns the configured API endpoint, defaulting to "/api/search".
+func (s *SearchConfig) SearchEndpoint() string {
+	if s.Endpoint == "" {
+		return "/api/search"
+	}
+	return s.Endpoint
+}
+
+// BleveSearchConfig configures bleve search API defaults.
+type BleveSearchConfig struct {
+	// Endpoint is the absolute or relative API URL used by the frontend bleve client.
+	// When set, the navbar search prefers bleve over Pagefind.
+	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint,omitempty"`
+
+	// Fuzzy enables fuzzy matching by default (default: false)
+	Fuzzy *bool `json:"fuzzy,omitempty" yaml:"fuzzy,omitempty" toml:"fuzzy,omitempty"`
+
+	// Limit is the default max results (default: 20)
+	Limit int `json:"limit,omitempty" yaml:"limit,omitempty" toml:"limit,omitempty"`
+
+	// MaxLimit is the maximum allowed limit from API requests (default: 100)
+	MaxLimit int `json:"max_limit,omitempty" yaml:"max_limit,omitempty" toml:"max_limit,omitempty"`
+
+	// CORSOrigins is the list of allowed CORS origins (default: ["*"] in dev)
+	CORSOrigins []string `json:"cors_origins,omitempty" yaml:"cors_origins,omitempty" toml:"cors_origins,omitempty"`
+}
+
+// EndpointOrDefault returns the configured bleve endpoint or the top-level search endpoint.
+func (b *BleveSearchConfig) EndpointOrDefault(searchEndpoint string) string {
+	if strings.TrimSpace(b.Endpoint) != "" {
+		return b.Endpoint
+	}
+	return searchEndpoint
+}
+
+// IsFuzzy returns whether fuzzy matching is enabled by default.
+func (b *BleveSearchConfig) IsFuzzy() bool {
+	if b.Fuzzy == nil {
+		return false
+	}
+	return *b.Fuzzy
+}
+
+// DefaultLimit returns the default result limit.
+func (b *BleveSearchConfig) DefaultLimit() int {
+	if b.Limit <= 0 {
+		return 20
+	}
+	return b.Limit
+}
+
+// GetMaxLimit returns the maximum allowed result limit.
+func (b *BleveSearchConfig) GetMaxLimit() int {
+	if b.MaxLimit <= 0 {
+		return 100
+	}
+	return b.MaxLimit
 }
 
 // IsEnabled returns whether search is enabled.
