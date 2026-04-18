@@ -280,7 +280,8 @@ func searchPostsBleve(posts []*models.Post, queryStr string, fuzzy bool, limit i
 	}
 
 	results := make([]searchResultItem, len(hits))
-	for i, h := range hits {
+	for i := range hits {
+		h := &hits[i]
 		results[i] = searchResultItem{post: h.Post, score: h.Score}
 	}
 	return results, nil

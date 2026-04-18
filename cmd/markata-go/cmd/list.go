@@ -23,6 +23,7 @@ const (
 	listFormatJSON  = "json"
 	listFormatCSV   = "csv"
 	listFormatPath  = "path"
+	listSortDate    = "date"
 	listSortName    = "name"
 	listSortCount   = "count"
 	listSortWords   = "words"
@@ -75,7 +76,7 @@ func listPostsCmd() *cobra.Command {
 
 			sortBy := opts.sortBy
 			if sortBy == "" {
-				sortBy = "date"
+				sortBy = listSortDate
 			}
 
 			order, err := parseSortOrder(opts.order)
@@ -111,7 +112,7 @@ func listPostsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.format, "format", listFormatTable, "output format: table, json, csv, path")
-	cmd.Flags().StringVar(&opts.sortBy, "sort", "date", "sort field: date, title, words, path, reading_time, tags")
+	cmd.Flags().StringVar(&opts.sortBy, "sort", listSortDate, "sort field: date, title, words, path, reading_time, tags")
 	cmd.Flags().StringVar(&opts.order, "order", "desc", "sort order: asc or desc")
 	cmd.Flags().StringVar(&filter, "filter", "", "filter expression for posts")
 	cmd.Flags().StringVar(&feed, "feed", "", "limit posts to a feed by name")
@@ -242,7 +243,7 @@ func listFeedsPostsCmd() *cobra.Command {
 			}
 
 			posts, err := postsForFeed(cmd.Context(), app, args[0], services.ListOptions{
-				SortBy:    "date",
+				SortBy:    listSortDate,
 				SortOrder: services.SortDesc,
 			}, "")
 			if err != nil {
@@ -305,7 +306,7 @@ func parseSortOrder(order string) (services.SortOrder, error) {
 
 func isValidPostSort(field string) bool {
 	switch strings.ToLower(field) {
-	case "date", "title", listSortWords, "path", listSortReading, "tags":
+	case listSortDate, "title", listSortWords, "path", listSortReading, "tags":
 		return true
 	default:
 		return false
@@ -392,7 +393,7 @@ func renderPostsTable(rows []postRow) error {
 
 func renderPostsCSV(rows []postRow) error {
 	w := csv.NewWriter(outWriter())
-	if err := w.Write([]string{"title", "date", "words", "reading_time", "tags", "path"}); err != nil {
+	if err := w.Write([]string{"title", listSortDate, "words", "reading_time", "tags", "path"}); err != nil {
 		return err
 	}
 	for _, row := range rows {

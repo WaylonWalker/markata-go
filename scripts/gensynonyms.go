@@ -41,12 +41,26 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: gensynonyms <wordnet-dict-dir> <output.json.gz>\n")
 		os.Exit(1)
 	}
-	dictDir := os.Args[1]
-	outFile := os.Args[2]
+	if err := run(os.Args[1], os.Args[2]); err != nil {
+		panic(err)
+	}
+}
 
+func run(dictDir, outFile string) error {
 	freqs := loadFrequencies(dictDir + "/cntlist.rev")
+	allSynsets, allLinks := loadWordNetData(dictDir)
+	fmt.Fprintf(os.Stderr, "Parsed %d synsets, %d derivational links\n", len(allSynsets), len(allLinks))
 
-	// Phase 1: Parse all synsets and derivational links
+	const minFreq = 3
+	allGroups, derivGroups := buildSynonymGroups(allSynsets, allLinks, freqs, minFreq)
+	fmt.Fprintf(os.Stderr, "Within-synset groups: %d\n", len(allGroups)-derivGroups)
+	fmt.Fprintf(os.Stderr, "Cross-POS derivational groups: %d\n", derivGroups)
+	fmt.Fprintf(os.Stderr, "Total synonym groups: %d\n", len(allGroups))
+
+	return writeSynonymGroups(outFile, allGroups)
+}
+
+func loadWordNetData(dictDir string) (map[string]*synset, []derivLink) {
 	allSynsets := make(map[string]*synset) // key: "offset:pos"
 	var allLinks []derivLink
 
@@ -58,43 +72,53 @@ func main() {
 		}
 		allLinks = append(allLinks, links...)
 	}
-	fmt.Fprintf(os.Stderr, "Parsed %d synsets, %d derivational links\n", len(allSynsets), len(allLinks))
 
-	const minFreq = 3
+	return allSynsets, allLinks
+}
 
-	// Phase 2: Build synonym groups from synsets with 2+ words (same as before)
-	groupSet := make(map[string]bool) // deduplicate groups by sorted key
-	var allGroups [][]string
+func buildSynonymGroups(allSynsets map[string]*synset, allLinks []derivLink, freqs map[string]int, minFreq int) (groups [][]string, derivGroupCount int) {
+	groupSet := make(map[string]bool)
+	withinGroups := buildWithinSynsetGroups(allSynsets, freqs, minFreq, groupSet)
+	derivGroups := buildDerivationalGroups(allSynsets, allLinks, freqs, minFreq, groupSet)
+	groups = append(groups, withinGroups...)
+	groups = append(groups, derivGroups...)
 
+	sort.Slice(groups, func(i, j int) bool {
+		if len(groups[i]) != len(groups[j]) {
+			return len(groups[i]) > len(groups[j])
+		}
+		return groups[i][0] < groups[j][0]
+	})
+
+	return groups, len(derivGroups)
+}
+
+func buildWithinSynsetGroups(allSynsets map[string]*synset, freqs map[string]int, minFreq int, groupSet map[string]bool) [][]string {
+	var groups [][]string
 	for _, s := range allSynsets {
 		if len(s.words) < 2 {
 			continue
 		}
-		hasCommon := false
 		for _, w := range s.words {
 			if freqs[w] >= minFreq {
-				hasCommon = true
+				deduped := dedup(s.words)
+				if len(deduped) >= 2 {
+					sort.Strings(deduped)
+					key := strings.Join(deduped, "\x00")
+					if !groupSet[key] {
+						groupSet[key] = true
+						groups = append(groups, deduped)
+					}
+				}
 				break
 			}
 		}
-		if hasCommon {
-			deduped := dedup(s.words)
-			if len(deduped) >= 2 {
-				sort.Strings(deduped)
-				key := strings.Join(deduped, "\x00")
-				if !groupSet[key] {
-					groupSet[key] = true
-					allGroups = append(allGroups, deduped)
-				}
-			}
-		}
 	}
-	fmt.Fprintf(os.Stderr, "Within-synset groups: %d\n", len(allGroups))
+	return groups
+}
 
-	// Phase 3: Create cross-POS pairs from derivational links.
-	// Each link creates a small group of words from both synsets,
-	// but we DON'T merge groups globally — this prevents chain explosions.
-	derivGroups := 0
+func buildDerivationalGroups(allSynsets map[string]*synset, allLinks []derivLink, freqs map[string]int, minFreq int, groupSet map[string]bool) [][]string {
+	var groups [][]string
 	for _, link := range allLinks {
 		fromKey := link.fromOffset + ":" + link.fromPOS
 		toKey := link.toOffset + ":" + link.toPOS
@@ -104,9 +128,6 @@ func main() {
 			continue
 		}
 
-		// Only create groups from single-word synsets crossing POS boundaries.
-		// Multi-word synsets are already captured in Phase 2.
-		// This keeps cross-POS groups small and focused.
 		merged := make(map[string]bool)
 		for _, w := range fromSyn.words {
 			merged[w] = true
@@ -117,6 +138,7 @@ func main() {
 		if len(merged) < 2 {
 			continue
 		}
+
 		hasCommon := false
 		var words []string
 		for w := range merged {
@@ -132,41 +154,32 @@ func main() {
 		key := strings.Join(words, "\x00")
 		if !groupSet[key] {
 			groupSet[key] = true
-			allGroups = append(allGroups, words)
-			derivGroups++
+			groups = append(groups, words)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "Cross-POS derivational groups: %d\n", derivGroups)
+	return groups
+}
 
-	// Sort for determinism
-	sort.Slice(allGroups, func(i, j int) bool {
-		if len(allGroups[i]) != len(allGroups[j]) {
-			return len(allGroups[i]) > len(allGroups[j])
-		}
-		return allGroups[i][0] < allGroups[j][0]
-	})
-
-	fmt.Fprintf(os.Stderr, "Total synonym groups: %d\n", len(allGroups))
-
-	// Write compressed JSON
+func writeSynonymGroups(outFile string, allGroups [][]string) error {
 	f, err := os.Create(outFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer f.Close()
 
 	gw, err := gzip.NewWriterLevel(f, gzip.BestCompression)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer gw.Close()
 
 	enc := json.NewEncoder(gw)
 	if err := enc.Encode(allGroups); err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "Written to %s\n", outFile)
+	return nil
 }
 
 // loadFrequencies reads cntlist.rev to get word frequencies.

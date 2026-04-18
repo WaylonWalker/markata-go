@@ -39,6 +39,8 @@ type AttributeTransformer struct{}
 // attributeOnlyPattern matches a line that only contains attribute syntax.
 var attributeOnlyPattern = regexp.MustCompile(`^\s*\{[^}]+\}\s*$`)
 
+const htmlAttrClass = "class"
+
 // Transform implements parser.ASTTransformer.
 // It walks the AST looking for attribute syntax and applies it to the
 // appropriate block or inline element.
@@ -517,8 +519,8 @@ func applyParsedAttributes(target ast.Node, attrs parser.Attributes) {
 	for _, attr := range attrs {
 		name := string(attr.Name)
 		value := normalizeAttributeValue(attr.Value)
-		if name == "class" {
-			if existing, ok := target.AttributeString("class"); ok {
+		if name == htmlAttrClass {
+			if existing, ok := target.AttributeString(htmlAttrClass); ok {
 				existingStr := attributeValueToString(existing)
 				if existingStr != "" {
 					value = existingStr + " " + value

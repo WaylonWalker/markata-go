@@ -80,7 +80,11 @@ func TestPythonDocsPlugin_LoadCreatesPosts(t *testing.T) {
 
 	byModule := make(map[string]string, len(posts))
 	for _, post := range posts {
-		module, _ := post.Get("python_module").(string)
+		value := post.Get("python_module")
+		module, ok := value.(string)
+		if !ok {
+			t.Fatalf("python_module = %T, want string", value)
+		}
 		byModule[module] = post.Content
 		if !strings.HasPrefix(post.Slug, "reference/") {
 			t.Errorf("post slug = %q, want prefix reference/", post.Slug)
@@ -145,7 +149,11 @@ func TestPythonDocsPlugin_RelativeImportsInInitModule(t *testing.T) {
 	}
 
 	for _, post := range m.Posts() {
-		module, _ := post.Get("python_module").(string)
+		value := post.Get("python_module")
+		module, ok := value.(string)
+		if !ok {
+			t.Fatalf("python_module = %T, want string", value)
+		}
 		if module != "pkg" {
 			continue
 		}
@@ -229,7 +237,11 @@ func TestPythonDocsPlugin_CustomSymbolTemplate(t *testing.T) {
 	}
 
 	for _, post := range posts {
-		module, _ := post.Get("python_module").(string)
+		value := post.Get("python_module")
+		module, ok := value.(string)
+		if !ok {
+			t.Fatalf("python_module = %T, want string", value)
+		}
 		if module != "pkg.util" {
 			continue
 		}
@@ -261,7 +273,7 @@ func writeTestFile(t *testing.T, root, relPath, content string) {
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 }

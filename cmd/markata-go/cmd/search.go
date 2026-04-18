@@ -231,7 +231,8 @@ func searchWithBleve(posts []*models.Post, queryStr string, opts search.QueryOpt
 	}
 
 	results := make([]cliSearchResult, len(hits))
-	for i, hit := range hits {
+	for i := range hits {
+		hit := &hits[i]
 		results[i] = cliSearchResult{post: hit.Post, score: hit.Score}
 	}
 	return results, nil

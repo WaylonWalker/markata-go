@@ -20,6 +20,8 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
+const pythonDocsPluginName = "python_docs"
+
 // PythonDocsConfig holds configuration for the python_docs plugin.
 type PythonDocsConfig struct {
 	Enabled            bool     `json:"enabled" yaml:"enabled" toml:"enabled"`
@@ -69,7 +71,7 @@ func NewPythonDocsPlugin() *PythonDocsPlugin {
 
 // Name returns the unique plugin name.
 func (p *PythonDocsPlugin) Name() string {
-	return "python_docs"
+	return pythonDocsPluginName
 }
 
 // Configure reads plugin configuration and resolves the Python interpreter when enabled.
@@ -78,7 +80,7 @@ func (p *PythonDocsPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	p.strictHookOptIn = pythonDocsExplicitlyEnabled(config)
 	if config.Extra != nil {
-		if raw, ok := config.Extra["python_docs"].(map[string]interface{}); ok {
+		if raw, ok := config.Extra[pythonDocsPluginName].(map[string]interface{}); ok {
 			p.parseConfig(raw)
 		}
 	}
@@ -94,13 +96,13 @@ func (p *PythonDocsPlugin) Configure(m *lifecycle.Manager) error {
 
 	if p.config.UseGitignore {
 		if err := p.loadGitignore(baseDir); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("python_docs: load gitignore: %w", err)
+			return fmt.Errorf("%s: load gitignore: %w", pythonDocsPluginName, err)
 		}
 	}
 
 	interpreter, err := p.resolveInterpreter()
 	if err != nil {
-		return fmt.Errorf("python_docs: %w", err)
+		return fmt.Errorf("%s: %w", pythonDocsPluginName, err)
 	}
 	p.interpreter = interpreter
 
@@ -119,12 +121,12 @@ func (p *PythonDocsPlugin) Load(m *lifecycle.Manager) error {
 	}
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
-		return fmt.Errorf("python_docs: resolve content dir: %w", err)
+		return fmt.Errorf("%s: resolve content dir: %w", pythonDocsPluginName, err)
 	}
 
 	files, modTimes, err := p.scanPythonFiles(absBaseDir)
 	if err != nil {
-		return fmt.Errorf("python_docs: scan files: %w", err)
+		return fmt.Errorf("%s: scan files: %w", pythonDocsPluginName, err)
 	}
 	if len(files) == 0 {
 		return nil
@@ -132,19 +134,20 @@ func (p *PythonDocsPlugin) Load(m *lifecycle.Manager) error {
 
 	modules, err := p.extractModules(absBaseDir, files)
 	if err != nil {
-		return fmt.Errorf("python_docs: extract module docs: %w", err)
+		return fmt.Errorf("%s: extract module docs: %w", pythonDocsPluginName, err)
 	}
 
 	renderer, err := newPythonSymbolRenderer(m.Config(), p.config)
 	if err != nil {
-		return fmt.Errorf("python_docs: initialize symbol renderer: %w", err)
+		return fmt.Errorf("%s: initialize symbol renderer: %w", pythonDocsPluginName, err)
 	}
 
 	moduleIndex, symbolIndex := buildPythonDocIndexes(p.config.SlugPrefix, modules)
-	for _, module := range modules {
+	for i := range modules {
+		module := modules[i]
 		post, err := p.makePost(module, modTimes[module.SourcePath], moduleIndex, symbolIndex, renderer)
 		if err != nil {
-			return fmt.Errorf("python_docs: build post for %s: %w", module.ModuleName, err)
+			return fmt.Errorf("%s: build post for %s: %w", pythonDocsPluginName, module.ModuleName, err)
 		}
 		m.AddPost(post)
 	}
@@ -220,18 +223,18 @@ func (p *PythonDocsPlugin) resolveInterpreter() (string, error) {
 	return "", fmt.Errorf("python interpreter not found; set [markata-go.python_docs].interpreter or install python3")
 }
 
-func (p *PythonDocsPlugin) scanPythonFiles(absBaseDir string) ([]string, map[string]time.Time, error) {
+func (p *PythonDocsPlugin) scanPythonFiles(absBaseDir string) (files []string, modTimes map[string]time.Time, err error) {
 	patterns := append([]string{}, p.config.Patterns...)
 	for _, dir := range p.config.Directories {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue
 		}
-		patterns = append(patterns, filepath.ToSlash(filepath.Join(dir, "**/*.py")))
+		patterns = append(patterns, filepath.ToSlash(filepath.Join(dir, "**", "*.py")))
 	}
 
 	fileSet := make(map[string]struct{})
-	modTimes := make(map[string]time.Time)
+	modTimes = make(map[string]time.Time)
 
 	for _, pattern := range patterns {
 		fullPattern := pattern
@@ -241,7 +244,7 @@ func (p *PythonDocsPlugin) scanPythonFiles(absBaseDir string) ([]string, map[str
 
 		matches, err := doublestar.FilepathGlob(fullPattern)
 		if err != nil {
-			continue
+			return nil, nil, fmt.Errorf("glob python files %q: %w", pattern, err)
 		}
 
 		for _, match := range matches {
@@ -265,7 +268,7 @@ func (p *PythonDocsPlugin) scanPythonFiles(absBaseDir string) ([]string, map[str
 		}
 	}
 
-	files := make([]string, 0, len(fileSet))
+	files = make([]string, 0, len(fileSet))
 	for file := range fileSet {
 		files = append(files, file)
 	}
@@ -350,7 +353,7 @@ func (p *PythonDocsPlugin) extractModules(baseDir string, files []string) ([]pyt
 		return nil, err
 	}
 
-	cmd := exec.Command(p.interpreter, "-c", pythonDocsExtractorScript, baseDir)
+	cmd := exec.Command(p.interpreter, "-c", pythonDocsExtractorScript, baseDir) // #nosec G204 -- interpreter is resolved from user config and LookPath
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Env = append(os.Environ(), "MARKATA_GO_PYTHON_DOCS_INCLUDE_PRIVATE="+pythonDocsBoolEnv(p.config.IncludePrivate))
 	var stdout bytes.Buffer
@@ -374,23 +377,27 @@ func (p *PythonDocsPlugin) extractModules(baseDir string, files []string) ([]pyt
 	return modules, nil
 }
 
-func buildPythonDocIndexes(slugPrefix string, modules []pythonModuleDoc) (map[string]string, map[string]string) {
-	moduleIndex := make(map[string]string, len(modules))
-	symbolIndex := make(map[string]string)
+func buildPythonDocIndexes(slugPrefix string, modules []pythonModuleDoc) (moduleIndex, symbolIndex map[string]string) {
+	moduleIndex = make(map[string]string, len(modules))
+	symbolIndex = make(map[string]string)
 
-	for _, module := range modules {
+	for i := range modules {
+		module := &modules[i]
 		href := "/" + buildPythonDocSlug(slugPrefix, module.ModuleName) + "/"
 		moduleIndex[module.ModuleName] = href
 		symbolIndex[module.ModuleName] = href
 
-		for _, classDoc := range module.Classes {
+		for classIdx := range module.Classes {
+			classDoc := &module.Classes[classIdx]
 			classAnchor := pythonDocAnchor(classDoc.Name)
 			symbolIndex[module.ModuleName+"."+classDoc.Name] = href + "#" + classAnchor
-			for _, method := range classDoc.Methods {
+			for methodIdx := range classDoc.Methods {
+				method := &classDoc.Methods[methodIdx]
 				symbolIndex[module.ModuleName+"."+classDoc.Name+"."+method.Name] = href + "#" + pythonDocAnchor(classDoc.Name+"-"+method.Name)
 			}
 		}
-		for _, function := range module.Functions {
+		for functionIdx := range module.Functions {
+			function := &module.Functions[functionIdx]
 			symbolIndex[module.ModuleName+"."+function.Name] = href + "#" + pythonDocAnchor(function.Name)
 		}
 	}
@@ -419,7 +426,7 @@ func (p *PythonDocsPlugin) makePost(module pythonModuleDoc, modTime time.Time, m
 		post.Description = &description
 	}
 
-	post.Set("python_docs", true)
+	post.Set(pythonDocsPluginName, true)
 	post.Set("python_module", module.ModuleName)
 	post.Set("source_path", module.SourcePath)
 
@@ -461,21 +468,25 @@ func renderPythonModuleMarkdown(module pythonModuleDoc, cfg PythonDocsConfig, mo
 
 	if len(module.Classes) > 0 || len(module.Functions) > 0 {
 		b.WriteString("## API\n\n")
-		for _, classDoc := range module.Classes {
+		for i := range module.Classes {
+			classDoc := module.Classes[i]
 			b.WriteString("- [Class `" + classDoc.Name + "`](#" + pythonDocAnchor(classDoc.Name) + ")\n")
 		}
-		for _, function := range module.Functions {
+		for i := range module.Functions {
+			function := module.Functions[i]
 			b.WriteString("- [Function `" + function.Name + "`](#" + pythonDocAnchor(function.Name) + ")\n")
 		}
 		b.WriteString("\n")
 	}
 
-	for _, classDoc := range module.Classes {
+	for i := range module.Classes {
+		classDoc := module.Classes[i]
 		if err := renderPythonDocItem(&b, module, classDoc, 2, cfg, moduleIndex, symbolIndex, classDoc.Name, renderer); err != nil {
 			return "", err
 		}
 	}
-	for _, function := range module.Functions {
+	for i := range module.Functions {
+		function := module.Functions[i]
 		if err := renderPythonDocItem(&b, module, function, 2, cfg, moduleIndex, symbolIndex, function.Name, renderer); err != nil {
 			return "", err
 		}
@@ -500,7 +511,8 @@ func renderPythonDocItem(b *strings.Builder, module pythonModuleDoc, item python
 	}
 	b.WriteString(rendered)
 
-	for _, method := range item.Methods {
+	for i := range item.Methods {
+		method := item.Methods[i]
 		if err := renderPythonDocItem(b, module, method, level+1, cfg, moduleIndex, symbolIndex, item.Name+"-"+method.Name, renderer); err != nil {
 			return err
 		}
@@ -548,7 +560,7 @@ func renderPythonImport(imp pythonImport, moduleIndex, symbolIndex map[string]st
 }
 
 var (
-	pythonInlineRefRegex  = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_\\.]*)`")
+	pythonInlineRefRegex  = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_.]*)`")
 	pythonSphinxRefRegex  = regexp.MustCompile(`:(?:mod|func|class|meth):` + "`" + `~?([^` + "`" + `]+)` + "`")
 	pythonWhitespaceRegex = regexp.MustCompile(`\n{3,}`)
 )
@@ -595,7 +607,7 @@ func linkPythonReference(ref string, moduleIndex, symbolIndex map[string]string)
 	return "`" + ref + "`"
 }
 
-var pythonReferenceTokenRegex = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_\.]*`)
+var pythonReferenceTokenRegex = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_.]*`)
 
 func extractPythonReferences(text string) []string {
 	matches := pythonReferenceTokenRegex.FindAllString(text, -1)
@@ -675,7 +687,7 @@ func pythonDocsExplicitlyEnabled(cfg *lifecycle.Config) bool {
 	}
 	if modelsConfig, ok := cfg.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
 		for _, hook := range modelsConfig.Hooks {
-			if hook == "python_docs" {
+			if hook == pythonDocsPluginName {
 				return true
 			}
 		}
@@ -683,7 +695,7 @@ func pythonDocsExplicitlyEnabled(cfg *lifecycle.Config) bool {
 	}
 	if hooks := pythonDocsStringSlice(cfg.Extra["hooks"]); len(hooks) > 0 {
 		for _, hook := range hooks {
-			if hook == "python_docs" {
+			if hook == pythonDocsPluginName {
 				return true
 			}
 		}
@@ -696,7 +708,10 @@ func pythonDocsModelsConfig(cfg *lifecycle.Config) *models.Config {
 	if cfg == nil || cfg.Extra == nil {
 		return nil
 	}
-	modelsConfig, _ := cfg.Extra["models_config"].(*models.Config)
+	modelsConfig, ok := cfg.Extra["models_config"].(*models.Config)
+	if !ok {
+		return nil
+	}
 	return modelsConfig
 }
 
@@ -713,7 +728,7 @@ func newPythonSymbolRenderer(cfg *lifecycle.Config, pluginCfg PythonDocsConfig) 
 	}
 
 	templatesDir := ""
-	themeName := "default"
+	themeName := templateTypeDefault
 	if renderer.modelsConfig != nil {
 		templatesDir = renderer.modelsConfig.TemplatesDir
 		if renderer.modelsConfig.Theme.Name != "" {
@@ -758,7 +773,7 @@ func (r *pythonSymbolRenderer) renderCustom(module pythonModuleDoc, item pythonD
 	ctx.Set("anchor", anchor)
 	ctx.Set("docstring", linkPythonDocstring(item.Docstring, moduleIndex, symbolIndex))
 	ctx.Set("extends", pythonLinksForBases(item.Bases, moduleIndex, symbolIndex))
-	ctx.Set("references", pythonLinksForText(strings.Join([]string{item.Signature, item.Docstring}, "\n"), moduleIndex, symbolIndex))
+	ctx.Set("references", pythonLinksForText(item.Signature+"\n"+item.Docstring, moduleIndex, symbolIndex))
 	ctx.Set("source_enabled", cfg.IncludeSource)
 
 	if r.config.SymbolTemplate != "" {
@@ -787,7 +802,7 @@ func renderDefaultPythonSymbol(item pythonDocItem, headingPrefix, anchor string,
 		b.WriteString("\n\n")
 	}
 
-	related := pythonLinksForText(strings.Join([]string{item.Signature, item.Docstring}, "\n"), moduleIndex, symbolIndex)
+	related := pythonLinksForText(item.Signature+"\n"+item.Docstring, moduleIndex, symbolIndex)
 	if len(related) > 0 {
 		b.WriteString("Related: ")
 		b.WriteString(strings.Join(related, ", "))
@@ -867,7 +882,8 @@ func pythonModuleToMap(module pythonModuleDoc) map[string]interface{} {
 
 func pythonDocItemToMap(item pythonDocItem) map[string]interface{} {
 	methods := make([]map[string]interface{}, 0, len(item.Methods))
-	for _, method := range item.Methods {
+	for i := range item.Methods {
+		method := item.Methods[i]
 		methods = append(methods, pythonDocItemToMap(method))
 	}
 	return map[string]interface{}{

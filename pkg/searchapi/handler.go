@@ -250,7 +250,8 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 		Results: make([]SearchResult, len(results)),
 	}
 
-	for i, hit := range results {
+	for i := range results {
+		hit := &results[i]
 		doc := hit.Doc
 		if hit.Post != nil {
 			doc = search.Document{}
