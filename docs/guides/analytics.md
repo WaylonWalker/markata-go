@@ -32,6 +32,7 @@ enabled = true
 cdn_url = "/assets/vendor/cal-heatmap"                # Cal-Heatmap base URL (local by default)
 container_class = "contribution-graph-container"
 theme = "light"
+scale_max_percentile = 0                               # Optional global outlier cap
 ```
 
 ### Configuration Options
@@ -42,6 +43,7 @@ theme = "light"
 | `cdn_url` | string | `/assets/vendor/cal-heatmap` | Cal-Heatmap base URL (local by default) |
 | `container_class` | string | `contribution-graph-container` | CSS class for the container |
 | `theme` | string | `light` | Color theme (`light` or `dark`) |
+| `scale_max_percentile` | number | `0` | Optional global percentile cap for the color scale |
 
 ### Basic Usage
 
@@ -79,6 +81,8 @@ The `data` array contains objects with:
 | `subDomain` | string | `day` | Sub-domain: `day`, `hour`, `minute` |
 | `cellSize` | number | `10` | Size of each cell in pixels |
 | `range` | number | `1` | Number of domain units to display |
+| `maxValue` | number | unset | Explicit color-scale maximum |
+| `maxPercentile` | number | unset | Per-graph percentile cap for the color scale |
 
 ### Examples
 
@@ -125,6 +129,31 @@ Show activity by month:
 ```
 ````
 
+#### Outlier Control
+
+When one or two very large days wash out the rest of the graph, cap the color scale at a percentile instead of the raw max:
+
+````markdown
+```contribution-graph
+{
+  "data": [
+    {"date": "2024-01-01", "value": 1},
+    {"date": "2024-01-02", "value": 2},
+    {"date": "2024-01-03", "value": 3},
+    {"date": "2024-01-04", "value": 25}
+  ],
+  "options": {
+    "domain": "year",
+    "subDomain": "day",
+    "range": 1,
+    "maxPercentile": 95
+  }
+}
+```
+````
+
+Set `scale_max_percentile` in config to apply the same percentile cap to every contribution graph by default.
+
 #### Tracking Blog Post Frequency
 
 Use Jinja templating to automatically generate data from your posts:
@@ -157,7 +186,7 @@ Add custom CSS to style your contribution graphs:
 ```css
 .contribution-graph-container {
   margin: 2rem 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 /* Cal-Heatmap specific overrides */
