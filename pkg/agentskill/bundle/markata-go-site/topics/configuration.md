@@ -146,6 +146,21 @@ disabled_hooks = []
 
 Use `disabled_hooks` to isolate plugin-related issues. Use `markata-go explain plugins` to see available hook names.
 
+Optional source-backed docs can also be enabled in config. For Python API reference pages:
+
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py"]
+slug_prefix = "api"
+template = "docs"
+```
+
+This generates posts from Python modules without replacing normal markdown content loading, but it only works when `python_docs` is explicitly listed in `hooks`.
+
 ## Authors Config
 
 If the site has multiple authors, configure them under `[markata-go.authors]`:

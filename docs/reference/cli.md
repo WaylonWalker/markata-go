@@ -553,6 +553,194 @@ markata-go list feeds posts blog --format path
 
 ---
 
+### search
+
+Full-text search across post content, titles, descriptions, and tags. Uses a bleve full-text index for BM25-ranked results with optional fuzzy matching.
+
+#### Usage
+
+```bash
+markata-go search <query> [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output format: `table`, `json`, `csv`, `path` | `table` |
+| `--sort` | Sort field: `score`, `date`, `title`, `words`, `path`, `reading_time`, `tags` | `score` |
+| `--order` | Sort order: `asc` or `desc` | `desc` |
+| `--filter` | Additional filter expression to narrow results | none |
+| `--fields` | Fields to search: `title,content,description,tags` (default: all) | all |
+| `--fuzzy` | Enable fuzzy matching (tolerates typos) | `false` |
+| `--limit` | Maximum number of results (0 = no limit) | `0` |
+
+#### Examples
+
+```bash
+# Search for posts about golang (BM25-ranked)
+markata-go search golang
+
+# Search with JSON output for scripting
+markata-go search "error handling" --format json
+
+# Search with a filter and limit
+markata-go search docker --filter "published == True" --limit 10
+
+# Search only in titles and tags
+markata-go search golang --fields title,tags
+
+# Fuzzy search (tolerates typos like "tutoral" → "tutorial")
+markata-go search tutoral --fuzzy
+
+# Search and sort by date instead of relevance
+markata-go search cli --sort date --order desc
+
+# Get matching file paths for piping
+markata-go search kubernetes --format path
+
+# Combine filter expressions with search
+markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
+```
+
+#### Search Behavior
+
+- Uses bleve full-text index with BM25 ranking (results sorted by relevance by default)
+- Falls back to substring matching if the bleve index cannot be built
+- Index is cached at `.markata/cache/search.bleve` and rebuilt when content changes
+- Combines with `--filter` to narrow results before searching (filter applied first)
+- Table output shows relevance scores when using ranked search
+- `--fuzzy` enables edit-distance matching for typo tolerance
+- **Synonym expansion** is enabled by default — searching "land" also finds posts about "shore" (powered by a bundled WordNet thesaurus with 10,000+ synonym groups)
+- **Privacy-safe** — private posts are searchable by public metadata, while their body content and media remain excluded from search
+
+---
+
+### search build-index
+
+Build a reusable bleve index artifact without starting the search server.
+
+#### Usage
+
+```bash
+markata-go search build-index [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--index-dir` | Directory to write the bleve index | `.markata/cache/search.bleve` |
+| `--hash-path` | Path for the content hash file | `.markata/cache/search.hash` |
+| `--index-name` | Named index suffix inside the default cache directory | `""` |
+| `--force` | Rebuild even if content hash is unchanged | `false` |
+
+#### Examples
+
+```bash
+# Build the default cached index
+markata-go search build-index
+
+# Build a reusable artifact at a custom path
+markata-go search build-index --index-dir /data/search.bleve --hash-path /data/search.hash
+
+# Build a named index alongside other local indexes
+markata-go search build-index --index-name server --force
+```
+
+#### Behavior
+
+- Loads the site content the same way as `markata-go search`
+- Writes or refreshes a bleve index on disk
+- Intended for CI, builder jobs, and future read-only search server deployments
+
+---
+
+### search-server
+
+Start a standalone bleve-backed search API server.
+
+#### Usage
+
+```bash
+markata-go search-server [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port` | Port to listen on | `3001` |
+| `--host` | Host to bind to | `localhost` |
+| `--mode` | Server mode: `runtime-index`, `watch-content`, or `read-only-index` | `runtime-index` |
+| `--index-dir` | Directory of the bleve index | runtime default |
+| `--hash-path` | Path for the content hash file in runtime-index mode | runtime default |
+| `--index-name` | Named index suffix inside the default cache directory | `server` |
+| `--rebuild-index` | Force a rebuild in runtime-index mode | `false` |
+| `--watch-debounce` | Debounce duration for watch-content reloads | `750ms` |
+
+#### Examples
+
+```bash
+# Start the search API server
+markata-go search-server
+
+# Start on a custom port
+markata-go search-server --port 8081
+
+# Start in watch mode
+markata-go search-server --mode watch-content
+
+# Serve a prebuilt index artifact without loading content
+markata-go search-server --mode read-only-index --index-dir /data/search.bleve
+
+# Query the API
+curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"
+curl "http://localhost:3001/api/search?q=docker&tags=devops&from=2024-01-01"
+```
+
+#### API Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `q` | Search query (required) | — |
+| `fuzzy` | Enable fuzzy matching (`true`/`false`) | `false` |
+| `limit` | Max results | `20` |
+| `tags` | Comma-separated tag filter | none |
+| `from` | Date range start (`YYYY-MM-DD`) | none |
+| `to` | Date range end (`YYYY-MM-DD`) | none |
+
+#### Search API Behavior
+
+- Returns JSON with `query`, `total`, `results` fields
+- Private post content is never searchable — only metadata (title, description, tags)
+- CORS follows `search.bleve.cors_origins`
+- Also available at the configured endpoint during `markata-go serve`
+- Health check at `/health`
+
+#### Modes
+
+- `runtime-index` loads site content and builds or refreshes a local bleve index
+- `watch-content` reloads content and refreshes the local index when source files change
+- `read-only-index` opens an existing prebuilt index without loading or rebuilding site content
+
+#### Configuration
+
+```toml
+[search]
+backend = "bleve"           # "pagefind" (default) or "bleve"
+endpoint = "/api/search"    # API endpoint path
+
+[search.bleve]
+endpoint = "https://search.example.com/api/search"  # Optional remote endpoint for navbar client
+fuzzy = false               # Default fuzzy matching
+limit = 20                  # Default result limit
+max_limit = 100             # Maximum allowed limit
+cors_origins = ["*"]        # Allowed CORS origins
+```
+
+---
+
 ### init
 
 Initialize a new markata-go project with interactive setup.

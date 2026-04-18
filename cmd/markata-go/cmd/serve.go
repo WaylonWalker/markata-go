@@ -8,10 +8,12 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -22,6 +24,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/searchapi"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +61,12 @@ var (
 
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
+
+	// serveInternalPaths are generated/cache directories that should never trigger rebuilds.
+	serveInternalPaths []string
+
+	// serveSearchEndpoint is the frontend search endpoint configured for this serve session.
+	serveSearchEndpoint string
 
 	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
 	isRebuilding atomic.Bool
@@ -207,6 +216,7 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	// Determine output directory
 	outputPath, absOutputPath := resolveServeOutputPath(m)
 	serveOutputPath = absOutputPath
+	initServeInternalPaths()
 
 	var wg sync.WaitGroup
 	rebuildCh, closeWatcher, err := setupWatcher(ctx, m, &wg)
@@ -215,9 +225,11 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	}
 	defer closeWatcher()
 
-	// Create HTTP server
+	// Create HTTP server with search API
 	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	handler := createHandler(outputPath)
+	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
+	serveSearchEndpoint = searchEndpoint
+	handler := createHandler(outputPath, m, searchHandlerPath)
 
 	server, serverErr, serverStarted := startHTTPServer(addr, handler)
 
@@ -262,6 +274,18 @@ func resolveServeOutputPath(m *lifecycle.Manager) (outputPath, absOutputPath str
 	}
 
 	return outputPath, absOutputPath
+}
+
+func initServeInternalPaths() {
+	paths := []string{".markata", ".markata-cache", "cache", "markout", "public", "output"}
+	serveInternalPaths = serveInternalPaths[:0]
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			absPath = p
+		}
+		serveInternalPaths = append(serveInternalPaths, absPath)
+	}
 }
 
 func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup) (rebuildCh chan struct{}, closeWatcher func(), err error) {
@@ -429,13 +453,38 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 	}
 }
 
-// createHandler creates an HTTP handler that serves files with live reload injection.
-func createHandler(outputDir string) http.Handler {
+// createHandler creates an HTTP handler that serves files with live reload injection
+// and mounts the bleve search API at the configured endpoint.
+func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
 	absOutputDir, err := filepath.Abs(outputDir)
 	if err != nil {
 		absOutputDir = outputDir
 	}
+
+	// Set up search API handler
+	apiCfg := searchapi.DefaultConfig()
+	apiCfg.IndexName = "serve"
+	if mc := getModelsConfig(m); mc != nil {
+		apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
+		apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
+		apiCfg.DefaultFuzzy = mc.Search.Bleve.IsFuzzy()
+		if len(mc.Search.Bleve.CORSOrigins) > 0 {
+			apiCfg.CORSOrigins = mc.Search.Bleve.CORSOrigins
+		}
+	}
+	cacheDir := filepath.Join(filepath.Dir(absOutputDir), ".markata", "cache")
+	searchHandler := searchapi.NewHandler(m.Posts(), cacheDir, apiCfg)
+
+	// Subscribe to post updates after rebuilds.
+	// UpdatePosts is now change-aware: it only rebuilds the index
+	// when the post set actually changes (cheap path-based fingerprint).
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			searchHandler.UpdatePosts(m.Posts())
+		}
+	}()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		status := getBuildStatus()
@@ -447,6 +496,12 @@ func createHandler(outputDir string) http.Handler {
 		// Handle live reload endpoint
 		if r.URL.Path == "/__livereload" {
 			handleLiveReload(w, r)
+			return
+		}
+
+		// Handle search API endpoint (bleve-powered, read-only)
+		if r.URL.Path == searchEndpoint {
+			searchHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -549,13 +604,26 @@ func fallback404HTML() string {
 func injectDevScripts(html string, status BuildStatus) string {
 	devScript := buildDevScript(status)
 
+	// Inject search endpoint override for dev mode.
+	// This tells the frontend to use the local bleve API instead of pagefind.
+	// It's only injected during `serve` — production builds never see this.
+	searchScript := `<script>window.__markataSearchEndpoint = "` + serveSearchEndpoint + `";</script>`
+	bodyInjection := devScript
+	headInjection := searchScript
+
+	if strings.Contains(html, "</head>") {
+		html = strings.Replace(html, "</head>", headInjection+"</head>", 1)
+	} else {
+		bodyInjection = headInjection + bodyInjection
+	}
+
 	switch {
 	case strings.Contains(html, "</body>"):
-		return strings.Replace(html, "</body>", devScript+"</body>", 1)
+		return strings.Replace(html, "</body>", bodyInjection+"</body>", 1)
 	case strings.Contains(html, "</html>"):
-		return strings.Replace(html, "</html>", devScript+"</html>", 1)
+		return strings.Replace(html, "</html>", bodyInjection+"</html>", 1)
 	default:
-		return html + devScript
+		return html + bodyInjection
 	}
 }
 
@@ -711,7 +779,7 @@ func handleSearchFallback(w http.ResponseWriter, r *http.Request, outputDir stri
 	indexData, err := os.ReadFile(indexPath)
 	if err != nil {
 		// Index not available, redirect to home with query param
-		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		http.Redirect(w, r, "/?q="+url.QueryEscape(query), http.StatusSeeOther)
 		return
 	}
 
@@ -723,7 +791,7 @@ func handleSearchFallback(w http.ResponseWriter, r *http.Request, outputDir stri
 		URL         string `json:"url"`
 	}
 	if err := json.Unmarshal(indexData, &posts); err != nil {
-		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		http.Redirect(w, r, "/?q="+url.QueryEscape(query), http.StatusSeeOther)
 		return
 	}
 
@@ -1047,6 +1115,12 @@ func shouldIgnoreEvent(event fsnotify.Event) bool {
 		return true
 	}
 
+	for _, internalPath := range serveInternalPaths {
+		if isPathWithinDir(absEventPath, internalPath) {
+			return true
+		}
+	}
+
 	// Ignore temporary/backup files and hidden files
 	baseName := filepath.Base(event.Name)
 	return strings.HasSuffix(event.Name, "~") ||
@@ -1054,6 +1128,65 @@ func shouldIgnoreEvent(event fsnotify.Event) bool {
 		strings.HasSuffix(event.Name, ".swp") ||
 		strings.HasSuffix(event.Name, ".swo") ||
 		strings.HasSuffix(event.Name, ".tmp")
+}
+
+var globMagicPattern = regexp.MustCompile(`[*?\[{]`)
+
+func contentWatchRoots(config *lifecycle.Config) []string {
+	contentDir := config.ContentDir
+	if contentDir == "" {
+		contentDir = "."
+	}
+
+	if contentDir != "." || len(config.GlobPatterns) == 0 {
+		return []string{contentDir}
+	}
+
+	seen := map[string]struct{}{}
+	roots := make([]string, 0, len(config.GlobPatterns))
+	for _, pattern := range config.GlobPatterns {
+		root := watchRootFromPattern(pattern)
+		if root == "" {
+			continue
+		}
+		if _, ok := seen[root]; ok {
+			continue
+		}
+		seen[root] = struct{}{}
+		roots = append(roots, root)
+	}
+
+	if len(roots) == 0 {
+		return []string{contentDir}
+	}
+
+	sort.Strings(roots)
+	return roots
+}
+
+func watchRootFromPattern(pattern string) string {
+	cleaned := filepath.Clean(filepath.FromSlash(pattern))
+	if cleaned == "." || cleaned == string(filepath.Separator) {
+		return "."
+	}
+
+	parts := strings.Split(cleaned, string(filepath.Separator))
+	rootParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		if globMagicPattern.MatchString(part) {
+			break
+		}
+		rootParts = append(rootParts, part)
+	}
+
+	if len(rootParts) == 0 {
+		return "."
+	}
+
+	return filepath.Join(rootParts...)
 }
 
 // handleNewDirectory adds newly created directories to the watcher.
@@ -1473,13 +1606,15 @@ func addWatchPaths(watcher *fsnotify.Watcher, m *lifecycle.Manager) error {
 		return err
 	}
 
-	// Watch content directory
-	contentDir := config.ContentDir
-	if contentDir == "" {
-		contentDir = "."
-	}
-	if err := addDirRecursive(watcher, contentDir); err != nil {
-		return err
+	// Watch content roots derived from configured glob patterns.
+	// This avoids recursively watching generated trees when content_dir is ".".
+	for _, contentRoot := range contentWatchRoots(config) {
+		if _, err := os.Stat(contentRoot); err != nil {
+			continue
+		}
+		if err := addDirRecursive(watcher, contentRoot); err != nil {
+			return err
+		}
 	}
 
 	// Watch templates directory
@@ -1526,6 +1661,15 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 				return filepath.SkipDir
 			}
 			return nil
+		}
+
+		for _, internalPath := range serveInternalPaths {
+			if isPathWithinDir(absPath, internalPath) {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
 		}
 
 		// Skip hidden directories

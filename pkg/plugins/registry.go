@@ -81,6 +81,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["webmentions_fetch"] = func() lifecycle.Plugin { return NewWebmentionsFetchPlugin() }
 	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
+	pluginRegistry.constructors["python_docs"] = func() lifecycle.Plugin { return NewPythonDocsPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["image_optimization"] = func() lifecycle.Plugin { return NewImageOptimizationPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
@@ -159,6 +160,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Load stage plugins
 		NewLoadPlugin(),
+		NewPythonDocsPlugin(),    // Optional source-backed Python API docs (disabled by default)
 		NewTagAggregatorPlugin(), // Normalize and expand tags (runs after Load, before AutoFeeds)
 
 		// Transform stage plugins (in order)

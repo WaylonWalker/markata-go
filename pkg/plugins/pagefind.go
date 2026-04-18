@@ -55,6 +55,11 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Skip when bleve is the active search backend.
+	if searchConfig.SearchBackend() == "bleve" {
+		return nil
+	}
+
 	// Skip in fast mode - search indexing is unnecessary during development
 	if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
 		return nil

@@ -53,7 +53,7 @@ func (p *PaletteCSSPlugin) Name() string {
 func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
-	// Get palette configuration from config.Extra["theme"]
+	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
@@ -115,7 +115,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Get palette configuration from config.Extra["theme"]
+	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)

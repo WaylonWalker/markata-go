@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	CacheVersion    = 1
+	CacheVersion    = 3
 	DefaultCacheDir = ".markata/cache"
 	CacheFileName   = "list.json"
 )
@@ -119,6 +119,7 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 	}
 
 	posts := orderedPosts(files, postsByPath)
+	markPrivateTags(m.Config(), posts)
 	m.SetPosts(posts)
 
 	if err := setFeeds(m, cache, postsByPath, len(changedFiles) == 0); err != nil {
@@ -336,6 +337,7 @@ func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) error {
 	m := lifecycle.NewManager()
 	m.SetConfig(cfg)
 	m.SetPosts(posts)
+	markPrivateTags(cfg, posts)
 
 	autoTitle := plugins.NewAutoTitlePlugin()
 	if err := autoTitle.Transform(m); err != nil {
@@ -355,6 +357,36 @@ func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) error {
 		return err
 	}
 	return stats.Transform(m)
+}
+
+func markPrivateTags(cfg *lifecycle.Config, posts []*models.Post) {
+	if cfg == nil || len(posts) == 0 {
+		return
+	}
+	modelsConfig, ok := cfg.Extra["models_config"].(*models.Config)
+	if !ok || modelsConfig == nil || len(modelsConfig.Encryption.PrivateTags) == 0 {
+		return
+	}
+	privateTags := modelsConfig.Encryption.PrivateTags
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft || post.Private {
+			continue
+		}
+		for _, tag := range post.Tags {
+			if _, ok := privateTags[strings.ToLower(tag)]; ok {
+				post.Private = true
+				break
+			}
+		}
+		if post.Private {
+			continue
+		}
+		if post.Template != "" {
+			if _, ok := privateTags[strings.ToLower(post.Template)]; ok {
+				post.Private = true
+			}
+		}
+	}
 }
 
 func rebuildFeeds(m *lifecycle.Manager) error {
