@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -79,6 +82,9 @@ func (p *ContributionGraphPlugin) Configure(m *lifecycle.Manager) error {
 		if theme, ok := cfgMap["theme"].(string); ok && theme != "" {
 			p.config.Theme = theme
 		}
+		if percentile, ok := cfgMap["scale_max_percentile"].(float64); ok {
+			p.config.ScaleMaxPercentile = percentile
+		}
 	}
 
 	return nil
@@ -97,7 +103,9 @@ func (p *ContributionGraphPlugin) Render(m *lifecycle.Manager) error {
 		return strings.Contains(post.ArticleHTML, `class="language-contribution-graph"`)
 	})
 
-	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+		return p.processPost(m, post)
+	})
 }
 
 // contributionGraphCodeBlockRegex matches <pre><code class="language-contribution-graph"> blocks.
@@ -107,7 +115,7 @@ var contributionGraphCodeBlockRegex = regexp.MustCompile(
 )
 
 // processPost processes a single post's HTML for contribution-graph code blocks.
-func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
+func (p *ContributionGraphPlugin) processPost(m *lifecycle.Manager, post *models.Post) error {
 	// Skip posts marked as skip or with no HTML content
 	if post.Skip || post.ArticleHTML == "" {
 		return nil
@@ -147,7 +155,6 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		graphID := fmt.Sprintf("contribution-graph-%d", atomic.AddUint64(&p.idCounter, 1))
 
 		// Extract data and options from the config
-		data := graphConfig["data"]
 		options := graphConfig["options"]
 		if options == nil {
 			options = map[string]interface{}{}
@@ -155,6 +162,11 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		optionsMap, ok := options.(map[string]interface{})
 		if !ok || optionsMap == nil {
 			optionsMap = map[string]interface{}{}
+		}
+
+		data := graphConfig["data"]
+		if data == nil {
+			data = p.buildContributionData(m, optionsMap)
 		}
 
 		// Auto-detect year from first data point if not specified
@@ -170,6 +182,8 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 				}
 			}
 		}
+
+		maxValue := p.computeColorScaleMax(data, optionsMap)
 
 		// Marshal data and options back to JSON for the script
 		dataJSON, err := json.Marshal(data)
@@ -195,15 +209,37 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
     const graphId = '%s';
     const data = %s;
     const options = {%s};
+    const maxValue = %d;
+    const displayData = data.map(function(point) {
+      const value = point.value || 0;
+      if (options.maxValue && value > options.maxValue) {
+        return Object.assign({}, point, { value: options.maxValue });
+      }
+      return point;
+    });
+
+    function fitGraph() {
+      const inner = document.getElementById(graphId);
+      if (!inner) return;
+
+      const outer = inner.parentElement;
+      if (!outer) return;
+
+      if (!inner.dataset.baseWidth) {
+        inner.dataset.baseWidth = String(inner.scrollWidth || inner.getBoundingClientRect().width || 0);
+      }
+
+      const baseWidth = Number(inner.dataset.baseWidth) || inner.scrollWidth || inner.getBoundingClientRect().width || 0;
+      const scale = baseWidth > 0 ? Math.min(1, outer.clientWidth / baseWidth) : 1;
+      inner.style.zoom = String(scale);
+    }
 
     function paintGraph() {
       // Clear existing graph
       const container = document.getElementById(graphId);
       if (!container) return;
       container.innerHTML = '';
-
-      // Calculate max value for this graph's scale
-      const maxValue = Math.max(1, ...data.map(d => d.value || 0));
+      delete container.dataset.baseWidth;
 
       // Get theme colors from CSS variables
       const styles = getComputedStyle(document.documentElement);
@@ -220,7 +256,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
         {
           itemSelector: '#' + graphId,
           data: {
-            source: data,
+            source: displayData,
             x: 'date',
             y: 'value'
           },
@@ -241,12 +277,18 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
             Tooltip,
             {
               text: function (date, value, dayjsDate) {
-                return (value ? value : 'No') + ' posts on ' + dayjsDate.format('MMM D, YYYY');
+                const original = data.find(function(point) {
+                  return point.date === dayjsDate.format('YYYY-MM-DD');
+                });
+                const originalValue = original ? (original.value || 0) : (value || 0);
+                return (originalValue ? originalValue : 'No') + ' posts on ' + dayjsDate.format('MMM D, YYYY');
               },
             },
           ],
         ]
       );
+
+      fitGraph();
     }
 
     // Initial paint
@@ -257,7 +299,12 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
       window._contributionGraphPainters = [];
     }
     window._contributionGraphPainters.push(paintGraph);
-  })();`, graphID, string(dataJSON), p.buildOptionsObject(optionsJSON))
+
+    if (!window._contributionGraphFitters) {
+      window._contributionGraphFitters = [];
+    }
+    window._contributionGraphFitters.push(fitGraph);
+  })();`, graphID, string(dataJSON), p.buildOptionsObject(optionsJSON), maxValue)
 		initScripts = append(initScripts, initScript)
 
 		// Return the container div
@@ -273,6 +320,122 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
+}
+
+type contributionGraphDataPoint struct {
+	Date  string `json:"date"`
+	Value int    `json:"value"`
+}
+
+func (p *ContributionGraphPlugin) buildContributionData(m *lifecycle.Manager, options map[string]interface{}) interface{} {
+	year := time.Now().Year()
+	if value, ok := options["year"].(float64); ok {
+		year = int(value)
+	} else {
+		options["year"] = float64(year)
+	}
+
+	counts := map[string]int{}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return post != nil && !post.Skip && post.Published && post.Date != nil && post.Date.Year() == year
+	})
+
+	for _, post := range posts {
+		date := post.Date.Format("2006-01-02")
+		counts[date]++
+	}
+
+	data := make([]contributionGraphDataPoint, 0, len(counts))
+	for date, count := range counts {
+		data = append(data, contributionGraphDataPoint{Date: date, Value: count})
+	}
+
+	for i := 0; i < len(data)-1; i++ {
+		for j := i + 1; j < len(data); j++ {
+			if data[i].Date > data[j].Date {
+				data[i], data[j] = data[j], data[i]
+			}
+		}
+	}
+
+	return data
+}
+
+func (p *ContributionGraphPlugin) computeColorScaleMax(data interface{}, options map[string]interface{}) int {
+	values := p.extractContributionValues(data)
+	if len(values) == 0 {
+		return 1
+	}
+
+	if value, ok := options["maxValue"].(float64); ok && value >= 1 {
+		return int(value)
+	}
+
+	if percentile, ok := p.resolveScaleMaxPercentile(options); ok {
+		return percentileValue(values, percentile)
+	}
+
+	return values[len(values)-1]
+}
+
+func (p *ContributionGraphPlugin) resolveScaleMaxPercentile(options map[string]interface{}) (float64, bool) {
+	if value, ok := options["maxPercentile"].(float64); ok && value > 0 {
+		return minFloat(value, 100), true
+	}
+	if p.config.ScaleMaxPercentile > 0 {
+		return minFloat(p.config.ScaleMaxPercentile, 100), true
+	}
+	return 0, false
+}
+
+func (p *ContributionGraphPlugin) extractContributionValues(data interface{}) []int {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return []int{1}
+	}
+
+	var points []contributionGraphDataPoint
+	if err := json.Unmarshal(encoded, &points); err != nil {
+		return []int{1}
+	}
+
+	values := make([]int, 0, len(points))
+	for _, point := range points {
+		if point.Value > 0 {
+			values = append(values, point.Value)
+		}
+	}
+	if len(values) == 0 {
+		return []int{1}
+	}
+
+	sort.Ints(values)
+	return values
+}
+
+func percentileValue(values []int, percentile float64) int {
+	if len(values) == 0 {
+		return 1
+	}
+
+	index := int(math.Ceil((percentile/100)*float64(len(values)))) - 1
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(values) {
+		index = len(values) - 1
+	}
+	if values[index] < 1 {
+		return 1
+	}
+	return values[index]
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // buildOptionsObject converts options JSON into a JavaScript object literal for Cal-Heatmap.
@@ -310,20 +473,23 @@ func (p *ContributionGraphPlugin) buildOptionsObject(optionsJSON []byte) string 
 
 // injectCalHeatmapScripts adds the Cal-Heatmap library and initialization scripts to the HTML.
 func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, initScripts []string) string {
+	containerSelector := "." + p.config.ContainerClass
+
 	// Build the combined script
 	// Cal-Heatmap v4 requires d3 as a dependency
 	// Tooltip plugin requires popper.js
 	script := fmt.Sprintf(`
 <style>
-.contribution-graph-container {
+%s {
   width: 100%%;
-  overflow-x: auto;
+  overflow: hidden;
   margin: 1rem 0;
   display: flex;
   justify-content: center;
 }
-.contribution-graph-container > div {
+%s > div {
   flex-shrink: 0;
+  transform-origin: top center;
 }
 #ch-tooltip {
   background: var(--color-surface, #333);
@@ -363,8 +529,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   observer.observe(document.documentElement, { attributes: true });
   observer.observe(document.body, { attributes: true });
+
+  window.addEventListener('resize', function() {
+    if (window._contributionGraphFitters) {
+      window._contributionGraphFitters.forEach(function(fit) {
+        fit();
+      });
+    }
+  });
 });
-</script>`, p.resolveAssetURL("cal-heatmap-css", p.config.CDNURL+"/cal-heatmap.css"), p.resolveAssetURL("d3", "https://d3js.org/d3.v7.min.js"), p.resolveAssetURL("popper", "https://unpkg.com/@popperjs/core@2"), p.resolveAssetURL("cal-heatmap-js", p.config.CDNURL+"/cal-heatmap.min.js"), p.resolveAssetURL("cal-heatmap-tooltip", p.config.CDNURL+"/plugins/Tooltip.min.js"), strings.Join(initScripts, "\n"))
+</script>`, containerSelector, containerSelector, p.resolveAssetURL("cal-heatmap-css", p.config.CDNURL+"/cal-heatmap.css"), p.resolveAssetURL("d3", "https://d3js.org/d3.v7.min.js"), p.resolveAssetURL("popper", "https://unpkg.com/@popperjs/core@2"), p.resolveAssetURL("cal-heatmap-js", p.config.CDNURL+"/cal-heatmap.min.js"), p.resolveAssetURL("cal-heatmap-tooltip", p.config.CDNURL+"/plugins/Tooltip.min.js"), strings.Join(initScripts, "\n"))
 
 	// Append the script to the end of the content
 	return htmlContent + script

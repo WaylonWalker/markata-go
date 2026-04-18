@@ -436,6 +436,7 @@ enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/cal-heatmap@4"
 container_class = "contribution-graph-container"
 theme = "light"                    # light, dark
+scale_max_percentile = 0            # 0 disables percentile-based outlier control
 ```
 
 **Configuration Fields:**
@@ -446,6 +447,7 @@ theme = "light"                    # light, dark
 | `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/cal-heatmap@4"` | URL for Cal-Heatmap library |
 | `container_class` | string | `"contribution-graph-container"` | CSS class for container div |
 | `theme` | string | `"light"` | Cal-Heatmap color theme |
+| `scale_max_percentile` | number | `0` | Global percentile cap for color scaling. Set 1-100 to reduce outlier washout |
 
 **Syntax:**
 
@@ -481,13 +483,16 @@ The `data` array should contain objects with:
 | `subDomain` | string | `"day"` | Sub-domain: "day", "hour", "minute" |
 | `cellSize` | number | `10` | Size of each cell in pixels |
 | `range` | number | `1` | Number of domain units to display |
+| `maxValue` | number | unset | Explicit color-scale maximum. Values above it use the max color |
+| `maxPercentile` | number | unset | Per-graph percentile cap for the color scale |
 
 **Behavior:**
 
 1. Find all `<pre><code class="language-contribution-graph">` blocks
 2. Parse JSON content (data and options)
-3. Replace with div container and initialization script
-4. Inject Cal-Heatmap CSS and JS (once per page)
+3. Compute the graph color-scale maximum from the data. When `maxPercentile` or `scale_max_percentile` is set, use that percentile instead of the raw maximum.
+4. Replace with div container and initialization script
+5. Inject Cal-Heatmap CSS and JS (once per page), including built-in resize fitting so graphs fit narrow content columns without page-specific markdown scripts
 
 **Output:**
 
