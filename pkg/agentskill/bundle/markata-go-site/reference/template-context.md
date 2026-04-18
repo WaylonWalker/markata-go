@@ -154,6 +154,12 @@ Markata-go also injects convenient top-level aliases:
 - `page.page_urls`
 - `page.pagination_type`
 
+## Reader Page Context
+
+- `day_groups` on `/reader/` templates
+- each group provides `date_iso`, `weekday`, `title`, `year`, `count`, and `entries`
+- reader entry maps include `source_icon_url`, `published_datetime`, `published_label`, `preview_url`, `preview_kind`, `source_image_url`, and `source_initial`
+
 ## Sidebar/Navigation Context
 
 - `sidebar_items`

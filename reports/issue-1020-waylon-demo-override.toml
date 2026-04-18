@@ -1,0 +1,8 @@
+[markata-go.blogroll]
+cache_dir = "/home/waylon/git/markata-go-worktrees/issue-1020/reports/issue-1020-waylon-demo-blogroll-cache"
+
+[markata-go.searchcraft]
+enabled = false
+
+[markata-go.plugins.steam]
+enabled = false

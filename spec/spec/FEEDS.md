@@ -31,6 +31,23 @@ Feeds are the core differentiator of this static site generator. A feed is a **f
 
 ---
 
+## Reader Preview Hierarchy
+
+The `/reader/` page should prefer stable, curated preview treatments over noisy screenshot thumbnails.
+
+For each reader entry, preview selection follows this order:
+
+1. article image extracted from the entry itself
+2. source image from feed avatar or feed image metadata
+3. screenshot fallback from `markata-go.blogroll.fallback_image_service`
+4. branded source tile with favicon, source name, and domain
+
+For YouTube Atom feeds, reader entries should resolve the per-video thumbnail from the feed entry metadata or stable `yt:video:<id>` entry ID before falling back to source-level imagery.
+
+Reader template contexts may expose `preview_url`, `preview_kind`, `source_image_url`, and existing source metadata so themes can style each preview type differently.
+
+---
+
 ## Feed Configuration
 
 ### Basic Feed
@@ -394,6 +411,31 @@ If JavaScript is disabled:
 - Standard links work normally (full page navigation)
 - `hx-get` is ignored, `href` is followed
 - SEO crawlers see all pages linked normally
+
+---
+
+## Reader Page (`/reader/`)
+
+The reader page aggregates the latest posts from all followed feeds into a curated, scan-friendly layout.
+
+### Layout Contract
+
+- Entries are grouped by calendar day in reverse chronological order.
+- Each day group renders a large date rail and a two-column content grid on wide screens.
+- Each entry shows a source favicon up front, the source name, publish date, title, description, and optional image.
+- The layout collapses to a single column on small screens.
+
+### Template Context
+
+- `entries` - flat list of entry maps for compatibility
+- `day_groups` - grouped reader sections with:
+  - `date_iso`
+  - `weekday`
+  - `title`
+  - `year`
+  - `count`
+  - `entries`
+- each entry map includes `feed_url`, `feed_title`, `source_icon_url`, `published_datetime`, `published_label`, `url`, `title`, `description`, and `image_url`
 
 ---
 
