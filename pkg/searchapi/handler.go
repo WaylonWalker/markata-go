@@ -1,12 +1,10 @@
 package searchapi
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,7 +17,7 @@ import (
 
 // Handler serves the bleve search API.
 // The index is built lazily on first search and reused across requests.
-// It is only rebuilt when posts change (detected via count + path hash).
+// It is only rebuilt when the search-visible post data changes.
 type Handler struct {
 	posts       []*models.Post
 	postsByPath map[string]*models.Post
@@ -27,7 +25,7 @@ type Handler struct {
 	config      Config
 	mu          sync.RWMutex
 	idx         *search.Index
-	postsHash   string // cheap fingerprint of current post set
+	postsHash   string
 	searchSem   chan struct{}
 }
 
@@ -222,7 +220,7 @@ func (h *Handler) parseQueryOptions(r *http.Request) (search.QueryOptions, int, 
 	}
 
 	if tags := q.Get("tags"); tags != "" {
-		opts.Tags = strings.Split(tags, ",")
+		opts.Tags = parseTags(tags)
 	}
 	if from := q.Get("from"); from != "" {
 		if t, err := time.Parse("2006-01-02", from); err == nil {
@@ -239,6 +237,19 @@ func (h *Handler) parseQueryOptions(r *http.Request) (search.QueryOptions, int, 
 	opts.Published = &published
 
 	return opts, limit, fuzzy
+}
+
+func parseTags(raw string) []string {
+	parts := strings.Split(raw, ",")
+	tags := make([]string, 0, len(parts))
+	for _, part := range parts {
+		tag := strings.TrimSpace(part)
+		if tag == "" {
+			continue
+		}
+		tags = append(tags, tag)
+	}
+	return tags
 }
 
 func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit int) SearchResponse {
@@ -452,21 +463,7 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 // postsFingerprint creates a cheap hash of the post set for change detection.
-// Uses count + sorted paths — NOT content (content hashing is too expensive
-// to run every 2 seconds on 3000+ posts).
+// It matches the search-visible content used to build the bleve index.
 func postsFingerprint(posts []*models.Post) string {
-	if len(posts) == 0 {
-		return "empty"
-	}
-	h := sha256.New()
-	fmt.Fprintf(h, "n=%d\n", len(posts))
-	paths := make([]string, len(posts))
-	for i, p := range posts {
-		paths[i] = p.Path
-	}
-	sort.Strings(paths)
-	for _, p := range paths {
-		fmt.Fprintln(h, p)
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))[:16]
+	return search.ContentHash(posts)
 }

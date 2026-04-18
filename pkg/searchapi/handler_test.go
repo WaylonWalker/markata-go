@@ -226,3 +226,63 @@ func TestReadOnlyHandler_Search(t *testing.T) {
 		t.Fatalf("href = %q, want %q", resp.Results[0].Href, "/read-only")
 	}
 }
+
+func TestParseTags(t *testing.T) {
+	got := parseTags(" go, programming , ,bleve ")
+	want := []string{"go", "programming", "bleve"}
+	if len(got) != len(want) {
+		t.Fatalf("len(tags) = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("tags[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestHandler_UpdatePostsRebuildsOnContentChange(t *testing.T) {
+	title := "Search Post"
+	posts := []*models.Post{{
+		Path:      "posts/search.md",
+		Title:     &title,
+		Content:   "original body",
+		Slug:      "search",
+		Href:      "/search",
+		Published: true,
+	}}
+
+	h := NewHandler(posts, t.TempDir(), DefaultConfig())
+	defer h.Close()
+
+	req := httptest.NewRequest("GET", "/api/search?q=updated", http.NoBody)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	var before SearchResponse
+	if err := json.NewDecoder(w.Body).Decode(&before); err != nil {
+		t.Fatalf("decode before: %v", err)
+	}
+	if before.Total != 0 {
+		t.Fatalf("expected no results before update, got %d", before.Total)
+	}
+
+	updated := *posts[0]
+	updated.Content = "updated body"
+	h.UpdatePosts([]*models.Post{&updated})
+
+	req = httptest.NewRequest("GET", "/api/search?q=updated", http.NoBody)
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var after SearchResponse
+	if err := json.NewDecoder(w.Body).Decode(&after); err != nil {
+		t.Fatalf("decode after: %v", err)
+	}
+	if after.Total != 1 {
+		t.Fatalf("expected 1 result after update, got %d", after.Total)
+	}
+}

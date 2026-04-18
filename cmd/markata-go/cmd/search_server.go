@@ -74,7 +74,8 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 
 	apiCfg := searchapi.DefaultConfig()
 	cacheDir := filepath.Join(".markata", "cache")
-	endpoint := "/api/search"
+	clientSearchEndpoint := defaultSearchEndpoint
+	handlerSearchPath := defaultSearchEndpoint
 	apiCfg.IndexName = searchServerIndexName
 	apiCfg.HashPath = searchServerHashPath
 	apiCfg.Rebuild = searchServerRebuild
@@ -91,19 +92,7 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 		}
 
 		posts = app.Manager.Posts()
-		if mc := getModelsConfig(app.Manager); mc != nil {
-			apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
-			apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
-			apiCfg.DefaultFuzzy = mc.Search.Bleve.IsFuzzy()
-			apiCfg.IndexDir = searchServerIndexDir
-			if searchServerIndexDir == "" && searchServerIndexName != "" {
-				apiCfg.IndexDir = filepath.Join(cacheDir, "search-"+searchServerIndexName+".bleve")
-			}
-			if len(mc.Search.Bleve.CORSOrigins) > 0 {
-				apiCfg.CORSOrigins = mc.Search.Bleve.CORSOrigins
-			}
-			endpoint = mc.Search.Bleve.EndpointOrDefault(mc.Search.SearchEndpoint())
-		}
+		clientSearchEndpoint, handlerSearchPath = applySearchServerModelsConfig(getModelsConfig(app.Manager), &apiCfg, cacheDir)
 		handler = searchapi.NewHandler(posts, cacheDir, apiCfg)
 
 		if searchServerMode == searchServerModeWatch {
@@ -136,7 +125,7 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 	defer handler.Close()
 
 	mux := http.NewServeMux()
-	mux.Handle(endpoint, handler)
+	mux.Handle(handlerSearchPath, handler)
 
 	// Health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -156,7 +145,10 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		fmt.Fprintf(os.Stderr, "Search API listening on http://%s%s\n", addr, endpoint)
+		fmt.Fprintf(os.Stderr, "Search API listening on http://%s%s\n", addr, handlerSearchPath)
+		if clientSearchEndpoint != handlerSearchPath {
+			fmt.Fprintf(os.Stderr, "Configured client endpoint: %s\n", clientSearchEndpoint)
+		}
 		switch searchServerMode {
 		case searchServerModeRuntime:
 			fmt.Fprintf(os.Stderr, "Indexed %d posts (%d published)\n", len(posts), countPublished(posts))
@@ -174,6 +166,28 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 	<-stop
 	fmt.Fprintln(os.Stderr, "\nShutting down...")
 	return server.Close()
+}
+
+func applySearchServerModelsConfig(mc *models.Config, apiCfg *searchapi.Config, cacheDir string) (clientEndpoint, handlerPath string) {
+	clientEndpoint = defaultSearchEndpoint
+	handlerPath = defaultSearchEndpoint
+	if mc == nil {
+		return clientEndpoint, handlerPath
+	}
+
+	clientEndpoint, handlerPath = configuredSearchEndpoints(mc)
+	apiCfg.DefaultLimit = mc.Search.Bleve.DefaultLimit()
+	apiCfg.MaxLimit = mc.Search.Bleve.GetMaxLimit()
+	apiCfg.DefaultFuzzy = mc.Search.Bleve.IsFuzzy()
+	apiCfg.IndexDir = searchServerIndexDir
+	if searchServerIndexDir == "" && searchServerIndexName != "" {
+		apiCfg.IndexDir = filepath.Join(cacheDir, "search-"+searchServerIndexName+".bleve")
+	}
+	if len(mc.Search.Bleve.CORSOrigins) > 0 {
+		apiCfg.CORSOrigins = mc.Search.Bleve.CORSOrigins
+	}
+
+	return clientEndpoint, handlerPath
 }
 
 func watchSearchContent(ctx context.Context, watcher *fsnotify.Watcher, handler *searchapi.Handler) {

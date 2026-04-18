@@ -158,6 +158,35 @@ func BuildIfNeededAt(dir, hashPath string, posts []*models.Post) (*Index, error)
 	return si, nil
 }
 
+func hashSearchVisiblePosts(posts []*models.Post) string {
+	h := sha256.New()
+	paths := make([]string, 0, len(posts))
+	docs := make(map[string]Document, len(posts))
+
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft {
+			continue
+		}
+		paths = append(paths, post.Path)
+		docs[post.Path] = toPostDoc(post)
+	}
+
+	sort.Strings(paths)
+	for _, path := range paths {
+		doc := docs[path]
+		stored := doc
+		stored.DocJSON = ""
+		data, err := json.Marshal(stored)
+		if err != nil {
+			fmt.Fprintf(h, "%s:%v\n", path, stored)
+			continue
+		}
+		fmt.Fprintf(h, "%s:%s\n", path, data)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 // BuildIfNeededNamed creates or opens a named index, allowing multiple processes
 // to maintain separate indexes in the same cache directory.
 func BuildIfNeededNamed(cacheDir, name string, posts []*models.Post) (*Index, error) {
@@ -503,23 +532,7 @@ func buildQuery(queryStr string, opts QueryOptions) query.Query {
 
 // ContentHash computes a hash of all post paths and content for cache invalidation.
 func ContentHash(posts []*models.Post) string {
-	h := sha256.New()
-	// Sort by path for deterministic hashing
-	paths := make([]string, len(posts))
-	for i, p := range posts {
-		paths[i] = p.Path
-	}
-	sort.Strings(paths)
-
-	contentMap := make(map[string]string, len(posts))
-	for _, p := range posts {
-		contentMap[p.Path] = p.Content
-	}
-
-	for _, path := range paths {
-		fmt.Fprintf(h, "%s:%s\n", path, contentMap[path])
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return hashSearchVisiblePosts(posts)
 }
 
 func readHashFile(path string) string {

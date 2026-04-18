@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -64,7 +65,7 @@ var (
 	// serveInternalPaths are generated/cache directories that should never trigger rebuilds.
 	serveInternalPaths []string
 
-	// serveSearchEndpoint is the search API endpoint path configured for this serve session.
+	// serveSearchEndpoint is the frontend search endpoint configured for this serve session.
 	serveSearchEndpoint string
 
 	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
@@ -226,12 +227,9 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 
 	// Create HTTP server with search API
 	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	searchEndpoint := "/api/search"
-	if mc := getModelsConfig(m); mc != nil {
-		searchEndpoint = mc.Search.SearchEndpoint()
-	}
+	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
 	serveSearchEndpoint = searchEndpoint
-	handler := createHandler(outputPath, m, searchEndpoint)
+	handler := createHandler(outputPath, m, searchHandlerPath)
 
 	server, serverErr, serverStarted := startHTTPServer(addr, handler)
 
@@ -781,7 +779,7 @@ func handleSearchFallback(w http.ResponseWriter, r *http.Request, outputDir stri
 	indexData, err := os.ReadFile(indexPath)
 	if err != nil {
 		// Index not available, redirect to home with query param
-		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		http.Redirect(w, r, "/?q="+url.QueryEscape(query), http.StatusSeeOther)
 		return
 	}
 
@@ -793,7 +791,7 @@ func handleSearchFallback(w http.ResponseWriter, r *http.Request, outputDir stri
 		URL         string `json:"url"`
 	}
 	if err := json.Unmarshal(indexData, &posts); err != nil {
-		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		http.Redirect(w, r, "/?q="+url.QueryEscape(query), http.StatusSeeOther)
 		return
 	}
 

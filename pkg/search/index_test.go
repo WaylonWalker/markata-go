@@ -223,3 +223,32 @@ func TestBuildIfNeeded(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", len(results))
 	}
 }
+
+func TestContentHashChangesWhenSearchMetadataChanges(t *testing.T) {
+	title := "Original Title"
+	posts := []*models.Post{{
+		Path:        "posts/test.md",
+		Title:       &title,
+		Description: ptrString("original description"),
+		Content:     "unchanged content",
+		Slug:        "test",
+		Tags:        []string{"go"},
+		Published:   true,
+	}}
+
+	original := ContentHash(posts)
+
+	updated := *posts[0]
+	updated.Title = ptrString("Updated Title")
+	updated.Description = ptrString("updated description")
+	updated.Tags = append(append([]string(nil), posts[0].Tags...), "search")
+
+	changed := ContentHash([]*models.Post{&updated})
+	if original == changed {
+		t.Fatal("expected content hash to change when indexed metadata changes")
+	}
+}
+
+func ptrString(value string) *string {
+	return &value
+}

@@ -796,6 +796,7 @@
 
     // Pagefind Search (navbar) - needs re-init after DOM swap
     callInit('initPagefindSearch', window.initPagefindSearch);
+    callInit('initBleveSearch', window.initBleveSearch);
 
     // Re-initialize feed cycling first so sidebar chrome is hydrated before
     // other scripts inspect feed-aware DOM state.

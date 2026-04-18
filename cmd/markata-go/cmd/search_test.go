@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestRunSearchServer_InvalidMode(t *testing.T) {
@@ -70,5 +72,45 @@ func TestSearchBuildIndexCommand_BuildsArtifacts(t *testing.T) {
 	}
 	if _, err := os.Stat(hashPath); err != nil {
 		t.Fatalf("expected hash file to exist: %v", err)
+	}
+}
+
+func TestConfiguredSearchEndpoints(t *testing.T) {
+	tests := []struct {
+		name            string
+		cfg             *models.Config
+		wantClient      string
+		wantHandlerPath string
+	}{
+		{
+			name:            "defaults without config",
+			cfg:             nil,
+			wantClient:      defaultSearchEndpoint,
+			wantHandlerPath: defaultSearchEndpoint,
+		},
+		{
+			name:            "relative bleve endpoint",
+			cfg:             &models.Config{Search: models.SearchConfig{Bleve: models.BleveSearchConfig{Endpoint: "/custom/search"}}},
+			wantClient:      "/custom/search",
+			wantHandlerPath: "/custom/search",
+		},
+		{
+			name:            "absolute bleve endpoint uses path for handler",
+			cfg:             &models.Config{Search: models.SearchConfig{Bleve: models.BleveSearchConfig{Endpoint: "https://search.example.com/api/search"}}},
+			wantClient:      "https://search.example.com/api/search",
+			wantHandlerPath: "/api/search",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, handlerPath := configuredSearchEndpoints(tt.cfg)
+			if client != tt.wantClient {
+				t.Fatalf("client endpoint = %q, want %q", client, tt.wantClient)
+			}
+			if handlerPath != tt.wantHandlerPath {
+				t.Fatalf("handler path = %q, want %q", handlerPath, tt.wantHandlerPath)
+			}
+		})
 	}
 }

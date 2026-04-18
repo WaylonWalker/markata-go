@@ -315,3 +315,29 @@ func TestBuildDevScript_IncludesLicenseToast(t *testing.T) {
 		t.Fatalf("expected license_warning handling in dev script")
 	}
 }
+
+func TestInjectDevScripts_UsesConfiguredSearchEndpoint(t *testing.T) {
+	original := serveSearchEndpoint
+	serveSearchEndpoint = "https://search.example.com/api/search"
+	defer func() { serveSearchEndpoint = original }()
+
+	updated := injectDevScripts("<html><head></head><body></body></html>", BuildStatus{Status: buildStatusBuilding})
+	if !strings.Contains(updated, `window.__markataSearchEndpoint = "https://search.example.com/api/search";`) {
+		t.Fatalf("expected configured search endpoint injection, got %s", updated)
+	}
+}
+
+func TestHandleSearchFallback_EncodesRedirectQuery(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/_search", strings.NewReader("q=go+%26+bleve"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+
+	handleSearchFallback(recorder, req, t.TempDir())
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", recorder.Code)
+	}
+	if location := recorder.Header().Get("Location"); location != "/?q=go+%26+bleve" {
+		t.Fatalf("location = %q, want %q", location, "/?q=go+%26+bleve")
+	}
+}
