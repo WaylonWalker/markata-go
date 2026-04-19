@@ -204,6 +204,7 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	// Apply fast mode if requested
 	if serveFast {
 		applyFastMode(m)
+		m.Config().Extra["cache_cleanup_async"] = true
 	}
 
 	if !serveFast {
@@ -1488,6 +1489,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		}
 		m.Config().Extra["feeds_async"] = true
 		applyFastMode(m)
+		m.Config().Extra["cache_cleanup_async"] = true
 	}
 
 	if serveFast {
