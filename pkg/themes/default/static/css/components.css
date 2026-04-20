@@ -1646,7 +1646,7 @@
   position: absolute;
   top: calc(100% + 0.45rem);
   left: 0;
-  z-index: 5;
+  z-index: 100;
   min-width: 12rem;
   display: grid;
   gap: 0.35rem;
