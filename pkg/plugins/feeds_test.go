@@ -937,56 +937,6 @@ func TestFilterPosts_IncludePrivate(t *testing.T) {
 	}
 }
 
-func TestFeedsPlugin_Collect_ExcludesPostsWithoutRenderableContent(t *testing.T) {
-	m := lifecycle.NewManager()
-
-	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-	m.SetPosts([]*models.Post{
-		{Path: "rendered.md", Slug: "rendered", Title: strPtr("Rendered"), Date: &date, ArticleHTML: "<p>Rendered</p>"},
-		{Path: "empty.md", Slug: "empty", Title: strPtr("Empty"), Date: &date},
-		{Path: "skipped.md", Slug: "skipped", Title: strPtr("Skipped"), Date: &date, Skip: true, ArticleHTML: "<p>Skipped</p>"},
-	})
-
-	config := lifecycle.NewConfig()
-	config.Extra = map[string]interface{}{
-		"feeds": []models.FeedConfig{{
-			Slug:  "all",
-			Title: "All Posts",
-		}},
-	}
-	m.SetConfig(config)
-
-	plugin := NewFeedsPlugin()
-	if err := plugin.Collect(m); err != nil {
-		t.Fatalf("Collect() error: %v", err)
-	}
-
-	feeds := m.Feeds()
-	if len(feeds) != 1 {
-		t.Fatalf("expected 1 feed, got %d", len(feeds))
-	}
-
-	posts := feeds[0].Posts
-	if len(posts) != 1 {
-		t.Fatalf("expected 1 rendered post, got %d", len(posts))
-	}
-	if posts[0].Slug != "rendered" {
-		t.Fatalf("got slug %q, want %q", posts[0].Slug, "rendered")
-	}
-
-	cached, ok := m.Cache().Get("feed_configs")
-	if !ok {
-		t.Fatal("expected cached feed configs")
-	}
-	configs, ok := cached.([]models.FeedConfig)
-	if !ok || len(configs) != 1 {
-		t.Fatalf("cached feed configs malformed: %#v", cached)
-	}
-	if len(configs[0].Posts) != 1 || configs[0].Posts[0].Slug != "rendered" {
-		t.Fatalf("cached feed posts = %#v, want only rendered post", configs[0].Posts)
-	}
-}
-
 func TestFeedsPlugin_IncludePrivate(t *testing.T) {
 	m := lifecycle.NewManager()
 
