@@ -29,6 +29,8 @@ Feeds are the core differentiator of this static site generator. A feed is a **f
 3. **Flexible** - Every "index page" is a feed: home, archives, tags, categories, search indexes
 4. **Familiar** - Mirrors how content platforms work (RSS readers, APIs, syndication)
 
+Feed collections MUST exclude posts that did not produce renderable page output. Posts with empty rendered HTML, skipped posts, and drafts MUST NOT appear in HTML, RSS, Atom, JSON, or derived feed collections.
+
 ---
 
 ## Reader Preview Hierarchy

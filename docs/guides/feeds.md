@@ -13,6 +13,8 @@ tags:
 
 Feeds are the core differentiator of markata-go. A feed is a **filtered, sorted, paginated collection of posts** that can output to **multiple formats** simultaneously from a single definition.
 
+Feeds only include posts that produced renderable page output. If a page is skipped, remains a draft, or has no rendered HTML because its content is empty, markata-go omits it from feed pages and syndication outputs instead of publishing a broken entry.
+
 > **Prerequisites:** Before diving into feeds, you should understand:
 > - [Frontmatter Guide](/docs/guides/frontmatter/) - How post metadata works (feeds filter based on frontmatter)
 > - [Configuration Guide](/docs/guides/configuration/) - Basic config file structure
