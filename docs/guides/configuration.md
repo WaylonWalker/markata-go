@@ -1519,6 +1519,9 @@ og = true         # /slug/og/index.html (social card)
 
 **Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.
 
+Feed sidebar variant links use the same canonical short URLs (`/slug.md`, `/slug.txt`, `/slug.ansi`) rather than nested `/slug/index.<ext>` paths.
+If a post format is disabled, its sidebar link is omitted.
+
 **Per-post frontmatter overrides**: A post can override any of these format flags in frontmatter with a `post_formats` object. Overrides merge with the site defaults, so omitted keys continue to inherit from `[markata-go.post_formats]`.
 
 ```yaml

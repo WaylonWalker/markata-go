@@ -327,6 +327,8 @@ Markata-go can output posts in multiple formats beyond HTML. Alternate format te
 
 Use the `plaintext` filter to strip HTML tags when producing text output. Hardcoded fallbacks: `default.txt` (text), `default.ansi` (ANSI), `raw.txt` (markdown), `og-card.html` (OG).
 
+Feed sidebar variant links should point at the canonical short URLs for enabled formats (`/slug.md`, `/slug.txt`, `/slug.ansi`) instead of nested `/slug/index.<ext>` paths.
+
 ## Common Tasks
 
 - customize post or feed cards
