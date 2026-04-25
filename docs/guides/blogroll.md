@@ -559,7 +559,8 @@ cache_duration = "24h"          # How long to cache feeds
 2. On subsequent builds, cached feeds are used until `cache_duration` expires
 3. Expiration is based on the cached feed's recorded fetch time, not file mtimes
 4. If a refresh fails, the stale cached feed is reused instead of failing open
-5. Delete `cache/blogroll/` to force a fresh fetch
+5. Explicit config overrides like `title`, `description`, `site_url`, `image_url`, `handle`, aliases, category, and tags are reapplied even when cached feed data is reused
+6. Delete `cache/blogroll/` to force a fresh fetch
 
 ### Cache Duration Examples
 

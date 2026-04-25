@@ -865,11 +865,21 @@ func initFeedFromConfig(config models.ExternalFeedConfig) *models.ExternalFeed {
 
 // mergeCachedFeed merges config values into a cached feed.
 func mergeCachedFeed(cached *models.ExternalFeed, config models.ExternalFeedConfig) *models.ExternalFeed {
+	cached.Config = config
 	if config.Title != "" {
 		cached.Title = config.Title
 	}
+	if config.Description != "" {
+		cached.Description = config.Description
+	}
 	if config.Category != "" {
 		cached.Category = config.Category
+	}
+	if config.SiteURL != "" {
+		cached.SiteURL = config.SiteURL
+	}
+	if config.ImageURL != "" {
+		cached.ImageURL = config.ImageURL
 	}
 	cached.Tags = config.Tags
 	return cached
