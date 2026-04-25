@@ -197,7 +197,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_AppendsFeedParamToLinks(t *testin
 		Posts: []*models.Post{prev, current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication)
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
 	if len(entry.Posts) != 2 {
 		t.Fatalf("expected 2 posts, got %d", len(entry.Posts))
 	}
@@ -229,7 +229,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_IncludesEnabledVariants(t *testin
 		Posts: []*models.Post{current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication)
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
 	got := make([]string, 0, len(entry.Variants))
 	for _, variant := range entry.Variants {
 		got = append(got, variant.Key)
@@ -242,6 +242,98 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_IncludesEnabledVariants(t *testin
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("variant order = %#v, want %#v", got, want)
+		}
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedEntry_UsesCanonicalVariantURLs(t *testing.T) {
+	p := NewTemplatesPlugin()
+	title := "Current"
+	current := &models.Post{Slug: "current", Title: &title, Href: "/current/"}
+	feed := &models.FeedConfig{
+		Slug:  "til-feed",
+		Title: "Today I Learned",
+		Formats: models.FeedFormats{
+			HTML:       true,
+			SimpleHTML: true,
+			RSS:        true,
+			Atom:       true,
+			JSON:       true,
+			Markdown:   true,
+			Text:       true,
+		},
+		Posts: []*models.Post{current},
+	}
+
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	for _, variant := range entry.Variants {
+		switch variant.Key {
+		case "md":
+			if variant.Href != "/til-feed.md" {
+				t.Fatalf("md href = %q, want %q", variant.Href, "/til-feed.md")
+			}
+		case "txt":
+			if variant.Href != "/til-feed.txt" {
+				t.Fatalf("txt href = %q, want %q", variant.Href, "/til-feed.txt")
+			}
+		}
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedEntry_UsesCanonicalVariantURLsForRootFeed(t *testing.T) {
+	p := NewTemplatesPlugin()
+	title := "Current"
+	current := &models.Post{Slug: "current", Title: &title, Href: "/current/"}
+	feed := &models.FeedConfig{
+		Title: "Posts",
+		Formats: models.FeedFormats{
+			Markdown: true,
+			Text:     true,
+		},
+		Posts: []*models.Post{current},
+	}
+
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	for _, variant := range entry.Variants {
+		switch variant.Key {
+		case "md":
+			if variant.Href != "/index.md" {
+				t.Fatalf("md href = %q, want %q", variant.Href, "/index.md")
+			}
+		case "txt":
+			if variant.Href != "/index.txt" {
+				t.Fatalf("txt href = %q, want %q", variant.Href, "/index.txt")
+			}
+		}
+	}
+}
+
+func TestTemplatesPlugin_BuildSidebarFeedEntry_HidesDisabledPostFormats(t *testing.T) {
+	p := NewTemplatesPlugin()
+	title := "Current"
+	current := &models.Post{Slug: "current", Title: &title, Href: "/current/"}
+	feed := &models.FeedConfig{
+		Slug:  "til-feed",
+		Title: "Today I Learned",
+		Formats: models.FeedFormats{
+			HTML:       true,
+			SimpleHTML: true,
+			RSS:        true,
+			Atom:       true,
+			JSON:       true,
+			Markdown:   true,
+			Text:       true,
+		},
+		Posts: []*models.Post{current},
+	}
+	postFormats := models.NewPostFormatsConfig()
+	postFormats.Markdown = false
+	postFormats.Text = false
+
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, postFormats)
+	for _, variant := range entry.Variants {
+		if variant.Key == "md" || variant.Key == "txt" {
+			t.Fatalf("unexpected variant %q in %#v", variant.Key, entry.Variants)
 		}
 	}
 }

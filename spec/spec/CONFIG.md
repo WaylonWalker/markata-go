@@ -911,6 +911,9 @@ Theme-aware ANSI rendering MUST derive colors from the active site palette when 
 
 For `.txt`, `.md`, and `.ansi` formats, content is placed at the canonical short URL (`/slug.txt`, `/slug.md`, `/slug.ansi`). Redirects are provided at `/slug.<ext>/index.html` (for hosts that serve `index.html` in a directory) and `/slug/index.<ext>/index.html` (for backwards compatibility).
 
+Rendered feed/sidebar variant links MUST use the same canonical short URLs rather than nested `/slug/index.<ext>` paths.
+If a post format is disabled in the resolved config, the corresponding sidebar link MUST be omitted.
+
 **Special Files (robots, llms, humans, security, ads):**
 
 Special web files have an inverted structure to serve content at their expected root-level locations:
