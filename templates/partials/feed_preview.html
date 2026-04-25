@@ -5,7 +5,7 @@
         <li class="feed-preview__item">
             <a class="feed-preview__title" href="{{ post.href }}">{{ post.title }}</a>
             {% if post.date %}
-            <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"Jan 2, 2006" }}</time>
+            <time datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
             {% endif %}
             {% if post.description %}
             <p>{{ post.description | striptags | truncate:160 }}</p>

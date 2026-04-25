@@ -955,11 +955,13 @@ Default templates include Microformats2 classes for IndieWeb compatibility.
 
 Single post templates MUST include `h-entry` markup:
 
+Visible HTML dates SHOULD use the shared `human_date` filter so post pages, cards, archive views, and reader metadata render as `Apr 15, 2026` while `datetime` attributes remain machine-readable.
+
 ```html
 <article class="post h-entry">
   <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
   <h1 class="p-name">{{ post.title }}</h1>
-  <time class="dt-published" datetime="{{ post.date | atom_date }}">...</time>
+  <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
   <div class="post-content e-content">{{ body | safe }}</div>
   {% for tag in post.tags %}
   <a class="p-category" href="/tags/{{ tag | slugify }}/">{{ tag }}</a>

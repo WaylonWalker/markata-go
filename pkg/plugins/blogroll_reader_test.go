@@ -68,7 +68,7 @@ func TestBlogrollPlugin_ReaderDayGroups(t *testing.T) {
 		t.Fatalf("source_icon_url = %q, want favicon URL for example.com", iconURL)
 	}
 
-	if got, want := groupEntries[0]["published_label"], "Apr 17"; got != want {
+	if got, want := groupEntries[0]["published_label"], "Apr 17, 2026"; got != want {
 		t.Fatalf("published_label = %v, want %v", got, want)
 	}
 

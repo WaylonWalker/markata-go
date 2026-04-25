@@ -33,7 +33,7 @@
     {% if post.date or post.reading_time %}
     <div class="post-meta post-byline__meta">
         {% if post.date %}
-        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
         {% endif %}
         {% if post.reading_time %}
         <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
@@ -59,7 +59,7 @@
     {% if post.date or post.reading_time %}
     <div class="post-meta post-byline__meta">
         {% if post.date %}
-        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
         {% endif %}
         {% if post.reading_time %}
         <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
@@ -72,7 +72,7 @@
 {# No author info, just date/reading time #}
 <div class="post-meta post-meta--header">
     {% if post.date %}
-    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
     {% endif %}
     {% if post.reading_time %}
     <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
