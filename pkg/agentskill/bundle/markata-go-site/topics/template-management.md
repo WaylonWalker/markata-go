@@ -316,6 +316,8 @@ Returns rendered HTML for a feed preview. Accepts a variant name (default `"card
 
 The default template is `partials/feed_preview.html`. If that template is missing, a basic HTML fallback is used.
 
+Feed helpers only surface posts that produced renderable page output. Empty-content pages, drafts, and skipped posts are omitted from feed pages and syndicated outputs instead of rendering broken entries.
+
 ## Text And Alternate Format Templates
 
 Markata-go can output posts in multiple formats beyond HTML. Alternate format templates follow the naming pattern:
