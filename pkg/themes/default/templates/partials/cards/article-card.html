@@ -21,7 +21,7 @@
 <div class="card-excerpt p-summary">{{ post.article_html|excerpt:"paragraphs=3,chars=1000" | default:post.description }}</div>
 </div>
 <footer class="card-meta">
-{% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>{% endif %}
+{% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
 {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min read</span>{% endif %}
 {% include "partials/webmention-counts.html" %}
 {% if post.tags %}<div class="card-tags">{% for tag in post.tags %}<a href="/tags/{{ tag | slugify }}/" class="tag p-category">{{ tag }}</a>{% endfor %}</div>{% endif %}

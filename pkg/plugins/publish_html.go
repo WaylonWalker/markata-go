@@ -740,7 +740,7 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 
 	dateStr := ""
 	if post.Date != nil {
-		dateStr = post.Date.Format("January 2, 2006")
+		dateStr = templates.FormatHumanDate(*post.Date)
 	}
 
 	imageURL := getPostExtraString(post, "image", "cover_image", "og_image")
@@ -998,7 +998,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 	dateStr := ""
 	dateISO := ""
 	if post.Date != nil {
-		dateStr = post.Date.Format("January 2, 2006")
+		dateStr = templates.FormatHumanDate(*post.Date)
 		dateISO = post.Date.Format("2006-01-02")
 	}
 

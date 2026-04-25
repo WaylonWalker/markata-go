@@ -22,6 +22,9 @@ import (
 
 var registerOnce sync.Once
 
+// HumanDateFormat is the canonical visible HTML date format.
+const HumanDateFormat = "Jan 2, 2006"
+
 // assetHashRegistry stores asset path -> hash mappings for cache busting.
 // This is set by SetAssetHashes() before rendering templates.
 var assetHashRegistry map[string]string
@@ -107,6 +110,7 @@ func registerFilters() {
 		pongo2.RegisterFilter("rss_date", filterRSSDate)
 		pongo2.RegisterFilter("atom_date", filterAtomDate)
 		pongo2.RegisterFilter("date_format", filterDateFormat)
+		pongo2.RegisterFilter("human_date", filterHumanDate)
 		// Override the built-in date filter to handle *time.Time and string parsing
 		pongo2.ReplaceFilter("date", filterDate)
 
@@ -231,6 +235,20 @@ func filterDateFormat(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 
 	return pongo2.AsValue(t.Format(format)), nil
+}
+
+// FormatHumanDate formats a time value for visible HTML text.
+func FormatHumanDate(t time.Time) string {
+	return t.Format(HumanDateFormat)
+}
+
+func filterHumanDate(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	t, err := toTime(in)
+	if err != nil {
+		return pongo2.AsValue(""), nil
+	}
+
+	return pongo2.AsValue(FormatHumanDate(t)), nil
 }
 
 // filterSlugify converts a string to a URL-safe slug.

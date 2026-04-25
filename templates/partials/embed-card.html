@@ -31,7 +31,7 @@
       <div class="embed-card-description">{{ post.description|truncate:200 }}</div>
       {% endif %}
       {% if post.date %}
-      <div class="embed-card-meta">{{ post.date | date:"Jan 2, 2006" }}</div>
+      <div class="embed-card-meta">{{ post.date | human_date }}</div>
       {% endif %}
     </div>
   </a>

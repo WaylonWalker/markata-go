@@ -704,7 +704,7 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 
 	if post.Date != nil {
 		sb.WriteString(`      <div class="embed-card-meta">`)
-		sb.WriteString(post.Date.Format("Jan 2, 2006"))
+		sb.WriteString(templates.FormatHumanDate(*post.Date))
 		sb.WriteString(`</div>`)
 		sb.WriteString("\n")
 	}
