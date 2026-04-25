@@ -3192,13 +3192,16 @@ Include the generated CSS in your base template:
 
 **Name:** `redirects`  
 **Stage:** Write  
-**Purpose:** Generates HTML redirect pages from a `_redirects` file for URL migration and link preservation.
+**Purpose:** Generates nginx-native redirects and HTML fallback pages from a `_redirects` file for URL migration and link preservation.
 
 **Configuration (TOML):**
 ```toml
 [markata-go.redirects]
 redirects_file = "static/_redirects"  # Path to redirects file (default)
 redirect_template = ""                 # Custom template path (optional)
+generate_html_fallback = true          # Keep HTML backup redirects enabled by default
+generate_nginx_conf = true             # Generate output/redirects.conf by default
+nginx_conf_file = "redirects.conf"    # Output-relative nginx include path
 ```
 
 **Redirects file format (`static/_redirects`):**
@@ -3214,15 +3217,25 @@ redirect_template = ""                 # Custom template path (optional)
 **Behavior:**
 1. Reads the `_redirects` file (skips silently if not found)
 2. Parses redirect rules (ignores comments, empty lines, wildcards)
-3. For each rule, creates `{output_dir}/{old-path}/index.html`
-4. Uses HTML meta refresh and canonical link for SEO-friendly redirects
-5. Caches results to avoid regeneration on unchanged content
+3. Filters out redirect sources that collide with an existing file path in output
+4. Writes `{output_dir}/redirects.conf` with exact-match nginx `location` rules
+5. Optionally creates `{output_dir}/{old-path}/index.html` as an HTML fallback redirect
+6. Caches results to avoid regeneration on unchanged content or config
 
 **Supported redirect syntax:**
 - Simple redirects: `/old /new`
+- Status codes: `/old /new 301` or `/preview /next 302`
 - Paths must start with `/`
+- Destinations may also be absolute `http://` or `https://` URLs
 - Wildcards (`*`) are ignored (not supported for static generation)
-- Status codes in the file are ignored (always uses meta refresh)
+- Supported status codes for nginx output: `301`, `302`, `307`, `308`
+
+**Generated nginx include:**
+```nginx
+location = /old-path/ {
+    return 301 /new-path/;
+}
+```
 
 **Generated HTML:**
 ```html
@@ -3262,6 +3275,12 @@ Create a custom template with these available variables:
 ```toml
 [markata-go.redirects]
 redirect_template = "templates/redirect.html"
+
+[markata-go.redirects]
+generate_html_fallback = false
+
+[markata-go.redirects]
+nginx_conf_file = "nginx/redirects.conf"
 ```
 
 **Template variables:**
