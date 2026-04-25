@@ -144,3 +144,56 @@ func TestBlogrollPlugin_LoadFromCache_UsesLastFetchedTimestamp(t *testing.T) {
 		t.Fatalf("cached.Title = %q, want Example", cached.Title)
 	}
 }
+
+func TestMergeCachedFeed_AppliesConfigOverrides(t *testing.T) {
+	cached := &models.ExternalFeed{
+		Config: models.ExternalFeedConfig{
+			URL:      "https://example.com/feed.xml",
+			Handle:   "old-handle",
+			Aliases:  []string{"old"},
+			SiteURL:  "http://example.com",
+			ImageURL: "http://example.com/old.png",
+		},
+		Title:       "Cached Title",
+		Description: "Cached description",
+		SiteURL:     "http://example.com",
+		ImageURL:    "http://example.com/old.png",
+		Category:    "Old",
+		Tags:        []string{"cached"},
+	}
+	config := models.ExternalFeedConfig{
+		URL:         "https://example.com/feed.xml",
+		Title:       "Config Title",
+		Description: "Config description",
+		Category:    "Config",
+		Tags:        []string{"fresh"},
+		SiteURL:     "https://example.com",
+		ImageURL:    "https://example.com/new.png",
+		Handle:      "new-handle",
+		Aliases:     []string{"new"},
+	}
+
+	merged := mergeCachedFeed(cached, config)
+
+	if merged.Config.Handle != "new-handle" {
+		t.Fatalf("merged.Config.Handle = %q, want %q", merged.Config.Handle, "new-handle")
+	}
+	if merged.Title != "Config Title" {
+		t.Fatalf("merged.Title = %q, want %q", merged.Title, "Config Title")
+	}
+	if merged.Description != "Config description" {
+		t.Fatalf("merged.Description = %q, want %q", merged.Description, "Config description")
+	}
+	if merged.Category != "Config" {
+		t.Fatalf("merged.Category = %q, want %q", merged.Category, "Config")
+	}
+	if merged.SiteURL != "https://example.com" {
+		t.Fatalf("merged.SiteURL = %q, want %q", merged.SiteURL, "https://example.com")
+	}
+	if merged.ImageURL != "https://example.com/new.png" {
+		t.Fatalf("merged.ImageURL = %q, want %q", merged.ImageURL, "https://example.com/new.png")
+	}
+	if len(merged.Tags) != 1 || merged.Tags[0] != "fresh" {
+		t.Fatalf("merged.Tags = %#v, want %#v", merged.Tags, []string{"fresh"})
+	}
+}

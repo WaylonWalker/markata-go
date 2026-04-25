@@ -113,6 +113,8 @@ aliases = ["ex", "exblog"]          # Additional handles
 
 The `site_url` becomes the link target for `@example`, `@ex`, and `@exblog`.
 
+When cached blogroll feed data exists, explicit config overrides such as `title`, `description`, `site_url`, `image_url`, `handle`, aliases, category, and tags MUST be reapplied before mentions resolve handles or avatar metadata. Config changes MUST take effect on the next build without requiring cache deletion.
+
 ### From Authors
 
 Authors defined in the site configuration (`[markata-go.authors.authors.*]`) are automatically registered as mentionable contacts. Each author is registered using their config key (ID) as the handle. The author's URL (if set) is used as the link target; if no URL is set, the author is not registered.
