@@ -859,9 +859,9 @@ func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	m.SetPosts([]*models.Post{
-		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date, Published: true},
-		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Date: &date, Published: true},
-		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Date: &date, Published: true},
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Content: "python tutorial", Date: &date, Published: true},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Content: "go basics", Date: &date, Published: true},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Content: "python advanced", Date: &date, Published: true},
 	})
 
 	// Configure auto feeds for tags
