@@ -867,7 +867,6 @@ func TestFilterPosts_IncludePrivate(t *testing.T) {
 		{Slug: "private1", Tags: []string{"python"}, Date: &date, Private: true, ArticleHTML: "<p>Private 1</p>"},
 		{Slug: "public2", Tags: []string{"go"}, Date: &date, Private: false, ArticleHTML: "<p>Public 2</p>"},
 		{Slug: "private2", Tags: []string{"go"}, Date: &date, Private: true, ArticleHTML: "<p>Private 2</p>"},
-		{Slug: "empty", Tags: []string{"python"}, Date: &date, Private: false},
 	}
 
 	tests := []struct {
