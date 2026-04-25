@@ -226,6 +226,69 @@ func TestPublishFeedsPlugin_RootFeedNoRedirects(t *testing.T) {
 	}
 }
 
+func TestPublishFeedsPlugin_ExcludesPostsWithoutRenderableOutput(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishFeedsPlugin()
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = tempDir
+	cfg.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Test Site",
+	}
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	posts := []*models.Post{
+		{Path: "rendered.md", Slug: "rendered", Href: "/rendered/", Title: strPtr("Rendered"), Content: "rendered", ArticleHTML: "<p>Rendered</p>", Date: &date},
+		{Path: "empty.md", Slug: "empty", Href: "/empty/", Title: strPtr("Empty"), Date: &date},
+		{Path: "skipped.md", Slug: "skipped", Href: "/skipped/", Title: strPtr("Skipped"), Content: "skipped", ArticleHTML: "<p>Skipped</p>", Date: &date, Skip: true},
+	}
+	feedConfig := models.FeedConfig{
+		Slug:        "blog",
+		Title:       "Blog",
+		Description: "Posts",
+		Posts:       posts,
+		Formats: models.FeedFormats{
+			RSS:      true,
+			Atom:     true,
+			JSON:     true,
+			Markdown: true,
+			Text:     true,
+		},
+	}
+	feedConfig.Paginate("/blog")
+	m.Cache().Set("feed_configs", []models.FeedConfig{feedConfig})
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	checks := []string{
+		filepath.Join(tempDir, "blog", "rss.xml"),
+		filepath.Join(tempDir, "blog", "atom.xml"),
+		filepath.Join(tempDir, "blog", "feed.json"),
+		filepath.Join(tempDir, "blog.md"),
+		filepath.Join(tempDir, "blog.txt"),
+	}
+	for _, path := range checks {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", path, err)
+		}
+		text := string(content)
+		if !strings.Contains(text, "rendered") {
+			t.Fatalf("%s should contain rendered post", path)
+		}
+		if strings.Contains(text, "empty") {
+			t.Fatalf("%s should not contain empty post", path)
+		}
+		if strings.Contains(text, "skipped") {
+			t.Fatalf("%s should not contain skipped post", path)
+		}
+	}
+}
+
 // TestPublishFeedsPlugin_writeFeedFormatRedirect tests the redirect file generation directly.
 func TestPublishFeedsPlugin_writeFeedFormatRedirect(t *testing.T) {
 	tempDir := t.TempDir()

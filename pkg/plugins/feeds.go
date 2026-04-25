@@ -68,8 +68,6 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			}
 			filteredPosts = cloneFeedPosts(filteredPosts)
 		}
-		filteredPosts = filterRenderableFeedPosts(filteredPosts)
-
 		if !usePresetPosts {
 			// Determine sort field and direction based on feed type
 			sortField := fc.Sort
@@ -202,12 +200,7 @@ type feedFilterCache struct {
 
 func newFeedFilterCache(posts []*models.Post) *feedFilterCache {
 	publicPosts := make([]*models.Post, 0, len(posts))
-	allRenderablePosts := make([]*models.Post, 0, len(posts))
 	for _, post := range posts {
-		if !isRenderableFeedPost(post) {
-			continue
-		}
-		allRenderablePosts = append(allRenderablePosts, post)
 		if !post.Private {
 			publicPosts = append(publicPosts, post)
 		}
@@ -217,7 +210,7 @@ func newFeedFilterCache(posts []*models.Post) *feedFilterCache {
 		parsed:      make(map[string]*filter.Filter),
 		filtered:    make(map[feedFilterKey][]*models.Post),
 		publicPosts: publicPosts,
-		allPosts:    allRenderablePosts,
+		allPosts:    posts,
 	}
 }
 
@@ -288,14 +281,10 @@ func filterPosts(posts []*models.Post, filterExpr string, includePrivate bool) (
 	// First, filter out private posts if includePrivate is false
 	var candidatePosts []*models.Post
 	if includePrivate {
-		for _, post := range posts {
-			if isRenderableFeedPost(post) {
-				candidatePosts = append(candidatePosts, post)
-			}
-		}
+		candidatePosts = posts
 	} else {
 		for _, post := range posts {
-			if !post.Private && isRenderableFeedPost(post) {
+			if !post.Private {
 				candidatePosts = append(candidatePosts, post)
 			}
 		}
@@ -323,29 +312,6 @@ func cloneFeedPosts(posts []*models.Post) []*models.Post {
 	result := make([]*models.Post, len(posts))
 	copy(result, posts)
 	return result
-}
-
-func filterRenderableFeedPosts(posts []*models.Post) []*models.Post {
-	if len(posts) == 0 {
-		return nil
-	}
-
-	filtered := make([]*models.Post, 0, len(posts))
-	for _, post := range posts {
-		if isRenderableFeedPost(post) {
-			filtered = append(filtered, post)
-		}
-	}
-
-	return filtered
-}
-
-func isRenderableFeedPost(post *models.Post) bool {
-	if post == nil || post.Skip || post.Draft {
-		return false
-	}
-
-	return post.ArticleHTML != "" || post.Content != ""
 }
 
 // sortPosts sorts posts by the specified field.
