@@ -1046,7 +1046,7 @@ type sidebarFeedsDataJSON struct {
 // 4 priority levels. Unlike getFeedSidebarPosts which returns the first match,
 // this collects ALL matches so the user can cycle between them with {/}.
 func (p *TemplatesPlugin) getAllCandidateFeeds(
-	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
+	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager, postFormats models.PostFormatsConfig,
 ) []sidebarFeedJSON {
 	if post == nil {
 		return nil
@@ -1061,7 +1061,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 			return
 		}
 		seen[fc.Slug] = true
-		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication))
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication, postFormats))
 	}
 
 	// 1. Series
@@ -1091,7 +1091,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 // windowing the post list around the current post for large feeds.
 func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	currentPost *models.Post, fc *models.FeedConfig,
-	posts []*models.Post, priority string, syndication models.SyndicationConfig,
+	posts []*models.Post, priority string, syndication models.SyndicationConfig, postFormats models.PostFormatsConfig,
 ) sidebarFeedJSON {
 	const maxWindowPosts = 50
 
@@ -1132,7 +1132,7 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 		Priority:            priority,
 		Primary:             fc.Primary,
 		ContainsCurrentPost: currentPos >= 0,
-		Variants:            buildSidebarVariants(fc, syndication),
+		Variants:            buildSidebarVariants(fc, syndication, postFormats),
 		TotalPosts:          len(posts),
 		Posts:               make([]sidebarPostJSON, 0, len(windowedPosts)),
 	}
@@ -1153,7 +1153,7 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	return feed
 }
 
-func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationConfig) []sidebarVariant {
+func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationConfig, postFormats models.PostFormatsConfig) []sidebarVariant {
 	if fc == nil {
 		return nil
 	}
@@ -1167,9 +1167,15 @@ func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationC
 	add := func(key, label, href string) {
 		variants = append(variants, sidebarVariant{Key: key, Label: label, Href: href})
 	}
+	canonicalVariantHref := func(ext string) string {
+		if fc.Slug == "" {
+			return "/index." + ext
+		}
+		return "/" + strings.Trim(fc.Slug, "/") + "." + ext
+	}
 
-	if fc.Formats.Markdown {
-		add("md", "md", baseHref+"index.md")
+	if fc.Formats.Markdown && postFormats.Markdown {
+		add("md", "md", canonicalVariantHref("md"))
 	}
 	if fc.Formats.JSON {
 		add("json", "json", baseHref+"feed.json")
@@ -1183,14 +1189,14 @@ func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationC
 	if fc.Formats.Atom {
 		add("atom", "atom", baseHref+"atom.xml")
 	}
-	if fc.Formats.HTML {
+	if fc.Formats.HTML && postFormats.IsHTMLEnabled() {
 		add("html", "html", baseHref)
 	}
 	if fc.Formats.SimpleHTML {
 		add("simple", "simple", baseHref+"simple/")
 	}
-	if fc.Formats.Text {
-		add("txt", "txt", baseHref+"index.txt")
+	if fc.Formats.Text && postFormats.Text {
+		add("txt", "txt", canonicalVariantHref("txt"))
 	}
 
 	return variants
@@ -1371,10 +1377,11 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 	post *models.Post, config *lifecycle.Config, m *lifecycle.Manager,
 	primaryFeed *models.FeedConfig,
 ) string {
-	feeds := p.getAllCandidateFeeds(post, config, m)
+	postFormats := resolvePostFormats(post, config)
+	feeds := p.getAllCandidateFeeds(post, config, m, postFormats)
 	feeds = filterPublicSidebarFeeds(feeds)
 	seen := makeSidebarFeedSet(feeds)
-	feeds = p.appendMissingPrimarySidebarFeeds(feeds, seen, post, config, m)
+	feeds = p.appendMissingPrimarySidebarFeeds(feeds, seen, post, config, m, postFormats)
 
 	if len(feeds) <= 1 {
 		// No point in cycling with only 0 or 1 feed
@@ -1429,7 +1436,7 @@ func makeSidebarFeedSet(feeds []sidebarFeedJSON) map[string]bool {
 
 func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 	feeds []sidebarFeedJSON, seen map[string]bool, post *models.Post,
-	config *lifecycle.Config, m *lifecycle.Manager,
+	config *lifecycle.Config, m *lifecycle.Manager, postFormats models.PostFormatsConfig,
 ) []sidebarFeedJSON {
 	cached, ok := m.Cache().Get("feed_configs")
 	if !ok {
@@ -1446,7 +1453,7 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 		if seen[fc.Slug] || !fc.Primary || fc.IncludePrivate {
 			continue
 		}
-		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication))
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication, postFormats))
 		seen[fc.Slug] = true
 	}
 
