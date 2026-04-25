@@ -345,7 +345,7 @@ func isRenderableFeedPost(post *models.Post) bool {
 		return false
 	}
 
-	return post.ArticleHTML != ""
+	return post.ArticleHTML != "" || post.Content != ""
 }
 
 // sortPosts sorts posts by the specified field.
