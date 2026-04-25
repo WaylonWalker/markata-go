@@ -102,7 +102,7 @@
           <div class="webmention-author-info">
             <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-author-name" rel="nofollow noopener">{{ mention.Author.Name|default:"Anonymous" }}</a>
             {% if mention.Published %}
-            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published }}</time>
+            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published | human_date }}</time>
             {% endif %}
           </div>
         </div>
@@ -145,7 +145,7 @@
           <div class="webmention-author-info">
             <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-author-name" rel="nofollow noopener">{{ mention.Author.Name|default:"Anonymous" }}</a>
             {% if mention.Published %}
-            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published }}</time>
+            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published | human_date }}</time>
             {% endif %}
           </div>
         </div>

@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -89,6 +90,79 @@ func TestFilterDateFormat(t *testing.T) {
 				t.Errorf("got %q, want %q", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestFilterHumanDate(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	date := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	post := &models.Post{Date: &date}
+	ctx := NewContext(post, "", nil)
+
+	result, err := engine.RenderString("{{ post.date | human_date }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if result != "Jan 15, 2024" {
+		t.Fatalf("human_date: got %q, want %q", result, "Jan 15, 2024")
+	}
+}
+
+func TestTemplateTrees_UseHumanDateForVisibleHTMLDates(t *testing.T) {
+	files := []string{
+		"../../templates/components/post_byline.html",
+		"../../templates/partials/card.html",
+		"../../templates/partials/embed-card.html",
+		"../../templates/partials/feed_preview.html",
+		"../../templates/partials/cards/article-card.html",
+		"../../templates/partials/cards/default-card.html",
+		"../../templates/partials/cards/guide-card.html",
+		"../../templates/partials/cards/inline-card.html",
+		"../../templates/partials/cards/link-card.html",
+		"../../templates/partials/cards/note-card.html",
+		"../../templates/partials/cards/quote-card.html",
+		"../../templates/partials/cards/simple-card.html",
+		"../../templates/partials/cards/video-card.html",
+		"../../pkg/themes/default/templates/card.html",
+		"../../pkg/themes/default/templates/components/post_byline.html",
+		"../../pkg/themes/default/templates/og-card.html",
+		"../../pkg/themes/default/templates/partials/cards/article-card.html",
+		"../../pkg/themes/default/templates/partials/cards/default-card.html",
+		"../../pkg/themes/default/templates/partials/cards/guide-card.html",
+		"../../pkg/themes/default/templates/partials/cards/inline-card.html",
+		"../../pkg/themes/default/templates/partials/cards/link-card.html",
+		"../../pkg/themes/default/templates/partials/cards/note-card.html",
+		"../../pkg/themes/default/templates/partials/cards/quote-card.html",
+		"../../pkg/themes/default/templates/partials/cards/simple-card.html",
+		"../../pkg/themes/default/templates/partials/cards/video-card.html",
+	}
+	legacyPatterns := []string{
+		`| date:"Jan 2, 2006"`,
+		`| date:"January 2, 2006"`,
+		`| date:"2006-01-02"`,
+		`| date_format:"Jan 2, 2006"`,
+		`| date_format:"January 2, 2006"`,
+	}
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error: %v", file, err)
+		}
+		text := string(content)
+		if !strings.Contains(text, "| human_date") {
+			t.Fatalf("template %q does not use human_date", file)
+		}
+		for _, pattern := range legacyPatterns {
+			if strings.Contains(text, pattern) {
+				t.Fatalf("template %q still contains legacy date pattern %q", file, pattern)
+			}
+		}
 	}
 }
 

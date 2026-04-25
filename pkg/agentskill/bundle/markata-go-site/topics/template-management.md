@@ -125,12 +125,15 @@ Useful feed/page fields:
 
 - `date`
 - `date_format`
+- `human_date`
 - `rss_date`
 - `atom_date`
 - `slugify`
 - `truncate`
 - `truncatewords`
 - `default_if_none`
+
+Use `human_date` for visible HTML dates in cards, post bylines, archive views, and reader metadata. Keep `<time datetime="...">` values machine-readable with `atom_date` or RFC 3339 strings.
 - `length`
 - `first`
 - `last`

@@ -1706,7 +1706,7 @@ func (p *BlogrollPlugin) readerEntryMap(entry *models.ExternalEntry, feed *model
 	if date := entryDate(entry); date != nil {
 		result["published"] = date
 		result["published_datetime"] = date.Format(time.RFC3339)
-		result["published_label"] = date.Format("Jan 2")
+		result["published_label"] = templates.FormatHumanDate(*date)
 		result["date_key"] = date.Format("2006-01-02")
 		result["date_iso"] = date.Format(time.RFC3339)
 	}

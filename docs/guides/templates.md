@@ -238,10 +238,13 @@ The built-in `slides_reveal` filter converts rendered HTML into reveal.js slide 
 
 | Filter | Example | Output |
 |--------|---------|--------|
+| `human_date` | `{{ date\|human_date }}` | `Jan 15, 2024` |
 | `date_format` | `{{ date\|date_format:"2006-01-02" }}` | `2024-01-15` |
 | `date_format` | `{{ date\|date_format:"January 2, 2006" }}` | `January 15, 2024` |
 | `rss_date` | `{{ date\|rss_date }}` | RFC 1123Z format for RSS |
 | `atom_date` | `{{ date\|atom_date }}` | RFC 3339 format for Atom |
+
+Use `human_date` for visible HTML dates so cards, post bylines, archive views, and reader metadata stay consistent while `datetime` attributes remain machine-readable.
 
 **Note:** Go uses reference time formatting. Common formats:
 
@@ -411,7 +414,7 @@ Partials are reusable template fragments. Use `{% include %}` to embed them:
     <footer>
         {% if post.Date %}
         <time datetime="{{ post.Date|atom_date }}">
-            {{ post.Date|date_format:"Jan 2, 2006" }}
+            {{ post.Date|human_date }}
         </time>
         {% endif %}
         {% if post.Extra.reading_time %}
@@ -457,7 +460,7 @@ Post templates render individual content pages. They receive the `post` and `bod
         <h1>{{ post.Title }}</h1>
         {% if post.Date %}
         <time datetime="{{ post.Date|atom_date }}">
-            {{ post.Date|date_format:"January 2, 2006" }}
+            {{ post.Date|human_date }}
         </time>
         {% endif %}
 

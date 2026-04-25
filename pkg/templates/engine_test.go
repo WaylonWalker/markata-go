@@ -220,6 +220,11 @@ func TestEngine_RenderString_DateFilters(t *testing.T) {
 			template: "{{ post.date | date_format:\"2006-01-02\" }}",
 			want:     "2024-01-15",
 		},
+		{
+			name:     "human date format",
+			template: "{{ post.date | human_date }}",
+			want:     "Jan 15, 2024",
+		},
 	}
 
 	for _, tt := range tests {

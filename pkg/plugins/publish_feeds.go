@@ -952,7 +952,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTMLFallback(fc *models.FeedConfig,
                 <a href="{{.Href}}">
                     <h2>{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}</h2>
                 </a>
-                {{if .Date}}<time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "January 2, 2006"}}</time>{{end}}
+				{{if .Date}}<time datetime="{{.Date.Format "2006-01-02"}}">{{humanDate .Date}}</time>{{end}}
                 {{if .Description}}<p>{{.Description}}</p>{{end}}
             </article>
         {{end}}
@@ -969,7 +969,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTMLFallback(fc *models.FeedConfig,
 </body>
 </html>`
 
-	tmpl, err := template.New("feed").Parse(tmplStr)
+	tmpl, err := template.New("feed").Funcs(template.FuncMap{"humanDate": templates.FormatHumanDate}).Parse(tmplStr)
 	if err != nil {
 		return "", fmt.Errorf("parsing template: %w", err)
 	}

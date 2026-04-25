@@ -228,7 +228,7 @@
             </div>
         </div>
         {% if post.date %}
-        <span class="og-date">{{ post.date | date:"January 2, 2006" }}</span>
+        <span class="og-date">{{ post.date | human_date }}</span>
         {% endif %}
     </footer>
 </body>

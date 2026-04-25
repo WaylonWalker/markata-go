@@ -4,7 +4,7 @@
   <p class="card-description">{{ post.description }}</p>
   {% endif %}
   <div class="card-meta">
-    {% if post.date %}<time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>{% endif %}
+    {% if post.date %}<time datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
     {% if post.reading_time %}<span>{{ post.reading_time }} min</span>{% endif %}
   </div>
 </article>
