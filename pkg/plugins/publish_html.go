@@ -460,7 +460,7 @@ func (p *PublishHTMLPlugin) resolveTerminalTemplate(post *models.Post, engine *t
 	format := formatTxt
 	defaultTemplateName := defaultTxtTemplate
 	rawTemplateName := rawTxtTemplate
-	formatTemplateKey := "txt"
+	formatTemplateKey := formatTxt
 	shorthandTemplateKey := "txt_template"
 	if ansi {
 		format = formatANSI
