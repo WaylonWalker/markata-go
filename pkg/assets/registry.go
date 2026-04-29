@@ -21,6 +21,10 @@ type Asset struct {
 
 	// Type is the asset type: "js", "css", or "other"
 	Type string
+
+	// ExtractPath is an optional path prefix inside a downloaded archive that
+	// should be extracted into LocalPath. Empty means the asset is a single file.
+	ExtractPath string
 }
 
 // assetRegistry holds all known CDN assets.

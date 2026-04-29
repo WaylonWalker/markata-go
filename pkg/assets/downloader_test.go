@@ -1,7 +1,9 @@
 package assets
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -74,6 +76,59 @@ func TestDownloader_Download(t *testing.T) {
 	}
 	if !result2.Cached {
 		t.Error("expected Cached to be true on second download")
+	}
+}
+
+func TestDownloader_DownloadArchiveAsset(t *testing.T) {
+	archiveData := buildTestTarGz(t, map[string]string{
+		"package/dist-cdn/webawesome.loader.js":  "loader",
+		"package/dist-cdn/styles/webawesome.css": "body {}",
+		"package/README.md":                      "ignored",
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(archiveData); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	cacheDir := t.TempDir()
+	d := NewDownloader(cacheDir, false)
+	asset := Asset{
+		Name:        "webawesome",
+		URL:         server.URL + "/webawesome.tgz",
+		LocalPath:   "webawesome",
+		Type:        "archive",
+		ExtractPath: "package/dist-cdn",
+	}
+
+	result, err := d.Download(context.Background(), asset)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Cached {
+		t.Fatal("expected first archive download to be uncached")
+	}
+
+	loaderPath := filepath.Join(cacheDir, "webawesome", "webawesome.loader.js")
+	cssPath := filepath.Join(cacheDir, "webawesome", "styles", "webawesome.css")
+	for _, path := range []string{loaderPath, cssPath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected extracted file %s: %v", path, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cacheDir, "webawesome", "README.md")); !os.IsNotExist(err) {
+		t.Fatalf("unexpected non-extracted file copied from outside ExtractPath")
+	}
+
+	result2, err := d.Download(context.Background(), asset)
+	if err != nil {
+		t.Fatalf("unexpected second download error: %v", err)
+	}
+	if !result2.Cached {
+		t.Fatal("expected second archive download to be cached")
 	}
 }
 
@@ -196,6 +251,42 @@ func TestDownloader_CopyToOutput(t *testing.T) {
 	}
 	if !bytes.Equal(data, content) {
 		t.Errorf("content mismatch: expected %s, got %s", content, data)
+	}
+}
+
+func TestDownloader_CopyArchiveToOutput(t *testing.T) {
+	cacheDir := t.TempDir()
+	outputDir := t.TempDir()
+	d := NewDownloader(cacheDir, false)
+	asset := Asset{
+		Name:        "webawesome",
+		LocalPath:   "webawesome",
+		Type:        "archive",
+		ExtractPath: "package/dist-cdn",
+	}
+
+	loaderPath := filepath.Join(cacheDir, "webawesome", "webawesome.loader.js")
+	if err := os.MkdirAll(filepath.Dir(loaderPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(loaderPath, []byte("loader"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheDir, "webawesome.complete"), []byte("3.5.0"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := d.CopyToOutput(asset, outputDir); err != nil {
+		t.Fatalf("CopyToOutput failed: %v", err)
+	}
+
+	outputPath := filepath.Join(outputDir, "webawesome", "webawesome.loader.js")
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read copied archive file: %v", err)
+	}
+	if string(data) != "loader" {
+		t.Fatalf("unexpected output content: %s", data)
 	}
 }
 
@@ -332,4 +423,35 @@ func TestVerifyIntegrity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func buildTestTarGz(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+
+	for name, content := range files {
+		header := &tar.Header{
+			Name: name,
+			Mode: 0o644,
+			Size: int64(len(content)),
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatalf("write tar header: %v", err)
+		}
+		if _, err := tw.Write([]byte(content)); err != nil {
+			t.Fatalf("write tar content: %v", err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatalf("close tar writer: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("close gzip writer: %v", err)
+	}
+
+	return buf.Bytes()
 }

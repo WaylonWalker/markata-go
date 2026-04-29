@@ -32,9 +32,10 @@ func (p *CDNAssetsPlugin) Name() string {
 func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	assetsConfig := p.getAssetsConfig(config)
+	requestedAssets := p.requestedAssets(config)
 
 	// Skip if not self-hosting
-	if !assetsConfig.IsSelfHosted() {
+	if !assetsConfig.IsSelfHosted() && len(requestedAssets) == 0 {
 		return nil
 	}
 
@@ -44,10 +45,14 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	cacheDir := assetsConfig.GetCacheDir()
 	verifyIntegrity := assetsConfig.IsVerifyIntegrityEnabled()
 	downloader := assets.NewDownloader(cacheDir, verifyIntegrity)
+	assetsToDownload := assets.Registry()
+	if len(requestedAssets) > 0 {
+		assetsToDownload = append(assetsToDownload, requestedAssets...)
+	}
 
 	// Download all assets
 	ctx := context.Background()
-	results := downloader.DownloadAll(ctx, 4)
+	results := downloader.DownloadAssets(ctx, assetsToDownload, 4)
 
 	// Check for errors and log them (but don't fail - we can still use CDN fallback)
 	var successCount, cachedCount, errorCount int
@@ -67,7 +72,7 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 		successCount, cachedCount, errorCount)
 
 	// Store URL mappings in config.Extra for templates
-	urlMappings := p.buildURLMappings(assetsConfig.GetOutputDir())
+	urlMappings := p.buildURLMappings(assetsConfig.GetOutputDir(), assetsToDownload)
 	if config.Extra == nil {
 		config.Extra = make(map[string]interface{})
 	}
@@ -80,9 +85,10 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 func (p *CDNAssetsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	assetsConfig := p.getAssetsConfig(config)
+	requestedAssets := p.requestedAssets(config)
 
 	// Skip if not self-hosting
-	if !assetsConfig.IsSelfHosted() {
+	if !assetsConfig.IsSelfHosted() && len(requestedAssets) == 0 {
 		return nil
 	}
 
@@ -92,9 +98,13 @@ func (p *CDNAssetsPlugin) Write(m *lifecycle.Manager) error {
 
 	// Determine output directory for vendor assets
 	vendorOutputDir := filepath.Join(config.OutputDir, assetsConfig.GetOutputDir())
+	assetsToCopy := assets.Registry()
+	if len(requestedAssets) > 0 {
+		assetsToCopy = append(assetsToCopy, requestedAssets...)
+	}
 
 	// Copy all cached assets to output
-	if err := downloader.CopyAllToOutput(vendorOutputDir); err != nil {
+	if err := downloader.CopyAssetsToOutput(vendorOutputDir, assetsToCopy); err != nil {
 		return fmt.Errorf("copying assets to output: %w", err)
 	}
 
@@ -121,16 +131,31 @@ func (p *CDNAssetsPlugin) getAssetsConfig(config *lifecycle.Config) *models.Asse
 
 // buildURLMappings creates a map of asset names to their local URLs.
 // This allows templates to conditionally use local or CDN URLs.
-func (p *CDNAssetsPlugin) buildURLMappings(outputDir string) map[string]string {
+func (p *CDNAssetsPlugin) buildURLMappings(outputDir string, assetList []assets.Asset) map[string]string {
 	mappings := make(map[string]string)
 
-	for _, asset := range assets.Registry() {
+	for _, asset := range assetList {
 		// Build local URL path (e.g., "/assets/vendor/htmx/htmx.min.js")
 		localURL := "/" + filepath.ToSlash(filepath.Join(outputDir, asset.LocalPath))
 		mappings[asset.Name] = localURL
 	}
 
 	return mappings
+}
+
+func (p *CDNAssetsPlugin) requestedAssets(config *lifecycle.Config) []assets.Asset {
+	if config.Extra == nil {
+		return nil
+	}
+
+	extraAssets, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(extraAssets) == 0 {
+		return nil
+	}
+
+	assetsCopy := make([]assets.Asset, len(extraAssets))
+	copy(assetsCopy, extraAssets)
+	return assetsCopy
 }
 
 // Priority returns the plugin priority for each stage.

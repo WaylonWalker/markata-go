@@ -72,6 +72,7 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `concurrency`
 - `hooks`
 - `disabled_hooks`
+- `assets.mode`
 - `glob.patterns`
 - `theme.palette`
 - `layout.name`
@@ -162,6 +163,8 @@ template = "docs"
 ```
 
 This generates posts from Python modules without replacing normal markdown content loading, but it only works when `python_docs` is explicitly listed in `hooks`.
+
+Some optional hooks also depend on adjacent config namespaces. For example, when `webawesome` uses `source = "vendor"`, the shared `[markata-go.assets]` settings control the cache location and published vendor root for the downloaded Web Awesome tarball.
 
 ## Authors Config
 
