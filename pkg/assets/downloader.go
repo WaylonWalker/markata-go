@@ -350,12 +350,12 @@ func (d *Downloader) extractArchive(asset Asset, data []byte, destDir string) er
 			continue
 		}
 
+		if header.Size < 0 {
+			return fmt.Errorf("archive entry escapes destination: %s", header.Name)
+		}
 		extractedBytes += header.Size
 		if extractedBytes > maxArchiveExtractBytes {
 			return fmt.Errorf("archive exceeds extract limit of %d bytes", maxArchiveExtractBytes)
-		}
-		if header.Size < 0 {
-			return fmt.Errorf("archive entry escapes destination: %s", header.Name)
 		}
 		if err := writeArchiveFile(targetPath, tarReader, header.Size); err != nil {
 			return err

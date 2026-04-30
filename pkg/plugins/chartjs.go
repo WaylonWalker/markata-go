@@ -49,10 +49,8 @@ func (p *ChartJSPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		if url, ok := assetURLs["chartjs"]; ok && url != "" {
-			p.config.CDNURL = url
-		}
+	if url := resolveAssetURL(assetURLsFromConfig(config), "chartjs", ""); url != "" {
+		p.config.CDNURL = url
 	}
 
 	// Check for chartjs config in Extra

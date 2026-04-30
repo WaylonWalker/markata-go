@@ -22,6 +22,7 @@ const (
 	webAwesomeAssetName      = "webawesome"
 	webAwesomeSourceVendor   = "vendor"
 	webAwesomeComponentTag   = "tag"
+	webAwesomeDefaultSRI     = "sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==" // pragma: allowlist secret -- npm registry SRI hash
 )
 
 // WebAwesomePlugin converts ergonomic markdown containers into Web Awesome components.
@@ -77,21 +78,15 @@ func (p *WebAwesomePlugin) Priority(stage lifecycle.Stage) int {
 // Configure reads [markata-go.webawesome] from config.Extra.
 func (p *WebAwesomePlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
-	if config.Extra == nil {
-		return nil
+	if config.Extra != nil {
+		webawesomeConfig, ok := config.Extra["webawesome"]
+		if ok {
+			cfgMap, ok := webawesomeConfig.(map[string]interface{})
+			if ok {
+				p.parseConfigMap(cfgMap)
+			}
+		}
 	}
-
-	webawesomeConfig, ok := config.Extra["webawesome"]
-	if !ok {
-		return nil
-	}
-
-	cfgMap, ok := webawesomeConfig.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	p.parseConfigMap(cfgMap)
 	p.enableVendorAsset(config)
 
 	return nil
@@ -135,7 +130,7 @@ func (p *WebAwesomePlugin) Render(m *lifecycle.Manager) error {
 		if post.Skip || post.ArticleHTML == "" {
 			return false
 		}
-		return strings.Contains(post.ArticleHTML, "webawesome") ||
+		return strings.Contains(post.ArticleHTML, `class="webawesome`) ||
 			strings.Contains(post.ArticleHTML, "wa-comparison") ||
 			strings.Contains(post.ArticleHTML, "<wa-")
 	})
@@ -164,11 +159,12 @@ var webAwesomeAttrRegex = regexp.MustCompile(`([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s
 var webAwesomeElementRegex = regexp.MustCompile(`<\s*(wa-[a-z0-9-]+)\b`)
 var webAwesomeNestedTabsOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\s+tabs\b|\bwa-tabs\b)[^"]*)"([^>]*)>`)
 var webAwesomeNestedTabRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*(?:\bwebawesome\s+tab\b|\bwa-tab\b)[^"]*)"([^>]*)>(.*?)</div>`)
-var webAwesomeDivRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*(?:\bwebawesome\b|\bwa-[a-z0-9-]+\b)[^"]*)"([^>]*)>(.*?)</div>`)
+var webAwesomeContainerOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\b|\bwa-[a-z0-9-]+\b)[^"]*)"([^>]*)>`)
 var webAwesomeTabMarkerRegex = regexp.MustCompile(`(?s)(?:<hr>\s*<p>tab\s+&quot;([^&]+)&quot;</p>|<p>&mdash; tab &ldquo;([^&]+)&rdquo;</p>)\s*`)
 var webAwesomeFirstParagraphRegex = regexp.MustCompile(`(?s)^\s*<p>(.*?)</p>\s*`)
 var webAwesomeImageRegex = regexp.MustCompile(`(?s)<img\s+[^>]*>`)
 var webAwesomeCodeTextRegex = regexp.MustCompile(`(?s)<code[^>]*>(.*?)</code>`)
+var webAwesomeTagRegex = regexp.MustCompile(`<[^>]+>`)
 
 func (p *WebAwesomePlugin) processPost(post *models.Post) error {
 	if post.Skip || post.ArticleHTML == "" {
@@ -333,27 +329,45 @@ func tabLabel(tab []string, index int) string {
 }
 
 func (p *WebAwesomePlugin) processGenericContainers(content string, needsWebAwesome *bool) string {
-	return webAwesomeDivRegex.ReplaceAllStringFunc(content, func(match string) string {
-		parts := webAwesomeDivRegex.FindStringSubmatch(match)
-		if len(parts) != 5 {
-			return match
+	var b strings.Builder
+	for {
+		loc := webAwesomeContainerOpenRegex.FindStringSubmatchIndex(content)
+		if loc == nil {
+			b.WriteString(content)
+			break
 		}
 
-		component := webAwesomeComponentName(strings.Fields(parts[2]))
-		if component == "" || component == "comparison" {
-			return match
+		b.WriteString(content[:loc[0]])
+		openTag := content[loc[0]:loc[1]]
+		closeIndex := matchingDivCloseIndex(content, loc[1])
+		if closeIndex < 0 {
+			b.WriteString(content[loc[0]:])
+			break
 		}
 
-		attrs := parseHTMLAttrs(parts[1] + " " + parts[3])
-		body := strings.TrimSpace(parts[4])
+		fullMatch := content[loc[0] : closeIndex+len("</div>")]
+		attrs := parseHTMLAttrs(openTag)
+		component := webAwesomeComponentName(strings.Fields(attrs[htmlAttrClass]))
+		if component == "" || component == "comparison" || component == "tabs" {
+			b.WriteString(fullMatch)
+			content = content[closeIndex+len("</div>"):]
+			continue
+		}
+
+		body := strings.TrimSpace(content[loc[1]:closeIndex])
 		rendered := renderWebAwesomeContainer(component, attrs, body)
 		if rendered == "" {
-			return match
+			b.WriteString(fullMatch)
+			content = content[closeIndex+len("</div>"):]
+			continue
 		}
 
 		*needsWebAwesome = true
-		return rendered
-	})
+		b.WriteString(rendered)
+		content = content[closeIndex+len("</div>"):]
+	}
+
+	return b.String()
 }
 
 func webAwesomeComponentName(classes []string) string {
@@ -554,7 +568,7 @@ func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
 	h := fnv.New64a()
 	h.Write([]byte(body + "|" + content))
 	sum := h.Sum(nil)
-	id := "wa-tt-" + hex.EncodeToString(sum[:4])
+	id := "wa-tt-" + hex.EncodeToString(sum[:8])
 	var b strings.Builder
 	b.WriteString(`<span class="markata-wa-tooltip-anchor" id="`)
 	b.WriteString(id)
@@ -642,7 +656,7 @@ func plainTextFromHTML(body string) string {
 	if matches := webAwesomeCodeTextRegex.FindStringSubmatch(body); len(matches) == 2 {
 		return strings.TrimSpace(html.UnescapeString(matches[1]))
 	}
-	text := regexp.MustCompile(`<[^>]+>`).ReplaceAllString(body, "")
+	text := webAwesomeTagRegex.ReplaceAllString(body, "")
 	return strings.TrimSpace(html.UnescapeString(text))
 }
 
@@ -696,14 +710,12 @@ func (p *WebAwesomePlugin) enableAssets(config *lifecycle.Config) {
 	loaderURL := p.config.CDNBase + "/webawesome.loader.js"
 	basePath := p.config.CDNBase
 	if p.config.Source == webAwesomeSourceVendor {
-		if assetURL := p.sharedAssetURL(config, webAwesomeAssetName); assetURL != "" {
+		if assetURL := resolveAssetURL(assetURLsFromConfig(config), webAwesomeAssetName, ""); assetURL != "" {
 			basePath = assetURL
 			cssURL = basePath + "/styles/webawesome.css"
 			loaderURL = basePath + "/webawesome.loader.js"
 		} else {
-			basePath = "/" + strings.Trim(p.config.OutputDir, "/")
-			cssURL = basePath + "/styles/webawesome.css"
-			loaderURL = basePath + "/webawesome.loader.js"
+			basePath = p.config.CDNBase
 		}
 	}
 
@@ -726,37 +738,15 @@ func (p *WebAwesomePlugin) enableVendorAsset(config *lifecycle.Config) {
 		Name:        webAwesomeAssetName,
 		URL:         fmt.Sprintf("https://registry.npmjs.org/@awesome.me/webawesome/-/webawesome-%s.tgz", p.config.Version),
 		LocalPath:   "webawesome",
-		Integrity:   "sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==", // pragma: allowlist secret -- npm registry SRI hash
 		Version:     p.config.Version,
 		Type:        "archive",
 		ExtractPath: "package/dist-cdn",
 	}
+	if p.config.Version == webAwesomeDefaultVersion {
+		asset.Integrity = webAwesomeDefaultSRI // pragma: allowlist secret -- npm registry SRI hash
+	}
 
-	existing, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
-	if !ok {
-		existing = nil
-	}
-	for _, current := range existing {
-		if current.Name == asset.Name {
-			return
-		}
-	}
-	config.Extra["cdn_assets_extra"] = append(existing, asset)
-}
-
-func (p *WebAwesomePlugin) sharedAssetURL(config *lifecycle.Config, name string) string {
-	if config.Extra == nil {
-		return ""
-	}
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		return assetURLs[name]
-	}
-	if assetURLsAny, ok := config.Extra["asset_urls"].(map[string]interface{}); ok {
-		if value, ok := assetURLsAny[name].(string); ok {
-			return value
-		}
-	}
-	return ""
+	appendExtraAsset(config, asset)
 }
 
 func (p *WebAwesomePlugin) componentModules(htmlContent string) []string {

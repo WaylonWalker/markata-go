@@ -2,11 +2,23 @@
 package plugins
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"crypto/sha512"
+	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/yuin/goldmark"
 )
 
 func TestWebAwesomePlugin_ProcessComparisonContainer(t *testing.T) {
@@ -157,6 +169,59 @@ func TestWebAwesomePlugin_RenderUsesSharedVendorAssetURL(t *testing.T) {
 	}
 }
 
+func TestWebAwesomePlugin_ConfigureRegistersDefaultVendorAssetWithoutConfig(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	extraAssets, ok := m.Config().Extra["cdn_assets_extra"].([]interface{})
+	if ok {
+		t.Fatalf("cdn_assets_extra has unexpected type []interface{}: %#v", extraAssets)
+	}
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok {
+		t.Fatalf("cdn_assets_extra type = %T, want []assets.Asset", m.Config().Extra["cdn_assets_extra"])
+	}
+	if len(assets) != 1 {
+		t.Fatalf("len(cdn_assets_extra) = %d, want 1", len(assets))
+	}
+	if assets[0].Name != webAwesomeAssetName {
+		t.Fatalf("asset name = %q, want %q", assets[0].Name, webAwesomeAssetName)
+	}
+	if assets[0].Integrity != webAwesomeDefaultSRI {
+		t.Fatalf("integrity = %q, want default SRI", assets[0].Integrity)
+	}
+}
+
+func TestWebAwesomePlugin_ConfigureOmitsIntegrityForVersionOverride(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{
+		"webawesome": map[string]interface{}{
+			"version": "3.6.0",
+		},
+	}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(assets) != 1 {
+		t.Fatalf("cdn_assets_extra = %#v, want one asset", m.Config().Extra["cdn_assets_extra"])
+	}
+	if assets[0].Version != "3.6.0" {
+		t.Fatalf("asset version = %q, want %q", assets[0].Version, "3.6.0")
+	}
+	if assets[0].Integrity != "" {
+		t.Fatalf("integrity = %q, want empty for version override", assets[0].Integrity)
+	}
+}
+
 func TestWebAwesomePlugin_RenderDoesNotEnableAssetsWithoutComponents(t *testing.T) {
 	plugin := NewWebAwesomePlugin()
 	m := lifecycle.NewManager()
@@ -202,5 +267,289 @@ func TestWebAwesomePlugin_DefaultsToVendorSource(t *testing.T) {
 	}
 	if plugin.config.OutputDir != "assets/vendor/webawesome" {
 		t.Fatalf("default output dir = %q, want %q", plugin.config.OutputDir, "assets/vendor/webawesome")
+	}
+}
+
+func TestWebAwesomePlugin_ProcessGenericContainerWithNestedDiv(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	post := &models.Post{ArticleHTML: `<div class="webawesome details" summary="Install notes">
+<div class="inner"><p>Use the binary for your platform.</p></div>
+</div>`}
+
+	if err := plugin.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<wa-details summary="Install notes">`) {
+		t.Fatalf("missing wa-details wrapper: %s", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `<div class="inner"><p>Use the binary for your platform.</p></div>`) {
+		t.Fatalf("nested div content was not preserved: %s", post.ArticleHTML)
+	}
+}
+
+func TestContainerExtension_ParsesQuotedAttributes(t *testing.T) {
+	md := goldmark.New(goldmark.WithExtensions(&ContainerExtension{}))
+	input := `::: webawesome details {summary="Install notes" data-kind="quick start"}
+Use the binary.
+:::`
+
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(input), &buf); err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, `class="webawesome details"`) {
+		t.Fatalf("missing classes: %q", output)
+	}
+	if !strings.Contains(output, `summary="Install notes"`) {
+		t.Fatalf("missing quoted summary attr: %q", output)
+	}
+	if !strings.Contains(output, `data-kind="quick start"`) {
+		t.Fatalf("missing quoted data attr: %q", output)
+	}
+}
+
+func TestWebAwesomeVendorIntegration_DefaultConfigDownloadsAndUsesSharedAssetURL(t *testing.T) {
+	archiveData := buildWebAwesomeTestTarGz(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(archiveData); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	plugin := NewWebAwesomePlugin()
+	cdn := NewCDNAssetsPlugin()
+	m := lifecycle.NewManager()
+	cacheDir := t.TempDir()
+	outputDir := t.TempDir()
+	assetsConfig := models.NewAssetsConfig()
+	assetsConfig.Mode = "cdn"
+	assetsConfig.CacheDir = cacheDir
+	assetsConfig.OutputDir = "assets/vendor"
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"assets": assetsConfig,
+		},
+	})
+	m.SetPosts([]*models.Post{{ArticleHTML: `<wa-button>Click</wa-button>`}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("webawesome Configure() error = %v", err)
+	}
+	setRequestedAssetURL(t, m.Config(), server.URL+"/webawesome-3.5.0.tgz")
+
+	if err := cdn.Configure(m); err != nil {
+		t.Fatalf("cdn_assets Configure() error = %v", err)
+	}
+
+	assetURLs, ok := m.Config().Extra["asset_urls"].(map[string]string)
+	if !ok {
+		t.Fatalf("asset_urls type = %T, want map[string]string", m.Config().Extra["asset_urls"])
+	}
+	if got := assetURLs[webAwesomeAssetName]; got != "/assets/vendor/webawesome" {
+		t.Fatalf("asset_urls[webawesome] = %q, want %q", got, "/assets/vendor/webawesome")
+	}
+	assertFileExists(t, filepath.Join(cacheDir, "webawesome", "webawesome.loader.js"))
+	assertFileExists(t, filepath.Join(cacheDir, "webawesome", "styles", "webawesome.css"))
+
+	if err := plugin.Render(m); err != nil {
+		t.Fatalf("webawesome Render() error = %v", err)
+	}
+	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/webawesome/styles/webawesome.css" {
+		t.Fatalf("webawesome_css_url = %v", got)
+	}
+	if got := m.Config().Extra["webawesome_loader_url"]; got != "/assets/vendor/webawesome/webawesome.loader.js" {
+		t.Fatalf("webawesome_loader_url = %v", got)
+	}
+
+	if err := cdn.Write(m); err != nil {
+		t.Fatalf("cdn_assets Write() error = %v", err)
+	}
+	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "webawesome", "webawesome.loader.js"))
+	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "webawesome", "styles", "webawesome.css"))
+}
+
+func TestWebAwesomeVendorIntegration_VersionOverrideDownloadsWithoutIntegrity(t *testing.T) {
+	archiveData := buildWebAwesomeTestTarGz(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(archiveData); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	plugin := NewWebAwesomePlugin()
+	cdn := NewCDNAssetsPlugin()
+	m := lifecycle.NewManager()
+	cacheDir := t.TempDir()
+	assetsConfig := models.NewAssetsConfig()
+	assetsConfig.Mode = "cdn"
+	assetsConfig.CacheDir = cacheDir
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{
+		"assets": assetsConfig,
+		"webawesome": map[string]interface{}{
+			"version": "9.9.9",
+		},
+	}})
+	m.SetPosts([]*models.Post{{ArticleHTML: `<wa-button>Click</wa-button>`}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("webawesome Configure() error = %v", err)
+	}
+	requested := setRequestedAssetURL(t, m.Config(), server.URL+"/webawesome-9.9.9.tgz")
+	if requested.Integrity != "" {
+		t.Fatalf("integrity = %q, want empty for version override", requested.Integrity)
+	}
+
+	if err := cdn.Configure(m); err != nil {
+		t.Fatalf("cdn_assets Configure() error = %v", err)
+	}
+
+	assetURLs, ok := m.Config().Extra["asset_urls"].(map[string]string)
+	if !ok {
+		t.Fatalf("asset_urls type = %T, want map[string]string", m.Config().Extra["asset_urls"])
+	}
+	if got := assetURLs[webAwesomeAssetName]; got != "/assets/vendor/webawesome" {
+		t.Fatalf("asset_urls[webawesome] = %q, want %q", got, "/assets/vendor/webawesome")
+	}
+	assertFileExists(t, filepath.Join(cacheDir, "webawesome", "webawesome.loader.js"))
+}
+
+func TestWebAwesomeVendorIntegration_BadIntegrityFallsBackToCDN(t *testing.T) {
+	archiveData := buildWebAwesomeTestTarGz(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(archiveData); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	plugin := NewWebAwesomePlugin()
+	cdn := NewCDNAssetsPlugin()
+	m := lifecycle.NewManager()
+	cacheDir := t.TempDir()
+	assetsConfig := models.NewAssetsConfig()
+	assetsConfig.Mode = "cdn"
+	assetsConfig.CacheDir = cacheDir
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{
+		"assets": assetsConfig,
+	}})
+	m.SetPosts([]*models.Post{{ArticleHTML: `<wa-button>Click</wa-button>`}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("webawesome Configure() error = %v", err)
+	}
+	requested := setRequestedAssetURL(t, m.Config(), server.URL+"/webawesome-3.5.0.tgz")
+	requested.Integrity = "sha512-invalid"
+	setRequestedAsset(t, m.Config(), requested)
+
+	if err := cdn.Configure(m); err != nil {
+		t.Fatalf("cdn_assets Configure() error = %v", err)
+	}
+
+	assetURLs, ok := m.Config().Extra["asset_urls"].(map[string]string)
+	if !ok {
+		t.Fatalf("asset_urls type = %T, want map[string]string", m.Config().Extra["asset_urls"])
+	}
+	if _, ok := assetURLs[webAwesomeAssetName]; ok {
+		t.Fatalf("asset_urls should not include webawesome when download fails: %#v", assetURLs)
+	}
+	if _, err := os.Stat(filepath.Join(cacheDir, "webawesome", "webawesome.loader.js")); !os.IsNotExist(err) {
+		t.Fatalf("webawesome asset unexpectedly cached after integrity failure")
+	}
+
+	if err := plugin.Render(m); err != nil {
+		t.Fatalf("webawesome Render() error = %v", err)
+	}
+	if got := m.Config().Extra["webawesome_css_url"]; got != webAwesomeDefaultCDNBase+"/styles/webawesome.css" {
+		t.Fatalf("webawesome_css_url = %v", got)
+	}
+	if got := m.Config().Extra["webawesome_loader_url"]; got != webAwesomeDefaultCDNBase+"/webawesome.loader.js" {
+		t.Fatalf("webawesome_loader_url = %v", got)
+	}
+}
+
+func buildWebAwesomeTestTarGz(t *testing.T) []byte {
+	t.Helper()
+	return buildWebAwesomeArchive(t, map[string]string{
+		"package/dist-cdn/webawesome.loader.js":  "console.log('loader')",
+		"package/dist-cdn/styles/webawesome.css": "body { color: red; }",
+	})
+}
+
+func buildWebAwesomeArchive(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		content := files[name]
+		header := &tar.Header{Name: name, Mode: 0o644, Size: int64(len(content))}
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatalf("write tar header: %v", err)
+		}
+		if _, err := tw.Write([]byte(content)); err != nil {
+			t.Fatalf("write tar content: %v", err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatalf("close tar writer: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("close gzip writer: %v", err)
+	}
+
+	return buf.Bytes()
+}
+
+func setRequestedAssetURL(t *testing.T, config *lifecycle.Config, url string) assets.Asset {
+	t.Helper()
+	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(requestedAssets) != 1 {
+		t.Fatalf("cdn_assets_extra = %#v, want one requested asset", config.Extra["cdn_assets_extra"])
+	}
+	requestedAssets[0].URL = url
+	if requestedAssets[0].Version == webAwesomeDefaultVersion {
+		requestedAssets[0].Integrity = computeArchiveIntegrity(buildWebAwesomeTestTarGz(t))
+	}
+	config.Extra["cdn_assets_extra"] = requestedAssets
+	return requestedAssets[0]
+}
+
+func setRequestedAsset(t *testing.T, config *lifecycle.Config, asset assets.Asset) {
+	t.Helper()
+	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(requestedAssets) != 1 {
+		t.Fatalf("cdn_assets_extra = %#v, want one requested asset", config.Extra["cdn_assets_extra"])
+	}
+	requestedAssets[0] = asset
+	config.Extra["cdn_assets_extra"] = requestedAssets
+}
+
+func computeArchiveIntegrity(data []byte) string {
+	h := sha512.Sum512(data)
+	return "sha512-" + base64.StdEncoding.EncodeToString(h[:])
+}
+
+func assertFileExists(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected file %s: %v", path, err)
 	}
 }

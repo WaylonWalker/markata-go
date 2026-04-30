@@ -45,9 +45,12 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	cacheDir := assetsConfig.GetCacheDir()
 	verifyIntegrity := assetsConfig.IsVerifyIntegrityEnabled()
 	downloader := assets.NewDownloader(cacheDir, verifyIntegrity)
-	assetsToDownload := assets.Registry()
-	if len(requestedAssets) > 0 {
-		assetsToDownload = append(assetsToDownload, requestedAssets...)
+	assetsToDownload := requestedAssets
+	if assetsConfig.IsSelfHosted() {
+		assetsToDownload = assets.Registry()
+		if len(requestedAssets) > 0 {
+			assetsToDownload = append(assetsToDownload, requestedAssets...)
+		}
 	}
 
 	// Download all assets
@@ -71,8 +74,15 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	log.Printf("[cdn_assets] Download complete: %d downloaded, %d cached, %d errors",
 		successCount, cachedCount, errorCount)
 
-	// Store URL mappings in config.Extra for templates
-	urlMappings := p.buildURLMappings(assetsConfig.GetOutputDir(), assetsToDownload)
+	// Store URL mappings in config.Extra for assets that are actually available
+	availableAssets := make([]assets.Asset, 0, len(assetsToDownload))
+	for i := range results {
+		result := &results[i]
+		if result.Error == nil {
+			availableAssets = append(availableAssets, result.Asset)
+		}
+	}
+	urlMappings := p.buildURLMappings(assetsConfig.GetOutputDir(), availableAssets)
 	if config.Extra == nil {
 		config.Extra = make(map[string]interface{})
 	}
@@ -98,9 +108,12 @@ func (p *CDNAssetsPlugin) Write(m *lifecycle.Manager) error {
 
 	// Determine output directory for vendor assets
 	vendorOutputDir := filepath.Join(config.OutputDir, assetsConfig.GetOutputDir())
-	assetsToCopy := assets.Registry()
-	if len(requestedAssets) > 0 {
-		assetsToCopy = append(assetsToCopy, requestedAssets...)
+	assetsToCopy := requestedAssets
+	if assetsConfig.IsSelfHosted() {
+		assetsToCopy = assets.Registry()
+		if len(requestedAssets) > 0 {
+			assetsToCopy = append(assetsToCopy, requestedAssets...)
+		}
 	}
 
 	// Copy all cached assets to output

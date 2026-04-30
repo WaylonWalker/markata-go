@@ -609,9 +609,7 @@ func (p *BlogrollPlugin) Priority(stage lifecycle.Stage) int {
 func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra != nil {
-		if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-			p.assetURLs = assetURLs
-		}
+		p.assetURLs = assetURLsFromConfig(config)
 		if disabled, ok := config.Extra["blogroll_disabled"].(bool); ok && disabled {
 			return nil
 		}
@@ -629,13 +627,7 @@ func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 func (p *BlogrollPlugin) resolveAssetURL(name, fallback string) string {
-	if p.assetURLs == nil {
-		return fallback
-	}
-	if url, ok := p.assetURLs[name]; ok && url != "" {
-		return url
-	}
-	return fallback
+	return resolveAssetURL(p.assetURLs, name, fallback)
 }
 
 // Collect fetches and parses configured external feeds.

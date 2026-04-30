@@ -81,19 +81,7 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 		config.Extra["models_config"] = p.buildModelsConfig(config)
 	}
 
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		p.assetURLs = assetURLs
-	}
-	if p.assetURLs == nil {
-		if assetURLsAny, ok := config.Extra["asset_urls"].(map[string]interface{}); ok {
-			p.assetURLs = make(map[string]string)
-			for key, value := range assetURLsAny {
-				if v, ok := value.(string); ok {
-					p.assetURLs[key] = v
-				}
-			}
-		}
-	}
+	p.assetURLs = assetURLsFromConfig(config)
 
 	p.config = p.parseTailwindConfig(config.Extra)
 
@@ -429,10 +417,7 @@ func (p *TailwindPlugin) injectIncludes(config *lifecycle.Config, includeMode st
 	}
 
 	if includeMode == tailwindIncludeJS {
-		scriptSrc := "https://cdn.tailwindcss.com"
-		if url, ok := p.assetURLs["tailwindcss-js"]; ok && url != "" {
-			scriptSrc = url
-		}
+		scriptSrc := resolveAssetURL(p.assetURLs, "tailwindcss-js", "https://cdn.tailwindcss.com")
 		if !headHasScript(modelsConfig.Head.Script, scriptSrc) {
 			modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{Src: scriptSrc})
 		}
