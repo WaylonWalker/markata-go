@@ -31,6 +31,14 @@
     })();
   </script>
 
+  <!--
+    Pre-declare Web Awesome's @layer wa-native FIRST so site CSS layers
+    (declared by main.css) take precedence. Without this, native.css's
+    global `a { color: var(--wa-color-text-link); }` rule wins the cascade
+    and turns every link on the page blue. Inert when webawesome is unused.
+  -->
+  <style>@layer wa-native, wa-utilities, wa-color-palette, wa-color-variant, wa-theme, wa-theme-dimension, wa-theme-overrides;</style>
+
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
   {% if config.theme.palette or config.theme.palette_light or config.theme.palette_dark or config.theme.seed_color %}

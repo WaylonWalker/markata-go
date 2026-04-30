@@ -628,6 +628,56 @@
     });
   }
 
+  function headScriptKey(node) {
+    if (!node || node.tagName !== 'SCRIPT') return '';
+    const src = node.getAttribute('src') || '';
+    if (src) {
+      return ['script', node.getAttribute('type') || '', src].join('::');
+    }
+    // Inline scripts in <head> are keyed by their text content. We do NOT
+    // re-execute matching inline scripts; we only add ones that don't already
+    // exist on the live document.
+    return ['script', node.getAttribute('type') || '', 'inline', node.textContent || ''].join('::');
+  }
+
+  /**
+   * Sync <script> tags from the new document's <head> into the live document.
+   *
+   * Without this, navigating from a page that does not load a particular head
+   * script (for example the Web Awesome module loader) into a page that does
+   * means the script never runs and custom elements (wa-*) never upgrade.
+   *
+   * We only ADD missing scripts; we do not remove or re-execute scripts that
+   * already exist, since module imports are idempotent and re-injecting a
+   * loader can re-register custom elements (which throws).
+   */
+  function syncHeadScripts(newDoc) {
+    if (!newDoc || !newDoc.head) return;
+
+    const head = document.head;
+    const existingKeys = new Set(
+      Array.from(head.querySelectorAll('script')).map(headScriptKey).filter(Boolean)
+    );
+
+    Array.from(newDoc.head.querySelectorAll('script')).forEach((node) => {
+      const key = headScriptKey(node);
+      if (!key || existingKeys.has(key)) return;
+
+      // Re-create the element so the browser actually executes it. Cloning a
+      // <script> node parsed by DOMParser does not run; we must construct a
+      // fresh element and copy over attributes/contents.
+      const fresh = document.createElement('script');
+      Array.from(node.attributes).forEach((attr) => {
+        fresh.setAttribute(attr.name, attr.value);
+      });
+      if (!node.hasAttribute('src')) {
+        fresh.textContent = node.textContent || '';
+      }
+      head.appendChild(fresh);
+      existingKeys.add(key);
+    });
+  }
+
   function replaceElementContents(selector, newDoc) {
     const currentElement = document.querySelector(selector);
     const nextElement = newDoc.querySelector(selector);
@@ -684,6 +734,7 @@
     syncDocumentElementAttributes(newDoc);
     syncBodyAttributes(newDoc);
     syncHeadStyles(newDoc);
+    syncHeadScripts(newDoc);
 
     // Update title
     document.title = newDoc.title;

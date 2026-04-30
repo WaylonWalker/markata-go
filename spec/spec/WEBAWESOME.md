@@ -225,6 +225,18 @@ When `source = "cdn"`, the plugin loads the same files from the configured CDN b
 
 The autoloader uses a MutationObserver to discover `<wa-*>` tags in the document and lazy-imports the matching component module on demand. Pages without any `<wa-*>` tags do not load Web Awesome CSS or JavaScript.
 
+## CSS Cascade Layers
+
+Web Awesome's `native.css` declares `@layer wa-native, wa-utilities, wa-color-palette, wa-color-variant, wa-theme, wa-theme-dimension, wa-theme-overrides;` and styles native elements (including `a`) inside `@layer wa-native`. Because Web Awesome stylesheets are loaded after the site's own stylesheets, naive ordering causes Web Awesome's `wa-native` layer to register last and win the cascade for unscoped element selectors such as `a`, overriding the site's link color.
+
+To prevent this, the default `base.html` template MUST pre-declare the Web Awesome layer order in an inline `<style>` block placed in `<head>` before any `<link rel="stylesheet">`:
+
+```html
+<style>@layer wa-native, wa-utilities, wa-color-palette, wa-color-variant, wa-theme, wa-theme-dimension, wa-theme-overrides;</style>
+```
+
+Pre-declaring the layers pins `wa-native` as the FIRST registered layer, so any unlayered or later-registered site styles win as expected. This must remain in the head on EVERY page (not gated on `needs_webawesome`) because the site's own cascade depends on stable layer order.
+
 ## Theming
 
 The plugin adds Web Awesome theme classes to the `<html>` element when needed:

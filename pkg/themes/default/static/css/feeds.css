@@ -9,6 +9,30 @@
   margin-right: auto;
 }
 
+/*
+ * When a post template (article.post) contains a rendered feed (e.g. a
+ * landing page using {{ render_feed(...) }}), the article's default
+ * --content-width (~65ch) is narrower than the feed card list's intrinsic
+ * 750px width. Without this override the cards overflow the article's
+ * centered column and appear visually offset to the right of the page.
+ * Widen the article column to fit the feed when one is present.
+ */
+article.post:has(> .post-content > .feed.h-feed),
+article.post:has(> .feed.h-feed) {
+  max-width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+}
+
+/*
+ * Inside article.post, constrain the feed grid to a single column that
+ * cannot exceed the container width. Without an explicit
+ * grid-template-columns the auto track can grow past the container due
+ * to intrinsic sizing of card children, causing the posts list to
+ * appear shifted right.
+ */
+article.post .feed.h-feed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .feed.h-feed {
   --feed-content-width: min(100%, 750px);
   width: 100%;

@@ -103,6 +103,12 @@ if (window.initTooltips) window.initTooltips();
 if (window.initScrollSpy) window.initScrollSpy();
 ```
 
+### 5. Head Asset Synchronization
+
+When navigating between pages with different head assets, the transition script syncs the new page's `<link rel="stylesheet">`, `<style>`, and `<script>` tags into the current document head. This ensures features that are only included on certain pages — such as Web Awesome custom elements, MathJax, or Mermaid — load correctly when transitioning into a page that needs them.
+
+Scripts are matched by `(type, src)` for external scripts and by `(type, textContent)` for inline scripts. Only NEW scripts are added; existing scripts are never re-executed (re-running a script that defines custom elements would throw). Cloned `<script>` nodes are inert in the browser, so the script is recreated via `document.createElement('script')` with attributes copied across before insertion.
+
 ## Browser Support
 
 - ✅ **Chrome/Edge 111+** - Full support
