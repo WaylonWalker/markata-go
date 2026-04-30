@@ -56,9 +56,7 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		p.assetURLs = assetURLs
-	}
+	p.assetURLs = assetURLsFromConfig(config)
 
 	// Check for mermaid config in Extra
 	mermaidConfig, ok := config.Extra["mermaid"]
@@ -713,13 +711,7 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
 }
 
 func (p *MermaidPlugin) resolveAssetURL(name, fallback string) string {
-	if p.assetURLs == nil {
-		return fallback
-	}
-	if url, ok := p.assetURLs[name]; ok && url != "" {
-		return url
-	}
-	return fallback
+	return resolveAssetURL(p.assetURLs, name, fallback)
 }
 
 // SetConfig sets the mermaid configuration directly.

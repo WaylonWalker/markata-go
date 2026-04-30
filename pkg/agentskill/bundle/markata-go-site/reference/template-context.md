@@ -115,6 +115,20 @@ Markata-go also injects convenient top-level aliases:
 - `description`
 - `article_html`
 
+## Common Plugin-Provided Extras
+
+When optional hooks are enabled, templates may also receive extra top-level fields and matching `config.Extra` values.
+
+Web Awesome commonly exposes:
+
+- `needs_webawesome` on posts/pages that rendered `wa-*` elements
+- `config.Extra.webawesome_enabled`
+- `config.Extra.webawesome_css_url`
+- `config.Extra.webawesome_loader_url`
+- `config.Extra.webawesome_theme_class`
+
+Use these only after inspecting the active site templates and rendered output. Some sites rely entirely on the built-in base template wiring and never reference these values directly in project templates.
+
 ## Site Aliases
 
 - `site_title`

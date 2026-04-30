@@ -84,6 +84,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["python_docs"] = func() lifecycle.Plugin { return NewPythonDocsPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["image_optimization"] = func() lifecycle.Plugin { return NewImageOptimizationPlugin() }
+	pluginRegistry.constructors["webawesome"] = func() lifecycle.Plugin { return NewWebAwesomePlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 	pluginRegistry.constructors["error_pages"] = func() lifecycle.Plugin { return NewErrorPagesPlugin() }
@@ -184,6 +185,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewRenderMarkdownPlugin(),
 		NewHeadingAnchorsPlugin(),    // Add anchors after markdown rendering
 		NewImageZoomPlugin(),         // Process image zoom attributes
+		NewWebAwesomePlugin(),        // Convert Web Awesome markdown containers
 		NewContributionGraphPlugin(), // Process contribution graph code blocks
 		NewMDVideoPlugin(),           // Convert video images to video tags
 		NewYouTubePlugin(),           // Convert YouTube URLs to embeds

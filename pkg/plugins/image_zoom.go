@@ -103,22 +103,7 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 func (p *ImageZoomPlugin) resolveAssetMode(extra map[string]interface{}) {
-	if extra == nil {
-		p.useCDN = p.config.CDN
-		return
-	}
-
-	assetURLs := map[string]string{}
-	if direct, ok := extra["asset_urls"].(map[string]string); ok {
-		assetURLs = direct
-	}
-	if anyMap, ok := extra["asset_urls"].(map[string]interface{}); ok {
-		for key, value := range anyMap {
-			if v, ok := value.(string); ok {
-				assetURLs[key] = v
-			}
-		}
-	}
+	assetURLs := assetURLsFromExtra(extra)
 
 	if assetURLs["glightbox-css"] != "" && assetURLs["glightbox-js"] != "" {
 		p.useCDN = false

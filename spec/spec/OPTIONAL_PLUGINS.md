@@ -12,6 +12,7 @@ This document specifies optional plugins that extend the static site generator w
 │    ├─ glossary            Auto-link terms to definition posts      │
 │    ├─ mermaid             Render Mermaid diagrams                  │
 │    ├─ chartjs             Render Chart.js charts                   │
+│    ├─ webawesome          Render Web Awesome components             │
 │    ├─ contribution_graph  GitHub-style calendar heatmaps           │
 │    ├─ csv_fence           Convert CSV code blocks to tables        │
 │    └─ md_video            Convert image syntax to video tags       │
