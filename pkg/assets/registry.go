@@ -12,6 +12,11 @@ type Asset struct {
 	// e.g., "glightbox/glightbox.min.js"
 	LocalPath string
 
+	// OutputPath optionally overrides where the asset is published relative to the
+	// site output directory. Empty means publish under the shared vendor root
+	// using LocalPath.
+	OutputPath string
+
 	// Integrity is the SRI hash (e.g., "sha384-...")
 	// Empty string means no integrity verification
 	Integrity string
@@ -21,6 +26,19 @@ type Asset struct {
 
 	// Type is the asset type: "js", "css", or "other"
 	Type string
+
+	// ExtractPath is an optional path prefix inside a downloaded archive that
+	// should be extracted into LocalPath. Empty means the asset is a single file.
+	ExtractPath string
+}
+
+// PublishPath returns the path where the asset should be written under the
+// configured output directory.
+func (a Asset) PublishPath() string {
+	if a.OutputPath != "" {
+		return a.OutputPath
+	}
+	return a.LocalPath
 }
 
 // assetRegistry holds all known CDN assets.
@@ -213,7 +231,8 @@ func GetAsset(name string) *Asset {
 // GetAssetsByType returns all assets of a given type.
 func GetAssetsByType(assetType string) []Asset {
 	var result []Asset
-	for _, asset := range assetRegistry {
+	for i := range assetRegistry {
+		asset := assetRegistry[i]
 		if asset.Type == assetType {
 			result = append(result, asset)
 		}
@@ -225,7 +244,8 @@ func GetAssetsByType(assetType string) []Asset {
 // For example: {"glightbox": [...], "htmx": [...], ...}
 func AssetGroups() map[string][]Asset {
 	groups := make(map[string][]Asset)
-	for _, asset := range assetRegistry {
+	for i := range assetRegistry {
+		asset := assetRegistry[i]
 		// Extract library name from LocalPath (first directory)
 		libName := asset.LocalPath
 		for i, c := range asset.LocalPath {
@@ -242,8 +262,8 @@ func AssetGroups() map[string][]Asset {
 // AssetNames returns the names of all registered assets.
 func AssetNames() []string {
 	names := make([]string, len(assetRegistry))
-	for i, asset := range assetRegistry {
-		names[i] = asset.Name
+	for i := range assetRegistry {
+		names[i] = assetRegistry[i].Name
 	}
 	return names
 }

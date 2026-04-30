@@ -197,6 +197,42 @@ Use `human_date` for visible HTML dates in cards, post bylines, archive views, a
 {% endblock %}
 ```
 
+## Web Awesome In Templates And Content
+
+For sites using the `webawesome` hook, prefer authoring content with markdown containers such as `::: wa-details`, `::: wa-tabs`, `::: wa-tooltip`, or `::: wa-comparison` before dropping into raw custom-element HTML.
+
+Useful guidance:
+
+- raw `<wa-*>` elements are also supported and trigger asset loading automatically
+- do not hardcode Web Awesome `<script>` or `<link>` tags if the site already relies on the built-in plugin wiring
+- if a template needs to guard extra markup or classes around Web Awesome usage, inspect existing checks first; per-page detection is usually driven by the presence of rendered `wa-*` elements in the page body
+- if vendor assets are enabled, the resolved URLs come from config-driven asset mappings rather than fixed `/assets/vendor/webawesome/` assumptions
+
+Typical authoring examples:
+
+````markdown
+::: wa-tabs
+
+:::: wa-tab {label="macOS"}
+```bash
+brew install markata-go
+```
+::::
+
+:::: wa-tab {label="Linux"}
+```bash
+curl -fsSL https://example.com/install.sh | sh
+```
+::::
+:::
+````
+
+```markdown
+::: wa-tooltip {content="Static Site Generator"}
+SSG
+:::
+```
+
 ## Per-Post Template Selection
 
 Common frontmatter options:

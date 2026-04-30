@@ -72,6 +72,7 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `concurrency`
 - `hooks`
 - `disabled_hooks`
+- `assets.mode`
 - `glob.patterns`
 - `theme.palette`
 - `layout.name`
@@ -162,6 +163,44 @@ template = "docs"
 ```
 
 This generates posts from Python modules without replacing normal markdown content loading, but it only works when `python_docs` is explicitly listed in `hooks`.
+
+Some optional hooks also depend on adjacent config namespaces. For example, when `webawesome` uses `source = "vendor"`, the shared `[markata-go.assets]` settings control the cache location and published vendor root for the downloaded Web Awesome tarball.
+
+## Web Awesome
+
+Use this when the site needs Web Awesome components such as tabs, details, comparisons, badges, tooltips, carousels, QR codes, or animated images.
+
+Typical config:
+
+```toml
+[markata-go]
+hooks = ["default", "webawesome"]
+
+[markata-go.webawesome]
+enabled = true
+source = "vendor"
+version = "3.5.0"
+output_dir = "assets/vendor/webawesome"
+theme = "default"
+palette = "default"
+brand = "blue"
+```
+
+Important rules:
+
+- the `webawesome` hook must be enabled before expecting `wa-*` container shortcuts to render
+- `source = "vendor"` is the default self-hosted mode and uses the shared `[markata-go.assets]` cache and vendor root
+- `source = "cdn"` skips local publishing and serves the loader and CSS from `cdn_base_url`
+- `webawesome.output_dir` controls the published Web Awesome subpath under the shared vendor root; if the site sets it to `assets/vendor/wa-kit`, pages will load `/assets/vendor/wa-kit/...`
+- raw `<wa-*>` HTML also enables assets automatically, so do not add duplicate hardcoded script tags before checking whether the plugin already wires them in
+
+Useful checks when debugging:
+
+- `markata-go config get hooks`
+- `markata-go config get webawesome`
+- `markata-go config get assets`
+- inspect whether the rendered page actually contains `<wa-*>` elements
+- inspect whether the resolved config exposes the expected vendor root and Web Awesome `output_dir`
 
 ## Authors Config
 

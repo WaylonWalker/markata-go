@@ -1,6 +1,6 @@
 ---
 name: markata-go-site
-description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, analytics or stats pages, chartjs or contribution graphs, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins. Use it proactively for tasks like creating an `analytics.md` page, exposing reading time or word count in templates, or helping an author turn site metrics into a publishable story.
+description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, Web Awesome component setup, analytics or stats pages, chartjs or contribution graphs, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins. Use it proactively for tasks like creating an `analytics.md` page, exposing reading time or word count in templates, wiring Web Awesome components into content and templates, or helping an author turn site metrics into a publishable story.
 ---
 
 This skill helps an agent work inside a markata-go site repository without needing the markata-go source tree.
@@ -13,6 +13,7 @@ Before making changes:
 - locate the active config file, usually `markata-go.toml`
 - inspect the site's content directories such as `posts/`, `pages/`, `docs/`, and `static/`
 - inspect `templates/` and `palettes/` before inventing new structure
+- inspect existing `wa-*` usage, `webawesome` config, and template asset guards before adding component code or new includes
 - inspect existing analytics pages, metrics partials, and chart code blocks before inventing a new data story pattern
 - prefer current command output and files over older examples or assumptions
 - when the site is minimal or brand new, use the topic files in this skill as the default markata-go playbook
@@ -46,6 +47,7 @@ Use these when you need exact shapes instead of narrative guidance:
 - `reference/template-context.md`
 - `reference/feed-patterns.md`
 - `reference/palette-reference.md`
+- `reference/webawesome.md`
 
 ## Example Files
 

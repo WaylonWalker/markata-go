@@ -31,7 +31,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Glob | Discover content files | glob |
 | Load | Parse files into posts | load, frontmatter |
 | Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
-| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
+| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube, webawesome |
 | Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
 | Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
@@ -4024,6 +4024,42 @@ gitGraph
     merge feature/search id: "Merge search"
     commit id: "v1.0.0 release" tag: "v1.0.0"
 ```
+
+---
+
+### webawesome
+
+**Name:** `webawesome`  
+**Stage:** Configure (register shared vendor asset) + Render (after render_markdown)  
+**Purpose:** Converts Web Awesome Markdown containers into custom elements and loads Web Awesome assets when needed.
+
+**Status:** Built-in. Add `webawesome` to `hooks` to use it explicitly.
+
+**Configuration (TOML):**
+```toml
+[markata-go]
+hooks = ["default", "webawesome"]
+
+[markata-go.webawesome]
+enabled = true
+source = "vendor" # "vendor" (default) or "cdn"
+version = "3.5.0"
+theme = "default"
+palette = "default"
+brand = "blue"
+```
+
+When `source = "vendor"`, the plugin downloads Web Awesome through the shared `[markata-go.assets]` vendor pipeline and serves it from `/assets/vendor/webawesome/...`.
+
+**Markdown syntax:**
+```markdown
+::: webawesome comparison {position=42 caption="Before and after"}
+![Before](/images/before.webp)
+![After](/images/after.webp)
+:::
+```
+
+See the [[webawesome-components|Web Awesome Components]] guide for demos and self-hosting details.
 
 ---
 

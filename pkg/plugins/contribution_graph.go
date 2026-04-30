@@ -55,11 +55,9 @@ func (p *ContributionGraphPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		p.assetURLs = assetURLs
-		if url, ok := assetURLs["cal-heatmap-css"]; ok && url != "" {
-			p.config.CDNURL = strings.TrimSuffix(url, "/cal-heatmap.css")
-		}
+	p.assetURLs = assetURLsFromConfig(config)
+	if url := resolveAssetURL(p.assetURLs, "cal-heatmap-css", ""); url != "" {
+		p.config.CDNURL = strings.TrimSuffix(url, "/cal-heatmap.css")
 	}
 
 	// Check for contribution_graph config in Extra
@@ -545,13 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 func (p *ContributionGraphPlugin) resolveAssetURL(name, fallback string) string {
-	if p.assetURLs == nil {
-		return fallback
-	}
-	if url, ok := p.assetURLs[name]; ok && url != "" {
-		return url
-	}
-	return fallback
+	return resolveAssetURL(p.assetURLs, name, fallback)
 }
 
 // SetConfig sets the contribution graph configuration directly.
