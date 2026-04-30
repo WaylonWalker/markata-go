@@ -54,7 +54,8 @@ func appendExtraAsset(config *lifecycle.Config, asset assets.Asset) {
 	if !ok {
 		existing = nil
 	}
-	for _, current := range existing {
+	for i := range existing {
+		current := existing[i]
 		if current.Name == asset.Name {
 			return
 		}

@@ -167,7 +167,8 @@ func (d *Downloader) DownloadAssets(ctx context.Context, assets []Asset, concurr
 	semaphore := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 
-	for i, asset := range assets {
+	for i := range assets {
+		asset := assets[i]
 		wg.Add(1)
 		go func(idx int, a Asset) {
 			defer wg.Done()
@@ -225,7 +226,7 @@ func (d *Downloader) CopyToOutput(asset Asset, outputDir string) error {
 		return fmt.Errorf("asset not cached: %s", asset.Name)
 	}
 
-	outputPath := filepath.Join(outputDir, asset.LocalPath)
+	outputPath := filepath.Join(outputDir, asset.PublishPath())
 	if d.isArchiveAsset(asset) {
 		return copyDir(outputPath, cachedPath)
 	}
@@ -250,7 +251,8 @@ func (d *Downloader) CopyToOutput(asset Asset, outputDir string) error {
 
 // CopyAssetsToOutput copies the provided cached assets to the output directory.
 func (d *Downloader) CopyAssetsToOutput(outputDir string, assets []Asset) error {
-	for _, asset := range assets {
+	for i := range assets {
+		asset := assets[i]
 		if d.IsCached(asset) {
 			if err := d.CopyToOutput(asset, outputDir); err != nil {
 				return err
@@ -274,7 +276,8 @@ func (d *Downloader) Clean() error {
 func (d *Downloader) Status() []AssetStatus {
 	assets := Registry()
 	statuses := make([]AssetStatus, len(assets))
-	for i, asset := range assets {
+	for i := range assets {
+		asset := assets[i]
 		statuses[i] = AssetStatus{
 			Asset:  asset,
 			Cached: d.IsCached(asset),

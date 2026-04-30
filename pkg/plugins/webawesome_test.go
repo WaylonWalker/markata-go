@@ -7,10 +7,12 @@ import (
 	"compress/gzip"
 	"crypto/sha512"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -118,6 +120,58 @@ func TestWebAwesomePlugin_ProcessUsefulContentContainers(t *testing.T) {
 	for _, expected := range want {
 		if !strings.Contains(post.ArticleHTML, expected) {
 			t.Fatalf("ArticleHTML missing %q\nGot: %s", expected, post.ArticleHTML)
+		}
+	}
+}
+
+func TestWebAwesomePlugin_ProcessNestedTabsPreservesNestedDivs(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	post := &models.Post{ArticleHTML: `<div class="wa-tabs">
+<div class="wa-tab" label="macOS">
+<div class="inner"><p>brew install markata-go</p></div>
+</div>
+<div class="wa-tab" label="Linux">
+<div class="inner"><p>curl -fsSL example.com</p></div>
+</div>
+</div>`}
+
+	if err := plugin.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	want := []string{
+		`<wa-tab-group>`,
+		`<wa-tab slot="nav" panel="macos">macOS</wa-tab>`,
+		`<wa-tab-panel name="macos"><div class="inner"><p>brew install markata-go</p></div></wa-tab-panel>`,
+		`<wa-tab-panel name="linux"><div class="inner"><p>curl -fsSL example.com</p></div></wa-tab-panel>`,
+	}
+	for _, expected := range want {
+		if !strings.Contains(post.ArticleHTML, expected) {
+			t.Fatalf("ArticleHTML missing %q\nGot: %s", expected, post.ArticleHTML)
+		}
+	}
+}
+
+func TestWebAwesomePlugin_TooltipsUseUniqueAnchorIDs(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	post := &models.Post{ArticleHTML: `<div class="webawesome tooltip" content="Static Site Generator"><p>SSG</p></div>
+<div class="webawesome tooltip" content="Static Site Generator"><p>SSG</p></div>`}
+
+	if err := plugin.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	re := regexp.MustCompile(`<span class="markata-wa-tooltip-anchor" id="([^"]+)" tabindex="0">`)
+	matches := re.FindAllStringSubmatch(post.ArticleHTML, -1)
+	if len(matches) != 2 {
+		t.Fatalf("expected 2 tooltip anchors, got %d in %s", len(matches), post.ArticleHTML)
+	}
+	if matches[0][1] == matches[1][1] {
+		t.Fatalf("tooltip ids collided: %q", matches[0][1])
+	}
+	for _, match := range matches {
+		if !strings.Contains(post.ArticleHTML, fmt.Sprintf(`<wa-tooltip for=%q>Static Site Generator</wa-tooltip>`, match[1])) {
+			t.Fatalf("missing tooltip target for anchor %q in %s", match[1], post.ArticleHTML)
 		}
 	}
 }
@@ -372,6 +426,73 @@ func TestWebAwesomeVendorIntegration_DefaultConfigDownloadsAndUsesSharedAssetURL
 	}
 	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "webawesome", "webawesome.loader.js"))
 	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "webawesome", "styles", "webawesome.css"))
+}
+
+func TestWebAwesomeVendorIntegration_CustomOutputDirIsPublishedAndUsed(t *testing.T) {
+	archiveData := buildWebAwesomeTestTarGz(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(archiveData); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	plugin := NewWebAwesomePlugin()
+	cdn := NewCDNAssetsPlugin()
+	m := lifecycle.NewManager()
+	cacheDir := t.TempDir()
+	outputDir := t.TempDir()
+	assetsConfig := models.NewAssetsConfig()
+	assetsConfig.Mode = "cdn"
+	assetsConfig.CacheDir = cacheDir
+	assetsConfig.OutputDir = "assets/vendor"
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"assets": assetsConfig,
+			"webawesome": map[string]interface{}{
+				"output_dir": "assets/vendor/wa-kit",
+			},
+		},
+	})
+	m.SetPosts([]*models.Post{{ArticleHTML: `<wa-button>Click</wa-button>`}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("webawesome Configure() error = %v", err)
+	}
+	setRequestedAssetURL(t, m.Config(), server.URL+"/webawesome-3.5.0.tgz")
+
+	if err := cdn.Configure(m); err != nil {
+		t.Fatalf("cdn_assets Configure() error = %v", err)
+	}
+
+	assetURLs, ok := m.Config().Extra["asset_urls"].(map[string]string)
+	if !ok {
+		t.Fatalf("asset_urls type = %T, want map[string]string", m.Config().Extra["asset_urls"])
+	}
+	if got := assetURLs[webAwesomeAssetName]; got != "/assets/vendor/wa-kit" {
+		t.Fatalf("asset_urls[webawesome] = %q, want %q", got, "/assets/vendor/wa-kit")
+	}
+
+	if err := plugin.Render(m); err != nil {
+		t.Fatalf("webawesome Render() error = %v", err)
+	}
+	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/wa-kit/styles/webawesome.css" {
+		t.Fatalf("webawesome_css_url = %v", got)
+	}
+	if got := m.Config().Extra["webawesome_loader_url"]; got != "/assets/vendor/wa-kit/webawesome.loader.js" {
+		t.Fatalf("webawesome_loader_url = %v", got)
+	}
+
+	if err := cdn.Write(m); err != nil {
+		t.Fatalf("cdn_assets Write() error = %v", err)
+	}
+	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "wa-kit", "webawesome.loader.js"))
+	assertFileExists(t, filepath.Join(outputDir, "assets", "vendor", "wa-kit", "styles", "webawesome.css"))
+	if _, err := os.Stat(filepath.Join(outputDir, "assets", "vendor", "webawesome", "webawesome.loader.js")); !os.IsNotExist(err) {
+		t.Fatalf("webawesome asset unexpectedly published at default path")
+	}
 }
 
 func TestWebAwesomeVendorIntegration_VersionOverrideDownloadsWithoutIntegrity(t *testing.T) {

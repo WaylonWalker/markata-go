@@ -147,9 +147,10 @@ func (p *CDNAssetsPlugin) getAssetsConfig(config *lifecycle.Config) *models.Asse
 func (p *CDNAssetsPlugin) buildURLMappings(outputDir string, assetList []assets.Asset) map[string]string {
 	mappings := make(map[string]string)
 
-	for _, asset := range assetList {
+	for i := range assetList {
+		asset := assetList[i]
 		// Build local URL path (e.g., "/assets/vendor/htmx/htmx.min.js")
-		localURL := "/" + filepath.ToSlash(filepath.Join(outputDir, asset.LocalPath))
+		localURL := "/" + filepath.ToSlash(filepath.Join(outputDir, asset.PublishPath()))
 		mappings[asset.Name] = localURL
 	}
 

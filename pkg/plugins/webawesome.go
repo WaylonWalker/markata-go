@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -158,7 +159,7 @@ var webAwesomeComparisonRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*
 var webAwesomeAttrRegex = regexp.MustCompile(`([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+)`)
 var webAwesomeElementRegex = regexp.MustCompile(`<\s*(wa-[a-z0-9-]+)\b`)
 var webAwesomeNestedTabsOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\s+tabs\b|\bwa-tabs\b)[^"]*)"([^>]*)>`)
-var webAwesomeNestedTabRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*(?:\bwebawesome\s+tab\b|\bwa-tab\b)[^"]*)"([^>]*)>(.*?)</div>`)
+var webAwesomeNestedTabOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\s+tab\b|\bwa-tab\b)[^"]*)"([^>]*)>`)
 var webAwesomeContainerOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\b|\bwa-[a-z0-9-]+\b)[^"]*)"([^>]*)>`)
 var webAwesomeTabMarkerRegex = regexp.MustCompile(`(?s)(?:<hr>\s*<p>tab\s+&quot;([^&]+)&quot;</p>|<p>&mdash; tab &ldquo;([^&]+)&rdquo;</p>)\s*`)
 var webAwesomeFirstParagraphRegex = regexp.MustCompile(`(?s)^\s*<p>(.*?)</p>\s*`)
@@ -257,38 +258,38 @@ func (p *WebAwesomePlugin) processNestedTabs(content string, needsWebAwesome *bo
 
 		body := content[loc[1]:closeIndex]
 		attrs := parseHTMLAttrs(openTag)
-		tabMatches := webAwesomeNestedTabRegex.FindAllStringSubmatch(body, -1)
-		if len(tabMatches) == 0 {
+		tabs, ok := extractNestedTabs(body)
+		if !ok || len(tabs) == 0 {
 			b.WriteString(content[loc[0] : closeIndex+len("</div>")])
 			content = content[closeIndex+len("</div>"):]
 			continue
 		}
 
-		var tabs strings.Builder
-		tabs.WriteString(`<wa-tab-group`)
-		writeAllowedAttrs(&tabs, attrs)
-		tabs.WriteString(`>`)
-		for i, tab := range tabMatches {
-			label := tabLabel(tab, i)
+		var rendered strings.Builder
+		rendered.WriteString(`<wa-tab-group`)
+		writeAllowedAttrs(&rendered, attrs)
+		rendered.WriteString(`>`)
+		for i, tab := range tabs {
+			label := tabLabel(tab.attrs, i)
 			panel := slugWebAwesomeTabName(label, i)
-			tabs.WriteString(`<wa-tab slot="nav" panel="`)
-			tabs.WriteString(panel)
-			tabs.WriteString(`">`)
-			tabs.WriteString(html.EscapeString(label))
-			tabs.WriteString(`</wa-tab>`)
+			rendered.WriteString(`<wa-tab slot="nav" panel="`)
+			rendered.WriteString(panel)
+			rendered.WriteString(`">`)
+			rendered.WriteString(html.EscapeString(label))
+			rendered.WriteString(`</wa-tab>`)
 		}
-		for i, tab := range tabMatches {
-			label := tabLabel(tab, i)
+		for i, tab := range tabs {
+			label := tabLabel(tab.attrs, i)
 			panel := slugWebAwesomeTabName(label, i)
-			tabs.WriteString(`<wa-tab-panel name="`)
-			tabs.WriteString(panel)
-			tabs.WriteString(`">`)
-			tabs.WriteString(strings.TrimSpace(tab[4]))
-			tabs.WriteString(`</wa-tab-panel>`)
+			rendered.WriteString(`<wa-tab-panel name="`)
+			rendered.WriteString(panel)
+			rendered.WriteString(`">`)
+			rendered.WriteString(strings.TrimSpace(tab.body))
+			rendered.WriteString(`</wa-tab-panel>`)
 		}
-		tabs.WriteString(`</wa-tab-group>`)
+		rendered.WriteString(`</wa-tab-group>`)
 		*needsWebAwesome = true
-		b.WriteString(tabs.String())
+		b.WriteString(rendered.String())
 		content = content[closeIndex+len("</div>"):]
 	}
 	return b.String()
@@ -316,8 +317,38 @@ func matchingDivCloseIndex(content string, start int) int {
 	return -1
 }
 
-func tabLabel(tab []string, index int) string {
-	attrs := parseHTMLAttrs(tab[1] + " " + tab[3])
+type webAwesomeTab struct {
+	attrs map[string]string
+	body  string
+}
+
+func extractNestedTabs(body string) ([]webAwesomeTab, bool) {
+	remaining := body
+	result := make([]webAwesomeTab, 0, 4)
+
+	for strings.TrimSpace(remaining) != "" {
+		loc := webAwesomeNestedTabOpenRegex.FindStringSubmatchIndex(remaining)
+		if len(loc) == 0 || strings.TrimSpace(remaining[:loc[0]]) != "" {
+			return nil, false
+		}
+
+		openTag := remaining[loc[0]:loc[1]]
+		closeIndex := matchingDivCloseIndex(remaining, loc[1])
+		if closeIndex < 0 {
+			return nil, false
+		}
+
+		result = append(result, webAwesomeTab{
+			attrs: parseHTMLAttrs(openTag),
+			body:  remaining[loc[1]:closeIndex],
+		})
+		remaining = remaining[closeIndex+len("</div>"):]
+	}
+
+	return result, len(result) > 0
+}
+
+func tabLabel(attrs map[string]string, index int) string {
 	label := attrs["label"]
 	if label == "" {
 		label = attrs["title"]
@@ -569,6 +600,13 @@ func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
 	h.Write([]byte(body + "|" + content))
 	sum := h.Sum(nil)
 	id := "wa-tt-" + hex.EncodeToString(sum[:8])
+	if seed := attrs["id"]; seed != "" {
+		id = seed
+	} else if seed := attrs["data-tooltip-id"]; seed != "" {
+		id = seed
+	} else {
+		id = uniqueWebAwesomeTooltipID(id, body, content)
+	}
 	var b strings.Builder
 	b.WriteString(`<span class="markata-wa-tooltip-anchor" id="`)
 	b.WriteString(id)
@@ -582,6 +620,25 @@ func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
 	b.WriteString(html.EscapeString(content))
 	b.WriteString(`</wa-tooltip>`)
 	return b.String()
+}
+
+func uniqueWebAwesomeTooltipID(base, body, content string) string {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(base))
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(body))
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(content))
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(strconv.FormatInt(nextWebAwesomeTooltipOrdinal(), 10)))
+	sum := h.Sum(nil)
+	return "wa-tt-" + hex.EncodeToString(sum[:8])
+}
+
+var webAwesomeTooltipOrdinal int64
+
+func nextWebAwesomeTooltipOrdinal() int64 {
+	return atomic.AddInt64(&webAwesomeTooltipOrdinal, 1)
 }
 
 func renderWebAwesomeCarousel(attrs map[string]string, body string) string {
@@ -738,6 +795,7 @@ func (p *WebAwesomePlugin) enableVendorAsset(config *lifecycle.Config) {
 		Name:        webAwesomeAssetName,
 		URL:         fmt.Sprintf("https://registry.npmjs.org/@awesome.me/webawesome/-/webawesome-%s.tgz", p.config.Version),
 		LocalPath:   "webawesome",
+		OutputPath:  strings.TrimPrefix(strings.Trim(p.config.OutputDir, "/"), "assets/vendor/"),
 		Version:     p.config.Version,
 		Type:        "archive",
 		ExtractPath: "package/dist-cdn",
