@@ -25,11 +25,6 @@ markata-go can render [Web Awesome](https://webawesome.com/) components from Mar
 
 Web Awesome components inherit markata-go theme variables for text, surfaces, borders, radii, shadows, and semantic colors. This keeps component chrome aligned with the active palette instead of falling back to Web Awesome defaults.
 
-::: wa-comparison {position=50 caption="Before and after applying markata-go theme variables to Web Awesome components."}
-![Before: Web Awesome components using mostly default component styling](/assets/webawesome-theme-before.png)
-![After: Web Awesome components using markata-go theme color, radius, and surface tokens](/assets/webawesome-theme-after.png)
-:::
-
 ## Markdown
 
 ### Comparison
