@@ -26,7 +26,7 @@ require (
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/tdewolff/minify/v2 v2.24.12
+	github.com/tdewolff/minify/v2 v2.24.13
 	github.com/yuin/goldmark v1.8.2
 	github.com/yuin/goldmark-emoji v1.0.6
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
@@ -105,7 +105,7 @@ require (
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/tdewolff/parse/v2 v2.8.11 // indirect
+	github.com/tdewolff/parse/v2 v2.8.12 // indirect
 	github.com/tetratelabs/wazero v1.2.1 // indirect
 	github.com/wasilibs/go-re2 v1.3.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
