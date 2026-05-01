@@ -763,13 +763,13 @@ func (p *WebAwesomePlugin) enableAssets(config *lifecycle.Config) {
 		config.Extra = make(map[string]interface{})
 	}
 
-	cssURL := p.config.CDNBase + "/styles/webawesome.css"
+	cssURL := webAwesomeThemeCSSURL(p.config.CDNBase, p.config.Theme)
 	loaderURL := p.config.CDNBase + "/webawesome.loader.js"
 	basePath := p.config.CDNBase
 	if p.config.Source == webAwesomeSourceVendor {
 		if assetURL := resolveAssetURL(assetURLsFromConfig(config), webAwesomeAssetName, ""); assetURL != "" {
 			basePath = assetURL
-			cssURL = basePath + "/styles/webawesome.css"
+			cssURL = webAwesomeThemeCSSURL(basePath, p.config.Theme)
 			loaderURL = basePath + "/webawesome.loader.js"
 		} else {
 			basePath = p.config.CDNBase
@@ -781,6 +781,14 @@ func (p *WebAwesomePlugin) enableAssets(config *lifecycle.Config) {
 	config.Extra["webawesome_loader_url"] = loaderURL
 	config.Extra["webawesome_base_path"] = basePath
 	config.Extra["webawesome_theme_class"] = fmt.Sprintf("wa-theme-%s wa-palette-%s wa-brand-%s", p.config.Theme, p.config.Palette, p.config.Brand)
+}
+
+func webAwesomeThemeCSSURL(basePath, theme string) string {
+	theme = strings.Trim(theme, "/")
+	if theme == "" {
+		theme = ThemeDefault
+	}
+	return basePath + "/styles/themes/" + theme + ".css"
 }
 
 func (p *WebAwesomePlugin) enableVendorAsset(config *lifecycle.Config) {
