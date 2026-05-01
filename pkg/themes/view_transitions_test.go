@@ -11,7 +11,7 @@ func TestViewTransitions_SyncHeadScriptsRemovesStaleExternalScripts(t *testing.T
 		t.Fatalf("ReadStatic(view-transitions.js) error = %v", err)
 	}
 
-	js := string(content)
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
 	for _, needle := range []string{
 		"function syncHeadScripts(newDoc)",
 		"function shouldRemoveManagedHeadScript(node)",
