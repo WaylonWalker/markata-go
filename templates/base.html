@@ -48,6 +48,9 @@
   <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
   {% endif %}
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
+  {% if body and 'feed h-feed' in body %}
+  <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+  {% endif %}
   {% if post.webmentions or needs_webmentions_css %}
   <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
   {% endif %}
@@ -79,6 +82,7 @@
       --wa-color-surface-border: var(--color-border, #e5e7eb);
       --wa-color-text-normal: var(--color-text, #1f2937);
       --wa-color-text-quiet: var(--color-text-muted, #6b7280);
+      --wa-color-text-link: var(--color-link, var(--color-primary, #3b82f6));
       --wa-color-brand-fill-loud: var(--color-primary, #3b82f6);
       --wa-color-brand-fill-normal: var(--color-primary, #3b82f6);
       --wa-color-brand-fill-quiet: color-mix(in srgb, var(--color-primary, #3b82f6) 22%, var(--color-surface, #f9fafb));
@@ -362,7 +366,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper{% if not feed and not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% if feed and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}" id="view-transition-page">
+  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
@@ -574,18 +578,25 @@
       var loaded = false;
       var bundleDir = '/{{ config.search.pagefind.bundle_dir | default:"_pagefind" }}';
 
-      function loadPagefind(callback) {
-        if (loaded) {
-          if (callback) callback();
-          return;
-        }
-        loaded = true;
-
-        // Inject pagefind CSS
+      function ensurePagefindCSS() {
+        if (document.querySelector('link[href*="/pagefind-ui.css"]')) return;
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = bundleDir + '/pagefind-ui.css';
         document.head.appendChild(link);
+      }
+
+      function loadPagefind(callback) {
+        ensurePagefindCSS();
+
+        if (loaded) {
+          if (window.initPagefindSearch) {
+            window.initPagefindSearch();
+          }
+          if (callback) callback();
+          return;
+        }
+        loaded = true;
 
         // Inject pagefind JS
         var script = document.createElement('script');

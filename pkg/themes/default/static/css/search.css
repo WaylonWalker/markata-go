@@ -109,6 +109,13 @@
   color: var(--color-text-muted);
 }
 
+.search-container--navbar .pagefind-ui__search-clear.pagefind-ui__suppressed,
+.search-container--navbar .pagefind-ui__search-clear[class*="svelte-"].pagefind-ui__suppressed,
+.search--navbar .pagefind-ui__search-clear.pagefind-ui__suppressed,
+.search--navbar .pagefind-ui__search-clear[class*="svelte-"].pagefind-ui__suppressed {
+  display: none !important;
+}
+
 .pagefind-ui__search-clear:hover {
   color: var(--color-text);
 }

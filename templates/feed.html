@@ -2,6 +2,7 @@
 
 {% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block page_wrapper_class %}{% if not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}{% endblock %}
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}

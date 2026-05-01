@@ -208,7 +208,7 @@ The default `source` is `"vendor"`. Self-hosting is preferred for stable, immuta
 When `source = "vendor"`, the plugin registers a shared archive asset for the Web Awesome npm tarball, which the `cdn_assets` plugin downloads into the shared asset cache and copies into the shared vendor output root. The plugin then loads:
 
 ```html
-<link rel="stylesheet" href="/assets/vendor/webawesome/styles/webawesome.css">
+<link rel="stylesheet" href="/assets/vendor/webawesome/styles/themes/default.css">
 <script type="module" src="/assets/vendor/webawesome/webawesome.loader.js"></script>
 ```
 
@@ -219,7 +219,7 @@ The vendored payload MUST be the browser-ready Web Awesome `dist-cdn` subtree fr
 When `source = "cdn"`, the plugin loads the same files from the configured CDN base URL (default: `https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@<version>/dist`):
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/styles/webawesome.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/styles/themes/default.css">
 <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/webawesome.loader.js"></script>
 ```
 

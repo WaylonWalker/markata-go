@@ -190,7 +190,7 @@ func TestWebAwesomePlugin_RenderEnablesAssetsForRawComponent(t *testing.T) {
 	if got, ok := m.Config().Extra["webawesome_enabled"].(bool); !ok || !got {
 		t.Fatalf("webawesome_enabled = %v, want true", m.Config().Extra["webawesome_enabled"])
 	}
-	if got := m.Config().Extra["webawesome_css_url"]; got != webAwesomeDefaultCDNBase+"/styles/webawesome.css" {
+	if got := m.Config().Extra["webawesome_css_url"]; got != webAwesomeDefaultCDNBase+"/styles/themes/default.css" {
 		t.Fatalf("webawesome_css_url = %v", got)
 	}
 	if got := m.Config().Extra["webawesome_loader_url"]; got != webAwesomeDefaultCDNBase+"/webawesome.loader.js" {
@@ -215,7 +215,7 @@ func TestWebAwesomePlugin_RenderUsesSharedVendorAssetURL(t *testing.T) {
 		t.Fatalf("Render() error = %v", err)
 	}
 
-	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/webawesome/styles/webawesome.css" {
+	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/webawesome/styles/themes/default.css" {
 		t.Fatalf("webawesome_css_url = %v", got)
 	}
 	if got := m.Config().Extra["webawesome_loader_url"]; got != "/assets/vendor/webawesome/webawesome.loader.js" {
@@ -414,7 +414,7 @@ func TestWebAwesomeVendorIntegration_DefaultConfigDownloadsAndUsesSharedAssetURL
 	if err := plugin.Render(m); err != nil {
 		t.Fatalf("webawesome Render() error = %v", err)
 	}
-	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/webawesome/styles/webawesome.css" {
+	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/webawesome/styles/themes/default.css" {
 		t.Fatalf("webawesome_css_url = %v", got)
 	}
 	if got := m.Config().Extra["webawesome_loader_url"]; got != "/assets/vendor/webawesome/webawesome.loader.js" {
@@ -478,7 +478,7 @@ func TestWebAwesomeVendorIntegration_CustomOutputDirIsPublishedAndUsed(t *testin
 	if err := plugin.Render(m); err != nil {
 		t.Fatalf("webawesome Render() error = %v", err)
 	}
-	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/wa-kit/styles/webawesome.css" {
+	if got := m.Config().Extra["webawesome_css_url"]; got != "/assets/vendor/wa-kit/styles/themes/default.css" {
 		t.Fatalf("webawesome_css_url = %v", got)
 	}
 	if got := m.Config().Extra["webawesome_loader_url"]; got != "/assets/vendor/wa-kit/webawesome.loader.js" {
@@ -589,7 +589,7 @@ func TestWebAwesomeVendorIntegration_BadIntegrityFallsBackToCDN(t *testing.T) {
 	if err := plugin.Render(m); err != nil {
 		t.Fatalf("webawesome Render() error = %v", err)
 	}
-	if got := m.Config().Extra["webawesome_css_url"]; got != webAwesomeDefaultCDNBase+"/styles/webawesome.css" {
+	if got := m.Config().Extra["webawesome_css_url"]; got != webAwesomeDefaultCDNBase+"/styles/themes/default.css" {
 		t.Fatalf("webawesome_css_url = %v", got)
 	}
 	if got := m.Config().Extra["webawesome_loader_url"]; got != webAwesomeDefaultCDNBase+"/webawesome.loader.js" {
@@ -600,8 +600,9 @@ func TestWebAwesomeVendorIntegration_BadIntegrityFallsBackToCDN(t *testing.T) {
 func buildWebAwesomeTestTarGz(t *testing.T) []byte {
 	t.Helper()
 	return buildWebAwesomeArchive(t, map[string]string{
-		"package/dist-cdn/webawesome.loader.js":  "console.log('loader')",
-		"package/dist-cdn/styles/webawesome.css": "body { color: red; }",
+		"package/dist-cdn/webawesome.loader.js":      "console.log('loader')",
+		"package/dist-cdn/styles/webawesome.css":     "body { color: red; }",
+		"package/dist-cdn/styles/themes/default.css": "html { color: red; }",
 	})
 }
 
