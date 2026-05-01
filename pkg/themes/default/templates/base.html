@@ -42,6 +42,11 @@
   <!-- Cards CSS -->
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
 
+  <!-- Feed CSS for dedicated feed pages and embedded render_feed() output -->
+  {% if body and 'feed h-feed' in body %}
+  <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+  {% endif %}
+
   <!-- Admonitions CSS (only when content uses admonitions) -->
   {% if needs_admonitions_css %}
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
@@ -87,6 +92,9 @@
       --wa-color-surface-border: var(--color-border, #e5e7eb);
       --wa-color-text-normal: var(--color-text, #1f2937);
       --wa-color-text-quiet: var(--color-text-muted, #6b7280);
+      --wa-color-text-link: var(--color-link, var(--color-primary, #3b82f6));
+      --wa-link-decoration-default: underline color-mix(in srgb, currentColor 70%, transparent) dotted;
+      --wa-link-decoration-hover: underline;
       --wa-color-brand-fill-loud: var(--color-primary, #3b82f6);
       --wa-color-brand-fill-normal: var(--color-primary, #3b82f6);
       --wa-color-brand-fill-quiet: color-mix(in srgb, var(--color-primary, #3b82f6) 22%, var(--color-surface, #f9fafb));
@@ -380,7 +388,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper{% if not feed and not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% if feed and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}" id="view-transition-page">
+  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not feed %}
@@ -606,7 +614,17 @@
       var loaded = false;
       var bundleDir = '/{{ config.search.pagefind.bundle_dir | default:"_pagefind" }}';
 
+      function ensurePagefindCSS() {
+        if (document.querySelector('link[href*="/pagefind-ui.css"]')) return;
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = bundleDir + '/pagefind-ui.css';
+        document.head.appendChild(link);
+      }
+
       function loadPagefind(callback) {
+        ensurePagefindCSS();
+
         if (loaded) {
           if (window.initPagefindSearch) {
             window.initPagefindSearch();
@@ -615,14 +633,6 @@
           return;
         }
         loaded = true;
-
-        // Inject pagefind CSS
-        if (!document.querySelector('link[href*="/pagefind-ui.css"]')) {
-          var link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = bundleDir + '/pagefind-ui.css';
-          document.head.appendChild(link);
-        }
 
         // Inject pagefind JS
         if (document.querySelector('script[src*="/pagefind-ui.js"]')) {
