@@ -56,6 +56,10 @@ rm -rf .markata
 markata-go build --clean
 ```
 
+Current releases should still detect moved or deleted content files during `markata-go build --fast`.
+If a moved-file error only goes away after clearing `.markata/`, you are likely hitting an older
+build-cache bug rather than expected behavior.
+
 ### 3. Config File Differences
 
 **Problem**: `markata-go.toml` points to wrong templates or has different settings.

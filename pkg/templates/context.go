@@ -403,6 +403,19 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert authors to map
 	authorsMap := authorsToMap(&c.Authors)
 
+	feedsPageEnabled := true
+	if c.FeedsPage.Enabled != nil {
+		feedsPageEnabled = *c.FeedsPage.Enabled
+	}
+	feedsPageMap := map[string]interface{}{
+		"enabled":     feedsPageEnabled,
+		"title":       c.FeedsPage.Title,
+		"description": c.FeedsPage.Description,
+		"template":    c.FeedsPage.Template,
+		"slug_prefix": c.FeedsPage.SlugPrefix,
+		"robots":      c.FeedsPage.Robots,
+	}
+
 	var licenseValue interface{}
 	if c.License.IsDisabled() {
 		licenseValue = false
@@ -440,6 +453,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"header":        headerMap,
 		"theme":         themeMap,
 		"authors":       authorsMap,
+		"feeds_page":    feedsPageMap,
 		"license":       licenseValue,
 		"templates": map[string]interface{}{
 			"media": map[string]interface{}{
@@ -1210,6 +1224,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"base_url":       baseURL,
 		"title":          f.Title,
 		"description":    f.Description,
+		"robots":         f.Robots,
 		"filter":         f.Filter,
 		"sort":           f.Sort,
 		"reverse":        f.Reverse,

@@ -475,7 +475,9 @@ func TestEngine_Render_SlidesTemplate(t *testing.T) {
 		`<div class="slides">`,
 		`<section><section><div class="slide-content"><h2>Intro</h2><p>Welcome</p></div></section><section><div class="slide-content"><h3>Details</h3><p>More</p></div></section></section>`,
 		`<section><div class="slide-content"><h2>Wrap Up</h2></div></section>`,
-		`Reveal.initialize({`,
+		`function slideDeckOptions() {`,
+		`Reveal.initialize(slideDeckOptions()).then(function() {`,
+		`min-height: 100dvh;`,
 	}
 
 	for _, check := range checks {

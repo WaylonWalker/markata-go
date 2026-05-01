@@ -351,8 +351,8 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 		Title:       feed.Channel.Title,
 		Description: feed.Channel.Description,
 		Language:    feed.Channel.Language,
-		SiteURL:     feed.Channel.Link,
-		ImageURL:    feed.Channel.Image.URL,
+		SiteURL:     normalizeExternalURL(feed.Channel.Link),
+		ImageURL:    normalizeExternalURL(feed.Channel.Image.URL),
 	}
 
 	entries := make([]*models.ExternalEntry, 0, len(feed.Channel.Items))
@@ -391,13 +391,13 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 		entry := &models.ExternalEntry{
 			ID:          id,
 			Title:       item.Title,
-			URL:         item.Link,
+			URL:         normalizeExternalURL(item.Link),
 			Published:   pubDatePtr,
 			Updated:     pubDatePtr,
 			Author:      author,
 			Content:     content,
 			Description: stripBlogrollHTML(item.Description),
-			ImageURL:    imageURL,
+			ImageURL:    normalizeExternalURL(imageURL),
 			Categories:  item.Categories,
 		}
 
@@ -437,8 +437,8 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 	parsed := &blogrollParsedFeed{
 		Title:       feed.Title,
 		Description: feed.Subtitle,
-		SiteURL:     siteURL,
-		ImageURL:    imageURL,
+		SiteURL:     normalizeExternalURL(siteURL),
+		ImageURL:    normalizeExternalURL(imageURL),
 	}
 
 	entries := make([]*models.ExternalEntry, 0, len(feed.Entries))
@@ -487,13 +487,13 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 		extEntry := &models.ExternalEntry{
 			ID:          entry.ID,
 			Title:       entry.Title,
-			URL:         entryURL,
+			URL:         normalizeExternalURL(entryURL),
 			Published:   pubDatePtr,
 			Updated:     updDatePtr,
 			Author:      entry.Author.Name,
 			Content:     content,
 			Description: stripBlogrollHTML(entry.Summary),
-			ImageURL:    imageURL,
+			ImageURL:    normalizeExternalURL(imageURL),
 			Categories:  tags,
 		}
 
@@ -846,17 +846,19 @@ func initFeedFromConfig(config models.ExternalFeedConfig) *models.ExternalFeed {
 		feed.Description = config.Description
 	}
 	if config.SiteURL != "" {
-		feed.SiteURL = config.SiteURL
+		feed.SiteURL = normalizeExternalURL(config.SiteURL)
 	}
 	if config.ImageURL != "" {
-		feed.ImageURL = config.ImageURL
+		feed.ImageURL = normalizeExternalURL(config.ImageURL)
 	}
+	normalizeExternalFeed(feed)
 
 	return feed
 }
 
 // mergeCachedFeed merges config values into a cached feed.
 func mergeCachedFeed(cached *models.ExternalFeed, config models.ExternalFeedConfig) *models.ExternalFeed {
+	normalizeExternalFeed(cached)
 	cached.Config = config
 	if config.Title != "" {
 		cached.Title = config.Title
@@ -868,12 +870,13 @@ func mergeCachedFeed(cached *models.ExternalFeed, config models.ExternalFeedConf
 		cached.Category = config.Category
 	}
 	if config.SiteURL != "" {
-		cached.SiteURL = config.SiteURL
+		cached.SiteURL = normalizeExternalURL(config.SiteURL)
 	}
 	if config.ImageURL != "" {
-		cached.ImageURL = config.ImageURL
+		cached.ImageURL = normalizeExternalURL(config.ImageURL)
 	}
 	cached.Tags = config.Tags
+	normalizeExternalFeed(cached)
 	return cached
 }
 
@@ -886,15 +889,16 @@ func updateFeedFromParsed(feed *models.ExternalFeed, parsed *blogrollParsedFeed)
 		feed.Description = parsed.Description
 	}
 	if feed.SiteURL == "" {
-		feed.SiteURL = parsed.SiteURL
+		feed.SiteURL = normalizeExternalURL(parsed.SiteURL)
 	}
 	if feed.ImageURL == "" {
-		feed.ImageURL = parsed.ImageURL
+		feed.ImageURL = normalizeExternalURL(parsed.ImageURL)
 	}
 	if feed.AvatarURL == "" && parsed.AvatarURL != "" {
-		feed.AvatarURL = parsed.AvatarURL
+		feed.AvatarURL = normalizeExternalURL(parsed.AvatarURL)
 		feed.AvatarSource = parsed.AvatarSource
 	}
+	normalizeExternalFeed(feed)
 
 	now := time.Now()
 	feed.LastFetched = &now
@@ -1075,6 +1079,7 @@ func (p *BlogrollPlugin) loadFromCacheAny(url, cacheDir string) *models.External
 	if err := json.Unmarshal(data, &feed); err != nil {
 		return nil
 	}
+	normalizeExternalFeed(&feed)
 
 	return &feed
 }
@@ -1729,10 +1734,10 @@ func buildFeedIndex(feeds []*models.ExternalFeed) map[string]*models.ExternalFee
 
 func readerPreviewForEntry(entry *models.ExternalEntry, sourceImageURL, fallbackImageService string) (previewURL, previewKind string) {
 	if entry != nil && entry.ImageURL != "" {
-		return entry.ImageURL, "article-image"
+		return normalizeExternalURL(entry.ImageURL), "article-image"
 	}
 	if sourceImageURL != "" {
-		return sourceImageURL, "source-image"
+		return normalizeExternalURL(sourceImageURL), "source-image"
 	}
 	if fallbackImageService != "" && entry != nil && entry.URL != "" {
 		return generateFallbackImageURL(fallbackImageService, entry.URL), "screenshot"

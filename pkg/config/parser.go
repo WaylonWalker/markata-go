@@ -564,6 +564,7 @@ type tomlFeedConfig struct {
 	Slug            string            `toml:"slug"`
 	Title           string            `toml:"title"`
 	Description     string            `toml:"description"`
+	Robots          string            `toml:"robots"`
 	Filter          string            `toml:"filter"`
 	Sort            string            `toml:"sort"`
 	Reverse         bool              `toml:"reverse"`
@@ -666,6 +667,7 @@ type tomlFeedsPageConfig struct {
 	Description string `toml:"description"`
 	Template    string `toml:"template"`
 	SlugPrefix  string `toml:"slug_prefix"`
+	Robots      string `toml:"robots"`
 }
 
 func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
@@ -707,6 +709,7 @@ func (t *tomlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -1864,6 +1867,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
@@ -2033,6 +2037,7 @@ type yamlFeedConfig struct {
 	Slug            string            `yaml:"slug"`
 	Title           string            `yaml:"title"`
 	Description     string            `yaml:"description"`
+	Robots          string            `yaml:"robots"`
 	Filter          string            `yaml:"filter"`
 	Sort            string            `yaml:"sort"`
 	Reverse         bool              `yaml:"reverse"`
@@ -2165,6 +2170,7 @@ type yamlFeedsPageConfig struct {
 	Description string `yaml:"description"`
 	Template    string `yaml:"template"`
 	SlugPrefix  string `yaml:"slug_prefix"`
+	Robots      string `yaml:"robots"`
 }
 
 func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
@@ -2176,6 +2182,7 @@ func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -3352,6 +3359,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
@@ -3545,6 +3553,7 @@ type jsonFeedConfig struct {
 	Slug            string            `json:"slug"`
 	Title           string            `json:"title"`
 	Description     string            `json:"description"`
+	Robots          string            `json:"robots"`
 	Filter          string            `json:"filter"`
 	Sort            string            `json:"sort"`
 	Reverse         bool              `json:"reverse"`
@@ -3647,6 +3656,7 @@ type jsonFeedsPageConfig struct {
 	Description string `json:"description"`
 	Template    string `json:"template"`
 	SlugPrefix  string `json:"slug_prefix"`
+	Robots      string `json:"robots"`
 }
 
 func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
@@ -3688,6 +3698,7 @@ func (t *jsonFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -4864,6 +4875,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,

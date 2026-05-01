@@ -155,7 +155,7 @@ func (p *WebAwesomePlugin) Render(m *lifecycle.Manager) error {
 	return nil
 }
 
-var webAwesomeComparisonRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*(?:\bwebawesome\b[^\"]*\bcomparison\b|\bwa-comparison\b)[^"]*)"([^>]*)>\s*(?:<p>\s*)?(?:<figure>\s*)?(<img\s+[^>]*>)\s*(<img\s+[^>]*>)\s*(?:</figure>\s*)?(?:</p>\s*)?</div>`)
+var webAwesomeComparisonRegex = regexp.MustCompile(`(?s)<div([^>]*)class="([^"]*(?:\bwebawesome\b[^\"]*\bcomparison\b|\bwa-comparison\b)[^"]*)"([^>]*)>\s*(?:<p>\s*)?(?:<figure>\s*)?(?:<a\b[^>]*>\s*)?(<img\s+[^>]*>)\s*(?:</a>\s*)?(?:<a\b[^>]*>\s*)?(<img\s+[^>]*>)\s*(?:</a>\s*)?(?:</figure>\s*)?(?:</p>\s*)?</div>`)
 var webAwesomeAttrRegex = regexp.MustCompile(`([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+)`)
 var webAwesomeElementRegex = regexp.MustCompile(`<\s*(wa-[a-z0-9-]+)\b`)
 var webAwesomeNestedTabsOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\s+tabs\b|\bwa-tabs\b)[^"]*)"([^>]*)>`)
@@ -212,8 +212,9 @@ func (p *WebAwesomePlugin) processPost(post *models.Post) error {
 			b.WriteString(`"`)
 		}
 		b.WriteString(`>`)
-		b.WriteString(renderWebAwesomeComparisonImage("before", beforeAttrs))
-		b.WriteString(renderWebAwesomeComparisonImage("after", afterAttrs))
+		// Map authored order left-to-right so the first image is initially on the left.
+		b.WriteString(renderWebAwesomeComparisonImage("after", beforeAttrs))
+		b.WriteString(renderWebAwesomeComparisonImage("before", afterAttrs))
 		b.WriteString(`</wa-comparison>`)
 
 		if caption != "" {

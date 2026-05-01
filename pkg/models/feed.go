@@ -96,6 +96,10 @@ type FeedConfig struct {
 	// ArchiveDisabled disables the generated archive syndication endpoints for this feed.
 	ArchiveDisabled bool `json:"archive_disabled,omitempty" yaml:"archive_disabled,omitempty" toml:"archive_disabled,omitempty"`
 
+	// Robots controls the robots meta tag for HTML feed pages.
+	// Example: "noindex,follow"
+	Robots string `json:"robots,omitempty" yaml:"robots,omitempty" toml:"robots,omitempty"`
+
 	// Posts holds the filtered posts at runtime (not serialized)
 	Posts []*Post `json:"-" yaml:"-" toml:"-"`
 

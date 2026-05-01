@@ -907,6 +907,11 @@ incremental mode when `--fast` is enabled.
 - If dependency changes are detected (links, embeds), a second pass reprocesses affected posts.
 - Changes outside the content directory (templates, config, assets) force a full rebuild.
 
+`build --fast` is different from `serve --fast`. A normal build still rescans content globs on
+every invocation so added, removed, and moved files are detected without clearing caches.
+`--fast` on `build` only skips expensive non-essential work; it does not enable serve-style
+incremental file discovery.
+
 This ensures `serve` remains accurate by default, while `serve --fast` provides a
 quick iteration loop without requiring config hacks.
 

@@ -6,6 +6,7 @@
 {% block head %}
 {{ block.Super() }}
 <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
 {% endblock %}
 
 {% block htmx %}

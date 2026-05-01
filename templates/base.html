@@ -244,6 +244,7 @@
     wa-comparison.markata-webawesome-comparison img {
       display: block;
       height: auto;
+      margin: 0;
       width: 100%;
     }
   </style>
@@ -284,6 +285,17 @@
   {% if config.theme.custom_css %}
   <link rel="stylesheet" href="{{ config.theme.custom_css | asset_url }}">
   {% endif %}
+
+  <style>
+    html:root {
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: light) {
+      html:root {
+        color-scheme: light;
+      }
+    }
+  </style>
 
   <!-- RSS/Atom/JSON Feeds -->
   {% if config.websub.enabled and config.websub.hubs %}

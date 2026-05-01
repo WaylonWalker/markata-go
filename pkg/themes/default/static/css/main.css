@@ -302,16 +302,16 @@ li > ul, li > ol {
   margin-bottom: 0;
 }
 
-/* Blockquotes */
+/* Blockquotes - subtle top border instead of left accent */
 blockquote {
-  border-left: 4px solid var(--color-primary);
   margin: var(--space-4) 0;
-  padding: var(--space-4);
-  padding-left: var(--space-6);
+  padding: var(--space-4) var(--space-5);
   background: var(--color-surface);
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: var(--radius);
   font-style: italic;
   color: var(--color-text-muted);
+  border-top: 2px solid var(--color-border);
+  border-left: none;
 }
 
 blockquote p:last-child {
@@ -323,6 +323,35 @@ img {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+html:root {
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+@media (prefers-color-scheme: light) {
+  html:root {
+    color-scheme: light;
+  }
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%);
 }
 
 figure {
