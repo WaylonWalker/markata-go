@@ -100,6 +100,11 @@ Most useful semantic names:
 - `code-text`
 - `code-comment`
 - `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
 - `button-primary-bg`
 - `button-primary-text`
 - `button-secondary-bg`
@@ -128,5 +133,12 @@ The palette CSS plugin maps palette roles into site CSS variables such as:
 - `link-visited` -> `--color-link-visited`
 - `code-bg` -> `--color-code-bg`
 - `code-text` -> `--color-code-text`
+- `code-comment` -> `--color-code-comment`
+- `code-keyword` -> `--color-code-keyword`
+- `code-string` -> `--color-code-string`
+- `code-number` -> `--color-code-number`
+- `code-function` -> `--color-code-function`
+- `code-type` -> `--color-code-type`
+- `code-operator` -> `--color-code-operator`
 
 So if the task is “change the whole color system”, editing the palette is usually better than patching many CSS selectors.

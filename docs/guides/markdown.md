@@ -927,26 +927,26 @@ line_numbers = false     # Line numbers (if supported)
 
 #### Automatic Theme from Palette
 
-By default, the syntax highlighting theme is **automatically derived** from your site's color palette. This ensures code blocks match your site's overall look:
+By default, syntax highlighting is **driven by your site's palette code colors**. This ensures code blocks match your site's overall look even when there is no exact Chroma theme match:
 
 ```toml
 [markata-go.theme]
-palette = "catppuccin-mocha"  # Code blocks will use catppuccin-mocha highlighting
+palette = "catppuccin-mocha"
 ```
 
-| Site Palette | Code Theme |
-|-------------|------------|
-| catppuccin-mocha | catppuccin-mocha |
-| catppuccin-latte | catppuccin-latte |
-| rose-pine | rose-pine |
-| gruvbox-dark | gruvbox |
-| gruvbox-light | gruvbox-light |
-| tokyo-night | tokyonight-night |
-| dracula | dracula |
-| solarized-dark | solarized-dark |
-| nord-dark | nord |
+The palette's `code-*` component roles control the generated CSS variables used by Chroma token classes:
 
-For palettes without an exact match, defaults are used based on light/dark variant.
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
+
+If you want a specific Chroma theme instead of palette-native colors, set `markdown.highlight.theme` explicitly.
 
 #### Explicit Override
 

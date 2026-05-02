@@ -670,6 +670,20 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 		if codeText := palette.Resolve("code-text"); codeText != "" {
 			fmt.Fprintf(buf, "%s--color-code-text: %s;\n", indent, codeText)
 		}
+		for _, role := range []string{
+			"comment",
+			"keyword",
+			"string",
+			"number",
+			"function",
+			"type",
+			"operator",
+		} {
+			componentName := "code-" + role
+			if value := palette.Resolve(componentName); value != "" {
+				fmt.Fprintf(buf, "%s--color-%s: %s;\n", indent, componentName, value)
+			}
+		}
 	}
 
 	// Add admonition colors if available

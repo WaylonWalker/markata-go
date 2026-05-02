@@ -111,6 +111,9 @@ func TestPaletteCSSPlugin_Write_GeneratesCSS(t *testing.T) {
 	if !strings.Contains(css, "--color-primary") {
 		t.Error("expected --color-primary in CSS")
 	}
+	if !strings.Contains(css, "--color-code-keyword") {
+		t.Error("expected syntax highlighting code variables in CSS")
+	}
 }
 
 func TestPaletteCSSPlugin_Write_DefaultsToDarkWithoutSystemPreference(t *testing.T) {
