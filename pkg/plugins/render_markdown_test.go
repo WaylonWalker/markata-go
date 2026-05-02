@@ -198,6 +198,83 @@ func TestRenderMarkdownPlugin_Blockquote(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownPlugin_FigureCaptionFromFollowingBlockquote(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "![Alt text](image.png)\n> This is the caption."}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<figure>") {
+		t.Fatalf("expected <figure> in output, got %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, "<figcaption><p>This is the caption.</p></figcaption>") {
+		t.Fatalf("expected blockquote caption to merge into figure, got %q", post.ArticleHTML)
+	}
+	if strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected blockquote to be consumed as figcaption, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_StandaloneBlockquoteUnaffectedByFigureMerge(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "Paragraph before\n\n> This stays a blockquote."}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected standalone blockquote to remain, got %q", post.ArticleHTML)
+	}
+	if strings.Contains(post.ArticleHTML, "<figcaption>") {
+		t.Fatalf("expected no figcaption for standalone blockquote, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_ComparisonContainerBlockquoteRemainsOutsideFigure(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "::: wa-comparison\n![Before](before.webp)\n![After](after.webp)\n:::\n\n> comparison caption"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<div class="wa-comparison">`) {
+		t.Fatalf("expected wa-comparison container, got %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected blockquote to remain outside comparison figure, got %q", post.ArticleHTML)
+	}
+	if strings.Contains(post.ArticleHTML, "<figcaption><p>comparison caption</p></figcaption>") {
+		t.Fatalf("expected comparison blockquote not to merge into inner figure, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_SamplePostBothBlockquoteCaptionsMerge(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "::: wa-comparison\n![Before](before.webp)\n![](after.webp)\n:::\n\n![Before](before.webp)\n> black and white\n\n![](after.webp)\n> original"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if strings.Count(post.ArticleHTML, "<figcaption><p>black and white</p></figcaption>") != 1 {
+		t.Fatalf("expected first blockquote caption to merge once, got %q", post.ArticleHTML)
+	}
+	if strings.Count(post.ArticleHTML, "<figcaption><p>original</p></figcaption>") != 1 {
+		t.Fatalf("expected second blockquote caption to merge once, got %q", post.ArticleHTML)
+	}
+	if strings.Contains(post.ArticleHTML, `<div class="wa-comparison"><figure><img src="before.webp" alt="Before" /><img src="after.webp" alt="" /><figcaption>`) {
+		t.Fatalf("expected comparison inner figure not to absorb following caption, got %q", post.ArticleHTML)
+	}
+}
+
 func TestRenderMarkdownPlugin_Table(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	post := &models.Post{Content: "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |"}

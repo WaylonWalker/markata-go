@@ -37,6 +37,10 @@ Fast mode still does the main site build work:
 - feed and collection generation
 - normal output writing for the site itself
 
+For `markata-go build --fast`, file discovery still rescans the content tree on each run. Added,
+removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
+reuses in-memory and on-disk state for incremental rebuilds between change events.
+
 So `--fast` is good for content, template, and most styling iteration, but it is not a full partial build mode.
 
 ## Guidance

@@ -34,6 +34,9 @@ type AutoFeedTypeConfig struct {
 
 	// Formats specifies which output formats to generate
 	Formats models.FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+
+	// Robots controls the robots meta tag for generated HTML feed pages.
+	Robots string `json:"robots,omitempty" yaml:"robots,omitempty" toml:"robots,omitempty"`
 }
 
 // AutoArchiveConfig configures automatic date archive feeds.
@@ -52,6 +55,9 @@ type AutoArchiveConfig struct {
 
 	// Formats specifies which output formats to generate
 	Formats models.FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+
+	// Robots controls the robots meta tag for generated HTML archive pages.
+	Robots string `json:"robots,omitempty" yaml:"robots,omitempty" toml:"robots,omitempty"`
 }
 
 // Default slug prefix constants for auto-generated feeds.
@@ -161,7 +167,7 @@ func addSyntheticGroupedPost(m *lifecycle.Manager, prefix, slugPart, title, desc
 	})
 }
 
-func buildAutoFeedConfigs(groups []autoStringGroup, prefix, titleFormat, descriptionFormat string, filterFn func([]string) string, formats models.FeedFormats, changedSlugs map[string]bool) []models.FeedConfig {
+func buildAutoFeedConfigs(groups []autoStringGroup, prefix, titleFormat, descriptionFormat string, filterFn func([]string) string, formats models.FeedFormats, robots string, changedSlugs map[string]bool) []models.FeedConfig {
 	feeds := make([]models.FeedConfig, 0, len(groups))
 	for _, group := range groups {
 		if changedSlugs != nil && !changedSlugs[group.SlugPart] {
@@ -176,6 +182,7 @@ func buildAutoFeedConfigs(groups []autoStringGroup, prefix, titleFormat, descrip
 			Sort:        "date",
 			Reverse:     true,
 			Formats:     formats,
+			Robots:      robots,
 		})
 	}
 	return feeds
@@ -428,7 +435,7 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	for _, group := range groups {
 		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, nil)
+	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, nil)
 }
 
 func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
@@ -445,14 +452,14 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 	for _, group := range groups {
 		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, changedSlugs)
+	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, changedSlugs)
 }
 
 // generateCategoryFeeds creates feed configurations for each unique category.
 func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
 	groups := collectAutoCategoryGroups(posts)
 	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
-	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, nil)
+	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, config.Robots, nil)
 }
 
 func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
@@ -465,7 +472,7 @@ func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, 
 	}
 	groups := collectAutoCategoryGroups(posts)
 	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
-	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, changedSlugs)
+	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, config.Robots, changedSlugs)
 }
 
 // generateArchiveFeeds creates feed configurations for year and month archives.
@@ -594,6 +601,7 @@ func (p *AutoFeedsPlugin) generateArchiveFeedsForChanged(posts []*models.Post, c
 			Sort:        "date",
 			Reverse:     true,
 			Formats:     config.Formats,
+			Robots:      config.Robots,
 		})
 	}
 
@@ -628,6 +636,7 @@ func (p *AutoFeedsPlugin) generateArchiveFeedsForChanged(posts []*models.Post, c
 				Sort:        "date",
 				Reverse:     true,
 				Formats:     config.Formats,
+				Robots:      config.Robots,
 			})
 		}
 	}
@@ -683,9 +692,85 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 		if ac, ok := autoFeeds.(AutoFeedsConfig); ok {
 			return ac
 		}
+		if raw, ok := autoFeeds.(map[string]any); ok {
+			ac := defaultConfig
+			if tagsRaw, ok := raw["tags"].(map[string]any); ok {
+				applyAutoFeedTypeOverrides(&ac.Tags, tagsRaw)
+			}
+			if categoriesRaw, ok := raw["categories"].(map[string]any); ok {
+				applyAutoFeedTypeOverrides(&ac.Categories, categoriesRaw)
+			}
+			if archivesRaw, ok := raw["archives"].(map[string]any); ok {
+				applyAutoArchiveOverrides(&ac.Archives, archivesRaw)
+			}
+			return ac
+		}
 	}
 
 	return defaultConfig
+}
+
+func applyAutoFeedTypeOverrides(cfg *AutoFeedTypeConfig, raw map[string]any) {
+	if v, ok := raw["enabled"].(bool); ok {
+		cfg.Enabled = v
+	}
+	if v, ok := raw["slug_prefix"].(string); ok && v != "" {
+		cfg.SlugPrefix = v
+	}
+	if v, ok := raw["robots"].(string); ok {
+		cfg.Robots = v
+	}
+	if formatsRaw, ok := raw["formats"].(map[string]any); ok {
+		applyFeedFormatOverrides(&cfg.Formats, formatsRaw)
+	}
+}
+
+func applyAutoArchiveOverrides(cfg *AutoArchiveConfig, raw map[string]any) {
+	if v, ok := raw["enabled"].(bool); ok {
+		cfg.Enabled = v
+	}
+	if v, ok := raw["slug_prefix"].(string); ok && v != "" {
+		cfg.SlugPrefix = v
+	}
+	if v, ok := raw["yearly_feeds"].(bool); ok {
+		cfg.YearlyFeeds = v
+	}
+	if v, ok := raw["monthly_feeds"].(bool); ok {
+		cfg.MonthlyFeeds = v
+	}
+	if v, ok := raw["robots"].(string); ok {
+		cfg.Robots = v
+	}
+	if formatsRaw, ok := raw["formats"].(map[string]any); ok {
+		applyFeedFormatOverrides(&cfg.Formats, formatsRaw)
+	}
+}
+
+func applyFeedFormatOverrides(cfg *models.FeedFormats, raw map[string]any) {
+	if v, ok := raw["html"].(bool); ok {
+		cfg.HTML = v
+	}
+	if v, ok := raw["simple_html"].(bool); ok {
+		cfg.SimpleHTML = v
+	}
+	if v, ok := raw["rss"].(bool); ok {
+		cfg.RSS = v
+	}
+	if v, ok := raw["atom"].(bool); ok {
+		cfg.Atom = v
+	}
+	if v, ok := raw["json"].(bool); ok {
+		cfg.JSON = v
+	}
+	if v, ok := raw["markdown"].(bool); ok {
+		cfg.Markdown = v
+	}
+	if v, ok := raw["text"].(bool); ok {
+		cfg.Text = v
+	}
+	if v, ok := raw["sitemap"].(bool); ok {
+		cfg.Sitemap = v
+	}
 }
 
 // slugify converts a string to a URL-safe slug.

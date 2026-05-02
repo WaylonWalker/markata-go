@@ -112,6 +112,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Pass tags configuration
 	lcConfig.Extra["tags"] = cfg.Tags
+	lcConfig.Extra["feeds_page"] = cfg.FeedsPage
 
 	// Pass view transitions configuration
 	lcConfig.Extra["view_transitions"] = cfg.ViewTransitions

@@ -763,13 +763,18 @@ cjk = true  # default: true
 
 ## Figures
 
-Automatically convert images with following paragraphs into HTML `<figure>` elements with `<figcaption>`.
+Automatically convert images with following paragraphs into HTML `<figure>` elements with `<figcaption>`. A single-paragraph blockquote immediately after an image is also treated as caption content, which is useful when the caption should read as quoted text.
 
 **Input:**
 
 ```markdown
 ![Alt text](image.jpg)
 This is the caption for the figure.
+```
+
+```markdown
+![Alt text](image.jpg)
+> This quoted line also becomes the figure caption.
 ```
 
 **Output:**

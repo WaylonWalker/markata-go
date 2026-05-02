@@ -18,6 +18,7 @@ func TestFeedsListingPlugin_Write(t *testing.T) {
 	config := m.Config()
 	config.OutputDir = t.TempDir()
 	feedsPage := models.NewFeedsPageConfig()
+	feedsPage.Robots = "noindex,follow"
 	defaults := models.NewFeedDefaults()
 	config.Extra = map[string]interface{}{
 		"title":         "Test Site",
@@ -62,6 +63,9 @@ func TestFeedsListingPlugin_Write(t *testing.T) {
 	body := string(content)
 	if !strings.Contains(body, "Blog") {
 		t.Fatalf("feeds page should contain public feed title")
+	}
+	if !strings.Contains(body, `<meta name="robots" content="noindex,follow">`) {
+		t.Fatalf("feeds page should include robots noindex meta")
 	}
 	if !strings.Contains(body, "/blog/archive/rss.xml") {
 		t.Fatalf("feeds page should link to archive rss variant")

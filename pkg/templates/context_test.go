@@ -160,3 +160,16 @@ func TestSearchToMap_BleveConfig(t *testing.T) {
 		t.Fatalf("bleve.max_limit = %#v, want 50", bleve["max_limit"])
 	}
 }
+
+func TestFeedToMap_IncludesRobots(t *testing.T) {
+	m := feedToMap(&models.FeedConfig{
+		Slug:        "tags/python",
+		Title:       "Python",
+		Description: "Posts tagged python",
+		Robots:      "noindex,follow",
+	})
+
+	if got := m["robots"]; got != "noindex,follow" {
+		t.Fatalf("robots = %#v, want noindex,follow", got)
+	}
+}
