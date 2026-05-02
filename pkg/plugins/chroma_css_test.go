@@ -18,14 +18,16 @@ func TestChromaCSSPlugin_Name(t *testing.T) {
 
 func TestChromaCSSPlugin_Configure(t *testing.T) {
 	tests := []struct {
-		name      string
-		extra     map[string]interface{}
-		wantTheme string
+		name         string
+		extra        map[string]interface{}
+		wantTheme    string
+		wantExplicit bool
 	}{
 		{
-			name:      "default theme",
-			extra:     map[string]interface{}{},
-			wantTheme: "github-dark",
+			name:         "default theme",
+			extra:        map[string]interface{}{},
+			wantTheme:    "github-dark",
+			wantExplicit: false,
 		},
 		{
 			name: "explicit theme",
@@ -36,16 +38,18 @@ func TestChromaCSSPlugin_Configure(t *testing.T) {
 					},
 				},
 			},
-			wantTheme: "monokai",
+			wantTheme:    "monokai",
+			wantExplicit: true,
 		},
 		{
-			name: "theme from palette",
+			name: "palette uses palette-native CSS",
 			extra: map[string]interface{}{
 				"theme": map[string]interface{}{
 					"palette": "catppuccin-mocha",
 				},
 			},
-			wantTheme: "catppuccin-mocha", // From palette mapping
+			wantTheme:    "github-dark",
+			wantExplicit: false,
 		},
 	}
 
@@ -62,6 +66,9 @@ func TestChromaCSSPlugin_Configure(t *testing.T) {
 
 			if p.chromaTheme != tt.wantTheme {
 				t.Errorf("chromaTheme = %q, want %q", p.chromaTheme, tt.wantTheme)
+			}
+			if p.explicit != tt.wantExplicit {
+				t.Errorf("explicit = %v, want %v", p.explicit, tt.wantExplicit)
 			}
 		})
 	}
@@ -102,6 +109,9 @@ func TestChromaCSSPlugin_Write(t *testing.T) {
 	}
 	if !strings.Contains(css, ".chroma") {
 		t.Error("expected .chroma class in CSS")
+	}
+	if !strings.Contains(css, "--color-code-keyword") {
+		t.Error("expected palette-native code color variables in CSS")
 	}
 	// Check for typical chroma classes
 	if !strings.Contains(css, ".kd") { // keyword declaration

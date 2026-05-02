@@ -164,6 +164,14 @@ These CSS custom properties can be overridden:
 | `--color-link-hover` | Link hover color | Depends on palette |
 | `--color-border` | Border color | Depends on palette |
 | `--color-code-bg` | Code block background | Depends on palette |
+| `--color-code-text` | Code block text | Depends on palette |
+| `--color-code-comment` | Code comments | Depends on palette |
+| `--color-code-keyword` | Code keywords | Depends on palette |
+| `--color-code-string` | Code strings | Depends on palette |
+| `--color-code-number` | Code numbers | Depends on palette |
+| `--color-code-function` | Code functions | Depends on palette |
+| `--color-code-type` | Code types and tags | Depends on palette |
+| `--color-code-operator` | Code operators | Depends on palette |
 | `--content-width` | Max content width | `720px` |
 | `--font-family` | Body font | System fonts |
 | `--font-family-mono` | Code font | Monospace fonts |

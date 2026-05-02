@@ -27,6 +27,7 @@ type ChromaCSSPlugin struct {
 	chromaTheme string
 	chromaCSS   string // Pre-generated CSS content (computed in Configure)
 	chromaHash  string // Content hash for cache busting
+	explicit    bool
 }
 
 // NewChromaCSSPlugin creates a new ChromaCSSPlugin.
@@ -48,44 +49,25 @@ func (p *ChromaCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	extra := config.Extra
 
-	configuredTheme := ""
-
-	// Try to get explicit highlight config from markdown.highlight.theme
-	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
-		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
-			if theme, ok := highlight["theme"].(string); ok && theme != "" {
-				configuredTheme = theme
-			}
-		}
-	}
-
-	// Derive from palette if not explicitly set
-	if configuredTheme == "" {
-		paletteName := p.getPaletteName(extra)
-		if paletteName != "" {
-			chromaTheme := palettes.ChromaTheme(paletteName)
-			if chromaTheme != "" {
-				configuredTheme = chromaTheme
-			} else {
-				// Fallback based on variant
-				variant := p.getPaletteVariant(paletteName)
-				configuredTheme = palettes.ChromaThemeForVariant(variant)
-			}
-		}
-	}
-
-	// Use configured theme if found, otherwise keep default
+	configuredTheme, explicitTheme := p.getExplicitHighlightTheme(extra)
+	p.explicit = explicitTheme
 	if configuredTheme != "" {
 		p.chromaTheme = configuredTheme
 	}
 
-	// Pre-generate the CSS content so we can hash it for cache busting
-	style := styles.Get(p.chromaTheme)
-	if style == nil {
-		style = styles.Fallback
+	var (
+		css string
+		err error
+	)
+	if p.explicit {
+		style := styles.Get(p.chromaTheme)
+		if style == nil {
+			style = styles.Fallback
+		}
+		css, err = p.generateThemeCSS(style)
+	} else {
+		css = p.generatePaletteCSS()
 	}
-
-	css, err := p.generateCSS(style)
 	if err != nil {
 		return fmt.Errorf("generating chroma CSS: %w", err)
 	}
@@ -117,14 +99,18 @@ func (p *ChromaCSSPlugin) Write(m *lifecycle.Manager) error {
 	css := p.chromaCSS
 	if css == "" {
 		// Fallback: generate now if Configure didn't run (shouldn't happen)
-		style := styles.Get(p.chromaTheme)
-		if style == nil {
-			style = styles.Fallback
-		}
-		var err error
-		css, err = p.generateCSS(style)
-		if err != nil {
-			return fmt.Errorf("generating chroma CSS: %w", err)
+		if p.explicit {
+			style := styles.Get(p.chromaTheme)
+			if style == nil {
+				style = styles.Fallback
+			}
+			var err error
+			css, err = p.generateThemeCSS(style)
+			if err != nil {
+				return fmt.Errorf("generating chroma CSS: %w", err)
+			}
+		} else {
+			css = p.generatePaletteCSS()
 		}
 	}
 
@@ -154,8 +140,8 @@ func (p *ChromaCSSPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
-// generateCSS creates CSS from a Chroma style.
-func (p *ChromaCSSPlugin) generateCSS(style *chroma.Style) (string, error) {
+// generateThemeCSS creates CSS from an explicit Chroma style override.
+func (p *ChromaCSSPlugin) generateThemeCSS(style *chroma.Style) (string, error) {
 	formatter := chromahtml.New(chromahtml.WithClasses(true), chromahtml.WithAllClasses(true))
 
 	var sb strings.Builder
@@ -171,32 +157,46 @@ func (p *ChromaCSSPlugin) generateCSS(style *chroma.Style) (string, error) {
 	return sb.String(), nil
 }
 
-// getPaletteName extracts the palette name from config.Extra.
-func (p *ChromaCSSPlugin) getPaletteName(extra map[string]interface{}) string {
-	if extra == nil {
-		return ""
-	}
-
-	if theme, ok := extra["theme"].(map[string]interface{}); ok {
-		if palette, ok := theme["palette"].(string); ok && palette != "" {
-			return palette
-		}
-	}
-
-	return ""
+// generatePaletteCSS styles Chroma token classes from the active palette's code colors.
+func (p *ChromaCSSPlugin) generatePaletteCSS() string {
+	var sb strings.Builder
+	sb.WriteString("/* Syntax highlighting - generated from palette code colors */\n\n")
+	sb.WriteString(`.chroma { color: var(--color-code-text, var(--color-text, currentColor)); background-color: var(--color-code-bg, var(--color-surface, transparent)); }
+.chroma .err { color: var(--color-error, #dc2626); background-color: color-mix(in srgb, var(--color-error, #dc2626) 14%, transparent); }
+.chroma .lntd { vertical-align: top; padding: 0; margin: 0; border: 0; }
+.chroma .lntable { border-spacing: 0; padding: 0; margin: 0; border: 0; }
+.chroma .hl { background-color: color-mix(in srgb, var(--color-code-text, currentColor) 10%, var(--color-code-bg, transparent)); }
+.chroma .ln, .chroma .lnt { color: color-mix(in srgb, var(--color-code-text, currentColor) 45%, transparent); }
+.chroma .c, .chroma .ch, .chroma .cm, .chroma .c1, .chroma .cs, .chroma .cpf { color: var(--color-code-comment, var(--color-text-muted, #6b7280)); font-style: italic; }
+.chroma .k, .chroma .kc, .chroma .kd, .chroma .kn, .chroma .kp, .chroma .kr, .chroma .kt { color: var(--color-code-keyword, var(--color-primary, #7c3aed)); font-weight: 600; }
+.chroma .s, .chroma .sa, .chroma .sb, .chroma .sc, .chroma .dl, .chroma .sd, .chroma .s2, .chroma .se, .chroma .sh, .chroma .si, .chroma .sx, .chroma .sr, .chroma .s1, .chroma .ss { color: var(--color-code-string, var(--color-success, #059669)); }
+.chroma .m, .chroma .mb, .chroma .mf, .chroma .mh, .chroma .mi, .chroma .il, .chroma .mo, .chroma .bin, .chroma .oct, .chroma .hex { color: var(--color-code-number, var(--color-code-keyword, #7c3aed)); }
+.chroma .nf, .chroma .fm { color: var(--color-code-function, var(--color-link, #2563eb)); }
+.chroma .nc, .chroma .nn, .chroma .no, .chroma .nt, .chroma .nd, .chroma .ne, .chroma .nl { color: var(--color-code-type, var(--color-code-function, #2563eb)); }
+.chroma .o, .chroma .ow { color: var(--color-code-operator, var(--color-code-keyword, #7c3aed)); }
+.chroma .na, .chroma .py, .chroma .bp { color: var(--color-code-function, var(--color-link, #2563eb)); }
+.chroma .n, .chroma .nb, .chroma .nv, .chroma .vc, .chroma .vg, .chroma .vi, .chroma .vm { color: var(--color-code-text, var(--color-text, currentColor)); }
+.chroma .gi { color: var(--color-success, #059669); background-color: color-mix(in srgb, var(--color-success, #059669) 14%, transparent); }
+.chroma .gd { color: var(--color-error, #dc2626); background-color: color-mix(in srgb, var(--color-error, #dc2626) 14%, transparent); }
+`)
+	return sb.String()
 }
 
-// getPaletteVariant determines the variant (light/dark) of a palette by name.
-func (p *ChromaCSSPlugin) getPaletteVariant(paletteName string) palettes.Variant {
-	lightPatterns := []string{
-		"-light", "-latte", "-dawn", "-day", "-lotus",
+// getExplicitHighlightTheme returns the configured Chroma theme override, if any.
+func (p *ChromaCSSPlugin) getExplicitHighlightTheme(extra map[string]interface{}) (string, bool) {
+	if extra == nil {
+		return "", false
 	}
-	for _, pattern := range lightPatterns {
-		if strings.Contains(paletteName, pattern) {
-			return palettes.VariantLight
+
+	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
+		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
+			if theme, ok := highlight["theme"].(string); ok && theme != "" {
+				return theme, true
+			}
 		}
 	}
-	return palettes.VariantDark
+
+	return "", false
 }
 
 // Priority returns the plugin priority for the write stage.

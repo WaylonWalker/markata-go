@@ -3114,7 +3114,7 @@ Variables are automatically available in your CSS:
 
 **Name:** `chroma_css`  
 **Stage:** Configure + Write  
-**Purpose:** Generates CSS for syntax highlighting from Chroma themes. Creates `css/chroma.css` with syntax highlighting styles that work with `render_markdown`'s CSS-class-based highlighting.
+**Purpose:** Generates `css/chroma.css` for syntax-highlighted code blocks. By default it styles Chroma token classes from the active palette's `code-*` colors; with `markdown.highlight.theme` it uses an explicit Chroma theme override.
 
 **Configuration (TOML):**
 ```toml
@@ -3123,15 +3123,15 @@ Variables are automatically available in your CSS:
 theme = "github-dark"  # Chroma theme name
 ```
 
-Or auto-derived from palette:
+Or use palette-native syntax colors:
 ```toml
 [theme]
-palette = "catppuccin-mocha"  # Automatically selects matching Chroma theme
+palette = "catppuccin-mocha"  # Uses the palette's code-* component colors
 ```
 
 **Behavior:**
-1. During Configure: Reads theme from `markdown.highlight.theme` or derives from palette
-2. Falls back to variant-appropriate default (dark palettes -> github-dark, light palettes -> github)
+1. During Configure: Reads `markdown.highlight.theme` if explicitly set
+2. Without an explicit theme, emits palette-native CSS using `--color-code-*` variables
 3. During Write: Generates `{output_dir}/css/chroma.css` with syntax highlighting styles
 
 **Available Chroma Themes:**
@@ -3167,20 +3167,17 @@ Include the generated CSS in your base template:
 <link rel="stylesheet" href="/css/chroma.css">
 ```
 
-**Palette to Chroma Theme Mapping:**
+**Palette-native roles used by default:**
 
-| Palette | Chroma Theme |
-|---------|--------------|
-| `catppuccin-mocha` | `catppuccin-mocha` |
-| `catppuccin-latte` | `catppuccin-latte` |
-| `dracula` | `dracula` |
-| `nord` | `nord` |
-| `gruvbox-dark` | `gruvbox` |
-| `gruvbox-light` | `gruvbox-light` |
-| `solarized-dark` | `solarized-dark` |
-| `solarized-light` | `solarized-light` |
-| `rose-pine` | `rose-pine` |
-| `tokyo-night` | `tokyo-night` |
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
 
 **Related plugins:**
 - [[#render_markdown|render_markdown]] - Uses CSS classes for syntax highlighting
