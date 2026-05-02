@@ -2072,47 +2072,29 @@ pre[data-language]::after {
 
 ### Syntax Highlighting Themes
 
-Implementations SHOULD support multiple syntax highlighting themes. The syntax highlighting theme can be:
+Implementations SHOULD support multiple syntax highlighting themes. Syntax highlighting can be:
 
 1. **Explicitly configured** via `markdown.highlight.theme`
-2. **Automatically derived** from the site's color palette (`theme.palette`)
-3. **Defaulted** based on palette variant (light/dark)
+2. **Automatically styled** from the site's palette component colors (`theme.palette`)
+3. **Defaulted** to a stable internal Chroma theme when no explicit override is set
 
-#### Palette-to-Theme Mapping
+#### Palette-native Styling
 
-When no explicit theme is set, the syntax highlighting theme is derived from the site palette:
+When no explicit theme is set, syntax highlighting CSS MUST be generated from the active palette's code component roles instead of relying on nearest-match Chroma themes. The generated CSS SHOULD use these palette-driven variables when available:
 
-| Site Palette | Chroma Theme | Notes |
-|-------------|--------------|-------|
-| `catppuccin-latte` | `catppuccin-latte` | Exact match |
-| `catppuccin-frappe` | `catppuccin-frappe` | Exact match |
-| `catppuccin-macchiato` | `catppuccin-macchiato` | Exact match |
-| `catppuccin-mocha` | `catppuccin-mocha` | Exact match |
-| `nord-light` | `nord` | Both variants use same theme |
-| `nord-dark` | `nord` | Both variants use same theme |
-| `gruvbox-light` | `gruvbox-light` | Light variant |
-| `gruvbox-dark` | `gruvbox` | Dark variant |
-| `tokyo-night` | `tokyonight-night` | Main variant |
-| `tokyo-night-storm` | `tokyonight-storm` | Storm variant |
-| `tokyo-night-day` | `tokyonight-day` | Light variant |
-| `rose-pine` | `rose-pine` | Exact match |
-| `rose-pine-moon` | `rose-pine-moon` | Exact match |
-| `rose-pine-dawn` | `rose-pine-dawn` | Exact match |
-| `everforest-light` | `evergarden` | Similar aesthetic |
-| `everforest-dark` | `evergarden` | Similar aesthetic |
-| `dracula` | `dracula` | Exact match |
-| `solarized-light` | `solarized-light` | Exact match |
-| `solarized-dark` | `solarized-dark` | Exact match |
-| `kanagawa-wave` | `vim` | Japanese aesthetic |
-| `kanagawa-dragon` | `vim` | Japanese aesthetic |
-| `kanagawa-lotus` | `modus-operandi` | Light variant |
-| `default-light` | `github` | Clean, neutral |
-| `default-dark` | `github-dark` | Clean, neutral |
-| `matte-black` | `monokai` | High contrast |
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
 
-For unknown palettes, the default is determined by the palette's variant:
-- Light palettes: `github`
-- Dark palettes: `github-dark`
+If a palette omits some of these roles, implementations SHOULD fall back to sensible site variables such as `--color-text`, `--color-text-muted`, `--color-link`, `--color-primary`, `--color-success`, and `--color-error`.
+
+Explicit `markdown.highlight.theme` overrides MAY still use any supported Chroma theme.
 
 #### Available Themes
 
