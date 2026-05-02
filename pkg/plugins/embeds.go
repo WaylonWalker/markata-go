@@ -799,13 +799,14 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		rawURL := strings.TrimSpace(groups[1])
 		options := parseEmbedOptions(groups[2])
 
-		parsedURL, err := url.Parse(rawURL)
+		resolvedURL, sourceURL := resolveHackerNewsReference(rawURL)
+		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
 			return match
 		}
 
 		metadata := p.fetchExternalMetadata(rawURL)
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
+		return p.buildExternalEmbedCard(resolvedURL, parsedURL, metadata, options, sourceURL)
 	})
 
 	// Process ![embed](url|options) with options
@@ -818,13 +819,14 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		rawURL := strings.TrimSpace(groups[1])
 		options := parseEmbedOptions(groups[2])
 
-		parsedURL, err := url.Parse(rawURL)
+		resolvedURL, sourceURL := resolveHackerNewsReference(rawURL)
+		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
 			return match
 		}
 
 		metadata := p.fetchExternalMetadata(rawURL)
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
+		return p.buildExternalEmbedCard(resolvedURL, parsedURL, metadata, options, sourceURL)
 	})
 
 	// Process ![embed](url) basic syntax
@@ -837,13 +839,14 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		rawURL := strings.TrimSpace(groups[1])
 
 		// Validate URL
-		parsedURL, err := url.Parse(rawURL)
+		resolvedURL, sourceURL := resolveHackerNewsReference(rawURL)
+		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
 			return match
 		}
 
 		metadata := p.fetchExternalMetadata(rawURL)
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, EmbedOptions{})
+		return p.buildExternalEmbedCard(resolvedURL, parsedURL, metadata, EmbedOptions{}, sourceURL)
 	})
 
 	return externalObsidianEmbedRegex.ReplaceAllStringFunc(processed, func(match string) string {
@@ -869,7 +872,8 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 			options = parseEmbedOptions(groups[3])
 		}
 
-		parsedURL, err := url.Parse(rawURL)
+		resolvedURL, sourceURL := resolveHackerNewsReference(rawURL)
+		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
 			return match
 		}
@@ -877,7 +881,7 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		metadata := p.fetchExternalMetadata(rawURL)
 		metadata = p.applyExternalTitleOverride(metadata, override)
 
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
+		return p.buildExternalEmbedCard(resolvedURL, parsedURL, metadata, options, sourceURL)
 	})
 }
 
@@ -997,6 +1001,7 @@ func (p *EmbedsPlugin) fetchOGMetadata(rawURL string) *OGMetadata {
 
 // fetchExternalMetadata resolves external metadata using the configured strategy.
 func (p *EmbedsPlugin) fetchExternalMetadata(rawURL string) *OGMetadata {
+	resolvedURL := normalizeHackerNewsURL(rawURL)
 	strategy := strings.ToLower(p.config.ResolutionStrategy)
 	if strategy == "" {
 		strategy = strategyOEmbedFirst
@@ -1009,18 +1014,18 @@ func (p *EmbedsPlugin) fetchExternalMetadata(rawURL string) *OGMetadata {
 	}
 
 	tryOEmbed := func() (*OGMetadata, bool) {
-		return p.resolveOEmbedMetadata(rawURL)
+		return p.resolveOEmbedMetadata(resolvedURL)
 	}
 
 	tryCached := func() *OGMetadata {
-		if cached := p.fetchCachedMetadata(rawURL, "oembed"); cached != nil {
+		if cached := p.fetchCachedMetadata(resolvedURL, "oembed"); cached != nil {
 			return cached
 		}
-		return p.fetchCachedMetadata(rawURL, "og")
+		return p.fetchCachedMetadata(resolvedURL, "og")
 	}
 
 	tryOG := func() *OGMetadata {
-		return p.fetchOGMetadata(rawURL)
+		return p.fetchOGMetadata(resolvedURL)
 	}
 
 	switch strategy {
@@ -1451,8 +1456,8 @@ func applyEmbedMode(opts *EmbedOptions, mode string) bool {
 // It respects the EmbedOptions to control what elements are displayed.
 //
 //nolint:gocyclo // multiple rendering modes require conditional branches
-func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata, opts EmbedOptions) string {
-	if giphyID := extractGiphyID(rawURL); giphyID != "" {
+func (p *EmbedsPlugin) buildExternalEmbedCard(displayURL string, parsedURL *url.URL, metadata *OGMetadata, opts EmbedOptions, sourceURL string) string {
+	if giphyID := extractGiphyID(displayURL); giphyID != "" {
 		if metadata == nil {
 			metadata = &OGMetadata{}
 		}
@@ -1466,7 +1471,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 			metadata.Title = "Giphy GIF"
 		}
 	}
-	if codepenUser, codepenID := extractCodePenID(rawURL); codepenID != "" {
+	if codepenUser, codepenID := extractCodePenID(displayURL); codepenID != "" {
 		if metadata == nil {
 			metadata = &OGMetadata{}
 		}
@@ -1482,7 +1487,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	}
 	if metadata != nil {
 		normalizeOGMetadata(metadata)
-		videoID := extractYouTubeVideoID(rawURL)
+		videoID := extractYouTubeVideoID(displayURL)
 		if videoID == "" {
 			videoID = extractYouTubeVideoIDFromMetadata(metadata)
 		}
@@ -1556,7 +1561,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	// Handle hover mode - shows image, swaps to embed on hover
 	if opts.Hover && metadata.HTML != "" {
 		sb.WriteString(`  <a href="`)
-		sb.WriteString(html.EscapeString(rawURL))
+		sb.WriteString(html.EscapeString(displayURL))
 		sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
 		sb.WriteString("\n")
 		if p.config.ShowImage && metadata.Image != "" {
@@ -1608,7 +1613,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		}
 
 		sb.WriteString(`  <a href="`)
-		sb.WriteString(html.EscapeString(rawURL))
+		sb.WriteString(html.EscapeString(displayURL))
 		sb.WriteString(`" class="embed-card-link-only" target="_blank" rel="noopener noreferrer">`)
 		sb.WriteString(html.EscapeString(linkTitle))
 		sb.WriteString(`</a>`)
@@ -1624,7 +1629,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 			label := buildExternalImageAlt(metadata, domain, !opts.NoTitle)
 			labelEscaped := html.EscapeString(label)
 			sb.WriteString(`  <a href="`)
-			sb.WriteString(html.EscapeString(rawURL))
+			sb.WriteString(html.EscapeString(displayURL))
 			sb.WriteString(`" target="_blank" rel="noopener noreferrer"`)
 			if label != "" {
 				sb.WriteString(` title="`)
@@ -1649,7 +1654,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	// Standard card mode (default)
 	sb.WriteString(`  <a href="`)
-	sb.WriteString(html.EscapeString(rawURL))
+	sb.WriteString(html.EscapeString(displayURL))
 	sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
 	sb.WriteString("\n")
 
@@ -1700,6 +1705,12 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		}
 		sb.WriteString(html.EscapeString(domain))
 		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+	}
+	if sourceURL != "" && !opts.NoMeta {
+		sb.WriteString(`      <div class="embed-card-source">Found on HN: <a href="`)
+		sb.WriteString(html.EscapeString(sourceURL))
+		sb.WriteString(`" target="_blank" rel="noopener noreferrer">discussion</a></div>`)
 		sb.WriteString("\n")
 	}
 

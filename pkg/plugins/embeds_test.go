@@ -368,6 +368,81 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	}
 }
 
+func TestEmbedsPlugin_ExternalEmbed_HackerNewsDiscussionURL(t *testing.T) {
+	articleServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		if _, err := w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Article Title</title>
+	<meta property="og:title" content="Article Title">
+	<meta property="og:description" content="Article Description">
+	<meta property="og:image" content="https://example.com/article.jpg">
+	<meta property="og:site_name" content="Article Site">
+</head>
+<body></body>
+</html>`)); err != nil {
+			t.Errorf("write article html: %v", err)
+		}
+	}))
+	defer articleServer.Close()
+
+	hnServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v0/item/456.json" {
+			t.Errorf("unexpected HN API path: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"url":"` + articleServer.URL + `"}`)); err != nil {
+			t.Errorf("write HN json: %v", err)
+		}
+	}))
+	defer hnServer.Close()
+
+	oldBaseURL := hackerNewsItemAPIBaseURL
+	oldClient := hackerNewsHTTPClient
+	hackerNewsItemAPIBaseURL = hnServer.URL + "/v0/item/%s.json"
+	hackerNewsHTTPClient = hnServer.Client()
+	defer func() {
+		hackerNewsItemAPIBaseURL = oldBaseURL
+		hackerNewsHTTPClient = oldClient
+	}()
+
+	p := NewEmbedsPlugin()
+	p.config.OEmbedEnabled = false
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an external embed: ![embed](https://news.ycombinator.com/item?id=456)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "Article Title") {
+		t.Fatalf("expected resolved article title in content, got: %s", result.Content)
+	}
+	if !containsString(result.Content, "Article Description") {
+		t.Fatalf("expected resolved article description in content, got: %s", result.Content)
+	}
+	if !containsString(result.Content, "Found on HN:") {
+		t.Fatalf("expected Found on HN link in content, got: %s", result.Content)
+	}
+	if !containsString(result.Content, `href="`+articleServer.URL+`"`) {
+		t.Fatalf("expected resolved article link to be the card target, got: %s", result.Content)
+	}
+	if !containsString(result.Content, `href="https://news.ycombinator.com/item?id=456"`) {
+		t.Fatalf("expected original HN discussion link to remain available, got: %s", result.Content)
+	}
+}
+
 func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
