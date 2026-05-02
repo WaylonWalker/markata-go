@@ -38,8 +38,8 @@ func TestWebAwesomePlugin_ProcessComparisonContainer(t *testing.T) {
 	want := []string{
 		`<figure class="markata-webawesome-figure">`,
 		`<wa-comparison class="markata-webawesome-comparison" position="35">`,
-		`<img slot="before" src="/before.webp" alt="Before image" loading="lazy">`,
-		`<img slot="after" src="/after.webp" alt="After image" loading="lazy">`,
+		`<img slot="after" src="/before.webp" alt="Before image" loading="lazy">`,
+		`<img slot="before" src="/after.webp" alt="After image" loading="lazy">`,
 		`<figcaption>Homepage redesign</figcaption>`,
 	}
 	for _, expected := range want {
@@ -69,6 +69,37 @@ func TestWebAwesomePlugin_ProcessComparisonContainerWithFigure(t *testing.T) {
 	}
 	if !strings.Contains(post.ArticleHTML, `<figcaption>Compare the same generated graphic before and after a color treatment.</figcaption>`) {
 		t.Fatalf("ArticleHTML missing full caption\nGot: %s", post.ArticleHTML)
+	}
+}
+
+func TestWebAwesomePlugin_ProcessComparisonContainerWithLinkedImages(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	post := &models.Post{
+		ArticleHTML: `<div class="wa-comparison">
+<figure>
+<a href="/before.webp" class="glightbox-link"><img class="glightbox" src="/before.webp" alt="Before image" data-glightbox="description: Before image"></a>
+<a href="/after.webp" class="glightbox-link"><img class="glightbox" src="/after.webp" alt="After image" data-glightbox="description: After image"></a>
+</figure>
+</div>`,
+	}
+
+	if err := plugin.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	want := []string{
+		`<wa-comparison class="markata-webawesome-comparison">`,
+		`<img slot="after" src="/before.webp" alt="Before image" loading="lazy">`,
+		`<img slot="before" src="/after.webp" alt="After image" loading="lazy">`,
+	}
+	for _, expected := range want {
+		if !strings.Contains(post.ArticleHTML, expected) {
+			t.Fatalf("ArticleHTML missing %q\nGot: %s", expected, post.ArticleHTML)
+		}
+	}
+
+	if strings.Contains(post.ArticleHTML, `glightbox-link`) {
+		t.Fatalf("ArticleHTML should not retain glightbox wrappers\nGot: %s", post.ArticleHTML)
 	}
 }
 

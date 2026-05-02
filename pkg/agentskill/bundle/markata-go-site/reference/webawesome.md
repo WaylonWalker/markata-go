@@ -89,8 +89,9 @@ Also valid:
 Rules:
 
 - expects exactly two images
-- first image becomes `slot="before"`
-- second image becomes `slot="after"`
+- author images in natural left-to-right order
+- first image starts on the left side of the divider
+- second image starts on the right side of the divider
 - common attrs include `position` and `caption`
 
 ### Details

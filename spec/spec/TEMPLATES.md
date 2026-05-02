@@ -145,6 +145,7 @@ The default `slides.html` behavior is:
 4. Start a new vertical slide within the current horizontal stack when the rendered body encounters an `<h3>` heading.
 5. Preserve any leading content before the first `<h2>` as the first slide in the deck.
 6. Load reveal.js from the shared CDN asset registry when `[markata-go.assets].mode` is self-hosted or auto and the assets are available; otherwise fall back to CDN URLs.
+7. Size the reveal.js deck responsively so slides remain readable on narrow mobile viewports and continue to relayout on viewport changes such as rotation.
 
 This allows authors to write decks in plain Markdown using common slide-authoring conventions:
 

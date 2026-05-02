@@ -867,6 +867,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		ctx.Set("feed_robots", fc.Robots)
 		p.addFeedStatsContext(&ctx, fc)
 
 		// Feed pages always need cards CSS

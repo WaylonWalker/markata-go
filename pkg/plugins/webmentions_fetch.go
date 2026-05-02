@@ -268,7 +268,13 @@ func (p *WebmentionsFetchPlugin) loadMentionsCache() error {
 		return err
 	}
 
-	return json.Unmarshal(data, &p.mentions)
+	if err := json.Unmarshal(data, &p.mentions); err != nil {
+		return err
+	}
+	for i := range p.mentions {
+		normalizeReceivedWebMention(&p.mentions[i])
+	}
+	return nil
 }
 
 // FetchMentions fetches all webmentions from webmention.io for the configured domain.
@@ -324,6 +330,9 @@ func (p *WebmentionsFetchPlugin) FetchMentions() error {
 	}
 
 	p.mentions = wmResp.Children
+	for i := range p.mentions {
+		normalizeReceivedWebMention(&p.mentions[i])
+	}
 
 	// Save to cache
 	if err := p.saveMentionsCache(); err != nil {
@@ -345,6 +354,9 @@ func (p *WebmentionsFetchPlugin) saveMentionsCache() error {
 	}
 
 	cacheFile := filepath.Join(p.config.CacheDir, "received_mentions.json")
+	for i := range p.mentions {
+		normalizeReceivedWebMention(&p.mentions[i])
+	}
 
 	data, err := json.MarshalIndent(p.mentions, "", "  ")
 	if err != nil {

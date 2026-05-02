@@ -55,12 +55,14 @@ Generated HTML:
 ```html
 <figure class="markata-webawesome-figure">
   <wa-comparison class="markata-webawesome-comparison" position="35">
-    <img slot="before" src="/images/before.webp" alt="Before" loading="lazy">
-    <img slot="after" src="/images/after.webp" alt="After" loading="lazy">
+	<img slot="after" src="/images/before.webp" alt="Before" loading="lazy">
+	<img slot="before" src="/images/after.webp" alt="After" loading="lazy">
   </wa-comparison>
   <figcaption>Homepage redesign</figcaption>
 </figure>
 ```
+
+Authoring order is left-to-right: the first image is shown on the left side of the divider at the default position, and the second image is shown on the right.
 
 ### Details
 

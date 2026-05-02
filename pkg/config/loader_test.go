@@ -732,6 +732,37 @@ markata-go:
 }
 
 //nolint:gosec // Test file permissions are fine at 0644
+func TestTOML_FeedRobotsConfig(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "markata-go.toml")
+	content := `
+[markata-go.feeds_page]
+robots = "noindex,follow"
+
+[[markata-go.feeds]]
+slug = "tags/python"
+title = "Python"
+robots = "noindex,follow"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	config, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if config.FeedsPage.Robots != "noindex,follow" {
+		t.Fatalf("FeedsPage.Robots = %q, want %q", config.FeedsPage.Robots, "noindex,follow")
+	}
+	feed := findFeedBySlug(t, config.Feeds, "tags/python")
+	if feed.Robots != "noindex,follow" {
+		t.Fatalf("feed.Robots = %q, want %q", feed.Robots, "noindex,follow")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
 func TestHooks_Parsing(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")

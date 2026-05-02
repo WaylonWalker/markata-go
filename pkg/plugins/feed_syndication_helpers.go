@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 
@@ -25,6 +26,30 @@ func getFeedsPageConfig(config *lifecycle.Config) models.FeedsPageConfig {
 	if config != nil && config.Extra != nil {
 		if feedsPage, ok := config.Extra["feeds_page"].(models.FeedsPageConfig); ok {
 			return feedsPage
+		}
+		if raw, ok := config.Extra["feeds_page"]; ok {
+			var feedsPage models.FeedsPageConfig
+			if data, err := json.Marshal(raw); err == nil {
+				if err := json.Unmarshal(data, &feedsPage); err == nil {
+					defaults := models.NewFeedsPageConfig()
+					if feedsPage.Enabled == nil {
+						feedsPage.Enabled = defaults.Enabled
+					}
+					if feedsPage.Title == "" {
+						feedsPage.Title = defaults.Title
+					}
+					if feedsPage.Description == "" {
+						feedsPage.Description = defaults.Description
+					}
+					if feedsPage.Template == "" {
+						feedsPage.Template = defaults.Template
+					}
+					if feedsPage.SlugPrefix == "" {
+						feedsPage.SlugPrefix = defaults.SlugPrefix
+					}
+					return feedsPage
+				}
+			}
 		}
 	}
 	return models.NewFeedsPageConfig()

@@ -1618,6 +1618,9 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Header = header
 	}
 
+	// Copy feeds page config if available
+	modelsConfig.FeedsPage = feedsPageConfigFromExtra(config.Extra["feeds_page"])
+
 	// Copy SEO config if available
 	switch seoVal := config.Extra["seo"].(type) {
 	case models.SEOConfig:
@@ -1870,4 +1873,40 @@ func getStringFromMap(m map[string]interface{}, key string) string {
 		return v
 	}
 	return ""
+}
+
+func feedsPageConfigFromExtra(raw interface{}) models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	switch feedsPageVal := raw.(type) {
+	case models.FeedsPageConfig:
+		return feedsPageVal
+	case map[string]interface{}:
+		feedsPage := models.FeedsPageConfig{
+			Enabled:     defaults.Enabled,
+			Title:       getStringFromMap(feedsPageVal, "title"),
+			Description: getStringFromMap(feedsPageVal, "description"),
+			Template:    getStringFromMap(feedsPageVal, "template"),
+			SlugPrefix:  getStringFromMap(feedsPageVal, "slug_prefix"),
+			Robots:      getStringFromMap(feedsPageVal, "robots"),
+		}
+		if enabled, ok := feedsPageVal["enabled"].(bool); ok {
+			feedsPage.Enabled = &enabled
+		}
+		if feedsPage.Title == "" {
+			feedsPage.Title = defaults.Title
+		}
+		if feedsPage.Description == "" {
+			feedsPage.Description = defaults.Description
+		}
+		if feedsPage.Template == "" {
+			feedsPage.Template = defaults.Template
+		}
+		if feedsPage.SlugPrefix == "" {
+			feedsPage.SlugPrefix = defaults.SlugPrefix
+		}
+		return feedsPage
+	default:
+		return defaults
+	}
 }

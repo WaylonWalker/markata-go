@@ -29,7 +29,7 @@ Web Awesome components inherit markata-go theme variables for text, surfaces, bo
 
 ### Comparison
 
-Write a `wa-comparison` container with two images. The first image becomes the `before` slot and the second image becomes the `after` slot.
+Write a `wa-comparison` container with two images. Author them in natural left-to-right order: the first image starts on the left side of the divider and the second image starts on the right.
 
 ```markdown
 ::: wa-comparison {position=42 caption="Compare the same graphic before and after a color treatment."}

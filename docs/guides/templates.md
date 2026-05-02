@@ -568,6 +568,7 @@ Vertical follow-up slide.
 2. `###` headings become vertical slides nested under the current horizontal slide.
 3. `---` becomes a horizontal slide break because Markdown renders it as `<hr>`.
 4. Reveal assets use local `assets/vendor/revealjs/...` URLs automatically when `[markata-go.assets].mode` is self-hosted or auto and the assets are available. Run `markata-go assets download` to prefetch them.
+5. On small screens, the deck sizes itself to the current viewport so slides stay readable on phones and after rotation.
 
 ### Creating a Landing Page Template
 

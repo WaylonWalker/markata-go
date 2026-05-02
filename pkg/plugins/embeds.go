@@ -981,11 +981,13 @@ func (p *EmbedsPlugin) fetchOGMetadata(rawURL string) *OGMetadata {
 
 	metadata := p.fetchCachedMetadata(rawURL, "og")
 	if metadata != nil {
+		normalizeOGMetadata(metadata)
 		return metadata
 	}
 
 	// Fetch from URL
 	metadata = p.fetchMetadataFromURL(rawURL)
+	normalizeOGMetadata(metadata)
 
 	// Cache the result
 	p.cacheMetadata(rawURL, "og", metadata)
@@ -1070,6 +1072,7 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	}
 
 	if cached := p.fetchCachedMetadata(rawURL, "oembed"); cached != nil {
+		normalizeOGMetadata(cached)
 		return cached, true
 	}
 
@@ -1106,6 +1109,7 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	if metadata.Image == "" {
 		metadata.Image = response.URL
 	}
+	normalizeOGMetadata(metadata)
 
 	metadata.HTML = p.transformOEmbedHTML(metadata, response)
 
@@ -1207,6 +1211,7 @@ func (p *EmbedsPlugin) fetchCachedMetadata(rawURL, suffix string) *OGMetadata {
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return nil
 	}
+	normalizeOGMetadata(&metadata)
 
 	cacheTTL := p.config.CacheTTL
 	if cacheTTL <= 0 {
@@ -1228,6 +1233,7 @@ func (p *EmbedsPlugin) cacheMetadata(rawURL, suffix string, metadata *OGMetadata
 	}
 
 	metadata.FetchedAt = time.Now().Unix()
+	normalizeOGMetadata(metadata)
 
 	cacheFile := p.getCacheFilePath(rawURL, suffix)
 	cacheDir := filepath.Dir(cacheFile)
@@ -1315,6 +1321,7 @@ func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
 	metadata.Image = p.extractMetaContent(htmlContent, "og:image")
 	metadata.SiteName = p.extractMetaContent(htmlContent, "og:site_name")
 	metadata.Type = p.extractMetaContent(htmlContent, "og:type")
+	normalizeOGMetadata(metadata)
 
 	return metadata
 }
@@ -1474,6 +1481,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		}
 	}
 	if metadata != nil {
+		normalizeOGMetadata(metadata)
 		videoID := extractYouTubeVideoID(rawURL)
 		if videoID == "" {
 			videoID = extractYouTubeVideoIDFromMetadata(metadata)

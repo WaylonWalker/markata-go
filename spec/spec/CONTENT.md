@@ -460,11 +460,16 @@ cjk = true  # Enable CJK line breaks (default: true)
 
 ### Figures
 
-Convert images with following paragraphs into `<figure>` elements with `<figcaption>`.
+Convert images with following paragraphs into `<figure>` elements with `<figcaption>`. A single-paragraph blockquote immediately following a figure SHOULD also be treated as caption content and merged into the figure.
 
 ```markdown
 ![Alt text](image.jpg)
 This is the caption.
+```
+
+```markdown
+![Alt text](image.jpg)
+> This is also treated as the caption.
 ```
 
 Output:

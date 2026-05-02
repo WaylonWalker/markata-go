@@ -2800,6 +2800,10 @@ type FeedsPageConfig struct {
 
 	// SlugPrefix is the URL prefix for the feeds listing (default: "feeds")
 	SlugPrefix string `json:"slug_prefix,omitempty" yaml:"slug_prefix,omitempty" toml:"slug_prefix,omitempty"`
+
+	// Robots controls the robots meta tag for the feeds listing HTML pages.
+	// Example: "noindex,follow"
+	Robots string `json:"robots,omitempty" yaml:"robots,omitempty" toml:"robots,omitempty"`
 }
 
 // NewFeedsPageConfig creates a new FeedsPageConfig with default values.
@@ -2811,6 +2815,7 @@ func NewFeedsPageConfig() FeedsPageConfig {
 		Description: "Browse the public feeds available on this site.",
 		Template:    "feeds.html",
 		SlugPrefix:  "feeds",
+		Robots:      "",
 	}
 }
 

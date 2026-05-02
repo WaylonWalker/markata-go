@@ -133,6 +133,7 @@ func (p *MentionsPlugin) registerFeedConfig(feedConfig *models.ExternalFeedConfi
 	if siteURL == "" {
 		siteURL = extractSiteURL(feedConfig.URL)
 	}
+	siteURL = normalizeExternalURL(siteURL)
 
 	if siteURL == "" {
 		return
@@ -221,7 +222,7 @@ func (p *MentionsPlugin) registerAuthors(config *lifecycle.Config, handleMap map
 			metadata.Bio = *author.Bio
 		}
 		if author.Avatar != nil {
-			metadata.Avatar = *author.Avatar
+			metadata.Avatar = normalizeExternalURL(*author.Avatar)
 		}
 
 		entry := &mentionEntry{
@@ -249,6 +250,7 @@ func (p *MentionsPlugin) registerCachedFeed(feed *models.ExternalFeed, handleMap
 	if feed.SiteURL == "" {
 		return
 	}
+	normalizeExternalFeed(feed)
 
 	handle := feed.Config.Handle
 	if handle == "" {
@@ -336,6 +338,7 @@ func (p *MentionsPlugin) loadFromCache(domain, cacheDir string, maxAge time.Dura
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return nil
 	}
+	normalizeMentionMetadata(&metadata)
 
 	// Additional validation
 	if metadata.IsExpired(maxAge) {
@@ -352,6 +355,7 @@ func (p *MentionsPlugin) saveToCache(metadata *models.MentionMetadata, cacheDir 
 	}
 
 	cacheFile := filepath.Join(cacheDir, p.cacheKey(metadata.Domain)+".json")
+	normalizeMentionMetadata(metadata)
 
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
@@ -461,6 +465,7 @@ func (p *MentionsPlugin) extractMetadataFromHTML(resp *http.Response, metadata *
 	}); avatar != "" {
 		metadata.Avatar = p.resolveURL(avatar, metadata.URL)
 	}
+	normalizeMentionMetadata(metadata)
 
 	return nil
 }
@@ -485,18 +490,18 @@ func (p *MentionsPlugin) resolveURL(imageURL, baseURL string) string {
 
 	// If already absolute, return as-is
 	if strings.HasPrefix(imageURL, "http://") || strings.HasPrefix(imageURL, "https://") {
-		return imageURL
+		return normalizeExternalURL(imageURL)
 	}
 
 	// Make relative URLs absolute
 	if strings.HasPrefix(imageURL, "/") {
 		if parsed, err := url.Parse(baseURL); err == nil {
-			return parsed.Scheme + "://" + parsed.Host + imageURL
+			return normalizeExternalURL(parsed.Scheme + "://" + parsed.Host + imageURL)
 		}
 	}
 
 	// Return original if can't resolve
-	return imageURL
+	return normalizeExternalURL(imageURL)
 }
 
 // fetchAllMetadata fetches metadata for all unique domains concurrently.
@@ -1172,6 +1177,7 @@ func (p *MentionsPlugin) buildPostMetadata(post *models.Post, source models.Ment
 
 	// Avatar: try configured field first, then default fields
 	metadata.Avatar = p.getAvatarFromPost(post, source.AvatarField)
+	normalizeMentionMetadata(metadata)
 
 	return metadata
 }
