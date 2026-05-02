@@ -121,17 +121,20 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
 ### Behavior
 
 1. Validates the URL (must be http or https)
-2. Resolves metadata using the configured strategy:
-   - **oembed_first** (default): try oEmbed providers, fall back to OG
-   - **og_first**: try OG, fall back to oEmbed providers
-   - **oembed_only**: only use oEmbed (no OG fallback)
-3. Caches metadata (configurable TTL)
-4. Selects a mode (explicit option, provider override, oEmbed type default, or global default)
-5. Generates an embed card with:
-   - OG image (if available and enabled)
-   - OG title (or fallback)
-   - OG description (truncated)
-   - Site name and domain
+2. If the URL is a Hacker News discussion link, resolves the outbound article URL through the HN item API and uses that for metadata lookup and the main card target when available.
+3. Resolves metadata using the configured strategy:
+    - **oembed_first** (default): try oEmbed providers, fall back to OG
+    - **og_first**: try OG, fall back to oEmbed providers
+    - **oembed_only**: only use oEmbed (no OG fallback)
+4. Caches metadata (configurable TTL)
+5. Selects a mode (explicit option, provider override, oEmbed type default, or global default)
+6. Generates an embed card with:
+    - OG image (if available and enabled)
+    - OG title (or fallback)
+    - OG description (truncated)
+    - Site name and domain
+
+When HN normalization succeeds, the card should still show a secondary "Found on HN" link to the original discussion URL instead of hiding the source.
 
 ### Metadata Resolution
 

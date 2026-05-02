@@ -423,6 +423,7 @@ The reader page aggregates the latest posts from all followed feeds into a curat
 - Entries are grouped by calendar day in reverse chronological order.
 - Each day group renders a large date rail and a two-column content grid on wide screens.
 - Each entry shows a source favicon up front, the source name, publish date, title, description, and optional image.
+- When a feed item points at a Hacker News discussion URL, the collector resolves the outbound article URL for the main card, preserves the original HN permalink, and keeps the feed source label visible.
 - The layout collapses to a single column on small screens.
 
 ### Template Context
@@ -436,6 +437,8 @@ The reader page aggregates the latest posts from all followed feeds into a curat
   - `count`
   - `entries`
 - each entry map includes `feed_url`, `feed_title`, `source_icon_url`, `published_datetime`, `published_label`, `url`, `title`, `description`, and `image_url`
+- when available, `url` points at the resolved article URL rather than the discussion page for Hacker News items
+- `original_url` preserves the original HN discussion link when a feed item was normalized
 
 ---
 

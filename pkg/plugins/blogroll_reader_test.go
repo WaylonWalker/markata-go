@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,6 +133,83 @@ func TestReaderPreviewForEntry_Hierarchy(t *testing.T) {
 				t.Fatalf("readerPreviewForEntry() = (%q, %q), want (%q, %q)", gotURL, gotKind, tt.wantURL, tt.wantKind)
 			}
 		})
+	}
+}
+
+func TestNormalizeHackerNewsURL_ResolvesArticleURL(t *testing.T) {
+	articleURL := "https://example.com/article"
+	articleServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Article Title</title>
+	<meta property="og:title" content="Article Title">
+	<meta property="og:description" content="Article Description">
+	<meta property="og:image" content="https://example.com/article.jpg">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer articleServer.Close()
+	articleURL = articleServer.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v0/item/123.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"url":"` + articleURL + `"}`))
+	}))
+	defer server.Close()
+
+	oldBaseURL := hackerNewsItemAPIBaseURL
+	oldClient := hackerNewsHTTPClient
+	hackerNewsItemAPIBaseURL = server.URL + "/v0/item/%s.json"
+	hackerNewsHTTPClient = server.Client()
+	defer func() {
+		hackerNewsItemAPIBaseURL = oldBaseURL
+		hackerNewsHTTPClient = oldClient
+	}()
+
+	rawURL := "https://news.ycombinator.com/item?id=123"
+	if got := normalizeHackerNewsURL(rawURL); got != articleURL {
+		t.Fatalf("normalizeHackerNewsURL() = %q, want %q", got, articleURL)
+	}
+
+	feedXML := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Hacker News</title>
+  <entry>
+    <id>123</id>
+    <title>Story title</title>
+    <published>2026-04-17T12:17:00Z</published>
+    <link rel="alternate" href="` + rawURL + `"/>
+  </entry>
+</feed>`)
+
+	_, entries, err := parseAtomFeed(feedXML)
+	if err != nil {
+		t.Fatalf("parseAtomFeed() error = %v", err)
+	}
+	if got, want := len(entries), 1; got != want {
+		t.Fatalf("len(entries) = %d, want %d", got, want)
+	}
+	if got, want := entries[0].URL, articleURL; got != want {
+		t.Fatalf("entry.URL = %q, want %q", got, want)
+	}
+	if got, want := entries[0].Title, "Article Title"; got != want {
+		t.Fatalf("entry.Title = %q, want %q", got, want)
+	}
+	if got, want := entries[0].Description, "Article Description"; got != want {
+		t.Fatalf("entry.Description = %q, want %q", got, want)
+	}
+	if got, want := entries[0].ImageURL, "https://example.com/article.jpg"; got != want {
+		t.Fatalf("entry.ImageURL = %q, want %q", got, want)
+	}
+	if got, want := entries[0].OriginalURL, rawURL; got != want {
+		t.Fatalf("entry.OriginalURL = %q, want %q", got, want)
 	}
 }
 
