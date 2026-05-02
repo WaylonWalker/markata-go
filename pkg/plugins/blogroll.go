@@ -33,8 +33,9 @@ const categoryUncategorized = "Uncategorized"
 
 // Default slug constants for blogroll pages.
 const (
-	defaultBlogrollSlug = "blogroll"
-	defaultReaderSlug   = "reader"
+	defaultBlogrollSlug  = "blogroll"
+	defaultReaderSlug    = "reader"
+	blogrollCacheVersion = "hn-meta-v2"
 )
 
 // Default directory constants.
@@ -386,12 +387,26 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract image from various sources (priority order)
 		imageURL := extractEntryImage(item)
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(item.Link)
+		if metadata != nil {
+			if metadata.Title != "" {
+				item.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				item.Description = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
+			}
+		}
 
 		// Create entry
+		entryURL := normalizeExternalURL(resolvedURL)
 		entry := &models.ExternalEntry{
 			ID:          id,
 			Title:       item.Title,
-			URL:         normalizeExternalURL(item.Link),
+			URL:         entryURL,
+			OriginalURL: originalURL,
 			Published:   pubDatePtr,
 			Updated:     pubDatePtr,
 			Author:      author,
@@ -482,12 +497,25 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract first image from content
 		imageURL := extractAtomEntryImage(entry)
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(entryURL)
+		if metadata != nil {
+			if metadata.Title != "" {
+				entry.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				entry.Summary = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
+			}
+		}
 
 		// Create entry
 		extEntry := &models.ExternalEntry{
 			ID:          entry.ID,
 			Title:       entry.Title,
-			URL:         normalizeExternalURL(entryURL),
+			URL:         normalizeExternalURL(resolvedURL),
+			OriginalURL: originalURL,
 			Published:   pubDatePtr,
 			Updated:     updDatePtr,
 			Author:      entry.Author.Name,
@@ -1100,7 +1128,7 @@ func (p *BlogrollPlugin) saveToCache(feed *models.ExternalFeed, cacheDir string)
 
 // cacheKey generates a cache key from a URL.
 func (p *BlogrollPlugin) cacheKey(url string) string {
-	hash := sha256.Sum256([]byte(url))
+	hash := sha256.Sum256([]byte(blogrollCacheVersion + "|" + url))
 	return hex.EncodeToString(hash[:8])
 }
 
@@ -1686,6 +1714,7 @@ func (p *BlogrollPlugin) readerEntryMap(entry *models.ExternalEntry, feed *model
 		"feed_title":       sourceTitle,
 		"id":               entry.ID,
 		"url":              entry.URL,
+		"original_url":     entry.OriginalURL,
 		"title":            entry.Title,
 		"description":      entry.Description,
 		"content":          entry.Content,

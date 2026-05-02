@@ -226,6 +226,9 @@ type ExternalEntry struct {
 	// URL is the link to the full article
 	URL string `json:"url"`
 
+	// OriginalURL is the original link from the feed, if different from URL.
+	OriginalURL string `json:"original_url,omitempty"`
+
 	// Title is the entry title
 	Title string `json:"title"`
 

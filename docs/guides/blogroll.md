@@ -325,6 +325,7 @@ The reader page shows the latest posts from all feeds in reverse chronological o
 - Two-column entry grid on desktop, single column on mobile
 - Each entry shows: source favicon, source name, date, title, description, optional image
 - Links to the original article
+- Hacker News discussion URLs are normalized to the outbound article URL when one is available, while the source feed label stays visible and the original discussion link remains available as "Found on HN"
 - Pagination navigation (when more than one page)
 
 **Deterministic ordering:**
@@ -424,6 +425,10 @@ Create `templates/reader.html`:
             {% endif %}
           </div>
 
+          {% if entry.original_url %}
+          <div class="reader-entry-found-on">Found on HN: <a href="{{ entry.original_url }}" target="_blank" rel="noopener noreferrer">discussion</a></div>
+          {% endif %}
+
           <h2 class="reader-entry-title">
             <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}<span class="visually-hidden">(opens in new tab)</span></a>
           </h2>
@@ -470,6 +475,7 @@ Create `templates/reader.html`:
 | `entry_count` | int | Total number of entries across all pages |
 | `page` | ReaderPage | Pagination information |
 | `pagination_type` | string | Pagination type ("manual", "htmx", "js") |
+| `original_url` | string | Original discussion link when a feed entry was normalized |
 
 ### ReaderPage Fields
 

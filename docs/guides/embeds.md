@@ -49,6 +49,8 @@ Here's a great resource:
 
 This resolves metadata via oEmbed (when available), then falls back to Open Graph, and displays a card with the title, description, and image.
 
+If the URL is a Hacker News discussion link, markata-go resolves the outbound article URL first so the card can use the real article metadata while still showing a "Found on HN" link to the original discussion.
+
 Supported options (space-separated):
 
 - `no_title`, `no_description`, `no_meta`
