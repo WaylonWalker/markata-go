@@ -371,7 +371,7 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 func TestEmbedsPlugin_ExternalEmbed_HackerNewsDiscussionURL(t *testing.T) {
 	articleServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<!DOCTYPE html>
+		if _, err := w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
 	<title>Article Title</title>
@@ -381,7 +381,9 @@ func TestEmbedsPlugin_ExternalEmbed_HackerNewsDiscussionURL(t *testing.T) {
 	<meta property="og:site_name" content="Article Site">
 </head>
 <body></body>
-</html>`))
+</html>`)); err != nil {
+			t.Errorf("write article html: %v", err)
+		}
 	}))
 	defer articleServer.Close()
 
@@ -392,7 +394,9 @@ func TestEmbedsPlugin_ExternalEmbed_HackerNewsDiscussionURL(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"url":"` + articleServer.URL + `"}`))
+		if _, err := w.Write([]byte(`{"url":"` + articleServer.URL + `"}`)); err != nil {
+			t.Errorf("write HN json: %v", err)
+		}
 	}))
 	defer hnServer.Close()
 

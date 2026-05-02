@@ -387,18 +387,16 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract image from various sources (priority order)
 		imageURL := extractEntryImage(item)
-		resolvedURL, originalURL := resolveHackerNewsReference(item.Link)
-		if originalURL != "" {
-			if metadata, ok := fetchHackerNewsArticleMetadata(resolvedURL); ok && metadata != nil {
-				if metadata.Title != "" {
-					item.Title = metadata.Title
-				}
-				if metadata.Description != "" {
-					item.Description = metadata.Description
-				}
-				if metadata.Image != "" {
-					imageURL = metadata.Image
-				}
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(item.Link)
+		if metadata != nil {
+			if metadata.Title != "" {
+				item.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				item.Description = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
 			}
 		}
 
@@ -499,18 +497,16 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract first image from content
 		imageURL := extractAtomEntryImage(entry)
-		resolvedURL, originalURL := resolveHackerNewsReference(entryURL)
-		if originalURL != "" {
-			if metadata, ok := fetchHackerNewsArticleMetadata(resolvedURL); ok && metadata != nil {
-				if metadata.Title != "" {
-					entry.Title = metadata.Title
-				}
-				if metadata.Description != "" {
-					entry.Summary = metadata.Description
-				}
-				if metadata.Image != "" {
-					imageURL = metadata.Image
-				}
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(entryURL)
+		if metadata != nil {
+			if metadata.Title != "" {
+				entry.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				entry.Summary = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
 			}
 		}
 

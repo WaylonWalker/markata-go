@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -45,7 +46,7 @@ func normalizeHackerNewsURL(rawURL string) string {
 	}
 
 	if cached, ok := hackerNewsURLCache.Load(rawURL); ok {
-		if resolved, _ := cached.(string); resolved != "" {
+		if resolved, ok := cached.(string); ok && resolved != "" {
 			return resolved
 		}
 		return rawURL
@@ -114,7 +115,7 @@ func fetchHackerNewsArticleURL(rawURL string) (string, bool) {
 	}
 
 	apiURL := fmt.Sprintf(hackerNewsItemAPIBaseURL, id)
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return "", false
 	}
@@ -142,7 +143,7 @@ func fetchHackerNewsArticleMetadata(articleURL string) (*hackerNewsMetadata, boo
 		return nil, false
 	}
 
-	req, err := http.NewRequest(http.MethodGet, articleURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, articleURL, http.NoBody)
 	if err != nil {
 		return nil, false
 	}
@@ -177,6 +178,16 @@ func fetchHackerNewsArticleMetadata(articleURL string) (*hackerNewsMetadata, boo
 	}
 
 	return metadata, true
+}
+
+func enrichHackerNewsFeedEntry(rawURL string) (resolvedURL, originalURL string, metadata *hackerNewsMetadata) {
+	resolvedURL, originalURL = resolveHackerNewsReference(rawURL)
+	if originalURL == "" {
+		return resolvedURL, originalURL, nil
+	}
+
+	metadata, _ = fetchHackerNewsArticleMetadata(resolvedURL)
+	return resolvedURL, originalURL, metadata
 }
 
 func extractHackerNewsOGTitle(htmlContent string) string {

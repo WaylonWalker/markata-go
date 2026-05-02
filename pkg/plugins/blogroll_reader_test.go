@@ -137,10 +137,9 @@ func TestReaderPreviewForEntry_Hierarchy(t *testing.T) {
 }
 
 func TestNormalizeHackerNewsURL_ResolvesArticleURL(t *testing.T) {
-	articleURL := "https://example.com/article"
 	articleServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<!DOCTYPE html>
+		if _, err := w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
 	<title>Article Title</title>
@@ -149,10 +148,12 @@ func TestNormalizeHackerNewsURL_ResolvesArticleURL(t *testing.T) {
 	<meta property="og:image" content="https://example.com/article.jpg">
 </head>
 <body></body>
-</html>`))
+</html>`)); err != nil {
+			t.Errorf("write article html: %v", err)
+		}
 	}))
 	defer articleServer.Close()
-	articleURL = articleServer.URL
+	articleURL := articleServer.URL
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v0/item/123.json" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -160,7 +161,9 @@ func TestNormalizeHackerNewsURL_ResolvesArticleURL(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"url":"` + articleURL + `"}`))
+		if _, err := w.Write([]byte(`{"url":"` + articleURL + `"}`)); err != nil {
+			t.Errorf("write HN json: %v", err)
+		}
 	}))
 	defer server.Close()
 
