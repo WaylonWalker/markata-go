@@ -7,9 +7,15 @@
             <button type="button" class="post-copy__option" data-copy-kind="rich" role="menuitem">Rich</button>
             <button type="button" class="post-copy__option" data-copy-kind="markdown" role="menuitem">Markdown</button>
             <button type="button" class="post-copy__option" data-copy-kind="text" role="menuitem">Text</button>
+            {% if post_copy_payloads.MarkdownURL %}
             <button type="button" class="post-copy__option" data-copy-kind="markdown-url" role="menuitem">View Markdown</button>
+            {% endif %}
+            {% if post_copy_payloads.TextURL %}
             <button type="button" class="post-copy__option" data-copy-kind="text-url" role="menuitem">View Text</button>
+            {% endif %}
+            {% if post_copy_payloads.ANSICurl %}
             <button type="button" class="post-copy__option" data-copy-kind="ansi-curl" role="menuitem">curl .ansi</button>
+            {% endif %}
         </div>
     </details>
     <span class="post-copy__status" aria-live="polite"></span>
