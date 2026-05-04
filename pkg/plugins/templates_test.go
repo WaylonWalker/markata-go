@@ -9,6 +9,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersPrimaryFeed(t *testing.T) {
@@ -509,6 +510,7 @@ func TestTemplatesPlugin_Render_UsesResolvedPostFormatsInTemplateContext(t *test
 	m := lifecycle.NewManager()
 	config := m.Config()
 	config.Extra["templates_dir"] = tmpDir
+	config.Extra["url"] = "https://example.com"
 	htmlEnabled := true
 	config.Extra["post_formats"] = models.PostFormatsConfig{
 		HTML:     &htmlEnabled,
@@ -546,6 +548,78 @@ func TestTemplatesPlugin_Render_UsesResolvedPostFormatsInTemplateContext(t *test
 
 	if !strings.Contains(post.HTML, "md-off ansi-on") {
 		t.Fatalf("expected template context to use resolved per-post post_formats, got %q", post.HTML)
+	}
+}
+
+func TestTemplatesPlugin_Render_PostCopyShowsOnlyAvailableRoutes(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "templates-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	componentDir := filepath.Join(tmpDir, "components")
+	if err := os.MkdirAll(componentDir, 0o755); err != nil {
+		t.Fatalf("Failed to create component dir: %v", err)
+	}
+	componentSource, err := os.ReadFile(filepath.Join("..", "..", "templates", "components", "post_copy.html"))
+	if err != nil {
+		t.Fatalf("Failed to read post_copy component: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(componentDir, "post_copy.html"), componentSource, 0o600); err != nil {
+		t.Fatalf("Failed to write post_copy component: %v", err)
+	}
+
+	templateContent := `{% include "components/post_copy.html" %}`
+	templatePath := filepath.Join(tmpDir, "post.html")
+	if err := os.WriteFile(templatePath, []byte(templateContent), 0o600); err != nil {
+		t.Fatalf("Failed to write template: %v", err)
+	}
+
+	engine, err := templates.NewEngine(tmpDir)
+	if err != nil {
+		t.Fatalf("NewEngine() error = %v", err)
+	}
+
+	config := &lifecycle.Config{Extra: map[string]interface{}{}}
+	htmlEnabled := true
+	config.Extra["post_formats"] = models.PostFormatsConfig{
+		HTML:     &htmlEnabled,
+		Markdown: true,
+		Text:     false,
+		ANSI:     false,
+	}
+
+	title := "Test Post"
+	post := &models.Post{
+		Title:       &title,
+		Slug:        "test-post",
+		Href:        "/test-post/",
+		Template:    "post.html",
+		Content:     "hello",
+		ArticleHTML: "<p>Hello World</p>",
+	}
+	payloads := buildPostCopyPayloads(post, config, "https://example.com")
+	ctx := templates.NewContext(post, post.ArticleHTML, models.NewConfig())
+	ctx.Set("post_copy_payloads", payloads)
+	ctx.Set("post_copy_payloads_json", payloads.JSON())
+
+	rendered, err := engine.Render("post.html", ctx)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, `data-copy-kind="url"`) {
+		t.Fatal("expected URL copy route in rendered post copy menu")
+	}
+	if !strings.Contains(rendered, `data-copy-kind="markdown-url"`) {
+		t.Fatal("expected markdown route in rendered post copy menu")
+	}
+	if strings.Contains(rendered, `data-copy-kind="text-url"`) {
+		t.Fatal("did not expect text route in rendered post copy menu")
+	}
+	if strings.Contains(rendered, `data-copy-kind="ansi-curl"`) {
+		t.Fatal("did not expect ansi route in rendered post copy menu")
 	}
 }
 
