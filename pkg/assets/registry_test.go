@@ -1,6 +1,9 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -135,5 +138,17 @@ func TestAssetURLsAreValid(t *testing.T) {
 		if asset.Type == "" {
 			t.Errorf("asset %s has empty Type", asset.Name)
 		}
+	}
+}
+
+func TestBleveSearchScript_DoesNotSetAriaExpanded(t *testing.T) {
+	path := filepath.Join("..", "themes", "default", "static", "js", "bleve-search.js")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read bleve search script: %v", err)
+	}
+
+	if strings.Contains(string(content), "aria-expanded") {
+		t.Fatal("bleve search script should not set aria-expanded on the input")
 	}
 }
