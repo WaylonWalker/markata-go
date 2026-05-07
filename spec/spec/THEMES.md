@@ -2289,12 +2289,14 @@ h6:hover .heading-anchor,
 ```css
 a.wikilink {
   color: var(--color-primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.18em;
 }
 
 a.wikilink.wikilink-missing {
   color: var(--color-error);
   text-decoration: underline;
-  text-decoration-style: dashed;
+  text-decoration-style: wavy;
 }
 ```
 
