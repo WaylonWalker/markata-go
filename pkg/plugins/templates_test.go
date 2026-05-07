@@ -496,7 +496,7 @@ func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T
 		name            string
 		inlinks         int
 		outlinks        int
-		wantGraphScript  bool
+		wantGraphScript bool
 	}{
 		{name: "no graph for sparse post", inlinks: 1, outlinks: 1, wantGraphScript: false},
 		{name: "graph for connected post", inlinks: 2, outlinks: 1, wantGraphScript: true},
