@@ -152,7 +152,7 @@ func (p *ResourceHintsPlugin) Write(m *lifecycle.Manager) error {
 ### Typical Blog Post
 
 **Before**: 400+ hints (same site-wide list)  
-**After**: 2-8 hints (YouTube, GitHub, images actually on post)
+**After**: 2-8 hints (YouTube/Vimeo media embeds, GitHub, images actually on post)
 
 ### Blogroll Page
 
