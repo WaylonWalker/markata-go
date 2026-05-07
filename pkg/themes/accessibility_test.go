@@ -16,6 +16,10 @@ func minInt(a, b int) int {
 	return b
 }
 
+func normalizeNewlines(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
 // TestCSSFocusIndicators validates that interactive elements have visible focus states.
 // This is required for WCAG 2.4.7 Focus Visible (Level AA).
 func TestCSSFocusIndicators(t *testing.T) {
@@ -23,19 +27,19 @@ func TestCSSFocusIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read main.css: %v", err)
 	}
-	css := string(mainCSS)
+	css := normalizeNewlines(string(mainCSS))
 
 	componentsCSS, err := ReadStatic("css/components.css")
 	if err != nil {
 		t.Fatalf("Failed to read components.css: %v", err)
 	}
-	components := string(componentsCSS)
+	components := normalizeNewlines(string(componentsCSS))
 
 	cardsCSS, err := ReadStatic("css/cards.css")
 	if err != nil {
 		t.Fatalf("Failed to read cards.css: %v", err)
 	}
-	cards := string(cardsCSS)
+	cards := normalizeNewlines(string(cardsCSS))
 
 	allCSS := css + "\n" + components + "\n" + cards
 
@@ -161,19 +165,19 @@ func TestCSSTouchTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read main.css: %v", err)
 	}
-	css := string(mainCSS)
+	css := normalizeNewlines(string(mainCSS))
 
 	componentsCSS, err := ReadStatic("css/components.css")
 	if err != nil {
 		t.Fatalf("Failed to read components.css: %v", err)
 	}
-	components := string(componentsCSS)
+	components := normalizeNewlines(string(componentsCSS))
 
 	cardsCSS, err := ReadStatic("css/cards.css")
 	if err != nil {
 		t.Fatalf("Failed to read cards.css: %v", err)
 	}
-	cards := string(cardsCSS)
+	cards := normalizeNewlines(string(cardsCSS))
 
 	allCSS := css + "\n" + components + "\n" + cards
 
