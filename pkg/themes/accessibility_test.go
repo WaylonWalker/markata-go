@@ -203,6 +203,13 @@ func TestCSSTouchTargets(t *testing.T) {
 		}
 	})
 
+	t.Run("disabled pagination remains readable", func(t *testing.T) {
+		disabledPaginationRe := regexp.MustCompile(`(?s)\.pagination-prev\.disabled,\s*\.pagination-next\.disabled[^}]*opacity:\s*1`)
+		if !disabledPaginationRe.MatchString(css) {
+			t.Error("Disabled pagination should not reduce opacity below readable contrast")
+		}
+	})
+
 	t.Run("card and feed nav targets are at least 24px tall", func(t *testing.T) {
 		targetRules := map[string]*regexp.Regexp{
 			"card titles":      regexp.MustCompile(`(?s)\.card-link \.card-title[^}]*min-height:\s*24px`),
