@@ -31,7 +31,13 @@ func TestCSSFocusIndicators(t *testing.T) {
 	}
 	components := string(componentsCSS)
 
-	allCSS := css + "\n" + components
+	cardsCSS, err := ReadStatic("css/cards.css")
+	if err != nil {
+		t.Fatalf("Failed to read cards.css: %v", err)
+	}
+	cards := string(cardsCSS)
+
+	allCSS := css + "\n" + components + "\n" + cards
 
 	t.Run("links have focus state", func(t *testing.T) {
 		// Check for a:focus or a:focus-visible styles
@@ -163,7 +169,13 @@ func TestCSSTouchTargets(t *testing.T) {
 	}
 	components := string(componentsCSS)
 
-	allCSS := css + "\n" + components
+	cardsCSS, err := ReadStatic("css/cards.css")
+	if err != nil {
+		t.Fatalf("Failed to read cards.css: %v", err)
+	}
+	cards := string(cardsCSS)
+
+	allCSS := css + "\n" + components + "\n" + cards
 
 	t.Run("pagination items have minimum size", func(t *testing.T) {
 		// WCAG recommends 44x44px minimum, 36px is acceptable with proper spacing
@@ -211,15 +223,24 @@ func TestCSSTouchTargets(t *testing.T) {
 	})
 
 	t.Run("card and feed nav targets are at least 24px tall", func(t *testing.T) {
-		targetRules := map[string]*regexp.Regexp{
-			"card titles":      regexp.MustCompile(`(?s)\.card-link \.card-title[^}]*min-height:\s*24px`),
-			"card domains":     regexp.MustCompile(`(?s)\.card-link \.card-domain[^}]*min-height:\s*24px`),
-			"feed nav title":   regexp.MustCompile(`(?s)\.feed-nav-title a[^}]*min-height:\s*24px`),
-			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
-			"feed nav formats": regexp.MustCompile(`(?s)\.feed-nav-format-link[^}]*min-height:\s*24px`),
+		cardSnippets := map[string]string{
+			"card titles":  ".card-link .card-title {\n  font-size: var(--text-base);\n  font-weight: 600;\n  margin-bottom: 0;\n  min-height: 24px;",
+			"card domains": ".card-link .card-domain {\n  display: block;\n  font-size: var(--text-xs);\n  color: var(--color-text-muted);\n  margin-top: var(--space-1);\n  text-decoration: none;\n  text-transform: lowercase;\n  min-height: 24px;",
 		}
 
-		for label, rule := range targetRules {
+		for label, snippet := range cardSnippets {
+			if !strings.Contains(cards, snippet) {
+				t.Errorf("%s should have a 24px touch target", label)
+			}
+		}
+
+		feedRules := map[string]*regexp.Regexp{
+			"feed nav title":   regexp.MustCompile(`(?s)\.feed-nav-title a\s*\{[^}]*min-height:\s*24px`),
+			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn\s*\{[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
+			"feed nav formats": regexp.MustCompile(`(?s)\.feed-nav-format-link\s*\{[^}]*min-height:\s*24px`),
+		}
+
+		for label, rule := range feedRules {
 			if !rule.MatchString(allCSS) {
 				t.Errorf("%s should have a 24px touch target", label)
 			}
