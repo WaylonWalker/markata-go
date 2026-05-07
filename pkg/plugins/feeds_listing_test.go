@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -157,8 +158,8 @@ func TestMonthlyPostBuckets_UsesSharedWindow(t *testing.T) {
 	}
 	title := "Post"
 	posts := []*models.Post{
-		{Title: &title, Published: true, Date: testDate(2024, 1, 15)},
-		{Title: &title, Published: true, Date: testDate(2024, 4, 2)},
+		{Title: &title, Published: true, Date: testDate(1, 15)},
+		{Title: &title, Published: true, Date: testDate(4, 2)},
 	}
 	buckets, _ := monthlyPostBuckets(posts, window)
 	if len(buckets) != 4 {
@@ -169,7 +170,29 @@ func TestMonthlyPostBuckets_UsesSharedWindow(t *testing.T) {
 	}
 }
 
-func testDate(year int, month time.Month, day int) *time.Time {
-	t := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+func TestBuildFeedSparklineData_ComputesHitboxOffsets(t *testing.T) {
+	window := sparklineWindow{
+		Start: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		End:   time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
+	}
+	title := "Post"
+	posts := []*models.Post{
+		{Title: &title, Published: true, Date: testDate(1, 15)},
+		{Title: &title, Published: true, Date: testDate(3, 15)},
+	}
+	data := buildFeedSparklineData(posts, window)
+	if len(data) != 3 {
+		t.Fatalf("expected 3 sparkline points, got %d", len(data))
+	}
+	wantHitX := []float64{-2.6, 45.4, 93.4}
+	for i, point := range data {
+		if math.Abs(point.HitX-wantHitX[i]) > 0.000001 {
+			t.Fatalf("point %d hitbox x = %v, want %v", i, point.HitX, wantHitX[i])
+		}
+	}
+}
+
+func testDate(month time.Month, day int) *time.Time {
+	t := time.Date(2024, month, day, 0, 0, 0, 0, time.UTC)
 	return &t
 }
