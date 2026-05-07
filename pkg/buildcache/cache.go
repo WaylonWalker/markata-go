@@ -130,6 +130,8 @@ type Cache struct {
 	postDataMemory sync.Map
 	// encryptedHTMLMemory maps EncryptedHTMLPath -> HTML string
 	encryptedHTMLMemory sync.Map
+	// mermaidSVGMemory maps MermaidSVGPath -> rendered SVG string
+	mermaidSVGMemory sync.Map
 }
 
 // PostCache stores cached metadata for a single post.
@@ -1189,6 +1191,9 @@ const HTMLCacheDir = "html-cache"
 // EncryptedHTMLCacheDir is the subdirectory for cached encrypted HTML files.
 const EncryptedHTMLCacheDir = "encrypted-html-cache"
 
+// MermaidSVGCacheDir is the subdirectory for cached prerendered Mermaid SVGs.
+const MermaidSVGCacheDir = "mermaid-svg-cache"
+
 // GetCachedArticleHTML returns the cached rendered HTML for a post if available.
 // Returns empty string if not cached or cache is stale.
 func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
@@ -1242,6 +1247,43 @@ func (c *Cache) CacheArticleHTML(sourcePath, contentHash, articleHTML string) er
 	c.dirty = true
 
 	return nil
+}
+
+// GetCachedMermaidSVG returns cached prerendered Mermaid SVG output if the hash matches.
+func (c *Cache) GetCachedMermaidSVG(sourcePath, renderHash string) string {
+	if sourcePath == "" || renderHash == "" {
+		return ""
+	}
+	cacheDir := filepath.Dir(c.path)
+	hashPrefix := renderHash
+	if len(hashPrefix) > 16 {
+		hashPrefix = hashPrefix[:16]
+	}
+	svgPath := filepath.Join(cacheDir, MermaidSVGCacheDir, hashPrefix+".html")
+
+	if val, ok := c.mermaidSVGMemory.Load(svgPath); ok {
+		if svg, ok := val.(string); ok {
+			return svg
+		}
+	}
+
+	data, err := os.ReadFile(svgPath)
+	if err != nil {
+		return ""
+	}
+
+	svg := string(data)
+	c.mermaidSVGMemory.Store(svgPath, svg)
+	return svg
+}
+
+// CacheMermaidSVG stores prerendered Mermaid SVG output keyed by render hash.
+func (c *Cache) CacheMermaidSVG(sourcePath, renderHash, svg string) error {
+	if sourcePath == "" || renderHash == "" {
+		return nil
+	}
+	_, err := c.cacheHTMLFile(MermaidSVGCacheDir, renderHash, svg, &c.mermaidSVGMemory)
+	return err
 }
 
 // ContentHash computes a hash of just the markdown content.
