@@ -728,6 +728,7 @@ func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesTheme(t *testing.T) {
 
 	p := NewMermaidPlugin()
 	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "default"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
 	p.renderer = &countingMermaidRenderer{svg: "<svg>default</svg>"}
 	p.cache = cache
 
@@ -738,6 +739,7 @@ func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesTheme(t *testing.T) {
 
 	renderer := &countingMermaidRenderer{svg: "<svg>dark</svg>"}
 	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "dark"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
 	p.renderer = renderer
 	p.cache = cache
 
@@ -756,11 +758,42 @@ func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesTheme(t *testing.T) {
 func TestMermaidPlugin_RenderDiagram_PropagatesRenderErrors(t *testing.T) {
 	p := NewMermaidPlugin()
 	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
 	p.renderer = &countingMermaidRenderer{err: errors.New("render failed")}
 
 	_, err := p.renderDiagram(&models.Post{Path: "pages/diagram.md"}, "graph TD\nA-->B")
 	if err == nil {
 		t.Fatal("expected render error")
+	}
+}
+
+func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesRendererFingerprint(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "default"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
+	p.renderer = &countingMermaidRenderer{svg: "<svg>old</svg>"}
+	p.cache = cache
+
+	post := &models.Post{Path: "pages/diagram.md"}
+	if _, err := p.renderDiagram(post, "graph TD\nA-->B"); err != nil {
+		t.Fatalf("render old: %v", err)
+	}
+
+	renderer := &countingMermaidRenderer{svg: "<svg>new</svg>"}
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 2:mermaidjs-v10"
+	p.renderer = renderer
+
+	got, err := p.renderDiagram(post, "graph TD\nA-->B")
+	if err != nil {
+		t.Fatalf("render new: %v", err)
+	}
+	if got != "<svg>new</svg>" {
+		t.Fatalf("got %q, want new SVG", got)
+	}
+	if renderer.calls != 1 {
+		t.Fatalf("renderer calls = %d, want 1", renderer.calls)
 	}
 }
 
