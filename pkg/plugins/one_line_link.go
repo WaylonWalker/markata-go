@@ -183,7 +183,11 @@ func (p *OneLineLinkPlugin) buildLinkCard(rawURL string, parsedURL *url.URL) str
 	sb.WriteString(html.EscapeString(rawURL))
 	sb.WriteString(`" class="`)
 	sb.WriteString(html.EscapeString(p.config.CardClass))
-	sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+	sb.WriteString(`" target="_blank" rel="noopener noreferrer" aria-label="`)
+	sb.WriteString(html.EscapeString(title))
+	sb.WriteString(` on `)
+	sb.WriteString(html.EscapeString(domain))
+	sb.WriteString(`">`)
 	sb.WriteString("\n")
 
 	sb.WriteString(`  <div class="`)

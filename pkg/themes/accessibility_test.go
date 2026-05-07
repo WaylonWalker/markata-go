@@ -203,6 +203,22 @@ func TestCSSTouchTargets(t *testing.T) {
 		}
 	})
 
+	t.Run("card and feed nav targets are at least 24px tall", func(t *testing.T) {
+		targetRules := map[string]*regexp.Regexp{
+			"card titles":      regexp.MustCompile(`(?s)\.card-link \.card-title[^}]*min-height:\s*24px`),
+			"card domains":     regexp.MustCompile(`(?s)\.card-link \.card-domain[^}]*min-height:\s*24px`),
+			"feed nav title":    regexp.MustCompile(`(?s)\.feed-nav-title a[^}]*min-height:\s*24px`),
+			"feed nav buttons":  regexp.MustCompile(`(?s)\.feed-nav-cycle-btn[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
+			"feed nav formats":  regexp.MustCompile(`(?s)\.feed-nav-format-link[^}]*min-height:\s*24px`),
+		}
+
+		for label, rule := range targetRules {
+			if !rule.MatchString(allCSS) {
+				t.Errorf("%s should have a 24px touch target", label)
+			}
+		}
+	})
+
 	t.Run("tags have adequate touch size", func(t *testing.T) {
 		// .tag elements should have padding
 		tagRe := regexp.MustCompile(`\.tag[^{]*\{[^}]*padding`)
