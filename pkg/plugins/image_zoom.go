@@ -9,6 +9,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	markatatemplates "github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // ImageZoomPlugin adds optional image zoom/lightbox functionality using GLightbox.
@@ -208,6 +209,12 @@ var imgAltRegex = regexp.MustCompile(`alt="([^"]*)"`)
 // imgClassRegex matches the class attribute in an img tag for replacement.
 var imgClassRegex = regexp.MustCompile(`class="([^"]*)"`)
 
+// imgWidthRegex matches the width attribute in an img tag.
+var imgWidthRegex = regexp.MustCompile(`width="([^"]*)"`)
+
+// imgHeightRegex matches the height attribute in an img tag.
+var imgHeightRegex = regexp.MustCompile(`height="([^"]*)"`)
+
 // processPost processes a single post's HTML for images that should be zoomable.
 func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 	// Skip posts marked as skip or with no HTML content
@@ -307,6 +314,8 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 			cleanedAttrs = `class="glightbox" ` + cleanedAttrs
 		}
 
+		cleanedAttrs = appendImageDimensions(cleanedAttrs, src)
+
 		// Add the data-glightbox attribute
 		cleanedAttrs = cleanedAttrs + " " + glightboxAttr
 
@@ -349,6 +358,26 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
+}
+
+func appendImageDimensions(attrs, src string) string {
+	if src == "" {
+		return attrs
+	}
+
+	width, height, ok := markatatemplates.MediaDimensionsFromURL(src)
+	if !ok {
+		return attrs
+	}
+
+	if width > 0 && !imgWidthRegex.MatchString(attrs) {
+		attrs += fmt.Sprintf(` width="%d"`, width)
+	}
+	if height > 0 && !imgHeightRegex.MatchString(attrs) {
+		attrs += fmt.Sprintf(` height="%d"`, height)
+	}
+
+	return attrs
 }
 
 // Write injects GLightbox CSS and JS into posts that need it.

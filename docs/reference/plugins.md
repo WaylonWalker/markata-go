@@ -1390,10 +1390,11 @@ image_zoom: true
 2. Finds images with `{data-zoomable}` or `{.zoomable}` markers
 3. Removes the markers from alt text
 4. Wraps images in anchor tags with GLightbox classes
-5. Adds `data-glightbox` attribute for the lightbox
-6. Tracks which posts need the lightbox library
-7. In Write stage, stores configuration for templates to inject JS/CSS
-8. Prefers shared vendored GLightbox assets from `[markata-go.assets]` when available, otherwise falls back to the legacy `cdn` toggle
+5. Preserves explicit width/height when the source URL already carries media size hints
+6. Adds `data-glightbox` attribute for the lightbox
+7. Tracks which posts need the lightbox library
+8. In Write stage, stores configuration for templates to inject JS/CSS
+9. Prefers shared vendored GLightbox assets from `[markata-go.assets]` when available, otherwise falls back to the legacy `cdn` toggle
 
 **HTML output:**
 
@@ -1406,7 +1407,8 @@ Output:
 ```html
 <a href="/images/sunset.jpg" class="glightbox-link">
   <img src="/images/sunset.jpg" alt="Beautiful sunset"
-       class="glightbox" data-glightbox="description: Beautiful sunset">
+       class="glightbox" width="1200" height="675"
+       data-glightbox="description: Beautiful sunset">
 </a>
 ```
 

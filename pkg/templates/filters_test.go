@@ -166,6 +166,41 @@ func TestTemplateTrees_UseHumanDateForVisibleHTMLDates(t *testing.T) {
 	}
 }
 
+func TestTemplateTrees_PreserveSizedMediaDimensions(t *testing.T) {
+	tests := []struct {
+		file     string
+		expected []string
+	}{
+		{
+			file:     "../../pkg/themes/default/templates/partials/cards/article-card.html",
+			expected: []string{`width="220"`, `height="160"`},
+		},
+		{
+			file:     "../../pkg/themes/default/templates/partials/cards/video-card.html",
+			expected: []string{`width="1200"`, `height="675"`},
+		},
+		{
+			file:     "../../templates/partials/cards/video-card.html",
+			expected: []string{`width="1200"`, `height="675"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			content, err := os.ReadFile(tt.file)
+			if err != nil {
+				t.Fatalf("ReadFile(%q) error: %v", tt.file, err)
+			}
+			text := string(content)
+			for _, needle := range tt.expected {
+				if !strings.Contains(text, needle) {
+					t.Fatalf("template %q does not contain %s", tt.file, needle)
+				}
+			}
+		})
+	}
+}
+
 func TestFilterSlugify(t *testing.T) {
 	tests := []struct {
 		input    string
