@@ -214,9 +214,9 @@ func TestCSSTouchTargets(t *testing.T) {
 		targetRules := map[string]*regexp.Regexp{
 			"card titles":      regexp.MustCompile(`(?s)\.card-link \.card-title[^}]*min-height:\s*24px`),
 			"card domains":     regexp.MustCompile(`(?s)\.card-link \.card-domain[^}]*min-height:\s*24px`),
-			"feed nav title":    regexp.MustCompile(`(?s)\.feed-nav-title a[^}]*min-height:\s*24px`),
-			"feed nav buttons":  regexp.MustCompile(`(?s)\.feed-nav-cycle-btn[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
-			"feed nav formats":  regexp.MustCompile(`(?s)\.feed-nav-format-link[^}]*min-height:\s*24px`),
+			"feed nav title":   regexp.MustCompile(`(?s)\.feed-nav-title a[^}]*min-height:\s*24px`),
+			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
+			"feed nav formats": regexp.MustCompile(`(?s)\.feed-nav-format-link[^}]*min-height:\s*24px`),
 		}
 
 		for label, rule := range targetRules {
