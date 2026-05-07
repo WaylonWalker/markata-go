@@ -77,8 +77,11 @@ func TestImageZoomPlugin_ProcessPostWithDataZoomable(t *testing.T) {
 	}
 
 	// Check that the image was wrapped in an anchor
-	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link" aria-label="Test image">`) {
 		t.Errorf("ArticleHTML should contain glightbox anchor, got: %s", post.ArticleHTML)
+	}
+	if !containsSubstring(post.ArticleHTML, `aria-label="Test image"`) {
+		t.Errorf("ArticleHTML should contain accessible name on glightbox anchor, got: %s", post.ArticleHTML)
 	}
 
 	// Check that data-glightbox attribute was added
@@ -115,7 +118,7 @@ func TestImageZoomPlugin_ProcessPostWithZoomableClass(t *testing.T) {
 	}
 
 	// Check that the image was processed
-	if !containsSubstring(post.ArticleHTML, `<a href="photo.png" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="photo.png" class="glightbox-link" aria-label="Photo">`) {
 		t.Errorf("ArticleHTML should contain glightbox anchor, got: %s", post.ArticleHTML)
 	}
 
@@ -144,7 +147,7 @@ func TestImageZoomPlugin_ProcessPostAutoAllImages(t *testing.T) {
 	}
 
 	// All images should be zoomable when AutoAllImages is true
-	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link" aria-label="Regular image">`) {
 		t.Errorf("ArticleHTML should contain glightbox anchor with AutoAllImages, got: %s", post.ArticleHTML)
 	}
 }
@@ -171,7 +174,7 @@ func TestImageZoomPlugin_ProcessPostFrontmatterOverride(t *testing.T) {
 	}
 
 	// Image should be zoomable due to frontmatter override
-	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="test.jpg" class="glightbox-link" aria-label="Regular image">`) {
 		t.Errorf("ArticleHTML should contain glightbox anchor with frontmatter override, got: %s", post.ArticleHTML)
 	}
 }
@@ -249,10 +252,10 @@ func TestImageZoomPlugin_MultipleImages(t *testing.T) {
 	}
 
 	// First and third images should be zoomable
-	if !containsSubstring(post.ArticleHTML, `<a href="a.jpg" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="a.jpg" class="glightbox-link" aria-label="Image A">`) {
 		t.Errorf("First image should be zoomable")
 	}
-	if !containsSubstring(post.ArticleHTML, `<a href="c.jpg" class="glightbox-link">`) {
+	if !containsSubstring(post.ArticleHTML, `<a href="c.jpg" class="glightbox-link" aria-label="Image C">`) {
 		t.Errorf("Third image should be zoomable")
 	}
 

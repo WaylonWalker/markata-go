@@ -3,7 +3,7 @@
 {# blocks creates blank-line + 4-space patterns that goldmark treats as code blocks #}
 {# when this template is used inside render_feed() (output injected into markdown). #}
 {% with post.image|media_url:post.video as media_src %}{% if media_src %}{% with media_src|with_size:"600" as sized_media %}<figure class="photo-figure h-entry">
-<a href="{{ post.href }}" class="u-url">
+<a href="{{ post.href }}" class="u-url" aria-label="{{ post.description | default:post.title | default:'Photo' }}">
 {% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"600" }}"{% endif %}>
 <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
 </video>
