@@ -86,6 +86,24 @@ func WithSize(raw string, width, height int) string {
 	return u.String()
 }
 
+// MediaDimensionsFromURL extracts known width/height query parameters from a media URL.
+// It recognizes both w/h and width/height parameter names.
+func MediaDimensionsFromURL(raw string) (width, height int, ok bool) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return 0, 0, false
+	}
+
+	qs := u.Query()
+	if width = positiveIntFromString(firstNonEmpty(qs.Get("w"), qs.Get("width"))); width > 0 {
+		ok = true
+	}
+	if height = positiveIntFromString(firstNonEmpty(qs.Get("h"), qs.Get("height"))); height > 0 {
+		ok = true
+	}
+	return width, height, ok
+}
+
 // IsVideoURL reports whether a URL ends with a known video extension.
 func IsVideoURL(raw string) bool {
 	ext := extensionFromURL(raw)
@@ -176,6 +194,23 @@ func normalizeTrustedMediaURL(raw string) string {
 		return u.String()
 	}
 	return raw
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func positiveIntFromString(raw string) int {
+	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || v <= 0 {
+		return 0
+	}
+	return v
 }
 
 func stringFromMap(data map[string]interface{}, key string) string {

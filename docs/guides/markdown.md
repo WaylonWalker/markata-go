@@ -2120,7 +2120,7 @@ Use the `{data-zoomable}` attribute marker to make specific images zoomable:
 
 ```html
 <a href="/images/sunset.jpg" class="glightbox-link">
-  <img src="/images/sunset.jpg" alt="Beautiful sunset" class="glightbox" data-glightbox="description: Beautiful sunset">
+  <img src="/images/sunset.jpg" alt="Beautiful sunset" class="glightbox" width="1200" height="675" data-glightbox="description: Beautiful sunset">
 </a>
 
 <img src="/images/icon.png" alt="Regular image without zoom">
