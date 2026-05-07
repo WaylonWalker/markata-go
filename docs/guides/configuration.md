@@ -723,6 +723,8 @@ Configure backlinks/outlinks UI on post pages. You can render a graph, a list, o
 | `inlinks_limit` | int | `8` | Max inlinks shown in list mode. |
 | `outlinks_limit` | int | `8` | Max outlinks shown in list mode. |
 
+The graph loader is only emitted on pages that render the graph preview, so pages that stay in list-only mode avoid the graph JavaScript entirely.
+
 ```toml
 [markata-go.components.post_connections]
 enabled = true

@@ -491,6 +491,56 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T) {
+	tests := []struct {
+		name            string
+		inlinks         int
+		outlinks        int
+		wantGraphScript  bool
+	}{
+		{name: "no graph for sparse post", inlinks: 1, outlinks: 1, wantGraphScript: false},
+		{name: "graph for connected post", inlinks: 2, outlinks: 1, wantGraphScript: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewTemplatesPlugin()
+			m := lifecycle.NewManager()
+
+			config := m.Config()
+			config.Extra["templates_dir"] = "/nonexistent"
+
+			if err := p.Configure(m); err != nil {
+				t.Fatalf("Configure() error = %v", err)
+			}
+
+			title := "Test Post"
+			post := &models.Post{
+				Title:       &title,
+				Href:        "/test-post/",
+				Template:    "post.html",
+				ArticleHTML: "<p>Hello World</p>",
+			}
+			for i := 0; i < tt.inlinks; i++ {
+				post.Inlinks = append(post.Inlinks, &models.Link{SourceURL: "https://example.com/source/"})
+			}
+			for i := 0; i < tt.outlinks; i++ {
+				post.Outlinks = append(post.Outlinks, &models.Link{TargetURL: "https://example.com/target/"})
+			}
+			m.AddPost(post)
+
+			if err := p.Render(m); err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			hasGraphScript := strings.Contains(post.HTML, "post-graph.js")
+			if hasGraphScript != tt.wantGraphScript {
+				t.Fatalf("post-graph.js present = %v, want %v; HTML=%q", hasGraphScript, tt.wantGraphScript, post.HTML)
+			}
+		})
+	}
+}
+
 func TestTemplatesPlugin_Render_UsesResolvedPostFormatsInTemplateContext(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "templates-test")
 	if err != nil {
