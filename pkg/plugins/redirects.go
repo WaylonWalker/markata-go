@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -21,6 +22,9 @@ type Redirect struct {
 
 	// New is the destination path (the new URL).
 	New string
+
+	// StatusCode is the HTTP redirect status code to use for native redirects.
+	StatusCode int
 }
 
 // RedirectsConfig holds configuration for the redirects plugin.
@@ -32,6 +36,18 @@ type RedirectsConfig struct {
 	// RedirectTemplate is an optional path to a custom template.
 	// If empty, the default template is used.
 	RedirectTemplate string
+
+	// GenerateHTMLFallback controls whether HTML redirect pages are written.
+	// Default: true
+	GenerateHTMLFallback bool
+
+	// GenerateNginxConf controls whether redirects.conf is written.
+	// Default: true
+	GenerateNginxConf bool
+
+	// NginxConfFile is the output-relative path for the generated nginx include.
+	// Default: "redirects.conf"
+	NginxConfFile string
 }
 
 // RedirectsPlugin generates HTML redirect pages from a _redirects file.
@@ -44,7 +60,10 @@ type RedirectsPlugin struct {
 func NewRedirectsPlugin() *RedirectsPlugin {
 	return &RedirectsPlugin{
 		config: RedirectsConfig{
-			RedirectsFile: "static/_redirects",
+			RedirectsFile:        "static/_redirects",
+			GenerateHTMLFallback: true,
+			GenerateNginxConf:    true,
+			NginxConfFile:        "redirects.conf",
 		},
 	}
 }
@@ -89,6 +108,15 @@ func (p *RedirectsPlugin) Configure(m *lifecycle.Manager) error {
 	if rt, ok := redirectsConfig["redirect_template"].(string); ok && rt != "" {
 		p.config.RedirectTemplate = rt
 	}
+	if ghf, ok := redirectsConfig["generate_html_fallback"].(bool); ok {
+		p.config.GenerateHTMLFallback = ghf
+	}
+	if gnc, ok := redirectsConfig["generate_nginx_conf"].(bool); ok {
+		p.config.GenerateNginxConf = gnc
+	}
+	if ncf, ok := redirectsConfig["nginx_conf_file"].(string); ok && ncf != "" {
+		p.config.NginxConfFile = ncf
+	}
 
 	return nil
 }
@@ -121,6 +149,7 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 			cacheKey = fmt.Sprintf("redirects:%x:%x", hashContent(redirectsContent), hashContent(templateContent))
 		}
 	}
+	cacheKey = fmt.Sprintf("%s:%t:%t:%s", cacheKey, p.config.GenerateHTMLFallback, p.config.GenerateNginxConf, p.config.NginxConfFile)
 	if cached, ok := m.Cache().Get(cacheKey); ok {
 		if cached == "done" {
 			return nil
@@ -133,17 +162,30 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Load template
-	tmpl, err := p.loadTemplate()
-	if err != nil {
-		return fmt.Errorf("loading redirect template: %w", err)
+	redirects = p.filterWritableRedirects(redirects, outputDir)
+	if len(redirects) == 0 {
+		return nil
 	}
 
-	// Generate redirect pages
-	for _, redirect := range redirects {
-		if err := p.writeRedirect(redirect, tmpl, outputDir, config); err != nil {
-			// Log error but continue with other redirects
-			fmt.Fprintf(os.Stderr, "warning: failed to write redirect for %s: %v\n", redirect.Original, err)
+	if p.config.GenerateHTMLFallback {
+		// Load template
+		tmpl, err := p.loadTemplate()
+		if err != nil {
+			return fmt.Errorf("loading redirect template: %w", err)
+		}
+
+		// Generate redirect pages
+		for _, redirect := range redirects {
+			if err := p.writeRedirect(redirect, tmpl, outputDir, config); err != nil {
+				// Log error but continue with other redirects
+				fmt.Fprintf(os.Stderr, "warning: failed to write redirect for %s: %v\n", redirect.Original, err)
+			}
+		}
+	}
+
+	if p.config.GenerateNginxConf {
+		if err := p.writeNginxConf(redirects, outputDir); err != nil {
+			return fmt.Errorf("writing nginx redirects config: %w", err)
 		}
 	}
 
@@ -199,12 +241,31 @@ func (p *RedirectsPlugin) parseRedirects(content string) []Redirect {
 		}
 
 		redirects = append(redirects, Redirect{
-			Original: original,
-			New:      newPath,
+			Original:   original,
+			New:        newPath,
+			StatusCode: parseRedirectStatusCode(parts),
 		})
 	}
 
 	return redirects
+}
+
+func parseRedirectStatusCode(parts []string) int {
+	if len(parts) < 3 {
+		return 301
+	}
+
+	statusCode, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 301
+	}
+
+	switch statusCode {
+	case 301, 302, 307, 308:
+		return statusCode
+	default:
+		return 301
+	}
 }
 
 // loadTemplate loads the redirect template (custom or default).
@@ -282,6 +343,80 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 	}
 
 	return nil
+}
+
+func (p *RedirectsPlugin) filterWritableRedirects(redirects []Redirect, outputDir string) []Redirect {
+	filtered := make([]Redirect, 0, len(redirects))
+	for _, redirect := range redirects {
+		skip, err := p.shouldSkipRedirect(redirect, outputDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to validate redirect for %s: %v\n", redirect.Original, err)
+			continue
+		}
+		if skip {
+			continue
+		}
+		filtered = append(filtered, redirect)
+	}
+
+	return filtered
+}
+
+func (p *RedirectsPlugin) shouldSkipRedirect(redirect Redirect, outputDir string) (bool, error) {
+	relativePath := strings.TrimPrefix(redirect.Original, "/")
+	if relativePath == "" {
+		return true, nil
+	}
+
+	cleanPath := filepath.Clean(relativePath)
+	if strings.Contains(cleanPath, "..") {
+		return false, fmt.Errorf("path traversal detected in redirect source: %s", redirect.Original)
+	}
+
+	postDir := filepath.Join(outputDir, cleanPath)
+	if info, err := os.Stat(postDir); err == nil && !info.IsDir() {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (p *RedirectsPlugin) writeNginxConf(redirects []Redirect, outputDir string) error {
+	confPath, err := p.resolveNginxConfPath(outputDir)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(confPath), 0o755); err != nil {
+		return fmt.Errorf("creating nginx conf directory %s: %w", filepath.Dir(confPath), err)
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("# Generated by markata-go redirects plugin.\n")
+	buf.WriteString("# Include this file inside an nginx server block.\n")
+
+	for _, redirect := range redirects {
+		_, _ = fmt.Fprintf(&buf, "location = %s {\n    return %d %s;\n}\n", redirect.Original, redirect.StatusCode, redirect.New)
+	}
+
+	//nolint:gosec // nginx include files need 0644 for web server access patterns
+	if err := os.WriteFile(confPath, buf.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("writing nginx redirects config %s: %w", confPath, err)
+	}
+
+	return nil
+}
+
+func (p *RedirectsPlugin) resolveNginxConfPath(outputDir string) (string, error) {
+	cleanPath := filepath.Clean(p.config.NginxConfFile)
+	if filepath.IsAbs(cleanPath) {
+		return "", fmt.Errorf("nginx_conf_file must be relative to the output directory: %s", p.config.NginxConfFile)
+	}
+	if cleanPath == "." || strings.HasPrefix(cleanPath, "..") {
+		return "", fmt.Errorf("invalid nginx_conf_file path: %s", p.config.NginxConfFile)
+	}
+
+	return filepath.Join(outputDir, cleanPath), nil
 }
 
 // hashContent creates a simple hash of content for caching.

@@ -1541,6 +1541,47 @@ OG card pages automatically include:
 
 See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation and content negotiation.
 
+### Redirects (`[markata-go.redirects]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `redirects_file` | string | `"static/_redirects"` | Source file containing redirect rules |
+| `redirect_template` | string | `""` | Custom HTML template for fallback redirect pages |
+| `generate_html_fallback` | bool | `true` | Keep HTML fallback redirects enabled |
+| `generate_nginx_conf` | bool | `true` | Generate an nginx-native include file |
+| `nginx_conf_file` | string | `"redirects.conf"` | Output-relative path for the generated nginx include |
+
+```toml
+[markata-go.redirects]
+redirects_file = "static/_redirects"
+generate_html_fallback = true
+generate_nginx_conf = true
+nginx_conf_file = "redirects.conf"
+```
+
+Markata-go reads `static/_redirects`, generates `output/redirects.conf` for nginx, and keeps the current HTML redirect pages as a backup by default.
+
+Supported `_redirects` entries:
+
+- `/old /new`
+- `/old /new 301`
+- `/preview /next 302`
+- `/go/github https://github.com/WaylonWalker 302`
+
+Notes:
+
+- comments and blank lines are ignored
+- wildcard redirects are skipped
+- `nginx_conf_file` must stay inside the output directory
+- redirects that collide with an existing file path in output are skipped
+
+Disable HTML fallback only when nginx is guaranteed to load the generated include file:
+
+```toml
+[markata-go.redirects]
+generate_html_fallback = false
+```
+
 ### Well-Known Files (`[markata-go.well_known]`)
 
 | Field | Type | Default | Description |

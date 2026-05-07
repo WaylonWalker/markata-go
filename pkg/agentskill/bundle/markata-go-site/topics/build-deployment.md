@@ -89,6 +89,7 @@ steps:
 
 - deploy the built `public/` directory behind nginx, Caddy, S3, or another static file server
 - ensure the server preserves nested `index.html` routing and static asset paths
+- when using nginx, markata-go can generate `redirects.conf` from `static/_redirects`; include `public/redirects.conf` from the nginx `server` block for native redirects while leaving HTML fallback redirects enabled unless you intentionally disable them
 
 ## Guidance
 
@@ -107,6 +108,7 @@ steps:
 - feeds like `rss.xml` or `atom.xml` contain the correct absolute URLs
 - homepage and archive slugs resolve to the intended directories
 - any `_headers`, `_redirects`, or `CNAME` files under `static/` are present in output when the host expects them
+- if self-hosting with nginx, verify the build produced `redirects.conf` and that the server includes it from the generated output tree
 
 ## Preview Deployments
 

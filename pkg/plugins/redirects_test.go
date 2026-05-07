@@ -9,6 +9,15 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 )
 
+func testRedirectsConfig(redirectsFile string) RedirectsConfig {
+	return RedirectsConfig{
+		RedirectsFile:        redirectsFile,
+		GenerateHTMLFallback: true,
+		GenerateNginxConf:    true,
+		NginxConfFile:        "redirects.conf",
+	}
+}
+
 // TestRedirectsPlugin_Name tests the plugin name.
 func TestRedirectsPlugin_Name(t *testing.T) {
 	p := NewRedirectsPlugin()
@@ -29,8 +38,8 @@ func TestRedirectsPlugin_ParseRedirects(t *testing.T) {
 			content: `/old-path    /new-path
 /legacy-url  /current-url`,
 			want: []Redirect{
-				{Original: "/old-path", New: "/new-path"},
-				{Original: "/legacy-url", New: "/current-url"},
+				{Original: "/old-path", New: "/new-path", StatusCode: 301},
+				{Original: "/legacy-url", New: "/current-url", StatusCode: 301},
 			},
 		},
 		{
@@ -40,8 +49,8 @@ func TestRedirectsPlugin_ParseRedirects(t *testing.T) {
 # Another comment
 /foo    /bar`,
 			want: []Redirect{
-				{Original: "/old", New: "/new"},
-				{Original: "/foo", New: "/bar"},
+				{Original: "/old", New: "/new", StatusCode: 301},
+				{Original: "/foo", New: "/bar", StatusCode: 301},
 			},
 		},
 		{
@@ -50,7 +59,7 @@ func TestRedirectsPlugin_ParseRedirects(t *testing.T) {
 /valid    /path
 /another/*  /dest/*`,
 			want: []Redirect{
-				{Original: "/valid", New: "/path"},
+				{Original: "/valid", New: "/path", StatusCode: 301},
 			},
 		},
 		{
@@ -60,8 +69,8 @@ func TestRedirectsPlugin_ParseRedirects(t *testing.T) {
 incomplete
 /another  /target`,
 			want: []Redirect{
-				{Original: "/valid", New: "/destination"},
-				{Original: "/another", New: "/target"},
+				{Original: "/valid", New: "/destination", StatusCode: 301},
+				{Original: "/another", New: "/target", StatusCode: 301},
 			},
 		},
 		{
@@ -70,7 +79,7 @@ incomplete
 /valid    /destination
 /source   relative-dest`,
 			want: []Redirect{
-				{Original: "/valid", New: "/destination"},
+				{Original: "/valid", New: "/destination", StatusCode: 301},
 			},
 		},
 		{
@@ -79,9 +88,20 @@ incomplete
 /go/docs      http://docs.example.com
 /internal     /local-path`,
 			want: []Redirect{
-				{Original: "/go/github", New: "https://github.com/myorg"},
-				{Original: "/go/docs", New: "http://docs.example.com"},
-				{Original: "/internal", New: "/local-path"},
+				{Original: "/go/github", New: "https://github.com/myorg", StatusCode: 301},
+				{Original: "/go/docs", New: "http://docs.example.com", StatusCode: 301},
+				{Original: "/internal", New: "/local-path", StatusCode: 301},
+			},
+		},
+		{
+			name: "status codes",
+			content: `/old    /new    302
+/permanent /next 308
+/default /target 999`,
+			want: []Redirect{
+				{Original: "/old", New: "/new", StatusCode: 302},
+				{Original: "/permanent", New: "/next", StatusCode: 308},
+				{Original: "/default", New: "/target", StatusCode: 301},
 			},
 		},
 		{
@@ -102,8 +122,8 @@ incomplete
 			content: `   /old    /new
 	/tabbed	/path	`,
 			want: []Redirect{
-				{Original: "/old", New: "/new"},
-				{Original: "/tabbed", New: "/path"},
+				{Original: "/old", New: "/new", StatusCode: 301},
+				{Original: "/tabbed", New: "/path", StatusCode: 301},
 			},
 		},
 		{
@@ -111,8 +131,8 @@ incomplete
 			content: `/source      /destination
 /a          /b`,
 			want: []Redirect{
-				{Original: "/source", New: "/destination"},
-				{Original: "/a", New: "/b"},
+				{Original: "/source", New: "/destination", StatusCode: 301},
+				{Original: "/a", New: "/b", StatusCode: 301},
 			},
 		},
 		{
@@ -120,8 +140,8 @@ incomplete
 			content: `/old    /new    301
 /foo    /bar    302    extra`,
 			want: []Redirect{
-				{Original: "/old", New: "/new"},
-				{Original: "/foo", New: "/bar"},
+				{Original: "/old", New: "/new", StatusCode: 301},
+				{Original: "/foo", New: "/bar", StatusCode: 302},
 			},
 		},
 	}
@@ -144,6 +164,9 @@ incomplete
 				}
 				if r.New != tt.want[i].New {
 					t.Errorf("redirect[%d].New = %q, want %q", i, r.New, tt.want[i].New)
+				}
+				if r.StatusCode != tt.want[i].StatusCode {
+					t.Errorf("redirect[%d].StatusCode = %d, want %d", i, r.StatusCode, tt.want[i].StatusCode)
 				}
 			}
 		})
@@ -178,9 +201,7 @@ func TestRedirectsPlugin_Write(t *testing.T) {
 
 	// Create and configure plugin
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	// Run write
 	if err := p.Write(m); err != nil {
@@ -236,6 +257,23 @@ func TestRedirectsPlugin_Write(t *testing.T) {
 			t.Errorf("file %s missing DOCTYPE", ef.path)
 		}
 	}
+
+	nginxConf, err := os.ReadFile(filepath.Join(outputDir, "redirects.conf"))
+	if err != nil {
+		t.Fatalf("expected nginx config not found: %v", err)
+	}
+
+	nginxConfStr := string(nginxConf)
+	for _, snippet := range []string{
+		"location = /old-post {",
+		"return 301 /new-post;",
+		"location = /legacy {",
+		"return 301 /current;",
+	} {
+		if !strings.Contains(nginxConfStr, snippet) {
+			t.Errorf("nginx config missing expected content %q", snippet)
+		}
+	}
 }
 
 // TestRedirectsPlugin_Write_MissingFile tests handling of missing redirects file.
@@ -249,9 +287,7 @@ func TestRedirectsPlugin_Write_MissingFile(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: filepath.Join(tmpDir, "nonexistent", "_redirects"),
-	})
+	p.SetConfig(testRedirectsConfig(filepath.Join(tmpDir, "nonexistent", "_redirects")))
 
 	// Should not error on missing file
 	if err := p.Write(m); err != nil {
@@ -277,9 +313,7 @@ func TestRedirectsPlugin_Write_EmptyFile(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	if err := p.Write(m); err != nil {
 		t.Errorf("Write() error on empty file = %v", err)
@@ -323,8 +357,11 @@ func TestRedirectsPlugin_Write_CustomTemplate(t *testing.T) {
 
 	p := NewRedirectsPlugin()
 	p.SetConfig(RedirectsConfig{
-		RedirectsFile:    redirectsFile,
-		RedirectTemplate: templateFile,
+		RedirectsFile:        redirectsFile,
+		RedirectTemplate:     templateFile,
+		GenerateHTMLFallback: true,
+		GenerateNginxConf:    true,
+		NginxConfFile:        "redirects.conf",
 	})
 
 	if err := p.Write(m); err != nil {
@@ -414,6 +451,15 @@ func TestRedirectsPlugin_Configure(t *testing.T) {
 			if got.RedirectTemplate != tt.wantTmpl {
 				t.Errorf("RedirectTemplate = %q, want %q", got.RedirectTemplate, tt.wantTmpl)
 			}
+			if !got.GenerateHTMLFallback {
+				t.Errorf("GenerateHTMLFallback = false, want true")
+			}
+			if !got.GenerateNginxConf {
+				t.Errorf("GenerateNginxConf = false, want true")
+			}
+			if got.NginxConfFile != "redirects.conf" {
+				t.Errorf("NginxConfFile = %q, want %q", got.NginxConfFile, "redirects.conf")
+			}
 		})
 	}
 }
@@ -449,9 +495,7 @@ func TestRedirectsPlugin_Write_Caching(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	// First write
 	if err := p.Write(m); err != nil {
@@ -498,9 +542,7 @@ func TestRedirectsPlugin_Write_NestedPaths(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	if err := p.Write(m); err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -522,8 +564,9 @@ func TestRedirectsPlugin_Write_NestedPaths(t *testing.T) {
 // TestRedirect_Struct tests the Redirect struct.
 func TestRedirect_Struct(t *testing.T) {
 	r := Redirect{
-		Original: "/old-path",
-		New:      "/new-path",
+		Original:   "/old-path",
+		New:        "/new-path",
+		StatusCode: 301,
 	}
 
 	if r.Original != "/old-path" {
@@ -531,6 +574,99 @@ func TestRedirect_Struct(t *testing.T) {
 	}
 	if r.New != "/new-path" {
 		t.Errorf("New = %q, want %q", r.New, "/new-path")
+	}
+	if r.StatusCode != 301 {
+		t.Errorf("StatusCode = %d, want %d", r.StatusCode, 301)
+	}
+}
+
+func TestRedirectsPlugin_Write_DisableHTMLFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
+
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	//nolint:gosec // test fixture
+	if err := os.WriteFile(redirectsFile, []byte("/old /new 302"), 0o644); err != nil {
+		t.Fatalf("failed to create redirects file: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = outputDir
+
+	p := NewRedirectsPlugin()
+	p.SetConfig(RedirectsConfig{
+		RedirectsFile:        redirectsFile,
+		GenerateHTMLFallback: false,
+		GenerateNginxConf:    true,
+		NginxConfFile:        "redirects.conf",
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(outputDir, "old", "index.html")); !os.IsNotExist(err) {
+		t.Fatalf("expected HTML fallback to be skipped, got err=%v", err)
+	}
+
+	nginxConf, err := os.ReadFile(filepath.Join(outputDir, "redirects.conf"))
+	if err != nil {
+		t.Fatalf("failed to read nginx config: %v", err)
+	}
+
+	if !strings.Contains(string(nginxConf), "return 302 /new;") {
+		t.Errorf("expected nginx config to contain 302 redirect, got: %s", string(nginxConf))
+	}
+}
+
+func TestRedirectsPlugin_Write_SkipsExistingFilePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatalf("failed to create output directory: %v", err)
+	}
+	//nolint:gosec // test fixture
+	if err := os.WriteFile(filepath.Join(outputDir, "old"), []byte("existing"), 0o644); err != nil {
+		t.Fatalf("failed to create existing file path: %v", err)
+	}
+
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	//nolint:gosec // test fixture
+	if err := os.WriteFile(redirectsFile, []byte("/old /new\n/keep /target"), 0o644); err != nil {
+		t.Fatalf("failed to create redirects file: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = outputDir
+
+	p := NewRedirectsPlugin()
+	p.SetConfig(testRedirectsConfig(redirectsFile))
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(outputDir, "old"))
+	if err != nil {
+		t.Fatalf("failed to read existing file path: %v", err)
+	}
+	if string(content) != "existing" {
+		t.Fatalf("existing file path should be preserved, got: %s", string(content))
+	}
+
+	nginxConf, err := os.ReadFile(filepath.Join(outputDir, "redirects.conf"))
+	if err != nil {
+		t.Fatalf("failed to read nginx config: %v", err)
+	}
+	nginxConfStr := string(nginxConf)
+	if strings.Contains(nginxConfStr, "location = /old") {
+		t.Fatalf("nginx config should skip redirects that collide with existing file paths: %s", nginxConfStr)
+	}
+	if !strings.Contains(nginxConfStr, "location = /keep") {
+		t.Fatalf("nginx config should still include non-conflicting redirect: %s", nginxConfStr)
 	}
 }
 
@@ -577,9 +713,7 @@ func TestRedirectsPlugin_Write_ExternalURLs(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	if err := p.Write(m); err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -643,9 +777,7 @@ func TestRedirectsPlugin_Write_PathTraversal(t *testing.T) {
 	cfg.OutputDir = outputDir
 
 	p := NewRedirectsPlugin()
-	p.SetConfig(RedirectsConfig{
-		RedirectsFile: redirectsFile,
-	})
+	p.SetConfig(testRedirectsConfig(redirectsFile))
 
 	// Write should not error (it logs warnings for path traversal)
 	if err := p.Write(m); err != nil {
@@ -693,8 +825,11 @@ func TestRedirectsPlugin_Write_TemplateChangeInvalidatesCache(t *testing.T) {
 
 	p := NewRedirectsPlugin()
 	p.SetConfig(RedirectsConfig{
-		RedirectsFile:    redirectsFile,
-		RedirectTemplate: templateFile,
+		RedirectsFile:        redirectsFile,
+		RedirectTemplate:     templateFile,
+		GenerateHTMLFallback: true,
+		GenerateNginxConf:    true,
+		NginxConfFile:        "redirects.conf",
 	})
 
 	// First write with template v1

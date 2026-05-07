@@ -947,6 +947,77 @@ og = true        # Enable social card HTML for screenshot tools
 
 ### Glob Settings (`[my-ssg.glob]`)
 
+### Redirect Settings (`[markata-go.redirects]`)
+
+```toml
+[markata-go.redirects]
+redirects_file = "static/_redirects"
+redirect_template = ""
+generate_html_fallback = true
+generate_nginx_conf = true
+nginx_conf_file = "redirects.conf"
+```
+
+The redirects plugin reads a Netlify-style `_redirects` file, filters out unsupported entries, and produces two outputs by default:
+
+1. `{output_dir}/redirects.conf` with exact-match nginx `location` blocks.
+2. HTML fallback redirect pages at `{output_dir}/{source}/index.html`.
+
+This default keeps current static-host behavior working while allowing self-hosted nginx deployments to respond with native redirect status codes.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `redirects_file` | string | `"static/_redirects"` | Source file containing redirect rules |
+| `redirect_template` | string | `""` | Optional custom Go HTML template for fallback redirect pages |
+| `generate_html_fallback` | bool | `true` | Write HTML redirect pages as a backup |
+| `generate_nginx_conf` | bool | `true` | Write an nginx include file alongside site output |
+| `nginx_conf_file` | string | `"redirects.conf"` | Output-relative path for the generated nginx include |
+
+`nginx_conf_file` MUST stay within the build output directory. Absolute paths and parent-directory traversal are invalid.
+
+Redirect syntax rules:
+
+- comments and blank lines are ignored
+- wildcard rules are skipped
+- source paths MUST begin with `/`
+- destinations MUST be absolute paths or full `http://` or `https://` URLs
+- an optional redirect status code may follow the destination; supported codes are `301`, `302`, `307`, and `308`
+
+When a redirect source collides with an existing file path in the output tree, markata-go MUST skip that redirect instead of replacing the file.
+
+Example:
+
+```toml
+[markata-go.redirects]
+redirects_file = "static/_redirects"
+generate_html_fallback = true
+generate_nginx_conf = true
+nginx_conf_file = "nginx/redirects.conf"
+```
+
+```text
+# static/_redirects
+/old-post /new-post 301
+/temporary /preview 302
+/docs /guides
+```
+
+Generated nginx include:
+
+```nginx
+location = /old-post {
+    return 301 /new-post;
+}
+
+location = /temporary {
+    return 302 /preview;
+}
+```
+
+Set `generate_html_fallback = false` only when the deployment environment is guaranteed to load the generated nginx include.
+
+---
+
 ```toml
 [my-ssg.glob]
 patterns = ["posts/**/*.md", "pages/**/*.md"]
