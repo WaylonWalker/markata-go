@@ -122,6 +122,8 @@ In your post template, include:
 
 The preview automatically hides when the post is not present in `graph.json` or has no connections.
 
+When the preview is not rendered, its JavaScript is not loaded either, which keeps ordinary article pages lighter.
+
 When view transitions are enabled, the preview also re-initializes after client-side page swaps, so navigating between posts does not require a hard refresh to render the graph.
 
 ## Filtering
