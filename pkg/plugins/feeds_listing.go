@@ -64,6 +64,7 @@ type sparklineWindow struct {
 type SparklinePoint struct {
 	X     float64
 	Y     float64
+	HitX  float64
 	Month string
 	Value int
 }
@@ -451,6 +452,7 @@ func buildFeedSparklineData(posts []*models.Post, window sparklineWindow) []Spar
 		points = append(points, SparklinePoint{
 			X:     x,
 			Y:     y,
+			HitX:  x - 2.6,
 			Month: months[i].Format("Jan 2006"),
 			Value: count,
 		})

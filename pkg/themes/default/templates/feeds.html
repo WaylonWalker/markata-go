@@ -134,7 +134,7 @@
                     <g class="feed-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
                       <line class="feed-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
                       <circle class="feed-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
-                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28"></rect>
+                      <rect class="feed-sparkline-hit" x="{{ point.HitX }}" y="0" width="5.2" height="28"></rect>
                     </g>
                     {% endfor %}
                   </svg>
