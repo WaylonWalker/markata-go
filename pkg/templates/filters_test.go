@@ -172,15 +172,15 @@ func TestTemplateTrees_PreserveSizedMediaDimensions(t *testing.T) {
 		expected []string
 	}{
 		{
-			file:    "../../pkg/themes/default/templates/partials/cards/article-card.html",
+			file:     "../../pkg/themes/default/templates/partials/cards/article-card.html",
 			expected: []string{`width="220"`, `height="160"`},
 		},
 		{
-			file:    "../../pkg/themes/default/templates/partials/cards/video-card.html",
+			file:     "../../pkg/themes/default/templates/partials/cards/video-card.html",
 			expected: []string{`width="1200"`, `height="675"`},
 		},
 		{
-			file:    "../../templates/partials/cards/video-card.html",
+			file:     "../../templates/partials/cards/video-card.html",
 			expected: []string{`width="1200"`, `height="675"`},
 		},
 	}
