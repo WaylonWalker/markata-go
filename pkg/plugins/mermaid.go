@@ -2,11 +2,13 @@
 package plugins
 
 import (
+	"fmt"
 	"html"
 	"log"
 	"regexp"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -24,6 +26,7 @@ type MermaidPlugin struct {
 	renderer      mermaidRenderer
 	paletteColors *mermaidPaletteColors // resolved at configure time, nil if no palette
 	assetURLs     map[string]string
+	cache         *buildcache.Cache
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -190,6 +193,7 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	if !p.config.Enabled {
 		return nil
 	}
+	p.cache = GetBuildCache(m)
 
 	if p.config.Mode != mermaidModeClient {
 		renderer, createErr := newMermaidRenderer(p.config, p.paletteColors)
@@ -245,6 +249,78 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	}
 
 	return nil
+}
+
+func (p *MermaidPlugin) renderDiagram(post *models.Post, diagramCode string) (string, error) {
+	renderHash := p.diagramRenderHash(diagramCode)
+	if p.cache != nil && renderHash != "" {
+		if cachedSVG := p.cache.GetCachedMermaidSVG(post.Path, renderHash); cachedSVG != "" {
+			return cachedSVG, nil
+		}
+	}
+
+	svgOutput, err := p.renderer.render(diagramCode)
+	if err != nil {
+		return "", err
+	}
+
+	if p.cache != nil && renderHash != "" {
+		//nolint:errcheck // caching is best-effort; rendering already succeeded.
+		p.cache.CacheMermaidSVG(post.Path, renderHash, svgOutput)
+	}
+	return svgOutput, nil
+}
+
+func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
+	if p.config.Mode == mermaidModeClient {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.WriteString("mermaid-svg-v1\n")
+	builder.WriteString("mode:")
+	builder.WriteString(p.config.Mode)
+	builder.WriteString("\ntheme:")
+	builder.WriteString(p.config.Theme)
+	builder.WriteString("\nuse_css_variables:")
+	if p.config.UseCSSVariables {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
+	}
+	builder.WriteString("\nlightbox:")
+	if p.config.Lightbox {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
+	}
+	if p.config.CLIConfig != nil {
+		builder.WriteString("\ncli.mmdc_path:")
+		builder.WriteString(p.config.CLIConfig.MMDCPath)
+		builder.WriteString("\ncli.extra_args:")
+		builder.WriteString(p.config.CLIConfig.ExtraArgs)
+	}
+	if p.config.ChromiumConfig != nil {
+		builder.WriteString("\nchromium.browser_path:")
+		builder.WriteString(p.config.ChromiumConfig.BrowserPath)
+		builder.WriteString("\nchromium.timeout:")
+		builder.WriteString(fmt.Sprint(p.config.ChromiumConfig.Timeout))
+		builder.WriteString("\nchromium.max_concurrent:")
+		builder.WriteString(fmt.Sprint(p.config.ChromiumConfig.MaxConcurrent))
+		builder.WriteString("\nchromium.no_sandbox:")
+		if p.config.ChromiumConfig.NoSandbox {
+			builder.WriteString("true")
+		} else {
+			builder.WriteString("false")
+		}
+	}
+	if p.paletteColors != nil {
+		builder.WriteString("\npalette:")
+		builder.WriteString(p.paletteColors.themeVariablesJSON())
+	}
+	builder.WriteString("\ndiagram:\n")
+	builder.WriteString(diagramCode)
+	return buildcache.ContentHash(builder.String())
 }
 
 // mermaidCodeBlockRegex matches <pre><code class="language-mermaid"> blocks.
@@ -306,7 +382,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			}
 
 			// For pre-rendering modes (cli/chromium): render to SVG
-			svgOutput, err := renderer.render(diagramCode)
+			svgOutput, err := p.renderDiagram(post, diagramCode)
 			if err != nil {
 				log.Printf("[mermaid] render error for %s: %v", post.Path, err)
 				renderErr = models.NewMermaidRenderError(post.Path, p.config.Mode, "failed to render diagram", err)

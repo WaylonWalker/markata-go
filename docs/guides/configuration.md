@@ -1027,6 +1027,10 @@ max_concurrent = 4
 # no_sandbox = true         # Required inside Docker or other containers
 ```
 
+Pre-rendered Mermaid SVGs are cached automatically. Hot builds reuse cached SVGs
+when the diagram source and rendering inputs match, avoiding repeated Chromium or
+`mmdc` rendering for unchanged diagrams.
+
 #### Chromium in Containers (Docker, Distrobox, Podman)
 
 Chromium's sandbox requires kernel capabilities that most containers restrict.
