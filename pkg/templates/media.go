@@ -67,6 +67,7 @@ func WithSize(raw string, width, height int) string {
 	if width <= 0 {
 		return raw
 	}
+	raw = normalizeTrustedMediaURL(raw)
 	u, err := url.Parse(raw)
 	if err != nil {
 		return raw
@@ -114,13 +115,13 @@ func PosterURLFromMap(data map[string]interface{}, mediaURL string) string {
 	}
 	for _, alias := range posterAliasOrder {
 		if val := stringFromMap(data, alias); val != "" {
-			return val
+			return normalizeTrustedMediaURL(val)
 		}
 	}
 	if mediaURL == "" || !IsTrustedMediaURL(mediaURL) {
 		return ""
 	}
-	return derivePosterFromVideo(mediaURL)
+	return normalizeTrustedMediaURL(derivePosterFromVideo(normalizeTrustedMediaURL(mediaURL)))
 }
 
 func isTrustedURL(u *url.URL) bool {
@@ -156,6 +157,25 @@ func derivePosterFromVideo(raw string) string {
 	}
 	u.Path = strings.TrimSuffix(u.Path, ext) + ".webp"
 	return u.String()
+}
+
+func normalizeTrustedMediaURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	if !isTrustedURL(u) {
+		return raw
+	}
+	if u.Host != "" && u.Scheme != "https" {
+		u.Scheme = "https"
+		return u.String()
+	}
+	return raw
 }
 
 func stringFromMap(data map[string]interface{}, key string) string {

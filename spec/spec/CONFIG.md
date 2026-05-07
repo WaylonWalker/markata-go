@@ -1055,7 +1055,7 @@ trusted_domains = [
 ]
 ```
 
-- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters and derived posters. Relative URLs are always treated as trusted.
+- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters, derived posters, and `https` normalization. Relative URLs are always treated as trusted.
 - The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
 
 ## See Also
