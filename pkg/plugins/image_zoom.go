@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 
@@ -229,30 +230,30 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 
 	// Process all img tags using index-based replacement so we can inspect
 	// the surrounding HTML for each match (e.g. detect parent <a> tags).
-	html := post.ArticleHTML
-	matches := imageZoomImgTagRegex.FindAllStringSubmatchIndex(html, -1)
+	articleHTML := post.ArticleHTML
+	matches := imageZoomImgTagRegex.FindAllStringSubmatchIndex(articleHTML, -1)
 	if len(matches) == 0 {
 		return nil
 	}
 
 	var buf strings.Builder
-	buf.Grow(len(html) + len(matches)*100) // pre-allocate
+	buf.Grow(len(articleHTML) + len(matches)*100) // pre-allocate
 	lastEnd := 0
 
 	for _, loc := range matches {
 		// loc[0..1] = full match, loc[2..3] = capture group 1 (attrs)
 		matchStart, matchEnd := loc[0], loc[1]
 		attrStart, attrEnd := loc[2], loc[3]
-		attrs := html[attrStart:attrEnd]
+		attrs := articleHTML[attrStart:attrEnd]
 
 		// Write everything before this match
-		buf.WriteString(html[lastEnd:matchStart])
+		buf.WriteString(articleHTML[lastEnd:matchStart])
 		lastEnd = matchEnd
 
 		// Check if already has glightbox attribute
 		if strings.Contains(attrs, "data-glightbox") {
 			foundZoomable = true
-			buf.WriteString(html[matchStart:matchEnd])
+			buf.WriteString(articleHTML[matchStart:matchEnd])
 			continue
 		}
 
@@ -263,7 +264,7 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		shouldZoom := hasZoomableMarker || postZoomEnabled
 
 		if !shouldZoom {
-			buf.WriteString(html[matchStart:matchEnd])
+			buf.WriteString(articleHTML[matchStart:matchEnd])
 			continue
 		}
 
@@ -285,6 +286,10 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		}
 		if len(altMatch) > 1 {
 			alt = strings.TrimSpace(altMatch[1])
+		}
+		anchorLabel := alt
+		if anchorLabel == "" {
+			anchorLabel = "Open image"
 		}
 
 		// Build the glightbox data attribute
@@ -309,7 +314,7 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		// the HTML before the match: find the last <a or </a> and see
 		// which one is closer. If the last anchor-related tag is an
 		// opening <a (not </a>), the image is inside an anchor.
-		insideAnchor := isInsideAnchor(html, matchStart)
+		insideAnchor := isInsideAnchor(articleHTML, matchStart)
 
 		if insideAnchor {
 			// Image is already inside an anchor — just add glightbox
@@ -322,14 +327,16 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 			// Wrap image in anchor for lightbox functionality
 			buf.WriteString(`<a href="`)
 			buf.WriteString(src)
-			buf.WriteString(`" class="glightbox-link"><img `)
+			buf.WriteString(`" class="glightbox-link" aria-label="`)
+			buf.WriteString(html.EscapeString(anchorLabel))
+			buf.WriteString(`"><img `)
 			buf.WriteString(cleanedAttrs)
 			buf.WriteString(`></a>`)
 		}
 	}
 
 	// Write remaining HTML after the last match
-	buf.WriteString(html[lastEnd:])
+	buf.WriteString(articleHTML[lastEnd:])
 	result := buf.String()
 
 	// Store whether this post needs the glightbox library
