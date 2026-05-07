@@ -266,6 +266,35 @@ func TestImageZoomPlugin_MultipleImages(t *testing.T) {
 	}
 }
 
+func TestImageZoomPlugin_ProcessPostPreservesDimensionsFromSizedMediaURL(t *testing.T) {
+	p := NewImageZoomPlugin()
+	p.SetConfig(models.ImageZoomConfig{
+		Enabled:       true,
+		Library:       "glightbox",
+		Selector:      ".glightbox",
+		AutoAllImages: true,
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<p><img src="https://dropper.wayl.one/image.jpg?w=1200&h=675" alt="Sized image"></p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	if !containsSubstring(post.ArticleHTML, `width="1200"`) {
+		t.Fatalf("ArticleHTML should preserve width, got: %s", post.ArticleHTML)
+	}
+	if !containsSubstring(post.ArticleHTML, `height="675"`) {
+		t.Fatalf("ArticleHTML should preserve height, got: %s", post.ArticleHTML)
+	}
+	if !containsSubstring(post.ArticleHTML, `<a href="https://dropper.wayl.one/image.jpg?w=1200&h=675" class="glightbox-link" aria-label="Sized image">`) {
+		t.Fatalf("ArticleHTML should still wrap the image for lightbox, got: %s", post.ArticleHTML)
+	}
+}
+
 func TestImageZoomPlugin_Configure_PrefersVendoredAssets(t *testing.T) {
 	p := NewImageZoomPlugin()
 	m := lifecycle.NewManager()
