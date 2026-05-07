@@ -40,7 +40,6 @@
 
   root.appendChild(wrapper);
 
-  input.setAttribute('aria-expanded', 'false');
   input.setAttribute('aria-controls', 'bleve-search-results');
   input.setAttribute('aria-activedescendant', '');
   results.id = 'bleve-search-results';
@@ -267,13 +266,11 @@
 
   function showResults() {
     results.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
   }
 
   function hideResults() {
     activeIndex = -1;
     results.hidden = true;
-    input.setAttribute('aria-expanded', 'false');
     input.setAttribute('aria-activedescendant', '');
     var links = getResultLinks();
     for (var i = 0; i < links.length; i++) {
