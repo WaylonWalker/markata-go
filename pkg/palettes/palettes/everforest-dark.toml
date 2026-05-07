@@ -29,6 +29,7 @@ fg        = "#d3c6aa"
 grey0     = "#7a8478"
 grey1     = "#859289"
 grey2     = "#9da9a0"
+grey3     = "#b5bfb4"
 
 # Colors
 red       = "#e67e80"
@@ -43,7 +44,7 @@ purple    = "#d699b6"
 [palette.semantic]
 text-primary   = "fg"
 text-secondary = "grey2"
-text-muted     = "grey0"
+text-muted     = "grey3"
 
 bg-primary   = "bg0"
 bg-secondary = "bg1"
