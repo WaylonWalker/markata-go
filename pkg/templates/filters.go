@@ -1276,16 +1276,16 @@ func filterIsVideo(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 }
 
 // filterMediaURL resolves a media URL from multiple fields.
-// Returns the first non-empty value from the input and parameter.
+// Returns the first non-empty value from the input and parameter, normalizing trusted media hosts to https.
 // Usage: {{ post.image|media_url:post.video }}
 func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	// Try input first (primary field)
 	if !in.IsNil() && in.String() != "" {
-		return in, nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(in.String())), nil
 	}
 	// Fall back to parameter (secondary field)
 	if param != nil && !param.IsNil() && param.String() != "" {
-		return param, nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(param.String())), nil
 	}
 	return pongo2.AsValue(""), nil
 }
@@ -1333,7 +1333,7 @@ func filterPosterURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 	candidate := strings.TrimSpace(in.String())
 	if candidate != "" {
-		return pongo2.AsValue(candidate), nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(candidate)), nil
 	}
 	return pongo2.AsValue(""), nil
 }

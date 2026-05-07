@@ -148,6 +148,8 @@ Use `human_date` for visible HTML dates in cards, post bylines, archive views, a
 - `asset_url`
 - `slides_reveal`
 
+For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs.
+
 ## Common Patterns
 
 ### Base Template
