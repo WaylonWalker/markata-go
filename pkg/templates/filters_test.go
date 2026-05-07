@@ -811,6 +811,14 @@ func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
 		t.Errorf("with_size should append params for trusted hosts, got %q", trusted)
 	}
 
+	trustedHTTP, err := engine.RenderString("{{ 'http://dropper.wayl.one/image.jpg' | with_size:\"1200,675\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if !strings.HasPrefix(trustedHTTP, "https://dropper.wayl.one/image.jpg?") || !strings.Contains(trustedHTTP, "w=1200") || !strings.Contains(trustedHTTP, "h=675") {
+		t.Errorf("with_size should normalize trusted http URLs to https, got %q", trustedHTTP)
+	}
+
 	relative, err := engine.RenderString("{{ '/media/image.png' | with_size:\"1200,675\" }}", ctx)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
@@ -825,6 +833,30 @@ func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
 	}
 	if untrusted != "https://example.com/image.jpg" {
 		t.Errorf("with_size should leave untrusted hosts untouched, got %q", untrusted)
+	}
+}
+
+func TestFilterMediaURLNormalizesTrustedHTTP(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	ctx := NewContext(nil, "", nil)
+
+	primary, err := engine.RenderString("{{ 'http://dropper.wayl.one/image.jpg' | media_url }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if primary != "https://dropper.wayl.one/image.jpg" {
+		t.Errorf("media_url should normalize trusted http URLs, got %q", primary)
+	}
+
+	fallback, err := engine.RenderString("{{ '' | media_url:'http://dropper.wayl.one/video.mp4' }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if fallback != "https://dropper.wayl.one/video.mp4" {
+		t.Errorf("media_url should normalize trusted fallback URLs, got %q", fallback)
 	}
 }
 
@@ -852,13 +884,13 @@ func TestFilterPosterURLAliasAndFallback(t *testing.T) {
 	post := &models.Post{
 		Title: &title,
 		Extra: map[string]interface{}{
-			"poster_image": "https://dropper.wayl.one/poster.png",
-			"poster":       "https://dropper.wayl.one/fallback.png",
-			"thumbnail":    "https://dropper.wayl.one/thumb.png",
+			"poster_image": "http://dropper.wayl.one/poster.png",
+			"poster":       "http://dropper.wayl.one/fallback.png",
+			"thumbnail":    "http://dropper.wayl.one/thumb.png",
 		},
 	}
 	ctx := NewContext(post, "", nil)
-	result, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx)
+	result, err := engine.RenderString("{{ post | poster_url:'http://dropper.wayl.one/video.mp4' }}", ctx)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
 	}
@@ -868,7 +900,7 @@ func TestFilterPosterURLAliasAndFallback(t *testing.T) {
 
 	post2 := &models.Post{}
 	ctx2 := NewContext(post2, "", nil)
-	fallback, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx2)
+	fallback, err := engine.RenderString("{{ post | poster_url:'http://dropper.wayl.one/video.mp4' }}", ctx2)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
 	}
