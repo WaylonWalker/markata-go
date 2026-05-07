@@ -877,7 +877,8 @@ If a specified template doesn't exist, markata-go falls back to:
 
 OG, feed, and embed cards share the same media helpers so the image/video preview feels identical everywhere. When rendering card media:
 
-- Pass the URL through `with_size(width, height)` so the helper appends explicit `w` and `h` query parameters that match the printed dimensions of the card. Correct query params keep downstream screenshotters and feed readers aligned with the rendered size.
+- Pass the URL through `with_size(width, height)` so the helper appends explicit `w` and `h` query parameters that match the printed dimensions of the card. Correct query params keep downstream screenshotters and feed readers aligned with the rendered size. Trusted media URLs are normalized to `https` first so browser pages do not hit mixed-content errors.
+- Use `media_url` when you only need the first non-empty media field or a search thumbnail URL. It keeps trusted media URLs on `https` without adding sizing parameters.
 - Use the fragment/query-safe `is_video` filter to decide between `<video>` and `<img>`, and call `poster_url(post)` to resolve the poster. `poster_url` enforces the alias precedence (`poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, `thumb`) before falling back to deriving a `.webp` thumbnail from the video URL when the host is trusted.
 
 Only relative URLs and hosts on the default allowlist (`dropper.wayl.one`, `dropper.waylonwalker.com`, `dropper-dev.wayl.one`) gain the sizing parameters and derived posters. Override or extend the list via `[markata-go.templates.media]` in your configuration when you use a different CDN. If you need to opt out, you can skip these filters in your custom template, but keep alias resolution and sizing in sync across OG/feed/embed templates so the published meta stays consistent.

@@ -52,7 +52,7 @@
 
             {% if post.cover_image %}
             <figure class="post-cover">
-                <img src="{{ post.cover_image }}" alt="{{ post.title }}" width="1200" height="675" loading="lazy">
+                <img src="{{ post.cover_image | with_size:"1200,675" }}" alt="{{ post.title }}" width="1200" height="675" loading="lazy">
             </figure>
             {% endif %}
 

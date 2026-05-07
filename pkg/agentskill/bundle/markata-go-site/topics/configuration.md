@@ -77,6 +77,7 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `theme.palette`
 - `layout.name`
 - feed definitions under `[[markata-go.feeds]]`
+- `templates.media.trusted_domains` when a site serves media from a CDN and needs trusted URLs normalized to `https`
 
 ## Useful Site Patterns
 
