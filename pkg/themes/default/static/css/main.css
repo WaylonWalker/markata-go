@@ -1413,12 +1413,33 @@ body:has(.background-decoration) div.feed {
 /* Wikilinks (wikilinks plugin) */
 a.wikilink {
   color: var(--color-link, var(--color-primary));
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+  text-decoration-skip-ink: auto;
+  border-radius: 2px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, text-decoration-style 0.15s ease;
+}
+
+a.wikilink:hover,
+a.wikilink:focus-visible {
+  text-decoration-style: solid;
+  background: color-mix(in srgb, var(--color-link, var(--color-primary)) 12%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-link, var(--color-primary)) 18%, transparent);
+  outline: none;
 }
 
 a.wikilink.wikilink-missing {
-  color: var(--color-error);
-  text-decoration: underline;
-  text-decoration-style: dashed;
+  color: color-mix(in srgb, var(--color-error) 88%, var(--color-text));
+  text-decoration-color: currentColor;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 0.12em;
+}
+
+a.wikilink.wikilink-missing:hover,
+a.wikilink.wikilink-missing:focus-visible {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
 /* Wikilink Tooltips */
