@@ -133,10 +133,14 @@ func TestCSSFontSizeScale(t *testing.T) {
 
 	t.Run("font size variables are defined", func(t *testing.T) {
 		requiredSizes := []string{
+			"--text-xs",
 			"--text-base",
 			"--text-sm",
 			"--text-lg",
 			"--text-xl",
+			"--text-2xl",
+			"--text-3xl",
+			"--text-4xl",
 		}
 		for _, size := range requiredSizes {
 			if !strings.Contains(vars, size+":") {
@@ -173,6 +177,41 @@ func TestCSSFontSizeScale(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestCSSTypographyScaleUsage checks that obvious one-off text sizes map back to the shared scale.
+func TestCSSTypographyScaleUsage(t *testing.T) {
+	mainCSS, err := ReadStatic("css/main.css")
+	if err != nil {
+		t.Fatalf("Failed to read main.css: %v", err)
+	}
+	main := string(mainCSS)
+
+	componentsCSS, err := ReadStatic("css/components.css")
+	if err != nil {
+		t.Fatalf("Failed to read components.css: %v", err)
+	}
+	components := string(componentsCSS)
+
+	checks := []struct {
+		name     string
+		haystack string
+		rule     *regexp.Regexp
+	}{
+		{"feed nav title", components, regexp.MustCompile(`(?s)\.feed-nav-title\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
+		{"feed nav counter", components, regexp.MustCompile(`(?s)\.feed-nav-counter\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
+		{"feed nav picker", components, regexp.MustCompile(`(?s)\.feed-nav-picker-input\s*\{[^}]*font-size:\s*var\(--text-sm\);`)},
+		{"feed nav hotkey", components, regexp.MustCompile(`(?s)\.feed-nav-hotkey\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
+		{"content sidebar inner", components, regexp.MustCompile(`(?s)\.content-sidebar-inner\s*\{[^}]*font-size:\s*var\(--text-sm\);`)},
+		{"tooltip desc", main, regexp.MustCompile(`(?s)\.tooltip-desc\s*\{[^}]*font-size:\s*var\(--text-sm\);`)},
+		{"tooltip date", main, regexp.MustCompile(`(?s)\.tooltip-date\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
+	}
+
+	for _, tt := range checks {
+		if !tt.rule.MatchString(tt.haystack) {
+			t.Errorf("missing scale token for %s", tt.name)
+		}
+	}
 }
 
 // TestCSSColorContrast validates that CSS defines colors with consideration for contrast.
