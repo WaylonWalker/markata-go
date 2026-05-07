@@ -132,6 +132,8 @@ type Cache struct {
 	encryptedHTMLMemory sync.Map
 	// mermaidSVGMemory maps MermaidSVGPath -> rendered SVG string
 	mermaidSVGMemory sync.Map
+	// mermaidSVGUsed tracks Mermaid SVG cache file paths referenced in the current build.
+	mermaidSVGUsed sync.Map
 }
 
 // PostCache stores cached metadata for a single post.
@@ -1254,12 +1256,8 @@ func (c *Cache) GetCachedMermaidSVG(sourcePath, renderHash string) string {
 	if sourcePath == "" || renderHash == "" {
 		return ""
 	}
-	cacheDir := filepath.Dir(c.path)
-	hashPrefix := renderHash
-	if len(hashPrefix) > 16 {
-		hashPrefix = hashPrefix[:16]
-	}
-	svgPath := filepath.Join(cacheDir, MermaidSVGCacheDir, hashPrefix+".html")
+	svgPath := c.mermaidSVGPath(renderHash)
+	c.markMermaidSVGUsed(svgPath)
 
 	if val, ok := c.mermaidSVGMemory.Load(svgPath); ok {
 		if svg, ok := val.(string); ok {
@@ -1282,8 +1280,55 @@ func (c *Cache) CacheMermaidSVG(sourcePath, renderHash, svg string) error {
 	if sourcePath == "" || renderHash == "" {
 		return nil
 	}
+	c.markMermaidSVGUsed(c.mermaidSVGPath(renderHash))
 	_, err := c.cacheHTMLFile(MermaidSVGCacheDir, renderHash, svg, &c.mermaidSVGMemory)
 	return err
+}
+
+// CleanupMermaidSVG removes cached Mermaid SVG files not used in the current build.
+func (c *Cache) CleanupMermaidSVG() (int, error) {
+	cacheDir := filepath.Join(filepath.Dir(c.path), MermaidSVGCacheDir)
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("reading mermaid svg cache dir: %w", err)
+	}
+
+	removed := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(cacheDir, entry.Name())
+		if _, ok := c.mermaidSVGUsed.Load(path); ok {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			return removed, fmt.Errorf("removing stale mermaid svg cache %s: %w", path, err)
+		}
+		c.mermaidSVGMemory.Delete(path)
+		removed++
+	}
+
+	return removed, nil
+}
+
+func (c *Cache) mermaidSVGPath(renderHash string) string {
+	cacheDir := filepath.Dir(c.path)
+	hashPrefix := renderHash
+	if len(hashPrefix) > 16 {
+		hashPrefix = hashPrefix[:16]
+	}
+	return filepath.Join(cacheDir, MermaidSVGCacheDir, hashPrefix+".html")
+}
+
+func (c *Cache) markMermaidSVGUsed(path string) {
+	if path == "" {
+		return
+	}
+	c.mermaidSVGUsed.Store(path, struct{}{})
 }
 
 // ContentHash computes a hash of just the markdown content.

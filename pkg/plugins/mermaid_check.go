@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+func commandVersion(path string) string {
+	out, err := exec.Command(path, "--version").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // MermaidDependencyInfo provides information about a dependency and installation instructions
 type MermaidDependencyInfo struct {
 	Mode                string
@@ -31,6 +39,7 @@ func checkCLIDependency(mmdc string) *MermaidDependencyInfo {
 		if _, err := os.Stat(mmdc); err == nil {
 			info.IsInstalled = true
 			info.BinaryPath = mmdc
+			info.InstalledVersion = commandVersion(mmdc)
 			return info
 		}
 		// Provided path doesn't exist
@@ -44,10 +53,7 @@ Check the path and try again, or omit 'mmdc_path' to auto-detect.`, mmdc)
 	if path, err := exec.LookPath("mmdc"); err == nil {
 		info.IsInstalled = true
 		info.BinaryPath = path
-		// Try to get version
-		if out, err := exec.Command(path, "--version").Output(); err == nil {
-			info.InstalledVersion = strings.TrimSpace(string(out))
-		}
+		info.InstalledVersion = commandVersion(path)
 		return info
 	}
 
@@ -86,6 +92,7 @@ func checkChromiumDependency(browserPath string) *MermaidDependencyInfo {
 		if verifyBrowser(browserPath) {
 			info.IsInstalled = true
 			info.BinaryPath = browserPath
+			info.InstalledVersion = commandVersion(browserPath)
 			return info
 		}
 		// Provided path doesn't work
@@ -116,6 +123,7 @@ Check the path and try again, or omit 'browser_path' to auto-detect.`, browserPa
 		if verifyBrowser(path) {
 			info.IsInstalled = true
 			info.BinaryPath = path
+			info.InstalledVersion = commandVersion(path)
 			return info
 		}
 	}

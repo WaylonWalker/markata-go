@@ -27,6 +27,7 @@ type MermaidPlugin struct {
 	paletteColors *mermaidPaletteColors // resolved at configure time, nil if no palette
 	assetURLs     map[string]string
 	cache         *buildcache.Cache
+	renderKey     string
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -194,6 +195,7 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 		return nil
 	}
 	p.cache = GetBuildCache(m)
+	p.renderKey = p.rendererCacheKey()
 
 	if p.config.Mode != mermaidModeClient {
 		renderer, createErr := newMermaidRenderer(p.config, p.paletteColors)
@@ -278,6 +280,8 @@ func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
 
 	var builder strings.Builder
 	builder.WriteString("mermaid-svg-v1\n")
+	builder.WriteString("renderer:")
+	builder.WriteString(p.renderKey)
 	builder.WriteString("mode:")
 	builder.WriteString(p.config.Mode)
 	builder.WriteString("\ntheme:")
@@ -321,6 +325,29 @@ func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
 	builder.WriteString("\ndiagram:\n")
 	builder.WriteString(diagramCode)
 	return buildcache.ContentHash(builder.String())
+}
+
+func (p *MermaidPlugin) rendererCacheKey() string {
+	if p.config.Mode == mermaidModeClient {
+		return ""
+	}
+
+	switch p.config.Mode {
+	case mermaidModeCLI:
+		info := checkCLIDependency(p.config.CLIConfig.MMDCPath)
+		if !info.IsInstalled {
+			return "cli:unavailable"
+		}
+		return "cli:" + info.BinaryPath + ":" + info.InstalledVersion
+	case mermaidModeChromium:
+		info := checkChromiumDependency(p.config.ChromiumConfig.BrowserPath)
+		if !info.IsInstalled {
+			return "chromium:unavailable"
+		}
+		return "chromium:" + info.BinaryPath + ":" + info.InstalledVersion + ":mermaidjs-v" + mermaidJSVersion
+	default:
+		return p.config.Mode
+	}
 }
 
 // mermaidCodeBlockRegex matches <pre><code class="language-mermaid"> blocks.
