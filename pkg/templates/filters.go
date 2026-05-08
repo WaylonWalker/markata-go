@@ -85,7 +85,7 @@ var (
 // compileBlockTagPatterns creates regex patterns for block tags.
 // If openTag is true, creates opening tag patterns; otherwise closing tag patterns.
 func compileBlockTagPatterns(openTag bool) map[string]*regexp.Regexp {
-	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside", "pre"}
 	patterns := make(map[string]*regexp.Regexp, len(blockTags))
 
 	for _, tag := range blockTags {
@@ -1078,7 +1078,7 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 // while removing block elements and cleaning up content for excerpts
 func cleanExcerptHTML(s string) string {
 	// Remove block-level tags but keep their content
-	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside", "pre"}
 	for _, tag := range blockTags {
 		// Remove opening tags
 		s = blockTagOpenRe[tag].ReplaceAllString(s, "")
