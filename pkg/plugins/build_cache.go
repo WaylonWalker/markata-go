@@ -243,6 +243,13 @@ func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
 	if removed > 0 {
 		buildCacheLog.Phase("cleanup").Printf("Removed %d stale cache entries", removed)
 	}
+	removedMermaid, err := p.cache.CleanupMermaidSVG()
+	if err != nil {
+		return err
+	}
+	if removedMermaid > 0 {
+		buildCacheLog.Phase("cleanup").Printf("Removed %d stale Mermaid SVG cache entries", removedMermaid)
+	}
 
 	// Save cache
 	return p.saveCache(m)
