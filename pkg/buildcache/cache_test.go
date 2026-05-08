@@ -391,3 +391,42 @@ func TestCache_CleanupMermaidSVG_RemovesUnusedFiles(t *testing.T) {
 		t.Fatalf("GetCachedMermaidSVG keep after cleanup = %q, want keep svg", got)
 	}
 }
+
+func TestCache_CleanupMermaidSVG_AfterUsageResetRemovesPreviouslyUsedFiles(t *testing.T) {
+	dir := t.TempDir()
+	cache := New(filepath.Join(dir, ".markata"))
+
+	if err := cache.CacheMermaidSVG("pages/keep.md", "keep-hash", "<svg>keep</svg>"); err != nil {
+		t.Fatalf("CacheMermaidSVG keep failed: %v", err)
+	}
+	if err := cache.CacheMermaidSVG("pages/drop.md", "drop-hash", "<svg>drop</svg>"); err != nil {
+		t.Fatalf("CacheMermaidSVG drop failed: %v", err)
+	}
+
+	if got := cache.GetCachedMermaidSVG("pages/keep.md", "keep-hash"); got != "<svg>keep</svg>" {
+		t.Fatalf("GetCachedMermaidSVG keep = %q, want keep svg", got)
+	}
+	if got := cache.GetCachedMermaidSVG("pages/drop.md", "drop-hash"); got != "<svg>drop</svg>" {
+		t.Fatalf("GetCachedMermaidSVG drop = %q, want drop svg", got)
+	}
+
+	cache.ResetMermaidSVGUsage()
+	if got := cache.GetCachedMermaidSVG("pages/keep.md", "keep-hash"); got != "<svg>keep</svg>" {
+		t.Fatalf("GetCachedMermaidSVG keep after reset = %q, want keep svg", got)
+	}
+
+	removed, err := cache.CleanupMermaidSVG()
+	if err != nil {
+		t.Fatalf("CleanupMermaidSVG failed: %v", err)
+	}
+	if removed != 1 {
+		t.Fatalf("CleanupMermaidSVG removed %d files, want 1", removed)
+	}
+
+	if got := cache.GetCachedMermaidSVG("pages/drop.md", "drop-hash"); got != "" {
+		t.Fatalf("GetCachedMermaidSVG drop after cleanup = %q, want empty", got)
+	}
+	if got := cache.GetCachedMermaidSVG("pages/keep.md", "keep-hash"); got != "<svg>keep</svg>" {
+		t.Fatalf("GetCachedMermaidSVG keep after cleanup = %q, want keep svg", got)
+	}
+}
