@@ -171,9 +171,9 @@ func TestDefaultPaletteExists(t *testing.T) {
 	}
 }
 
-// TestPaletteContrastForTextReadability specifically tests text readability
-// contrast ratios across all built-in palettes.
-func TestPaletteContrastForTextReadability(t *testing.T) {
+// TestPaletteContrastForDefaultThemeReadability specifically tests text readability
+// contrast ratios used by the bundled default theme across all built-in palettes.
+func TestPaletteContrastForDefaultThemeReadability(t *testing.T) {
 	t.Parallel()
 
 	names := BuiltinNames()
@@ -181,17 +181,25 @@ func TestPaletteContrastForTextReadability(t *testing.T) {
 		t.Skip("No built-in palettes found")
 	}
 
-	// Critical readability checks (text on backgrounds)
-	criticalChecks := []struct {
+	// Critical readability checks from default theme CSS token usage.
+	// Lighthouse treats small muted UI labels as normal text, so require AA 4.5:1.
+	defaultThemeChecks := []struct {
 		fg       string
 		bg       string
 		minRatio float64
 		desc     string
 	}{
 		{"text-primary", "bg-primary", 4.5, "main body text"},
+		{"text-primary", "bg-surface", 4.5, "text on cards and surfaces"},
+		{"text-primary", "bg-elevated", 4.5, "text on elevated surfaces"},
 		{"text-secondary", "bg-primary", 4.5, "secondary text"},
-		{"text-muted", "bg-primary", 3.0, "muted/hint text (large text minimum)"},
+		{"text-secondary", "bg-surface", 4.5, "secondary text on cards and surfaces"},
+		{"text-muted", "bg-primary", 4.5, "muted normal-size text"},
+		{"text-muted", "bg-secondary", 4.5, "muted text on secondary backgrounds"},
+		{"text-muted", "bg-surface", 4.5, "muted text on cards and surfaces"},
+		{"text-muted", "bg-elevated", 4.5, "muted text on elevated surfaces"},
 		{"link", "bg-primary", 4.5, "links in body text"},
+		{"link", "bg-surface", 4.5, "links on cards and surfaces"},
 	}
 
 	for _, name := range names {
@@ -203,18 +211,21 @@ func TestPaletteContrastForTextReadability(t *testing.T) {
 				t.Fatalf("Failed to load palette %s: %v", name, err)
 			}
 
-			for _, check := range criticalChecks {
+			for _, check := range defaultThemeChecks {
 				fgHex := palette.Resolve(check.fg)
 				bgHex := palette.Resolve(check.bg)
 
 				if fgHex == "" || bgHex == "" {
-					// Skip if colors not defined
+					t.Errorf("Palette %s: missing color mapping for %s on %s used by default theme",
+						name, check.fg, check.bg)
 					continue
 				}
 
 				fgColor, err1 := ParseHexColor(fgHex)
 				bgColor, err2 := ParseHexColor(bgHex)
 				if err1 != nil || err2 != nil {
+					t.Errorf("Palette %s: invalid resolved colors for %s on %s: %q on %q",
+						name, check.fg, check.bg, fgHex, bgHex)
 					continue
 				}
 

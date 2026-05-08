@@ -41,8 +41,8 @@ crust     = "#181926"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "text"
-text-secondary = "subtext1"
-text-muted     = "overlay1"
+text-secondary = "text"
+text-muted     = "text"
 
 bg-primary   = "base"
 bg-secondary = "mantle"
@@ -51,7 +51,7 @@ bg-elevated  = "surface1"
 
 accent       = "mauve"
 accent-hover = "lavender"
-link         = "blue"
+link         = "text"
 link-hover   = "sapphire"
 link-visited = "mauve"
 

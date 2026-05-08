@@ -12,10 +12,10 @@
       <div class="card-link-content">
       <a href="{{ post.href }}" class="card-title p-name u-url">{{ post.title | default:post.slug }}</a>
       {% if post.link %}
-      <a href="{{ post.link }}" class="card-domain" rel="noopener noreferrer" target="_blank">{{ post.link | domain }}</a>
+      <a href="{{ post.link }}" class="card-domain" rel="noopener noreferrer" target="_blank" aria-label="{{ post.link | domain }}">{{ post.link | domain }}</a>
       <data class="u-bookmark-of" value="{{ post.link }}" hidden></data>
       {% elif post.url %}
-      <a href="{{ post.url }}" class="card-domain" rel="noopener noreferrer" target="_blank">{{ post.url | domain }}</a>
+      <a href="{{ post.url }}" class="card-domain" rel="noopener noreferrer" target="_blank" aria-label="{{ post.url | domain }}">{{ post.url | domain }}</a>
       <data class="u-bookmark-of" value="{{ post.url }}" hidden></data>
       {% endif %}
     </div>
@@ -23,7 +23,7 @@
   </header>
 
   <div class="card-body">
-    <div class="card-excerpt p-summary">{{ post.article_html|excerpt:"paragraphs=4,chars=1200" | default:post.description }}</div>
+    <div class="card-excerpt p-summary">{{ post.article_html|plaintext|truncatechars:1200 | default:post.description }}</div>
   </div>
 
   <footer class="card-meta">

@@ -26,7 +26,7 @@ black      = "#130208"
 # Text colors
 text-primary   = "coral"
 text-secondary = "coral"
-text-muted     = "crimson"
+text-muted     = "coral"
 
 # Background colors
 bg-primary   = "black"

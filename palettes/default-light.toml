@@ -48,8 +48,8 @@ purple-600 = "#7c3aed"
 [palette.semantic]
 # Text colors
 text-primary   = "gray-900"
-text-secondary = "gray-700"
-text-muted     = "gray-500"
+text-secondary = "gray-900"
+text-muted     = "gray-900"
 
 # Background colors
 bg-primary   = "gray-50"
@@ -60,7 +60,7 @@ bg-elevated  = "gray-200"
 # Accent colors
 accent       = "blue-500"
 accent-hover = "blue-600"
-link         = "blue-600"
+link         = "gray-900"
 link-hover   = "blue-700"
 link-visited = "purple-600"
 

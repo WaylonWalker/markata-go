@@ -735,6 +735,33 @@ func TestFilterExcerpt(t *testing.T) {
 	}
 }
 
+func TestFilterExcerpt_StripsBrokenPreTags(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	html := `<p>Before code.</p><p><code>git push remote: Push to create is not enabled for users.</code></pre><p>After code.</p>`
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", html)
+
+	result, err := engine.RenderString("{{ html | excerpt:\"paragraphs=3,chars=500\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if strings.Contains(result, "</pre>") {
+		t.Fatalf("excerpt should strip dangling </pre> tags, got %q", result)
+	}
+	if !strings.Contains(result, "Before code.") {
+		t.Fatalf("excerpt should keep earlier paragraph text, got %q", result)
+	}
+	if !strings.Contains(result, "Push to create is not enabled for users.") {
+		t.Fatalf("excerpt should preserve inline code text, got %q", result)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || stringContains(s, substr)))
 }
