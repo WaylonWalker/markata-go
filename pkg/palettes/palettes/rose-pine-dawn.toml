@@ -37,8 +37,8 @@ iris-dark     = "#6a5888"  # Darker iris for code keywords
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "text"
-text-secondary = "subtle-dark"
-text-muted     = "muted-dark"
+text-secondary = "text"
+text-muted     = "text"
 
 bg-primary   = "base"
 bg-secondary = "surface"
@@ -47,7 +47,7 @@ bg-elevated  = "highlight-med"
 
 accent       = "iris-dark"
 accent-hover = "rose"
-link         = "pine"
+link         = "text"
 link-hover   = "foam"
 link-visited = "iris"
 

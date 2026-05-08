@@ -43,8 +43,8 @@ magenta-light = "#f06bb0"
 [palette.semantic]
 # Text colors (dark background mode)
 text-primary   = "base1"
-text-secondary = "base0"
-text-muted     = "base00"
+text-secondary = "base1"
+text-muted     = "base1"
 
 # Background colors
 bg-primary   = "base03"
@@ -55,7 +55,7 @@ bg-elevated  = "base02"
 # Accent colors
 accent       = "blue-light"
 accent-hover = "cyan-light"
-link         = "blue-light"
+link         = "base1"
 link-hover   = "cyan-light"
 link-visited = "violet"
 

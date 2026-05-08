@@ -42,8 +42,8 @@ dragonYellow = "#c4b28a"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "dragonWhite"
-text-secondary = "dragonGray"
-text-muted     = "dragonAsh"
+text-secondary = "dragonWhite"
+text-muted     = "dragonWhite"
 
 bg-primary   = "dragonBlack3"
 bg-secondary = "dragonBlack2"
@@ -52,7 +52,7 @@ bg-elevated  = "dragonBlack5"
 
 accent       = "dragonViolet"
 accent-hover = "dragonTeal"
-link         = "dragonBlue2"
+link         = "dragonWhite"
 link-hover   = "dragonAqua"
 link-visited = "dragonPink"
 

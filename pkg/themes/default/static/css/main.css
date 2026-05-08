@@ -277,7 +277,8 @@ p {
 
 a {
   color: var(--color-link, var(--color-primary));
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
   transition: color 0.2s;
 }
 

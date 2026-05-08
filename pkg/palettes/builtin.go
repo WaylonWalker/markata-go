@@ -82,7 +82,9 @@ func initBuiltinPalettes() {
 
 		// Store with normalized name as key
 		normalizedName := normalizeFileName(p.Name)
+		fileName := strings.TrimSuffix(entry.Name(), ".toml")
 		builtinPalettes[normalizedName] = p
+		builtinPalettes[fileName] = p
 		builtinPalettes[p.Name] = p // Also store with original name
 
 		builtinInfos = append(builtinInfos, PaletteInfo{

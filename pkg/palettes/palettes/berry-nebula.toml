@@ -26,8 +26,8 @@ black       = "#0d001a"
 [palette.semantic]
 # Text colors
 text-primary   = "cyan-light"
-text-secondary = "cyan"
-text-muted     = "slate"
+text-secondary = "cyan-light"
+text-muted     = "cyan-light"
 
 # Background colors
 bg-primary   = "black"
@@ -38,7 +38,7 @@ bg-elevated  = "magenta"
 # Accent colors
 accent       = "cyan"
 accent-hover = "cyan-light"
-link         = "cyan"
+link         = "cyan-light"
 link-hover   = "cyan-light"
 link-visited = "purple"
 

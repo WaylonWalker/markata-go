@@ -65,6 +65,15 @@ coverage-html: test-coverage
 test-one name:
     go test -v -run {{name}} ./...
 
+# Run fast bundled theme/palette accessibility checks
+test-a11y-fast:
+    go test -v -run 'TestDefaultThemeStaticContrastPairsAcrossBuiltinPalettes|TestPaletteContrastForDefaultThemeReadability' ./pkg/themes ./pkg/palettes
+
+# Run slow rendered accessibility checks across built-in palettes
+test-a11y-rendered:
+    npm --prefix scripts/a11y-rendered install
+    node scripts/a11y-rendered/check.mjs
+
 # Run tests for a specific package (e.g., just test-pkg ./pkg/config)
 test-pkg pkg:
     go test -v {{pkg}}/...

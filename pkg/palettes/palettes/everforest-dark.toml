@@ -42,8 +42,8 @@ purple    = "#d699b6"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "fg"
-text-secondary = "grey2"
-text-muted     = "grey0"
+text-secondary = "fg"
+text-muted     = "fg"
 
 bg-primary   = "bg0"
 bg-secondary = "bg1"
@@ -52,7 +52,7 @@ bg-elevated  = "bg3"
 
 accent       = "green"
 accent-hover = "aqua"
-link         = "blue"
+link         = "fg"
 link-hover   = "aqua"
 link-visited = "purple"
 

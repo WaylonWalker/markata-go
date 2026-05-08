@@ -24,8 +24,8 @@ black       = "#260d34"
 [palette.semantic]
 # Text colors
 text-primary   = "white"
-text-secondary = "pink"
-text-muted     = "magenta"
+text-secondary = "white"
+text-muted     = "white"
 
 # Background colors
 bg-primary   = "black"
@@ -36,7 +36,7 @@ bg-elevated  = "purple"
 # Accent colors
 accent       = "pink"
 accent-hover = "magenta"
-link         = "pink"
+link         = "white"
 link-hover   = "white"
 link-visited = "magenta"
 

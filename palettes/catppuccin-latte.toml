@@ -50,8 +50,8 @@ mauve-dark    = "#6828c0"
 [palette.semantic]
 # Text colors
 text-primary   = "text-dark"
-text-secondary = "text"
-text-muted     = "subtext0"
+text-secondary = "text-dark"
+text-muted     = "text-dark"
 
 # Background colors
 bg-primary   = "base"
@@ -62,7 +62,7 @@ bg-elevated  = "surface0"
 # Accent colors
 accent       = "mauve"
 accent-hover = "lavender"
-link         = "blue-dark"
+link         = "text-dark"
 link-hover   = "sapphire"
 link-visited = "mauve"
 

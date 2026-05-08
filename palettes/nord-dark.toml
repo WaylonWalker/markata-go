@@ -45,8 +45,8 @@ nord9-light = "#a3bdd9"  # Lighter variant for code keywords
 [palette.semantic]
 # Text colors
 text-primary   = "nord4"
-text-secondary = "nord5"
-text-muted     = "nord3-light"
+text-secondary = "nord4"
+text-muted     = "nord4"
 
 # Background colors
 bg-primary   = "nord0"
@@ -57,7 +57,7 @@ bg-elevated  = "nord3"
 # Accent colors
 accent       = "nord8"
 accent-hover = "nord7"
-link         = "nord8"
+link         = "nord4"
 link-hover   = "nord9"
 link-visited = "nord15"
 

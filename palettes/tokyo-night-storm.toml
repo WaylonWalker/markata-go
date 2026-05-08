@@ -51,8 +51,8 @@ yellow    = "#e0af68"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "fg"
-text-secondary = "fg-dark"
-text-muted     = "dark5"
+text-secondary = "fg"
+text-muted     = "fg"
 
 bg-primary   = "bg"
 bg-secondary = "bg-dark"
@@ -61,7 +61,7 @@ bg-elevated  = "bg-float"
 
 accent       = "magenta"
 accent-hover = "purple"
-link         = "blue"
+link         = "fg"
 link-hover   = "cyan"
 link-visited = "magenta"
 
