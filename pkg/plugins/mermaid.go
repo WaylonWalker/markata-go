@@ -195,6 +195,9 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 		return nil
 	}
 	p.cache = GetBuildCache(m)
+	if p.cache != nil {
+		p.cache.ResetMermaidSVGUsage()
+	}
 	p.renderKey = p.rendererCacheKey()
 
 	if p.config.Mode != mermaidModeClient {

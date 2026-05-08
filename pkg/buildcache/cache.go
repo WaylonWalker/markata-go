@@ -1315,6 +1315,11 @@ func (c *Cache) CleanupMermaidSVG() (int, error) {
 	return removed, nil
 }
 
+// ResetMermaidSVGUsage clears per-build Mermaid SVG usage tracking.
+func (c *Cache) ResetMermaidSVGUsage() {
+	c.mermaidSVGUsed = sync.Map{}
+}
+
 func (c *Cache) mermaidSVGPath(renderHash string) string {
 	cacheDir := filepath.Dir(c.path)
 	hashPrefix := renderHash
