@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -306,6 +307,7 @@ func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
 		builder.WriteString(p.config.CLIConfig.MMDCPath)
 		builder.WriteString("\ncli.extra_args:")
 		builder.WriteString(p.config.CLIConfig.ExtraArgs)
+		writeMermaidCLIFileInputHashes(&builder, p.config.CLIConfig.ExtraArgs)
 	}
 	if p.config.ChromiumConfig != nil {
 		builder.WriteString("\nchromium.browser_path:")
@@ -328,6 +330,60 @@ func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
 	builder.WriteString("\ndiagram:\n")
 	builder.WriteString(diagramCode)
 	return buildcache.ContentHash(builder.String())
+}
+
+var mermaidCLIFileArgFlags = map[string]struct{}{
+	"--configFile":          {},
+	"--cssFile":             {},
+	"--puppeteerConfigFile": {},
+	"-c":                    {},
+	"-C":                    {},
+	"-p":                    {},
+}
+
+func writeMermaidCLIFileInputHashes(builder *strings.Builder, extraArgs string) {
+	if extraArgs == "" {
+		return
+	}
+
+	args := strings.Fields(extraArgs)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if _, ok := mermaidCLIFileArgFlags[arg]; ok {
+			if i+1 < len(args) {
+				writeMermaidCLIFileInputHash(builder, args[i+1])
+				i++
+			}
+			continue
+		}
+
+		for flag := range mermaidCLIFileArgFlags {
+			prefix := flag + "="
+			if strings.HasPrefix(arg, prefix) {
+				writeMermaidCLIFileInputHash(builder, strings.TrimPrefix(arg, prefix))
+				break
+			}
+		}
+	}
+}
+
+func writeMermaidCLIFileInputHash(builder *strings.Builder, path string) {
+	if path == "" {
+		return
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		absPath = filepath.Clean(path)
+	}
+
+	builder.WriteString("\ncli.file_arg:")
+	builder.WriteString(absPath)
+	builder.WriteString(":")
+	if hash, err := buildcache.HashFile(absPath); err == nil && hash != "" {
+		builder.WriteString(hash)
+		return
+	}
+	builder.WriteString("unreadable")
 }
 
 func (p *MermaidPlugin) rendererCacheKey() string {

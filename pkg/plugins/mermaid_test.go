@@ -2,6 +2,8 @@ package plugins
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -794,6 +796,64 @@ func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesRendererFingerprint(t *test
 	}
 	if renderer.calls != 1 {
 		t.Fatalf("renderer calls = %d, want 1", renderer.calls)
+	}
+}
+
+func TestMermaidPlugin_DiagramRenderHashIncludesCLIConfigFileContents(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "mermaid.json")
+	if err := os.WriteFile(configPath, []byte(`{"theme":"default"}`), 0o600); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    mermaidModeCLI,
+		Theme:   "default",
+		CLIConfig: &models.CLIRendererConfig{
+			ExtraArgs: "--configFile " + configPath,
+		},
+	})
+	p.renderKey = "cli:/usr/bin/mmdc:1.0.0"
+
+	first := p.diagramRenderHash("graph TD\nA-->B")
+	if err := os.WriteFile(configPath, []byte(`{"theme":"dark"}`), 0o600); err != nil {
+		t.Fatalf("rewrite config file: %v", err)
+	}
+	second := p.diagramRenderHash("graph TD\nA-->B")
+
+	if first == second {
+		t.Fatal("diagram render hash did not change after CLI config file contents changed")
+	}
+}
+
+func TestMermaidPlugin_DiagramRenderHashIncludesCLIEqualsFileArg(t *testing.T) {
+	dir := t.TempDir()
+	cssPath := filepath.Join(dir, "mermaid.css")
+	if err := os.WriteFile(cssPath, []byte("svg { color: black; }"), 0o600); err != nil {
+		t.Fatalf("write css file: %v", err)
+	}
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    mermaidModeCLI,
+		Theme:   "default",
+		CLIConfig: &models.CLIRendererConfig{
+			ExtraArgs: "--cssFile=" + cssPath,
+		},
+	})
+	p.renderKey = "cli:/usr/bin/mmdc:1.0.0"
+
+	first := p.diagramRenderHash("graph TD\nA-->B")
+	if err := os.WriteFile(cssPath, []byte("svg { color: white; }"), 0o600); err != nil {
+		t.Fatalf("rewrite css file: %v", err)
+	}
+	second := p.diagramRenderHash("graph TD\nA-->B")
+
+	if first == second {
+		t.Fatal("diagram render hash did not change after CLI css file contents changed")
 	}
 }
 
