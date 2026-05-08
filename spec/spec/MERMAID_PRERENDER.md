@@ -171,6 +171,13 @@ and cached at `~/.cache/markata-go/mermaid/mermaid-v{version}.min.js` following
 XDG conventions. Subsequent builds load from cache, eliminating the network
 download. The cache persists across projects and `--clean` / `--clean-all`.
 
+**Rendered SVG caching:** In `cli` and `chromium` modes, each rendered SVG is
+cached in the build cache and keyed by the diagram source plus rendering inputs:
+mode, theme, CSS-variable usage, lightbox setting, renderer configuration, and
+resolved palette theme variables. Hot builds reuse matching SVGs without
+invoking the external renderer. The cache MUST invalidate when any keyed input
+changes, and cache failures MUST NOT fail the build after rendering succeeds.
+
 **Setup:**
 
 ```bash
@@ -198,9 +205,10 @@ choco install chromium
 1. Start single Chrome instance (reused across all diagrams)
 2. Find `<pre><code class="language-mermaid">` blocks
 3. For each diagram (up to `max_concurrent` in parallel):
-   - Render via Chrome DevTools Protocol
-   - Extract SVG output
-   - Embed in HTML
+   - Reuse cached SVG output when the diagram and rendering inputs match
+   - Otherwise render via Chrome DevTools Protocol
+   - Extract SVG output and store it in the build cache
+   - Embed the SVG in HTML
 4. Close Chrome connection
 
 **Output:**

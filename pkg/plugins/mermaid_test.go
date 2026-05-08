@@ -1,12 +1,32 @@
 package plugins
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+type countingMermaidRenderer struct {
+	calls int
+	svg   string
+	err   error
+}
+
+func (r *countingMermaidRenderer) render(_ string) (string, error) {
+	r.calls++
+	if r.err != nil {
+		return "", r.err
+	}
+	return r.svg, nil
+}
+
+func (r *countingMermaidRenderer) close() error { return nil }
 
 func TestMermaidPlugin_Name(t *testing.T) {
 	p := NewMermaidPlugin()
@@ -665,6 +685,176 @@ func TestMermaidPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.ConfigurePlugin = p
 	var _ lifecycle.RenderPlugin = p
 	var _ lifecycle.PriorityPlugin = p
+}
+
+func TestMermaidPlugin_RenderDiagram_UsesCache(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+
+	renderer := &countingMermaidRenderer{svg: "<svg>cached</svg>"}
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled:         true,
+		Mode:            mermaidModeChromium,
+		Theme:           "default",
+		UseCSSVariables: true,
+		Lightbox:        true,
+		ChromiumConfig: &models.ChromiumRendererConfig{
+			Timeout:       30,
+			MaxConcurrent: 4,
+			NoSandbox:     true,
+		},
+	})
+	p.renderer = renderer
+	p.cache = cache
+
+	post := &models.Post{Path: "pages/diagram.md"}
+	first, err := p.renderDiagram(post, "graph TD\nA-->B")
+	if err != nil {
+		t.Fatalf("first renderDiagram: %v", err)
+	}
+	second, err := p.renderDiagram(post, "graph TD\nA-->B")
+	if err != nil {
+		t.Fatalf("second renderDiagram: %v", err)
+	}
+
+	if first != "<svg>cached</svg>" || second != "<svg>cached</svg>" {
+		t.Fatalf("unexpected SVG outputs: %q %q", first, second)
+	}
+	if renderer.calls != 1 {
+		t.Fatalf("renderer calls = %d, want 1", renderer.calls)
+	}
+}
+
+func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesTheme(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "default"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
+	p.renderer = &countingMermaidRenderer{svg: "<svg>default</svg>"}
+	p.cache = cache
+
+	post := &models.Post{Path: "pages/diagram.md"}
+	if _, err := p.renderDiagram(post, "graph TD\nA-->B"); err != nil {
+		t.Fatalf("render default: %v", err)
+	}
+
+	renderer := &countingMermaidRenderer{svg: "<svg>dark</svg>"}
+	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "dark"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
+	p.renderer = renderer
+	p.cache = cache
+
+	got, err := p.renderDiagram(post, "graph TD\nA-->B")
+	if err != nil {
+		t.Fatalf("render dark: %v", err)
+	}
+	if got != "<svg>dark</svg>" {
+		t.Fatalf("got %q, want dark SVG", got)
+	}
+	if renderer.calls != 1 {
+		t.Fatalf("renderer calls = %d, want 1", renderer.calls)
+	}
+}
+
+func TestMermaidPlugin_RenderDiagram_PropagatesRenderErrors(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
+	p.renderer = &countingMermaidRenderer{err: errors.New("render failed")}
+
+	_, err := p.renderDiagram(&models.Post{Path: "pages/diagram.md"}, "graph TD\nA-->B")
+	if err == nil {
+		t.Fatal("expected render error")
+	}
+}
+
+func TestMermaidPlugin_RenderDiagram_CacheKeyIncludesRendererFingerprint(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{Enabled: true, Mode: mermaidModeChromium, Theme: "default"})
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 1:mermaidjs-v10"
+	p.renderer = &countingMermaidRenderer{svg: "<svg>old</svg>"}
+	p.cache = cache
+
+	post := &models.Post{Path: "pages/diagram.md"}
+	if _, err := p.renderDiagram(post, "graph TD\nA-->B"); err != nil {
+		t.Fatalf("render old: %v", err)
+	}
+
+	renderer := &countingMermaidRenderer{svg: "<svg>new</svg>"}
+	p.renderKey = "chromium:/usr/bin/chromium:Chromium 2:mermaidjs-v10"
+	p.renderer = renderer
+
+	got, err := p.renderDiagram(post, "graph TD\nA-->B")
+	if err != nil {
+		t.Fatalf("render new: %v", err)
+	}
+	if got != "<svg>new</svg>" {
+		t.Fatalf("got %q, want new SVG", got)
+	}
+	if renderer.calls != 1 {
+		t.Fatalf("renderer calls = %d, want 1", renderer.calls)
+	}
+}
+
+func TestMermaidPlugin_DiagramRenderHashIncludesCLIConfigFileContents(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "mermaid.json")
+	if err := os.WriteFile(configPath, []byte(`{"theme":"default"}`), 0o600); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    mermaidModeCLI,
+		Theme:   "default",
+		CLIConfig: &models.CLIRendererConfig{
+			ExtraArgs: "--configFile " + configPath,
+		},
+	})
+	p.renderKey = "cli:/usr/bin/mmdc:1.0.0"
+
+	first := p.diagramRenderHash("graph TD\nA-->B")
+	if err := os.WriteFile(configPath, []byte(`{"theme":"dark"}`), 0o600); err != nil {
+		t.Fatalf("rewrite config file: %v", err)
+	}
+	second := p.diagramRenderHash("graph TD\nA-->B")
+
+	if first == second {
+		t.Fatal("diagram render hash did not change after CLI config file contents changed")
+	}
+}
+
+func TestMermaidPlugin_DiagramRenderHashIncludesCLIEqualsFileArg(t *testing.T) {
+	dir := t.TempDir()
+	cssPath := filepath.Join(dir, "mermaid.css")
+	if err := os.WriteFile(cssPath, []byte("svg { color: black; }"), 0o600); err != nil {
+		t.Fatalf("write css file: %v", err)
+	}
+
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    mermaidModeCLI,
+		Theme:   "default",
+		CLIConfig: &models.CLIRendererConfig{
+			ExtraArgs: "--cssFile=" + cssPath,
+		},
+	})
+	p.renderKey = "cli:/usr/bin/mmdc:1.0.0"
+
+	first := p.diagramRenderHash("graph TD\nA-->B")
+	if err := os.WriteFile(cssPath, []byte("svg { color: white; }"), 0o600); err != nil {
+		t.Fatalf("rewrite css file: %v", err)
+	}
+	second := p.diagramRenderHash("graph TD\nA-->B")
+
+	if first == second {
+		t.Fatal("diagram render hash did not change after CLI css file contents changed")
+	}
 }
 
 // TestMermaidPlugin_CLIMode_Fallback tests that CLI mode falls back to client rendering

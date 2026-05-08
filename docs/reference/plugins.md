@@ -3657,6 +3657,7 @@ no_sandbox = false                                          # Required in contai
 5. When `use_css_variables` is true, reads site CSS custom properties and passes them to `mermaid.initialize()` so diagrams match the site palette automatically
 6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from vendor assets by default.
 7. In chromium mode, the MermaidJS library is cached at `~/.cache/markata-go/mermaid/` to avoid re-downloading on each build
+8. In cli/chromium modes, rendered SVGs are cached in the build cache and reused when the diagram source and rendering inputs are unchanged
 
 **Markdown usage:**
 ````markdown
