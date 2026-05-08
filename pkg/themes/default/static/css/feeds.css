@@ -47,6 +47,13 @@ article.post > .post-content > .feed.h-feed {
   margin-right: auto;
 }
 
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6, 1.5rem);
+}
+
 .feeds-page {
   max-width: var(--content-width);
   margin: 0 auto;

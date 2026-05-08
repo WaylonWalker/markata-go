@@ -23,7 +23,7 @@
   </header>
 
   <div class="card-body">
-    <div class="card-excerpt p-summary">{{ post.article_html|excerpt:"paragraphs=4,chars=1200" | default:post.description }}</div>
+    <div class="card-excerpt p-summary">{{ post.article_html|plaintext|truncatechars:1200 | default:post.description }}</div>
   </div>
 
   <footer class="card-meta">
