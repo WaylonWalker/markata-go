@@ -28,18 +28,12 @@ article.post > .post-content > .feed.h-feed {
   transform: translateX(-50%);
 }
 
-article.post > .post-content > .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .feed.h-feed {
   --feed-content-width: min(100%, 750px);
   width: 100%;
   max-width: min(100%, var(--page-width));
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
+  display: block;
 }
 
 .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .feed-header,
