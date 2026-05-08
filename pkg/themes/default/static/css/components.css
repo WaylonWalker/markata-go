@@ -2474,11 +2474,13 @@
   align-content: start;
   min-width: 0;
   padding: 1rem;
-  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
-  border-left: 4px solid color-mix(in srgb, var(--color-primary) 65%, var(--color-border));
+  border: 1px solid transparent;
   border-radius: 1rem;
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border) 55%, transparent);
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-border) 82%, transparent),
+    0 1px 0 color-mix(in srgb, var(--color-border) 55%, transparent);
 }
 
 .reader-entry-meta-row {
