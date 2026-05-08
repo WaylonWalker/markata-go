@@ -24,7 +24,7 @@ charcoal   = "#292831"
 # Text colors
 text-primary   = "peach"
 text-secondary = "peach"
-text-muted     = "rose"
+text-muted     = "peach"
 
 # Background colors
 bg-primary   = "charcoal"

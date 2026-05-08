@@ -40,8 +40,8 @@ highlight-high = "#524f67"
 [palette.semantic]
 # Text colors
 text-primary   = "text"
-text-secondary = "subtle"
-text-muted     = "muted"
+text-secondary = "text"
+text-muted     = "text"
 
 # Background colors
 bg-primary   = "base"
@@ -52,7 +52,7 @@ bg-elevated  = "highlight-med"
 # Accent colors
 accent       = "iris"
 accent-hover = "foam"
-link         = "foam"
+link         = "text"
 link-hover   = "pine"
 link-visited = "iris"
 

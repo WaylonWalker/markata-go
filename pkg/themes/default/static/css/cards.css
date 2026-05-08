@@ -350,23 +350,26 @@
 /* Standalone photo figures rendered directly in feed lists should center
    their media and caption within the feed column, not hug the left edge. */
 .feed .posts-list > .photo-figure {
-  width: 100%;
-  max-width: 100%;
+  width: auto;
+  max-width: min(100%, 600px);
   display: grid;
   justify-items: center;
+  justify-self: center;
   text-align: center;
 }
 
 .feed .posts-list > .photo-figure > a {
   display: grid;
   place-items: center;
-  width: 100%;
+  width: auto;
   max-width: 100%;
 }
 
 .feed .posts-list > .photo-figure img,
 .feed .posts-list > .photo-figure video {
   display: block;
+  width: auto;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -551,6 +554,7 @@
   margin-top: var(--space-1);
   text-decoration: none;
   text-transform: lowercase;
+  min-height: 24px;
 
   /* Truncate long URLs */
   white-space: nowrap;
@@ -567,6 +571,7 @@
   font-size: var(--text-base);
   font-weight: 600;
   margin-bottom: 0;
+  min-height: 24px;
 
   /* Limit to 2 lines */
   display: -webkit-box;

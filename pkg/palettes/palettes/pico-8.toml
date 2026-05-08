@@ -34,8 +34,8 @@ peach       = "#ffccaa"
 [palette.semantic]
 # Text colors
 text-primary   = "white"
-text-secondary = "light-gray"
-text-muted     = "lavender"
+text-secondary = "white"
+text-muted     = "white"
 
 # Background colors
 bg-primary   = "black"
@@ -46,7 +46,7 @@ bg-elevated  = "dark-purple"
 # Accent colors
 accent       = "blue"
 accent-hover = "green"
-link         = "blue"
+link         = "white"
 link-hover   = "green"
 link-visited = "lavender"
 

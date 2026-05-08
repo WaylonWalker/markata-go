@@ -22,8 +22,8 @@ mint        = "#c4f0c2"
 [palette.semantic]
 # Text colors
 text-primary   = "mint"
-text-secondary = "teal"
-text-muted     = "teal"
+text-secondary = "mint"
+text-muted     = "mint"
 
 # Background colors
 bg-primary   = "brown"
@@ -34,7 +34,7 @@ bg-elevated  = "teal-dark"
 # Accent colors
 accent       = "teal"
 accent-hover = "mint"
-link         = "teal"
+link         = "mint"
 link-hover   = "mint"
 link-visited = "teal"
 

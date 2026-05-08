@@ -23,8 +23,8 @@ lightest    = "#eaf0d8"
 [palette.semantic]
 # Text colors
 text-primary   = "lightest"
-text-secondary = "light"
-text-muted     = "light"
+text-secondary = "lightest"
+text-muted     = "lightest"
 
 # Background colors
 bg-primary   = "darkest"

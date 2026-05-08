@@ -78,6 +78,9 @@ func TestOneLineLinkPlugin_ProcessPost_StandaloneURL(t *testing.T) {
 	if !strings.Contains(post.ArticleHTML, "example.com") {
 		t.Error("Expected domain in link card")
 	}
+	if !strings.Contains(post.ArticleHTML, `aria-label="Link on example.com"`) {
+		t.Error("Expected accessible aria-label on link-domain anchor")
+	}
 	// Should preserve surrounding content
 	if !strings.Contains(post.ArticleHTML, "Check this out:") {
 		t.Error("Lost content before URL")
