@@ -44,8 +44,8 @@ crust     = "#11111b"
 [palette.semantic]
 # Text colors
 text-primary   = "text"
-text-secondary = "subtext1"
-text-muted     = "overlay1"
+text-secondary = "text"
+text-muted     = "text"
 
 # Background colors
 bg-primary   = "base"
@@ -56,7 +56,7 @@ bg-elevated  = "surface1"
 # Accent colors
 accent       = "mauve"
 accent-hover = "lavender"
-link         = "blue"
+link         = "text"
 link-hover   = "sapphire"
 link-visited = "mauve"
 

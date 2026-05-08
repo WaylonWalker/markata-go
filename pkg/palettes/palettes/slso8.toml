@@ -26,8 +26,8 @@ lightest   = "#ffecd6"
 [palette.semantic]
 # Text colors
 text-primary   = "lightest"
-text-secondary = "lighter"
-text-muted     = "light"
+text-secondary = "lightest"
+text-muted     = "lightest"
 
 # Background colors
 bg-primary   = "darkest"
@@ -38,7 +38,7 @@ bg-elevated  = "mid-dark"
 # Accent colors
 accent       = "light"
 accent-hover = "mid-light"
-link         = "light"
+link         = "lightest"
 link-hover   = "lighter"
 link-visited = "mid"
 

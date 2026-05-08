@@ -51,8 +51,8 @@ katanaGray = "#717c7c"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "fujiWhite"
-text-secondary = "oldWhite"
-text-muted     = "fujiGray"
+text-secondary = "fujiWhite"
+text-muted     = "fujiWhite"
 
 bg-primary   = "sumiInk3"
 bg-secondary = "sumiInk2"
@@ -61,7 +61,7 @@ bg-elevated  = "sumiInk5"
 
 accent       = "oniViolet"
 accent-hover = "springViolet2"
-link         = "crystalBlue"
+link         = "fujiWhite"
 link-hover   = "springBlue"
 link-visited = "oniViolet"
 

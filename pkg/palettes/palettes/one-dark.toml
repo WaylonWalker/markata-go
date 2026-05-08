@@ -41,8 +41,8 @@ border     = "#181a1f"
 [palette.semantic]
 # Text colors
 text-primary   = "foreground"
-text-secondary = "foreground-dim"
-text-muted     = "foreground-dim"
+text-secondary = "foreground"
+text-muted     = "foreground"
 
 # Background colors
 bg-primary   = "background"
@@ -53,7 +53,7 @@ bg-elevated  = "bg-lighter"
 # Accent colors
 accent       = "blue"
 accent-hover = "cyan"
-link         = "blue"
+link         = "foreground"
 link-hover   = "cyan"
 link-visited = "purple"
 
