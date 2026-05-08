@@ -46,8 +46,8 @@ nord9-dark  = "#4a6890"  # Darker blue for code keywords
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "nord0"
-text-secondary = "nord1"
-text-muted     = "nord3"
+text-secondary = "nord0"
+text-muted     = "nord0"
 
 bg-primary   = "nord6"
 bg-secondary = "nord5"
@@ -56,7 +56,7 @@ bg-elevated  = "nord4"
 
 accent       = "nord10-dark"
 accent-hover = "nord9"
-link         = "nord10-dark"
+link         = "nord0"
 link-hover   = "nord9"
 link-visited = "nord15"
 

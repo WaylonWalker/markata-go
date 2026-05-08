@@ -40,8 +40,8 @@ comment    = "#969080"          # Brightened more for contrast
 [palette.semantic]
 # Text colors
 text-primary   = "foreground"
-text-secondary = "comment"
-text-muted     = "comment"
+text-secondary = "foreground"
+text-muted     = "foreground"
 
 # Background colors
 bg-primary   = "background"
@@ -52,7 +52,7 @@ bg-elevated  = "bg-lighter"
 # Accent colors
 accent       = "pink"
 accent-hover = "orange"
-link         = "cyan"
+link         = "foreground"
 link-hover   = "green"
 link-visited = "purple"
 

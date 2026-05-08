@@ -54,8 +54,8 @@ black-gray   = "#161616"
 [palette.semantic]
 # Text colors
 text-primary   = "white"
-text-secondary = "snow"
-text-muted     = "pearl"
+text-secondary = "white"
+text-muted     = "white"
 
 # Background colors
 bg-primary   = "charcoal"
@@ -66,7 +66,7 @@ bg-elevated  = "slate"
 # Accent colors
 accent       = "steel-light"
 accent-hover = "ocean-light"
-link         = "steel-light"
+link         = "white"
 link-hover   = "ocean-light"
 link-visited = "violet"
 

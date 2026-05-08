@@ -44,8 +44,8 @@ terminal-black = "#414868"
 [palette.semantic]
 # Text colors
 text-primary   = "fg"
-text-secondary = "fg-dark"
-text-muted     = "dark5"
+text-secondary = "fg"
+text-muted     = "fg"
 
 # Background colors
 bg-primary   = "bg"
@@ -56,7 +56,7 @@ bg-elevated  = "bg-lighter"
 # Accent colors
 accent       = "purple"
 accent-hover = "magenta"
-link         = "blue"
+link         = "fg"
 link-hover   = "blue-light"
 link-visited = "purple"
 

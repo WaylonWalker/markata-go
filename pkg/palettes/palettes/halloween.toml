@@ -42,8 +42,8 @@ comment        = "#666666"
 [palette.semantic]
 # Text colors
 text-primary   = "foreground"
-text-secondary = "foreground-dim"
-text-muted     = "comment"
+text-secondary = "foreground"
+text-muted     = "foreground"
 
 # Background colors
 bg-primary   = "background"
@@ -54,7 +54,7 @@ bg-elevated  = "bg-lighter"
 # Accent colors
 accent       = "orange"
 accent-hover = "yellow"
-link         = "orange"
+link         = "foreground"
 link-hover   = "yellow"
 link-visited = "purple-light"
 

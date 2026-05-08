@@ -33,8 +33,8 @@ muted-light   = "#908ca8"  # Lighter muted for code comments
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "text"
-text-secondary = "subtle"
-text-muted     = "muted"
+text-secondary = "text"
+text-muted     = "text"
 
 bg-primary   = "base"
 bg-secondary = "surface"
@@ -43,7 +43,7 @@ bg-elevated  = "highlight-med"
 
 accent       = "iris"
 accent-hover = "rose"
-link         = "foam"
+link         = "text"
 link-hover   = "pine"
 link-visited = "iris"
 
