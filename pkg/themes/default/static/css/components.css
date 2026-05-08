@@ -342,6 +342,7 @@
 }
 
 .toc-item--level-3 {
+  /* Keep an intermediate size so nested TOC entries remain visually subordinate. */
   font-size: 0.9375rem;
 }
 
@@ -449,7 +450,7 @@
 
 .feed-nav-title {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -469,7 +470,7 @@
 
 .feed-nav-counter {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-info, var(--color-text-muted));
   background: color-mix(in srgb, var(--color-info, var(--color-primary)) 12%, transparent);
@@ -516,7 +517,7 @@
   min-width: 0;
   max-width: 100%;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.2;
   padding: 0.55rem 0.75rem;
@@ -533,7 +534,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   line-height: 1;
   cursor: pointer;
   transition: color 0.15s, background-color 0.15s, border-color 0.15s;
@@ -620,7 +621,7 @@
   text-decoration: none;
   display: block;
   padding: 0.3rem 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.35;
   transition: color 0.15s, background-color 0.15s, border-color 0.15s, transform 0.15s;
   border-left: 3px solid transparent;
@@ -675,14 +676,14 @@
 
 .feed-nav-hotkey {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .feed-nav-hotkey kbd {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 0.125rem 0.35rem;
   color: var(--color-text-muted);
@@ -718,7 +719,7 @@
 }
 
 .content-sidebar-inner {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 /* Slash pages grid (rendered by render_slashes() in content sidebar) */
