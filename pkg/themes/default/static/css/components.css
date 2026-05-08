@@ -342,7 +342,8 @@
 }
 
 .toc-item--level-3 {
-  font-size: var(--text-base);
+  /* Keep an intermediate size so nested TOC entries remain visually subordinate. */
+  font-size: 0.9375rem;
 }
 
 .toc-item--level-4 {

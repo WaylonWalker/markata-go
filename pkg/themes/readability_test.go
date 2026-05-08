@@ -198,6 +198,7 @@ func TestCSSTypographyScaleUsage(t *testing.T) {
 		haystack string
 		rule     *regexp.Regexp
 	}{
+		{"toc level 3", components, regexp.MustCompile(`(?s)\.toc-item--level-3\s*\{[^}]*font-size:\s*0\.9375rem;`)},
 		{"feed nav title", components, regexp.MustCompile(`(?s)\.feed-nav-title\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
 		{"feed nav counter", components, regexp.MustCompile(`(?s)\.feed-nav-counter\s*\{[^}]*font-size:\s*var\(--text-xs\);`)},
 		{"feed nav picker", components, regexp.MustCompile(`(?s)\.feed-nav-picker-input\s*\{[^}]*font-size:\s*var\(--text-sm\);`)},
