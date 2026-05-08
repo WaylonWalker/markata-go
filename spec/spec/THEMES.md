@@ -2418,6 +2418,10 @@ Every theme MUST provide a base template with these blocks:
 
 ### Feed Template (`feed.html`)
 
+Feed pages render in the feed-only page wrapper state. When `feed` is present in
+template context, the base layout does not render content or doc sidebars, so
+feed templates must opt into the centered feed wrapper explicitly.
+
 ```jinja2
 {% extends "base.html" %}
 
