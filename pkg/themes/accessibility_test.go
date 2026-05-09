@@ -229,7 +229,7 @@ func TestCSSTouchTargets(t *testing.T) {
 	t.Run("card and feed nav targets are at least 24px tall", func(t *testing.T) {
 		cardSnippets := map[string]string{
 			"card titles":  ".card-link .card-title {\n  font-size: var(--text-base);\n  font-weight: 600;\n  margin-bottom: 0;\n  min-height: 24px;",
-			"card domains": ".card-link .card-domain {\n  display: block;\n  font-size: var(--text-xs);\n  color: var(--color-text-muted);\n  margin-top: var(--space-1);\n  text-decoration: none;\n  text-transform: lowercase;\n  min-height: 24px;",
+			"card domains": ".card-link .card-domain {\n  display: inline-flex;\n  align-items: center;\n  font-size: var(--text-xs);\n  color: var(--color-text);\n  margin-top: var(--space-1);\n  max-width: 100%;\n  min-width: 2rem;\n  min-height: 2rem;",
 		}
 
 		for label, snippet := range cardSnippets {
@@ -240,7 +240,7 @@ func TestCSSTouchTargets(t *testing.T) {
 
 		feedRules := map[string]*regexp.Regexp{
 			"feed nav title":   regexp.MustCompile(`(?s)\.feed-nav-title a\s*\{[^}]*min-height:\s*24px`),
-			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn\s*\{[^}]*width:\s*1\.5rem[^}]*height:\s*1\.5rem`),
+			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn\s*\{[^}]*width:\s*2rem[^}]*height:\s*2rem[^}]*min-width:\s*2rem[^}]*min-height:\s*2rem`),
 			"feed nav formats": regexp.MustCompile(`(?s)\.feed-nav-format-link\s*\{[^}]*min-height:\s*24px`),
 		}
 
@@ -248,6 +248,11 @@ func TestCSSTouchTargets(t *testing.T) {
 			if !rule.MatchString(allCSS) {
 				t.Errorf("%s should have a 24px touch target", label)
 			}
+		}
+
+		hasAvatarRule := regexp.MustCompile(`(?s)\.card-link \.card-(?:link-content|excerpt) a\.has-avatar\s*,\s*\.card-link \.card-excerpt a\.has-avatar\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center[^}]*min-width:\s*2rem[^}]*min-height:\s*2rem`)
+		if !hasAvatarRule.MatchString(cards) {
+			t.Error("avatar-enhanced links inside cards should have a 24px touch target")
 		}
 	})
 
