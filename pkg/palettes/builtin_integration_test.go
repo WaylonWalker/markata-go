@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func resolveFirst(palette *Palette, names ...string) (name string, hex string) {
+func resolveFirst(palette *Palette, names ...string) (name, hex string) {
 	for _, name := range names {
 		if resolved := palette.Resolve(name); resolved != "" {
 			return name, resolved
