@@ -4,6 +4,15 @@ import (
 	"testing"
 )
 
+func resolveFirst(palette *Palette, names ...string) (name, hex string) {
+	for _, name := range names {
+		if resolved := palette.Resolve(name); resolved != "" {
+			return name, resolved
+		}
+	}
+	return "", ""
+}
+
 // TestBuiltInPalettesWCAGContrast validates that all built-in palettes
 // pass WCAG AA contrast requirements. This is an integration test that
 // ensures our shipped palettes meet accessibility standards.
@@ -233,6 +242,95 @@ func TestPaletteContrastForDefaultThemeReadability(t *testing.T) {
 				if ratio < check.minRatio {
 					t.Errorf("Palette %s: %s contrast ratio %.2f < %.1f required for %s",
 						name, check.fg, ratio, check.minRatio, check.desc)
+				}
+			}
+		})
+	}
+}
+
+// TestPaletteContrastForDefaultThemeInteractiveComponents validates the explicit
+// color combinations used by compact default-theme controls that have regressed
+// in Lighthouse before. These checks are intentionally named after the UI they
+// protect so future failures map back to concrete theme elements.
+func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
+	t.Parallel()
+
+	names := BuiltinNames()
+	if len(names) == 0 {
+		t.Skip("No built-in palettes found")
+	}
+
+	componentChecks := []struct {
+		name      string
+		fgOptions []string
+		bg        string
+		minRatio  float64
+		level     string
+		desc      string
+	}{
+		{
+			name:      "post copy label",
+			fgOptions: []string{"text-primary"},
+			bg:        "bg-primary",
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "post copy summary text",
+		},
+		{
+			name:      "admonition title",
+			fgOptions: []string{"text-primary"},
+			bg:        "bg-surface",
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "admonition title text on default surfaces",
+		},
+		{
+			name:      "feed nav button label",
+			fgOptions: []string{"text-primary"},
+			bg:        "bg-surface",
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "feed navigation button glyphs",
+		},
+		{
+			name:      "card domain link",
+			fgOptions: []string{"text-primary"},
+			bg:        "bg-surface",
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "compact card domain links",
+		},
+	}
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			palette, err := LoadBuiltin(name)
+			if err != nil {
+				t.Fatalf("Failed to load palette %s: %v", name, err)
+			}
+
+			for _, check := range componentChecks {
+				fgName, fgHex := resolveFirst(palette, check.fgOptions...)
+				bgHex := palette.Resolve(check.bg)
+
+				if fgName == "" || bgHex == "" {
+					t.Errorf("Palette %s: missing color mapping for %s (%v on %s)",
+						name, check.name, check.fgOptions, check.bg)
+					continue
+				}
+
+				ratio, err := ContrastRatioFromHex(fgHex, bgHex)
+				if err != nil {
+					t.Errorf("Palette %s: invalid resolved colors for %s: %q on %q (%v)",
+						name, check.name, fgHex, bgHex, err)
+					continue
+				}
+
+				if ratio < check.minRatio {
+					t.Errorf("Palette %s: %s (%s on %s) contrast ratio %.2f < %.1f required for %s",
+						name, check.name, fgName, check.bg, ratio, check.minRatio, check.level)
 				}
 			}
 		})

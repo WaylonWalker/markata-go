@@ -12,7 +12,7 @@ Themes control the visual appearance of the generated site. The system supports:
 3. **Theme packages** - Installable, shareable, complete visual identities
 4. **Local overrides** - Any theme file can be overridden by placing it in your project
 5. **Readable by default** - Typography, contrast, and spacing optimized for reading
-6. **Accessible first** - WCAG 2.1 AA compliant colors and focus states
+6. **Accessible first** - WCAG 2.1 AA compliant colors, focus states, and compact touch targets
 
 ---
 
@@ -1640,6 +1640,8 @@ Template usage:
 
 Built-in themes MUST include styles for all admonition types.
 
+Built-in themes MUST keep interactive text and compact controls readable by default. This includes using link and accent treatments that pass WCAG AA contrast against the active surface and giving compact interactive elements at least a 24px effective touch target when they appear in dense UI such as cards, sidebars, or feed navigation.
+
 ### Admonition CSS
 
 ```css
@@ -1658,7 +1660,8 @@ Built-in themes MUST include styles for all admonition types.
   gap: var(--space-2);
   font-weight: 600;
   margin-bottom: var(--space-2);
-  color: var(--admonition-color, var(--color-primary));
+  color: var(--color-text);
+  color: color-mix(in srgb, var(--admonition-color, var(--color-primary)) 45%, var(--color-text) 55%);
 }
 
 .admonition-title::before {
