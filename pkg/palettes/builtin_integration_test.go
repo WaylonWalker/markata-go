@@ -4,10 +4,10 @@ import (
 	"testing"
 )
 
-func resolveFirst(palette *Palette, names ...string) (string, string) {
+func resolveFirst(palette *Palette, names ...string) (name string, hex string) {
 	for _, name := range names {
-		if hex := palette.Resolve(name); hex != "" {
-			return name, hex
+		if resolved := palette.Resolve(name); resolved != "" {
+			return name, resolved
 		}
 	}
 	return "", ""
@@ -303,7 +303,6 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 	}
 
 	for _, name := range names {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
