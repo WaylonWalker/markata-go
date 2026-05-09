@@ -19,6 +19,7 @@
   font-weight: 600;
   margin-bottom: var(--space-2);
   color: var(--color-text);
+  color: color-mix(in srgb, var(--admonition-color, var(--color-primary)) 45%, var(--color-text) 55%);
 }
 
 .admonition-title::before {
