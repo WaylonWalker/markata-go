@@ -287,7 +287,7 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 		{
 			name:      "feed nav button label",
 			fgOptions: []string{"text-primary"},
-			bg:        "bg-primary",
+			bg:        "bg-surface",
 			minRatio:  4.5,
 			level:     "AA",
 			desc:      "feed navigation button glyphs",
