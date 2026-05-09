@@ -99,15 +99,19 @@
   margin: 0 0 var(--space-2);
   font-size: var(--text-xl);
   line-height: var(--leading-tight);
+  color: var(--color-text);
 }
 
 .card .card-title a {
-  color: var(--color-text);
+  color: inherit;
   text-decoration: none;
 }
 
-.card .card-title a:hover {
-  color: var(--color-primary);
+.card .card-title:hover,
+.card .card-title a:hover,
+.card .card-title a:focus-visible {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .card .card-description,
@@ -548,13 +552,17 @@
 }
 
 .card-link .card-domain {
-  display: block;
+  display: inline-flex;
+  align-items: center;
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   margin-top: var(--space-1);
+  max-width: 100%;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding-right: 0.35rem;
   text-decoration: none;
   text-transform: lowercase;
-  min-height: 24px;
 
   /* Truncate long URLs */
   white-space: nowrap;
@@ -563,8 +571,16 @@
 }
 
 .card-link .card-domain:hover {
-  color: var(--color-primary);
+  color: inherit;
   text-decoration: underline;
+}
+
+.card-link .card-link-content a.has-avatar,
+.card-link .card-excerpt a.has-avatar {
+  display: inline-flex;
+  align-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
 }
 
 .card-link .card-title {
