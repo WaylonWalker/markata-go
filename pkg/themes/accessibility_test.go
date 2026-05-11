@@ -158,6 +158,55 @@ func TestCSSFocusIndicators(t *testing.T) {
 	})
 }
 
+func TestDefaultThemeContrastSensitiveSelectorsUseAccessibleTokens(t *testing.T) {
+	t.Parallel()
+
+	homeCSS, err := ReadStatic("css/home.css")
+	if err != nil {
+		t.Fatalf("Failed to read home.css: %v", err)
+	}
+
+	webmentionsCSS, err := ReadStatic("css/webmentions.css")
+	if err != nil {
+		t.Fatalf("Failed to read webmentions.css: %v", err)
+	}
+
+	admonitionsCSS, err := ReadStatic("css/admonitions.css")
+	if err != nil {
+		t.Fatalf("Failed to read admonitions.css: %v", err)
+	}
+
+	home := normalizeNewlines(string(homeCSS))
+	webmentions := normalizeNewlines(string(webmentionsCSS))
+	admonitions := normalizeNewlines(string(admonitionsCSS))
+
+	if !strings.Contains(home, ".home-card .home-updated {\n  font-size: var(--text-sm);\n  color: var(--color-text-secondary);") {
+		t.Error("home updated labels should use --color-text-secondary without additional opacity reduction")
+	}
+	if strings.Contains(home, ".home-card .home-updated {\n  font-size: var(--text-sm);\n  color: var(--color-text-muted);\n  opacity:") {
+		t.Error("home updated labels should not reduce opacity on already-muted text")
+	}
+
+	if !strings.Contains(webmentions, ".wm-count {\n  display: inline-flex;\n  align-items: center;\n  gap: 0.25em;\n  white-space: nowrap;\n  color: var(--color-text-secondary);") {
+		t.Error("webmention count labels should inherit an accessible surface-safe text token")
+	}
+	for _, selector := range []string{".wm-likes", ".wm-reposts", ".wm-replies"} {
+		if !strings.Contains(webmentions, selector+" {\n  color: var(--color-text-secondary);") {
+			t.Errorf("%s should use the readable secondary text token on card surfaces", selector)
+		}
+	}
+
+	if !strings.Contains(admonitions, ".admonition-title {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  font-weight: 600;\n  margin-bottom: var(--space-2);\n  color: var(--color-text);") {
+		t.Error("admonition titles should use the primary text token")
+	}
+	if strings.Contains(admonitions, "color-mix(in srgb") {
+		t.Error("admonition title text should not rely on mixed accent colors for readability")
+	}
+	if !strings.Contains(admonitions, ".admonition-title::before {\n  content: var(--admonition-icon, \"\");\n  font-size: 1.25em;\n  color: var(--admonition-color, var(--color-primary));") {
+		t.Error("admonition icons should carry the accent color when title text stays on readable text tokens")
+	}
+}
+
 // TestCSSTouchTargets validates that interactive elements meet minimum touch target sizes.
 // This is recommended by WCAG 2.5.5 Target Size (Level AAA) and mobile best practices.
 func TestCSSTouchTargets(t *testing.T) {
