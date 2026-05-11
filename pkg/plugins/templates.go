@@ -726,35 +726,6 @@ func trimSidebarPosts(posts []*models.Post, currentSlug string, maxPosts int) []
 	return trimmed
 }
 
-func (p *TemplatesPlugin) getPrimaryFeedSidebarPosts(post *models.Post, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
-	if post == nil || post.Slug == "" {
-		return nil, nil
-	}
-
-	cached, ok := m.Cache().Get("feed_configs")
-	if !ok {
-		return nil, nil
-	}
-	configs, ok := cached.([]models.FeedConfig)
-	if !ok {
-		return nil, nil
-	}
-
-	for i := range configs {
-		fc := &configs[i]
-		if !fc.Primary || fc.IncludePrivate {
-			continue
-		}
-		for _, fp := range fc.Posts {
-			if fp.Slug == post.Slug {
-				return fc.Posts, fc
-			}
-		}
-	}
-
-	return nil, nil
-}
-
 // getExplicitFeedSlug returns a feed slug from post frontmatter, if any.
 // Checks post.Extra["sidebar_feed"] first, then post.PrevNextFeed.
 func (p *TemplatesPlugin) getExplicitFeedSlug(post *models.Post) string {
@@ -872,6 +843,21 @@ func (p *TemplatesPlugin) getTagFeedSidebarPosts(post *models.Post, config *life
 	return nil, nil
 }
 
+type autoFeedCandidate struct {
+	fc    *models.FeedConfig
+	count int
+}
+
+func selectBestAutoFeedCandidate(candidates []autoFeedCandidate) autoFeedCandidate {
+	best := candidates[0]
+	for _, c := range candidates[1:] {
+		if c.count < best.count || (c.count == best.count && c.fc.Primary && !best.fc.Primary) {
+			best = c
+		}
+	}
+	return best
+}
+
 // autoDiscoverFeed finds the best feed containing this post from cached feed_configs.
 // It prefers smaller/more specific feeds over large catch-all feeds.
 // Feeds with slugs like "archive", "all", "subscription-*" are deprioritized.
@@ -905,11 +891,7 @@ func (p *TemplatesPlugin) autoDiscoverFeed(post *models.Post, config *lifecycle.
 	// Prefixes to skip
 	skipPrefixes := []string{"subscription-", "tags/"}
 
-	type candidate struct {
-		fc    *models.FeedConfig
-		count int
-	}
-	var candidates []candidate
+	var candidates []autoFeedCandidate
 
 	for i := range configs {
 		fc := &configs[i]
@@ -930,7 +912,7 @@ func (p *TemplatesPlugin) autoDiscoverFeed(post *models.Post, config *lifecycle.
 		// Check if this post is in the feed
 		for _, fp := range fc.Posts {
 			if fp.Slug == post.Slug {
-				candidates = append(candidates, candidate{fc: fc, count: len(fc.Posts)})
+				candidates = append(candidates, autoFeedCandidate{fc: fc, count: len(fc.Posts)})
 				break
 			}
 		}
@@ -943,12 +925,7 @@ func (p *TemplatesPlugin) autoDiscoverFeed(post *models.Post, config *lifecycle.
 	// Pick the smallest feed (most specific). If two candidates are equally
 	// specific, prefer the primary feed so configured navigation still wins
 	// when the scope is otherwise identical.
-	best := candidates[0]
-	for _, c := range candidates[1:] {
-		if c.count < best.count || (c.count == best.count && c.fc.Primary && !best.fc.Primary) {
-			best = c
-		}
-	}
+	best := selectBestAutoFeedCandidate(candidates)
 
 	return best.fc.Posts, best.fc
 }
