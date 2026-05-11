@@ -28,6 +28,11 @@ import (
 
 var adminTemplates = template.Must(template.New("pages").Parse(authTemplate + dashboardTemplate + editorTemplate + settingsTemplate))
 
+const (
+	adminThemeDark  = "dark"
+	adminThemeLight = "light"
+)
+
 type PageData struct {
 	Title          string
 	ThemeCSS       template.CSS
@@ -252,7 +257,7 @@ func handleAdminRoot(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/__admin/dashboard", http.StatusFound)
 }
 
-func handleLoginPage(w http.ResponseWriter, r *http.Request) {
+func handleLoginPage(w http.ResponseWriter, _ *http.Request) {
 	renderPage(w, "auth", PageData{Title: "Login", NeedsLogin: true})
 }
 
@@ -271,7 +276,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		renderPage(w, "auth", PageData{Title: "Login", NeedsLogin: true, Error: "Invalid username or password"})
 		return
 	}
-	_ = setSession(w, username)
+	setSession(w, username)
 	http.Redirect(w, r, "/__admin/dashboard", http.StatusFound)
 }
 
@@ -286,7 +291,7 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		renderPage(w, "auth", PageData{Title: "Setup", NeedsSetup: true, Error: err.Error()})
 		return
 	}
-	_ = setSession(w, username)
+	setSession(w, username)
 	http.Redirect(w, r, "/__admin/dashboard", http.StatusFound)
 }
 
@@ -295,7 +300,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/__admin/login", http.StatusFound)
 }
 
-func handleDashboard(w http.ResponseWriter, r *http.Request) {
+func handleDashboard(w http.ResponseWriter, _ *http.Request) {
 	posts, err := listPostInfos()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -313,7 +318,7 @@ func handleEditor(w http.ResponseWriter, r *http.Request) {
 	renderPage(w, "editor", PageData{Title: "Editor", IsEditor: true, Post: postData, KnownTags: collectKnownTags(), KnownPalettes: collectKnownPalettes(), KnownDirs: collectKnownDirs(), KnownAuthors: discoverAuthorOptions(), NewPostContext: buildNewPostContextJSON()})
 }
 
-func handleSettings(w http.ResponseWriter, r *http.Request) {
+func handleSettings(w http.ResponseWriter, _ *http.Request) {
 	settings, err := loadSettingsEditData()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -322,7 +327,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 	renderPage(w, "settings", PageData{Title: "Settings", IsSettings: true, Settings: settings, KnownPalettes: collectKnownPalettes()})
 }
 
-func handleListPosts(w http.ResponseWriter, r *http.Request) {
+func handleListPosts(w http.ResponseWriter, _ *http.Request) {
 	posts, err := listPostInfos()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -416,7 +421,9 @@ func handlePreviewPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func handleParseSettings(w http.ResponseWriter, r *http.Request) {
@@ -474,7 +481,7 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
-func handleGetSettings(w http.ResponseWriter, r *http.Request) {
+func handleGetSettings(w http.ResponseWriter, _ *http.Request) {
 	settings, err := loadSettingsEditData()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -511,7 +518,7 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := atomicWriteFile(absPath, payload.Content, 0644); err != nil {
+	if err := atomicWriteFile(absPath, payload.Content, 0o644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -519,12 +526,12 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"success": true, "new_hash": contentedit.ContentHash(payload.Content), "build_triggered": !IsWatchEnabled()})
 }
 
-func handleBuildTrigger(w http.ResponseWriter, r *http.Request) {
+func handleBuildTrigger(w http.ResponseWriter, _ *http.Request) {
 	TriggerRebuild()
 	respondJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
-func handleBuildStatus(w http.ResponseWriter, r *http.Request) {
+func handleBuildStatus(w http.ResponseWriter, _ *http.Request) {
 	respondJSON(w, http.StatusOK, GetBuildStatus())
 }
 
@@ -534,8 +541,13 @@ func handleGitStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// #nosec G204 -- fullPath is resolved inside the configured content directory.
 	cmd := exec.Command("git", "-C", getRepoDir(fullPath), "status", "--porcelain", fullPath)
-	out, _ := cmd.Output()
+	out, err := cmd.Output()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	respondJSON(w, http.StatusOK, map[string]any{"status": strings.TrimSpace(string(out))})
 }
 
@@ -545,8 +557,13 @@ func handleGitDiff(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// #nosec G204 -- fullPath is resolved inside the configured content directory.
 	cmd := exec.Command("git", "-C", getRepoDir(fullPath), "diff", fullPath)
-	out, _ := cmd.Output()
+	out, err := cmd.Output()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	respondJSON(w, http.StatusOK, map[string]any{"diff": string(out)})
 }
 
@@ -556,6 +573,7 @@ func handleGitStage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// #nosec G204 -- fullPath is resolved inside the configured content directory.
 	cmd := exec.Command("git", "-C", getRepoDir(fullPath), "add", fullPath)
 	if err := cmd.Run(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -579,6 +597,7 @@ func handleGitCommit(w http.ResponseWriter, r *http.Request) {
 			repoDir = getRepoDir(fullPath)
 		}
 	}
+	// #nosec G204 -- repoDir is derived from the configured content directory.
 	cmd := exec.Command("git", "-C", repoDir, "commit", "-m", payload.Message)
 	if err := cmd.Run(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -587,7 +606,7 @@ func handleGitCommit(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
-func handleGitPush(w http.ResponseWriter, r *http.Request) {
+func handleGitPush(w http.ResponseWriter, _ *http.Request) {
 	cmd := exec.Command("git", "push")
 	if err := cmd.Run(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -641,8 +660,10 @@ func buildNewPostContextJSON() template.JS {
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
+		// #nosec G203 -- fallback JavaScript is a static JSON literal.
 		return template.JS(`{"templates":[],"aliases":{},"directories":[],"tags":[],"authors":[]}`)
 	}
+	// #nosec G203 -- payload is JSON encoded by encoding/json.
 	return template.JS(data)
 }
 
@@ -844,7 +865,8 @@ func discoverAuthorOptions() []adminAuthorOption {
 		return nil
 	}
 	options := make([]adminAuthorOption, 0, len(cfg.Authors.Authors))
-	for id, author := range cfg.Authors.Authors {
+	for id := range cfg.Authors.Authors {
+		author := cfg.Authors.Authors[id]
 		if !author.Active && !author.Default {
 			continue
 		}
@@ -1259,12 +1281,14 @@ func defaultFrontmatter() string {
 func respondJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return
+	}
 }
 
 func atomicWriteFile(path, content string, mode os.FileMode) error {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	tmpFile, err := os.CreateTemp(dir, ".tmp-config-*")
@@ -1293,6 +1317,7 @@ func atomicWriteFile(path, content string, mode os.FileMode) error {
 }
 
 func gitStatus(path string) string {
+	// #nosec G204 -- path is resolved inside the configured content directory.
 	cmd := exec.Command("git", "-C", getRepoDir(path), "status", "--porcelain", path)
 	out, err := cmd.Output()
 	if err != nil {
@@ -1305,7 +1330,7 @@ func gitStatus(path string) string {
 	if strings.HasPrefix(status, "??") {
 		return "untracked"
 	}
-	if len(status) > 0 && status[0] != ' ' {
+	if status != "" && status[0] != ' ' {
 		return "staged"
 	}
 	return "modified"
@@ -1352,7 +1377,8 @@ func buildThemeCSS(cfg *models.Config) template.CSS {
 	darkVars := defaultThemeVars(true)
 	typographyVars := adminTypographyVars(cfg)
 	if cfg == nil {
-		return template.CSS(renderThemeCSS(lightVars, darkVars, typographyVars, "light"))
+		// #nosec G203 -- CSS is generated from internal palette variables.
+		return template.CSS(renderThemeCSS(lightVars, darkVars, typographyVars, adminThemeLight))
 	}
 	loader := palettes.NewLoader()
 	lightName, darkName, fallbackMode := resolvePaletteNames(cfg)
@@ -1364,10 +1390,11 @@ func buildThemeCSS(cfg *models.Config) template.CSS {
 	}
 	defaultVars := lightVars
 	otherVars := darkVars
-	if fallbackMode == "dark" {
+	if fallbackMode == adminThemeDark {
 		defaultVars = darkVars
 		otherVars = lightVars
 	}
+	// #nosec G203 -- CSS is generated from internal palette variables.
 	return template.CSS(renderThemeCSS(defaultVars, otherVars, typographyVars, fallbackMode))
 }
 
@@ -1403,7 +1430,7 @@ func adminTypographyVars(cfg *models.Config) map[string]string {
 func resolvePaletteNames(cfg *models.Config) (lightName, darkName, fallbackMode string) {
 	lightName = "default-light"
 	darkName = "default-dark"
-	fallbackMode = "light"
+	fallbackMode = adminThemeLight
 	if cfg == nil {
 		return
 	}
@@ -1459,13 +1486,13 @@ func themeVarsFromPalette(p *palettes.Palette, dark bool) map[string]string {
 }
 
 func renderThemeCSS(primaryVars, alternateVars, typographyVars map[string]string, fallbackMode string) string {
-	primaryMode := "light"
-	alternateMode := "dark"
-	mediaMode := "dark"
-	if fallbackMode == "dark" {
-		primaryMode = "dark"
-		alternateMode = "light"
-		mediaMode = "light"
+	primaryMode := adminThemeLight
+	alternateMode := adminThemeDark
+	mediaMode := adminThemeDark
+	if fallbackMode == adminThemeDark {
+		primaryMode = adminThemeDark
+		alternateMode = adminThemeLight
+		mediaMode = adminThemeLight
 	}
 	return fmt.Sprintf(`:root { %s %s --admin-fallback-mode: %s; }
 @media (prefers-color-scheme: %s) { :root:not([data-theme]) { %s } }
@@ -1618,6 +1645,7 @@ func parseFrontmatterForm(frontmatter string) (adminFrontmatterForm, error) {
 	return result, nil
 }
 
+//nolint:gocyclo // Frontmatter rendering maps the editable form fields one-to-one.
 func renderFrontmatterForm(form adminFrontmatterForm) (string, error) {
 	if err := validateFrontmatterForm(form); err != nil {
 		return "", err
@@ -1738,7 +1766,9 @@ func parseFrontmatterDate(value string) (time.Time, error) {
 
 func parseSettingsForm(content string) adminSettingsForm {
 	var cfg adminConfigFile
-	_, _ = toml.Decode(content, &cfg)
+	if _, err := toml.Decode(content, &cfg); err != nil {
+		return adminSettingsForm{}
+	}
 	return adminSettingsForm{
 		Title:                  cfg.MarkataGo.Title,
 		Author:                 cfg.MarkataGo.Author,
@@ -1831,7 +1861,7 @@ func validateSettingsForm(form adminSettingsForm) error {
 			return fmt.Errorf("%s must be one of the known palettes", palette.name)
 		}
 	}
-	if form.ThemeMode != "" && form.ThemeMode != "light" && form.ThemeMode != "dark" {
+	if form.ThemeMode != "" && form.ThemeMode != adminThemeLight && form.ThemeMode != adminThemeDark {
 		return fmt.Errorf("theme.fallback_mode must be light or dark")
 	}
 	if form.SearchPosition != "" && !stringInSlice(form.SearchPosition, []string{"navbar", "sidebar", "footer", "custom"}) {

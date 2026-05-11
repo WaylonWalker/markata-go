@@ -21,11 +21,6 @@ var (
 	sitePosts        []*models.Post
 )
 
-func init() {
-	buildStatusValue.Store("success")
-	buildMessage.Store("Ready")
-}
-
 func SetContentDir(dir string) {
 	contentDir = dir
 }
@@ -114,8 +109,16 @@ func TriggerRebuild() {
 }
 
 func GetBuildStatus() map[string]interface{} {
+	status := buildStatusValue.Load()
+	if status == nil {
+		status = "success"
+	}
+	message := buildMessage.Load()
+	if message == nil {
+		message = "Ready"
+	}
 	return map[string]interface{}{
-		"status":  buildStatusValue.Load(),
-		"message": buildMessage.Load(),
+		"status":  status,
+		"message": message,
 	}
 }

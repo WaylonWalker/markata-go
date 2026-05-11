@@ -25,6 +25,8 @@ const (
 	sessionExpiry     = 24 * time.Hour
 )
 
+type sessionContextKey struct{}
+
 type session struct {
 	UserID string
 	Expiry time.Time
@@ -38,7 +40,7 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "session", sess)
+		ctx := context.WithValue(r.Context(), sessionContextKey{}, sess)
 		next(w, r.WithContext(ctx))
 	}
 }
@@ -83,20 +85,20 @@ func getSession(r *http.Request) (*session, error) {
 	}, nil
 }
 
-func createSession(userID string) (string, error) {
+func createSession(userID string) string {
 	expiry := time.Now().Add(sessionExpiry)
 	expiryStr := expiry.Format(time.RFC3339)
 
 	sig := signSession(expiryStr, userID)
 	sessionData := expiryStr + "|" + userID + "|" + sig
 
-	return base64.URLEncoding.EncodeToString([]byte(sessionData)), nil
+	return base64.URLEncoding.EncodeToString([]byte(sessionData))
 }
 
 func signSession(expiry, userID string) string {
-	secrets, _ := LoadSecrets(GetSecretsDir())
 	key := "default-session-key-change-in-production"
-	if secrets != nil && secrets.SessionKey != "" {
+	secrets, err := LoadSecrets(GetSecretsDir())
+	if err == nil && secrets != nil && secrets.SessionKey != "" {
 		key = secrets.SessionKey
 	}
 	h := hmac.New(sha256.New, []byte(key))
@@ -125,11 +127,8 @@ func clearSession(w http.ResponseWriter) {
 	})
 }
 
-func setSession(w http.ResponseWriter, userID string) error {
-	sessionVal, err := createSession(userID)
-	if err != nil {
-		return err
-	}
+func setSession(w http.ResponseWriter, userID string) {
+	sessionVal := createSession(userID)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -140,8 +139,6 @@ func setSession(w http.ResponseWriter, userID string) error {
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(sessionExpiry),
 	})
-
-	return nil
 }
 
 // generateCSRF generates a CSRF token for the session
@@ -151,24 +148,4 @@ func generateCSRF() (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// CSRF middleware for mutating requests
-func csrfMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			next(w, r)
-			return
-		}
-
-		// Check CSRF token
-		token := r.Header.Get("X-CSRF-Token")
-		if token == "" {
-			http.Error(w, "CSRF token required", http.StatusBadRequest)
-			return
-		}
-
-		// TODO: validate token against session
-		next(w, r)
-	}
 }

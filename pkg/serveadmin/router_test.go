@@ -24,7 +24,7 @@ func TestLoadPostEditData_NewPostDraft(t *testing.T) {
 	t.Helper()
 	root := t.TempDir()
 	pagesDir := filepath.Join(root, "pages")
-	if err := os.MkdirAll(pagesDir, 0755); err != nil {
+	if err := os.MkdirAll(pagesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	SetContentDir(root)
@@ -85,7 +85,7 @@ func TestRenderPage_UsesConfiguredThemeFonts(t *testing.T) {
 func TestSavePostFromRequest_Create(t *testing.T) {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "pages"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "pages"), 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	SetContentDir(root)
@@ -109,10 +109,10 @@ func TestListPostInfos_PrefersSitePostsOverFilesystemWalk(t *testing.T) {
 	root := t.TempDir()
 	SetContentDir(root)
 	venvDir := filepath.Join(root, ".venv")
-	if err := os.MkdirAll(venvDir, 0755); err != nil {
+	if err := os.MkdirAll(venvDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(venvDir, "README.md"), []byte("# not content"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(venvDir, "README.md"), []byte("# not content"), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 	title := "Real Post"
@@ -137,7 +137,7 @@ func TestListPostInfos_FallbackUsesBuildGlobRules(t *testing.T) {
 	SetContentDir(root)
 	SetSitePosts(nil)
 	SetSiteConfig(&models.Config{GlobConfig: models.GlobConfig{Patterns: []string{"posts/**/*.md"}, UseGitignore: true}})
-	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(".venv/\noutput/\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(".venv/\noutput/\n"), 0o600); err != nil {
 		t.Fatalf("WriteFile(.gitignore) error = %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "posts"), 0o755); err != nil {
@@ -149,13 +149,13 @@ func TestListPostInfos_FallbackUsesBuildGlobRules(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "output"), 0o755); err != nil {
 		t.Fatalf("MkdirAll(output) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "posts", "real.md"), []byte("---\ntitle: Real\n---\nbody"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "posts", "real.md"), []byte("---\ntitle: Real\n---\nbody"), 0o600); err != nil {
 		t.Fatalf("WriteFile(real.md) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".venv", "ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".venv", "ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o600); err != nil {
 		t.Fatalf("WriteFile(ignore.md) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "output", "also-ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "output", "also-ignore.md"), []byte("---\ntitle: Ignore\n---\nbody"), 0o600); err != nil {
 		t.Fatalf("WriteFile(also-ignore.md) error = %v", err)
 	}
 
@@ -180,7 +180,10 @@ func TestGenerateAdminNewPostScaffold(t *testing.T) {
 	if result["path"] != "pages/note/my-new-note.md" {
 		t.Fatalf("path = %v, want %v", result["path"], "pages/note/my-new-note.md")
 	}
-	frontmatter, _ := result["frontmatter"].(string)
+	frontmatter, ok := result["frontmatter"].(string)
+	if !ok {
+		t.Fatalf("frontmatter = %T, want string", result["frontmatter"])
+	}
 	if !strings.Contains(frontmatter, "template: note") || !strings.Contains(frontmatter, "private: true") || !strings.Contains(frontmatter, "authors:") {
 		t.Fatalf("frontmatter missing expected values: %s", frontmatter)
 	}

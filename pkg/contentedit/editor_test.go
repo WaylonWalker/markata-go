@@ -12,7 +12,7 @@ func TestLoadPost_UsesSlugFromFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "hello.md")
 	content := "---\ntitle: Hello World\nslug: custom-slug\n---\n\nBody"
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -34,7 +34,7 @@ func TestSavePost_DetectsConflict(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "post.md")
 	original := "---\ntitle: Original\n---\n\nBody"
-	if err := os.WriteFile(path, []byte(original), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -59,7 +59,7 @@ func TestSavePost_FormatsFrontmatterAndUpdatesHash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
-	if len(post.Hash) == 0 {
+	if post.Hash == "" {
 		t.Fatal("Hash should be set after save")
 	}
 	if post.PreviewURL != "/hello/" {

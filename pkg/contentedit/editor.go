@@ -309,12 +309,12 @@ func SavePost(post *Post, opts *SaveOptions) error {
 
 	// Write to temp file first, then rename (atomic write)
 	dir := filepath.Dir(post.Path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	tmpFile := filepath.Join(dir, ".tmp-"+filepath.Base(post.Path)+"-"+randStr(8))
 
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(content), 0o600); err != nil {
 		return err
 	}
 
@@ -337,7 +337,11 @@ func randStr(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	result := make([]byte, n)
 	for i := range result {
-		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			result[i] = letters[0]
+			continue
+		}
 		result[i] = letters[num.Int64()]
 	}
 	return string(result)
@@ -351,7 +355,7 @@ func FormatFrontmatter(input string) (string, error) {
 
 	var data map[string]interface{}
 	if err := yaml.Unmarshal([]byte(input), &data); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrInvalidFrontmatter, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidFrontmatter, err)
 	}
 
 	buf := &bytes.Buffer{}
@@ -453,7 +457,7 @@ func ValidateFrontmatter(input string) error {
 
 	var data map[string]interface{}
 	if err := yaml.Unmarshal([]byte(input), &data); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidFrontmatter, err)
+		return fmt.Errorf("%w: %w", ErrInvalidFrontmatter, err)
 	}
 
 	// Check known fields have reasonable types
@@ -528,8 +532,6 @@ func ValidateFrontmatter(input string) error {
 }
 
 // IsValidPath validates that a path is within allowed content directories
-var validPathRegex = regexp.MustCompile(`^(\.\./|[a-zA-Z]:/)`)
-
 func IsValidPath(path string) bool {
 	// Reject paths with traversal attempts
 	if strings.Contains(path, "..") {

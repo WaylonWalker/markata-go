@@ -74,7 +74,7 @@ func SecretsExist(dir string) bool {
 // CreateSecrets writes admin secrets to the directory
 func CreateSecrets(dir, username, passwordHash, sessionKey string) error {
 	// Create directory if needed
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 
@@ -87,7 +87,7 @@ func CreateSecrets(dir, username, passwordHash, sessionKey string) error {
 
 	for name, content := range files {
 		path := filepath.Join(dir, name)
-		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			return err
 		}
 	}
