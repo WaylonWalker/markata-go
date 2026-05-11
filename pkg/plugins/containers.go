@@ -62,6 +62,8 @@ func NewContainer(classes []string, id string, attrs map[string]string, depth in
 // Group 2: optional attribute block
 var containerRegex = regexp.MustCompile(`^(:{3,})\s*(\S.*?)?\s*(?:\{([^}]*)\})?\s*$`)
 
+var containerAttrRegex = regexp.MustCompile(`(?:^|\s)(#[^\s]+|\.[^\s]+|[A-Za-z_:][-A-Za-z0-9_:.]*=(?:"[^"]*"|'[^']*'|[^\s]+))`)
+
 // containerParser parses ::: container syntax.
 type containerParser struct{}
 
@@ -113,8 +115,11 @@ func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context)
 	attrs := make(map[string]string)
 
 	if matches[3] != "" {
-		attrStr := matches[3]
-		for _, part := range strings.Fields(attrStr) {
+		for _, attrMatch := range containerAttrRegex.FindAllStringSubmatch(matches[3], -1) {
+			if len(attrMatch) != 2 {
+				continue
+			}
+			part := strings.TrimSpace(attrMatch[1])
 			if strings.HasPrefix(part, "#") {
 				id = part[1:]
 			} else if strings.HasPrefix(part, ".") {

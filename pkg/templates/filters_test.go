@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +88,114 @@ func TestFilterDateFormat(t *testing.T) {
 			}
 			if result != tt.expected {
 				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFilterHumanDate(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	date := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	post := &models.Post{Date: &date}
+	ctx := NewContext(post, "", nil)
+
+	result, err := engine.RenderString("{{ post.date | human_date }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if result != "Jan 15, 2024" {
+		t.Fatalf("human_date: got %q, want %q", result, "Jan 15, 2024")
+	}
+}
+
+func TestTemplateTrees_UseHumanDateForVisibleHTMLDates(t *testing.T) {
+	files := []string{
+		"../../templates/components/post_byline.html",
+		"../../templates/partials/card.html",
+		"../../templates/partials/embed-card.html",
+		"../../templates/partials/feed_preview.html",
+		"../../templates/partials/cards/article-card.html",
+		"../../templates/partials/cards/default-card.html",
+		"../../templates/partials/cards/guide-card.html",
+		"../../templates/partials/cards/inline-card.html",
+		"../../templates/partials/cards/link-card.html",
+		"../../templates/partials/cards/note-card.html",
+		"../../templates/partials/cards/quote-card.html",
+		"../../templates/partials/cards/simple-card.html",
+		"../../templates/partials/cards/video-card.html",
+		"../../pkg/themes/default/templates/card.html",
+		"../../pkg/themes/default/templates/components/post_byline.html",
+		"../../pkg/themes/default/templates/og-card.html",
+		"../../pkg/themes/default/templates/partials/cards/article-card.html",
+		"../../pkg/themes/default/templates/partials/cards/default-card.html",
+		"../../pkg/themes/default/templates/partials/cards/guide-card.html",
+		"../../pkg/themes/default/templates/partials/cards/inline-card.html",
+		"../../pkg/themes/default/templates/partials/cards/link-card.html",
+		"../../pkg/themes/default/templates/partials/cards/note-card.html",
+		"../../pkg/themes/default/templates/partials/cards/quote-card.html",
+		"../../pkg/themes/default/templates/partials/cards/simple-card.html",
+		"../../pkg/themes/default/templates/partials/cards/video-card.html",
+	}
+	legacyPatterns := []string{
+		`| date:"Jan 2, 2006"`,
+		`| date:"January 2, 2006"`,
+		`| date:"2006-01-02"`,
+		`| date_format:"Jan 2, 2006"`,
+		`| date_format:"January 2, 2006"`,
+	}
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error: %v", file, err)
+		}
+		text := string(content)
+		if !strings.Contains(text, "| human_date") {
+			t.Fatalf("template %q does not use human_date", file)
+		}
+		for _, pattern := range legacyPatterns {
+			if strings.Contains(text, pattern) {
+				t.Fatalf("template %q still contains legacy date pattern %q", file, pattern)
+			}
+		}
+	}
+}
+
+func TestTemplateTrees_PreserveSizedMediaDimensions(t *testing.T) {
+	tests := []struct {
+		file     string
+		expected []string
+	}{
+		{
+			file:     "../../pkg/themes/default/templates/partials/cards/article-card.html",
+			expected: []string{`width="220"`, `height="160"`},
+		},
+		{
+			file:     "../../pkg/themes/default/templates/partials/cards/video-card.html",
+			expected: []string{`width="1200"`, `height="675"`},
+		},
+		{
+			file:     "../../templates/partials/cards/video-card.html",
+			expected: []string{`width="1200"`, `height="675"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			content, err := os.ReadFile(tt.file)
+			if err != nil {
+				t.Fatalf("ReadFile(%q) error: %v", tt.file, err)
+			}
+			text := string(content)
+			for _, needle := range tt.expected {
+				if !strings.Contains(text, needle) {
+					t.Fatalf("template %q does not contain %s", tt.file, needle)
+				}
 			}
 		})
 	}
@@ -231,6 +340,55 @@ func TestFilterDefaultIfNone(t *testing.T) {
 
 	if result != "My Title" {
 		t.Errorf("got %q, want %q", result, "My Title")
+	}
+}
+
+func TestFilterSlidesReveal_SplitsOnHeadingsAndRules(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", `<h2>Intro</h2><p>Welcome</p><h3>Details</h3><p>More</p><hr/><h2>End</h2><p>Bye</p>`)
+
+	result, err := engine.RenderString(`{{ html | slides_reveal }}`, ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	checks := []string{
+		`<section><section><div class="slide-content"><h2>Intro</h2><p>Welcome</p></div></section><section><div class="slide-content"><h3>Details</h3><p>More</p></div></section></section>`,
+		`<section><div class="slide-content"><h2>End</h2><p>Bye</p></div></section>`,
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(result, check) {
+			t.Fatalf("slides_reveal output missing %q in %q", check, result)
+		}
+	}
+
+	if strings.Contains(result, "<div class=&#34;slide-content&#34;>") {
+		t.Fatalf("expected safe HTML output, got escaped content: %q", result)
+	}
+}
+
+func TestFilterSlidesReveal_PreservesLeadingContentAsFirstSlide(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", `<p>Lead</p><h3>Deep Dive</h3><p>More</p>`)
+
+	result, err := engine.RenderString(`{{ html | slides_reveal }}`, ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if !strings.Contains(result, `<section><section><div class="slide-content"><p>Lead</p></div></section><section><div class="slide-content"><h3>Deep Dive</h3><p>More</p></div></section></section>`) {
+		t.Fatalf("unexpected reveal output: %q", result)
 	}
 }
 
@@ -577,6 +735,33 @@ func TestFilterExcerpt(t *testing.T) {
 	}
 }
 
+func TestFilterExcerpt_StripsBrokenPreTags(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	html := `<p>Before code.</p><p><code>git push remote: Push to create is not enabled for users.</code></pre><p>After code.</p>`
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", html)
+
+	result, err := engine.RenderString("{{ html | excerpt:\"paragraphs=3,chars=500\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	if strings.Contains(result, "</pre>") {
+		t.Fatalf("excerpt should strip dangling </pre> tags, got %q", result)
+	}
+	if !strings.Contains(result, "Before code.") {
+		t.Fatalf("excerpt should keep earlier paragraph text, got %q", result)
+	}
+	if !strings.Contains(result, "Push to create is not enabled for users.") {
+		t.Fatalf("excerpt should preserve inline code text, got %q", result)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || stringContains(s, substr)))
 }
@@ -688,6 +873,14 @@ func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
 		t.Errorf("with_size should append params for trusted hosts, got %q", trusted)
 	}
 
+	trustedHTTP, err := engine.RenderString("{{ 'http://dropper.wayl.one/image.jpg' | with_size:\"1200,675\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if !strings.HasPrefix(trustedHTTP, "https://dropper.wayl.one/image.jpg?") || !strings.Contains(trustedHTTP, "w=1200") || !strings.Contains(trustedHTTP, "h=675") {
+		t.Errorf("with_size should normalize trusted http URLs to https, got %q", trustedHTTP)
+	}
+
 	relative, err := engine.RenderString("{{ '/media/image.png' | with_size:\"1200,675\" }}", ctx)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
@@ -702,6 +895,30 @@ func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
 	}
 	if untrusted != "https://example.com/image.jpg" {
 		t.Errorf("with_size should leave untrusted hosts untouched, got %q", untrusted)
+	}
+}
+
+func TestFilterMediaURLNormalizesTrustedHTTP(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	ctx := NewContext(nil, "", nil)
+
+	primary, err := engine.RenderString("{{ 'http://dropper.wayl.one/image.jpg' | media_url }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if primary != "https://dropper.wayl.one/image.jpg" {
+		t.Errorf("media_url should normalize trusted http URLs, got %q", primary)
+	}
+
+	fallback, err := engine.RenderString("{{ '' | media_url:'http://dropper.wayl.one/video.mp4' }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if fallback != "https://dropper.wayl.one/video.mp4" {
+		t.Errorf("media_url should normalize trusted fallback URLs, got %q", fallback)
 	}
 }
 
@@ -729,13 +946,13 @@ func TestFilterPosterURLAliasAndFallback(t *testing.T) {
 	post := &models.Post{
 		Title: &title,
 		Extra: map[string]interface{}{
-			"poster_image": "https://dropper.wayl.one/poster.png",
-			"poster":       "https://dropper.wayl.one/fallback.png",
-			"thumbnail":    "https://dropper.wayl.one/thumb.png",
+			"poster_image": "http://dropper.wayl.one/poster.png",
+			"poster":       "http://dropper.wayl.one/fallback.png",
+			"thumbnail":    "http://dropper.wayl.one/thumb.png",
 		},
 	}
 	ctx := NewContext(post, "", nil)
-	result, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx)
+	result, err := engine.RenderString("{{ post | poster_url:'http://dropper.wayl.one/video.mp4' }}", ctx)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
 	}
@@ -745,7 +962,7 @@ func TestFilterPosterURLAliasAndFallback(t *testing.T) {
 
 	post2 := &models.Post{}
 	ctx2 := NewContext(post2, "", nil)
-	fallback, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx2)
+	fallback, err := engine.RenderString("{{ post | poster_url:'http://dropper.wayl.one/video.mp4' }}", ctx2)
 	if err != nil {
 		t.Fatalf("RenderString() error: %v", err)
 	}

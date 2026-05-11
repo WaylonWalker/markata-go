@@ -11,26 +11,32 @@ tags:
 
 # Agent Skills
 
-markata-go can install a bundled skill into your site repository so coding agents have project-specific guidance for common markata-go tasks.
+markata-go can install a bundled skill into your site repository or an agent-specific global skill directory so coding agents have project-specific guidance for common markata-go tasks.
 
 ## Install
 
-Install the portable skill layout into the current site:
+See the supported agent ids and install paths directly in the CLI:
+
+```bash
+markata-go agent list-agents
+```
+
+Install into the current agent's project layout:
 
 ```bash
 markata-go agent install
 ```
 
-This creates:
+When markata-go can detect the current agent from the environment, it uses that agent's project path. Otherwise it falls back to the portable `universal` layout:
 
 ```text
 .agents/skills/markata-go-site/
 ```
 
-Install into Claude Code's skill layout instead:
+Install into Claude Code's project layout explicitly:
 
 ```bash
-markata-go agent install --target claude
+markata-go agent install --agent claude-code
 ```
 
 This creates:
@@ -38,6 +44,20 @@ This creates:
 ```text
 .claude/skills/markata-go-site/
 ```
+
+Install into OpenCode's global skill directory instead of the current repository:
+
+```bash
+markata-go agent install --agent opencode -g
+```
+
+This creates:
+
+```text
+~/.config/opencode/skills/markata-go-site/
+```
+
+`-g` / `--global` always requires an explicit `--agent` so markata-go can choose the right user directory.
 
 ## Preview Without Writing
 
@@ -77,6 +97,8 @@ Example output when the skill is current:
 
 ```text
 Skill:     markata-go-site
+Agent:     universal
+Scope:     project
 Location:  .agents/skills/markata-go-site/
 Installed: 0.5.0
 Current:   0.5.0
@@ -92,6 +114,8 @@ Example output when drift is detected:
 
 ```text
 Skill:     markata-go-site
+Agent:     universal
+Scope:     project
 Location:  .agents/skills/markata-go-site/
 Installed: 0.4.0
 Current:   0.5.0
@@ -131,7 +155,13 @@ markata-go agent uninstall
 You can also target Claude Code's layout explicitly:
 
 ```bash
-markata-go agent remove --target claude
+markata-go agent remove --agent claude-code
+```
+
+Remove from a global agent directory:
+
+```bash
+markata-go agent remove --agent opencode -g
 ```
 
 ## Installed Layout
@@ -162,9 +192,11 @@ examples/
     base.html
     post.html
     feed.html
+evals/
+  evals.json
 ```
 
-Topic files provide narrative guidance for common tasks. Reference files give quick-lookup shapes (template variables, feed config patterns). Example files provide starter configs and templates for new sites or agents that need a concrete starting point.
+Topic files provide narrative guidance for common tasks. Reference files give quick-lookup shapes (template variables, feed config patterns). Example files provide starter configs and templates for new sites or agents that need a concrete starting point. `evals/evals.json` provides a starter regression prompt set for reviewing changes to the bundled skill itself.
 
 ## What The Skill Covers
 
@@ -179,6 +211,14 @@ Topic files provide narrative guidance for common tasks. Reference files give qu
 - template variable reference for post, feed, and base templates
 - feed config patterns and common feed recipes
 - starter config and template files for new sites
+
+## Supported Agents
+
+`markata-go agent` mirrors the same agent identifiers as `vercel-labs/skills`, including `opencode`, `claude-code`, `codex`, `cursor`, `gemini-cli`, `qwen-code`, `warp`, `windsurf`, `github-copilot`, and the rest of that compatibility matrix.
+
+Use `markata-go agent list-agents` to print the full supported list with project and global install paths.
+
+For project installs, omitting `--agent` uses the current agent when markata-go can detect it from the environment. If no agent is detected, markata-go falls back to `universal`, which installs to `.agents/skills/markata-go-site/`.
 
 ## Recommended Workflow For Agents
 

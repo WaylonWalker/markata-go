@@ -13,7 +13,7 @@ func TestComputeBundledManifest_IncludesAllFiles(t *testing.T) {
 		t.Fatalf("ListFiles() error = %v", err)
 	}
 
-	manifest, err := ComputeBundledManifest("0.1.0-test", "agents")
+	manifest, err := ComputeBundledManifest("0.1.0-test", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -21,8 +21,11 @@ func TestComputeBundledManifest_IncludesAllFiles(t *testing.T) {
 	if manifest.Version != "0.1.0-test" {
 		t.Errorf("Version = %q, want %q", manifest.Version, "0.1.0-test")
 	}
-	if manifest.Target != "agents" {
-		t.Errorf("Target = %q, want %q", manifest.Target, "agents")
+	if manifest.Target != "universal" {
+		t.Errorf("Target = %q, want %q", manifest.Target, "universal")
+	}
+	if manifest.Scope != "project" {
+		t.Errorf("Scope = %q, want %q", manifest.Scope, "project")
 	}
 	if len(manifest.Files) != len(files) {
 		t.Errorf("Files count = %d, want %d", len(manifest.Files), len(files))
@@ -41,11 +44,11 @@ func TestComputeBundledManifest_IncludesAllFiles(t *testing.T) {
 }
 
 func TestComputeBundledManifest_DeterministicHashes(t *testing.T) {
-	m1, err := ComputeBundledManifest("v1", "agents")
+	m1, err := ComputeBundledManifest("v1", "universal", "project")
 	if err != nil {
 		t.Fatalf("first ComputeBundledManifest() error = %v", err)
 	}
-	m2, err := ComputeBundledManifest("v2", "claude")
+	m2, err := ComputeBundledManifest("v2", "claude-code", "global")
 	if err != nil {
 		t.Fatalf("second ComputeBundledManifest() error = %v", err)
 	}
@@ -66,7 +69,7 @@ func TestComputeBundledManifest_DeterministicHashes(t *testing.T) {
 func TestWriteAndReadManifest_RoundTrip(t *testing.T) {
 	dir := t.TempDir()
 
-	original, err := ComputeBundledManifest("0.5.0", "agents")
+	original, err := ComputeBundledManifest("0.5.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -96,6 +99,9 @@ func TestWriteAndReadManifest_RoundTrip(t *testing.T) {
 	if loaded.Target != original.Target {
 		t.Errorf("Target = %q, want %q", loaded.Target, original.Target)
 	}
+	if loaded.Scope != original.Scope {
+		t.Errorf("Scope = %q, want %q", loaded.Scope, original.Scope)
+	}
 	if len(loaded.Files) != len(original.Files) {
 		t.Errorf("Files count = %d, want %d", len(loaded.Files), len(original.Files))
 	}
@@ -116,7 +122,7 @@ func TestReadManifest_MissingFile(t *testing.T) {
 
 func TestComputeDrift_NoDrift(t *testing.T) {
 	dir := t.TempDir()
-	manifest, err := ComputeBundledManifest("0.5.0", "agents")
+	manifest, err := ComputeBundledManifest("0.5.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -142,7 +148,7 @@ func TestComputeDrift_NoDrift(t *testing.T) {
 func TestComputeDrift_NewFile(t *testing.T) {
 	dir := t.TempDir()
 	// Create a manifest with one file missing from the real bundle.
-	manifest, err := ComputeBundledManifest("0.4.0", "agents")
+	manifest, err := ComputeBundledManifest("0.4.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -181,7 +187,7 @@ func TestComputeDrift_NewFile(t *testing.T) {
 
 func TestComputeDrift_ModifiedFile(t *testing.T) {
 	dir := t.TempDir()
-	manifest, err := ComputeBundledManifest("0.4.0", "agents")
+	manifest, err := ComputeBundledManifest("0.4.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -222,7 +228,7 @@ func TestComputeDrift_ModifiedFile(t *testing.T) {
 
 func TestComputeDrift_MissingFile(t *testing.T) {
 	dir := t.TempDir()
-	manifest, err := ComputeBundledManifest("0.4.0", "agents")
+	manifest, err := ComputeBundledManifest("0.4.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}
@@ -262,7 +268,7 @@ func TestComputeDrift_MissingFile(t *testing.T) {
 
 func TestComputeDrift_VersionMismatch(t *testing.T) {
 	dir := t.TempDir()
-	manifest, err := ComputeBundledManifest("0.4.0", "agents")
+	manifest, err := ComputeBundledManifest("0.4.0", "universal", "project")
 	if err != nil {
 		t.Fatalf("ComputeBundledManifest() error = %v", err)
 	}

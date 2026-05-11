@@ -15,6 +15,52 @@ const (
 	opOr  = "or"
 )
 
+var templateFilterAliases = map[string]string{
+	"article":   "article",
+	"blog-post": "article",
+	"essay":     "article",
+	"post":      "article",
+	"tutorial":  "article",
+
+	"note":    "note",
+	"ping":    "note",
+	"status":  "note",
+	"thought": "note",
+	"tweet":   "note",
+
+	"gallery": "photo",
+	"image":   "photo",
+	"photo":   "photo",
+	"shot":    "photo",
+	"shots":   "photo",
+
+	"cast":   "video",
+	"clip":   "video",
+	"stream": "video",
+	"video":  "video",
+
+	"bookmark": "link",
+	"link":     "link",
+	"stars":    "link",
+	"til":      "link",
+
+	"quotation": "quote",
+	"quote":     "quote",
+
+	"chapter": "guide",
+	"guide":   "guide",
+	"series":  "guide",
+	"step":    "guide",
+
+	"gratitude": "inline",
+	"inline":    "inline",
+	"micro":     "inline",
+
+	"character": "contact",
+	"contact":   "contact",
+	"person":    "contact",
+}
+
 // EvalContext contains the context for evaluating filter expressions
 type EvalContext struct {
 	Today time.Time
@@ -140,8 +186,14 @@ func evalBinaryExpr(e *BinaryExpr, post *models.Post, ctx *EvalContext) (interfa
 	// Handle comparison operators
 	switch e.Op {
 	case "==":
+		if result, ok := compareTemplateAliasExprs(e.Left, e.Right, left, right); ok {
+			return result, nil
+		}
 		return compare(left, right) == 0, nil
 	case "!=":
+		if result, ok := compareTemplateAliasExprs(e.Left, e.Right, left, right); ok {
+			return !result, nil
+		}
 		return compare(left, right) != 0, nil
 	case "<":
 		cmp := compare(left, right)
@@ -350,6 +402,8 @@ func getKnownField(post *models.Post, name string) (interface{}, bool) {
 			return nil, true
 		}
 		return *post.Description, true
+	case "templateKey", "templatekey", "TemplateKey":
+		return post.Template, true
 	case "template", "Template":
 		return post.Template, true
 	case "html", "HTML":
@@ -415,6 +469,53 @@ func getFieldFromValue(obj interface{}, field string) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("cannot access field '%s' on type %T", field, obj)
 	}
+}
+
+func compareTemplateAliasExprs(leftExpr, rightExpr Expr, left, right interface{}) (result, ok bool) {
+	if !isTemplateIdentifier(leftExpr) && !isTemplateIdentifier(rightExpr) {
+		return false, false
+	}
+
+	leftTemplate, ok := normalizeTemplateFilterValue(left)
+	if !ok {
+		return false, false
+	}
+	rightTemplate, ok := normalizeTemplateFilterValue(right)
+	if !ok {
+		return false, false
+	}
+
+	return leftTemplate == rightTemplate, true
+}
+
+func isTemplateIdentifier(expr Expr) bool {
+	ident, ok := expr.(*Identifier)
+	if !ok {
+		return false
+	}
+
+	switch strings.ToLower(strings.TrimSpace(ident.Name)) {
+	case "template", "templatekey":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeTemplateFilterValue(value interface{}) (string, bool) {
+	template, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(template))
+	if normalized == "" {
+		return "", true
+	}
+	if canonical, ok := templateFilterAliases[normalized]; ok {
+		return canonical, true
+	}
+	return normalized, true
 }
 
 // toBool converts a value to a boolean

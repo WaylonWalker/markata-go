@@ -2,13 +2,14 @@
 
 @layer components {
 
-/* Base admonition styles */
+/* Base admonition styles - top border accent instead of left */
 .admonition {
   margin: var(--space-4) 0;
   padding: var(--space-4);
-  border-left: 4px solid var(--admonition-color, var(--color-primary));
+  border-top: 2px solid var(--admonition-color, var(--color-border));
   background: var(--admonition-bg, var(--color-surface));
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: var(--radius);
+  border-left: none;
 }
 
 .admonition-title {
@@ -17,12 +18,13 @@
   gap: var(--space-2);
   font-weight: 600;
   margin-bottom: var(--space-2);
-  color: var(--admonition-color, var(--color-primary));
+  color: var(--color-text);
 }
 
 .admonition-title::before {
   content: var(--admonition-icon, "");
   font-size: 1.25em;
+  color: var(--admonition-color, var(--color-primary));
 }
 
 .admonition > *:last-child {
@@ -277,9 +279,11 @@ aside.admonition.aside .admonition-title::before {
   }
 }
 
-/* Collapsible admonitions use <details>/<summary> */
+/* Collapsible admonitions use <details>/<summary> - top border style */
 details.admonition {
-  border-left: 4px solid var(--admonition-color, var(--color-primary));
+  border-top: 2px solid var(--admonition-color, var(--color-border));
+  border-left: none;
+  border-radius: var(--radius);
 }
 
 details.admonition > summary {
@@ -314,24 +318,25 @@ details.admonition[open] > summary::before {
   padding: var(--space-3) var(--space-4);
 }
 
-/* Chat (incoming message) - left-aligned with left border */
+/* Chat (incoming message) - top border instead of left */
 .admonition.chat {
   --admonition-color: var(--admonition-chat-border, #6b7280);
   --admonition-bg: var(--admonition-chat-bg, #f3f4f6);
-  border-left: 4px solid var(--admonition-color);
+  border-top: 2px solid var(--admonition-color);
+  border-left: none;
   border-right: none;
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  border-radius: var(--radius-lg);
   margin-right: auto;
   margin-left: 0;
 }
 
-/* Chat-reply (outgoing message) - right-aligned with right border */
+/* Chat-reply (outgoing message) - right-aligned with bottom border accent */
 .admonition.chat-reply {
   --admonition-color: var(--admonition-chat-reply-border, var(--color-primary, #3b82f6));
   --admonition-bg: var(--admonition-chat-reply-bg, #dbeafe);
   border-left: none;
-  border-right: 4px solid var(--admonition-color);
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  border-bottom: 2px solid var(--admonition-color);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius) var(--radius-lg);
   margin-left: auto;
   margin-right: 0;
 }

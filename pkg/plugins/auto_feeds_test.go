@@ -124,6 +124,45 @@ func TestAutoFeedsPlugin_CustomSlugPrefix(t *testing.T) {
 	}
 }
 
+func TestAutoFeedsPlugin_TagFeedsRobotsFromRawConfig(t *testing.T) {
+	m := lifecycle.NewManager()
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	m.SetPosts([]*models.Post{{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python"}, Date: &date}})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": map[string]interface{}{
+			"tags": map[string]interface{}{
+				"enabled":     true,
+				"slug_prefix": "tags",
+				"robots":      "noindex,follow",
+				"formats": map[string]interface{}{
+					"html": true,
+					"rss":  true,
+				},
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("expected feed_configs cache entry")
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok || len(configs) != 1 {
+		t.Fatalf("expected 1 feed config, got %#v", cached)
+	}
+	if configs[0].Robots != "noindex,follow" {
+		t.Fatalf("feed robots = %q, want %q", configs[0].Robots, "noindex,follow")
+	}
+}
+
 func TestAutoFeedsPlugin_TagFeeds_CollapsesSlugCollisions(t *testing.T) {
 	m := lifecycle.NewManager()
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)

@@ -118,3 +118,58 @@ func TestComponentsToMap_PostConnectionsDefaults(t *testing.T) {
 		t.Fatalf("graph_min_links = %#v, want 3", postConnections["graph_min_links"])
 	}
 }
+
+func TestSearchToMap_BleveConfig(t *testing.T) {
+	fuzzy := true
+	showImages := false
+	m := searchToMap(&models.SearchConfig{
+		Backend:     "bleve",
+		Endpoint:    "http://localhost:3001/api/search",
+		ShowImages:  &showImages,
+		Placeholder: "Search...",
+		Bleve: models.BleveSearchConfig{
+			Endpoint:    "http://localhost:3001/api/search",
+			Fuzzy:       &fuzzy,
+			Limit:       12,
+			MaxLimit:    50,
+			CORSOrigins: []string{"*"},
+		},
+	})
+
+	if got := m["backend"]; got != "bleve" {
+		t.Fatalf("backend = %#v, want bleve", got)
+	}
+	if got := m["endpoint"]; got != "http://localhost:3001/api/search" {
+		t.Fatalf("endpoint = %#v, want bleve endpoint", got)
+	}
+
+	bleve, ok := m["bleve"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("bleve = %#v, want map", m["bleve"])
+	}
+	if got := bleve["endpoint"]; got != "http://localhost:3001/api/search" {
+		t.Fatalf("bleve.endpoint = %#v, want bleve endpoint", got)
+	}
+	if got, ok := bleve["fuzzy"].(bool); !ok || !got {
+		t.Fatalf("bleve.fuzzy = %#v, want true", bleve["fuzzy"])
+	}
+	if got, ok := bleve["limit"].(int); !ok || got != 12 {
+		t.Fatalf("bleve.limit = %#v, want 12", bleve["limit"])
+	}
+	if got, ok := bleve["max_limit"].(int); !ok || got != 50 {
+		t.Fatalf("bleve.max_limit = %#v, want 50", bleve["max_limit"])
+	}
+}
+
+func TestFeedToMap_IncludesRobots(t *testing.T) {
+	m := feedToMap(&models.FeedConfig{
+		Slug:        "tags/python",
+		Title:       "Python",
+		Description: "Posts tagged python",
+		Robots:      "noindex,follow",
+	})
+
+	if got := m["robots"]; got != "noindex,follow" {
+		t.Fatalf("robots = %#v, want noindex,follow", got)
+	}
+}

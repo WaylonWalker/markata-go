@@ -112,6 +112,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Pass tags configuration
 	lcConfig.Extra["tags"] = cfg.Tags
+	lcConfig.Extra["feeds_page"] = cfg.FeedsPage
 
 	// Pass view transitions configuration
 	lcConfig.Extra["view_transitions"] = cfg.ViewTransitions
@@ -250,7 +251,6 @@ func applyFastMode(m *lifecycle.Manager) {
 	m.Config().Extra["blogroll_disabled"] = true
 	m.Config().Extra["mentions_disabled"] = true
 	m.Config().Extra["feeds_incremental"] = true
-	m.Config().Extra["cache_cleanup_async"] = true
 	verbosef("Fast mode: skipping minification, CSS purging, tailwind rebuilds, pagefind indexing, blogroll, and mentions")
 }
 

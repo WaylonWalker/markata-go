@@ -9,13 +9,31 @@
   margin-right: auto;
 }
 
+.main-content > .feed.h-feed {
+  width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+  max-width: min(100%, calc(750px + (var(--space-4, 1rem) * 2)));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/*
+ * Embedded feeds inside article.post should stay visually centered without
+ * widening the entire prose column. Break the feed out of the 65ch article and
+ * center the feed itself instead.
+ */
+article.post > .post-content > .feed.h-feed {
+  width: min(calc(100vw - (var(--space-8, 2rem) * 2)), calc(750px + (var(--space-4, 1rem) * 2)));
+  max-width: calc(750px + (var(--space-4, 1rem) * 2));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
 .feed.h-feed {
   --feed-content-width: min(100%, 750px);
   width: 100%;
   max-width: min(100%, var(--page-width));
   margin: 0 auto;
-  display: grid;
-  justify-items: center;
+  display: block;
 }
 
 .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .feed-header,
@@ -27,6 +45,13 @@
   max-width: min(100%, var(--feed-content-width));
   margin-left: auto;
   margin-right: auto;
+}
+
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts,
+.feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6, 1.5rem);
 }
 
 .feeds-page {

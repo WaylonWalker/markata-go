@@ -1,6 +1,9 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -76,7 +79,7 @@ func TestAssetGroups(t *testing.T) {
 	}
 
 	// Check for expected groups
-	expectedGroups := []string{"glightbox", "htmx", "mermaid", "chartjs", "cal-heatmap", "d3", "popper", "svg-pan-zoom"}
+	expectedGroups := []string{"glightbox", "htmx", "mermaid", "chartjs", "cal-heatmap", "d3", "popper", "svg-pan-zoom", "revealjs"}
 	for _, name := range expectedGroups {
 		if _, ok := groups[name]; !ok {
 			t.Errorf("expected group %s to exist", name)
@@ -98,16 +101,19 @@ func TestAssetNames(t *testing.T) {
 
 	// Check for expected names
 	expectedNames := map[string]bool{
-		"glightbox-js":   true,
-		"glightbox-css":  true,
-		"htmx":           true,
-		"mermaid-esm":    true,
-		"mermaid-chunk":  true,
-		"chartjs":        true,
-		"svg-pan-zoom":   true,
-		"d3":             true,
-		"popper":         true,
-		"cal-heatmap-js": true,
+		"glightbox-js":         true,
+		"glightbox-css":        true,
+		"htmx":                 true,
+		"mermaid-esm":          true,
+		"mermaid-chunk":        true,
+		"chartjs":              true,
+		"svg-pan-zoom":         true,
+		"d3":                   true,
+		"popper":               true,
+		"cal-heatmap-js":       true,
+		"revealjs-css":         true,
+		"revealjs-theme-black": true,
+		"revealjs-js":          true,
 	}
 
 	for _, name := range names {
@@ -132,5 +138,17 @@ func TestAssetURLsAreValid(t *testing.T) {
 		if asset.Type == "" {
 			t.Errorf("asset %s has empty Type", asset.Name)
 		}
+	}
+}
+
+func TestBleveSearchScript_DoesNotSetAriaExpanded(t *testing.T) {
+	path := filepath.Join("..", "themes", "default", "static", "js", "bleve-search.js")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read bleve search script: %v", err)
+	}
+
+	if strings.Contains(string(content), "aria-expanded") {
+		t.Fatal("bleve search script should not set aria-expanded on the input")
 	}
 }

@@ -10,7 +10,9 @@ Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ page.has_next }}`
 
 Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
 
-The only PascalCase key is `post.Extra` (and `config.Extra`), which provides access to custom frontmatter and config values.
+Known PascalCase compatibility aliases are limited. `post.Extra` and `config.Extra` provide access to custom frontmatter and config values.
+
+`post.templateKey` may also be present as a compatibility alias. Prefer `post.template` for new work, but expect `post.templateKey` in older content, migrations, and some template/debugging contexts.
 
 ## Core Template Variables
 
@@ -39,7 +41,7 @@ Usually available in HTML templates:
 - `post.skip`
 - `post.tags`
 - `post.template`
-- `post.templateKey`
+- `post.templateKey` (compatibility alias for `post.template`)
 - `post.html`
 - `post.article_html`
 - `post.title`
@@ -49,6 +51,54 @@ Usually available in HTML templates:
 - `post.authors`
 - `post.author_objects`
 - `post.Extra`
+
+## Stats And Analytics Fields
+
+Common per-post stats in `post.Extra`:
+
+- `post.Extra.word_count`
+- `post.Extra.char_count`
+- `post.Extra.reading_time`
+- `post.Extra.reading_time_text`
+- `post.Extra.code_lines`
+- `post.Extra.code_blocks`
+- `post.Extra.stats`
+
+Common site-wide stats in `config.Extra.site_stats`:
+
+- `config.Extra.site_stats.total_posts`
+- `config.Extra.site_stats.total_words`
+- `config.Extra.site_stats.total_chars`
+- `config.Extra.site_stats.total_reading_time`
+- `config.Extra.site_stats.total_reading_time_text`
+- `config.Extra.site_stats.average_words`
+- `config.Extra.site_stats.average_reading_time`
+- `config.Extra.site_stats.average_reading_time_text`
+- `config.Extra.site_stats.total_code_lines`
+- `config.Extra.site_stats.total_code_blocks`
+- `config.Extra.site_stats.posts_by_year`
+- `config.Extra.site_stats.words_by_year`
+- `config.Extra.site_stats.posts_by_tag`
+
+Advanced helper access may also be available via `config.Extra.stats` for site and feed KPIs.
+
+Common feed-helper calls when the helper is exposed:
+
+- `config.Extra.stats.ForFeed("blog").PostCount()`
+- `config.Extra.stats.ForFeed("blog").TotalWords()`
+- `config.Extra.stats.ForFeed("blog").TotalReadingTimeText()`
+- `config.Extra.stats.ForFeed("blog").PostsByYear()`
+- `config.Extra.stats.ForFeed("blog").PostsByTag()`
+
+## Link Graph Fields
+
+Common link-analysis fields on `post`:
+
+- `post.hrefs`
+- `post.inlinks`
+- `post.outlinks`
+
+These are useful for backlink sections, related-note sections, hub-note detection, and orphan-note analysis.
 
 ## Common Top-Level Aliases
 
@@ -64,6 +114,20 @@ Markata-go also injects convenient top-level aliases:
 - `private`
 - `description`
 - `article_html`
+
+## Common Plugin-Provided Extras
+
+When optional hooks are enabled, templates may also receive extra top-level fields and matching `config.Extra` values.
+
+Web Awesome commonly exposes:
+
+- `needs_webawesome` on posts/pages that rendered `wa-*` elements
+- `config.Extra.webawesome_enabled`
+- `config.Extra.webawesome_css_url`
+- `config.Extra.webawesome_loader_url`
+- `config.Extra.webawesome_theme_class`
+
+Use these only after inspecting the active site templates and rendered output. Some sites rely entirely on the built-in base template wiring and never reference these values directly in project templates.
 
 ## Site Aliases
 
@@ -103,6 +167,12 @@ Markata-go also injects convenient top-level aliases:
 - `page.items_per_page`
 - `page.page_urls`
 - `page.pagination_type`
+
+## Reader Page Context
+
+- `day_groups` on `/reader/` templates
+- each group provides `date_iso`, `weekday`, `title`, `year`, `count`, and `entries`
+- reader entry maps include `source_icon_url`, `published_datetime`, `published_label`, `preview_url`, `preview_kind`, `source_image_url`, and `source_initial`
 
 ## Sidebar/Navigation Context
 

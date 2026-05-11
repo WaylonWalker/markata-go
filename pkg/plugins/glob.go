@@ -173,7 +173,7 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 
 	if cache != nil {
 		cachedFiles, cachedHash := cache.GetGlobCache()
-		if cachedHash == patternHash && len(cachedFiles) > 0 && lifecycle.IsServeFastMode(m) && !lifecycle.IsServeGlobDirty(m) {
+		if cachedHash == patternHash && len(cachedFiles) > 0 && shouldReuseCachedGlobFiles(m) {
 			m.SetFiles(cachedFiles)
 			return nil
 		}
@@ -189,6 +189,16 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 
 	m.SetFiles(files)
 	return nil
+}
+
+func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
+	if !lifecycle.IsServeFastMode(m) || lifecycle.IsServeGlobDirty(m) {
+		return false
+	}
+
+	return len(lifecycle.GetServeChangedPaths(m)) > 0 ||
+		len(lifecycle.GetServeRemovedPaths(m)) > 0 ||
+		len(lifecycle.GetServeAffectedPaths(m)) > 0
 }
 
 // scanFiles performs full glob scan.

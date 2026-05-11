@@ -26,7 +26,9 @@ Correct: `{{ post.title }}`, `{{ post.article_html }}`, `{{ config.url }}`, `{{ 
 
 Wrong: `{{ post.Title }}`, `{{ post.ArticleHTML }}`, `{{ page.HasNext }}`
 
-The only PascalCase key is `post.Extra` (and `config.Extra`), which is intentional for the dynamic extras namespace: `{{ post.Extra.image }}`, `{{ config.Extra.custom_key }}`.
+Known PascalCase compatibility aliases are limited. `post.Extra` and `config.Extra` are intentional for the dynamic extras namespace: `{{ post.Extra.image }}`, `{{ config.Extra.custom_key }}`.
+
+`post.templateKey` may also appear as a compatibility alias for older content and migrations. Prefer `post.template` for new template work, but do not assume `post.templateKey` is invalid when reading or debugging an existing site.
 
 ## Search Order
 
@@ -123,12 +125,15 @@ Useful feed/page fields:
 
 - `date`
 - `date_format`
+- `human_date`
 - `rss_date`
 - `atom_date`
 - `slugify`
 - `truncate`
 - `truncatewords`
 - `default_if_none`
+
+Use `human_date` for visible HTML dates in cards, post bylines, archive views, and reader metadata. Keep `<time datetime="...">` values machine-readable with `atom_date` or RFC 3339 strings.
 - `length`
 - `first`
 - `last`
@@ -141,6 +146,9 @@ Useful feed/page fields:
 - `theme_asset`
 - `theme_asset_hashed`
 - `asset_url`
+- `slides_reveal`
+
+For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs.
 
 ## Common Patterns
 
@@ -191,6 +199,42 @@ Useful feed/page fields:
 {% endblock %}
 ```
 
+## Web Awesome In Templates And Content
+
+For sites using the `webawesome` hook, prefer authoring content with markdown containers such as `::: wa-details`, `::: wa-tabs`, `::: wa-tooltip`, or `::: wa-comparison` before dropping into raw custom-element HTML.
+
+Useful guidance:
+
+- raw `<wa-*>` elements are also supported and trigger asset loading automatically
+- do not hardcode Web Awesome `<script>` or `<link>` tags if the site already relies on the built-in plugin wiring
+- if a template needs to guard extra markup or classes around Web Awesome usage, inspect existing checks first; per-page detection is usually driven by the presence of rendered `wa-*` elements in the page body
+- if vendor assets are enabled, the resolved URLs come from config-driven asset mappings rather than fixed `/assets/vendor/webawesome/` assumptions
+
+Typical authoring examples:
+
+````markdown
+::: wa-tabs
+
+:::: wa-tab {label="macOS"}
+```bash
+brew install markata-go
+```
+::::
+
+:::: wa-tab {label="Linux"}
+```bash
+curl -fsSL https://example.com/install.sh | sh
+```
+::::
+:::
+````
+
+```markdown
+::: wa-tooltip {content="Static Site Generator"}
+SSG
+:::
+```
+
 ## Per-Post Template Selection
 
 Common frontmatter options:
@@ -199,6 +243,14 @@ Common frontmatter options:
 template: custom/special-page.html
 layout: landing
 ```
+
+For presentation decks, `template: slides.html` is available. The bundled default slides template uses reveal.js and splits rendered content with common markdown deck conventions while remaining compatible with the normal H1 content lint rule:
+
+- `##` / rendered `h2`: new horizontal slide
+- `###` / rendered `h3`: new vertical slide
+- `---` / rendered `hr`: new horizontal slide
+
+When a site self-hosts third-party assets with `[markata-go.assets]`, `slides.html` uses the shared `asset_urls` mappings for Reveal.js automatically.
 
 Use `layout` when the site has a base-driven layout system. Use `template` when you need an explicit file.
 
@@ -315,6 +367,8 @@ Markata-go can output posts in multiple formats beyond HTML. Alternate format te
 - `post-og.html` for Open Graph card images
 
 Use the `plaintext` filter to strip HTML tags when producing text output. Hardcoded fallbacks: `default.txt` (text), `default.ansi` (ANSI), `raw.txt` (markdown), `og-card.html` (OG).
+
+Feed sidebar variant links should point at the canonical short URLs for enabled formats (`/slug.md`, `/slug.txt`, `/slug.ansi`) instead of nested `/slug/index.<ext>` paths.
 
 ## Common Tasks
 

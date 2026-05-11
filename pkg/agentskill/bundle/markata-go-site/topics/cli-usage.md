@@ -23,9 +23,26 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go config show --diff`
 - `markata-go config get <key>`
 - `markata-go config validate`
+
+Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go list posts`
 - `markata-go list feeds`
 - `markata-go list tags`
+
+### Search
+
+- `markata-go search <query>` (BM25-ranked full-text search with synonym expansion)
+- `markata-go search <query> --format json` (machine-readable output)
+- `markata-go search <query> --filter "published == True"` (combine with filter)
+- `markata-go search <query> --fields title,tags` (restrict fields)
+- `markata-go search <query> --fuzzy` (typo-tolerant matching)
+- `markata-go search <query> --limit 10` (cap results)
+- `markata-go search <query> --format path` (file paths only, for piping)
+- `markata-go search <query> --sort date` (sort by date instead of relevance)
+- `markata-go search-server` (standalone search API server)
+- `markata-go search-server --port 8081` (custom port)
+- During `markata-go serve`, the search API is auto-mounted at `/api/search`
+- `curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"` (query API)
 
 ### Content Creation
 
@@ -82,7 +99,9 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go update` (self-update from GitHub releases)
 - `markata-go update --check` (check for updates without installing)
 - `markata-go benchmark --scenario small|medium|large` (performance benchmarks)
-- `markata-go agent install` (install bundled agent skill into site)
+- `markata-go agent list-agents` (list supported agent ids and their install paths)
+- `markata-go agent install` (install bundled agent skill into the detected project agent or the universal layout)
+- `markata-go agent install --agent <name> [-g]` (choose a specific agent and optional global install scope)
 - `markata-go agent doctor` (check for drift after binary upgrades)
 - `markata-go version`
 
@@ -121,6 +140,7 @@ markata-go lint --fix
 ## What To Use When
 
 - inspect content inventory: `markata-go list posts`
+- search for content by keyword: `markata-go search <query>`
 - inspect feed definitions and sizes: `markata-go list feeds`
 - inspect resolved configuration: `markata-go config show`
 - create new content: `markata-go new`
@@ -136,6 +156,7 @@ markata-go lint --fix
 ## Operator Patterns
 
 - use `-m fast.toml` when you want a lighter dev build without rewriting main config
+- use the same `-m` overrides with `config show` and `config validate` when you need to inspect or verify the exact config that `build` or `serve` will use
 - use `-c` when a repo has multiple configs or examples and you need the exact active one
 - use `-o dist` in CI or preview contexts when you want a temporary artifact path
 - use `--no-input` for automation or when the agent must avoid prompts
@@ -145,6 +166,7 @@ markata-go lint --fix
 ## Guidance
 
 - Prefer `list` commands when you need structured inspection.
+- Prefer `search` when you need to find posts by content or keyword.
 - Prefer `explain` when you need command-specific or subsystem context.
 - Prefer `serve` for interactive local work and `build` for validation or CI-like runs.
 - Run `lint` before committing content changes.

@@ -4,6 +4,28 @@ import (
 	"testing"
 )
 
+func resolveFirst(palette *Palette, names ...string) (name, hex string) {
+	for _, name := range names {
+		if resolved := palette.Resolve(name); resolved != "" {
+			return name, resolved
+		}
+	}
+	return "", ""
+}
+
+func requireContrast(t *testing.T, paletteName, fgName, fgHex, bgName, bgHex string, minRatio float64, desc string) {
+	t.Helper()
+
+	ratio, err := ContrastRatioFromHex(fgHex, bgHex)
+	if err != nil {
+		t.Fatalf("Palette %s: invalid resolved colors for %s: %q on %q (%v)", paletteName, desc, fgHex, bgHex, err)
+	}
+
+	if ratio < minRatio {
+		t.Errorf("Palette %s: %s (%s on %s) contrast ratio %.2f < %.1f required", paletteName, desc, fgName, bgName, ratio, minRatio)
+	}
+}
+
 // TestBuiltInPalettesWCAGContrast validates that all built-in palettes
 // pass WCAG AA contrast requirements. This is an integration test that
 // ensures our shipped palettes meet accessibility standards.
@@ -171,9 +193,9 @@ func TestDefaultPaletteExists(t *testing.T) {
 	}
 }
 
-// TestPaletteContrastForTextReadability specifically tests text readability
-// contrast ratios across all built-in palettes.
-func TestPaletteContrastForTextReadability(t *testing.T) {
+// TestPaletteContrastForDefaultThemeReadability specifically tests text readability
+// contrast ratios used by the bundled default theme across all built-in palettes.
+func TestPaletteContrastForDefaultThemeReadability(t *testing.T) {
 	t.Parallel()
 
 	names := BuiltinNames()
@@ -181,17 +203,25 @@ func TestPaletteContrastForTextReadability(t *testing.T) {
 		t.Skip("No built-in palettes found")
 	}
 
-	// Critical readability checks (text on backgrounds)
-	criticalChecks := []struct {
+	// Critical readability checks from default theme CSS token usage.
+	// Lighthouse treats small muted UI labels as normal text, so require AA 4.5:1.
+	defaultThemeChecks := []struct {
 		fg       string
 		bg       string
 		minRatio float64
 		desc     string
 	}{
 		{"text-primary", "bg-primary", 4.5, "main body text"},
+		{"text-primary", "bg-surface", 4.5, "text on cards and surfaces"},
+		{"text-primary", "bg-elevated", 4.5, "text on elevated surfaces"},
 		{"text-secondary", "bg-primary", 4.5, "secondary text"},
-		{"text-muted", "bg-primary", 3.0, "muted/hint text (large text minimum)"},
+		{"text-secondary", "bg-surface", 4.5, "secondary text on cards and surfaces"},
+		{"text-muted", "bg-primary", 4.5, "muted normal-size text"},
+		{"text-muted", "bg-secondary", 4.5, "muted text on secondary backgrounds"},
+		{"text-muted", "bg-surface", 4.5, "muted text on cards and surfaces"},
+		{"text-muted", "bg-elevated", 4.5, "muted text on elevated surfaces"},
 		{"link", "bg-primary", 4.5, "links in body text"},
+		{"link", "bg-surface", 4.5, "links on cards and surfaces"},
 	}
 
 	for _, name := range names {
@@ -203,18 +233,21 @@ func TestPaletteContrastForTextReadability(t *testing.T) {
 				t.Fatalf("Failed to load palette %s: %v", name, err)
 			}
 
-			for _, check := range criticalChecks {
+			for _, check := range defaultThemeChecks {
 				fgHex := palette.Resolve(check.fg)
 				bgHex := palette.Resolve(check.bg)
 
 				if fgHex == "" || bgHex == "" {
-					// Skip if colors not defined
+					t.Errorf("Palette %s: missing color mapping for %s on %s used by default theme",
+						name, check.fg, check.bg)
 					continue
 				}
 
 				fgColor, err1 := ParseHexColor(fgHex)
 				bgColor, err2 := ParseHexColor(bgHex)
 				if err1 != nil || err2 != nil {
+					t.Errorf("Palette %s: invalid resolved colors for %s on %s: %q on %q",
+						name, check.fg, check.bg, fgHex, bgHex)
 					continue
 				}
 
@@ -223,6 +256,109 @@ func TestPaletteContrastForTextReadability(t *testing.T) {
 					t.Errorf("Palette %s: %s contrast ratio %.2f < %.1f required for %s",
 						name, check.fg, ratio, check.minRatio, check.desc)
 				}
+			}
+		})
+	}
+}
+
+// TestPaletteContrastForDefaultThemeInteractiveComponents validates the explicit
+// color combinations used by compact default-theme controls that have regressed
+// in Lighthouse before. These checks are intentionally named after the UI they
+// protect so future failures map back to concrete theme elements.
+func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
+	t.Parallel()
+
+	names := BuiltinNames()
+	if len(names) == 0 {
+		t.Skip("No built-in palettes found")
+	}
+
+	componentChecks := []struct {
+		name      string
+		fgOptions []string
+		bgOptions []string
+		minRatio  float64
+		level     string
+		desc      string
+	}{
+		{
+			name:      "post copy label",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"bg-primary"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "post copy summary text",
+		},
+		{
+			name:      "admonition title",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"admonition-note-bg", "bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "admonition title text on note backgrounds",
+		},
+		{
+			name:      "warning admonition title",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"admonition-warning-bg", "admonition-warn-bg", "bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "admonition title text on warning backgrounds",
+		},
+		{
+			name:      "feed nav button label",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "feed navigation button glyphs",
+		},
+		{
+			name:      "card domain link",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "compact card domain links",
+		},
+		{
+			name:      "homepage updated label",
+			fgOptions: []string{"text-secondary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "small home card metadata labels",
+		},
+		{
+			name:      "webmention count label",
+			fgOptions: []string{"text-secondary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "compact webmention count labels on cards",
+		},
+	}
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			palette, err := LoadBuiltin(name)
+			if err != nil {
+				t.Fatalf("Failed to load palette %s: %v", name, err)
+			}
+
+			for _, check := range componentChecks {
+				fgName, fgHex := resolveFirst(palette, check.fgOptions...)
+				bgName, bgHex := resolveFirst(palette, check.bgOptions...)
+
+				if fgName == "" || bgName == "" {
+					t.Errorf("Palette %s: missing color mapping for %s (%v on %v)",
+						name, check.name, check.fgOptions, check.bgOptions)
+					continue
+				}
+
+				requireContrast(t, name, fgName, fgHex, bgName, bgHex, check.minRatio, check.desc)
 			}
 		})
 	}

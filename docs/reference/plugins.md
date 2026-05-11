@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 32 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 slug: /docs/reference/plugins/
@@ -31,7 +31,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Glob | Discover content files | glob |
 | Load | Parse files into posts | load, frontmatter |
 | Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
-| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
+| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube, webawesome |
 | Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
 | Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
@@ -119,6 +119,52 @@ use_gitignore = true
 - European format: `15-01-2024`
 - Long format: `January 15, 2024`
 - Short format: `Jan 15, 2024`
+
+---
+
+### python_docs
+
+**Name:** `python_docs`  
+**Stage:** Load  
+**Purpose:** Generates documentation posts directly from Python source files by extracting module, class, function, and method docstrings.
+
+**Status:** Built-in and disabled by default. It only runs when `python_docs` is listed in `hooks` and `[markata-go.python_docs].enabled = true`.
+
+**Configuration (TOML):**
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py", "pkg/**/*.py"]
+slug_prefix = "api"
+template = "docs"
+include_source = true
+include_module_code = false
+published = false
+```
+
+**Behavior:**
+1. Discovers Python files using its own glob patterns so normal markdown content loading is unchanged.
+2. Parses source with Python's AST via `python3`/`python`.
+3. Creates one post per module, with slug based on the module path.
+4. Renders module docstrings as markdown and adds sections for classes, functions, and methods.
+5. Includes signatures, docstrings, collapsible implementation snippets, and import lists.
+6. Adds internal links when imported modules or referenced symbols are also documented.
+
+**Generated post fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `extra.python_docs` | bool | Always `true` for generated source docs |
+| `extra.python_module` | string | Canonical module name, e.g. `pkg.util` |
+| `extra.source_path` | string | Relative source path |
+
+**Notes:**
+- `python_docs` must be explicitly listed in `[markata-go].hooks`.
+- Generated docs are unpublished by default, so they render as shadow pages unless `published = true`.
+- Private `_symbols` are excluded unless `include_private = true`.
+- This plugin is useful for API reference sites that want source-backed docs inside the normal markata-go template pipeline.
 
 ---
 
@@ -533,7 +579,7 @@ jinja: true
 
 **Name:** `wikilinks`  
 **Stage:** Transform  
-**Purpose:** Transforms `[[slug]]` and `[[slug|text]]` wikilink syntax into HTML anchor tags.
+**Purpose:** Transforms `[[slug]]`, `[[slug|text]]`, and `[[slug#fragment]]` wikilink syntax into HTML anchor tags.
 
 **Configuration (TOML):**
 ```toml
@@ -545,13 +591,16 @@ wikilinks_warn_broken = true  # Warn about broken links (default: true)
 ```markdown
 Link to another post: [[other-post-slug]]
 With custom text: [[other-post-slug|Click here to read more]]
+Link to a section: [[other-post-slug#getting-started]]
+Section with custom text: [[other-post-slug#getting-started|See getting started]]
 ```
 
 **Behavior:**
 1. Finds all `[[...]]` patterns in content
-2. Looks up target post by slug (case-insensitive)
-3. If found: converts to `<a href="/slug/">Title</a>`
-4. If not found: keeps original syntax, adds warning to post
+2. Splits the target on the first `#` to extract slug and optional fragment
+3. Looks up target post by slug (case-insensitive), also checks aliases
+4. If found: converts to `<a href="/slug/#fragment">Title</a>` (fragment omitted if empty)
+5. If not found: keeps original syntax, adds warning to post
 
 **Post fields added (in `Extra`):**
 | Field | Type | Description |
@@ -562,12 +611,14 @@ With custom text: [[other-post-slug|Click here to read more]]
 ```markdown
 Check out my [[getting-started]] guide.
 You might also like [[advanced-topics|the advanced guide]].
+Jump to [[getting-started#installation]] for setup steps.
 ```
 
 Becomes:
 ```html
 Check out my <a href="/getting-started/">Getting Started</a> guide.
 You might also like <a href="/advanced-topics/">the advanced guide</a>.
+Jump to <a href="/getting-started/#installation">Getting Started</a> for setup steps.
 ```
 
 ---
@@ -932,7 +983,7 @@ footnote = true          # PHP Markdown Extra footnotes (default: true)
 - **GFM** - GitHub Flavored Markdown (tables, strikethrough, autolinks, task lists)
 - **Syntax Highlighting** - Code block highlighting with Chroma
 - **Admonitions** - Note/warning blocks
-- **Auto Heading IDs** - Generates IDs for headings
+- **Auto Heading IDs** - Generates IDs for headings (anchor links disabled by default; use `heading_anchors` plugin instead)
 - **Typographer** - Smart quotes, dashes, ellipses
 - **Definition Lists** - PHP Markdown Extra style definition lists
 - **Footnotes** - PHP Markdown Extra style footnotes
@@ -1077,9 +1128,12 @@ class = "heading-anchor"  # CSS class for the anchor link (default: "heading-anc
 **Behavior:**
 1. Runs after `render_markdown` to process `ArticleHTML`
 2. Finds all heading tags within the configured level range
-3. Extracts existing IDs or generates URL-safe IDs from heading text
-4. Handles duplicate IDs by appending numbers (e.g., `my-heading`, `my-heading-1`)
-5. Inserts anchor link at the configured position (start or end of heading)
+3. Skips headings that already contain a goldmark anchor (`class="anchor"`) to prevent duplicate anchor links
+4. Extracts existing IDs or generates URL-safe IDs from heading text
+5. Handles duplicate IDs by appending numbers (e.g., `my-heading`, `my-heading-1`)
+6. Inserts anchor link at the configured position (start or end of heading)
+
+**Note:** The goldmark markdown renderer has its own anchor extension (`[markdown.extensions] anchor`), which is disabled by default. This plugin is the recommended way to add heading anchors because it offers more configuration (min/max level, position, symbol, CSS class). If the goldmark extension is re-enabled, this plugin detects and skips headings that already have goldmark anchors.
 
 **HTML output example:**
 ```html
@@ -1296,7 +1350,7 @@ privacy_enhanced = false
 enabled = false           # Enable the plugin (default: false)
 library = "glightbox"     # Lightbox library to use (default: "glightbox")
 selector = ".glightbox"   # CSS selector for zoomable images (default: ".glightbox")
-cdn = true                # Use CDN for library files (default: true)
+cdn = true                # Legacy fallback when shared vendored assets are unavailable
 auto_all_images = false   # Make all images zoomable by default (default: false)
 
 # GLightbox-specific options
@@ -1336,9 +1390,11 @@ image_zoom: true
 2. Finds images with `{data-zoomable}` or `{.zoomable}` markers
 3. Removes the markers from alt text
 4. Wraps images in anchor tags with GLightbox classes
-5. Adds `data-glightbox` attribute for the lightbox
-6. Tracks which posts need the lightbox library
-7. In Write stage, stores configuration for templates to inject JS/CSS
+5. Preserves explicit width/height when the source URL already carries media size hints
+6. Adds `data-glightbox` attribute for the lightbox
+7. Tracks which posts need the lightbox library
+8. In Write stage, stores configuration for templates to inject JS/CSS
+9. Prefers shared vendored GLightbox assets from `[markata-go.assets]` when available, otherwise falls back to the legacy `cdn` toggle
 
 **HTML output:**
 
@@ -1351,7 +1407,8 @@ Output:
 ```html
 <a href="/images/sunset.jpg" class="glightbox-link">
   <img src="/images/sunset.jpg" alt="Beautiful sunset"
-       class="glightbox" data-glightbox="description: Beautiful sunset">
+       class="glightbox" width="1200" height="675"
+       data-glightbox="description: Beautiful sunset">
 </a>
 ```
 
@@ -1364,7 +1421,7 @@ Output:
 | Field | Type | Description |
 |-------|------|-------------|
 | `glightbox_enabled` | bool | True if any posts need GLightbox |
-| `glightbox_cdn` | bool | Whether to use CDN |
+| `glightbox_cdn` | bool | Whether templates should fall back to CDN after checking shared vendored asset URLs |
 | `glightbox_options` | map | GLightbox initialization options |
 
 **Template usage:**
@@ -1385,6 +1442,8 @@ The base template automatically includes GLightbox when needed:
 </script>
 {% endif %}
 ```
+
+When `[markata-go.assets].mode` is `self-hosted` or `auto`, the base templates prefer the shared `asset_urls` mappings generated by `cdn_assets`. In that setup, `markata-go assets download` will vendor GLightbox alongside the other third-party assets.
 
 **Keyboard shortcuts:**
 | Key | Action |
@@ -1814,6 +1873,7 @@ enabled = true
 cdn_url = "/assets/vendor/cal-heatmap"                # Cal-Heatmap base URL (local by default)
 container_class = "contribution-graph-container"
 theme = "light"
+scale_max_percentile = 0
 ```
 
 **Options:**
@@ -1823,6 +1883,7 @@ theme = "light"
 | `cdn_url` | `/assets/vendor/cal-heatmap` | Cal-Heatmap base URL (local by default) |
 | `container_class` | `contribution-graph-container` | CSS class for wrapper div |
 | `theme` | `light` | Color theme (light, dark) |
+| `scale_max_percentile` | `0` | Global percentile cap for contribution graph color scaling |
 
 **Markdown syntax:**
 ````markdown
@@ -1874,6 +1935,10 @@ document.addEventListener('DOMContentLoaded', function() {
 | `subDomain` | string | `day` | Sub-domain: day, hour, minute |
 | `cellSize` | number | `10` | Cell size in pixels |
 | `range` | number | `1` | Number of domain units to display |
+| `maxValue` | number | unset | Explicit color-scale maximum |
+| `maxPercentile` | number | unset | Per-graph percentile cap for the color scale |
+
+The plugin also fits rendered graphs to narrow content columns automatically, so pages do not need custom resize JavaScript in markdown.
 
 **Use cases:**
 - Blog post publishing frequency
@@ -3051,7 +3116,7 @@ Variables are automatically available in your CSS:
 
 **Name:** `chroma_css`  
 **Stage:** Configure + Write  
-**Purpose:** Generates CSS for syntax highlighting from Chroma themes. Creates `css/chroma.css` with syntax highlighting styles that work with `render_markdown`'s CSS-class-based highlighting.
+**Purpose:** Generates `css/chroma.css` for syntax-highlighted code blocks. By default it styles Chroma token classes from the active palette's `code-*` colors; with `markdown.highlight.theme` it uses an explicit Chroma theme override.
 
 **Configuration (TOML):**
 ```toml
@@ -3060,15 +3125,15 @@ Variables are automatically available in your CSS:
 theme = "github-dark"  # Chroma theme name
 ```
 
-Or auto-derived from palette:
+Or use palette-native syntax colors:
 ```toml
 [theme]
-palette = "catppuccin-mocha"  # Automatically selects matching Chroma theme
+palette = "catppuccin-mocha"  # Uses the palette's code-* component colors
 ```
 
 **Behavior:**
-1. During Configure: Reads theme from `markdown.highlight.theme` or derives from palette
-2. Falls back to variant-appropriate default (dark palettes -> github-dark, light palettes -> github)
+1. During Configure: Reads `markdown.highlight.theme` if explicitly set
+2. Without an explicit theme, emits palette-native CSS using `--color-code-*` variables
 3. During Write: Generates `{output_dir}/css/chroma.css` with syntax highlighting styles
 
 **Available Chroma Themes:**
@@ -3104,20 +3169,17 @@ Include the generated CSS in your base template:
 <link rel="stylesheet" href="/css/chroma.css">
 ```
 
-**Palette to Chroma Theme Mapping:**
+**Palette-native roles used by default:**
 
-| Palette | Chroma Theme |
-|---------|--------------|
-| `catppuccin-mocha` | `catppuccin-mocha` |
-| `catppuccin-latte` | `catppuccin-latte` |
-| `dracula` | `dracula` |
-| `nord` | `nord` |
-| `gruvbox-dark` | `gruvbox` |
-| `gruvbox-light` | `gruvbox-light` |
-| `solarized-dark` | `solarized-dark` |
-| `solarized-light` | `solarized-light` |
-| `rose-pine` | `rose-pine` |
-| `tokyo-night` | `tokyo-night` |
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
 
 **Related plugins:**
 - [[#render_markdown|render_markdown]] - Uses CSS classes for syntax highlighting
@@ -3595,6 +3657,7 @@ no_sandbox = false                                          # Required in contai
 5. When `use_css_variables` is true, reads site CSS custom properties and passes them to `mermaid.initialize()` so diagrams match the site palette automatically
 6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from vendor assets by default.
 7. In chromium mode, the MermaidJS library is cached at `~/.cache/markata-go/mermaid/` to avoid re-downloading on each build
+8. In cli/chromium modes, rendered SVGs are cached in the build cache and reused when the diagram source and rendering inputs are unchanged
 
 **Markdown usage:**
 ````markdown
@@ -3961,6 +4024,42 @@ gitGraph
     merge feature/search id: "Merge search"
     commit id: "v1.0.0 release" tag: "v1.0.0"
 ```
+
+---
+
+### webawesome
+
+**Name:** `webawesome`  
+**Stage:** Configure (register shared vendor asset) + Render (after render_markdown)  
+**Purpose:** Converts Web Awesome Markdown containers into custom elements and loads Web Awesome assets when needed.
+
+**Status:** Built-in. Add `webawesome` to `hooks` to use it explicitly.
+
+**Configuration (TOML):**
+```toml
+[markata-go]
+hooks = ["default", "webawesome"]
+
+[markata-go.webawesome]
+enabled = true
+source = "vendor" # "vendor" (default) or "cdn"
+version = "3.5.0"
+theme = "default"
+palette = "default"
+brand = "blue"
+```
+
+When `source = "vendor"`, the plugin downloads Web Awesome through the shared `[markata-go.assets]` vendor pipeline and serves it from `/assets/vendor/webawesome/...`.
+
+**Markdown syntax:**
+```markdown
+::: webawesome comparison {position=42 caption="Before and after"}
+![Before](/images/before.webp)
+![After](/images/after.webp)
+:::
+```
+
+See the [[webawesome-components|Web Awesome Components]] guide for demos and self-hosting details.
 
 ---
 

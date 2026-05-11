@@ -643,19 +643,33 @@ coding agents can work with markata-go sites more effectively.
 
 ## Install the Bundled Skill
 
+List supported agent ids and install paths:
+
+    markata-go agent list-agents
+
     markata-go agent install
 
-By default this installs the skill into the portable agents layout:
+By default this installs the skill into the current agent's project layout when
+markata-go can detect one from the environment. Otherwise it falls back to the
+portable universal layout:
 
     .agents/skills/markata-go-site/
 
-To install for Claude Code instead:
+To install for Claude Code explicitly:
 
-    markata-go agent install --target claude
+    markata-go agent install --agent claude-code
 
 This installs to:
 
     .claude/skills/markata-go-site/
+
+To install into OpenCode's global skill directory instead:
+
+    markata-go agent install --agent opencode --global
+
+This installs to:
+
+    ~/.config/opencode/skills/markata-go-site/
 
 ## Skill Layout
 
@@ -671,6 +685,7 @@ The installed skill is intentionally split into focused topic files:
 - plugin creation
 
 The entrypoint is ` + "`SKILL.md`" + ` and the detailed guidance lives under ` + "`topics/`" + `.
+Reference material lives under ` + "`reference/`" + `, starter files live under ` + "`examples/`" + `, and bundled regression prompts live under ` + "`evals/`" + `.
 
 ## Why a Command Group?
 

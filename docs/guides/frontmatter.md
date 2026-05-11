@@ -351,6 +351,10 @@ Templates are looked up in:
 2. Theme templates
 3. Default theme fallback
 
+Example built-in template choices include `post.html`, `landing.html`, `docs.html`, and `slides.html`.
+
+`slides.html` is intended for presentation decks and pairs well with the shared assets system when you want to self-host Reveal.js.
+
 ---
 
 ## Complete Field Reference

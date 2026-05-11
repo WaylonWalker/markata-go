@@ -101,15 +101,38 @@ func TestSiteSkill_ContainsExampleFiles(t *testing.T) {
 	}
 }
 
+func TestSiteSkill_ContainsEvalFiles(t *testing.T) {
+	requiredEvals := []string{
+		"evals/evals.json",
+	}
+
+	skillFS, err := SiteSkill()
+	if err != nil {
+		t.Fatalf("SiteSkill() error = %v", err)
+	}
+
+	for _, evalFile := range requiredEvals {
+		t.Run(evalFile, func(t *testing.T) {
+			info, err := fs.Stat(skillFS, evalFile)
+			if err != nil {
+				t.Fatalf("missing required eval file %q: %v", evalFile, err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("eval file %q is empty", evalFile)
+			}
+		})
+	}
+}
+
 func TestListFiles_ReturnsExpectedFiles(t *testing.T) {
 	files, err := ListFiles()
 	if err != nil {
 		t.Fatalf("ListFiles() error = %v", err)
 	}
 
-	// SKILL.md + 8 topic files + 3 reference files + 6 example files = 18 minimum
-	if len(files) < 18 {
-		t.Fatalf("ListFiles() returned %d files, expected at least 18", len(files))
+	// SKILL.md + 8 topic files + 3 reference files + 6 example files + 1 eval file = 19 minimum
+	if len(files) < 19 {
+		t.Fatalf("ListFiles() returned %d files, expected at least 19", len(files))
 	}
 
 	hasSkill := false

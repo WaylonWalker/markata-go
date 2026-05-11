@@ -102,11 +102,26 @@ func TestFeedHelpers_RenderFeedPhotoCard(t *testing.T) {
 	if !strings.Contains(output, "photo-figure") {
 		t.Fatalf("expected photo figure class, got: %s", output)
 	}
+	if !strings.Contains(output, `aria-label="Wicket in his lab"`) {
+		t.Fatalf("expected accessible name on media anchor, got: %s", output)
+	}
 	if !strings.Contains(output, "<figure") || !strings.Contains(output, "<figcaption") {
 		t.Fatalf("expected figure markup for photo card, got: %s", output)
 	}
 	if !strings.Contains(output, description) {
 		t.Fatalf("expected photo description in figcaption, got: %s", output)
+	}
+}
+
+func TestFeedHelpers_RenderPhotoFigureAddsAccessibleName(t *testing.T) {
+	output := renderPhotoFigure(map[string]interface{}{
+		"href":        "/lab/",
+		"image":       "/lab.webp",
+		"description": "Wicket in his lab",
+	})
+
+	if !strings.Contains(output, `aria-label="Wicket in his lab"`) {
+		t.Fatalf("expected aria-label on fallback media anchor, got: %s", output)
 	}
 }
 

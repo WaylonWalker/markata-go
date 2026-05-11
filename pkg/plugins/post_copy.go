@@ -32,15 +32,34 @@ func (p postCopyPayloads) JSON() string {
 func buildPostCopyPayloads(post *models.Post, config *lifecycle.Config, baseURL string) postCopyPayloads {
 	postURL := buildAbsolutePostURL(baseURL, post)
 	title := resolvePostTitle(post, "")
+	postFormats := models.NewPostFormatsConfig()
+	if config != nil {
+		postFormats = resolvePostFormats(post, config)
+	}
+
+	markdownURL := ""
+	textURL := ""
+	ansiCurl := ""
+	if post != nil && !post.Private {
+		if postFormats.Markdown {
+			markdownURL = buildAbsolutePostFormatURL(baseURL, post, ".md")
+		}
+		if postFormats.Text {
+			textURL = buildAbsolutePostFormatURL(baseURL, post, ".txt")
+		}
+		if postFormats.ANSI {
+			ansiCurl = buildPostCurlCommand(baseURL, post, ".ansi")
+		}
+	}
 
 	return postCopyPayloads{
 		Title:       title,
 		URL:         postURL,
 		Markdown:    buildPostCopyMarkdown(post, postURL),
 		Text:        buildPostCopyText(post, config, postURL),
-		MarkdownURL: buildAbsolutePostFormatURL(baseURL, post, ".md"),
-		TextURL:     buildAbsolutePostFormatURL(baseURL, post, ".txt"),
-		ANSICurl:    buildPostCurlCommand(baseURL, post, ".ansi"),
+		MarkdownURL: markdownURL,
+		TextURL:     textURL,
+		ANSICurl:    ansiCurl,
 	}
 }
 

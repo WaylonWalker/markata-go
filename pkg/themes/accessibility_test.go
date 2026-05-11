@@ -16,6 +16,10 @@ func minInt(a, b int) int {
 	return b
 }
 
+func normalizeNewlines(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
 // TestCSSFocusIndicators validates that interactive elements have visible focus states.
 // This is required for WCAG 2.4.7 Focus Visible (Level AA).
 func TestCSSFocusIndicators(t *testing.T) {
@@ -23,15 +27,21 @@ func TestCSSFocusIndicators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read main.css: %v", err)
 	}
-	css := string(mainCSS)
+	css := normalizeNewlines(string(mainCSS))
 
 	componentsCSS, err := ReadStatic("css/components.css")
 	if err != nil {
 		t.Fatalf("Failed to read components.css: %v", err)
 	}
-	components := string(componentsCSS)
+	components := normalizeNewlines(string(componentsCSS))
 
-	allCSS := css + "\n" + components
+	cardsCSS, err := ReadStatic("css/cards.css")
+	if err != nil {
+		t.Fatalf("Failed to read cards.css: %v", err)
+	}
+	cards := normalizeNewlines(string(cardsCSS))
+
+	allCSS := css + "\n" + components + "\n" + cards
 
 	t.Run("links have focus state", func(t *testing.T) {
 		// Check for a:focus or a:focus-visible styles
@@ -148,6 +158,55 @@ func TestCSSFocusIndicators(t *testing.T) {
 	})
 }
 
+func TestDefaultThemeContrastSensitiveSelectorsUseAccessibleTokens(t *testing.T) {
+	t.Parallel()
+
+	homeCSS, err := ReadStatic("css/home.css")
+	if err != nil {
+		t.Fatalf("Failed to read home.css: %v", err)
+	}
+
+	webmentionsCSS, err := ReadStatic("css/webmentions.css")
+	if err != nil {
+		t.Fatalf("Failed to read webmentions.css: %v", err)
+	}
+
+	admonitionsCSS, err := ReadStatic("css/admonitions.css")
+	if err != nil {
+		t.Fatalf("Failed to read admonitions.css: %v", err)
+	}
+
+	home := normalizeNewlines(string(homeCSS))
+	webmentions := normalizeNewlines(string(webmentionsCSS))
+	admonitions := normalizeNewlines(string(admonitionsCSS))
+
+	if !strings.Contains(home, ".home-card .home-updated {\n  font-size: var(--text-sm);\n  color: var(--color-text-secondary);") {
+		t.Error("home updated labels should use --color-text-secondary without additional opacity reduction")
+	}
+	if strings.Contains(home, ".home-card .home-updated {\n  font-size: var(--text-sm);\n  color: var(--color-text-muted);\n  opacity:") {
+		t.Error("home updated labels should not reduce opacity on already-muted text")
+	}
+
+	if !strings.Contains(webmentions, ".wm-count {\n  display: inline-flex;\n  align-items: center;\n  gap: 0.25em;\n  white-space: nowrap;\n  color: var(--color-text-secondary);") {
+		t.Error("webmention count labels should inherit an accessible surface-safe text token")
+	}
+	for _, selector := range []string{".wm-likes", ".wm-reposts", ".wm-replies"} {
+		if !strings.Contains(webmentions, selector+" {\n  color: var(--color-text-secondary);") {
+			t.Errorf("%s should use the readable secondary text token on card surfaces", selector)
+		}
+	}
+
+	if !strings.Contains(admonitions, ".admonition-title {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  font-weight: 600;\n  margin-bottom: var(--space-2);\n  color: var(--color-text);") {
+		t.Error("admonition titles should use the primary text token")
+	}
+	if strings.Contains(admonitions, "color-mix(in srgb") {
+		t.Error("admonition title text should not rely on mixed accent colors for readability")
+	}
+	if !strings.Contains(admonitions, ".admonition-title::before {\n  content: var(--admonition-icon, \"\");\n  font-size: 1.25em;\n  color: var(--admonition-color, var(--color-primary));") {
+		t.Error("admonition icons should carry the accent color when title text stays on readable text tokens")
+	}
+}
+
 // TestCSSTouchTargets validates that interactive elements meet minimum touch target sizes.
 // This is recommended by WCAG 2.5.5 Target Size (Level AAA) and mobile best practices.
 func TestCSSTouchTargets(t *testing.T) {
@@ -155,15 +214,21 @@ func TestCSSTouchTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read main.css: %v", err)
 	}
-	css := string(mainCSS)
+	css := normalizeNewlines(string(mainCSS))
 
 	componentsCSS, err := ReadStatic("css/components.css")
 	if err != nil {
 		t.Fatalf("Failed to read components.css: %v", err)
 	}
-	components := string(componentsCSS)
+	components := normalizeNewlines(string(componentsCSS))
 
-	allCSS := css + "\n" + components
+	cardsCSS, err := ReadStatic("css/cards.css")
+	if err != nil {
+		t.Fatalf("Failed to read cards.css: %v", err)
+	}
+	cards := normalizeNewlines(string(cardsCSS))
+
+	allCSS := css + "\n" + components + "\n" + cards
 
 	t.Run("pagination items have minimum size", func(t *testing.T) {
 		// WCAG recommends 44x44px minimum, 36px is acceptable with proper spacing
@@ -200,6 +265,43 @@ func TestCSSTouchTargets(t *testing.T) {
 			if !paginationBtnRe.MatchString(allCSS) {
 				t.Error("Pagination buttons should have padding for touch targets")
 			}
+		}
+	})
+
+	t.Run("disabled pagination remains readable", func(t *testing.T) {
+		disabledPaginationRe := regexp.MustCompile(`(?s)\.pagination-prev\.disabled,\s*\.pagination-next\.disabled[^}]*opacity:\s*1`)
+		if !disabledPaginationRe.MatchString(css) {
+			t.Error("Disabled pagination should not reduce opacity below readable contrast")
+		}
+	})
+
+	t.Run("card and feed nav targets are at least 24px tall", func(t *testing.T) {
+		cardSnippets := map[string]string{
+			"card titles":  ".card-link .card-title {\n  font-size: var(--text-base);\n  font-weight: 600;\n  margin-bottom: 0;\n  min-height: 24px;",
+			"card domains": ".card-link .card-domain {\n  display: inline-flex;\n  align-items: center;\n  font-size: var(--text-xs);\n  color: var(--color-text);\n  margin-top: var(--space-1);\n  max-width: 100%;\n  min-width: 2rem;\n  min-height: 2rem;",
+		}
+
+		for label, snippet := range cardSnippets {
+			if !strings.Contains(cards, snippet) {
+				t.Errorf("%s should have a 24px touch target", label)
+			}
+		}
+
+		feedRules := map[string]*regexp.Regexp{
+			"feed nav title":   regexp.MustCompile(`(?s)\.feed-nav-title a\s*\{[^}]*min-height:\s*24px`),
+			"feed nav buttons": regexp.MustCompile(`(?s)\.feed-nav-cycle-btn\s*\{[^}]*width:\s*2rem[^}]*height:\s*2rem[^}]*min-width:\s*2rem[^}]*min-height:\s*2rem`),
+			"feed nav formats": regexp.MustCompile(`(?s)\.feed-nav-format-link\s*\{[^}]*min-height:\s*24px`),
+		}
+
+		for label, rule := range feedRules {
+			if !rule.MatchString(allCSS) {
+				t.Errorf("%s should have a 24px touch target", label)
+			}
+		}
+
+		hasAvatarRule := regexp.MustCompile(`(?s)\.card-link \.card-(?:link-content|excerpt) a\.has-avatar\s*,\s*\.card-link \.card-excerpt a\.has-avatar\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center[^}]*min-width:\s*2rem[^}]*min-height:\s*2rem`)
+		if !hasAvatarRule.MatchString(cards) {
+			t.Error("avatar-enhanced links inside cards should have a 24px touch target")
 		}
 	})
 

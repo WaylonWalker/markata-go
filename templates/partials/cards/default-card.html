@@ -3,13 +3,21 @@
 <article class="card card-default h-entry">
   <h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
 
+  {% if post.image or post.cover or post.cover_image or post.og_image %}
+  {% with post.image|default:post.cover|default:post.cover_image|default:post.og_image as media %}
+  <a href="{{ post.href }}" class="card-media u-url">
+    <img src="{{ media|with_size:"1200,675" }}" alt="{{ post.title | default:post.description | default:'Post image' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
+  </a>
+  {% endwith %}
+  {% endif %}
+
   {% if post.description %}
   <p class="card-description p-summary">{{ post.description }}</p>
   {% endif %}
 
   <footer class="card-meta">
     {% if post.date %}
-    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
     {% endif %}
     {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min</span>{% endif %}
     {% include "partials/webmention-counts.html" %}

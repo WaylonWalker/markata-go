@@ -403,6 +403,19 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert authors to map
 	authorsMap := authorsToMap(&c.Authors)
 
+	feedsPageEnabled := true
+	if c.FeedsPage.Enabled != nil {
+		feedsPageEnabled = *c.FeedsPage.Enabled
+	}
+	feedsPageMap := map[string]interface{}{
+		"enabled":     feedsPageEnabled,
+		"title":       c.FeedsPage.Title,
+		"description": c.FeedsPage.Description,
+		"template":    c.FeedsPage.Template,
+		"slug_prefix": c.FeedsPage.SlugPrefix,
+		"robots":      c.FeedsPage.Robots,
+	}
+
 	var licenseValue interface{}
 	if c.License.IsDisabled() {
 		licenseValue = false
@@ -440,6 +453,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"header":        headerMap,
 		"theme":         themeMap,
 		"authors":       authorsMap,
+		"feeds_page":    feedsPageMap,
 		"license":       licenseValue,
 		"templates": map[string]interface{}{
 			"media": map[string]interface{}{
@@ -635,6 +649,7 @@ func postFormatsToMap(p *models.PostFormatsConfig) map[string]interface{} {
 		"html":     htmlEnabled,
 		"markdown": p.Markdown,
 		"text":     p.Text,
+		"ansi":     p.ANSI,
 		"og":       p.OG,
 	}
 }
@@ -756,6 +771,14 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 		"root_selector":     s.Pagefind.RootSelector,
 	}
 
+	bleveMap := map[string]interface{}{
+		"endpoint":     s.Bleve.Endpoint,
+		"fuzzy":        s.Bleve.IsFuzzy(),
+		"limit":        s.Bleve.DefaultLimit(),
+		"max_limit":    s.Bleve.GetMaxLimit(),
+		"cors_origins": append([]string{}, s.Bleve.CORSOrigins...),
+	}
+
 	// Convert feed-specific search configs
 	feedConfigs := make([]map[string]interface{}, len(s.Feeds))
 	for i, feed := range s.Feeds {
@@ -769,10 +792,13 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 
 	return map[string]interface{}{
 		"enabled":        enabled,
+		"backend":        s.SearchBackend(),
+		"endpoint":       s.SearchEndpoint(),
 		"position":       position,
 		"placeholder":    placeholder,
 		"show_images":    showImages,
 		"excerpt_length": excerptLength,
+		"bleve":          bleveMap,
 		"pagefind":       pagefindMap,
 		"feeds":          feedConfigs,
 	}
@@ -1198,6 +1224,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"base_url":       baseURL,
 		"title":          f.Title,
 		"description":    f.Description,
+		"robots":         f.Robots,
 		"filter":         f.Filter,
 		"sort":           f.Sort,
 		"reverse":        f.Reverse,
@@ -1267,7 +1294,7 @@ func sidebarItemsToMaps(items []models.SidebarNavItem) []map[string]interface{} 
 func (c Context) ToPongo2() pongo2.Context {
 	postMap := postToMap(c.Post)
 	configMap := GetConfigMap(c.Config)
-	if c.Config != nil && c.Config.Theme.CustomCSS != "" {
+	if c.Config != nil {
 		configMap["theme"] = ThemeToMap(&c.Config.Theme)
 	}
 

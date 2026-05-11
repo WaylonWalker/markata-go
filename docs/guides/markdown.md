@@ -763,13 +763,18 @@ cjk = true  # default: true
 
 ## Figures
 
-Automatically convert images with following paragraphs into HTML `<figure>` elements with `<figcaption>`.
+Automatically convert images with following paragraphs into HTML `<figure>` elements with `<figcaption>`. A single-paragraph blockquote immediately after an image is also treated as caption content, which is useful when the caption should read as quoted text.
 
 **Input:**
 
 ```markdown
 ![Alt text](image.jpg)
 This is the caption for the figure.
+```
+
+```markdown
+![Alt text](image.jpg)
+> This quoted line also becomes the figure caption.
 ```
 
 **Output:**
@@ -822,7 +827,7 @@ The anchor appears on hover and uses your theme's color scheme.
 
 ```toml
 [markdown.extensions]
-anchor = true  # default: true
+anchor = false  # default: false (use heading_anchors plugin instead)
 ```
 
 ---
@@ -922,26 +927,26 @@ line_numbers = false     # Line numbers (if supported)
 
 #### Automatic Theme from Palette
 
-By default, the syntax highlighting theme is **automatically derived** from your site's color palette. This ensures code blocks match your site's overall look:
+By default, syntax highlighting is **driven by your site's palette code colors**. This ensures code blocks match your site's overall look even when there is no exact Chroma theme match:
 
 ```toml
 [markata-go.theme]
-palette = "catppuccin-mocha"  # Code blocks will use catppuccin-mocha highlighting
+palette = "catppuccin-mocha"
 ```
 
-| Site Palette | Code Theme |
-|-------------|------------|
-| catppuccin-mocha | catppuccin-mocha |
-| catppuccin-latte | catppuccin-latte |
-| rose-pine | rose-pine |
-| gruvbox-dark | gruvbox |
-| gruvbox-light | gruvbox-light |
-| tokyo-night | tokyonight-night |
-| dracula | dracula |
-| solarized-dark | solarized-dark |
-| nord-dark | nord |
+The palette's `code-*` component roles control the generated CSS variables used by Chroma token classes:
 
-For palettes without an exact match, defaults are used based on light/dark variant.
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
+
+If you want a specific Chroma theme instead of palette-native colors, set `markdown.highlight.theme` explicitly.
 
 #### Explicit Override
 
@@ -2115,7 +2120,7 @@ Use the `{data-zoomable}` attribute marker to make specific images zoomable:
 
 ```html
 <a href="/images/sunset.jpg" class="glightbox-link">
-  <img src="/images/sunset.jpg" alt="Beautiful sunset" class="glightbox" data-glightbox="description: Beautiful sunset">
+  <img src="/images/sunset.jpg" alt="Beautiful sunset" class="glightbox" width="1200" height="675" data-glightbox="description: Beautiful sunset">
 </a>
 
 <img src="/images/icon.png" alt="Regular image without zoom">

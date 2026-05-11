@@ -2,7 +2,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,11 +11,7 @@ import (
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		exitCode := 1
-		var exitErr interface{ ExitCode() int }
-		if errors.As(err, &exitErr) {
-			exitCode = exitErr.ExitCode()
-		}
+		exitCode := cmd.ExitCodeForError(err)
 		if message := strings.TrimSpace(err.Error()); message != "" {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}

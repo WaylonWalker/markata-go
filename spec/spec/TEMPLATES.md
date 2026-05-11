@@ -13,6 +13,7 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 - Filters and functions
 - Custom template per post
 - Format-specific templates for `.txt`, `.ansi`, `.md`, and OG outputs
+- Presentation templates such as `slides.html` for reveal.js decks
 
 ---
 
@@ -127,6 +128,42 @@ Template for individual posts:
 </article>
 {% endblock %}
 ```
+
+---
+
+## Slides Template
+
+Markata-go MAY render a post with `template: "slides.html"` for presentation-style decks.
+
+The default `slides.html` behavior is:
+
+1. Use [reveal.js](https://revealjs.com/) for keyboard navigation and slide rendering.
+2. Convert rendered article HTML into nested `<section>` elements.
+3. Start a new horizontal slide when the rendered body encounters:
+   - an `<h2>` heading
+   - an `<hr>` element, which matches the common `---` Markdown slide separator used by reveal.js and Marp
+4. Start a new vertical slide within the current horizontal stack when the rendered body encounters an `<h3>` heading.
+5. Preserve any leading content before the first `<h2>` as the first slide in the deck.
+6. Load reveal.js from the shared CDN asset registry when `[markata-go.assets].mode` is self-hosted or auto and the assets are available; otherwise fall back to CDN URLs.
+7. Size the reveal.js deck responsively so slides remain readable on narrow mobile viewports and continue to relayout on viewport changes such as rotation.
+
+This allows authors to write decks in plain Markdown using common slide-authoring conventions:
+
+```markdown
+## Opening
+
+Welcome.
+
+### Details
+
+Vertical slide under Opening.
+
+---
+
+## Next Chapter
+```
+
+The template system MUST expose a `slides_reveal` filter that accepts rendered HTML and returns safe reveal.js section markup.
 
 ---
 
@@ -919,11 +956,13 @@ Default templates include Microformats2 classes for IndieWeb compatibility.
 
 Single post templates MUST include `h-entry` markup:
 
+Visible HTML dates SHOULD use the shared `human_date` filter so post pages, cards, archive views, and reader metadata render as `Apr 15, 2026` while `datetime` attributes remain machine-readable.
+
 ```html
 <article class="post h-entry">
   <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
   <h1 class="p-name">{{ post.title }}</h1>
-  <time class="dt-published" datetime="{{ post.date | atom_date }}">...</time>
+  <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
   <div class="post-content e-content">{{ body | safe }}</div>
   {% for tag in post.tags %}
   <a class="p-category" href="/tags/{{ tag | slugify }}/">{{ tag }}</a>
@@ -1019,6 +1058,7 @@ Extension matching is case-insensitive.
 ### `media_url` Filter
 
 Resolves a media URL from multiple fields. Returns the first non-empty value from the input (primary) and parameter (fallback).
+Trusted media URLs are normalized to `https` before output so templates can reuse the filter for raw image metadata.
 
 ```jinja2
 {# Use image field first, fall back to video field #}
@@ -1041,7 +1081,7 @@ Photo and video card templates use both filters together to support interchangea
 
 OG cards, feed cards, and embed cards share the same media rules so that headless screenshotters, RSS readers, and embedded previews all see equivalent metadata. When any of these templates renders `image`/`cover_image`/`og_image`/`video` content, the helpers below guarantee consistent query parameters, poster selection, and host restrictions:
 
-1. Use the `with_size(width, height)` helper (e.g., `post.cover_image|with_size:"1200,630"`) so the rendered media URL always includes explicit `w` and `h` query parameters that match the template's rendered width/height. These query params must stay in sync with the actual layout so caching layers and screenshot tools receive accurate dimensions. The helper only decorates relative URLs or URLs hosted on the trusted allowlist.
+1. Use the `with_size(width, height)` helper (e.g., `post.cover_image|with_size:"1200,630"`) so the rendered media URL always includes explicit `w` and `h` query parameters that match the template's rendered width/height. These query params must stay in sync with the actual layout so caching layers and screenshot tools receive accurate dimensions. The helper only decorates relative URLs or URLs hosted on the trusted allowlist, and trusted media URLs are normalized to `https` before rendering to avoid mixed-content warnings.
 2. Detect video media with a query/fragment-safe `is_video` filter so that `video.mp4?token=…` is still treated as a video, and use the companion `video_mime` filter to infer the correct `video/…` MIME type without relying on brittle `endswith` checks.
 3. Resolve video posters with the `poster_url()` helper. The helper checks the following frontmatter aliases in order: `poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, `thumb`. If none of those values exist and the resolved video URL is hosted on a trusted domain, `poster_url()` derives a `.webp` poster from the video path so you still get a preview image for allowlisted hosts. Templates can re-run `with_size` against the poster URL to keep query parameters aligned with the rendered dimensions.
 

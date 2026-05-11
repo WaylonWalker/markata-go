@@ -2,11 +2,14 @@
 package plugins
 
 import (
+	"fmt"
 	"html"
 	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -24,6 +27,8 @@ type MermaidPlugin struct {
 	renderer      mermaidRenderer
 	paletteColors *mermaidPaletteColors // resolved at configure time, nil if no palette
 	assetURLs     map[string]string
+	cache         *buildcache.Cache
+	renderKey     string
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -56,9 +61,7 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-		p.assetURLs = assetURLs
-	}
+	p.assetURLs = assetURLsFromConfig(config)
 
 	// Check for mermaid config in Extra
 	mermaidConfig, ok := config.Extra["mermaid"]
@@ -192,6 +195,11 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	if !p.config.Enabled {
 		return nil
 	}
+	p.cache = GetBuildCache(m)
+	if p.cache != nil {
+		p.cache.ResetMermaidSVGUsage()
+	}
+	p.renderKey = p.rendererCacheKey()
 
 	if p.config.Mode != mermaidModeClient {
 		renderer, createErr := newMermaidRenderer(p.config, p.paletteColors)
@@ -247,6 +255,158 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	}
 
 	return nil
+}
+
+func (p *MermaidPlugin) renderDiagram(post *models.Post, diagramCode string) (string, error) {
+	renderHash := p.diagramRenderHash(diagramCode)
+	if p.cache != nil && renderHash != "" {
+		if cachedSVG := p.cache.GetCachedMermaidSVG(post.Path, renderHash); cachedSVG != "" {
+			return cachedSVG, nil
+		}
+	}
+
+	svgOutput, err := p.renderer.render(diagramCode)
+	if err != nil {
+		return "", err
+	}
+
+	if p.cache != nil && renderHash != "" {
+		//nolint:errcheck // caching is best-effort; rendering already succeeded.
+		p.cache.CacheMermaidSVG(post.Path, renderHash, svgOutput)
+	}
+	return svgOutput, nil
+}
+
+func (p *MermaidPlugin) diagramRenderHash(diagramCode string) string {
+	if p.config.Mode == mermaidModeClient {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.WriteString("mermaid-svg-v1\n")
+	builder.WriteString("renderer:")
+	builder.WriteString(p.renderKey)
+	builder.WriteString("mode:")
+	builder.WriteString(p.config.Mode)
+	builder.WriteString("\ntheme:")
+	builder.WriteString(p.config.Theme)
+	builder.WriteString("\nuse_css_variables:")
+	if p.config.UseCSSVariables {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
+	}
+	builder.WriteString("\nlightbox:")
+	if p.config.Lightbox {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
+	}
+	if p.config.CLIConfig != nil {
+		builder.WriteString("\ncli.mmdc_path:")
+		builder.WriteString(p.config.CLIConfig.MMDCPath)
+		builder.WriteString("\ncli.extra_args:")
+		builder.WriteString(p.config.CLIConfig.ExtraArgs)
+		writeMermaidCLIFileInputHashes(&builder, p.config.CLIConfig.ExtraArgs)
+	}
+	if p.config.ChromiumConfig != nil {
+		builder.WriteString("\nchromium.browser_path:")
+		builder.WriteString(p.config.ChromiumConfig.BrowserPath)
+		builder.WriteString("\nchromium.timeout:")
+		builder.WriteString(fmt.Sprint(p.config.ChromiumConfig.Timeout))
+		builder.WriteString("\nchromium.max_concurrent:")
+		builder.WriteString(fmt.Sprint(p.config.ChromiumConfig.MaxConcurrent))
+		builder.WriteString("\nchromium.no_sandbox:")
+		if p.config.ChromiumConfig.NoSandbox {
+			builder.WriteString("true")
+		} else {
+			builder.WriteString("false")
+		}
+	}
+	if p.paletteColors != nil {
+		builder.WriteString("\npalette:")
+		builder.WriteString(p.paletteColors.themeVariablesJSON())
+	}
+	builder.WriteString("\ndiagram:\n")
+	builder.WriteString(diagramCode)
+	return buildcache.ContentHash(builder.String())
+}
+
+var mermaidCLIFileArgFlags = map[string]struct{}{
+	"--configFile":          {},
+	"--cssFile":             {},
+	"--puppeteerConfigFile": {},
+	"-c":                    {},
+	"-C":                    {},
+	"-p":                    {},
+}
+
+func writeMermaidCLIFileInputHashes(builder *strings.Builder, extraArgs string) {
+	if extraArgs == "" {
+		return
+	}
+
+	args := strings.Fields(extraArgs)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if _, ok := mermaidCLIFileArgFlags[arg]; ok {
+			if i+1 < len(args) {
+				writeMermaidCLIFileInputHash(builder, args[i+1])
+				i++
+			}
+			continue
+		}
+
+		for flag := range mermaidCLIFileArgFlags {
+			prefix := flag + "="
+			if strings.HasPrefix(arg, prefix) {
+				writeMermaidCLIFileInputHash(builder, strings.TrimPrefix(arg, prefix))
+				break
+			}
+		}
+	}
+}
+
+func writeMermaidCLIFileInputHash(builder *strings.Builder, path string) {
+	if path == "" {
+		return
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		absPath = filepath.Clean(path)
+	}
+
+	builder.WriteString("\ncli.file_arg:")
+	builder.WriteString(absPath)
+	builder.WriteString(":")
+	if hash, err := buildcache.HashFile(absPath); err == nil && hash != "" {
+		builder.WriteString(hash)
+		return
+	}
+	builder.WriteString("unreadable")
+}
+
+func (p *MermaidPlugin) rendererCacheKey() string {
+	if p.config.Mode == mermaidModeClient {
+		return ""
+	}
+
+	switch p.config.Mode {
+	case mermaidModeCLI:
+		info := checkCLIDependency(p.config.CLIConfig.MMDCPath)
+		if !info.IsInstalled {
+			return "cli:unavailable"
+		}
+		return "cli:" + info.BinaryPath + ":" + info.InstalledVersion
+	case mermaidModeChromium:
+		info := checkChromiumDependency(p.config.ChromiumConfig.BrowserPath)
+		if !info.IsInstalled {
+			return "chromium:unavailable"
+		}
+		return "chromium:" + info.BinaryPath + ":" + info.InstalledVersion + ":mermaidjs-v" + mermaidJSVersion
+	default:
+		return p.config.Mode
+	}
 }
 
 // mermaidCodeBlockRegex matches <pre><code class="language-mermaid"> blocks.
@@ -308,7 +468,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			}
 
 			// For pre-rendering modes (cli/chromium): render to SVG
-			svgOutput, err := renderer.render(diagramCode)
+			svgOutput, err := p.renderDiagram(post, diagramCode)
 			if err != nil {
 				log.Printf("[mermaid] render error for %s: %v", post.Path, err)
 				renderErr = models.NewMermaidRenderError(post.Path, p.config.Mode, "failed to render diagram", err)
@@ -713,13 +873,7 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
 }
 
 func (p *MermaidPlugin) resolveAssetURL(name, fallback string) string {
-	if p.assetURLs == nil {
-		return fallback
-	}
-	if url, ok := p.assetURLs[name]; ok && url != "" {
-		return url
-	}
-	return fallback
+	return resolveAssetURL(p.assetURLs, name, fallback)
 }
 
 // SetConfig sets the mermaid configuration directly.

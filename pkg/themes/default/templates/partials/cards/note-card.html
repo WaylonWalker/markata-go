@@ -21,7 +21,7 @@
 
   <footer class="card-meta">
     {% if post.date %}
-    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
     {% endif %}
     {% include "partials/webmention-counts.html" %}
     <a href="{{ post.href }}" class="card-link">View</a>

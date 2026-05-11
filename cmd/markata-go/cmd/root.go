@@ -146,6 +146,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return newUsageError(err)
+	})
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file path (default: auto-discover)")

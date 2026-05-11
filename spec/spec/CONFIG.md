@@ -474,6 +474,10 @@ patterns_append = ["pages/*.md"]
 
 Display resolved configuration:
 
+- bare `my-ssg config` MUST behave like `my-ssg config show`
+- `config show` MUST honor the same config resolution path as build commands, including `--config` and `--merge-config`
+- conflicting output flags such as `--json` with `--toml` MUST fail with a usage error (exit code `2`)
+
 ```bash
 $ my-ssg config show
 output_dir = "public"
@@ -582,6 +586,8 @@ Created my-ssg.toml with all options documented
 ### `config validate`
 
 Validate configuration:
+
+- `config validate` MUST honor the same config resolution path as build commands, including `--config` and `--merge-config`
 
 ```bash
 $ my-ssg config validate
@@ -744,7 +750,7 @@ length = 8
 exclude = ["robots.txt", "favicon.ico"]
 ```
 
-markata-go also supports self-hosting third-party CDN assets (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3, Lite YouTube) through the assets config. When enabled, assets are downloaded into a cache directory and copied into the output under the vendor directory. Templates can use the `asset_urls` mapping to reference the local paths.
+markata-go also supports self-hosting third-party CDN assets (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3, Lite YouTube, Reveal.js) through the assets config. When enabled, assets are downloaded into a cache directory and copied into the output under the vendor directory. Templates can use the `asset_urls` mapping to reference the local paths.
 
 ```toml
 [markata-go.assets]
@@ -867,6 +873,19 @@ This section controls what output formats are generated for each post:
 | `ansi` | `false` | `/slug.ansi` | ANSI-styled terminal page output |
 | `og` | `true` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
+Posts MAY override these site defaults in frontmatter with a `post_formats` mapping. Per-post overrides merge with `[my-ssg.post_formats]` key-by-key; omitted keys inherit the site setting.
+
+```yaml
+---
+title: "Terminal-first post"
+post_formats:
+  ansi: true
+  og: false
+---
+```
+
+In this example, the post inherits the site defaults for `html`, `markdown`, and `text`, enables `.ansi` for this post only, and suppresses OG output for this post only.
+
 `text` and `ansi` are separate explicit variants:
 
 - `text` MUST emit readable plain text with no ANSI escape sequences.
@@ -891,6 +910,9 @@ Theme-aware ANSI rendering MUST derive colors from the active site palette when 
 **Directory-based Redirects for txt/md/ansi:**
 
 For `.txt`, `.md`, and `.ansi` formats, content is placed at the canonical short URL (`/slug.txt`, `/slug.md`, `/slug.ansi`). Redirects are provided at `/slug.<ext>/index.html` (for hosts that serve `index.html` in a directory) and `/slug/index.<ext>/index.html` (for backwards compatibility).
+
+Rendered feed/sidebar variant links MUST use the same canonical short URLs rather than nested `/slug/index.<ext>` paths.
+If a post format is disabled in the resolved config, the corresponding sidebar link MUST be omitted.
 
 **Special Files (robots, llms, humans, security, ads):**
 
@@ -1033,7 +1055,7 @@ trusted_domains = [
 ]
 ```
 
-- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters and derived posters. Relative URLs are always treated as trusted.
+- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters, derived posters, and `https` normalization. Relative URLs are always treated as trusted.
 - The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
 
 ## See Also

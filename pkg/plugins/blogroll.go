@@ -33,8 +33,9 @@ const categoryUncategorized = "Uncategorized"
 
 // Default slug constants for blogroll pages.
 const (
-	defaultBlogrollSlug = "blogroll"
-	defaultReaderSlug   = "reader"
+	defaultBlogrollSlug  = "blogroll"
+	defaultReaderSlug    = "reader"
+	blogrollCacheVersion = "hn-meta-v2"
 )
 
 // Default directory constants.
@@ -68,16 +69,34 @@ func extractFirstImageFromHTML(htmlContent string) string {
 
 // youtubeThumbnailRegex matches YouTube URLs and extracts the video ID.
 var youtubeThumbnailRegex = regexp.MustCompile(
-	`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)`,
+	`https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)`,
 )
 
+// youtubeVideoIDRegex extracts a video ID from YouTube Atom IDs like yt:video:abc123def45.
+var youtubeVideoIDRegex = regexp.MustCompile(`(?:^|:)video:([a-zA-Z0-9_-]{11})$`)
+
+// youtubeThumbnailURL returns a reliable YouTube thumbnail URL for a video ID.
+func youtubeThumbnailURL(videoID string) string {
+	if len(videoID) != 11 {
+		return ""
+	}
+	return "https://img.youtube.com/vi/" + videoID + "/hqdefault.jpg"
+}
+
 // extractYouTubeThumbnail extracts a YouTube thumbnail URL from content.
-// Returns the maxresdefault.jpg thumbnail URL if a YouTube URL is found.
+// Returns a stable thumbnail URL if a YouTube URL is found.
 func extractYouTubeThumbnail(content string) string {
 	matches := youtubeThumbnailRegex.FindStringSubmatch(content)
 	if len(matches) > 1 {
-		videoID := matches[1]
-		return "https://img.youtube.com/vi/" + videoID + "/maxresdefault.jpg"
+		return youtubeThumbnailURL(matches[1])
+	}
+	return ""
+}
+
+func extractYouTubeThumbnailFromID(id string) string {
+	matches := youtubeVideoIDRegex.FindStringSubmatch(strings.TrimSpace(id))
+	if len(matches) > 1 {
+		return youtubeThumbnailURL(matches[1])
 	}
 	return ""
 }
@@ -159,6 +178,17 @@ func extractAtomEntryImage(entry *atomEntry) string {
 	// Try YouTube thumbnail
 	if thumbnail := extractYouTubeThumbnail(combined); thumbnail != "" {
 		return thumbnail
+	}
+
+	// YouTube Atom feeds include stable entry IDs like yt:video:<id>.
+	if thumbnail := extractYouTubeThumbnailFromID(entry.ID); thumbnail != "" {
+		return thumbnail
+	}
+
+	for _, link := range entry.Link {
+		if thumbnail := extractYouTubeThumbnail(link.Href); thumbnail != "" {
+			return thumbnail
+		}
 	}
 
 	// Fall back to HTML img extraction
@@ -322,8 +352,8 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 		Title:       feed.Channel.Title,
 		Description: feed.Channel.Description,
 		Language:    feed.Channel.Language,
-		SiteURL:     feed.Channel.Link,
-		ImageURL:    feed.Channel.Image.URL,
+		SiteURL:     normalizeExternalURL(feed.Channel.Link),
+		ImageURL:    normalizeExternalURL(feed.Channel.Image.URL),
 	}
 
 	entries := make([]*models.ExternalEntry, 0, len(feed.Channel.Items))
@@ -357,18 +387,32 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract image from various sources (priority order)
 		imageURL := extractEntryImage(item)
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(item.Link)
+		if metadata != nil {
+			if metadata.Title != "" {
+				item.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				item.Description = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
+			}
+		}
 
 		// Create entry
+		entryURL := normalizeExternalURL(resolvedURL)
 		entry := &models.ExternalEntry{
 			ID:          id,
 			Title:       item.Title,
-			URL:         item.Link,
+			URL:         entryURL,
+			OriginalURL: originalURL,
 			Published:   pubDatePtr,
 			Updated:     pubDatePtr,
 			Author:      author,
 			Content:     content,
 			Description: stripBlogrollHTML(item.Description),
-			ImageURL:    imageURL,
+			ImageURL:    normalizeExternalURL(imageURL),
 			Categories:  item.Categories,
 		}
 
@@ -408,8 +452,8 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 	parsed := &blogrollParsedFeed{
 		Title:       feed.Title,
 		Description: feed.Subtitle,
-		SiteURL:     siteURL,
-		ImageURL:    imageURL,
+		SiteURL:     normalizeExternalURL(siteURL),
+		ImageURL:    normalizeExternalURL(imageURL),
 	}
 
 	entries := make([]*models.ExternalEntry, 0, len(feed.Entries))
@@ -453,18 +497,31 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 
 		// Extract first image from content
 		imageURL := extractAtomEntryImage(entry)
+		resolvedURL, originalURL, metadata := enrichHackerNewsFeedEntry(entryURL)
+		if metadata != nil {
+			if metadata.Title != "" {
+				entry.Title = metadata.Title
+			}
+			if metadata.Description != "" {
+				entry.Summary = metadata.Description
+			}
+			if metadata.Image != "" {
+				imageURL = metadata.Image
+			}
+		}
 
 		// Create entry
 		extEntry := &models.ExternalEntry{
 			ID:          entry.ID,
 			Title:       entry.Title,
-			URL:         entryURL,
+			URL:         normalizeExternalURL(resolvedURL),
+			OriginalURL: originalURL,
 			Published:   pubDatePtr,
 			Updated:     updDatePtr,
 			Author:      entry.Author.Name,
 			Content:     content,
 			Description: stripBlogrollHTML(entry.Summary),
-			ImageURL:    imageURL,
+			ImageURL:    normalizeExternalURL(imageURL),
 			Categories:  tags,
 		}
 
@@ -580,9 +637,7 @@ func (p *BlogrollPlugin) Priority(stage lifecycle.Stage) int {
 func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra != nil {
-		if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
-			p.assetURLs = assetURLs
-		}
+		p.assetURLs = assetURLsFromConfig(config)
 		if disabled, ok := config.Extra["blogroll_disabled"].(bool); ok && disabled {
 			return nil
 		}
@@ -600,13 +655,7 @@ func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 func (p *BlogrollPlugin) resolveAssetURL(name, fallback string) string {
-	if p.assetURLs == nil {
-		return fallback
-	}
-	if url, ok := p.assetURLs[name]; ok && url != "" {
-		return url
-	}
-	return fallback
+	return resolveAssetURL(p.assetURLs, name, fallback)
 }
 
 // Collect fetches and parses configured external feeds.
@@ -716,7 +765,7 @@ func (p *BlogrollPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Generate reader page
-	if err := p.writeReaderPage(m, outputDir, entries, blogrollConfig); err != nil {
+	if err := p.writeReaderPage(m, outputDir, feeds, entries, blogrollConfig); err != nil {
 		return fmt.Errorf("reader page: %w", err)
 	}
 
@@ -804,15 +853,6 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 		return compareEntries(allEntries[i], allEntries[j])
 	})
 
-	// Apply fallback image service for entries without images
-	if config.FallbackImageService != "" {
-		for _, entry := range allEntries {
-			if entry.ImageURL == "" && entry.URL != "" {
-				entry.ImageURL = generateFallbackImageURL(config.FallbackImageService, entry.URL)
-			}
-		}
-	}
-
 	return feeds, allEntries, nil
 }
 
@@ -834,24 +874,37 @@ func initFeedFromConfig(config models.ExternalFeedConfig) *models.ExternalFeed {
 		feed.Description = config.Description
 	}
 	if config.SiteURL != "" {
-		feed.SiteURL = config.SiteURL
+		feed.SiteURL = normalizeExternalURL(config.SiteURL)
 	}
 	if config.ImageURL != "" {
-		feed.ImageURL = config.ImageURL
+		feed.ImageURL = normalizeExternalURL(config.ImageURL)
 	}
+	normalizeExternalFeed(feed)
 
 	return feed
 }
 
 // mergeCachedFeed merges config values into a cached feed.
 func mergeCachedFeed(cached *models.ExternalFeed, config models.ExternalFeedConfig) *models.ExternalFeed {
+	normalizeExternalFeed(cached)
+	cached.Config = config
 	if config.Title != "" {
 		cached.Title = config.Title
+	}
+	if config.Description != "" {
+		cached.Description = config.Description
 	}
 	if config.Category != "" {
 		cached.Category = config.Category
 	}
+	if config.SiteURL != "" {
+		cached.SiteURL = normalizeExternalURL(config.SiteURL)
+	}
+	if config.ImageURL != "" {
+		cached.ImageURL = normalizeExternalURL(config.ImageURL)
+	}
 	cached.Tags = config.Tags
+	normalizeExternalFeed(cached)
 	return cached
 }
 
@@ -864,15 +917,16 @@ func updateFeedFromParsed(feed *models.ExternalFeed, parsed *blogrollParsedFeed)
 		feed.Description = parsed.Description
 	}
 	if feed.SiteURL == "" {
-		feed.SiteURL = parsed.SiteURL
+		feed.SiteURL = normalizeExternalURL(parsed.SiteURL)
 	}
 	if feed.ImageURL == "" {
-		feed.ImageURL = parsed.ImageURL
+		feed.ImageURL = normalizeExternalURL(parsed.ImageURL)
 	}
 	if feed.AvatarURL == "" && parsed.AvatarURL != "" {
-		feed.AvatarURL = parsed.AvatarURL
+		feed.AvatarURL = normalizeExternalURL(parsed.AvatarURL)
 		feed.AvatarSource = parsed.AvatarSource
 	}
+	normalizeExternalFeed(feed)
 
 	now := time.Now()
 	feed.LastFetched = &now
@@ -1053,6 +1107,7 @@ func (p *BlogrollPlugin) loadFromCacheAny(url, cacheDir string) *models.External
 	if err := json.Unmarshal(data, &feed); err != nil {
 		return nil
 	}
+	normalizeExternalFeed(&feed)
 
 	return &feed
 }
@@ -1073,7 +1128,7 @@ func (p *BlogrollPlugin) saveToCache(feed *models.ExternalFeed, cacheDir string)
 
 // cacheKey generates a cache key from a URL.
 func (p *BlogrollPlugin) cacheKey(url string) string {
-	hash := sha256.Sum256([]byte(url))
+	hash := sha256.Sum256([]byte(blogrollCacheVersion + "|" + url))
 	return hex.EncodeToString(hash[:8])
 }
 
@@ -1167,7 +1222,7 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 
 // writeReaderPage generates the paginated /reader pages.
 // Pages are written concurrently for better I/O throughput.
-func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
+func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, feeds []*models.ExternalFeed, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
 	// Use configured slug or default to "reader"
 	slug := config.ReaderSlug
 	if slug == "" {
@@ -1182,10 +1237,11 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 
 	// Paginate entries
 	pages := p.paginateEntries(entries, config, "/reader")
+	feedIndex := buildFeedIndex(feeds)
 
 	// If no pages (no entries), generate empty page
 	if len(pages) == 0 {
-		return p.writeReaderPageFile(m, readerDir, config, models.ReaderPage{
+		return p.writeReaderPageFile(m, readerDir, feedIndex, config, models.ReaderPage{
 			Number:         1,
 			Entries:        []*models.ExternalEntry{},
 			TotalPages:     1,
@@ -1205,7 +1261,7 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 		go func(idx int) {
 			defer wg.Done()
 			isFirstPage := idx == 0
-			if err := p.writeReaderPageFile(m, readerDir, config, pages[idx], isFirstPage); err != nil {
+			if err := p.writeReaderPageFile(m, readerDir, feedIndex, config, pages[idx], isFirstPage); err != nil {
 				errCh <- err
 			}
 		}(i)
@@ -1223,7 +1279,7 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 }
 
 // writeReaderPageFile writes a single reader page (full and partial for HTMX).
-func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir string, config models.BlogrollConfig, page models.ReaderPage, isFirstPage bool) error {
+func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir string, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig, page models.ReaderPage, isFirstPage bool) error {
 	// Get slugs for cross-linking
 	blogrollSlug := config.BlogrollSlug
 	if blogrollSlug == "" {
@@ -1239,7 +1295,8 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 	ctx := map[string]interface{}{
 		"title":           "Reader",
 		"description":     "Latest posts from blogs I follow",
-		"entries":         p.entriesToMaps(page.Entries),
+		"entries":         p.entriesToMaps(page.Entries, feedIndex, config),
+		"day_groups":      p.readerDayGroups(page.Entries, feedIndex, config),
 		"entry_count":     page.TotalItems,
 		"config":          p.configToMap(m.Config()),
 		"page":            p.readerPageToMap(page),
@@ -1268,7 +1325,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 	content, err := p.renderTemplate(m, config.Templates.Reader, ctx)
 	if err != nil {
 		// Fall back to built-in template
-		content = p.renderReaderFallback(page.Entries, page, config)
+		content = p.renderReaderFallback(page.Entries, feedIndex, page, config)
 	}
 
 	// Write the full page
@@ -1282,7 +1339,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 			return err
 		}
 
-		partialContent := p.renderReaderPartial(page.Entries, page)
+		partialContent := p.renderReaderPartial(page.Entries, feedIndex, page, config)
 		partialFile := filepath.Join(partialDir, "index.html")
 		if err := os.WriteFile(partialFile, []byte(partialContent), 0o644); err != nil { //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 			return err
@@ -1396,6 +1453,360 @@ func (p *BlogrollPlugin) readerPageToMap(page models.ReaderPage) map[string]inte
 	}
 }
 
+// readerDayGroups groups entries by day in reverse chronological order.
+func (p *BlogrollPlugin) readerDayGroups(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig) []map[string]interface{} {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	groups := make([]map[string]interface{}, 0)
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+		entryMap := p.readerEntryMap(entry, feedIndex[entry.FeedURL], config)
+		dateKey, dateISO, weekday, title, year := readerDateFields(entryDate(entry))
+
+		if len(groups) == 0 || stringValue(groups[len(groups)-1], "date_key") != dateKey {
+			groups = append(groups, map[string]interface{}{
+				"date_key": dateKey,
+				"date_iso": dateISO,
+				"weekday":  weekday,
+				"title":    title,
+				"year":     year,
+				"count":    0,
+				"entries":  []map[string]interface{}{},
+			})
+		}
+
+		last := groups[len(groups)-1]
+		lastEntries := entriesValue(last)
+		lastEntries = append(lastEntries, entryMap)
+		last["entries"] = lastEntries
+		last["count"] = groupCount(last) + 1
+	}
+
+	return groups
+}
+
+func readerDateFields(date *time.Time) (dateKey, dateISO, weekday, title, year string) {
+	if date == nil {
+		return "undated", "", "Undated", "No date", ""
+	}
+
+	dateKey = date.Format("2006-01-02")
+	dateISO = date.Format(time.RFC3339)
+	weekday = date.Format("Mon")
+	title = date.Format("Jan 2")
+	year = date.Format("2006")
+	return dateKey, dateISO, weekday, title, year
+}
+
+func (p *BlogrollPlugin) renderReaderTimeline(groups []map[string]interface{}, wrap bool) string {
+	var sb strings.Builder
+	if wrap {
+		sb.WriteString(`    <div class="reader-stream posts-list">
+`)
+	} else {
+		sb.WriteString(`<div class="reader-stream posts-list">
+`)
+	}
+
+	if len(groups) == 0 {
+		sb.WriteString(`      <p class="reader-empty">No reader entries were found.</p>
+`)
+	} else {
+		for _, group := range groups {
+			sb.WriteString(`      <section class="reader-day">
+        <aside class="reader-day-rail">
+          <time`)
+			if dateISO := stringValue(group, "date_iso"); dateISO != "" {
+				sb.WriteString(` datetime="`)
+				sb.WriteString(html.EscapeString(dateISO))
+				sb.WriteString(`"`)
+			}
+			sb.WriteString(`>
+            <span class="reader-day-weekday">`)
+			sb.WriteString(html.EscapeString(stringValue(group, "weekday")))
+			sb.WriteString(`</span>
+            <span class="reader-day-title">`)
+			sb.WriteString(html.EscapeString(stringValue(group, "title")))
+			sb.WriteString(`</span>`)
+			if year := stringValue(group, "year"); year != "" {
+				sb.WriteString(`
+            <span class="reader-day-year">`)
+				sb.WriteString(html.EscapeString(year))
+				sb.WriteString(`</span>`)
+			}
+			sb.WriteString(`
+          </time>
+          <span class="reader-day-count">`)
+			count := groupCount(group)
+			label := "stories"
+			if count == 1 {
+				label = "story"
+			}
+			sb.WriteString(fmt.Sprintf("%d %s", count, label))
+			sb.WriteString(`</span>
+        </aside>
+        <div class="reader-day-entries">
+`)
+
+			entries := entriesValue(group)
+			for _, entry := range entries {
+				previewKind := stringValue(entry, "preview_kind")
+				sb.WriteString(`          <article class="reader-entry`)
+				if imageURL := stringValue(entry, "image_url"); imageURL != "" {
+					sb.WriteString(` has-image`)
+				}
+				if previewKind != "" {
+					sb.WriteString(` preview-`)
+					sb.WriteString(html.EscapeString(previewKind))
+				}
+				sb.WriteString(`">
+            <div class="reader-entry-meta-row">
+              <a href="`)
+				sb.WriteString(html.EscapeString(stringValue(entry, "feed_url")))
+				sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-source-link">
+`)
+				if iconURL := stringValue(entry, "source_icon_url"); iconURL != "" {
+					sb.WriteString(`                <img src="`)
+					sb.WriteString(html.EscapeString(iconURL))
+					sb.WriteString(`" alt="" class="reader-entry-source-icon" width="16" height="16" loading="lazy">
+`)
+				} else {
+					sb.WriteString(`                <span class="reader-entry-source-icon reader-entry-source-icon--fallback" aria-hidden="true"></span>
+`)
+				}
+				sb.WriteString(`                <span class="reader-entry-source">`)
+				sb.WriteString(html.EscapeString(stringValue(entry, "feed_title")))
+				sb.WriteString(`</span>
+              </a>`)
+
+				if publishedDatetime := stringValue(entry, "published_datetime"); publishedDatetime != "" {
+					sb.WriteString(`
+              <time datetime="`)
+					sb.WriteString(html.EscapeString(publishedDatetime))
+					sb.WriteString(`">`)
+					sb.WriteString(html.EscapeString(stringValue(entry, "published_label")))
+					sb.WriteString(`</time>`)
+				}
+
+				sb.WriteString(`
+            </div>
+            <h2 class="reader-entry-title"><a href="`)
+				sb.WriteString(html.EscapeString(stringValue(entry, "url")))
+				sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+				sb.WriteString(html.EscapeString(stringValue(entry, "title")))
+				sb.WriteString(`<span class="visually-hidden">(opens in new tab)</span></a></h2>
+`)
+
+				if description := stringValue(entry, "description"); description != "" {
+					sb.WriteString(`            <p class="reader-entry-description">`)
+					sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(description), 200)))
+					sb.WriteString(`</p>
+`)
+				}
+
+				if imageURL := stringValue(entry, "image_url"); imageURL != "" {
+					sb.WriteString(`            <a href="`)
+					sb.WriteString(html.EscapeString(stringValue(entry, "url")))
+					sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link reader-entry-image-link--`)
+					sb.WriteString(html.EscapeString(previewKind))
+					sb.WriteString(`">
+              <img src="`)
+					sb.WriteString(html.EscapeString(imageURL))
+					sb.WriteString(`" alt="" class="reader-entry-image reader-entry-image--`)
+					sb.WriteString(html.EscapeString(previewKind))
+					sb.WriteString(`" width="960" height="540" loading="lazy">
+            </a>
+`)
+				} else {
+					sb.WriteString(`            <a href="`)
+					sb.WriteString(html.EscapeString(stringValue(entry, "url")))
+					sb.WriteString(`" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link reader-entry-image-link--source-tile">
+              <span class="reader-entry-source-tile" aria-hidden="true">
+                <span class="reader-entry-source-tile-top">`)
+					if iconURL := stringValue(entry, "source_icon_url"); iconURL != "" {
+						sb.WriteString(`<img src="`)
+						sb.WriteString(html.EscapeString(iconURL))
+						sb.WriteString(`" alt="" class="reader-entry-source-tile-icon" width="20" height="20" loading="lazy">`)
+					} else {
+						sb.WriteString(`<span class="reader-entry-source-tile-badge">`)
+						sb.WriteString(html.EscapeString(stringValue(entry, "source_initial")))
+						sb.WriteString(`</span>`)
+					}
+					sb.WriteString(`<span class="reader-entry-source-tile-label">`)
+					sb.WriteString(html.EscapeString(stringValue(entry, "feed_title")))
+					sb.WriteString(`</span>
+                </span>
+                <span class="reader-entry-source-tile-domain">`)
+					sb.WriteString(html.EscapeString(stringValue(entry, "source_domain")))
+					sb.WriteString(`</span>
+              </span>
+            </a>
+`)
+				}
+
+				sb.WriteString(`          </article>
+`)
+			}
+
+			sb.WriteString(`        </div>
+      </section>
+`)
+		}
+	}
+
+	sb.WriteString(`</div>
+`)
+	return sb.String()
+}
+
+func stringValue(m map[string]interface{}, key string) string {
+	if value, ok := m[key].(string); ok {
+		return value
+	}
+	return ""
+}
+
+func groupCount(group map[string]interface{}) int {
+	if count, ok := group["count"].(int); ok {
+		return count
+	}
+	return 0
+}
+
+func entriesValue(group map[string]interface{}) []map[string]interface{} {
+	if entries, ok := group["entries"].([]map[string]interface{}); ok {
+		return entries
+	}
+	return nil
+}
+
+func (p *BlogrollPlugin) readerEntryMap(entry *models.ExternalEntry, feed *models.ExternalFeed, config models.BlogrollConfig) map[string]interface{} {
+	if entry == nil {
+		return map[string]interface{}{}
+	}
+
+	sourceTitle := entry.FeedTitle
+	if sourceTitle == "" && feed != nil {
+		sourceTitle = feed.Title
+	}
+	sourceSiteURL := ""
+	sourceImageURL := ""
+	if feed != nil {
+		sourceSiteURL = feed.SiteURL
+		if feed.AvatarURL != "" {
+			sourceImageURL = feed.AvatarURL
+		} else if feed.ImageURL != "" {
+			sourceImageURL = feed.ImageURL
+		}
+	}
+	previewURL, previewKind := readerPreviewForEntry(entry, sourceImageURL, config.FallbackImageService)
+	sourceDomain := readerDomain(entry.FeedURL)
+	if sourceDomain == "" {
+		sourceDomain = readerDomain(sourceSiteURL)
+	}
+
+	result := map[string]interface{}{
+		"feed_url":         entry.FeedURL,
+		"feed_title":       sourceTitle,
+		"id":               entry.ID,
+		"url":              entry.URL,
+		"original_url":     entry.OriginalURL,
+		"title":            entry.Title,
+		"description":      entry.Description,
+		"content":          entry.Content,
+		"author":           entry.Author,
+		"updated":          entry.Updated,
+		"categories":       entry.Categories,
+		"image_url":        previewURL,
+		"preview_url":      previewURL,
+		"preview_kind":     previewKind,
+		"source_image_url": sourceImageURL,
+		"source_site_url":  sourceSiteURL,
+		"reading_time":     entry.ReadingTime,
+	}
+
+	if date := entryDate(entry); date != nil {
+		result["published"] = date
+		result["published_datetime"] = date.Format(time.RFC3339)
+		result["published_label"] = templates.FormatHumanDate(*date)
+		result["date_key"] = date.Format("2006-01-02")
+		result["date_iso"] = date.Format(time.RFC3339)
+	}
+
+	if sourceDomain != "" {
+		result["source_domain"] = sourceDomain
+		result["source_icon_url"] = "https://www.google.com/s2/favicons?domain=" + neturl.QueryEscape(sourceDomain) + "&sz=32"
+	}
+	result["source_initial"] = readerSourceInitial(sourceTitle, sourceDomain)
+
+	return result
+}
+
+func buildFeedIndex(feeds []*models.ExternalFeed) map[string]*models.ExternalFeed {
+	if len(feeds) == 0 {
+		return nil
+	}
+
+	index := make(map[string]*models.ExternalFeed, len(feeds))
+	for _, feed := range feeds {
+		if feed == nil || feed.FeedURL == "" {
+			continue
+		}
+		index[feed.FeedURL] = feed
+	}
+	return index
+}
+
+func readerPreviewForEntry(entry *models.ExternalEntry, sourceImageURL, fallbackImageService string) (previewURL, previewKind string) {
+	if entry != nil && entry.ImageURL != "" {
+		return normalizeExternalURL(entry.ImageURL), "article-image"
+	}
+	if sourceImageURL != "" {
+		return normalizeExternalURL(sourceImageURL), "source-image"
+	}
+	if fallbackImageService != "" && entry != nil && entry.URL != "" {
+		return generateFallbackImageURL(fallbackImageService, entry.URL), "screenshot"
+	}
+	return "", "source-tile"
+}
+
+func readerSourceInitial(sourceTitle, sourceDomain string) string {
+	text := strings.TrimSpace(sourceTitle)
+	if text == "" {
+		text = strings.TrimSpace(sourceDomain)
+	}
+	for _, r := range text {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return strings.ToUpper(string(r))
+		}
+	}
+	return "?"
+}
+
+func readerDomain(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+
+	parsed, err := neturl.Parse(rawURL)
+	if (err != nil || parsed.Hostname() == "") && !strings.Contains(rawURL, "://") {
+		parsed, err = neturl.Parse("https://" + rawURL)
+	}
+	if err == nil && parsed.Hostname() != "" {
+		return parsed.Hostname()
+	}
+
+	if strings.Contains(rawURL, ".") {
+		return strings.TrimPrefix(rawURL, "https://")
+	}
+
+	return ""
+}
+
 // renderTemplate attempts to render using the template engine.
 func (p *BlogrollPlugin) renderTemplate(m *lifecycle.Manager, templateName string, ctx map[string]interface{}) (string, error) {
 	// Check if template engine is available
@@ -1439,24 +1850,14 @@ func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]
 }
 
 // entriesToMaps converts entries to template-friendly maps.
-func (p *BlogrollPlugin) entriesToMaps(entries []*models.ExternalEntry) []map[string]interface{} {
+func (p *BlogrollPlugin) entriesToMaps(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(entries))
 	for i, entry := range entries {
-		result[i] = map[string]interface{}{
-			"feed_url":     entry.FeedURL,
-			"feed_title":   entry.FeedTitle,
-			"id":           entry.ID,
-			"url":          entry.URL,
-			"title":        entry.Title,
-			"description":  entry.Description,
-			"content":      entry.Content,
-			"author":       entry.Author,
-			"published":    entry.Published,
-			"updated":      entry.Updated,
-			"categories":   entry.Categories,
-			"image_url":    entry.ImageURL,
-			"reading_time": entry.ReadingTime,
+		if entry == nil {
+			result[i] = map[string]interface{}{}
+			continue
 		}
+		result[i] = p.readerEntryMap(entry, feedIndex[entry.FeedURL], config)
 	}
 	return result
 }
@@ -2152,7 +2553,7 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 }
 
 // renderReaderFallback generates a basic reader page that uses theme CSS if available.
-func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, page models.ReaderPage, config models.BlogrollConfig) string {
+func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig) string {
 	var sb strings.Builder
 
 	// Get configured slugs with defaults
@@ -2315,50 +2716,7 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
 `)
 	}
 
-	sb.WriteString(`    <ul class="reader-entries">
-`)
-
-	for _, entry := range entries {
-		sb.WriteString(`      <li class="reader-entry entry">
-`)
-		// Entry image
-		if entry.ImageURL != "" {
-			sb.WriteString(fmt.Sprintf(`        <img src=%q alt="" class="entry-image" loading="lazy">
-`, html.EscapeString(entry.ImageURL)))
-		}
-		sb.WriteString(`        <div class="entry-content">
-          <h2 class="reader-entry-title"><a href="`)
-		sb.WriteString(html.EscapeString(entry.URL))
-		sb.WriteString(`" target="_blank" rel="noopener">`)
-		sb.WriteString(html.EscapeString(entry.Title))
-		sb.WriteString(`</a></h2>
-          <div class="reader-entry-meta entry-meta">
-            <span class="reader-entry-source">`)
-		sb.WriteString(html.EscapeString(entry.FeedTitle))
-		sb.WriteString(`</span>`)
-
-		if entry.Published != nil {
-			sb.WriteString(`<time>`)
-			sb.WriteString(entry.Published.Format("Jan 2, 2006"))
-			sb.WriteString(`</time>`)
-		}
-
-		sb.WriteString(`
-          </div>
-`)
-		if entry.Description != "" {
-			sb.WriteString(`          <p class="reader-entry-description entry-description">`)
-			sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(entry.Description), 200)))
-			sb.WriteString(`</p>
-`)
-		}
-		sb.WriteString(`        </div>
-      </li>
-`)
-	}
-
-	sb.WriteString(`    </ul>
-`)
+	sb.WriteString(p.renderReaderTimeline(p.readerDayGroups(entries, feedIndex, config), true))
 
 	// Render pagination
 	sb.WriteString(p.renderPagination(page))
@@ -2376,47 +2734,10 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
 }
 
 // renderReaderPartial generates just the content portion for HTMX updates.
-func (p *BlogrollPlugin) renderReaderPartial(entries []*models.ExternalEntry, page models.ReaderPage) string {
+func (p *BlogrollPlugin) renderReaderPartial(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig) string {
 	var sb strings.Builder
 
-	sb.WriteString(`<ul class="reader-entries">
-`)
-
-	for _, entry := range entries {
-		sb.WriteString(`  <li class="reader-entry">
-    <article>
-      <h2 class="reader-entry-title"><a href="`)
-		sb.WriteString(html.EscapeString(entry.URL))
-		sb.WriteString(`" target="_blank" rel="noopener">`)
-		sb.WriteString(html.EscapeString(entry.Title))
-		sb.WriteString(`</a></h2>
-      <div class="reader-entry-meta">
-        <span class="reader-entry-source">`)
-		sb.WriteString(html.EscapeString(entry.FeedTitle))
-		sb.WriteString(`</span>`)
-
-		if entry.Published != nil {
-			sb.WriteString(`<time>`)
-			sb.WriteString(entry.Published.Format("Jan 2, 2006"))
-			sb.WriteString(`</time>`)
-		}
-
-		sb.WriteString(`
-      </div>
-`)
-		if entry.Description != "" {
-			sb.WriteString(`      <p class="reader-entry-description">`)
-			sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(entry.Description), 200)))
-			sb.WriteString(`</p>
-`)
-		}
-		sb.WriteString(`    </article>
-  </li>
-`)
-	}
-
-	sb.WriteString(`</ul>
-`)
+	sb.WriteString(p.renderReaderTimeline(p.readerDayGroups(entries, feedIndex, config), false))
 
 	// Render pagination
 	sb.WriteString(p.renderPagination(page))

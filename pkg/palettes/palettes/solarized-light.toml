@@ -41,8 +41,8 @@ green-dark   = "#5f6e00"
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "base03"
-text-secondary = "base02"
-text-muted     = "base01"
+text-secondary = "base03"
+text-muted     = "base03"
 
 bg-primary   = "base3"
 bg-secondary = "base2"
@@ -51,7 +51,7 @@ bg-elevated  = "base2"
 
 accent       = "violet-dark"
 accent-hover = "magenta"
-link         = "blue-dark"
+link         = "base03"
 link-hover   = "blue"
 link-visited = "magenta-dark"
 

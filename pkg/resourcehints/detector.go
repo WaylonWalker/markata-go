@@ -106,15 +106,15 @@ var knownDomains = map[string]KnownDomainHint{
 		CrossOrigin: "",
 	},
 	"www.youtube.com": {
-		HintTypes:   []HintType{HintTypeDNSPrefetch},
+		HintTypes:   []HintType{HintTypePreconnect},
 		CrossOrigin: "",
 	},
 	"www.youtube-nocookie.com": {
-		HintTypes:   []HintType{HintTypeDNSPrefetch},
+		HintTypes:   []HintType{HintTypePreconnect},
 		CrossOrigin: "",
 	},
 	"player.vimeo.com": {
-		HintTypes:   []HintType{HintTypeDNSPrefetch},
+		HintTypes:   []HintType{HintTypePreconnect},
 		CrossOrigin: "",
 	},
 	"codepen.io": {

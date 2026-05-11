@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}">
+<html lang="{{ config.lang | default:'en' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,12 +33,19 @@
 
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
+  {% if config.theme.palette or config.theme.palette_light or config.theme.palette_dark or config.theme.seed_color %}
   <link rel="stylesheet" href="{{ 'css/palette.css' | theme_asset_hashed }}">
+  {% endif %}
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
 
   <!-- Cards CSS -->
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
+
+  <!-- Feed CSS for dedicated feed pages and embedded render_feed() output -->
+  {% if body and 'feed h-feed' in body %}
+  <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+  {% endif %}
 
   <!-- Admonitions CSS (only when content uses admonitions) -->
   {% if needs_admonitions_css %}
@@ -71,6 +78,189 @@
 
   {% if config.Extra.glightbox_enabled and needs_image_zoom %}
   <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/vendor/glightbox/glightbox.min.css{% endif %}">
+  {% endif %}
+
+  {% if needs_webawesome %}
+  <link rel="stylesheet" href="{{ config.Extra.webawesome_css_url }}">
+  <style>
+    :root {
+      --wa-font-family-body: var(--font-body, system-ui, sans-serif);
+      --wa-font-family-heading: var(--font-heading, var(--font-body, system-ui, sans-serif));
+      --wa-font-family-code: var(--font-mono, ui-monospace, monospace);
+      --wa-color-surface-default: var(--color-background, #ffffff);
+      --wa-color-surface-raised: var(--color-surface, #f9fafb);
+      --wa-color-surface-border: var(--color-border, #e5e7eb);
+      --wa-color-text-normal: var(--color-text, #1f2937);
+      --wa-color-text-quiet: var(--color-text-muted, #6b7280);
+      --wa-color-text-link: var(--color-link, var(--color-primary, #3b82f6));
+      --wa-link-decoration-default: underline color-mix(in srgb, currentColor 70%, transparent) dotted;
+      --wa-link-decoration-hover: underline;
+      --wa-color-brand-fill-loud: var(--color-primary, #3b82f6);
+      --wa-color-brand-fill-normal: var(--color-primary, #3b82f6);
+      --wa-color-brand-fill-quiet: color-mix(in srgb, var(--color-primary, #3b82f6) 22%, var(--color-surface, #f9fafb));
+      --wa-color-brand-border-loud: var(--color-primary, #3b82f6);
+      --wa-color-brand-border-quiet: color-mix(in srgb, var(--color-primary, #3b82f6) 55%, var(--color-border, #e5e7eb));
+      --wa-color-brand-on-loud: var(--color-background, #ffffff);
+      --wa-color-brand-on-quiet: var(--color-text, #1f2937);
+      --wa-color-success-fill-loud: var(--color-success, #10b981);
+      --wa-color-success-fill-quiet: color-mix(in srgb, var(--color-success, #10b981) 22%, var(--color-surface, #f9fafb));
+      --wa-color-success-border-quiet: color-mix(in srgb, var(--color-success, #10b981) 55%, var(--color-border, #e5e7eb));
+      --wa-color-success-on-quiet: var(--color-text, #1f2937);
+      --wa-color-warning-fill-loud: var(--color-warning, #f59e0b);
+      --wa-color-warning-fill-quiet: color-mix(in srgb, var(--color-warning, #f59e0b) 22%, var(--color-surface, #f9fafb));
+      --wa-color-warning-border-quiet: color-mix(in srgb, var(--color-warning, #f59e0b) 55%, var(--color-border, #e5e7eb));
+      --wa-color-warning-on-quiet: var(--color-text, #1f2937);
+      --wa-color-danger-fill-loud: var(--color-error, #ef4444);
+      --wa-color-danger-fill-quiet: color-mix(in srgb, var(--color-error, #ef4444) 22%, var(--color-surface, #f9fafb));
+      --wa-color-danger-border-quiet: color-mix(in srgb, var(--color-error, #ef4444) 55%, var(--color-border, #e5e7eb));
+      --wa-color-danger-on-quiet: var(--color-text, #1f2937);
+      --wa-color-neutral-fill-quiet: color-mix(in srgb, var(--color-text, #1f2937) 12%, var(--color-surface, #f9fafb));
+      --wa-color-neutral-border-quiet: var(--color-border, #e5e7eb);
+      --wa-color-neutral-on-quiet: var(--color-text, #1f2937);
+      --wa-border-radius-s: var(--radius-sm, var(--radius, 0.375rem));
+      --wa-border-radius-m: var(--radius, 0.375rem);
+      --wa-border-radius-l: var(--radius-lg, 0.5rem);
+      --wa-shadow-s: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 0.08));
+      --wa-shadow-m: var(--shadow-md, 0 4px 12px rgb(0 0 0 / 0.1));
+    }
+    wa-details,
+    wa-tab-group,
+    wa-copy-button,
+    wa-qr-code,
+    wa-tag,
+    wa-carousel,
+    wa-animated-image,
+    wa-callout {
+      color: var(--color-text, var(--wa-color-text-normal));
+      font-family: var(--font-body, var(--wa-font-family-body));
+    }
+    wa-badge {
+      color: var(--color-background, var(--wa-color-brand-on-loud));
+      font-family: var(--font-body, var(--wa-font-family-body));
+    }
+    wa-tooltip {
+      display: inline-block;
+      color: var(--color-text, var(--wa-color-text-normal));
+      font-family: var(--font-body, var(--wa-font-family-body));
+    }
+    .markata-wa-tooltip-anchor {
+      border-bottom: 1px dotted var(--color-primary, var(--wa-color-brand-fill-loud));
+      cursor: help;
+    }
+    wa-tooltip::part(body) {
+      background: var(--color-surface, var(--wa-color-surface-raised));
+      color: var(--color-text, var(--wa-color-text-normal));
+      border: 1px solid var(--color-border, var(--wa-color-surface-border));
+      border-radius: var(--radius, var(--wa-border-radius-m));
+      box-shadow: var(--shadow-md, var(--wa-shadow-m));
+    }
+    wa-details::part(base),
+    wa-tab-group::part(base),
+    wa-carousel::part(base),
+    wa-callout::part(base) {
+      background: color-mix(in srgb, var(--color-surface, #f9fafb) 92%, transparent);
+      border-color: var(--color-border, var(--wa-color-surface-border));
+      border-radius: var(--radius-lg, var(--wa-border-radius-l));
+      box-shadow: var(--shadow-sm, var(--wa-shadow-s));
+    }
+    wa-details::part(summary),
+    wa-tab::part(base),
+    wa-callout::part(icon) {
+      color: var(--color-primary, var(--wa-color-brand-fill-loud));
+    }
+    wa-tab[active]::part(base),
+    wa-tab::part(base):hover {
+      color: var(--color-link, var(--color-primary, var(--wa-color-brand-fill-loud)));
+      border-color: var(--color-primary, var(--wa-color-brand-fill-loud));
+    }
+    wa-tab-panel::part(base) {
+      background: var(--color-background, var(--wa-color-surface-default));
+      border-color: var(--color-border, var(--wa-color-surface-border));
+      border-radius: var(--radius-lg, var(--wa-border-radius-l));
+      color: var(--color-text, var(--wa-color-text-normal));
+    }
+    wa-copy-button::part(button),
+    wa-carousel::part(navigation-button),
+    wa-carousel::part(pagination-item) {
+      background: var(--color-surface, var(--wa-color-surface-raised));
+      border-color: var(--color-border, var(--wa-color-surface-border));
+      color: var(--color-text, var(--wa-color-text-normal));
+    }
+    wa-copy-button::part(button):hover,
+    wa-carousel::part(navigation-button):hover,
+    wa-carousel::part(pagination-item):hover {
+      border-color: var(--color-primary, var(--wa-color-brand-fill-loud));
+      color: var(--color-primary, var(--wa-color-brand-fill-loud));
+    }
+    wa-badge {
+      --wa-color-brand-fill-normal: var(--color-primary, #3b82f6);
+      --wa-color-brand-border-normal: var(--color-primary, #3b82f6);
+      --wa-color-brand-on-normal: var(--color-background, #ffffff);
+      --wa-color-success-fill-normal: var(--color-success, #10b981);
+      --wa-color-success-border-normal: var(--color-success, #10b981);
+      --wa-color-success-on-normal: var(--color-background, #ffffff);
+      --wa-color-warning-fill-normal: var(--color-warning, #f59e0b);
+      --wa-color-warning-border-normal: var(--color-warning, #f59e0b);
+      --wa-color-warning-on-normal: var(--color-background, #ffffff);
+      --wa-color-danger-fill-normal: var(--color-error, #ef4444);
+      --wa-color-danger-border-normal: var(--color-error, #ef4444);
+      --wa-color-danger-on-normal: var(--color-background, #ffffff);
+      font-weight: 600;
+    }
+    wa-tag {
+      --wa-color-brand-fill-normal: color-mix(in srgb, var(--color-primary, #3b82f6) 32%, var(--color-surface, #f9fafb));
+      --wa-color-brand-border-normal: color-mix(in srgb, var(--color-primary, #3b82f6) 70%, var(--color-border, #e5e7eb));
+      --wa-color-brand-on-normal: var(--color-text, #1f2937);
+      --wa-color-success-fill-normal: color-mix(in srgb, var(--color-success, #10b981) 32%, var(--color-surface, #f9fafb));
+      --wa-color-success-border-normal: color-mix(in srgb, var(--color-success, #10b981) 70%, var(--color-border, #e5e7eb));
+      --wa-color-success-on-normal: var(--color-text, #1f2937);
+      --wa-color-warning-fill-normal: color-mix(in srgb, var(--color-warning, #f59e0b) 32%, var(--color-surface, #f9fafb));
+      --wa-color-warning-border-normal: color-mix(in srgb, var(--color-warning, #f59e0b) 70%, var(--color-border, #e5e7eb));
+      --wa-color-warning-on-normal: var(--color-text, #1f2937);
+      --wa-color-danger-fill-normal: color-mix(in srgb, var(--color-error, #ef4444) 32%, var(--color-surface, #f9fafb));
+      --wa-color-danger-border-normal: color-mix(in srgb, var(--color-error, #ef4444) 70%, var(--color-border, #e5e7eb));
+      --wa-color-danger-on-normal: var(--color-text, #1f2937);
+    }
+    wa-qr-code::part(base),
+    wa-animated-image::part(base) {
+      background: var(--color-surface, var(--wa-color-surface-raised));
+      border: 1px solid var(--color-border, var(--wa-color-surface-border));
+      border-radius: var(--radius-lg, var(--wa-border-radius-l));
+      box-shadow: var(--shadow-sm, var(--wa-shadow-s));
+    }
+    .markata-webawesome-figure {
+      margin: 2rem 0;
+    }
+    .markata-webawesome-figure figcaption {
+      color: var(--color-text-muted, var(--wa-color-neutral-600));
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    wa-comparison.markata-webawesome-comparison {
+      --divider-width: 3px;
+      --handle-size: 2.75rem;
+      border: 1px solid var(--color-border, var(--wa-color-neutral-300));
+      border-radius: var(--radius-lg, var(--wa-border-radius-l));
+      box-shadow: var(--shadow-md, var(--wa-shadow-m));
+      max-width: 100%;
+      overflow: hidden;
+    }
+    wa-comparison.markata-webawesome-comparison::part(divider) {
+      background: transparent;
+    }
+    wa-comparison.markata-webawesome-comparison::part(handle) {
+      background: var(--color-primary, var(--wa-color-brand-fill-loud));
+      color: var(--color-background, #ffffff);
+    }
+    wa-comparison.markata-webawesome-comparison img {
+      display: block;
+      height: auto;
+      margin: 0;
+      width: 100%;
+    }
+  </style>
+  <script type="module" src="{{ config.Extra.webawesome_loader_url }}"></script>
   {% endif %}
 
   {% if config.Extra.lite_youtube_enabled %}
@@ -117,6 +307,17 @@
   {% if config.theme.custom_css %}
   <link rel="stylesheet" href="{{ config.theme.custom_css | asset_url }}">
   {% endif %}
+
+  <style>
+    html:root {
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: light) {
+      html:root {
+        color-scheme: light;
+      }
+    }
+  </style>
 
   <!-- RSS/Atom/JSON Feeds -->
   {% if config.websub.enabled and config.websub.hubs %}
@@ -199,7 +400,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper{% if not feed and not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% if feed and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--feed-only{% endif %}" id="view-transition-page">
+  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not feed %}
@@ -233,6 +434,8 @@
 
   {% block htmx %}{% endblock %}
   {% block scripts %}{% endblock %}
+
+  {% block page_runtime %}
 
   {# Shortcuts Modal - must be before conditional script loading so #shortcuts-modal exists when checked #}
   {% include "partials/shortcuts-modal.html" %}
@@ -371,6 +574,18 @@
   <!-- Pagefind Search JS: lazy-loaded on user interaction -->
   {% if config.search.enabled %}
   <script>
+    {% if config.search.backend == "bleve" or config.search.bleve.endpoint %}
+    window.__markataSearchEndpoint = window.__markataSearchEndpoint || '{{ config.search.bleve.endpoint | default:config.search.endpoint | default:"/api/search" }}';
+    {% endif %}
+
+    // If a bleve search endpoint is configured, skip pagefind and load bleve search instead.
+    if (window.__markataSearchEndpoint) {
+      (function() {
+        var script = document.createElement('script');
+        script.src = '{{ 'js/bleve-search.js' | theme_asset_hashed }}';
+        document.body.appendChild(script);
+      })();
+    } else {
     // Expose globally so view transitions can re-initialize after DOM swap.
     window.initPagefindSearch = function initPagefindSearch() {
       var root = document.getElementById('pagefind-search');
@@ -411,7 +626,17 @@
       var loaded = false;
       var bundleDir = '/{{ config.search.pagefind.bundle_dir | default:"_pagefind" }}';
 
+      function ensurePagefindCSS() {
+        if (document.querySelector('link[href*="/pagefind-ui.css"]')) return;
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = bundleDir + '/pagefind-ui.css';
+        document.head.appendChild(link);
+      }
+
       function loadPagefind(callback) {
+        ensurePagefindCSS();
+
         if (loaded) {
           if (window.initPagefindSearch) {
             window.initPagefindSearch();
@@ -420,14 +645,6 @@
           return;
         }
         loaded = true;
-
-        // Inject pagefind CSS
-        if (!document.querySelector('link[href*="/pagefind-ui.css"]')) {
-          var link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = bundleDir + '/pagefind-ui.css';
-          document.head.appendChild(link);
-        }
 
         // Inject pagefind JS
         if (document.querySelector('script[src*="/pagefind-ui.js"]')) {
@@ -466,6 +683,7 @@
       // Expose for view transitions re-initialization and search-shortcuts.js
       window.loadPagefind = loadPagefind;
     })();
+    } // end else (pagefind)
   </script>
   {% endif %}
 
@@ -475,12 +693,11 @@
    <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
 
-   {% if config.components.post_connections.enabled and config.components.post_connections.display_graph %}
-   <script>
-     window.MARKATA_GO_D3_URL = '{% if config.Extra.asset_urls.d3 %}{{ config.Extra.asset_urls.d3 }}{% else %}https://d3js.org/d3.v7.min.js{% endif %}';
-   </script>
-   <script src="{{ 'js/post-graph.js' | theme_asset_hashed }}" defer></script>
-   {% endif %}
+    {% if config.components.post_connections.enabled and config.components.post_connections.display_graph %}
+    <script>
+      window.MARKATA_GO_D3_URL = '{% if config.Extra.asset_urls.d3 %}{{ config.Extra.asset_urls.d3 }}{% else %}https://d3js.org/d3.v7.min.js{% endif %}';
+    </script>
+    {% endif %}
 
   <!-- View Transitions API - Global Navigation Interceptor -->
   {% if config.view_transitions.enabled | default:true %}
@@ -608,5 +825,6 @@
   </script>
 
    {% include "partials/background-scripts.html" %}
+  {% endblock %}
 </body>
 </html>

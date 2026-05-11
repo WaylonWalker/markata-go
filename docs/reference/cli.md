@@ -87,13 +87,18 @@ markata-go agent install [site-path] [flags]
 
 #### Subcommands
 
+##### list-agents
+
+List the supported agent identifiers and their project/global skill directories.
+
 ##### install
 
 Install the bundled `markata-go-site` skill into a repository.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Install for a specific agent such as `opencode`, `claude-code`, or `cursor` | auto-detected, else `universal` |
+| `-g`, `--global` | Install into the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 | `--force` | Overwrite bundled skill files if they already exist | `false` |
 | `--dry-run` | Show what would be installed without writing files | `false` |
@@ -106,7 +111,8 @@ This is the user-friendly equivalent of reinstalling with `--force`.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Update a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Update the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 | `--dry-run` | Show what would be updated without writing files | `false` |
 
@@ -116,7 +122,8 @@ Check the installed skill for drift against the versions bundled in the current 
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Check a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Check the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 
 Exit codes:
@@ -135,17 +142,24 @@ Remove the installed `markata-go-site` skill directory.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--target` | Install target layout: `agents` or `claude` | `agents` |
+| `--agent` | Remove a specific agent install such as `opencode` or `claude-code` | auto-detected, else `universal` |
+| `-g`, `--global` | Remove from the selected agent's user-level skill directory | `false` |
 | `--name` | Installed skill directory name | `markata-go-site` |
 
 #### Examples
 
 ```bash
-# Install into the portable .agents layout
+# Install into the detected agent's project layout
 markata-go agent install
 
+# List supported agent ids and paths
+markata-go agent list-agents
+
 # Install into Claude Code's .claude layout
-markata-go agent install --target claude
+markata-go agent install --agent claude-code
+
+# Install into OpenCode's global skill directory
+markata-go agent install --agent opencode -g
 
 # Preview files without writing
 markata-go agent install --dry-run
@@ -166,7 +180,10 @@ markata-go agent update --dry-run
 markata-go agent doctor
 
 # Check a Claude Code layout
-markata-go agent doctor --target claude
+markata-go agent doctor --agent claude-code
+
+# Check a global OpenCode install
+markata-go agent doctor --agent opencode -g
 
 # Check a different repository
 markata-go agent doctor ../my-site
@@ -178,15 +195,22 @@ markata-go agent remove
 markata-go agent uninstall
 
 # Remove a Claude Code install
-markata-go agent remove --target claude
+markata-go agent remove --agent claude-code
+
+# Remove a global OpenCode install
+markata-go agent remove --agent opencode -g
 ```
 
 #### Installed Layouts
 
-- `agents` target: `.agents/skills/markata-go-site/`
-- `claude` target: `.claude/skills/markata-go-site/`
+- detected agent or `universal`: project install into that agent's project skill path
+- `--agent claude-code`: `.claude/skills/markata-go-site/`
+- `--agent opencode`: `.agents/skills/markata-go-site/`
+- `--agent opencode -g`: `~/.config/opencode/skills/markata-go-site/`
 
-The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, and starter files under `examples/` so agents can read only the sections relevant to the current task. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
+The installed skill is split into `SKILL.md` plus focused topic files under `topics/`, reference material under `reference/`, starter files under `examples/`, and regression prompts under `evals/` so agents can read only the sections relevant to the current task while maintainers still have a starter eval set for bundled-skill reviews. A `.manifest.json` file is written alongside the skill for drift detection via `agent doctor`.
+
+When `-g` is used, `--agent` is required and `site-path` is not accepted.
 
 The `agent` command group is intentionally generic so future subcommands can add export or MCP-oriented integrations without changing the bundled skill format.
 
@@ -526,6 +550,194 @@ markata-go list feeds posts blog --format path
 #### Cache
 
 `list` and `tui` use a persistent cache at `.markata/cache/list.json`. Delete this file to force a full refresh.
+
+---
+
+### search
+
+Full-text search across post content, titles, descriptions, and tags. Uses a bleve full-text index for BM25-ranked results with optional fuzzy matching.
+
+#### Usage
+
+```bash
+markata-go search <query> [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output format: `table`, `json`, `csv`, `path` | `table` |
+| `--sort` | Sort field: `score`, `date`, `title`, `words`, `path`, `reading_time`, `tags` | `score` |
+| `--order` | Sort order: `asc` or `desc` | `desc` |
+| `--filter` | Additional filter expression to narrow results | none |
+| `--fields` | Fields to search: `title,content,description,tags` (default: all) | all |
+| `--fuzzy` | Enable fuzzy matching (tolerates typos) | `false` |
+| `--limit` | Maximum number of results (0 = no limit) | `0` |
+
+#### Examples
+
+```bash
+# Search for posts about golang (BM25-ranked)
+markata-go search golang
+
+# Search with JSON output for scripting
+markata-go search "error handling" --format json
+
+# Search with a filter and limit
+markata-go search docker --filter "published == True" --limit 10
+
+# Search only in titles and tags
+markata-go search golang --fields title,tags
+
+# Fuzzy search (tolerates typos like "tutoral" → "tutorial")
+markata-go search tutoral --fuzzy
+
+# Search and sort by date instead of relevance
+markata-go search cli --sort date --order desc
+
+# Get matching file paths for piping
+markata-go search kubernetes --format path
+
+# Combine filter expressions with search
+markata-go search tutorial --filter '"go" in tags and date >= "2024-01-01"'
+```
+
+#### Search Behavior
+
+- Uses bleve full-text index with BM25 ranking (results sorted by relevance by default)
+- Falls back to substring matching if the bleve index cannot be built
+- Index is cached at `.markata/cache/search.bleve` and rebuilt when content changes
+- Combines with `--filter` to narrow results before searching (filter applied first)
+- Table output shows relevance scores when using ranked search
+- `--fuzzy` enables edit-distance matching for typo tolerance
+- **Synonym expansion** is enabled by default — searching "land" also finds posts about "shore" (powered by a bundled WordNet thesaurus with 10,000+ synonym groups)
+- **Privacy-safe** — private posts are searchable by public metadata, while their body content and media remain excluded from search
+
+---
+
+### search build-index
+
+Build a reusable bleve index artifact without starting the search server.
+
+#### Usage
+
+```bash
+markata-go search build-index [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--index-dir` | Directory to write the bleve index | `.markata/cache/search.bleve` |
+| `--hash-path` | Path for the content hash file | `.markata/cache/search.hash` |
+| `--index-name` | Named index suffix inside the default cache directory | `""` |
+| `--force` | Rebuild even if content hash is unchanged | `false` |
+
+#### Examples
+
+```bash
+# Build the default cached index
+markata-go search build-index
+
+# Build a reusable artifact at a custom path
+markata-go search build-index --index-dir /data/search.bleve --hash-path /data/search.hash
+
+# Build a named index alongside other local indexes
+markata-go search build-index --index-name server --force
+```
+
+#### Behavior
+
+- Loads the site content the same way as `markata-go search`
+- Writes or refreshes a bleve index on disk
+- Intended for CI, builder jobs, and future read-only search server deployments
+
+---
+
+### search-server
+
+Start a standalone bleve-backed search API server.
+
+#### Usage
+
+```bash
+markata-go search-server [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port` | Port to listen on | `3001` |
+| `--host` | Host to bind to | `localhost` |
+| `--mode` | Server mode: `runtime-index`, `watch-content`, or `read-only-index` | `runtime-index` |
+| `--index-dir` | Directory of the bleve index | runtime default |
+| `--hash-path` | Path for the content hash file in runtime-index mode | runtime default |
+| `--index-name` | Named index suffix inside the default cache directory | `server` |
+| `--rebuild-index` | Force a rebuild in runtime-index mode | `false` |
+| `--watch-debounce` | Debounce duration for watch-content reloads | `750ms` |
+
+#### Examples
+
+```bash
+# Start the search API server
+markata-go search-server
+
+# Start on a custom port
+markata-go search-server --port 8081
+
+# Start in watch mode
+markata-go search-server --mode watch-content
+
+# Serve a prebuilt index artifact without loading content
+markata-go search-server --mode read-only-index --index-dir /data/search.bleve
+
+# Query the API
+curl "http://localhost:3001/api/search?q=golang&fuzzy=true&limit=10"
+curl "http://localhost:3001/api/search?q=docker&tags=devops&from=2024-01-01"
+```
+
+#### API Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `q` | Search query (required) | — |
+| `fuzzy` | Enable fuzzy matching (`true`/`false`) | `false` |
+| `limit` | Max results | `20` |
+| `tags` | Comma-separated tag filter | none |
+| `from` | Date range start (`YYYY-MM-DD`) | none |
+| `to` | Date range end (`YYYY-MM-DD`) | none |
+
+#### Search API Behavior
+
+- Returns JSON with `query`, `total`, `results` fields
+- Private post content is never searchable — only metadata (title, description, tags)
+- CORS follows `search.bleve.cors_origins`
+- Also available at the configured endpoint during `markata-go serve`
+- Health check at `/health`
+
+#### Modes
+
+- `runtime-index` loads site content and builds or refreshes a local bleve index
+- `watch-content` reloads content and refreshes the local index when source files change
+- `read-only-index` opens an existing prebuilt index without loading or rebuilding site content
+
+#### Configuration
+
+```toml
+[search]
+backend = "bleve"           # "pagefind" (default) or "bleve"
+endpoint = "/api/search"    # API endpoint path
+
+[search.bleve]
+endpoint = "https://search.example.com/api/search"  # Optional remote endpoint for navbar client
+fuzzy = false               # Default fuzzy matching
+limit = 20                  # Default result limit
+max_limit = 100             # Maximum allowed limit
+cors_origins = ["*"]        # Allowed CORS origins
+```
 
 ---
 
@@ -933,11 +1145,15 @@ Configuration management commands for viewing, validating, and initializing conf
 markata-go config <subcommand> [flags]
 ```
 
+Running `markata-go config` with no subcommand behaves like `markata-go config show`.
+
 #### Subcommands
 
 ##### show
 
 Display the resolved configuration after merging defaults, config file, and environment variables.
+
+`config show` honors the root `--config` and `--merge-config` flags, so it reports the same effective configuration used by `build` and `serve`.
 
 ```bash
 markata-go config show [flags]
@@ -945,6 +1161,7 @@ markata-go config show [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--format` | Output format: `yaml`, `json`, or `toml` | `yaml` |
 | `--json` | Output as JSON | `false` |
 | `--toml` | Output as TOML | `false` |
 | (none) | Output as YAML | default |
@@ -963,7 +1180,16 @@ markata-go config show --toml
 
 # Show config from specific file
 markata-go config show -c production.toml
+
+# Show config with merged overrides
+markata-go config show -m fast.toml
 ```
+
+Notes:
+
+- `markata-go config` is equivalent to `markata-go config show`
+- `--json` and `--toml` are shorthands for `--format json` and `--format toml`
+- conflicting combinations such as `--json --toml` fail with usage error exit code `2`
 
 ##### get
 
@@ -1032,6 +1258,8 @@ Notes:
 
 Validate the configuration file and report any errors or warnings.
 
+`config validate` honors the root `--config` and `--merge-config` flags.
+
 ```bash
 markata-go config validate [flags]
 ```
@@ -1049,6 +1277,9 @@ markata-go config validate
 # Validate specific config file
 markata-go config validate -c production.toml
 markata-go config validate -c custom.yaml
+
+# Validate with merged overrides
+markata-go config validate -m fast.toml
 ```
 
 **Output:**
@@ -1348,14 +1579,13 @@ Configuration values are resolved in this order (later sources override earlier)
 
 ## Exit Codes
 
-All markata-go commands use standard exit codes:
+markata-go uses these common exit code patterns:
 
 | Code | Name | Description |
 |------|------|-------------|
 | `0` | Success | Command completed successfully |
 | `1` | Error | General error (configuration, plugin, I/O, etc.) |
-| `2` | No Content | No content files found matching glob patterns |
-| `3` | Validation Error | Configuration validation failed |
+| `2` | Usage / Command-specific | Invalid CLI usage such as unknown flags or missing args, or command-specific non-success states documented by that command |
 | `130` | Interrupted | Command interrupted by user (Ctrl+C) |
 
 ### Using Exit Codes in Scripts

@@ -1,6 +1,6 @@
 ---
 name: markata-go-site
-description: Help agents work effectively in markata-go site repositories. Use this when the task involves site configuration, writing content, templates, themes, builds, deployment, or deciding whether a change belongs in config, content, templates, or plugins.
+description: Help agents work effectively in markata-go site repositories. Use this whenever the user is working on a markata-go site or asks about site config, frontmatter or content authoring, templates or layouts, themes or palettes, Web Awesome component setup, analytics or stats pages, chartjs or contribution graphs, build or deploy debugging, performance tuning, or deciding whether a change belongs in config, content, templates, CSS, feeds, or plugins. Use it proactively for tasks like creating an `analytics.md` page, exposing reading time or word count in templates, wiring Web Awesome components into content and templates, or helping an author turn site metrics into a publishable story.
 ---
 
 This skill helps an agent work inside a markata-go site repository without needing the markata-go source tree.
@@ -13,6 +13,8 @@ Before making changes:
 - locate the active config file, usually `markata-go.toml`
 - inspect the site's content directories such as `posts/`, `pages/`, `docs/`, and `static/`
 - inspect `templates/` and `palettes/` before inventing new structure
+- inspect existing `wa-*` usage, `webawesome` config, and template asset guards before adding component code or new includes
+- inspect existing analytics pages, metrics partials, and chart code blocks before inventing a new data story pattern
 - prefer current command output and files over older examples or assumptions
 - when the site is minimal or brand new, use the topic files in this skill as the default markata-go playbook
 
@@ -20,9 +22,10 @@ Before making changes:
 
 1. Inspect the site config with `markata-go config show` and `markata-go config get <key>`.
 2. Inspect content with `markata-go list posts`, `markata-go list feeds`, and `markata-go list tags`.
-3. Use `markata-go explain <topic>` for built-in CLI context.
-4. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
-5. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
+3. Search for content by keyword with `markata-go search <query>`.
+4. Use `markata-go explain <topic>` for built-in CLI context.
+5. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
+6. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
 
 ## Topic Files
 
@@ -34,6 +37,7 @@ Read only the topic files relevant to the task:
 - `topics/faster-builds.md`
 - `topics/theme-creation.md`
 - `topics/template-management.md`
+- `topics/analytics-storytelling.md`
 - `topics/plugin-creation.md`
 
 ## Reference Files
@@ -43,6 +47,7 @@ Use these when you need exact shapes instead of narrative guidance:
 - `reference/template-context.md`
 - `reference/feed-patterns.md`
 - `reference/palette-reference.md`
+- `reference/webawesome.md`
 
 ## Example Files
 
@@ -54,6 +59,12 @@ Use these as starter material for first sites or when a repo has no local exampl
 - `examples/templates/base.html`
 - `examples/templates/post.html`
 - `examples/templates/feed.html`
+
+## Eval Files
+
+Use these only when reviewing or improving the bundled skill itself:
+
+- `evals/evals.json`
 
 ## First-Site Defaults
 
@@ -72,6 +83,7 @@ If the repository is a very small or first-time site and does not yet have clear
 - Template work: `topics/template-management.md`
 - Theme or styling work: `topics/theme-creation.md`
 - Content creation: `topics/writing-frontmatter.md`
+- Analytics pages or metrics storytelling: `topics/analytics-storytelling.md`
 - Config debugging: `topics/configuration.md`
 - Build and CI work: `topics/build-deployment.md`
 - Performance work: `topics/faster-builds.md`
@@ -84,6 +96,7 @@ If the repository is a very small or first-time site and does not yet have clear
 - When something is ambiguous, inspect the actual repo files before changing behavior.
 - Prefer CLI inspection over hand-parsing when `markata-go` already exposes the needed data.
 - If the task is performance-related, compare warm builds before claiming a regression or improvement.
+- For analytics storytelling work, separate computed facts from human narrative: agents should gather metrics, scaffold charts, and suggest story angles, while leaving first-person timeline details for the author unless the user asks for full prose.
 - If the site has no existing conventions yet, use the patterns documented in this skill rather than making up a new structure.
 
 ## Common Repo Areas

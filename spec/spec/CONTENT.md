@@ -460,11 +460,16 @@ cjk = true  # Enable CJK line breaks (default: true)
 
 ### Figures
 
-Convert images with following paragraphs into `<figure>` elements with `<figcaption>`.
+Convert images with following paragraphs into `<figure>` elements with `<figcaption>`. A single-paragraph blockquote immediately following a figure SHOULD also be treated as caption content and merged into the figure.
 
 ```markdown
 ![Alt text](image.jpg)
 This is the caption.
+```
+
+```markdown
+![Alt text](image.jpg)
+> This is also treated as the caption.
 ```
 
 Output:
@@ -497,7 +502,7 @@ Output:
 **Configuration:**
 ```toml
 [markdown.extensions]
-anchor = true  # Enable heading anchors (default: true)
+anchor = false  # Enable goldmark heading anchors (default: false; use heading_anchors plugin instead)
 ```
 
 ### Code Blocks
@@ -744,13 +749,18 @@ For system notifications within a conversation:
 Link to another post: [[other-post-slug]]
 
 With custom text: [[other-post-slug|Click here]]
+
+Link to a specific section: [[other-post-slug#section-id]]
+
+Section link with custom text: [[other-post-slug#section-id|See this section]]
 ```
 
 ### Resolution
 
-1. Find post where `slug == link_target`
-2. If found, render as `<a href="{post.href}">{text}</a>`
-3. If not found, leave as literal `[[link]]` and warn
+1. Split `link_target` on the first `#` into `slug` and optional `fragment`
+2. Find post where `slug == slug` (or alias match, case-insensitive)
+3. If found, render as `<a href="{post.href}#{fragment}">{text}</a>` (fragment omitted if empty)
+4. If not found, leave as literal `[[link]]` and warn
 
 ### Output
 
@@ -758,6 +768,10 @@ With custom text: [[other-post-slug|Click here]]
 <!-- Found -->
 <a href="/other-post-slug/">Other Post Title</a>
 <a href="/other-post-slug/">Click here</a>
+
+<!-- Found with fragment -->
+<a href="/other-post-slug/#section-id">Other Post Title</a>
+<a href="/other-post-slug/#section-id">See this section</a>
 
 <!-- Not found -->
 [[nonexistent-post]]

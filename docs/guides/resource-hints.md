@@ -108,6 +108,7 @@ crossorigin = "anonymous"
 **When to use**:
 - Critical resources (fonts, critical CSS/JS)
 - Domains you know will be used immediately
+- High-value media origins like YouTube or Vimeo embeds
 - Limit to 3-5 per page for best results
 
 ### Preload

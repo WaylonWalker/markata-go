@@ -2,9 +2,11 @@
 
 {% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block page_wrapper_class %} page-wrapper--feed-only{% endblock %}
 {% block head %}
 {{ block.Super() }}
 <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
 {% endblock %}
 
 {% block htmx %}
@@ -40,7 +42,7 @@
           <g class="feed-header-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
             <line class="feed-header-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
             <circle class="feed-header-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
-            <rect class="feed-header-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28"></rect>
+            <rect class="feed-header-sparkline-hit" x="{{ point.HitX }}" y="0" width="5.2" height="28"></rect>
           </g>
           {% endfor %}
         </svg>

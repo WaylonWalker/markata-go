@@ -16,9 +16,14 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 
 	"github.com/flosch/pongo2/v6"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 var registerOnce sync.Once
+
+// HumanDateFormat is the canonical visible HTML date format.
+const HumanDateFormat = "Jan 2, 2006"
 
 // assetHashRegistry stores asset path -> hash mappings for cache busting.
 // This is set by SetAssetHashes() before rendering templates.
@@ -80,7 +85,7 @@ var (
 // compileBlockTagPatterns creates regex patterns for block tags.
 // If openTag is true, creates opening tag patterns; otherwise closing tag patterns.
 func compileBlockTagPatterns(openTag bool) map[string]*regexp.Regexp {
-	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside", "pre"}
 	patterns := make(map[string]*regexp.Regexp, len(blockTags))
 
 	for _, tag := range blockTags {
@@ -105,6 +110,7 @@ func registerFilters() {
 		pongo2.RegisterFilter("rss_date", filterRSSDate)
 		pongo2.RegisterFilter("atom_date", filterAtomDate)
 		pongo2.RegisterFilter("date_format", filterDateFormat)
+		pongo2.RegisterFilter("human_date", filterHumanDate)
 		// Override the built-in date filter to handle *time.Time and string parsing
 		pongo2.ReplaceFilter("date", filterDate)
 
@@ -161,6 +167,7 @@ func registerFilters() {
 
 		// Excerpt filter
 		pongo2.RegisterFilter("excerpt", filterExcerpt)
+		pongo2.RegisterFilter("slides_reveal", filterSlidesReveal)
 
 		// Type conversion filter
 		pongo2.RegisterFilter("string", filterString)
@@ -228,6 +235,20 @@ func filterDateFormat(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 
 	return pongo2.AsValue(t.Format(format)), nil
+}
+
+// FormatHumanDate formats a time value for visible HTML text.
+func FormatHumanDate(t time.Time) string {
+	return t.Format(HumanDateFormat)
+}
+
+func filterHumanDate(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	t, err := toTime(in)
+	if err != nil {
+		return pongo2.AsValue(""), nil
+	}
+
+	return pongo2.AsValue(FormatHumanDate(t)), nil
 }
 
 // filterSlugify converts a string to a URL-safe slug.
@@ -1057,7 +1078,7 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 // while removing block elements and cleaning up content for excerpts
 func cleanExcerptHTML(s string) string {
 	// Remove block-level tags but keep their content
-	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside", "pre"}
 	for _, tag := range blockTags {
 		// Remove opening tags
 		s = blockTagOpenRe[tag].ReplaceAllString(s, "")
@@ -1090,6 +1111,158 @@ func stripHTMLTagsHelper(s string) string {
 	return strings.TrimSpace(s)
 }
 
+type slideDeck struct {
+	Horizontal []slideGroup
+}
+
+type slideGroup struct {
+	Vertical []string
+}
+
+// filterSlidesReveal converts rendered article HTML into reveal.js sections.
+// Horizontal slides start at h2 or hr boundaries. H3 starts a vertical child slide.
+func filterSlidesReveal(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	htmlContent := in.String()
+	if strings.TrimSpace(htmlContent) == "" {
+		return pongo2.AsSafeValue(`<section><div class="slide-content"></div></section>`), nil
+	}
+
+	deck, err := buildRevealSlideDeck(htmlContent)
+	if err != nil {
+		return pongo2.AsSafeValue(`<section><div class="slide-content">` + htmlContent + `</div></section>`), nil
+	}
+
+	return pongo2.AsSafeValue(renderRevealSlideDeck(deck)), nil
+}
+
+func buildRevealSlideDeck(htmlContent string) (slideDeck, error) {
+	context := &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div}
+	fragment, err := html.ParseFragment(strings.NewReader(htmlContent), context)
+	if err != nil {
+		return slideDeck{}, err
+	}
+
+	deck := slideDeck{}
+	currentHorizontal := slideGroup{}
+	currentVertical := strings.Builder{}
+	hasVerticalContent := false
+	hasHorizontal := false
+
+	flushVertical := func() {
+		content := strings.TrimSpace(currentVertical.String())
+		if content == "" {
+			currentVertical.Reset()
+			hasVerticalContent = false
+			return
+		}
+		currentHorizontal.Vertical = append(currentHorizontal.Vertical, content)
+		currentVertical.Reset()
+		hasVerticalContent = false
+	}
+
+	flushHorizontal := func() {
+		flushVertical()
+		if len(currentHorizontal.Vertical) == 0 {
+			return
+		}
+		deck.Horizontal = append(deck.Horizontal, currentHorizontal)
+		currentHorizontal = slideGroup{}
+		hasHorizontal = false
+	}
+
+	for _, node := range fragment {
+		if isHorizontalRuleSeparator(node) {
+			flushHorizontal()
+			continue
+		}
+
+		if isHorizontalHeadingSeparator(node) {
+			if hasVerticalContent {
+				flushHorizontal()
+			}
+		}
+
+		if isVerticalSeparator(node) {
+			if hasVerticalContent {
+				flushVertical()
+			}
+			hasHorizontal = true
+		}
+
+		currentVertical.WriteString(renderNode(node))
+		hasVerticalContent = true
+		if !hasHorizontal {
+			hasHorizontal = true
+		}
+	}
+
+	flushHorizontal()
+
+	if len(deck.Horizontal) == 0 {
+		deck.Horizontal = append(deck.Horizontal, slideGroup{Vertical: []string{htmlContent}})
+	}
+
+	return deck, nil
+}
+
+func isHorizontalHeadingSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "h2"
+}
+
+func isHorizontalRuleSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "hr"
+}
+
+func isVerticalSeparator(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	return node.Data == "h3"
+}
+
+func renderRevealSlideDeck(deck slideDeck) string {
+	var out strings.Builder
+	for _, horizontal := range deck.Horizontal {
+		if len(horizontal.Vertical) <= 1 {
+			out.WriteString("<section>")
+			if len(horizontal.Vertical) == 1 {
+				out.WriteString(`<div class="slide-content">`)
+				out.WriteString(horizontal.Vertical[0])
+				out.WriteString(`</div>`)
+			}
+			out.WriteString("</section>")
+			continue
+		}
+
+		out.WriteString("<section>")
+		for _, vertical := range horizontal.Vertical {
+			out.WriteString("<section>")
+			out.WriteString(`<div class="slide-content">`)
+			out.WriteString(vertical)
+			out.WriteString(`</div></section>`)
+		}
+		out.WriteString("</section>")
+	}
+	return out.String()
+}
+
+func renderNode(node *html.Node) string {
+	if node == nil {
+		return ""
+	}
+	var out strings.Builder
+	if err := html.Render(&out, node); err != nil {
+		return ""
+	}
+	return out.String()
+}
+
 // filterString converts a value to a string representation.
 // Usage: {{ number|string }} or {{ post.excerpt_paragraphs|string }}
 func filterString(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
@@ -1103,16 +1276,16 @@ func filterIsVideo(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 }
 
 // filterMediaURL resolves a media URL from multiple fields.
-// Returns the first non-empty value from the input and parameter.
+// Returns the first non-empty value from the input and parameter, normalizing trusted media hosts to https.
 // Usage: {{ post.image|media_url:post.video }}
 func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	// Try input first (primary field)
 	if !in.IsNil() && in.String() != "" {
-		return in, nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(in.String())), nil
 	}
 	// Fall back to parameter (secondary field)
 	if param != nil && !param.IsNil() && param.String() != "" {
-		return param, nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(param.String())), nil
 	}
 	return pongo2.AsValue(""), nil
 }
@@ -1160,7 +1333,7 @@ func filterPosterURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 	candidate := strings.TrimSpace(in.String())
 	if candidate != "" {
-		return pongo2.AsValue(candidate), nil
+		return pongo2.AsValue(normalizeTrustedMediaURL(candidate)), nil
 	}
 	return pongo2.AsValue(""), nil
 }

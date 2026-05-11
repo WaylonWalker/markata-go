@@ -24,8 +24,8 @@ midnight    = "#272744"
 [palette.semantic]
 # Text colors
 text-primary   = "midnight"
-text-secondary = "indigo"
-text-muted     = "purple"
+text-secondary = "midnight"
+text-muted     = "midnight"
 
 # Background colors
 bg-primary   = "cream"
@@ -36,7 +36,7 @@ bg-elevated  = "mauve"
 # Accent colors
 accent       = "purple"
 accent-hover = "indigo"
-link         = "indigo"
+link         = "midnight"
 link-hover   = "purple"
 link-visited = "mauve"
 

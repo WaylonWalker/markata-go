@@ -180,7 +180,7 @@ func resolveEmbedHighlightConfig(extra map[string]interface{}) (chromaTheme stri
 
 func renderGistCodeMarkdown(resolver *oembedResolver, language, content string) (string, error) {
 	if language == "" {
-		language = "text"
+		language = formatText
 	}
 	md := resolver.markdown
 	if md == nil {

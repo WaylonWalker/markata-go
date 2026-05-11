@@ -22,6 +22,7 @@ type configSource interface {
 	getIndieAuth() indieAuthConverter
 	getWebmention() webmentionConverter
 	getComponents() componentsConverter
+	getSearch() models.SearchConfig
 	getLayout() layoutConverter
 	getSidebar() sidebarConverter
 	getToc() tocConverter
@@ -241,6 +242,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Components config
 	config.Components = src.getComponents().toComponentsConfig()
 
+	// Convert Search config
+	config.Search = src.getSearch()
+
 	// Convert Layout config
 	config.Layout = src.getLayout().toLayoutConfig()
 
@@ -440,6 +444,7 @@ type tomlConfig struct {
 	SEO             tomlSEOConfig             `toml:"seo"`
 	IndieAuth       tomlIndieAuthConfig       `toml:"indieauth"`
 	Webmention      tomlWebmentionConfig      `toml:"webmention"`
+	Search          models.SearchConfig       `toml:"search"`
 	Components      tomlComponentsConfig      `toml:"components"`
 	Layout          tomlLayoutConfig          `toml:"layout"`
 	Sidebar         tomlSidebarConfig         `toml:"sidebar"`
@@ -559,6 +564,7 @@ type tomlFeedConfig struct {
 	Slug            string            `toml:"slug"`
 	Title           string            `toml:"title"`
 	Description     string            `toml:"description"`
+	Robots          string            `toml:"robots"`
 	Filter          string            `toml:"filter"`
 	Sort            string            `toml:"sort"`
 	Reverse         bool              `toml:"reverse"`
@@ -661,6 +667,7 @@ type tomlFeedsPageConfig struct {
 	Description string `toml:"description"`
 	Template    string `toml:"template"`
 	SlugPrefix  string `toml:"slug_prefix"`
+	Robots      string `toml:"robots"`
 }
 
 func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
@@ -702,6 +709,7 @@ func (t *tomlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -1758,6 +1766,7 @@ func (c *tomlConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *tomlConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *tomlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *tomlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *tomlConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *tomlConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *tomlConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *tomlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
@@ -1858,6 +1867,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
@@ -1959,6 +1969,7 @@ type yamlConfig struct {
 	WellKnown       yamlWellKnownConfig       `yaml:"well_known"`
 	IndieAuth       yamlIndieAuthConfig       `yaml:"indieauth"`
 	Webmention      yamlWebmentionConfig      `yaml:"webmention"`
+	Search          models.SearchConfig       `yaml:"search"`
 	SEO             yamlSEOConfig             `yaml:"seo"`
 	Components      yamlComponentsConfig      `yaml:"components"`
 	Layout          yamlLayoutConfig          `yaml:"layout"`
@@ -2026,6 +2037,7 @@ type yamlFeedConfig struct {
 	Slug            string            `yaml:"slug"`
 	Title           string            `yaml:"title"`
 	Description     string            `yaml:"description"`
+	Robots          string            `yaml:"robots"`
 	Filter          string            `yaml:"filter"`
 	Sort            string            `yaml:"sort"`
 	Reverse         bool              `yaml:"reverse"`
@@ -2158,6 +2170,7 @@ type yamlFeedsPageConfig struct {
 	Description string `yaml:"description"`
 	Template    string `yaml:"template"`
 	SlugPrefix  string `yaml:"slug_prefix"`
+	Robots      string `yaml:"robots"`
 }
 
 func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
@@ -2169,6 +2182,7 @@ func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -3310,6 +3324,7 @@ func (c *yamlConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *yamlConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *yamlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *yamlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *yamlConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *yamlConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *yamlConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *yamlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
@@ -3344,6 +3359,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
@@ -3445,6 +3461,7 @@ type jsonConfig struct {
 	WellKnown       jsonWellKnownConfig       `json:"well_known"`
 	IndieAuth       jsonIndieAuthConfig       `json:"indieauth"`
 	Webmention      jsonWebmentionConfig      `json:"webmention"`
+	Search          models.SearchConfig       `json:"search"`
 	SEO             jsonSEOConfig             `json:"seo"`
 	Components      jsonComponentsConfig      `json:"components"`
 	Layout          jsonLayoutConfig          `json:"layout"`
@@ -3536,6 +3553,7 @@ type jsonFeedConfig struct {
 	Slug            string            `json:"slug"`
 	Title           string            `json:"title"`
 	Description     string            `json:"description"`
+	Robots          string            `json:"robots"`
 	Filter          string            `json:"filter"`
 	Sort            string            `json:"sort"`
 	Reverse         bool              `json:"reverse"`
@@ -3638,6 +3656,7 @@ type jsonFeedsPageConfig struct {
 	Description string `json:"description"`
 	Template    string `json:"template"`
 	SlugPrefix  string `json:"slug_prefix"`
+	Robots      string `json:"robots"`
 }
 
 func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
@@ -3679,6 +3698,7 @@ func (t *jsonFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 		Description: t.Description,
 		Template:    t.Template,
 		SlugPrefix:  t.SlugPrefix,
+		Robots:      t.Robots,
 	}
 
 	if config.Enabled == nil {
@@ -4820,6 +4840,7 @@ func (c *jsonConfig) getWellKnown() wellKnownConverter             { return &c.W
 func (c *jsonConfig) getSEO() seoConverter                         { return &c.SEO }
 func (c *jsonConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
 func (c *jsonConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *jsonConfig) getSearch() models.SearchConfig               { return c.Search }
 func (c *jsonConfig) getComponents() componentsConverter           { return &c.Components }
 func (c *jsonConfig) getLayout() layoutConverter                   { return &c.Layout }
 func (c *jsonConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
@@ -4854,6 +4875,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Slug:            f.Slug,
 		Title:           f.Title,
 		Description:     f.Description,
+		Robots:          f.Robots,
 		Filter:          f.Filter,
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,

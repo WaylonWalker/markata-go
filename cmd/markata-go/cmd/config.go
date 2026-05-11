@@ -35,11 +35,12 @@ var configCmd = &cobra.Command{
 	Long: `Commands for managing markata-go configuration.
 
 Subcommands:
-  show     - Display the resolved configuration
-  get      - Get a specific configuration value
-  set      - Set a configuration value
-  validate - Validate the configuration file
-  init     - Create a new configuration file`,
+	  show     - Display the resolved configuration
+	  get      - Get a specific configuration value
+	  set      - Set a configuration value
+	  validate - Validate the configuration file
+	  init     - Create a new configuration file`,
+	RunE: runConfigCommand,
 }
 
 // configShowCmd shows the resolved configuration.
@@ -174,38 +175,36 @@ func init() {
 	configSetCmd.Flags().BoolVar(&configSetBackup, "backup", false, "create backup before modifying")
 }
 
+func runConfigCommand(cmd *cobra.Command, _ []string) error {
+	currentCmd = cmd
+	return runConfigShowCommand(configShowCmd, nil)
+}
+
 func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
-	// Handle format shorthands
-	jsonFlag, err := cmd.Flags().GetBool(formatJSON)
+	format, err := resolveConfigShowFormat(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to get json flag: %w", err)
-	}
-	if jsonFlag {
-		configFormat = formatJSON
-	}
-	tomlFlag, err := cmd.Flags().GetBool(formatTOML)
-	if err != nil {
-		return fmt.Errorf("failed to get toml flag: %w", err)
-	}
-	if tomlFlag {
-		configFormat = formatTOML
+		return err
 	}
 
-	// Handle --annotate and --diff modes
-	if configShowAnnotate || configShowDiff {
-		return runConfigShowWithSources(cfgFile)
-	}
-
-	// Load configuration
-	cfg, err := config.Load(cfgFile)
+	cfg, _, configPaths, err := loadManagerConfig(cfgFile)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Handle --annotate and --diff modes
+	if configShowAnnotate || configShowDiff {
+		return runConfigShowWithSources(cfg, configPaths)
+	}
+
+	displayMap, err := configToMap(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to convert config to map: %w", err)
+	}
+
 	// Output in requested format
-	switch strings.ToLower(configFormat) {
+	switch format {
 	case formatJSON:
-		data, err := json.MarshalIndent(cfg, "", "  ")
+		data, err := json.MarshalIndent(displayMap, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
@@ -217,67 +216,82 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 		}
 
 	case formatYAML:
-		data, err := yaml.Marshal(cfg)
+		data, err := yaml.Marshal(displayMap)
 		if err != nil {
 			return fmt.Errorf("failed to marshal YAML: %w", err)
 		}
 		outText(string(data))
 
 	default:
-		data, err := yaml.Marshal(cfg)
-		if err != nil {
-			return fmt.Errorf("failed to marshal YAML: %w", err)
-		}
-		outText(string(data))
+		return newUsageError(fmt.Errorf("invalid format %q (expected yaml, json, or toml)", format))
 	}
 
 	return nil
 }
 
+func resolveConfigShowFormat(cmd *cobra.Command) (string, error) {
+	format := strings.ToLower(strings.TrimSpace(configFormat))
+	if format == "" {
+		format = formatYAML
+	}
+
+	jsonFlag, err := cmd.Flags().GetBool(formatJSON)
+	if err != nil {
+		return "", fmt.Errorf("failed to get json flag: %w", err)
+	}
+	tomlFlag, err := cmd.Flags().GetBool(formatTOML)
+	if err != nil {
+		return "", fmt.Errorf("failed to get toml flag: %w", err)
+	}
+
+	if cmd.Flags().Changed(formatJSON) && cmd.Flags().Changed(formatTOML) && jsonFlag && tomlFlag {
+		return "", newUsageError(fmt.Errorf("cannot use --json and --toml together"))
+	}
+
+	if cmd.Flags().Changed("format") {
+		if jsonFlag && format != formatJSON {
+			return "", newUsageError(fmt.Errorf("cannot use --format=%s with --json", format))
+		}
+		if tomlFlag && format != formatTOML {
+			return "", newUsageError(fmt.Errorf("cannot use --format=%s with --toml", format))
+		}
+	}
+
+	if jsonFlag {
+		format = formatJSON
+	}
+	if tomlFlag {
+		format = formatTOML
+	}
+
+	switch format {
+	case formatJSON, formatTOML, formatYAML:
+		return format, nil
+	default:
+		return "", newUsageError(fmt.Errorf("invalid format %q (expected yaml, json, or toml)", format))
+	}
+}
+
 // runConfigShowWithSources handles --annotate and --diff flags.
 // It compares user config with defaults to show value sources.
-func runConfigShowWithSources(configPath string) error {
-	// Get merged config as a map
-	merged, err := config.Load(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+func runConfigShowWithSources(merged *models.Config, configPaths []string) error {
 	mergedMap, err := configToMap(merged)
 	if err != nil {
 		return fmt.Errorf("failed to convert config to map: %w", err)
 	}
 
-	// Load user config file directly (without merging with defaults)
-	var userMap map[string]interface{}
-	var userConfigFile string
-
-	if configPath != "" {
-		userConfigFile = configPath
-	} else {
-		userConfigFile, _ = config.Discover() //nolint:errcheck // discovery failure is ok, we'll handle empty string
-	}
-
-	if userConfigFile != "" {
-		data, err := os.ReadFile(userConfigFile)
-		if err == nil {
-			format := formatFromPath(userConfigFile)
-			wrapper, err := parseConfigToMap(data, format)
-			if err == nil {
-				// Extract the inner markata-go config
-				if inner, ok := wrapper["markata-go"].(map[string]interface{}); ok {
-					userMap = inner
-				}
-			}
-		}
+	userMap, err := loadUserConfigMap(configPaths)
+	if err != nil {
+		return err
 	}
 
 	if configShowDiff {
 		// Show only values that differ from defaults
-		return showDiffConfig(userMap, userConfigFile)
+		return showDiffConfig(userMap, configPaths)
 	}
 
 	// Show annotated config
-	return showAnnotatedConfig(mergedMap, userMap, userConfigFile)
+	return showAnnotatedConfig(mergedMap, userMap, configPaths)
 }
 
 // configToMap converts a Config struct to a map[string]interface{}.
@@ -294,15 +308,18 @@ func configToMap(cfg *models.Config) (map[string]interface{}, error) {
 }
 
 // showDiffConfig prints only user-provided values that differ from defaults.
-func showDiffConfig(userMap map[string]interface{}, userConfigFile string) error {
+func showDiffConfig(userMap map[string]interface{}, configPaths []string) error {
 	if len(userMap) == 0 {
 		outln("# No user configuration found")
 		outln("# All values are defaults")
 		return nil
 	}
 
-	if userConfigFile != "" {
-		outlnf("# User configuration from: %s", userConfigFile)
+	if len(configPaths) > 0 {
+		outln("# User configuration from:")
+		for _, path := range configPaths {
+			outlnf("#   - %s", path)
+		}
 	}
 	outln("# Values below differ from defaults:")
 	outln()
@@ -318,11 +335,16 @@ func showDiffConfig(userMap map[string]interface{}, userConfigFile string) error
 }
 
 // showAnnotatedConfig prints the merged config with source annotations.
-func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile string) error {
+func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []string) error {
+	userSource := userSourceLabel(configPaths)
+
 	// Print header
 	outln("# Configuration with source annotations")
-	if userConfigFile != "" {
-		outlnf("# User config: %s", userConfigFile)
+	if len(configPaths) > 0 {
+		outln("# User config files:")
+		for _, path := range configPaths {
+			outlnf("#   - %s", path)
+		}
 	} else {
 		outln("# User config: (none found, using defaults)")
 	}
@@ -333,6 +355,13 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
+
+	type yamlPathFrame struct {
+		indent int
+		key    string
+	}
+
+	var stack []yamlPathFrame
 
 	// Split into lines and annotate each
 	lines := strings.Split(string(data), "\n")
@@ -360,14 +389,20 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 		key := trimmed[:colonIdx]
 		indent := len(line) - len(trimmed)
 
+		for len(stack) > 0 && indent <= stack[len(stack)-1].indent {
+			stack = stack[:len(stack)-1]
+		}
+
+		path := make([]string, 0, len(stack)+1)
+		for _, frame := range stack {
+			path = append(path, frame.key)
+		}
+		path = append(path, key)
+
 		// Determine source based on whether it's in user config
 		source := sourceDefault
-		if isKeyInMap(user, key) {
-			if userConfigFile != "" {
-				source = "user: " + filepath.Base(userConfigFile)
-			} else {
-				source = "user"
-			}
+		if hasPath(user, path) {
+			source = userSource
 		}
 
 		// Calculate padding for alignment
@@ -382,25 +417,98 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 		if valueAfterColon != "" && !strings.HasPrefix(valueAfterColon, "|") && !strings.HasPrefix(valueAfterColon, ">") {
 			outlnf("%s%s# %s", line, strings.Repeat(" ", padding), source)
 		} else {
-			// It's a parent key (object/map) - check if any child is from user
-			if indent == 0 && isKeyInMap(user, key) {
-				outlnf("%s%s# %s (partial)", line, strings.Repeat(" ", padding), source)
+			if hasPath(user, path) {
+				outlnf("%s%s# %s", line, strings.Repeat(" ", padding), source)
 			} else {
 				outln(line)
 			}
+			stack = append(stack, yamlPathFrame{indent: indent, key: key})
 		}
 	}
 
 	return nil
 }
 
-// isKeyInMap checks if a key exists in the map (handles nested maps).
-func isKeyInMap(m map[string]interface{}, key string) bool {
-	if m == nil {
-		return false
+func loadUserConfigMap(configPaths []string) (map[string]interface{}, error) {
+	var userMap map[string]interface{}
+
+	for _, configPath := range configPaths {
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+		}
+
+		wrapper, err := parseConfigToMap(data, formatFromPath(configPath))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+		}
+
+		inner, ok := wrapper["markata-go"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		userMap = mergeConfigMaps(userMap, inner)
 	}
-	_, exists := m[key]
-	return exists
+
+	return userMap, nil
+}
+
+func mergeConfigMaps(base, override map[string]interface{}) map[string]interface{} {
+	if base == nil {
+		base = make(map[string]interface{})
+	}
+
+	for key, value := range override {
+		overrideMap, ok := value.(map[string]interface{})
+		if !ok {
+			base[key] = value
+			continue
+		}
+
+		baseMap, ok := base[key].(map[string]interface{})
+		if !ok {
+			baseMap = make(map[string]interface{})
+		}
+		base[key] = mergeConfigMaps(baseMap, overrideMap)
+	}
+
+	return base
+}
+
+func userSourceLabel(configPaths []string) string {
+	if len(configPaths) == 0 {
+		return "user"
+	}
+	if len(configPaths) == 1 {
+		return "user: " + filepath.Base(configPaths[0])
+	}
+	return fmt.Sprintf("user: merged config (%d files)", len(configPaths))
+}
+
+func hasPath(m map[string]interface{}, path []string) bool {
+	_, ok := getPathValue(m, path)
+	return ok
+}
+
+func getPathValue(m map[string]interface{}, path []string) (interface{}, bool) {
+	if m == nil || len(path) == 0 {
+		return nil, false
+	}
+
+	var current interface{} = m
+	for _, key := range path {
+		currentMap, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		current, ok = currentMap[key]
+		if !ok {
+			return nil, false
+		}
+	}
+
+	return current, true
 }
 
 func runConfigGetCommand(_ *cobra.Command, args []string) error {
@@ -442,13 +550,27 @@ func runConfigGetCommand(_ *cobra.Command, args []string) error {
 
 func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 	// Load and validate configuration
-	cfg, validationErrs, err := config.LoadAndValidate(cfgFile)
+	cfg, _, _, err := loadManagerConfig(cfgFile)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-
-	// Split errors and warnings
+	validationErrs := config.ValidateConfig(cfg)
 	actualErrors, warnings := config.SplitErrorsAndWarnings(validationErrs)
+
+	configPath := cfgFile
+	if configPath == "" {
+		if len(mergeConfigFiles) > 0 {
+			configPath = fmt.Sprintf("(merged config: %s)", strings.Join(mergeConfigFiles, ", "))
+		} else if discovered, discoverErr := config.Discover(); discoverErr == nil {
+			configPath = discovered
+		}
+	}
+	if configPath == "" && len(mergeConfigFiles) > 0 {
+		configPath = fmt.Sprintf("(merged config: %s)", strings.Join(mergeConfigFiles, ", "))
+	}
+	if configPath == "" {
+		configPath = "(defaults)"
+	}
 
 	// Print warnings
 	if len(warnings) > 0 {
@@ -469,18 +591,6 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print success
-	configPath := cfgFile
-	if configPath == "" {
-		var discoverErr error
-		configPath, discoverErr = config.Discover()
-		if discoverErr != nil {
-			configPath = ""
-		}
-	}
-	if configPath == "" {
-		configPath = "(defaults)"
-	}
-
 	outlnf("Configuration is valid: %s", configPath)
 
 	if verbose {

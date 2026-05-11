@@ -4,7 +4,7 @@
 <article class="card card-video h-entry">
 <header class="card-header">
 {% with post.image|media_url:post.video as media_src %}{% if media_src %}{% with media_src|with_size:"1200,675" as sized_media %}<a href="{{ post.href }}" class="card-video-link u-url">
-{% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="card-thumbnail u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"1200,675" }}"{% endif %}>
+{% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="card-thumbnail u-video" autoplay muted loop playsinline width="1200" height="675"{% if poster_candidate %} poster="{{ poster_candidate | with_size:"1200,675" }}"{% endif %}>
 <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
 </video>
 {% else %}<div class="card-video-container">
@@ -23,7 +23,7 @@
 {% if post.description %}<p class="card-description p-summary">{{ post.description | truncatechars:150 }}</p>
 {% endif %}</div>
 <footer class="card-meta">
-{% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+{% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
 {% endif %}{% if post.duration %}<span class="duration">{{ post.duration }}</span>{% endif %}
 </footer>
 </article>

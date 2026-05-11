@@ -37,6 +37,10 @@ Fast mode still does the main site build work:
 - feed and collection generation
 - normal output writing for the site itself
 
+For `markata-go build --fast`, file discovery still rescans the content tree on each run. Added,
+removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
+reuses in-memory and on-disk state for incremental rebuilds between change events.
+
 So `--fast` is good for content, template, and most styling iteration, but it is not a full partial build mode.
 
 ## Guidance
@@ -46,6 +50,9 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - If output is network-bound, inspect plugins that fetch remote content.
 - If output is disk-bound, inspect globbing, cache load/save, feed publishing, and static output.
 - Prefer targeted fixes over broad cache-busting changes.
+- For sites that use `[markata-go.mermaid] mode = "chromium"` or `"cli"`, unchanged
+  diagrams should reuse cached SVG output on warm builds; if Mermaid remains a hotspot,
+  compare the diagram source and rendering inputs before recommending client mode.
 
 ## Slim Config Overrides With `-m fast.toml`
 

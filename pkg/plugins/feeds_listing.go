@@ -64,6 +64,7 @@ type sparklineWindow struct {
 type SparklinePoint struct {
 	X     float64
 	Y     float64
+	HitX  float64
 	Month string
 	Value int
 }
@@ -451,6 +452,7 @@ func buildFeedSparklineData(posts []*models.Post, window sparklineWindow) []Spar
 		points = append(points, SparklinePoint{
 			X:     x,
 			Y:     y,
+			HitX:  x - 2.6,
 			Month: months[i].Format("Jan 2006"),
 			Value: count,
 		})
@@ -704,6 +706,10 @@ func (p *FeedsListingPlugin) renderFeedsPage(
 	}
 
 	modelsConfig := ToModelsConfig(config)
+	pageRobots := feedsPage.Robots
+	if modelsConfig != nil && modelsConfig.FeedsPage.Robots != "" {
+		pageRobots = modelsConfig.FeedsPage.Robots
+	}
 	syntheticPost := &models.Post{
 		Slug:        pageSlug,
 		Title:       &title,
@@ -711,6 +717,10 @@ func (p *FeedsListingPlugin) renderFeedsPage(
 	}
 
 	ctx := templates.NewContext(syntheticPost, "", modelsConfig)
+	ctx.Extra["feeds_page"] = map[string]interface{}{
+		"robots": pageRobots,
+	}
+	ctx.Extra["feeds_page_robots"] = pageRobots
 	ctx.Extra["feed_sections"] = sections
 	ctx.Extra["page_links"] = pageLinks
 	ctx.Extra["pagination"] = pagination
@@ -723,6 +733,9 @@ func (p *FeedsListingPlugin) renderFeedsPage(
 	html, err := engine.Render(feedsPage.Template, ctx)
 	if err != nil {
 		return fmt.Errorf("rendering feeds template: %w", err)
+	}
+	if pageRobots != "" && !strings.Contains(html, `name="robots"`) {
+		html = strings.Replace(html, "</head>", `<meta name="robots" content="`+pageRobots+`">`+"\n</head>", 1)
 	}
 
 	outputPath := filepath.Join(feedsDir, "index.html")

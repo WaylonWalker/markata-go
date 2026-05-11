@@ -26,8 +26,8 @@ black       = "#202020"
 [palette.semantic]
 # Text colors
 text-primary   = "gold"
-text-secondary = "tan"
-text-muted     = "tan"
+text-secondary = "gold"
+text-muted     = "gold"
 
 # Background colors
 bg-primary   = "black"

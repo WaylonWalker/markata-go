@@ -565,7 +565,7 @@ type TocConfig struct {
 	MinDepth int `json:"min_depth,omitempty" yaml:"min_depth,omitempty" toml:"min_depth,omitempty"`
 
 	// MaxDepth is the maximum heading level to include (default: 4)
-	MaxDepth int `json:"max_depth,omitempty" yaml:"min_depth,omitempty" toml:"max_depth,omitempty"`
+	MaxDepth int `json:"max_depth,omitempty" yaml:"max_depth,omitempty" toml:"max_depth,omitempty"`
 
 	// Title is the TOC section title (default: "On this page")
 	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`

@@ -99,15 +99,19 @@
   margin: 0 0 var(--space-2);
   font-size: var(--text-xl);
   line-height: var(--leading-tight);
+  color: var(--color-text);
 }
 
 .card .card-title a {
-  color: var(--color-text);
+  color: inherit;
   text-decoration: none;
 }
 
-.card .card-title a:hover {
-  color: var(--color-primary);
+.card .card-title:hover,
+.card .card-title a:hover,
+.card .card-title a:focus-visible {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .card .card-description,
@@ -240,17 +244,17 @@
 .card-note {
   padding: var(--space-4);
   border: none;
-  border-left: 3px solid var(--color-primary);
+  border-top: 2px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   max-width: 550px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .card-note:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .card-note .card-content {
@@ -350,23 +354,26 @@
 /* Standalone photo figures rendered directly in feed lists should center
    their media and caption within the feed column, not hug the left edge. */
 .feed .posts-list > .photo-figure {
-  width: 100%;
-  max-width: 100%;
+  width: auto;
+  max-width: min(100%, 600px);
   display: grid;
   justify-items: center;
+  justify-self: center;
   text-align: center;
 }
 
 .feed .posts-list > .photo-figure > a {
   display: grid;
   place-items: center;
-  width: 100%;
+  width: auto;
   max-width: 100%;
 }
 
 .feed .posts-list > .photo-figure img,
 .feed .posts-list > .photo-figure video {
   display: block;
+  width: auto;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -545,10 +552,15 @@
 }
 
 .card-link .card-domain {
-  display: block;
+  display: inline-flex;
+  align-items: center;
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   margin-top: var(--space-1);
+  max-width: 100%;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding-right: 0.35rem;
   text-decoration: none;
   text-transform: lowercase;
 
@@ -559,14 +571,23 @@
 }
 
 .card-link .card-domain:hover {
-  color: var(--color-primary);
+  color: inherit;
   text-decoration: underline;
+}
+
+.card-link .card-link-content a.has-avatar,
+.card-link .card-excerpt a.has-avatar {
+  display: inline-flex;
+  align-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
 }
 
 .card-link .card-title {
   font-size: var(--text-base);
   font-weight: 600;
   margin-bottom: 0;
+  min-height: 24px;
 
   /* Limit to 2 lines */
   display: -webkit-box;
@@ -624,7 +645,7 @@ aside .card-link .card-excerpt {
 .card-quote {
   padding: var(--space-6);
   background: var(--color-surface);
-  border-left: 4px solid var(--color-primary);
+  border-top: 2px solid var(--color-border);
 }
 
 .card-quote .card-blockquote {
@@ -789,11 +810,11 @@ aside .card-link .card-excerpt {
 
 .card-inline .card-content blockquote {
   margin: var(--space-3) 0;
-  padding: var(--space-3);
-  padding-left: var(--space-4);
-  border-left: 3px solid var(--color-primary);
+  padding: var(--space-3) var(--space-4);
+  border-top: 2px solid var(--color-border);
+  border-left: none;
   background: var(--color-surface);
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: var(--radius);
 }
 
 .card-inline .card-meta {

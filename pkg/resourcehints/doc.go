@@ -31,6 +31,7 @@
 // The package includes built-in knowledge of common CDNs and services:
 //
 //   - Google Fonts (fonts.googleapis.com, fonts.gstatic.com)
+//   - Media embeds (www.youtube.com, www.youtube-nocookie.com, player.vimeo.com)
 //   - CDNs (cdn.jsdelivr.net, unpkg.com, cdnjs.cloudflare.com)
 //   - Analytics (www.google-analytics.com, www.googletagmanager.com)
 //

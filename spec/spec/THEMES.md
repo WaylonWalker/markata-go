@@ -12,7 +12,12 @@ Themes control the visual appearance of the generated site. The system supports:
 3. **Theme packages** - Installable, shareable, complete visual identities
 4. **Local overrides** - Any theme file can be overridden by placing it in your project
 5. **Readable by default** - Typography, contrast, and spacing optimized for reading
-6. **Accessible first** - WCAG 2.1 AA compliant colors and focus states
+6. **Accessible first** - WCAG 2.1 AA compliant colors, focus states, and compact touch targets
+
+### Contrast Guarantees
+
+- Default theme text in compact UI surfaces such as home metadata, card metadata, and admonition titles MUST use text tokens that maintain WCAG 2.1 AA contrast at their rendered size.
+- Built-in palette regression tests MUST validate the default theme's concrete foreground/background combinations, not only abstract palette token pairs, so regressions in selector usage are caught across every shipped palette.
 
 ---
 
@@ -1640,6 +1645,8 @@ Template usage:
 
 Built-in themes MUST include styles for all admonition types.
 
+Built-in themes MUST keep interactive text and compact controls readable by default. This includes using link and accent treatments that pass WCAG AA contrast against the active surface and giving compact interactive elements at least a 24px effective touch target when they appear in dense UI such as cards, sidebars, or feed navigation.
+
 ### Admonition CSS
 
 ```css
@@ -1658,7 +1665,8 @@ Built-in themes MUST include styles for all admonition types.
   gap: var(--space-2);
   font-weight: 600;
   margin-bottom: var(--space-2);
-  color: var(--admonition-color, var(--color-primary));
+  color: var(--color-text);
+  color: color-mix(in srgb, var(--admonition-color, var(--color-primary)) 45%, var(--color-text) 55%);
 }
 
 .admonition-title::before {
@@ -2072,47 +2080,29 @@ pre[data-language]::after {
 
 ### Syntax Highlighting Themes
 
-Implementations SHOULD support multiple syntax highlighting themes. The syntax highlighting theme can be:
+Implementations SHOULD support multiple syntax highlighting themes. Syntax highlighting can be:
 
 1. **Explicitly configured** via `markdown.highlight.theme`
-2. **Automatically derived** from the site's color palette (`theme.palette`)
-3. **Defaulted** based on palette variant (light/dark)
+2. **Automatically styled** from the site's palette component colors (`theme.palette`)
+3. **Defaulted** to a stable internal Chroma theme when no explicit override is set
 
-#### Palette-to-Theme Mapping
+#### Palette-native Styling
 
-When no explicit theme is set, the syntax highlighting theme is derived from the site palette:
+When no explicit theme is set, syntax highlighting CSS MUST be generated from the active palette's code component roles instead of relying on nearest-match Chroma themes. The generated CSS SHOULD use these palette-driven variables when available:
 
-| Site Palette | Chroma Theme | Notes |
-|-------------|--------------|-------|
-| `catppuccin-latte` | `catppuccin-latte` | Exact match |
-| `catppuccin-frappe` | `catppuccin-frappe` | Exact match |
-| `catppuccin-macchiato` | `catppuccin-macchiato` | Exact match |
-| `catppuccin-mocha` | `catppuccin-mocha` | Exact match |
-| `nord-light` | `nord` | Both variants use same theme |
-| `nord-dark` | `nord` | Both variants use same theme |
-| `gruvbox-light` | `gruvbox-light` | Light variant |
-| `gruvbox-dark` | `gruvbox` | Dark variant |
-| `tokyo-night` | `tokyonight-night` | Main variant |
-| `tokyo-night-storm` | `tokyonight-storm` | Storm variant |
-| `tokyo-night-day` | `tokyonight-day` | Light variant |
-| `rose-pine` | `rose-pine` | Exact match |
-| `rose-pine-moon` | `rose-pine-moon` | Exact match |
-| `rose-pine-dawn` | `rose-pine-dawn` | Exact match |
-| `everforest-light` | `evergarden` | Similar aesthetic |
-| `everforest-dark` | `evergarden` | Similar aesthetic |
-| `dracula` | `dracula` | Exact match |
-| `solarized-light` | `solarized-light` | Exact match |
-| `solarized-dark` | `solarized-dark` | Exact match |
-| `kanagawa-wave` | `vim` | Japanese aesthetic |
-| `kanagawa-dragon` | `vim` | Japanese aesthetic |
-| `kanagawa-lotus` | `modus-operandi` | Light variant |
-| `default-light` | `github` | Clean, neutral |
-| `default-dark` | `github-dark` | Clean, neutral |
-| `matte-black` | `monokai` | High contrast |
+- `code-bg`
+- `code-text`
+- `code-comment`
+- `code-keyword`
+- `code-string`
+- `code-number`
+- `code-function`
+- `code-type`
+- `code-operator`
 
-For unknown palettes, the default is determined by the palette's variant:
-- Light palettes: `github`
-- Dark palettes: `github-dark`
+If a palette omits some of these roles, implementations SHOULD fall back to sensible site variables such as `--color-text`, `--color-text-muted`, `--color-link`, `--color-primary`, `--color-success`, and `--color-error`.
+
+Explicit `markdown.highlight.theme` overrides MAY still use any supported Chroma theme.
 
 #### Available Themes
 
@@ -2307,12 +2297,14 @@ h6:hover .heading-anchor,
 ```css
 a.wikilink {
   color: var(--color-primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.18em;
 }
 
 a.wikilink.wikilink-missing {
   color: var(--color-error);
   text-decoration: underline;
-  text-decoration-style: dashed;
+  text-decoration-style: wavy;
 }
 ```
 
@@ -2433,6 +2425,10 @@ Every theme MUST provide a base template with these blocks:
 ```
 
 ### Feed Template (`feed.html`)
+
+Feed pages render in the feed-only page wrapper state. When `feed` is present in
+template context, the base layout does not render content or doc sidebars, so
+feed templates must opt into the centered feed wrapper explicitly.
 
 ```jinja2
 {% extends "base.html" %}

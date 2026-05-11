@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -85,7 +86,7 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 			configFiles = []string{path}
 		}
 	}
-	configHash := buildcache.ContentHash(configFilesHash(configFiles))
+	configHash := buildcache.ContentHash(configHashInput(config, configFiles))
 	if configHash != "" && cache.SetConfigHash(configHash) {
 		// Config changed - cache was invalidated
 		buildCacheLog.Phase("configure").Printf("Config changed, full rebuild required")
@@ -135,14 +136,39 @@ func configFilesHash(paths []string) string {
 		return ""
 	}
 
-	hashes := make([]string, 0, len(paths))
+	normalized := make([]string, 0, len(paths))
 	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			absPath = filepath.Clean(path)
+		}
+		normalized = append(normalized, absPath)
+	}
+
+	sort.Strings(normalized)
+
+	hashes := make([]string, 0, len(normalized))
+	for _, path := range normalized {
 		if hash, err := buildcache.HashFile(path); err == nil && hash != "" {
 			hashes = append(hashes, path+":"+hash)
 		}
 	}
 
 	return strings.Join(hashes, "\n")
+}
+
+func configHashInput(config *lifecycle.Config, paths []string) string {
+	components := make([]string, 0, 3)
+	if pathHash := configFilesHash(paths); pathHash != "" {
+		components = append(components, pathHash)
+	}
+	if config != nil {
+		components = append(components, config.OutputDir, config.ContentDir, strings.Join(config.GlobPatterns, "\x00"))
+	}
+	return strings.Join(components, "\n")
 }
 
 func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache *buildcache.Cache) error {
@@ -216,6 +242,13 @@ func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
 	removed := p.cache.RemoveStale(currentPaths)
 	if removed > 0 {
 		buildCacheLog.Phase("cleanup").Printf("Removed %d stale cache entries", removed)
+	}
+	removedMermaid, err := p.cache.CleanupMermaidSVG()
+	if err != nil {
+		return err
+	}
+	if removedMermaid > 0 {
+		buildCacheLog.Phase("cleanup").Printf("Removed %d stale Mermaid SVG cache entries", removedMermaid)
 	}
 
 	// Save cache

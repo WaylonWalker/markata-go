@@ -981,3 +981,14 @@ output
 
 # Test-generated artifacts (tailwind rebuilds on every test run)
 tests/static/markata-tailwind.css
+.agents
+.markata-secrets
+continue-prompt-gpt-54-issue-942.txt
+continue-prompt-gpt-54-single-issue.template.txt
+continue-prompt-gpt-54-single-issue.txt
+continue-prompt-gpt-54.template.txt
+continue-prompt-gpt-54.txt
+pages/about.md
+scripts/fill_continue_prompts.py
+scripts/test_fill_continue_prompts.py
+worktrees

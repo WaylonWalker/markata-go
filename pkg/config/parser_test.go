@@ -386,6 +386,117 @@ func TestParseJSON_EmptySection(t *testing.T) {
 	}
 }
 
+func TestParseTOML_SearchConfig(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.search]
+backend = "bleve"
+endpoint = "http://localhost:3001/api/search"
+
+[markata-go.search.bleve]
+fuzzy = true
+limit = 20
+max_limit = 100
+cors_origins = ["*"]
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.Search.Backend != "bleve" {
+		t.Fatalf("Search.Backend = %q, want %q", config.Search.Backend, "bleve")
+	}
+	if config.Search.Endpoint != "http://localhost:3001/api/search" {
+		t.Fatalf("Search.Endpoint = %q, want %q", config.Search.Endpoint, "http://localhost:3001/api/search")
+	}
+	if config.Search.Bleve.Fuzzy == nil || !*config.Search.Bleve.Fuzzy {
+		t.Fatalf("Search.Bleve.Fuzzy = %v, want true", config.Search.Bleve.Fuzzy)
+	}
+	if config.Search.Bleve.Limit != 20 {
+		t.Fatalf("Search.Bleve.Limit = %d, want 20", config.Search.Bleve.Limit)
+	}
+	if config.Search.Bleve.MaxLimit != 100 {
+		t.Fatalf("Search.Bleve.MaxLimit = %d, want 100", config.Search.Bleve.MaxLimit)
+	}
+	if len(config.Search.Bleve.CORSOrigins) != 1 || config.Search.Bleve.CORSOrigins[0] != "*" {
+		t.Fatalf("Search.Bleve.CORSOrigins = %v, want [*]", config.Search.Bleve.CORSOrigins)
+	}
+}
+
+func TestParseYAML_SearchConfig(t *testing.T) {
+	data := []byte(`
+markata-go:
+  title: Test Site
+  search:
+    backend: bleve
+    endpoint: http://localhost:3001/api/search
+    bleve:
+      fuzzy: true
+      limit: 20
+      max_limit: 100
+      cors_origins:
+        - "*"
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if config.Search.Backend != "bleve" {
+		t.Fatalf("Search.Backend = %q, want %q", config.Search.Backend, "bleve")
+	}
+	if config.Search.Endpoint != "http://localhost:3001/api/search" {
+		t.Fatalf("Search.Endpoint = %q, want %q", config.Search.Endpoint, "http://localhost:3001/api/search")
+	}
+	if config.Search.Bleve.Fuzzy == nil || !*config.Search.Bleve.Fuzzy {
+		t.Fatalf("Search.Bleve.Fuzzy = %v, want true", config.Search.Bleve.Fuzzy)
+	}
+	if config.Search.Bleve.Limit != 20 {
+		t.Fatalf("Search.Bleve.Limit = %d, want 20", config.Search.Bleve.Limit)
+	}
+}
+
+func TestParseJSON_SearchConfig(t *testing.T) {
+	data := []byte(`{
+  "markata-go": {
+    "title": "Test Site",
+    "search": {
+      "backend": "bleve",
+      "endpoint": "http://localhost:3001/api/search",
+      "bleve": {
+        "fuzzy": true,
+        "limit": 20,
+        "max_limit": 100,
+        "cors_origins": ["*"]
+      }
+    }
+  }
+}`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if config.Search.Backend != "bleve" {
+		t.Fatalf("Search.Backend = %q, want %q", config.Search.Backend, "bleve")
+	}
+	if config.Search.Endpoint != "http://localhost:3001/api/search" {
+		t.Fatalf("Search.Endpoint = %q, want %q", config.Search.Endpoint, "http://localhost:3001/api/search")
+	}
+	if config.Search.Bleve.Fuzzy == nil || !*config.Search.Bleve.Fuzzy {
+		t.Fatalf("Search.Bleve.Fuzzy = %v, want true", config.Search.Bleve.Fuzzy)
+	}
+	if config.Search.Bleve.Limit != 20 {
+		t.Fatalf("Search.Bleve.Limit = %d, want 20", config.Search.Bleve.Limit)
+	}
+}
+
 func TestParseTOML_UseGitignoreFalse(t *testing.T) {
 	data := []byte(`
 [markata-go]

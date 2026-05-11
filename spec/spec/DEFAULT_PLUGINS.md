@@ -650,12 +650,15 @@ broken_class = "broken-link"   # CSS class for broken links
 ```markdown
 Link to post: [[other-post-slug]]
 With custom text: [[other-post-slug|Click here]]
+Link to section: [[other-post-slug#section-id]]
+Section with text: [[other-post-slug#section-id|See this section]]
 ```
 
 **Resolution:**
-1. Find post where `slug == link_target`
-2. If found: `<a href="{post.href}">{text or post.title}</a>`
-3. If not found: Leave as `[[link]]` or wrap with broken-link class
+1. Split `link_target` on the first `#` into `slug` and optional `fragment`
+2. Find post where `slug == slug` (or alias match, case-insensitive)
+3. If found: `<a href="{post.href}#{fragment}">{text or post.title}</a>` (fragment omitted if empty)
+4. If not found: Leave as `[[link]]` or wrap with broken-link class
 
 **Hook behavior:**
 
@@ -700,9 +703,12 @@ class = "heading-anchor"       # CSS class
 
 **Behavior:**
 1. Find all headings in `article_html`
-2. Generate ID from heading text (slugified)
-3. Handle duplicate IDs by appending numbers
-4. Insert anchor link at configured position
+2. Skip headings that already contain a goldmark anchor (`class="anchor"`) to prevent duplicates
+3. Generate ID from heading text (slugified)
+4. Handle duplicate IDs by appending numbers
+5. Insert anchor link at configured position
+
+**Note:** The goldmark markdown renderer has its own anchor extension (`[markdown.extensions] anchor`), which is disabled by default. The `heading_anchors` plugin is the recommended way to add heading anchors because it offers more configuration options. If the goldmark anchor extension is explicitly re-enabled, `heading_anchors` will detect and skip headings that already have goldmark anchors to avoid duplicates.
 
 **Example output:**
 ```html

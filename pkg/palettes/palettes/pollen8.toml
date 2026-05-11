@@ -27,7 +27,7 @@ teal        = "#34acba"
 # Text colors
 text-primary   = "maroon"
 text-secondary = "maroon"
-text-muted     = "rose"
+text-muted     = "maroon"
 
 # Background colors
 bg-primary   = "cream"

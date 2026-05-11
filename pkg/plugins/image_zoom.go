@@ -3,11 +3,13 @@ package plugins
 
 import (
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	markatatemplates "github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // ImageZoomPlugin adds optional image zoom/lightbox functionality using GLightbox.
@@ -16,6 +18,7 @@ import (
 // required JavaScript and CSS.
 type ImageZoomPlugin struct {
 	config models.ImageZoomConfig
+	useCDN bool
 }
 
 // NewImageZoomPlugin creates a new ImageZoomPlugin with default settings.
@@ -49,9 +52,12 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	p.useCDN = p.config.CDN
+
 	// Check for image_zoom config in Extra
 	imageZoomConfig, ok := config.Extra["image_zoom"]
 	if !ok {
+		p.resolveAssetMode(config.Extra)
 		return nil
 	}
 
@@ -68,6 +74,7 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		}
 		if cdn, ok := cfgMap["cdn"].(bool); ok {
 			p.config.CDN = cdn
+			p.useCDN = cdn
 		}
 		if autoAllImages, ok := cfgMap["auto_all_images"].(bool); ok {
 			p.config.AutoAllImages = autoAllImages
@@ -92,7 +99,20 @@ func (p *ImageZoomPlugin) Configure(m *lifecycle.Manager) error {
 		}
 	}
 
+	p.resolveAssetMode(config.Extra)
+
 	return nil
+}
+
+func (p *ImageZoomPlugin) resolveAssetMode(extra map[string]interface{}) {
+	assetURLs := assetURLsFromExtra(extra)
+
+	if assetURLs["glightbox-css"] != "" && assetURLs["glightbox-js"] != "" {
+		p.useCDN = false
+		return
+	}
+
+	p.useCDN = p.config.CDN
 }
 
 // Render processes images in the rendered HTML for all posts.
@@ -145,7 +165,7 @@ func (p *ImageZoomPlugin) Render(m *lifecycle.Manager) error {
 
 		config.Extra["glightbox_options"] = glightboxOptions
 		config.Extra["glightbox_enabled"] = true
-		config.Extra["glightbox_cdn"] = p.config.CDN
+		config.Extra["glightbox_cdn"] = p.useCDN
 	}
 
 	return nil
@@ -189,6 +209,12 @@ var imgAltRegex = regexp.MustCompile(`alt="([^"]*)"`)
 // imgClassRegex matches the class attribute in an img tag for replacement.
 var imgClassRegex = regexp.MustCompile(`class="([^"]*)"`)
 
+// imgWidthRegex matches the width attribute in an img tag.
+var imgWidthRegex = regexp.MustCompile(`width="([^"]*)"`)
+
+// imgHeightRegex matches the height attribute in an img tag.
+var imgHeightRegex = regexp.MustCompile(`height="([^"]*)"`)
+
 // processPost processes a single post's HTML for images that should be zoomable.
 func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 	// Skip posts marked as skip or with no HTML content
@@ -211,30 +237,30 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 
 	// Process all img tags using index-based replacement so we can inspect
 	// the surrounding HTML for each match (e.g. detect parent <a> tags).
-	html := post.ArticleHTML
-	matches := imageZoomImgTagRegex.FindAllStringSubmatchIndex(html, -1)
+	articleHTML := post.ArticleHTML
+	matches := imageZoomImgTagRegex.FindAllStringSubmatchIndex(articleHTML, -1)
 	if len(matches) == 0 {
 		return nil
 	}
 
 	var buf strings.Builder
-	buf.Grow(len(html) + len(matches)*100) // pre-allocate
+	buf.Grow(len(articleHTML) + len(matches)*100) // pre-allocate
 	lastEnd := 0
 
 	for _, loc := range matches {
 		// loc[0..1] = full match, loc[2..3] = capture group 1 (attrs)
 		matchStart, matchEnd := loc[0], loc[1]
 		attrStart, attrEnd := loc[2], loc[3]
-		attrs := html[attrStart:attrEnd]
+		attrs := articleHTML[attrStart:attrEnd]
 
 		// Write everything before this match
-		buf.WriteString(html[lastEnd:matchStart])
+		buf.WriteString(articleHTML[lastEnd:matchStart])
 		lastEnd = matchEnd
 
 		// Check if already has glightbox attribute
 		if strings.Contains(attrs, "data-glightbox") {
 			foundZoomable = true
-			buf.WriteString(html[matchStart:matchEnd])
+			buf.WriteString(articleHTML[matchStart:matchEnd])
 			continue
 		}
 
@@ -245,7 +271,7 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		shouldZoom := hasZoomableMarker || postZoomEnabled
 
 		if !shouldZoom {
-			buf.WriteString(html[matchStart:matchEnd])
+			buf.WriteString(articleHTML[matchStart:matchEnd])
 			continue
 		}
 
@@ -268,6 +294,10 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		if len(altMatch) > 1 {
 			alt = strings.TrimSpace(altMatch[1])
 		}
+		anchorLabel := alt
+		if anchorLabel == "" {
+			anchorLabel = "Open image"
+		}
 
 		// Build the glightbox data attribute
 		glightboxAttr := fmt.Sprintf(`data-glightbox="description: %s"`, alt)
@@ -284,6 +314,8 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 			cleanedAttrs = `class="glightbox" ` + cleanedAttrs
 		}
 
+		cleanedAttrs = appendImageDimensions(cleanedAttrs, src)
+
 		// Add the data-glightbox attribute
 		cleanedAttrs = cleanedAttrs + " " + glightboxAttr
 
@@ -291,7 +323,7 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		// the HTML before the match: find the last <a or </a> and see
 		// which one is closer. If the last anchor-related tag is an
 		// opening <a (not </a>), the image is inside an anchor.
-		insideAnchor := isInsideAnchor(html, matchStart)
+		insideAnchor := isInsideAnchor(articleHTML, matchStart)
 
 		if insideAnchor {
 			// Image is already inside an anchor — just add glightbox
@@ -304,14 +336,16 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 			// Wrap image in anchor for lightbox functionality
 			buf.WriteString(`<a href="`)
 			buf.WriteString(src)
-			buf.WriteString(`" class="glightbox-link"><img `)
+			buf.WriteString(`" class="glightbox-link" aria-label="`)
+			buf.WriteString(html.EscapeString(anchorLabel))
+			buf.WriteString(`"><img `)
 			buf.WriteString(cleanedAttrs)
 			buf.WriteString(`></a>`)
 		}
 	}
 
 	// Write remaining HTML after the last match
-	buf.WriteString(html[lastEnd:])
+	buf.WriteString(articleHTML[lastEnd:])
 	result := buf.String()
 
 	// Store whether this post needs the glightbox library
@@ -324,6 +358,26 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
+}
+
+func appendImageDimensions(attrs, src string) string {
+	if src == "" {
+		return attrs
+	}
+
+	width, height, ok := markatatemplates.MediaDimensionsFromURL(src)
+	if !ok {
+		return attrs
+	}
+
+	if width > 0 && !imgWidthRegex.MatchString(attrs) {
+		attrs += fmt.Sprintf(` width="%d"`, width)
+	}
+	if height > 0 && !imgHeightRegex.MatchString(attrs) {
+		attrs += fmt.Sprintf(` height="%d"`, height)
+	}
+
+	return attrs
 }
 
 // Write injects GLightbox CSS and JS into posts that need it.
@@ -366,7 +420,7 @@ func (p *ImageZoomPlugin) Write(m *lifecycle.Manager) error {
 
 	config.Extra["glightbox_options"] = glightboxOptions
 	config.Extra["glightbox_enabled"] = true
-	config.Extra["glightbox_cdn"] = p.config.CDN
+	config.Extra["glightbox_cdn"] = p.useCDN
 
 	return nil
 }

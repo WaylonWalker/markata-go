@@ -151,6 +151,8 @@ The preview filters down to the current post plus its directly connected tags an
 
 Implementations MUST initialize the post graph on first page load and re-initialize it after `view-transition-complete` so graph previews continue working during SPA-style page swaps.
 
+The post graph script SHOULD only be emitted on pages that actually render the preview, so posts without a visible graph do not pay the JavaScript cost.
+
 The post connections component is configured via `[markata-go.components.post_connections]` and supports two modes:
 
 - `display = ["graph"]` for canvas-only graph rendering

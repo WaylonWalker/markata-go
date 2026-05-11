@@ -29,6 +29,26 @@ og = true         # OpenGraph card HTML (default: true)
 
 By default, HTML, Markdown, plain text, and OG formats are enabled. ANSI output is opt-in so you can add rich terminal rendering without introducing escape sequences into existing `.txt` endpoints.
 
+## Per-Post Overrides
+
+Site config sets the defaults, and individual posts can override them in frontmatter:
+
+```yaml
+---
+title: "Release Notes"
+post_formats:
+  markdown: false
+  ansi: true
+  og: false
+---
+```
+
+Merge rules:
+
+- omitted keys inherit the site-wide `[markata-go.post_formats]` setting
+- specified keys override only that post
+- template-visible `config.post_formats` follows the resolved per-post values, so alternate links and format switchers stay in sync with generated files
+
 ## Available Formats
 
 ### HTML (default)
@@ -173,7 +193,8 @@ If no post-specific OG template exists, `og-card.html` is used as a fallback.
 
 OG cards, feed cards, and embed cards now share a media pipeline so the same image/video looks identical in every context. All three templates should:
 
-- Call `with_size(width, height)` on photo/video URLs so the generated media query string carries precise `w` and `h` values that align with the pixel dimensions the template renders. Accurate sizing prevents visual drift when downstream screenshot tools or clients ingest the card.
+- Call `with_size(width, height)` on photo/video URLs so the generated media query string carries precise `w` and `h` values that align with the pixel dimensions the template renders. Accurate sizing prevents visual drift when downstream screenshot tools or clients ingest the card. Trusted media URLs are normalized to `https` first to avoid mixed-content warnings.
+- Use `media_url` for raw image metadata fields such as search thumbnails when you need the URL without sizing query parameters.
 - Use the query/fragment-safe `is_video` filter when deciding whether to render a `<video>` tag, and let the `poster_url` helper resolve the poster image.
 - Respect the poster alias precedence: `poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, `thumb`. `poster_url` checks those values first, and only when none are defined does it fall back to deriving a `.webp` thumbnail from the video URL on allowlisted hosts.
 

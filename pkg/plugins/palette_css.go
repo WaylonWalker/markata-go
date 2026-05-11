@@ -53,7 +53,7 @@ func (p *PaletteCSSPlugin) Name() string {
 func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
-	// Get palette configuration from config.Extra["theme"]
+	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
@@ -115,7 +115,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Get palette configuration from config.Extra["theme"]
+	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
@@ -669,6 +669,20 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 		fmt.Fprintf(buf, "%s--color-code-bg: %s;\n", indent, codeBg)
 		if codeText := palette.Resolve("code-text"); codeText != "" {
 			fmt.Fprintf(buf, "%s--color-code-text: %s;\n", indent, codeText)
+		}
+		for _, role := range []string{
+			"comment",
+			"keyword",
+			"string",
+			"number",
+			"function",
+			"type",
+			"operator",
+		} {
+			componentName := "code-" + role
+			if value := palette.Resolve(componentName); value != "" {
+				fmt.Fprintf(buf, "%s--color-%s: %s;\n", indent, componentName, value)
+			}
 		}
 	}
 

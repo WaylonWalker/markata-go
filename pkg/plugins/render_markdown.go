@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -34,6 +35,8 @@ var markdownBufferPool = sync.Pool{
 		return buf
 	},
 }
+
+var figureBlockquoteCaptionParagraphRegex = regexp.MustCompile(`(?s)^<p>.*?</p>$`)
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
@@ -86,7 +89,7 @@ func DefaultMarkdownExtensionConfig() MarkdownExtensionConfig {
 		FootnoteEnabled:          true,
 		CJKEnabled:               true,
 		FigureEnabled:            true,
-		AnchorEnabled:            true,
+		AnchorEnabled:            false,
 		TypographerSubstitutions: nil, // nil means use goldmark defaults
 	}
 }
@@ -413,6 +416,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	if err != nil {
 		return err
 	}
+	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds
@@ -443,6 +447,84 @@ func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func mergeFigureBlockquoteCaptions(renderedHTML string) string {
+	var b strings.Builder
+	for pos := 0; pos < len(renderedHTML); {
+		figureStart := strings.Index(renderedHTML[pos:], "<figure")
+		if figureStart < 0 {
+			b.WriteString(renderedHTML[pos:])
+			break
+		}
+		figureStart += pos
+		b.WriteString(renderedHTML[pos:figureStart])
+
+		figureEnd := strings.Index(renderedHTML[figureStart:], "</figure>")
+		if figureEnd < 0 {
+			b.WriteString(renderedHTML[figureStart:])
+			break
+		}
+		figureEnd += figureStart + len("</figure>")
+
+		figureHTML := renderedHTML[figureStart:figureEnd]
+		if strings.Contains(figureHTML, "<figcaption") || insideWebAwesomeComparisonContainer(renderedHTML, figureStart) {
+			b.WriteString(figureHTML)
+			pos = figureEnd
+			continue
+		}
+
+		afterFigure := figureEnd
+		for afterFigure < len(renderedHTML) {
+			c := renderedHTML[afterFigure]
+			if c != ' ' && c != '\n' && c != '\t' && c != '\r' {
+				break
+			}
+			afterFigure++
+		}
+
+		if !strings.HasPrefix(renderedHTML[afterFigure:], "<blockquote>") {
+			b.WriteString(figureHTML)
+			pos = figureEnd
+			continue
+		}
+
+		blockquoteEnd := strings.Index(renderedHTML[afterFigure:], "</blockquote>")
+		if blockquoteEnd < 0 {
+			b.WriteString(figureHTML)
+			pos = figureEnd
+			continue
+		}
+		blockquoteEnd += afterFigure + len("</blockquote>")
+
+		blockquoteInner := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(renderedHTML[afterFigure:blockquoteEnd], "<blockquote>"), "</blockquote>"))
+		if !figureBlockquoteCaptionParagraphRegex.MatchString(blockquoteInner) {
+			b.WriteString(figureHTML)
+			pos = figureEnd
+			continue
+		}
+
+		b.WriteString(strings.Replace(figureHTML, "</figure>", "<figcaption>"+blockquoteInner+"</figcaption></figure>", 1))
+		pos = blockquoteEnd
+	}
+	return b.String()
+}
+
+func insideWebAwesomeComparisonContainer(renderedHTML string, pos int) bool {
+	openIndex := strings.LastIndex(renderedHTML[:pos], "<div")
+	closeIndex := strings.LastIndex(renderedHTML[:pos], "</div>")
+	if openIndex < 0 || closeIndex > openIndex {
+		return false
+	}
+
+	openTagEnd := strings.Index(renderedHTML[openIndex:], ">")
+	if openTagEnd < 0 {
+		return false
+	}
+
+	openTag := renderedHTML[openIndex : openIndex+openTagEnd+1]
+	return strings.Contains(openTag, `class="wa-comparison"`) ||
+		(strings.Contains(openTag, `class="`) && strings.Contains(openTag, "webawesome") && strings.Contains(openTag, "comparison"))
 }
 
 // detectCSSRequirements scans the rendered HTML and sets flags in post.Extra

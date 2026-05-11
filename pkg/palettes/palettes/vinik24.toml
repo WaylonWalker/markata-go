@@ -56,7 +56,7 @@ neutral-light = "#9d9f7f"
 # Text colors
 text-primary   = "cream"
 text-secondary = "cream"
-text-muted     = "gray"
+text-muted     = "cream"
 
 # Background colors
 bg-primary   = "black"
@@ -67,7 +67,7 @@ bg-elevated  = "purple-dark"
 # Accent colors
 accent       = "teal"
 accent-hover = "teal-gray"
-link         = "blue-light"
+link         = "cream"
 link-hover   = "teal"
 link-visited = "purple"
 

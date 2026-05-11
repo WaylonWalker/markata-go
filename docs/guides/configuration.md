@@ -194,6 +194,41 @@ disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
 
+### Python Docs (`[markata-go.python_docs]`)
+
+Generate API reference pages from Python source files.
+
+This plugin is strict opt-in: add `python_docs` to `[markata-go].hooks` and set `enabled = true`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable source-backed Python docs generation |
+| `patterns` | string[] | `["**/*.py"]` | Python file glob patterns |
+| `directories` | string[] | `[]` | Directory roots expanded to `dir/**/*.py` |
+| `exclude` | string[] | venv/cache defaults | Globs to skip |
+| `slug_prefix` | string | `"api"` | Prefix for generated module pages |
+| `template` | string | `""` | Template used for generated docs posts |
+| `published` | bool | `false` | Include generated docs in feeds/search/sitemap |
+| `include_private` | bool | `false` | Include private `_symbols` |
+| `include_source` | bool | `true` | Include implementation snippets |
+| `include_module_code` | bool | `false` | Include module-level implementation source |
+| `tags` | string[] | `["python", "docs"]` | Tags added to generated docs posts |
+| `interpreter` | string | auto-detect | Python executable used for AST extraction |
+
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py"]
+slug_prefix = "api"
+template = "docs"
+include_source = true
+```
+
+See [Python Source Docs](./python-docs.md) for the full workflow.
+
 ### Embeds (`[embeds]`)
 
 Controls internal and external embed behavior, including oEmbed resolution and Open Graph fallback.
@@ -688,6 +723,8 @@ Configure backlinks/outlinks UI on post pages. You can render a graph, a list, o
 | `inlinks_limit` | int | `8` | Max inlinks shown in list mode. |
 | `outlinks_limit` | int | `8` | Max outlinks shown in list mode. |
 
+The graph loader is only emitted on pages that render the graph preview, so pages that stay in list-only mode avoid the graph JavaScript entirely.
+
 ```toml
 [markata-go.components.post_connections]
 enabled = true
@@ -989,6 +1026,10 @@ timeout = 30
 max_concurrent = 4
 # no_sandbox = true         # Required inside Docker or other containers
 ```
+
+Pre-rendered Mermaid SVGs are cached automatically. Hot builds reuse cached SVGs
+when the diagram source and rendering inputs match, avoiding repeated Chromium or
+`mmdc` rendering for unchanged diagrams.
 
 #### Chromium in Containers (Docker, Distrobox, Podman)
 
@@ -1393,6 +1434,7 @@ refresh attempts fail.
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel feed fetches |
 | `max_entries_per_feed` | int | `50` | Max entries per feed |
+| `fallback_image_service` | string | `""` | Last-resort screenshot template for Reader previews after article and source images |
 
 ```toml
 [markata-go.blogroll]
@@ -1448,7 +1490,7 @@ tags = ["css", "frontend"]
 
 **Generated pages:**
 - `/blogroll/` - Directory of all feeds grouped by category
-- `/reader/` - River-of-news style page with latest posts from all feeds
+- `/reader/` - Curated reader page with day grouping, source favicons, and columns
 
 See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and customization.
 
@@ -1482,6 +1524,20 @@ og = true         # /slug/og/index.html (social card)
   - OG Card: `type="text/html"` linking to `og/`
 
 **Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.
+
+Feed sidebar variant links use the same canonical short URLs (`/slug.md`, `/slug.txt`, `/slug.ansi`) rather than nested `/slug/index.<ext>` paths.
+If a post format is disabled, its sidebar link is omitted.
+
+**Per-post frontmatter overrides**: A post can override any of these format flags in frontmatter with a `post_formats` object. Overrides merge with the site defaults, so omitted keys continue to inherit from `[markata-go.post_formats]`.
+
+```yaml
+---
+title: "One-off terminal post"
+post_formats:
+  ansi: true
+  og: false
+---
+```
 
 OG card pages automatically include:
 - `<link rel="canonical">` pointing back to the original post
@@ -1603,11 +1659,13 @@ See [[cli-reference|CLI Reference]] for complete `new` command documentation.
 
 ### Search Settings (`[search]`)
 
-Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
+Site-wide search is enabled by default using [Pagefind](https://pagefind.app/). You can also use the built-in bleve search engine for a self-hosted API.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable search |
+| `backend` | string | `"pagefind"` | Search engine: `"pagefind"` or `"bleve"` |
+| `endpoint` | string | `"/api/search"` | API endpoint path for bleve search |
 | `position` | string | `"navbar"` | Where to show search: `navbar`, `sidebar`, `footer`, `custom` |
 | `placeholder` | string | `"Search..."` | Search input placeholder text |
 | `show_images` | bool | `true` | Show thumbnails in search results |
@@ -1616,6 +1674,8 @@ Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
 ```toml
 [search]
 enabled = true
+backend = "pagefind"        # or "bleve" for self-hosted API
+endpoint = "/api/search"    # API path (bleve only)
 position = "navbar"
 placeholder = "Search..."
 show_images = true
@@ -1626,7 +1686,18 @@ excerpt_length = 200
 bundle_dir = "_pagefind"    # Output directory for search index
 root_selector = "main"       # CSS selector for searchable content
 exclude_selectors = [".no-search", "nav", "footer"]  # Elements to exclude
+
+# Bleve search API options
+[search.bleve]
+fuzzy = false               # Default fuzzy matching
+limit = 20                  # Default result limit
+max_limit = 100             # Maximum allowed limit
+cors_origins = ["*"]        # Allowed CORS origins
 ```
+
+**Privacy:** Private posts are searchable by public metadata such as title, description, tags, and date. Their body content and media are never included in the search index or exposed by the search API.
+
+**Dev mode:** During `markata-go serve`, the bleve search API is automatically mounted at the configured endpoint. A dev-only script injects `window.__markataSearchEndpoint` so the frontend can use the local API — this is never included in production builds.
 
 **Requirements:** Pagefind CLI must be installed. Install the standalone binary from [GitHub releases](https://github.com/Pagefind/pagefind/releases), or enable `auto_install = true` under `[search.pagefind]` to let markata-go download it automatically. If not installed, search is skipped with a warning.
 
@@ -1939,6 +2010,9 @@ enabled = false
 Display the resolved configuration:
 
 ```bash
+# Same as `markata-go config show`
+markata-go config
+
 # Show as YAML (default)
 markata-go config show
 
@@ -1947,7 +2021,14 @@ markata-go config show --json
 
 # Show as TOML
 markata-go config show --toml
+
+# Include merged override files
+markata-go config show -m fast-markata-go.toml
 ```
+
+`config show` uses the same config resolution path as `build` and `serve`, including any `--merge-config` overrides.
+
+Conflicting format requests such as `markata-go config show --json --toml` fail with usage exit code `2`.
 
 ### `config get`
 
@@ -1987,7 +2068,12 @@ markata-go config validate
 
 # Validate specific config file
 markata-go config validate -c custom.toml
+
+# Validate with merged overrides
+markata-go config validate -m fast-markata-go.toml
 ```
+
+`config validate` uses the same merged configuration resolution as `build` and `serve`.
 
 Example output:
 

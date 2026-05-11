@@ -109,6 +109,13 @@
   color: var(--color-text-muted);
 }
 
+.search-container--navbar .pagefind-ui__search-clear.pagefind-ui__suppressed,
+.search-container--navbar .pagefind-ui__search-clear[class*="svelte-"].pagefind-ui__suppressed,
+.search--navbar .pagefind-ui__search-clear.pagefind-ui__suppressed,
+.search--navbar .pagefind-ui__search-clear[class*="svelte-"].pagefind-ui__suppressed {
+  display: none !important;
+}
+
 .pagefind-ui__search-clear:hover {
   color: var(--color-text);
 }
@@ -299,3 +306,244 @@
 .site-header .site-nav {
   flex-grow: 1;
 }
+
+/* ---- Bleve search (dev mode) ----
+   Activated when window.__markataSearchEndpoint is set during markata-go serve */
+
+.bleve-search {
+  position: relative;
+  width: 100%;
+}
+
+.bleve-search__input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.bleve-search__input:focus {
+  border-color: var(--color-primary, #4f7df9);
+  box-shadow: 0 0 0 2px rgba(79, 125, 249, 0.2);
+}
+
+.bleve-search__results {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  z-index: 200;
+  width: min(38rem, 92vw);
+  max-width: min(38rem, 92vw);
+  max-height: min(70vh, 42rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--color-background) 94%, var(--color-surface) 6%);
+  border: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--color-primary) 10%);
+  border-radius: 1rem;
+  box-shadow: 0 18px 45px -18px rgba(0, 0, 0, 0.45), 0 10px 24px -16px rgba(0, 0, 0, 0.28);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%) transparent;
+}
+
+.bleve-search__results:empty {
+  display: none;
+}
+
+.bleve-search__results::-webkit-scrollbar {
+  width: 10px;
+}
+
+.bleve-search__results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bleve-search__results::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-border) 72%, var(--color-primary) 28%);
+  border-radius: 999px;
+  border: 2px solid var(--color-background);
+}
+
+.bleve-search__results::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-text-muted) 60%, var(--color-primary) 40%);
+}
+
+.bleve-search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem;
+}
+
+.bleve-search__item + .bleve-search__item {
+  margin-top: 0.75rem;
+}
+
+.bleve-search__link {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--color-text);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 88%, transparent) 0%, color-mix(in srgb, var(--color-background) 92%, transparent) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 0.95rem;
+  overflow: hidden;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.bleve-search__link:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border) 50%);
+  box-shadow: 0 12px 24px -20px rgba(0, 0, 0, 0.55);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.bleve-search__link.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 58%, var(--color-border) 42%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent), 0 12px 24px -20px rgba(0, 0, 0, 0.55);
+  transform: translateY(-1px);
+}
+
+.bleve-search__link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.bleve-search__media {
+  display: block;
+  flex: 0 0 9rem;
+  width: 9rem;
+  min-height: 100%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface) 70%, var(--color-background) 30%);
+}
+
+.bleve-search__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  object-fit: cover;
+}
+
+.bleve-search__media--video {
+  position: relative;
+}
+
+.bleve-search__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--color-surface) 84%, black 16%);
+}
+
+.bleve-search__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.95rem 1rem;
+}
+
+.bleve-search__title {
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bleve-search__desc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bleve-search__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bleve-search__meta-item,
+.bleve-search__meta-sep {
+  flex: 0 0 auto;
+}
+
+.bleve-search__meta-sep {
+  opacity: 0.65;
+}
+
+.bleve-search__empty,
+.bleve-search__error,
+.bleve-search__more {
+  padding: 0.9rem 1rem 1rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.bleve-search__more {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+}
+
+@media (max-width: 768px) {
+  .bleve-search__results {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 0.85rem;
+  }
+
+  .bleve-search__list {
+    padding: 0.625rem;
+  }
+
+  .bleve-search__item + .bleve-search__item {
+    margin-top: 0.625rem;
+  }
+
+  .bleve-search__link {
+    flex-direction: column;
+  }
+
+  .bleve-search__media {
+    width: 100%;
+    flex-basis: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .bleve-search__content {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .bleve-search__desc {
+    -webkit-line-clamp: 2;
+  }
+}
+
+} /* end @layer components */

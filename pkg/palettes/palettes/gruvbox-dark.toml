@@ -55,8 +55,8 @@ gray-dark = "#a89984"
 [palette.semantic]
 # Text colors
 text-primary   = "fg"
-text-secondary = "fg3"
-text-muted     = "fg4"
+text-secondary = "fg"
+text-muted     = "fg"
 
 # Background colors
 bg-primary   = "bg"
@@ -67,7 +67,7 @@ bg-elevated  = "bg2"
 # Accent colors
 accent       = "yellow-bright"
 accent-hover = "orange-bright"
-link         = "blue-bright"
+link         = "fg"
 link-hover   = "aqua-bright"
 link-visited = "purple-bright"
 

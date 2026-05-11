@@ -590,6 +590,33 @@
     return '';
   }
 
+  function headScriptKey(node) {
+    if (!node || node.tagName !== 'SCRIPT') return '';
+    const src = node.getAttribute('src') || '';
+    if (src) {
+      return ['script', node.getAttribute('type') || '', src].join('::');
+    }
+    return ['script', node.getAttribute('type') || '', 'inline', node.textContent || ''].join('::');
+  }
+
+  function isManagedHeadScript(node) {
+    if (!node || node.tagName !== 'SCRIPT') return false;
+    if (node.hasAttribute('data-markata-persist')) return false;
+
+    const type = (node.getAttribute('type') || '').toLowerCase();
+    const src = node.getAttribute('src') || '';
+
+    if (type === 'application/ld+json') return true;
+    if (src) return true;
+    if (!src) return true;
+    return false;
+  }
+
+  function shouldRemoveManagedHeadScript(node) {
+    if (!isManagedHeadScript(node)) return false;
+    return true;
+  }
+
   function syncHeadStyles(newDoc) {
     if (!newDoc || !newDoc.head) return;
 
@@ -625,6 +652,49 @@
         head.appendChild(clone);
       }
       previousInserted = clone;
+    });
+  }
+
+  /**
+   * Sync page-managed <script> tags from the new document's <head>.
+   *
+   * Persistent loaders can opt out with data-markata-persist so they are not
+   * touched across navigations. Other external head scripts are synchronized
+   * with the destination document so a transitioned page has the same managed
+   * head state as a full reload.
+   */
+  function syncHeadScripts(newDoc) {
+    if (!newDoc || !newDoc.head) return;
+
+    const head = document.head;
+    const currentNodes = Array.from(head.querySelectorAll('script')).filter(isManagedHeadScript);
+    const nextNodes = Array.from(newDoc.head.querySelectorAll('script')).filter(isManagedHeadScript);
+    const nextKeys = new Set(nextNodes.map(headScriptKey).filter(Boolean));
+
+    currentNodes.forEach((node) => {
+      const key = headScriptKey(node);
+      if (key && !nextKeys.has(key) && shouldRemoveManagedHeadScript(node)) {
+        node.remove();
+      }
+    });
+
+    const existingKeys = new Set(
+      Array.from(head.querySelectorAll('script')).map(headScriptKey).filter(Boolean)
+    );
+
+    nextNodes.forEach((node) => {
+      const key = headScriptKey(node);
+      if (!key || existingKeys.has(key)) return;
+
+      const fresh = document.createElement('script');
+      Array.from(node.attributes).forEach((attr) => {
+        fresh.setAttribute(attr.name, attr.value);
+      });
+      if (!node.hasAttribute('src')) {
+        fresh.textContent = node.textContent || '';
+      }
+      head.appendChild(fresh);
+      existingKeys.add(key);
     });
   }
 
@@ -684,6 +754,7 @@
     syncDocumentElementAttributes(newDoc);
     syncBodyAttributes(newDoc);
     syncHeadStyles(newDoc);
+    syncHeadScripts(newDoc);
 
     // Update title
     document.title = newDoc.title;
@@ -796,6 +867,7 @@
 
     // Pagefind Search (navbar) - needs re-init after DOM swap
     callInit('initPagefindSearch', window.initPagefindSearch);
+    callInit('initBleveSearch', window.initBleveSearch);
 
     // Re-initialize feed cycling first so sidebar chrome is hydrated before
     // other scripts inspect feed-aware DOM state.

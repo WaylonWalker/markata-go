@@ -97,6 +97,7 @@ For developers who want full control and customization.
 ### Content Creation
 - [Frontmatter](/docs/guides/frontmatter/) - Post metadata and custom fields
 - [Markdown Features](/docs/guides/markdown/) - Tables, code blocks, admonitions, wikilinks
+- [Web Awesome Components](/docs/guides/webawesome/) - Image comparisons and raw Web Awesome components
 - [Post Formats](/docs/guides/post-formats/) - HTML, Markdown, and OG card outputs
 
 ### Configuration
@@ -115,6 +116,7 @@ For developers who want full control and customization.
 - [View Transitions](/docs/guides/view-transitions/) - Smooth page navigation animations
 - [Resource Hints](/docs/guides/resource-hints/) - Auto-generate dns-prefetch and preconnect
 - [YouTube Embeds](/docs/guides/youtube/) - Embedding YouTube videos
+- [Web Awesome Components](/docs/guides/webawesome/) - Image comparisons with CDN or vendored assets
 - [Dynamic Content](/docs/guides/dynamic-content/) - Jinja expressions in Markdown
 - [Structured Data](/docs/guides/structured-data/) - JSON-LD and SEO
 

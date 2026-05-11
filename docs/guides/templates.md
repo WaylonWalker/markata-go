@@ -38,6 +38,7 @@ Templates wrap your rendered Markdown content in HTML layouts. The template syst
 - **Control flow** - Conditionals and loops
 - **Filters** - Transform data for display
 - **Custom templates per post** - Override templates in frontmatter
+- **Presentation templates** - Turn markdown into reveal.js slide decks
 
 ---
 
@@ -227,14 +228,23 @@ When rendering feeds/archives, these additional variables are available:
 
 ## Built-in Filters
 
+The built-in `slides_reveal` filter converts rendered HTML into reveal.js slide sections.
+
+- `h2` starts a new horizontal slide
+- `hr` starts a new horizontal slide, which aligns with the common Markdown `---` slide separator used by reveal.js and Marp
+- `h3` starts a new vertical slide under the current horizontal slide
+
 ### Date Formatting
 
 | Filter | Example | Output |
 |--------|---------|--------|
+| `human_date` | `{{ date\|human_date }}` | `Jan 15, 2024` |
 | `date_format` | `{{ date\|date_format:"2006-01-02" }}` | `2024-01-15` |
 | `date_format` | `{{ date\|date_format:"January 2, 2006" }}` | `January 15, 2024` |
 | `rss_date` | `{{ date\|rss_date }}` | RFC 1123Z format for RSS |
 | `atom_date` | `{{ date\|atom_date }}` | RFC 3339 format for Atom |
+
+Use `human_date` for visible HTML dates so cards, post bylines, archive views, and reader metadata stay consistent while `datetime` attributes remain machine-readable.
 
 **Note:** Go uses reference time formatting. Common formats:
 
@@ -404,7 +414,7 @@ Partials are reusable template fragments. Use `{% include %}` to embed them:
     <footer>
         {% if post.Date %}
         <time datetime="{{ post.Date|atom_date }}">
-            {{ post.Date|date_format:"Jan 2, 2006" }}
+            {{ post.Date|human_date }}
         </time>
         {% endif %}
         {% if post.Extra.reading_time %}
@@ -450,7 +460,7 @@ Post templates render individual content pages. They receive the `post` and `bod
         <h1>{{ post.Title }}</h1>
         {% if post.Date %}
         <time datetime="{{ post.Date|atom_date }}">
-            {{ post.Date|date_format:"January 2, 2006" }}
+            {{ post.Date|human_date }}
         </time>
         {% endif %}
 
@@ -530,6 +540,35 @@ template: "landing.html"
 ```
 
 This post will use `templates/landing.html` instead of the default `post.html`.
+
+### Creating a Slide Deck
+
+```yaml
+---
+title: "Platform Roadmap"
+template: "slides.html"
+---
+
+## Opening
+
+Intro slide.
+
+### Details
+
+Vertical follow-up slide.
+
+---
+
+## Next Section
+```
+
+`slides.html` renders the page as a reveal.js deck. In the default template:
+
+1. `##` headings become new horizontal slides.
+2. `###` headings become vertical slides nested under the current horizontal slide.
+3. `---` becomes a horizontal slide break because Markdown renders it as `<hr>`.
+4. Reveal assets use local `assets/vendor/revealjs/...` URLs automatically when `[markata-go.assets].mode` is self-hosted or auto and the assets are available. Run `markata-go assets download` to prefetch them.
+5. On small screens, the deck sizes itself to the current viewport so slides stay readable on phones and after rotation.
 
 ### Creating a Landing Page Template
 
@@ -838,7 +877,8 @@ If a specified template doesn't exist, markata-go falls back to:
 
 OG, feed, and embed cards share the same media helpers so the image/video preview feels identical everywhere. When rendering card media:
 
-- Pass the URL through `with_size(width, height)` so the helper appends explicit `w` and `h` query parameters that match the printed dimensions of the card. Correct query params keep downstream screenshotters and feed readers aligned with the rendered size.
+- Pass the URL through `with_size(width, height)` so the helper appends explicit `w` and `h` query parameters that match the printed dimensions of the card. Correct query params keep downstream screenshotters and feed readers aligned with the rendered size. Trusted media URLs are normalized to `https` first so browser pages do not hit mixed-content errors.
+- Use `media_url` when you only need the first non-empty media field or a search thumbnail URL. It keeps trusted media URLs on `https` without adding sizing parameters.
 - Use the fragment/query-safe `is_video` filter to decide between `<video>` and `<img>`, and call `poster_url(post)` to resolve the poster. `poster_url` enforces the alias precedence (`poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, `thumb`) before falling back to deriving a `.webp` thumbnail from the video URL when the host is trusted.
 
 Only relative URLs and hosts on the default allowlist (`dropper.wayl.one`, `dropper.waylonwalker.com`, `dropper-dev.wayl.one`) gain the sizing parameters and derived posters. Override or extend the list via `[markata-go.templates.media]` in your configuration when you use a different CDN. If you need to opt out, you can skip these filters in your custom template, but keep alias resolution and sizing in sync across OG/feed/embed templates so the published meta stays consistent.

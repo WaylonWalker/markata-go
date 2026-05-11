@@ -12,6 +12,7 @@ This document specifies optional plugins that extend the static site generator w
 │    ├─ glossary            Auto-link terms to definition posts      │
 │    ├─ mermaid             Render Mermaid diagrams                  │
 │    ├─ chartjs             Render Chart.js charts                   │
+│    ├─ webawesome          Render Web Awesome components             │
 │    ├─ contribution_graph  GitHub-style calendar heatmaps           │
 │    ├─ csv_fence           Convert CSV code blocks to tables        │
 │    └─ md_video            Convert image syntax to video tags       │
@@ -22,6 +23,7 @@ This document specifies optional plugins that extend the static site generator w
 │                                                                      │
 │  OUTPUT GENERATION                                                   │
 │    ├─ image_optimization  Generate AVIF/WebP images               │
+│    ├─ python_docs         Generate docs from Python source         │
 │    └─ qrcode              Generate QR codes for posts              │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -436,6 +438,7 @@ enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/cal-heatmap@4"
 container_class = "contribution-graph-container"
 theme = "light"                    # light, dark
+scale_max_percentile = 0            # 0 disables percentile-based outlier control
 ```
 
 **Configuration Fields:**
@@ -446,6 +449,7 @@ theme = "light"                    # light, dark
 | `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/cal-heatmap@4"` | URL for Cal-Heatmap library |
 | `container_class` | string | `"contribution-graph-container"` | CSS class for container div |
 | `theme` | string | `"light"` | Cal-Heatmap color theme |
+| `scale_max_percentile` | number | `0` | Global percentile cap for color scaling. Set 1-100 to reduce outlier washout |
 
 **Syntax:**
 
@@ -481,13 +485,16 @@ The `data` array should contain objects with:
 | `subDomain` | string | `"day"` | Sub-domain: "day", "hour", "minute" |
 | `cellSize` | number | `10` | Size of each cell in pixels |
 | `range` | number | `1` | Number of domain units to display |
+| `maxValue` | number | unset | Explicit color-scale maximum. Values above it use the max color |
+| `maxPercentile` | number | unset | Per-graph percentile cap for the color scale |
 
 **Behavior:**
 
 1. Find all `<pre><code class="language-contribution-graph">` blocks
 2. Parse JSON content (data and options)
-3. Replace with div container and initialization script
-4. Inject Cal-Heatmap CSS and JS (once per page)
+3. Compute the graph color-scale maximum from the data. When `maxPercentile` or `scale_max_percentile` is set, use that percentile instead of the raw maximum.
+4. Replace with div container and initialization script
+5. Inject Cal-Heatmap CSS and JS (once per page), including built-in resize fitting so graphs fit narrow content columns without page-specific markdown scripts
 
 **Output:**
 
@@ -625,6 +632,97 @@ The plugin MUST implement:
 - `ConfigurePlugin` - To read configuration
 - `RenderPlugin` - To process posts during the render stage
 - `PriorityPlugin` - To ensure late execution after markdown rendering
+
+---
+
+### `python_docs`
+
+**Stage:** `load`
+
+**Purpose:** Discover Python source files, extract API docs from docstrings, and create source-backed documentation posts for docs sites.
+
+**Dependencies:** Python 3 interpreter (`python3` or `python`) available on PATH.
+
+**Configuration:**
+
+```toml
+[markata-go]
+hooks = ["default", "python_docs"]
+
+[markata-go.python_docs]
+enabled = true
+patterns = ["src/**/*.py", "pkg/**/*.py"]
+exclude = ["**/tests/**", "**/.venv/**"]
+use_gitignore = true
+slug_prefix = "api"
+template = "docs"
+published = false
+include_private = false
+include_source = true
+include_module_code = false
+tags = ["python", "docs"]
+interpreter = "python3"
+```
+
+**Configuration fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Whether Python source docs are generated |
+| `patterns` | []string | `["**/*.py"]` | Glob patterns used for discovery |
+| `directories` | []string | `[]` | Convenience alias for directory roots (`dir/**/*.py`) |
+| `exclude` | []string | common venv/cache globs | Glob patterns to skip |
+| `use_gitignore` | bool | `true` | Respect `.gitignore` while scanning |
+| `slug_prefix` | string | `"api"` | URL prefix for generated module pages |
+| `template` | string | `""` | Template name for generated posts |
+| `published` | bool | `false` | Publish generated docs in feeds/search/sitemap |
+| `include_private` | bool | `false` | Include private `_symbols` |
+| `include_source` | bool | `true` | Include implementation snippets under symbols |
+| `include_module_code` | bool | `false` | Include module-level implementation source |
+| `tags` | []string | `["python", "docs"]` | Tags applied to generated posts |
+| `interpreter` | string | auto-detect | Python executable to use for AST extraction |
+
+**Behavior:**
+
+1. Scan configured Python files without replacing normal markdown content loading.
+2. Parse each module with Python's AST.
+3. Extract module, class, function, and method docstrings and signatures.
+4. Slice implementation source away from leading docstrings so prose and code render separately.
+5. Generate markdown posts with import lists and internal cross-links for discovered modules and symbols.
+6. Only run when the plugin is explicitly listed in `[markata-go].hooks` and `enabled = true`.
+7. Add generated posts to the normal lifecycle so existing templates, wikilinks, feeds, and HTML publishing still apply.
+
+**Generated post fields:**
+
+| Field | Description |
+|-------|-------------|
+| `title` | Python module name, e.g. `pkg.api.client` |
+| `path` | Original source path, e.g. `pkg/api/client.py` |
+| `slug` | Prefixed module path, e.g. `api/pkg/api/client` |
+| `extra.python_docs` | Always `true` for generated docs posts |
+| `extra.python_module` | Canonical module name |
+| `extra.source_path` | Relative source file path |
+
+**Generated markdown layout:**
+
+- Module heading and source path
+- Module docstring rendered as markdown
+- Import section with internal links when targets are also documented
+- API index for classes and functions
+- Per-symbol sections with signatures, docstrings, and collapsible source snippets
+
+**Cross-linking:**
+
+- Backticked references like `` `pkg.util` `` are linked when they resolve to discovered modules.
+- Sphinx-style refs such as `:func:`pkg.util.greet`` SHOULD link when the target symbol was discovered.
+- Import lists SHOULD link both modules and known imported symbols.
+
+**Interface requirements:**
+
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration and resolve the interpreter
+- `LoadPlugin` - To generate posts during the load stage
 
 ---
 

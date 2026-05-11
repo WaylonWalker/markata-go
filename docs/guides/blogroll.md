@@ -301,7 +301,7 @@ The blogroll page lists all feeds grouped by category:
 
 ### Reader Page (`/reader/`)
 
-The reader page shows the latest posts from all feeds in reverse chronological order with pagination:
+The reader page shows the latest posts from all feeds in reverse chronological order, grouped by day, with pagination:
 
 ```
 /reader/
@@ -320,10 +320,12 @@ The reader page shows the latest posts from all feeds in reverse chronological o
 ```
 
 **Default layout:**
-- Header with title
-- List of recent entries (newest first)
-- Each entry shows: title, source feed, date, description
+- Editorial header with page stats
+- Entries grouped by day with a large date rail
+- Two-column entry grid on desktop, single column on mobile
+- Each entry shows: source favicon, source name, date, title, description, optional image
 - Links to the original article
+- Hacker News discussion URLs are normalized to the outbound article URL when one is available, while the source feed label stays visible and the original discussion link remains available as "Found on HN"
 - Pagination navigation (when more than one page)
 
 **Deterministic ordering:**
@@ -390,38 +392,63 @@ Create `templates/reader.html`:
 {% extends "base.html" %}
 
 {% block content %}
-<main class="reader">
+<div class="reader-page">
   <h1>{{ title }}</h1>
-  <p class="subtitle">Latest posts from blogs I follow</p>
+  <p class="reader-subtitle">Latest posts from blogs I follow</p>
 
-  <ul class="entry-list">
-    {% for entry in entries %}
-    <li class="entry">
-      <article>
-        <h2>
-          <a href="{{ entry.URL }}" target="_blank" rel="noopener">
-            {{ entry.Title }}
+  <div class="reader-stream posts-list">
+    {% for day in day_groups %}
+    <section class="reader-day">
+      <aside class="reader-day-rail">
+        <time{% if day.date_iso %} datetime="{{ day.date_iso }}"{% endif %}>
+          <span class="reader-day-weekday">{{ day.weekday }}</span>
+          <span class="reader-day-title">{{ day.title }}</span>
+          {% if day.year %}<span class="reader-day-year">{{ day.year }}</span>{% endif %}
+        </time>
+        <span class="reader-day-count">{{ day.count }} stories</span>
+      </aside>
+
+      <div class="reader-day-entries">
+        {% for entry in day.entries %}
+        <article class="reader-entry{% if entry.image_url %} has-image{% endif %}">
+          <div class="reader-entry-meta-row">
+            <a href="{{ entry.feed_url }}" target="_blank" rel="noopener noreferrer" class="reader-entry-source-link">
+              {% if entry.source_icon_url %}
+              <img src="{{ entry.source_icon_url }}" alt="" class="reader-entry-source-icon" width="16" height="16" loading="lazy">
+              {% else %}
+              <span class="reader-entry-source-icon reader-entry-source-icon--fallback" aria-hidden="true"></span>
+              {% endif %}
+              <span class="reader-entry-source">{{ entry.feed_title }}</span>
+            </a>
+            {% if entry.published_datetime %}
+            <time datetime="{{ entry.published_datetime }}">{{ entry.published_label }}</time>
+            {% endif %}
+          </div>
+
+          {% if entry.original_url %}
+          <div class="reader-entry-found-on">Found on HN: <a href="{{ entry.original_url }}" target="_blank" rel="noopener noreferrer">discussion</a></div>
+          {% endif %}
+
+          <h2 class="reader-entry-title">
+            <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}<span class="visually-hidden">(opens in new tab)</span></a>
+          </h2>
+
+          {% if entry.description %}
+          <p class="reader-entry-description">{{ entry.description|striptags|truncate:200 }}</p>
+          {% endif %}
+
+          {% if entry.image_url %}
+          <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link">
+            <img src="{{ entry.image_url }}" alt="" class="reader-entry-image" width="960" height="540" loading="lazy">
           </a>
-        </h2>
-        <div class="meta">
-          <span class="source">{{ entry.FeedTitle }}</span>
-          {% if entry.Published %}
-          <time datetime="{{ entry.Published|atom_date }}">
-            {{ entry.Published|date_format:"Jan 2, 2006" }}
-          </time>
           {% endif %}
-          {% if entry.ReadingTime > 0 %}
-          <span class="reading-time">{{ entry.ReadingTime }} min read</span>
-          {% endif %}
-        </div>
-        {% if entry.Description %}
-        <p class="description">{{ entry.Description|striptags|truncate:200 }}</p>
-        {% endif %}
-      </article>
-    </li>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
     {% endfor %}
-  </ul>
-</main>
+  </div>
+</div>
 {% endblock %}
 ```
 
@@ -444,9 +471,11 @@ Create `templates/reader.html`:
 | `title` | string | Page title ("Reader") |
 | `description` | string | Page description |
 | `entries` | []ExternalEntry | Entries for current page (newest first) |
+| `day_groups` | []ReaderDayGroup | Entries grouped by day for the curated layout |
 | `entry_count` | int | Total number of entries across all pages |
 | `page` | ReaderPage | Pagination information |
 | `pagination_type` | string | Pagination type ("manual", "htmx", "js") |
+| `original_url` | string | Original discussion link when a feed entry was normalized |
 
 ### ReaderPage Fields
 
@@ -462,6 +491,17 @@ Create `templates/reader.html`:
 | `items_per_page` | int | Entries per page |
 | `page_urls` | []string | URLs for all pages |
 | `pagination_type` | string | Pagination type |
+
+### ReaderDayGroup Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `date_iso` | string | ISO-8601 day timestamp for the rail |
+| `weekday` | string | Short weekday label |
+| `title` | string | Short month/day label |
+| `year` | string | Year label |
+| `count` | int | Entries in the day group |
+| `entries` | []map[string]interface{} | Entry maps for the group |
 
 ### ExternalFeed Fields
 
@@ -497,6 +537,8 @@ Create `templates/reader.html`:
 | `FeedURL` | string | Source feed URL |
 | `FeedTitle` | string | Source feed title |
 
+Reader entry maps also include `source_icon_url`, `published_datetime`, `published_label`, and `date_key` for the redesigned layout.
+
 ### BlogrollCategory Fields
 
 | Field | Type | Description |
@@ -523,7 +565,8 @@ cache_duration = "24h"          # How long to cache feeds
 2. On subsequent builds, cached feeds are used until `cache_duration` expires
 3. Expiration is based on the cached feed's recorded fetch time, not file mtimes
 4. If a refresh fails, the stale cached feed is reused instead of failing open
-5. Delete `cache/blogroll/` to force a fresh fetch
+5. Explicit config overrides like `title`, `description`, `site_url`, `image_url`, `handle`, aliases, category, and tags are reapplied even when cached feed data is reused
+6. Delete `cache/blogroll/` to force a fresh fetch
 
 ### Cache Duration Examples
 
@@ -683,7 +726,16 @@ title = "Simon Willison"
 category = "Technology"
 ```
 
-With this configuration, entries without featured images will automatically get preview screenshots from shots.so.
+With this configuration, the Reader uses a preview hierarchy for entries without article images:
+
+1. article image from the feed entry
+2. source image from the feed avatar/logo
+3. screenshot fallback from `fallback_image_service`
+4. branded source tile when no image is available
+
+This keeps the Reader more consistent and reduces the visual noise from arbitrary webpage screenshots.
+
+YouTube feeds also use the per-video thumbnail automatically, so video channels show the actual video art in `/reader/` instead of a generic source tile or screenshot.
 
 ## Performance Tips
 
@@ -729,8 +781,8 @@ items_per_page = 50
 orphan_threshold = 3
 pagination_type = "manual"    # "manual", "htmx", or "js"
 
-# Screenshot service for fallback images
-fallback_image_service = ""   # Optional URL template for entries without images
+# Screenshot service for last-resort Reader previews
+fallback_image_service = ""   # Used only after article and source images are exhausted
 
 # Custom templates
 [blogroll.templates]
@@ -763,7 +815,7 @@ max_entries = 50              # Override global max_entries_per_feed
 | `items_per_page` | int | `50` | Entries per reader page |
 | `orphan_threshold` | int | `3` | Min entries for separate page |
 | `pagination_type` | string | `"manual"` | Pagination style |
-| `fallback_image_service` | string | `""` | URL template for fallback images |
+| `fallback_image_service` | string | `""` | Last-resort screenshot template for Reader previews |
 | `feeds` | []Feed | `[]` | List of feeds |
 | `templates.blogroll` | string | `"blogroll.html"` | Blogroll template |
 | `templates.reader` | string | `"reader.html"` | Reader template |

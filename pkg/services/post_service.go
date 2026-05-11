@@ -83,7 +83,6 @@ func (s *postService) Get(_ context.Context, path string) (*models.Post, error) 
 // Search returns posts matching a text query.
 func (s *postService) Search(_ context.Context, query string, opts SearchOptions) ([]*models.Post, error) {
 	posts := s.manager.Posts()
-	query = strings.ToLower(query)
 
 	var results []*models.Post
 	for _, p := range posts {
@@ -293,22 +292,43 @@ func compareTags(a, b *models.Post) int {
 	return strings.Compare(strings.ToLower(tagsA), strings.ToLower(tagsB))
 }
 
-func matchesSearch(p *models.Post, query string, _ SearchOptions) bool {
-	// Search in title
-	if p.Title != nil && strings.Contains(strings.ToLower(*p.Title), query) {
+func matchesSearch(p *models.Post, query string, opts SearchOptions) bool {
+	fields := opts.Fields
+	searchAll := len(fields) == 0
+
+	contains := func(haystack, needle string) bool {
+		if opts.CaseSensitive {
+			return strings.Contains(haystack, needle)
+		}
+		return strings.Contains(strings.ToLower(haystack), needle)
+	}
+
+	if !opts.CaseSensitive {
+		query = strings.ToLower(query)
+	}
+
+	if (searchAll || hasField(fields, "title")) && p.Title != nil && contains(*p.Title, query) {
 		return true
 	}
-	// Search in description
-	if p.Description != nil && strings.Contains(strings.ToLower(*p.Description), query) {
+	if (searchAll || hasField(fields, "description")) && p.Description != nil && contains(*p.Description, query) {
 		return true
 	}
-	// Search in content
-	if strings.Contains(strings.ToLower(p.Content), query) {
+	if (searchAll || hasField(fields, "content")) && contains(p.Content, query) {
 		return true
 	}
-	// Search in tags
-	for _, tag := range p.Tags {
-		if strings.Contains(strings.ToLower(tag), query) {
+	if searchAll || hasField(fields, "tags") {
+		for _, tag := range p.Tags {
+			if contains(tag, query) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasField(fields []string, name string) bool {
+	for _, f := range fields {
+		if strings.EqualFold(f, name) {
 			return true
 		}
 	}
