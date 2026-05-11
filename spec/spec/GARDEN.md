@@ -153,6 +153,8 @@ Implementations MUST initialize the post graph on first page load and re-initial
 
 The post graph script SHOULD only be emitted on pages that actually render the preview, so posts without a visible graph do not pay the JavaScript cost.
 
+When the default post graph component renders, implementations SHOULD defer loading the graph runtime until the component is near the viewport. Browsers with `IntersectionObserver` support SHOULD use viewport proximity; browsers without it SHOULD fall back to an idle or delayed load so the graph remains functional without blocking initial page rendering.
+
 The post connections component is configured via `[markata-go.components.post_connections]` and supports two modes:
 
 - `display = ["graph"]` for canvas-only graph rendering

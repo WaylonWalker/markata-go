@@ -138,6 +138,11 @@ type FeedSidebarConfig struct {
 
 	// Feeds is the list of feed slugs to show navigation for
 	Feeds []string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+
+	// MaxPosts caps the number of sidebar posts shown. When positive, markata-go
+	// keeps a centered window around the current post instead of rendering the
+	// entire feed list.
+	MaxPosts int `json:"max_posts,omitempty" yaml:"max_posts,omitempty" toml:"max_posts,omitempty"`
 }
 
 // ContentSidebarConfig configures a content sidebar that renders a post

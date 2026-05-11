@@ -442,7 +442,6 @@
 
   <!-- Conditional CSS Runtime Loader (for view transitions) -->
   <script src="{{ 'js/conditional-css.js' | theme_asset_hashed }}" defer></script>
-  <script src="{{ 'js/feed-cycling.js' | theme_asset_hashed }}" defer></script>
 
   <!-- Conditional Script Loading: Only load when needed -->
   <script>
@@ -470,6 +469,48 @@
       }
     })();
 
+    function appendDeferredScript(src, onload) {
+      var existing = document.querySelector('script[src="' + src + '"]');
+      if (existing) {
+        if (onload) {
+          if (existing.dataset.loaded === 'true') {
+            onload();
+          } else {
+            existing.addEventListener('load', onload, { once: true });
+          }
+        }
+        return existing;
+      }
+
+      var script = document.createElement('script');
+      script.src = src;
+      script.defer = true;
+      script.addEventListener('load', function() {
+        script.dataset.loaded = 'true';
+        if (onload) {
+          onload();
+        }
+      }, { once: true });
+      document.body.appendChild(script);
+      return script;
+    }
+
+    function runWhenIdle(callback, timeout) {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(callback, { timeout: timeout || 2000 });
+        return;
+      }
+      window.setTimeout(callback, timeout || 1200);
+    }
+
+    function runAfterLoad(callback) {
+      if (document.readyState === 'complete') {
+        callback();
+        return;
+      }
+      window.addEventListener('load', callback, { once: true });
+    }
+
     // Custom Navigation Shortcuts from config
     {% if config.shortcuts and config.shortcuts.navigation %}
     window.customShortcuts = {
@@ -481,63 +522,65 @@
 
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
     if (document.querySelector('.wikilink[data-title]')) {
-      const script = document.createElement('script');
-      script.src = '{{ 'js/tooltips.js' | theme_asset_hashed }}';
-      script.defer = true;
-      document.body.appendChild(script);
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/tooltips.js' | theme_asset_hashed }}');
+        });
+      });
     }
 
     // Mention Cards - only load if mention links exist
     if (document.querySelector('a.mention')) {
-      const mentionScript = document.createElement('script');
-      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset_hashed }}';
-      mentionScript.defer = true;
-      document.body.appendChild(mentionScript);
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/mention-cards.js' | theme_asset_hashed }}');
+        });
+      });
     }
 
-    // Keyboard Shortcuts Registry - load the core registry first, then load dependent scripts
-    const shortcutsRegistryScript = document.createElement('script');
-    shortcutsRegistryScript.src = '{{ 'js/shortcuts-registry.js' | theme_asset_hashed }}';
-    // Use onload to ensure registry is fully loaded before dependent scripts
-    shortcutsRegistryScript.onload = function() {
-      // Keyboard Shortcuts - load search and core shortcuts
-      if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
-        const shortcutsScript = document.createElement('script');
-        shortcutsScript.src = '{{ 'js/search-shortcuts.js' | theme_asset_hashed }}';
-        document.body.appendChild(shortcutsScript);
-      }
+    function loadShortcutsRuntime() {
+      appendDeferredScript('{{ 'js/shortcuts-registry.js' | theme_asset_hashed }}', function() {
+        if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
+          appendDeferredScript('{{ 'js/search-shortcuts.js' | theme_asset_hashed }}');
+        }
 
-      // Scrolling Shortcuts - always available
-      const scrollingScript = document.createElement('script');
-      scrollingScript.src = '{{ 'js/scrolling-shortcuts.js' | theme_asset_hashed }}';
-      document.body.appendChild(scrollingScript);
+        appendDeferredScript('{{ 'js/scrolling-shortcuts.js' | theme_asset_hashed }}');
 
-      // Navigation Shortcuts - load if feed/sidebar/card pagination affordances exist
-      if (document.querySelector('.feed, .feed-sidebar, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
-        const navigationScript = document.createElement('script');
-        navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
-        document.body.appendChild(navigationScript);
-      }
+        if (document.querySelector('.feed, .feed-sidebar, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
+          appendDeferredScript('{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}');
+        }
 
-      // History Shortcuts - always available (go back/forward)
-      const historyScript = document.createElement('script');
-      historyScript.src = '{{ 'js/history-shortcuts.js' | theme_asset_hashed }}';
-      document.body.appendChild(historyScript);
-    };
-    document.body.appendChild(shortcutsRegistryScript);
+        appendDeferredScript('{{ 'js/history-shortcuts.js' | theme_asset_hashed }}');
+      });
+    }
+
+    runAfterLoad(function() {
+      runWhenIdle(loadShortcutsRuntime, 2500);
+    });
 
     // Custom Shortcuts - load if custom shortcuts are defined in config
       {% if config.shortcuts and config.shortcuts.navigation %}
-      const customShortcutsScript = document.createElement('script');
-      customShortcutsScript.src = '{{ 'js/custom-shortcuts.js' | theme_asset_hashed }}';
-      document.body.appendChild(customShortcutsScript);
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/custom-shortcuts.js' | theme_asset_hashed }}');
+        });
+      });
       {% endif %}
     // Pagination (JS mode) - only load if JS pagination element exists
     if (document.querySelector('.pagination-js')) {
-      const paginationScript = document.createElement('script');
-      paginationScript.src = '{{ 'js/pagination.js' | theme_asset_hashed }}';
-      paginationScript.defer = true;
-      document.body.appendChild(paginationScript);
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/pagination.js' | theme_asset_hashed }}');
+        });
+      });
+    }
+
+    if (document.querySelector('#feed-sidebar-data')) {
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/feed-cycling.js' | theme_asset_hashed }}');
+        });
+      });
     }
 
     // GLightbox - load when page has zoomable images

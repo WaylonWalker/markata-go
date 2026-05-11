@@ -158,8 +158,22 @@ No additional config is needed. The sitemap plugin runs in the Write stage after
 - card rendering often happens in a partial
 - RSS and Atom can use separate XML templates
 
+## Feed Sidebar Windowing
+
+Large feeds can make post sidebars expensive and noisy. Use `max_posts` under `[markata-go.components.feed_sidebar]` to cap sidebar entries while keeping the current post visible.
+
+```toml
+[markata-go.components.feed_sidebar]
+enabled = true
+feeds = ["blog", "docs"]
+max_posts = 51
+```
+
+A value of `0` or an omitted value means no cap. When capped, markata-go renders a contiguous window around the current post when possible.
+
 ## Agent Guidance
 
 - if the task is “change an index page”, check whether that page is backed by a feed first
 - if the task is “show only X posts”, check `filter`, `limit`, `offset`, and `items_per_page`
+- if the task is “make post sidebars shorter” or “speed up huge series sidebars”, check `components.feed_sidebar.max_posts`
 - if the task is “change archive card layout”, change the feed template or card partial before changing content
