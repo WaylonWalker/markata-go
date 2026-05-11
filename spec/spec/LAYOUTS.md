@@ -305,7 +305,26 @@ show_copyright = true
 copyright_text = "Copyright 2024 My Company"
 show_social_links = true
 show_nav_links = true
+
+# Feed sidebar component
+[markata-go.components.feed_sidebar]
+enabled = true
+position = "left"
+width = "250px"
+feeds = ["docs", "guides"]
+max_posts = 51
 ```
+
+The feed sidebar component renders navigation for posts that share a feed with the current post. Feed selection order is:
+
+1. series metadata
+2. explicit post frontmatter such as `prev_next_feed` or `sidebar_feed`
+3. configured `feed_sidebar.feeds`
+4. automatic discovery from feeds that contain the current post
+
+Automatic discovery MUST choose the smallest matching feed as the most specific navigation set. When two matching feeds have the same size, a primary feed wins the tie.
+
+`max_posts` limits the rendered sidebar items. A value of `0` or less means no limit. When `max_posts` is positive and the matching feed has more posts than the limit, implementations MUST render a contiguous window that includes the current post and SHOULD center that window around the current post when possible. If the current post cannot be found in the selected feed, implementations SHOULD render the first `max_posts` entries.
 
 ---
 

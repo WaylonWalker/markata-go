@@ -650,8 +650,16 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 //  1. Series – post has a "series" key in Extra
 //  2. Explicit frontmatter – post.PrevNextFeed or post.Extra["sidebar_feed"]
 //  3. Tag-based feeds – from config feed_sidebar.feeds
-//  4. Auto-discovery – find the best (smallest non-excluded) feed containing this post
+//  4. Auto-discovery – find the best (smallest non-excluded) feed containing this post,
+//     preferring primary feeds only as a tie-breaker for equally specific candidates.
 func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	maxPosts := 0
+	if config != nil {
+		if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
+			maxPosts = components.FeedSidebar.MaxPosts
+		}
+	}
+
 	// 1. Series
 	seriesPosts, seriesFeed := p.getSeriesSidebarPosts(post, config, m)
 	if seriesPosts != nil {
@@ -662,29 +670,60 @@ func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecyc
 	if explicitSlug := p.getExplicitFeedSlug(post); explicitSlug != "" {
 		posts, fc := p.feedFromCachedConfigs(explicitSlug, post, m)
 		if posts != nil {
-			return posts, fc
+			return trimSidebarPosts(posts, post.Slug, maxPosts), fc
 		}
 	}
 
 	// 3. Tag-based feeds from feed_sidebar config
 	tagPosts, tagFeed := p.getTagFeedSidebarPosts(post, config, m)
 	if tagPosts != nil {
-		return tagPosts, tagFeed
+		return trimSidebarPosts(tagPosts, post.Slug, maxPosts), tagFeed
 	}
 
-	// 4. Prefer a primary feed from cached feed configs when available.
-	primaryPosts, primaryFeed := p.getPrimaryFeedSidebarPosts(post, m)
-	if primaryPosts != nil {
-		return primaryPosts, primaryFeed
-	}
-
-	// 5. Auto-discovery: find the best feed containing this post
+	// 4. Auto-discovery: find the best feed containing this post
 	autoPosts, autoFeed := p.autoDiscoverFeed(post, config, m)
 	if autoPosts != nil {
-		return autoPosts, autoFeed
+		return trimSidebarPosts(autoPosts, post.Slug, maxPosts), autoFeed
 	}
 
 	return nil, nil
+}
+
+func trimSidebarPosts(posts []*models.Post, currentSlug string, maxPosts int) []*models.Post {
+	if maxPosts <= 0 || len(posts) <= maxPosts {
+		return posts
+	}
+
+	currentIndex := -1
+	for i, p := range posts {
+		if p != nil && p.Slug == currentSlug {
+			currentIndex = i
+			break
+		}
+	}
+	if currentIndex == -1 {
+		trimmed := make([]*models.Post, maxPosts)
+		copy(trimmed, posts[:maxPosts])
+		return trimmed
+	}
+
+	half := maxPosts / 2
+	start := currentIndex - half
+	if start < 0 {
+		start = 0
+	}
+	end := start + maxPosts
+	if end > len(posts) {
+		end = len(posts)
+		start = end - maxPosts
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	trimmed := make([]*models.Post, end-start)
+	copy(trimmed, posts[start:end])
+	return trimmed
 }
 
 func (p *TemplatesPlugin) getPrimaryFeedSidebarPosts(post *models.Post, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
@@ -901,10 +940,12 @@ func (p *TemplatesPlugin) autoDiscoverFeed(post *models.Post, config *lifecycle.
 		return nil, nil
 	}
 
-	// Pick the smallest feed (most specific)
+	// Pick the smallest feed (most specific). If two candidates are equally
+	// specific, prefer the primary feed so configured navigation still wins
+	// when the scope is otherwise identical.
 	best := candidates[0]
 	for _, c := range candidates[1:] {
-		if c.count < best.count {
+		if c.count < best.count || (c.count == best.count && c.fc.Primary && !best.fc.Primary) {
 			best = c
 		}
 	}
