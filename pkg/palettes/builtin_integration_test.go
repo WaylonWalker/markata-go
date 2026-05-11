@@ -13,7 +13,7 @@ func resolveFirst(palette *Palette, names ...string) (name, hex string) {
 	return "", ""
 }
 
-func requireContrast(t *testing.T, paletteName string, fgName string, fgHex string, bgName string, bgHex string, minRatio float64, desc string) {
+func requireContrast(t *testing.T, paletteName, fgName, fgHex, bgName, bgHex string, minRatio float64, desc string) {
 	t.Helper()
 
 	ratio, err := ContrastRatioFromHex(fgHex, bgHex)
