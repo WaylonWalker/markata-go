@@ -14,6 +14,11 @@ Themes control the visual appearance of the generated site. The system supports:
 5. **Readable by default** - Typography, contrast, and spacing optimized for reading
 6. **Accessible first** - WCAG 2.1 AA compliant colors, focus states, and compact touch targets
 
+### Contrast Guarantees
+
+- Default theme text in compact UI surfaces such as home metadata, card metadata, and admonition titles MUST use text tokens that maintain WCAG 2.1 AA contrast at their rendered size.
+- Built-in palette regression tests MUST validate the default theme's concrete foreground/background combinations, not only abstract palette token pairs, so regressions in selector usage are caught across every shipped palette.
+
 ---
 
 ## Customization Philosophy
