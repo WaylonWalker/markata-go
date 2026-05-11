@@ -13,6 +13,19 @@ func resolveFirst(palette *Palette, names ...string) (name, hex string) {
 	return "", ""
 }
 
+func requireContrast(t *testing.T, paletteName, fgName, fgHex, bgName, bgHex string, minRatio float64, desc string) {
+	t.Helper()
+
+	ratio, err := ContrastRatioFromHex(fgHex, bgHex)
+	if err != nil {
+		t.Fatalf("Palette %s: invalid resolved colors for %s: %q on %q (%v)", paletteName, desc, fgHex, bgHex, err)
+	}
+
+	if ratio < minRatio {
+		t.Errorf("Palette %s: %s (%s on %s) contrast ratio %.2f < %.1f required", paletteName, desc, fgName, bgName, ratio, minRatio)
+	}
+}
+
 // TestBuiltInPalettesWCAGContrast validates that all built-in palettes
 // pass WCAG AA contrast requirements. This is an integration test that
 // ensures our shipped palettes meet accessibility standards.
@@ -263,7 +276,7 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 	componentChecks := []struct {
 		name      string
 		fgOptions []string
-		bg        string
+		bgOptions []string
 		minRatio  float64
 		level     string
 		desc      string
@@ -271,7 +284,7 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 		{
 			name:      "post copy label",
 			fgOptions: []string{"text-primary"},
-			bg:        "bg-primary",
+			bgOptions: []string{"bg-primary"},
 			minRatio:  4.5,
 			level:     "AA",
 			desc:      "post copy summary text",
@@ -279,15 +292,23 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 		{
 			name:      "admonition title",
 			fgOptions: []string{"text-primary"},
-			bg:        "bg-surface",
+			bgOptions: []string{"admonition-note-bg", "bg-surface"},
 			minRatio:  4.5,
 			level:     "AA",
-			desc:      "admonition title text on default surfaces",
+			desc:      "admonition title text on note backgrounds",
+		},
+		{
+			name:      "warning admonition title",
+			fgOptions: []string{"text-primary"},
+			bgOptions: []string{"admonition-warning-bg", "admonition-warn-bg", "bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "admonition title text on warning backgrounds",
 		},
 		{
 			name:      "feed nav button label",
 			fgOptions: []string{"text-primary"},
-			bg:        "bg-surface",
+			bgOptions: []string{"bg-surface"},
 			minRatio:  4.5,
 			level:     "AA",
 			desc:      "feed navigation button glyphs",
@@ -295,10 +316,26 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 		{
 			name:      "card domain link",
 			fgOptions: []string{"text-primary"},
-			bg:        "bg-surface",
+			bgOptions: []string{"bg-surface"},
 			minRatio:  4.5,
 			level:     "AA",
 			desc:      "compact card domain links",
+		},
+		{
+			name:      "homepage updated label",
+			fgOptions: []string{"text-secondary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "small home card metadata labels",
+		},
+		{
+			name:      "webmention count label",
+			fgOptions: []string{"text-secondary"},
+			bgOptions: []string{"bg-surface"},
+			minRatio:  4.5,
+			level:     "AA",
+			desc:      "compact webmention count labels on cards",
 		},
 	}
 
@@ -313,25 +350,15 @@ func TestPaletteContrastForDefaultThemeInteractiveComponents(t *testing.T) {
 
 			for _, check := range componentChecks {
 				fgName, fgHex := resolveFirst(palette, check.fgOptions...)
-				bgHex := palette.Resolve(check.bg)
+				bgName, bgHex := resolveFirst(palette, check.bgOptions...)
 
-				if fgName == "" || bgHex == "" {
-					t.Errorf("Palette %s: missing color mapping for %s (%v on %s)",
-						name, check.name, check.fgOptions, check.bg)
+				if fgName == "" || bgName == "" {
+					t.Errorf("Palette %s: missing color mapping for %s (%v on %v)",
+						name, check.name, check.fgOptions, check.bgOptions)
 					continue
 				}
 
-				ratio, err := ContrastRatioFromHex(fgHex, bgHex)
-				if err != nil {
-					t.Errorf("Palette %s: invalid resolved colors for %s: %q on %q (%v)",
-						name, check.name, fgHex, bgHex, err)
-					continue
-				}
-
-				if ratio < check.minRatio {
-					t.Errorf("Palette %s: %s (%s on %s) contrast ratio %.2f < %.1f required for %s",
-						name, check.name, fgName, check.bg, ratio, check.minRatio, check.level)
-				}
+				requireContrast(t, name, fgName, fgHex, bgName, bgHex, check.minRatio, check.desc)
 			}
 		})
 	}
