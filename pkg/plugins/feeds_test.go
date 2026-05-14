@@ -863,10 +863,10 @@ func TestFilterPosts_IncludePrivate(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	posts := []*models.Post{
-		{Slug: "public1", Tags: []string{"python"}, Date: &date, Private: false},
-		{Slug: "private1", Tags: []string{"python"}, Date: &date, Private: true},
-		{Slug: "public2", Tags: []string{"go"}, Date: &date, Private: false},
-		{Slug: "private2", Tags: []string{"go"}, Date: &date, Private: true},
+		{Slug: "public1", Tags: []string{"python"}, Date: &date, Private: false, ArticleHTML: "<p>Public 1</p>"},
+		{Slug: "private1", Tags: []string{"python"}, Date: &date, Private: true, ArticleHTML: "<p>Private 1</p>"},
+		{Slug: "public2", Tags: []string{"go"}, Date: &date, Private: false, ArticleHTML: "<p>Public 2</p>"},
+		{Slug: "private2", Tags: []string{"go"}, Date: &date, Private: true, ArticleHTML: "<p>Private 2</p>"},
 	}
 
 	tests := []struct {

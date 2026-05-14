@@ -562,6 +562,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	modelsConfig := ToModelsConfig(config)
 	syndication := getSyndicationConfig(config)
+	outputFC := feedConfigWithRenderablePosts(fc)
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
@@ -569,14 +570,14 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
-		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, modelsConfig, feedDir) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, modelsConfig, feedDir) }},
-		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir, false) }},
-		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir, false) }},
-		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
-		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
-		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
-		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(fc, config, feedDir) }},
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(outputFC, config, modelsConfig, feedDir) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(outputFC, config, modelsConfig, feedDir) }},
+		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(outputFC, config, feedDir, false) }},
+		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(outputFC, config, feedDir, false) }},
+		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(outputFC, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
+		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(outputFC, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
+		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(outputFC, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
+		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(outputFC, config, feedDir) }},
 	}
 
 	for _, pub := range publishers {
@@ -592,9 +593,9 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		}
 
 		archivePublishers := []feedFormatPublisher{
-			{name: "Archive RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, archiveDir, true) }},
-			{name: "Archive Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, archiveDir, true) }},
-			{name: "Archive JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, archiveDir, true) }},
+			{name: "Archive RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(outputFC, config, archiveDir, true) }},
+			{name: "Archive Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(outputFC, config, archiveDir, true) }},
+			{name: "Archive JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(outputFC, config, archiveDir, true) }},
 		}
 
 		for _, pub := range archivePublishers {
@@ -605,6 +606,33 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	}
 
 	return nil
+}
+
+func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
+	clone := cloneFeedConfigWithPosts(fc, renderableFeedPosts(fc.Posts))
+	baseURL := "/" + clone.Slug
+	if clone.Slug == "" {
+		baseURL = "/"
+	}
+	clone.Paginate(baseURL)
+	return clone
+}
+
+func renderableFeedPosts(posts []*models.Post) []*models.Post {
+	if len(posts) == 0 {
+		return nil
+	}
+	filtered := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft {
+			continue
+		}
+		if post.Content == "" && post.ArticleHTML == "" {
+			continue
+		}
+		filtered = append(filtered, post)
+	}
+	return filtered
 }
 
 // determineFeedDir returns the output directory for a feed based on its slug.
