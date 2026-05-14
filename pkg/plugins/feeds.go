@@ -68,7 +68,6 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			}
 			filteredPosts = cloneFeedPosts(filteredPosts)
 		}
-
 		if !usePresetPosts {
 			// Determine sort field and direction based on feed type
 			sortField := fc.Sort

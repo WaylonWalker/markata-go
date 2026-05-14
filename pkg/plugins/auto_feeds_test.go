@@ -255,25 +255,28 @@ func TestAutoFeedsPlugin_CategoryFeeds(t *testing.T) {
 
 	m.SetPosts([]*models.Post{
 		{
-			Path:  "post1.md",
-			Slug:  "post1",
-			Title: strPtr("Tech Post 1"),
-			Date:  &date,
-			Extra: map[string]interface{}{"category": "Technology"},
+			Path:    "post1.md",
+			Slug:    "post1",
+			Title:   strPtr("Tech Post 1"),
+			Content: "tech post 1",
+			Date:    &date,
+			Extra:   map[string]interface{}{"category": "Technology"},
 		},
 		{
-			Path:  "post2.md",
-			Slug:  "post2",
-			Title: strPtr("Life Post"),
-			Date:  &date,
-			Extra: map[string]interface{}{"category": "Lifestyle"},
+			Path:    "post2.md",
+			Slug:    "post2",
+			Title:   strPtr("Life Post"),
+			Content: "life post",
+			Date:    &date,
+			Extra:   map[string]interface{}{"category": "Lifestyle"},
 		},
 		{
-			Path:  "post3.md",
-			Slug:  "post3",
-			Title: strPtr("Tech Post 2"),
-			Date:  &date,
-			Extra: map[string]interface{}{"category": "Technology"},
+			Path:    "post3.md",
+			Slug:    "post3",
+			Title:   strPtr("Tech Post 2"),
+			Content: "tech post 2",
+			Date:    &date,
+			Extra:   map[string]interface{}{"category": "Technology"},
 		},
 	})
 
@@ -572,11 +575,12 @@ func TestAutoFeedsPlugin_InheritsFeedDefaults(t *testing.T) {
 	var posts []*models.Post
 	for i := 0; i < 15; i++ {
 		posts = append(posts, &models.Post{
-			Path:  "post.md",
-			Slug:  "post",
-			Title: strPtr("Post"),
-			Tags:  []string{"python"},
-			Date:  &date,
+			Path:    "post.md",
+			Slug:    "post",
+			Title:   strPtr("Post"),
+			Tags:    []string{"python"},
+			Content: "post",
+			Date:    &date,
 		})
 	}
 	m.SetPosts(posts)
@@ -638,9 +642,9 @@ func TestAutoFeedsPlugin_PostsSortedByDateDescending(t *testing.T) {
 	date3 := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
 
 	m.SetPosts([]*models.Post{
-		{Path: "post1.md", Slug: "oldest", Title: strPtr("Oldest"), Tags: []string{"python"}, Date: &date3},
-		{Path: "post2.md", Slug: "newest", Title: strPtr("Newest"), Tags: []string{"python"}, Date: &date1},
-		{Path: "post3.md", Slug: "middle", Title: strPtr("Middle"), Tags: []string{"python"}, Date: &date2},
+		{Path: "post1.md", Slug: "oldest", Title: strPtr("Oldest"), Tags: []string{"python"}, Content: "oldest", Date: &date3},
+		{Path: "post2.md", Slug: "newest", Title: strPtr("Newest"), Tags: []string{"python"}, Content: "newest", Date: &date1},
+		{Path: "post3.md", Slug: "middle", Title: strPtr("Middle"), Tags: []string{"python"}, Content: "middle", Date: &date2},
 	})
 
 	config := lifecycle.NewConfig()
@@ -894,9 +898,9 @@ func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	m.SetPosts([]*models.Post{
-		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date, Published: true},
-		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Date: &date, Published: true},
-		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Date: &date, Published: true},
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Content: "python tutorial", Date: &date, Published: true},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Content: "go basics", Date: &date, Published: true},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Content: "python advanced", Date: &date, Published: true},
 	})
 
 	// Configure auto feeds for tags
