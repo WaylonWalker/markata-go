@@ -90,7 +90,54 @@
     <div class="post-graph__tooltip" aria-live="polite"></div>
   </div>
 </section>
-<script src="{{ 'js/post-graph.js' | theme_asset_hashed }}" defer></script>
+<script>
+(function() {
+  var graphSection = document.currentScript && document.currentScript.previousElementSibling;
+  if (!graphSection || !graphSection.classList || !graphSection.classList.contains('post-graph')) {
+    return;
+  }
+
+  var scriptSrc = '{{ 'js/post-graph.js' | theme_asset_hashed }}';
+  var loaded = false;
+
+  function loadGraphScript() {
+    if (loaded) {
+      return;
+    }
+    loaded = true;
+
+    if (document.querySelector('script[src="' + scriptSrc + '"]')) {
+      return;
+    }
+
+    var script = document.createElement('script');
+    script.src = scriptSrc;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting) {
+          observer.disconnect();
+          loadGraphScript();
+          return;
+        }
+      }
+    }, { rootMargin: '400px 0px' });
+    observer.observe(graphSection);
+    return;
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(loadGraphScript, { timeout: 2000 });
+    return;
+  }
+
+  window.setTimeout(loadGraphScript, 1200);
+})();
+</script>
 {% endif %}
 
 {% if show_list %}

@@ -662,6 +662,7 @@ Series/collection navigation sidebar for posts in the same feed.
 | `width` | string | `"250px"` | Sidebar width |
 | `title` | string | `""` | Custom title (defaults to feed title) |
 | `feeds` | array | `[]` | Feed slugs to show navigation for |
+| `max_posts` | integer | `0` | Limit rendered sidebar items; when set, keeps a window around the current post |
 
 ```toml
 [markata-go.components.feed_sidebar]
@@ -670,6 +671,7 @@ position = "left"
 width = "250px"
 title = "In this series"
 feeds = ["tutorials", "guides"]
+max_posts = 51
 ```
 
 **Responsive behavior:** Sidebars are hidden on mobile (< 768px) and shown inline on tablets (768px - 1024px).

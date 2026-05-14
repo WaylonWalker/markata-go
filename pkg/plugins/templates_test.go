@@ -48,6 +48,65 @@ func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersPrimaryFeed(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersSmallerFeedOverLargePrimary(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	m.Config().Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled},
+	}
+
+	title := "Post"
+	post := &models.Post{Slug: "post", Title: &title, Href: "/post/"}
+	otherOne := &models.Post{Slug: "other-1", Href: "/other-1/"}
+	otherTwo := &models.Post{Slug: "other-2", Href: "/other-2/"}
+
+	primary := models.FeedConfig{
+		Slug:    "primary",
+		Title:   "Primary",
+		Primary: true,
+		Posts:   []*models.Post{post, otherOne, otherTwo},
+	}
+	secondary := models.FeedConfig{
+		Slug:  "secondary",
+		Title: "Secondary",
+		Posts: []*models.Post{post},
+	}
+	m.Cache().Set("feed_configs", []models.FeedConfig{primary, secondary})
+
+	posts, feed := p.getFeedSidebarPosts(post, m.Config(), m)
+	if feed == nil {
+		t.Fatal("expected a sidebar feed")
+	}
+	if feed.Slug != "secondary" {
+		t.Fatalf("expected smaller feed, got %q", feed.Slug)
+	}
+	if len(posts) != 1 || posts[0].Slug != post.Slug {
+		t.Fatalf("unexpected sidebar posts: %#v", posts)
+	}
+}
+
+func TestTrimSidebarPosts_CentersCurrentPostWithinWindow(t *testing.T) {
+	posts := make([]*models.Post, 0, 7)
+	for i := 0; i < 7; i++ {
+		slug := string(rune('a' + i))
+		posts = append(posts, &models.Post{Slug: slug})
+	}
+
+	trimmed := trimSidebarPosts(posts, "d", 3)
+	if len(trimmed) != 3 {
+		t.Fatalf("trimmed len = %d, want 3", len(trimmed))
+	}
+	got := []string{trimmed[0].Slug, trimmed[1].Slug, trimmed[2].Slug}
+	want := []string{"c", "d", "e"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("trimmed slugs = %#v, want %#v", got, want)
+		}
+	}
+}
+
 func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationIncludesOnlyPrimary(t *testing.T) {
 	p := NewTemplatesPlugin()
 	m := lifecycle.NewManager()
@@ -536,6 +595,14 @@ func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T
 			hasGraphScript := strings.Contains(post.HTML, "post-graph.js")
 			if hasGraphScript != tt.wantGraphScript {
 				t.Fatalf("post-graph.js present = %v, want %v; HTML=%q", hasGraphScript, tt.wantGraphScript, post.HTML)
+			}
+
+			if tt.wantGraphScript {
+				if !strings.Contains(post.HTML, "IntersectionObserver") {
+					t.Fatalf("expected lazy graph loader in HTML, got %q", post.HTML)
+				}
+			} else if strings.Contains(post.HTML, "IntersectionObserver") {
+				t.Fatalf("unexpected lazy graph loader for sparse post, got %q", post.HTML)
 			}
 		})
 	}
