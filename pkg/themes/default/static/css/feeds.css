@@ -49,8 +49,8 @@ article.post > .post-content > .feed.h-feed {
 
 .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts,
 .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-6, 1.5rem);
 }
 

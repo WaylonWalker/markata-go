@@ -354,19 +354,29 @@
 /* Standalone photo figures rendered directly in feed lists should center
    their media and caption within the feed column, not hug the left edge. */
 .feed .posts-list > .photo-figure {
-  width: auto;
+  width: fit-content;
   max-width: min(100%, 600px);
   display: grid;
   justify-items: center;
-  justify-self: center;
+  align-self: center;
+  margin-left: auto;
+  margin-right: auto;
   text-align: center;
 }
 
 .feed .posts-list > .photo-figure > a {
   display: grid;
   place-items: center;
-  width: auto;
+  width: fit-content;
   max-width: 100%;
+}
+
+.feed .posts-list > .photo-figure picture {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .feed .posts-list > .photo-figure img,
@@ -465,38 +475,6 @@
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-}
-
-/* Wide layout: title and excerpt share one row on desktop */
-@media (min-width: 769px) {
-  .card-link {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto;
-  }
-
-  .card-link .card-header {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: center;
-  }
-
-  .card-link .card-body {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-  }
-
-  .card-link .card-meta {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  /* Revert to stacked layout inside narrow sidebar contexts */
-  aside .card-link {
-    display: flex;
-    flex-direction: column;
-  }
 }
 
 .card-link .card-link-wrapper {
