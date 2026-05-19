@@ -243,6 +243,28 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 	return files
 }
 
+// DiscoverFiles returns files using the same glob scan behavior as the build plugin.
+func DiscoverFiles(baseDir string, patterns []string, useGitignore bool) ([]string, error) {
+	if strings.TrimSpace(baseDir) == "" {
+		baseDir = "."
+	}
+	absBaseDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		return nil, err
+	}
+	p := NewGlobPlugin()
+	if len(patterns) > 0 {
+		p.SetPatterns(patterns)
+	}
+	p.SetUseGitignore(useGitignore)
+	if useGitignore {
+		if err := p.loadGitignore(baseDir); err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	return p.scanFiles(absBaseDir), nil
+}
+
 // SetPatterns sets the glob patterns to use for file discovery.
 func (p *GlobPlugin) SetPatterns(patterns []string) {
 	p.patterns = patterns

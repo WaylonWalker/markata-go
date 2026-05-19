@@ -25,6 +25,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/searchapi"
+	"github.com/WaylonWalker/markata-go/pkg/serveadmin"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -86,6 +87,9 @@ var (
 	serveCache            *buildcache.Cache
 	servePostsMu          sync.Mutex
 	servePosts            map[string]*models.Post
+
+	// adminRebuildCh is used by admin to trigger rebuilds
+	adminRebuildCh chan struct{}
 )
 
 const (
@@ -104,6 +108,15 @@ type BuildStatus struct {
 
 func setBuildStatus(status, message, licenseWarning string) {
 	buildStatus.Store(BuildStatus{Status: status, Message: message, LicenseWarning: licenseWarning})
+}
+
+// GetServeBuildStatus returns the current build status for external access
+func GetServeBuildStatus() map[string]interface{} {
+	s := getBuildStatus()
+	return map[string]interface{}{
+		"status":  s.Status,
+		"message": s.Message,
+	}
 }
 
 func getBuildStatus() BuildStatus {
@@ -194,12 +207,27 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 
 	setupServeSignals(cancel)
 
+	// Create admin rebuild channel before createManager
+	adminRebuildCh = make(chan struct{}, 1)
+
 	// Create manager (config and plugin setup)
 	m, err := createManager(cfgFile)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 	configureLoggerForManager(m)
+
+	// Pass admin rebuild channel to serveadmin
+	serveadmin.SetRebuildChannel(adminRebuildCh)
+	serveadmin.SetContentDir(m.Config().ContentDir)
+	if configPath, ok := m.Config().Extra["config_path"].(string); ok {
+		serveadmin.SetConfigPath(configPath)
+	}
+	serveadmin.SetWatchEnabled(serveWatch && !serveNoWatch)
+	if modelsConfig, ok := m.Config().Extra["models_config"].(*models.Config); ok {
+		serveadmin.SetSiteConfig(modelsConfig)
+	}
+	serveadmin.SetSitePosts(m.Posts())
 
 	// Apply fast mode if requested
 	if serveFast {
@@ -399,6 +427,7 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 			}
 			setServePosts(m.Posts())
 		}
+		serveadmin.SetSitePosts(m.Posts())
 	}()
 }
 
@@ -455,8 +484,16 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 }
 
 // createHandler creates an HTTP handler that serves files with live reload injection
-// and mounts the bleve search API at the configured endpoint.
+// and mounts the admin CMS and bleve search API.
 func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string) http.Handler {
+	mux := http.NewServeMux()
+
+	// Admin routes
+	adminHandler := serveadmin.Router()
+	mux.Handle("/__admin/", adminHandler)
+	mux.Handle("/__admin", adminHandler)
+
+	// Static file server
 	fileServer := http.FileServer(http.Dir(outputDir))
 	absOutputDir, err := filepath.Abs(outputDir)
 	if err != nil {
@@ -487,7 +524,7 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 		}
 	}()
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		status := getBuildStatus()
 		// Log requests in verbose mode
 		if verbose {
@@ -546,6 +583,8 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 		r.URL.Path = requestPath
 		fileServer.ServeHTTP(w, r)
 	})
+
+	return mux
 }
 
 // serveHTMLWithLiveReload reads an HTML file and injects the live reload script.
@@ -1416,6 +1455,16 @@ func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
 				verbosef("Rebuild handler canceled")
 			}
 			return
+		case <-adminRebuildCh:
+			// Admin triggered rebuild - reset debounce timer
+			if timer != nil {
+				if !timer.Stop() {
+					drainTimer(timer)
+				}
+			}
+			timer = time.AfterFunc(debounceDelay, func() {
+				doRebuildFromAdmin(ctx, rebuildCh)
+			})
 		case <-rebuildCh:
 			// Reset debounce timer
 			if timer != nil {
@@ -1458,6 +1507,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	infof("\nRebuilding...")
 	setBuildStatus(buildStatusBuilding, "", "")
+	serveadmin.SetBuildStatus("building", "Building...")
 	notifyBuildStatus()
 	startTime := time.Now()
 
@@ -1477,6 +1527,14 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 	configureLoggerForManager(m)
+	serveadmin.SetContentDir(m.Config().ContentDir)
+	if configPath, ok := m.Config().Extra["config_path"].(string); ok {
+		serveadmin.SetConfigPath(configPath)
+	}
+	if modelsConfig, ok := m.Config().Extra["models_config"].(*models.Config); ok {
+		serveadmin.SetSiteConfig(modelsConfig)
+	}
+	serveadmin.SetSitePosts(m.Posts())
 
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
@@ -1514,6 +1572,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	result, err := runBuild(m)
 	if err != nil {
 		setBuildStatus(buildStatusError, err.Error(), "")
+		serveadmin.SetBuildStatus("error", err.Error())
 		notifyBuildStatus()
 		errlnf("Rebuild failed: %v", err)
 		return
@@ -1526,6 +1585,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		}
 		setServePosts(m.Posts())
 	}
+	serveadmin.SetSitePosts(m.Posts())
 
 	// Check for cancellation after build
 	select {
@@ -1537,11 +1597,21 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	duration := time.Since(startTime)
 	setBuildStatus(buildStatusSuccess, "", licenseWarningMessage(getModelsConfig(m)))
+	serveadmin.SetBuildStatus("success", "")
 	notifyBuildStatus()
 	infof("Rebuilt in %.2fs (%d posts, %d feeds)", duration.Seconds(), result.PostsProcessed, result.FeedsGenerated)
 
 	// Notify live reload clients
 	notifyLiveReload()
+}
+
+func doRebuildFromAdmin(ctx context.Context, rebuildCh chan<- struct{}) {
+	// For admin-triggered rebuilds, mark glob as dirty to force full rebuild
+	serveGlobDirty = true
+	serveForceFullRebuild = true
+
+	serveadmin.SetBuildStatus("building", "Building from admin...")
+	doRebuild(ctx, rebuildCh)
 }
 
 func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths []string, forceFull, globDirty bool) {

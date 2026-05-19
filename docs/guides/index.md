@@ -111,6 +111,7 @@ For developers who want full control and customization.
 - [Sidebars](/docs/guides/sidebars/) - Table of contents and feed navigation
 
 ### Features
+- [Admin CMS](/docs/guides/admin-cms/) - Edit posts, preview builds, and update config locally
 - [Search](/docs/guides/search/) - Pagefind integration for site search
 - [View Transitions](/docs/guides/view-transitions/) - Smooth page navigation animations
 - [Resource Hints](/docs/guides/resource-hints/) - Auto-generate dns-prefetch and preconnect
