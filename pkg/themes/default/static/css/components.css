@@ -373,9 +373,6 @@
   height: fit-content;
   max-height: calc(100vh - 2rem);
   flex-shrink: 0;
-
-  /* Animate independently during view transitions */
-  view-transition-name: feed-sidebar;
 }
 
 .feed-sidebar--left {
@@ -3048,39 +3045,6 @@ kbd.kbd {
 /* ============================================
    View Transitions API Styles
    ============================================ */
-
-/* Assign transition names to key page elements */
-/* Use article.post as the main content container (contains .post-content) */
-article.post {
-   view-transition-name: main-content;
-}
-
-.site-nav--header {
-   view-transition-name: site-nav;
-}
-
-.site-footer,
-[class^="site-footer"] {
-   view-transition-name: site-footer;
-}
-
-.breadcrumbs {
-   view-transition-name: breadcrumbs;
-}
-
-.pagination {
-   view-transition-name: pagination;
-}
-
-/* Feed sidebar stays stable during post-to-post navigation */
-.feed-sidebar {
-   view-transition-name: feed-sidebar;
-}
-
-/* Post navigation (prev/next) */
-.post-nav {
-   view-transition-name: post-nav;
-}
 
 /* Default cross-fade for everything (fixes old+new overlap flash). */
 ::view-transition-old(root) {

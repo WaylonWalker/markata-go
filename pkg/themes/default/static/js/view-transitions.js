@@ -37,8 +37,18 @@
   };
 
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
+  const MAX_PREFETCHED_DOCUMENTS = 8;
+  const PREFETCH_DEBOUNCE_MS = 120;
+  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme']);
+  const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);
+  const RUNTIME_HTML_ATTRIBUTE_PREFIXES = [
+    'data-shared-transition-',
+    'data-post-transition-',
+  ];
   const prefetchedDocuments = new Map();
   let navigationInFlight = false;
+  let lastPrefetchUrl = '';
+  let lastPrefetchAt = 0;
 
   function getNavigationPath(url) {
     if (!url) return '';
@@ -567,8 +577,27 @@
   function syncDocumentElementAttributes(newDoc) {
     if (!newDoc || !newDoc.documentElement) return;
 
+    const preservedAttributes = new Map();
+    const preservedClasses = new Set();
+
+    Array.from(document.documentElement.attributes).forEach((attribute) => {
+      if (RUNTIME_HTML_ATTRIBUTES.has(attribute.name) ||
+          RUNTIME_HTML_ATTRIBUTE_PREFIXES.some((prefix) => attribute.name.startsWith(prefix))) {
+        preservedAttributes.set(attribute.name, attribute.value);
+      }
+    });
+
+    RUNTIME_HTML_CLASS_NAMES.forEach((className) => {
+      if (document.documentElement.classList.contains(className)) {
+        preservedClasses.add(className);
+      }
+    });
+
     const currentAttributes = Array.from(document.documentElement.attributes);
     for (const attribute of currentAttributes) {
+      if (preservedAttributes.has(attribute.name)) {
+        continue;
+      }
       if (!newDoc.documentElement.hasAttribute(attribute.name)) {
         document.documentElement.removeAttribute(attribute.name);
       }
@@ -576,6 +605,14 @@
 
     Array.from(newDoc.documentElement.attributes).forEach((attribute) => {
       document.documentElement.setAttribute(attribute.name, attribute.value);
+    });
+
+    preservedAttributes.forEach((value, name) => {
+      document.documentElement.setAttribute(name, value);
+    });
+
+    preservedClasses.forEach((className) => {
+      document.documentElement.classList.add(className);
     });
   }
 
@@ -728,7 +765,9 @@
     var feedList = document.querySelector('#feed-nav-collapsible');
     var savedScrollTop = feedList ? feedList.scrollTop : 0;
 
-    const replacedPage = replaceElementContents('#view-transition-page', newDoc);
+    // Replace the full wrapper so page-specific layout classes do not leak
+    // across feed -> post and post -> feed navigations.
+    const replacedPage = replaceElement('#view-transition-page', newDoc);
     if (!replacedPage) {
       document.body.innerHTML = newDoc.body.innerHTML;
       return false;
@@ -748,7 +787,8 @@
   /**
    * Update the current document with content from new document
    */
-  function updateDocument(newDoc, metrics) {
+  function updateDocument(newDoc, metrics, options) {
+    const updateOptions = Object.assign({ reinitialize: true, hydrateCritical: false }, options || {});
     const swapStartedAt = getNow();
 
     syncDocumentElementAttributes(newDoc);
@@ -767,26 +807,16 @@
     // Replace the main layout region instead of the entire body when possible.
     updateLayoutRegions(newDoc);
 
-    // Re-execute inline module scripts (e.g. mermaid, chartjs).
-    // Replaced fragments do not run <script> tags, so we clone module scripts
-    // into fresh elements which the browser will evaluate.
-    document.body.querySelectorAll('script[type="module"]').forEach(old => {
-      const fresh = document.createElement('script');
-      fresh.type = 'module';
-      fresh.textContent = old.textContent;
-      old.replaceWith(fresh);
-    });
+    if (updateOptions.hydrateCritical) {
+      hydrateCriticalLayoutScripts();
+    }
 
     if (metrics) {
       metrics.swapMs += getNow() - swapStartedAt;
     }
 
-    // Re-initialize scripts
-    const reinitStartedAt = getNow();
-    reinitializeScripts();
-
-    if (metrics) {
-      metrics.reinitMs += getNow() - reinitStartedAt;
+    if (updateOptions.reinitialize) {
+      reinitializeDocument(metrics);
     }
 
     // Scroll to top (or to hash if present)
@@ -800,6 +830,44 @@
         window.scrollTo(0, 0);
       }
     }
+  }
+
+  function reinitializeDocument(metrics, options) {
+    const reinitOptions = Object.assign({ skipCritical: false }, options || {});
+    const reinitStartedAt = getNow();
+    reexecuteInlineModuleScripts();
+    reinitializeScripts(reinitOptions);
+
+    if (metrics) {
+      metrics.reinitMs += getNow() - reinitStartedAt;
+    }
+  }
+
+  function reexecuteInlineModuleScripts() {
+    // Replaced fragments do not run inline module scripts, so evaluate them
+    // after the transition snapshot instead of during the critical swap.
+    document.body.querySelectorAll('script[type="module"]').forEach(old => {
+      const fresh = document.createElement('script');
+      fresh.type = 'module';
+      fresh.textContent = old.textContent;
+      old.replaceWith(fresh);
+    });
+  }
+
+  function callOptionalInit(name, fn) {
+    if (typeof fn !== 'function') return;
+    try {
+      fn();
+    } catch (error) {
+      if (config.debug) console.warn('View transition init failed:', name, error);
+    }
+  }
+
+  function hydrateCriticalLayoutScripts() {
+    // Feed cycling rewrites visible sidebar chrome from the embedded JSON. Run
+    // it during the transition swap so the captured new state is not the
+    // server-rendered fallback sidebar.
+    callOptionalInit('initFeedCycling', window.initFeedCycling);
   }
 
   /**
@@ -852,39 +920,34 @@
   /**
    * Re-initialize scripts after content replacement
    */
-  function reinitializeScripts() {
-    function callInit(name, fn) {
-      if (typeof fn !== 'function') return;
-      try {
-        fn();
-      } catch (error) {
-        if (config.debug) console.warn('View transition init failed:', name, error);
-      }
-    }
+  function reinitializeScripts(options) {
+    const reinitOptions = Object.assign({ skipCritical: false }, options || {});
 
     // Dispatch custom event for other scripts to listen to
     window.dispatchEvent(new CustomEvent('view-transition-complete'));
 
     // Pagefind Search (navbar) - needs re-init after DOM swap
-    callInit('initPagefindSearch', window.initPagefindSearch);
-    callInit('initBleveSearch', window.initBleveSearch);
+    callOptionalInit('initPagefindSearch', window.initPagefindSearch);
+    callOptionalInit('initBleveSearch', window.initBleveSearch);
 
     // Re-initialize feed cycling first so sidebar chrome is hydrated before
     // other scripts inspect feed-aware DOM state.
-    callInit('initFeedCycling', window.initFeedCycling);
+    if (!reinitOptions.skipCritical) {
+      callOptionalInit('initFeedCycling', window.initFeedCycling);
+    }
 
     // Re-initialize common scripts if they exist
-    callInit('initScrollSpy', window.initScrollSpy);
-    callInit('initTooltips', window.initTooltips);
-    callInit('initMentionCards', window.initMentionCards);
-    callInit('initPagination', window.initPagination);
-    callInit('initNavigationShortcuts', window.initNavigationShortcuts);
+    callOptionalInit('initScrollSpy', window.initScrollSpy);
+    callOptionalInit('initTooltips', window.initTooltips);
+    callOptionalInit('initMentionCards', window.initMentionCards);
+    callOptionalInit('initPagination', window.initPagination);
+    callOptionalInit('initNavigationShortcuts', window.initNavigationShortcuts);
 
     // Re-scroll feed sidebar active item into view (inline scripts don't re-run after DOM swap)
-    callInit('initFeedSidebarScroll', window.initFeedSidebarScroll);
+    callOptionalInit('initFeedSidebarScroll', window.initFeedSidebarScroll);
 
     // Re-bind feed sidebar collapse toggle (tablet/mobile)
-    callInit('initSidebarToggle', window.initSidebarToggle);
+    callOptionalInit('initSidebarToggle', window.initSidebarToggle);
 
     // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
     var openHamburger = document.querySelector('.hamburger-toggle--open');
@@ -896,7 +959,7 @@
     }
 
     // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
-    callInit('initMermaid', window.initMermaid);
+    callOptionalInit('initMermaid', window.initMermaid);
 
     // Re-attach event listeners
     initNavigationInterceptor();
@@ -959,13 +1022,14 @@
     try {
       const transition = document.startViewTransition(() => {
         prepareIncomingSharedTransition(newDoc, sharedContext);
-        updateDocument(newDoc, metrics);
+        updateDocument(newDoc, metrics, { reinitialize: false, hydrateCritical: true });
         if (navOptions.pushState) {
           history.pushState(null, '', targetURL.href);
         }
       });
 
       await transition.finished;
+      reinitializeDocument(metrics, { skipCritical: true });
       finalizeNavigationMetrics(metrics);
       return true;
     } finally {
@@ -1037,10 +1101,11 @@
       const newDoc = await resolveDocument(url, metrics);
 
       const transition = document.startViewTransition(() => {
-        updateDocument(newDoc, metrics);
+        updateDocument(newDoc, metrics, { reinitialize: false, hydrateCritical: true });
       });
 
       await transition.finished;
+      reinitializeDocument(metrics, { skipCritical: true });
 
       finalizeNavigationMetrics(metrics);
     } catch (error) {
@@ -1060,6 +1125,18 @@
     }
 
     if (!url || prefetchedDocuments.has(url)) return;
+
+    const now = getNow();
+    if (url === lastPrefetchUrl && now - lastPrefetchAt < PREFETCH_DEBOUNCE_MS) {
+      return;
+    }
+    lastPrefetchUrl = url;
+    lastPrefetchAt = now;
+
+    if (prefetchedDocuments.size >= MAX_PREFETCHED_DOCUMENTS) {
+      if (config.debug) console.log('[view-transitions] prefetch cache full, skipping:', url);
+      return;
+    }
 
     if (config.debug) console.log('Prefetching URL:', url);
 
