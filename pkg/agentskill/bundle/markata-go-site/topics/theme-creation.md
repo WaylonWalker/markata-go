@@ -124,6 +124,7 @@ style = "balanced"
 - Keep theme work incremental: palette, then CSS, then template overrides if needed.
 - For first sites, a palette plus `custom_css` is usually enough.
 - Run `palette check --strict` for sites that need AAA accessibility compliance.
+- When tuning view transitions, avoid broad `view-transition-name` rules on whole articles, sidebars, or global chrome. Prefer small shared elements and use `view_transitions.debug = true` to inspect fetch, parse, swap, and reinit timing.
 
 ## Creating A Site-Local Palette
 

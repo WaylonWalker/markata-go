@@ -1211,9 +1211,11 @@ The `conditional-css.js` script solves this by:
 
 Any JS-driven theme controls rendered in `<body>` (palette family selector, dark/light toggle, and aesthetic selector) MUST also re-initialize on `view-transition-complete` so controls and option lists remain interactive after navigation.
 
-View-transition navigations SHOULD fetch and parse the destination document before calling `document.startViewTransition()` so the current page is not visually frozen during network I/O. Implementations SHOULD allow normal browser caching for HTML navigations and MAY prefetch likely next destinations (for example hovered links or pagination targets) to reduce latency for keyboard-driven page jumps.
+View-transition navigations SHOULD fetch and parse the destination document before calling `document.startViewTransition()` so the current page is not visually frozen during network I/O. Implementations SHOULD allow normal browser caching for HTML navigations and MAY prefetch likely next destinations (for example hovered links or pagination targets) to reduce latency for keyboard-driven page jumps. Prefetching MUST be bounded so dense navigation regions do not create unbounded fetch and parse work.
 
 When possible, implementations SHOULD replace only the primary view-transition regions (for example the progress area and page wrapper) instead of replacing the entire `<body>`. The runtime MUST still synchronize `<body>` attributes such as classes so page-specific layout state remains correct after navigation.
+
+The `document.startViewTransition()` update callback SHOULD stay limited to critical state updates and DOM replacement. Script reinitialization and inline module re-execution SHOULD run after the transition finishes so expensive page hydration does not block the transition snapshot. When synchronizing `<html>` attributes, implementations MUST preserve runtime-only theme and transition state such as `data-theme`, the `dark` class, and active transition data attributes.
 
 ### CSS File Categories
 

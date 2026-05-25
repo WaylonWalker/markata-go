@@ -82,9 +82,10 @@ The browser animates between old and new content:
 
 ```javascript
 document.startViewTransition(() => {
-  // Update the changing layout regions
-  document.querySelector('#view-transition-page').innerHTML =
-    newDoc.querySelector('#view-transition-page').innerHTML;
+  // Update only the changing layout regions.
+  document.querySelector('#view-transition-page').replaceWith(
+    newDoc.querySelector('#view-transition-page').cloneNode(true),
+  );
   document.title = newDoc.title;
   history.pushState(null, '', url);
 });
@@ -249,7 +250,7 @@ Now cards will morph smoothly when navigating!
 - **Overhead**: Near-zero (exits early on unsupported browsers)
 - **Animation**: GPU-accelerated
 - **Network**: Uses standard `fetch()` API
-- **Memory**: One in-flight request at a time
+- **Memory**: One active navigation at a time with a small bounded prefetch cache
 
 ### Performance Tips
 
@@ -258,6 +259,7 @@ Now cards will morph smoothly when navigating!
 3. **Minimize inline scripts** - Scripts need re-initialization
 4. **Use caching** - Browser caches reduce fetch time
 5. **Swap smaller regions** - Replacing the page wrapper is usually cheaper than replacing the entire `body`
+6. **Avoid broad named snapshots** - Prefer shared element names on small cards, titles, or headers rather than whole articles or sidebars
 
 ## Accessibility
 
@@ -326,6 +328,19 @@ myInit();
 window.addEventListener('view-transition-complete', myInit);
 ```
 
+markata-go dispatches this event after the browser transition finishes. That keeps expensive script hydration out of the critical transition snapshot and makes animations less likely to stutter.
+
+### Janky Transitions
+
+If transitions stutter, enable debug mode and inspect the timing payload logged to the console:
+
+```toml
+[view_transitions]
+debug = true
+```
+
+High `fetchMs` or `parseMs` points to network or page size. High `swapMs` points to expensive DOM/head changes. High `reinitMs` points to custom scripts doing too much work after navigation.
+
 ### Transition Too Fast/Slow
 
 Adjust animation duration in CSS:
@@ -350,7 +365,7 @@ link.dataset.transitionType = 'slide';
 
 ### Prefetching
 
-markata-go prefetches transition-managed links on hover/focus and can eagerly warm nearby pagination targets so `[` and `]` navigation feels more immediate:
+markata-go prefetches transition-managed links on hover/focus and can eagerly warm nearby pagination targets so `[` and `]` navigation feels more immediate. Prefetching is debounced and bounded to avoid excessive fetch/parse work when a user moves across a dense sidebar or feed.
 
 ```javascript
 document.addEventListener('mouseover', (event) => {
