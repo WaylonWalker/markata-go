@@ -34,7 +34,7 @@ require (
 	go.abhg.dev/goldmark/mermaid v0.6.0
 	golang.org/x/crypto v0.51.0
 	golang.org/x/net v0.54.0
-	golang.org/x/sys v0.44.0
+	golang.org/x/sys v0.45.0
 	golang.org/x/text v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
