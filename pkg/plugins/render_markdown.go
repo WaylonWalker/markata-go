@@ -558,8 +558,7 @@ func prepareMarkdownAttribution(markdown string) string {
 
 		// Non-blockquote line; check if it follows a blockquote with no blank line
 		if isImmediatelyAfterBlockquote(lines, i) && isAttributionText(trimmed) {
-			result = append(result, "", attributionMarker)
-			result = append(result, line)
+			result = append(result, "", attributionMarker, line)
 			continue
 		}
 
@@ -830,17 +829,17 @@ func buildAttributionFooter(attrContent string) attributionFooter {
 
 	case len(links) == 1:
 		l := links[0]
-		if l.isMention {
+		switch {
+		case l.isMention:
 			personHTML = l.fullTag
-		} else if isSourceLinkText(l.text) {
+		case isSourceLinkText(l.text):
 			sourceURL = l.href
 			sourceLink = l.fullTag
-		} else if l.href == l.text ||
-			strings.TrimPrefix(l.href, "https://") == strings.TrimSpace(l.text) ||
-			strings.TrimPrefix(l.href, "http://") == strings.TrimSpace(l.text) {
+		case l.href == l.text || strings.TrimPrefix(l.href, "https://") == strings.TrimSpace(l.text) ||
+			strings.TrimPrefix(l.href, "http://") == strings.TrimSpace(l.text):
 			sourceURL = l.href
 			sourceLink = l.fullTag
-		} else {
+		default:
 			preText := strings.TrimSpace(textBeforeTag(attrContent, l.fullTag))
 			if preText != "" {
 				personHTML = preText
