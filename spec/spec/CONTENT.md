@@ -486,6 +486,44 @@ Output:
 figure = true  # Enable figures (default: true)
 ```
 
+### Blockquote Attribution
+
+Blockquotes followed by attribution text (no blank line between them) SHOULD be converted into `<figure class="quote">` elements with the attribution rendered as `<figcaption>`.
+
+Supported attribution patterns:
+- `@mention` — `@username`
+- `[[wikilink]]` — `[[Page Name]]`
+- `[text](url)` — Markdown links
+- `— text` or `-- text` — Dash-prefixed text
+- Short plain text (≤ 60 characters) — names or short attributions
+
+The attribution text MUST directly follow the blockquote with no blank line. If a blank line separates them, the text becomes a regular paragraph and is NOT treated as attribution.
+
+```markdown
+> The only way to do great work is to love what you do.
+Steve Jobs
+```
+
+```markdown
+> Stay hungry, stay foolish.
+[[Steve Jobs]]
+```
+
+Output:
+```html
+<figure class="quote">
+  <blockquote>
+    <p>The only way to do great work is to love what you do.</p>
+  </blockquote>
+  <figcaption>Steve Jobs</figcaption>
+</figure>
+```
+
+**Edge cases:**
+- Multi-paragraph blockquotes followed by attribution: attribution applies to the entire blockquote
+- Long continuation lines (> 60 chars) after a blockquote are NOT treated as attribution
+- This behavior is always enabled and does not require configuration
+
 ### Heading Anchors
 
 Add clickable permalink anchors to headings.

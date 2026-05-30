@@ -318,6 +318,25 @@ blockquote p:last-child {
   margin-bottom: 0;
 }
 
+/* Blockquote attribution footer — sits inside blockquote, flush to edges */
+.post-content blockquote > footer {
+  margin: var(--space-3) calc(-1 * var(--space-5)) calc(-1 * var(--space-4));
+  padding: var(--space-2) var(--space-5);
+  background: color-mix(in srgb, var(--color-surface), var(--color-border) 8%);
+  border: 1px solid var(--color-border);
+  border-top-color: color-mix(in srgb, var(--color-border), transparent 40%);
+  border-radius: 0 0 var(--radius) var(--radius);
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: right;
+}
+
+/* Source cite in attribution footer */
+.post-content blockquote > footer cite {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
 /* Images */
 img {
   max-width: 100%;
@@ -424,6 +443,8 @@ video,
   text-align: center;
   margin-top: var(--space-3);
 }
+
+/* Blockquote attribution figure — legacy, removed in favor of blockquote > footer */
 
 /* Small inline images (badges, icons) - no special treatment */
 .post-content img.inline,
