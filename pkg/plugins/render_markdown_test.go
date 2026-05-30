@@ -275,6 +275,334 @@ func TestRenderMarkdownPlugin_SamplePostBothBlockquoteCaptionsMerge(t *testing.T
 	}
 }
 
+func TestRenderMarkdownPlugin_BlockquoteAttributionPlainText(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\nsomeone"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected <footer> in output, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 someone</footer>") {
+		t.Fatalf("expected footer with em dash and name, got %q", post.ArticleHTML)
+	}
+
+	// Attribution should be inside the blockquote
+	if !strings.Contains(post.ArticleHTML, "</p>\n  <footer>") {
+		t.Fatalf("expected footer inside blockquote after quote body, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionMention(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n@waylonwalker"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 @waylonwalker</footer>") {
+		t.Fatalf("expected footer with @mention, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionWikilink(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n[[Wiki Link]]"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 [[Wiki Link]]</footer>") {
+		t.Fatalf("expected footer with wikilink, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionLink(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n[Author Name](/author)"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 <a href=\"/author\">Author Name</a></footer>") {
+		t.Fatalf("expected footer with link, got %q", post.ArticleHTML)
+	}
+
+	// Single person link should NOT have cite wrapping
+	if strings.Contains(post.ArticleHTML, "<cite>") {
+		t.Fatalf("expected no <cite> for a single person link, got %q", post.ArticleHTML)
+	}
+
+	// No cite attribute on blockquote for person-only links
+	if strings.Contains(post.ArticleHTML, `<blockquote cite="`) {
+		t.Fatalf("expected no cite attr for person-only attribution, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionDash(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n\u2014 Author Name"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	// User-provided dash should be kept; no additional dash added
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 Author Name</footer>") {
+		t.Fatalf("expected footer with single dash, got %q", post.ArticleHTML)
+	}
+
+	if strings.Count(post.ArticleHTML, "\u2014") != 1 {
+		t.Fatalf("expected exactly one em dash (no double dash), got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionWithBlankLine(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n\nsomeone"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected no footer for blockquote with blank line, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected blockquote to remain, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<p>someone</p>") {
+		t.Fatalf("expected someone to be a separate paragraph, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteAttributionMultiParagraph(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> Paragraph 1\n>\n> Paragraph 2\n\u2014 Author"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 Author</footer>") {
+		t.Fatalf("expected footer after multi-paragraph quote body, got %q", post.ArticleHTML)
+	}
+
+	// Footer should be inside the blockquote, after the last </p>
+	if !strings.Contains(post.ArticleHTML, "</p>\n  <footer>") {
+		t.Fatalf("expected footer inside blockquote after quote body, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_BlockquoteLazyContinuationNotAttribution(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\nthis is a long continuation that should not be treated as attribution text"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected no footer for lazy continuation, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected blockquote to remain, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution + source link: @mention [via](url) → blockquote[cite] + footer with cite
+func TestRenderMarkdownPlugin_BlockquoteAttributionMentionWithSource(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n@jane [via](https://example.com/post)"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<blockquote cite="https://example.com/post"`) {
+		t.Fatalf("expected blockquote with cite attr, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected footer, got %q", post.ArticleHTML)
+	}
+
+	// Source link should be wrapped in <cite>
+	if !strings.Contains(post.ArticleHTML, "<cite><a href=\"https://example.com/post\"") {
+		t.Fatalf("expected source link in <cite>, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution + source: plain name, [Source Title](url) → blockquote[cite] + cite wrapping
+func TestRenderMarkdownPlugin_BlockquoteAttributionPlainNameWithSource(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> Good systems make the easy path the correct path.\nJane Doe, [Designing Better Defaults](https://example.com/post)"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<blockquote cite="https://example.com/post"`) {
+		t.Fatalf("expected blockquote with cite attr, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<cite><a href=\"https://example.com/post\"") {
+		t.Fatalf("expected source link in <cite>, got %q", post.ArticleHTML)
+	}
+}
+
+// Source-only attribution: [via](url) → blockquote[cite] + cite wrapping, no person
+func TestRenderMarkdownPlugin_BlockquoteAttributionSourceOnly(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> Good systems make the easy path the correct path.\n[via](https://example.com/post)"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<blockquote cite="https://example.com/post"`) {
+		t.Fatalf("expected blockquote with cite attr, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<cite><a href=\"https://example.com/post\"") {
+		t.Fatalf("expected source link in <cite>, got %q", post.ArticleHTML)
+	}
+}
+
+// Multi-paragraph quote with attribution inside blockquote
+func TestRenderMarkdownPlugin_BlockquoteAttributionInsideBlockquote(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> This is the first paragraph.\n>\n> This is the second paragraph.\nJane Doe"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 Jane Doe</footer>") {
+		t.Fatalf("expected footer inside blockquote, got %q", post.ArticleHTML)
+	}
+
+	// Footer should be inside blockquote
+	if !strings.Contains(post.ArticleHTML, "</p>\n  <footer>") {
+		t.Fatalf("expected footer after last paragraph, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution not triggered when text is inside quote (has > prefix)
+func TestRenderMarkdownPlugin_BlockquoteAttributionNotForInsideQuote(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> This is the quote.\n> Jane Doe"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected no footer for Jane Doe inside quote, got %q", post.ArticleHTML)
+	}
+
+	// Jane Doe should be inside the blockquote paragraph via lazy continuation
+	if !strings.Contains(post.ArticleHTML, "<blockquote>") {
+		t.Fatalf("expected blockquote, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution: [Name](/people) + [Source](url) → first link person, second link source
+func TestRenderMarkdownPlugin_BlockquoteAttributionLinkPersonWithSource(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> quoted text\n[Jane Doe](/people/jane), [Designing Better Defaults](https://example.com/post)"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `<blockquote cite="https://example.com/post"`) {
+		t.Fatalf("expected blockquote with cite attr, got %q", post.ArticleHTML)
+	}
+
+	// Person link should NOT be inside <cite>, source link SHOULD be
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 <a href=\"/people/jane\">Jane Doe</a>, <cite><a href=\"https://example.com/post\"") {
+		t.Fatalf("expected person link outside cite, source link inside cite, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution not triggered after blank line; text becomes a normal paragraph
+func TestRenderMarkdownPlugin_BlockquoteAttributionNormalAfterParagraph(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> This is the quote.\n\nThis is a normal paragraph after the quote."}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if strings.Contains(post.ArticleHTML, "<footer>") {
+		t.Fatalf("expected no footer, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<p>This is a normal paragraph after the quote.</p>") {
+		t.Fatalf("expected normal paragraph after blockquote, got %q", post.ArticleHTML)
+	}
+}
+
+// Attribution followed by blank line then normal paragraph
+func TestRenderMarkdownPlugin_BlockquoteAttributionWithFollowingParagraph(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> This is the quote.\nJane Doe\n\nThis is a normal paragraph after the quote."}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 Jane Doe</footer>") {
+		t.Fatalf("expected footer with attribution, got %q", post.ArticleHTML)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<p>This is a normal paragraph after the quote.</p>") {
+		t.Fatalf("expected following paragraph to remain, got %q", post.ArticleHTML)
+	}
+}
+
+// Organization attribution
+func TestRenderMarkdownPlugin_BlockquoteAttributionOrganization(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "> Move fast without breaking trust.\nThe Markata Project"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<footer>\u2014 The Markata Project</footer>") {
+		t.Fatalf("expected footer with organization name, got %q", post.ArticleHTML)
+	}
+}
+
 func TestRenderMarkdownPlugin_Table(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	post := &models.Post{Content: "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |"}

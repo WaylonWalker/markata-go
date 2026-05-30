@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 
@@ -37,6 +38,10 @@ var markdownBufferPool = sync.Pool{
 }
 
 var figureBlockquoteCaptionParagraphRegex = regexp.MustCompile(`(?s)^<p>.*?</p>$`)
+
+// attributionMarker is an HTML comment inserted before attribution lines
+// in the markdown pre-processing step, and detected in the post-processing step.
+const attributionMarker = "<!--markata-attribution-->"
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
@@ -417,6 +422,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		return err
 	}
 	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
+	renderedHTML = mergeBlockquoteAttributions(renderedHTML)
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds
@@ -433,6 +439,9 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 
 // doRender performs the actual markdown to HTML conversion.
 func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
+	// Pre-process: prepare blockquote attributions before goldmark rendering
+	content = prepareMarkdownAttribution(content)
+
 	// Get buffer from pool
 	buf, ok := markdownBufferPool.Get().(*bytes.Buffer)
 	if !ok {
@@ -525,6 +534,356 @@ func insideWebAwesomeComparisonContainer(renderedHTML string, pos int) bool {
 	openTag := renderedHTML[openIndex : openIndex+openTagEnd+1]
 	return strings.Contains(openTag, `class="wa-comparison"`) ||
 		(strings.Contains(openTag, `class="`) && strings.Contains(openTag, "webawesome") && strings.Contains(openTag, "comparison"))
+}
+
+// prepareMarkdownAttribution detects blockquote lines followed by attribution
+// lines (no blank line between) and inserts a blank line + marker to prevent
+// goldmark's lazy continuation from merging them into the blockquote.
+func prepareMarkdownAttribution(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	result := make([]string, 0, len(lines))
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == "" {
+			result = append(result, line)
+			continue
+		}
+
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), ">") {
+			result = append(result, line)
+			continue
+		}
+
+		// Non-blockquote line; check if it follows a blockquote with no blank line
+		if isImmediatelyAfterBlockquote(lines, i) && isAttributionText(trimmed) {
+			result = append(result, "", attributionMarker)
+			result = append(result, line)
+			continue
+		}
+
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// isImmediatelyAfterBlockquote checks whether lines[i] is directly after a
+// blockquote line without any intervening blank line.
+func isImmediatelyAfterBlockquote(lines []string, i int) bool {
+	for j := i - 1; j >= 0; j-- {
+		prev := strings.TrimSpace(lines[j])
+		if prev == "" {
+			return false
+		}
+		if strings.HasPrefix(strings.TrimLeft(lines[j], " \t"), ">") {
+			return true
+		}
+	}
+	return false
+}
+
+// isAttributionText checks whether text looks like a blockquote attribution.
+// This runs after the Transform stage, so mentions/wikilinks may already be
+// replaced with <a> tags in the content.
+func isAttributionText(text string) bool {
+	if text == "" {
+		return false
+	}
+
+	// Already-processed <a> tag (from mentions or wikilinks transforms)
+	if strings.HasPrefix(text, "<a ") && strings.Contains(text, "</a>") {
+		return true
+	}
+
+	// @mention — @username (pre-transform state)
+	if strings.HasPrefix(text, "@") && len(text) > 1 {
+		return true
+	}
+
+	// Wikilink — [[Page Name]] (pre-transform state)
+	if strings.Contains(text, "[[") && strings.Contains(text, "]]") {
+		return true
+	}
+
+	// Markdown link — [text](url) at start or preceded by plain text
+	if strings.Contains(text, "](") {
+		return true
+	}
+
+	// Dash prefix — attribution or — attribution
+	if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "--") {
+		return true
+	}
+
+	// Short plain text (≤ 60 chars) — likely a name or short attribution
+	if len(text) <= 60 && !strings.HasPrefix(text, "http") {
+		// Ensure it's mostly unicode letters and spacing to avoid matching code
+		letterCount := 0
+		for _, r := range text {
+			if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) || strings.ContainsRune(".,'-@_", r) {
+				letterCount++
+			}
+		}
+		return letterCount*2 >= len([]rune(text)) // at least half the chars are "word-like"
+	}
+
+	return false
+}
+
+// attributionFooter holds the rendered footer HTML and optional cite URL.
+type attributionFooter struct {
+	footerHTML string
+	sourceURL  string
+}
+
+// attributionLinkInfo holds parsed information about a link in attribution HTML.
+type attributionLinkInfo struct {
+	fullTag    string // the complete <a...>...</a> tag
+	href       string // the href URL
+	text       string // the inner text content
+	isMention  bool   // has mention class (from mentions plugin)
+	isWikilink bool   // has wikilink class (from wikilinks plugin)
+}
+
+// mergeBlockquoteAttributions merges blockquotes followed by attribution
+// markers and paragraphs, inserting the attribution as a <footer> inside the
+// <blockquote>. Source links are wrapped in <cite> and blockquote[cite] is
+// set from the source URL.
+func mergeBlockquoteAttributions(renderedHTML string) string {
+	marker := attributionMarker
+	result := renderedHTML
+
+	for {
+		markerPos := strings.Index(result, marker)
+		if markerPos < 0 {
+			break
+		}
+
+		bqClose := strings.LastIndex(result[:markerPos], "</blockquote>")
+		if bqClose < 0 {
+			result = strings.Replace(result, marker, "", 1)
+			continue
+		}
+
+		bqOpen := strings.LastIndex(result[:bqClose], "<blockquote>")
+		if bqOpen < 0 {
+			result = strings.Replace(result, marker, "", 1)
+			continue
+		}
+		bqEnd := bqClose + len("</blockquote>")
+
+		between := strings.TrimSpace(result[bqEnd:markerPos])
+		if between != "" {
+			result = strings.Replace(result, marker, "", 1)
+			continue
+		}
+
+		afterMarker := markerPos + len(marker)
+		afterMarker = skipHTMLWhitespace(result, afterMarker)
+
+		if !strings.HasPrefix(result[afterMarker:], "<p>") {
+			result = strings.Replace(result, marker, "", 1)
+			continue
+		}
+
+		pTagEnd := strings.Index(result[afterMarker:], "</p>")
+		if pTagEnd < 0 {
+			result = strings.Replace(result, marker, "", 1)
+			continue
+		}
+		pTagEnd += afterMarker + len("</p>")
+
+		// Extract attribution content (between <p> and </p>)
+		attrContent := result[afterMarker+3 : pTagEnd-4]
+
+		bqHTML := result[bqOpen:bqEnd]
+		footer := buildAttributionFooter(attrContent)
+
+		// Add cite attribute to blockquote if source URL found
+		if footer.sourceURL != "" {
+			escapedURL := strings.ReplaceAll(footer.sourceURL, `"`, "&quot;")
+			bqHTML = strings.Replace(bqHTML, "<blockquote>", `<blockquote cite="`+escapedURL+`">`, 1)
+		}
+
+		replacement := strings.Replace(bqHTML, "</blockquote>", "  "+footer.footerHTML+"\n</blockquote>", 1)
+		result = result[:bqOpen] + replacement + result[pTagEnd:]
+	}
+
+	return result
+}
+
+func skipHTMLWhitespace(s string, pos int) int {
+	for pos < len(s) {
+		c := s[pos]
+		if c != ' ' && c != '\n' && c != '\t' && c != '\r' {
+			break
+		}
+		pos++
+	}
+	return pos
+}
+
+// findAttributionLinks extracts all <a> tags from attribution paragraph HTML.
+func findAttributionLinks(html string) []attributionLinkInfo {
+	var links []attributionLinkInfo
+	pos := 0
+	for pos < len(html) {
+		aStart := strings.Index(html[pos:], "<a ")
+		if aStart < 0 {
+			break
+		}
+		aStart += pos
+		aEnd := strings.Index(html[aStart:], "</a>")
+		if aEnd < 0 {
+			break
+		}
+		aEnd += aStart + len("</a>")
+
+		fullTag := html[aStart:aEnd]
+		href := extractAttrValue(fullTag, "href")
+		text := extractLinkText(fullTag)
+		isMention := strings.Contains(fullTag, "mention")
+		isWiki := strings.Contains(fullTag, "wikilink")
+
+		links = append(links, attributionLinkInfo{
+			fullTag:    fullTag,
+			href:       href,
+			text:       text,
+			isMention:  isMention,
+			isWikilink: isWiki,
+		})
+		pos = aEnd
+	}
+	return links
+}
+
+// extractAttrValue extracts the value of an HTML attribute from a tag string.
+func extractAttrValue(tag, attr string) string {
+	pattern := " " + attr + "=\""
+	idx := strings.Index(tag, pattern)
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len(pattern)
+	end := strings.Index(tag[start:], "\"")
+	if end < 0 {
+		return ""
+	}
+	return tag[start : start+end]
+}
+
+// extractLinkText extracts the visible text content from an <a> tag.
+func extractLinkText(tag string) string {
+	// Find the first > that closes the opening <a> tag
+	openBracket := strings.Index(tag, ">")
+	if openBracket < 0 {
+		return ""
+	}
+	// tag[openBracket:] starts after opening > (e.g. ">text</a>...")
+	// Find </a> relative to that position
+	closeTag := strings.Index(tag[openBracket:], "</a>")
+	if closeTag < 0 {
+		return ""
+	}
+	// Text is between the opening > and the start of </a>
+	return tag[openBracket+1 : openBracket+closeTag]
+}
+
+// isSourceLinkText checks if link text indicates a source (not person) link.
+func isSourceLinkText(text string) bool {
+	lower := strings.ToLower(strings.TrimSpace(text))
+	return lower == "via" || lower == "source" || lower == "read more" || lower == "link" || lower == "permalink"
+}
+
+// textBeforeTag returns content before the first occurrence of tag in html.
+func textBeforeTag(html, tag string) string {
+	idx := strings.Index(html, tag)
+	if idx < 0 {
+		return html
+	}
+	return html[:idx]
+}
+
+// buildAttributionFooter parses attribution paragraph HTML and returns the
+// footer markup plus an optional source URL for blockquote[cite].
+//
+// Classification rules:
+//   - 0 links: all content is the person name
+//   - 1 link that is a mention: person
+//   - 1 link with source text (via, source, etc.): source only
+//   - 1 bare-URL autolink: source only
+//   - 1 link with text before it: text=person, link=source
+//   - 1 link standalone (person name in markdown link): person
+//   - 2+ links: first=person, last=source, interleaving text preserved
+func buildAttributionFooter(attrContent string) attributionFooter {
+	links := findAttributionLinks(attrContent)
+
+	var personHTML string
+	var sourceURL string
+	var sourceLink string
+
+	switch {
+	case len(links) == 0:
+		personHTML = attrContent
+
+	case len(links) == 1:
+		l := links[0]
+		if l.isMention {
+			personHTML = l.fullTag
+		} else if isSourceLinkText(l.text) {
+			sourceURL = l.href
+			sourceLink = l.fullTag
+		} else if l.href == l.text ||
+			strings.TrimPrefix(l.href, "https://") == strings.TrimSpace(l.text) ||
+			strings.TrimPrefix(l.href, "http://") == strings.TrimSpace(l.text) {
+			sourceURL = l.href
+			sourceLink = l.fullTag
+		} else {
+			preText := strings.TrimSpace(textBeforeTag(attrContent, l.fullTag))
+			if preText != "" {
+				personHTML = preText
+				sourceURL = l.href
+				sourceLink = l.fullTag
+			} else {
+				personHTML = l.fullTag
+			}
+		}
+
+	default:
+		// Multiple links: everything before the last link is person
+		// (preserving interleaving text), last link is source.
+		last := links[len(links)-1]
+		lastPos := strings.Index(attrContent, last.fullTag)
+		if lastPos >= 0 {
+			personHTML = attrContent[:lastPos]
+		} else {
+			personHTML = attrContent
+		}
+		sourceURL = last.href
+		sourceLink = last.fullTag
+	}
+
+	var footer strings.Builder
+	footer.WriteString("<footer>")
+	// Only prepend em dash if the attribution doesn't already start with one
+	if !strings.HasPrefix(strings.TrimSpace(personHTML), "\u2014") &&
+		!strings.HasPrefix(strings.TrimSpace(personHTML), "&mdash;") {
+		footer.WriteString("\u2014 ")
+	}
+	footer.WriteString(strings.TrimRight(personHTML, " "))
+	if sourceLink != "" {
+		footer.WriteString(" <cite>")
+		footer.WriteString(sourceLink)
+		footer.WriteString("</cite>")
+	}
+	footer.WriteString("</footer>")
+
+	return attributionFooter{
+		footerHTML: footer.String(),
+		sourceURL:  sourceURL,
+	}
 }
 
 // detectCSSRequirements scans the rendered HTML and sets flags in post.Extra

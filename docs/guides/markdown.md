@@ -800,6 +800,53 @@ figure = true  # default: true
 
 ---
 
+## Blockquote Attribution
+
+Automatically convert blockquotes followed by attribution text into HTML `<figure class="quote">` elements with `<figcaption>`. The attribution text must directly follow the blockquote with no blank line between them.
+
+**Input:**
+
+```markdown
+> Design is not just what it looks like and feels like.
+> Design is how it works.
+Steve Jobs
+```
+
+```markdown
+> The only way to do great work is to love what you do.
+@stevejobs
+```
+
+```markdown
+> Stay hungry, stay foolish.
+[[Steve Jobs]]
+```
+
+```markdown
+> Innovation distinguishes between a leader and a follower.
+[Steve Jobs](/authors/steve-jobs)
+```
+
+**Output:**
+
+```html
+<figure class="quote">
+  <blockquote>
+    <p>Design is not just what it looks like and feels like.
+       Design is how it works.</p>
+  </blockquote>
+  <figcaption>&mdash; Steve Jobs</figcaption>
+</figure>
+```
+
+**Use cases:**
+- Quotations with named attributions
+- Pull quotes with sources
+- Testimonials with author credits
+- Blockquotes with citation links
+
+---
+
 ## Heading Anchors
 
 Add clickable permalink anchors to all headings for easy deep-linking.
