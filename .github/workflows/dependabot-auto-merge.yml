@@ -1,0 +1,45 @@
+# Auto-merge normal Dependabot version-update PRs once required CI passes.
+#
+# Policy:
+# - Auto-merge Dependabot PRs that are NOT associated with an open security alert.
+# - Let GitHub auto-merge wait for required branch-protection checks.
+# - Security/vulnerability PRs should be reviewed manually.
+#
+# Requirements:
+# - Repository Settings → Pull Requests → Allow auto-merge
+# - Branch protection on main with required CI checks
+
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: read
+
+jobs:
+  dependabot-auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          alert-lookup: true
+
+      - name: Enable auto-merge for non-security Dependabot updates
+        if: steps.metadata.outputs.alert-state != 'OPEN'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
