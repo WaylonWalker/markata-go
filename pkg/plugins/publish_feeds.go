@@ -927,14 +927,14 @@ func (p *PublishFeedsPlugin) addFeedStatsContext(ctx *templates.Context, fc *mod
 	if ctx == nil || fc == nil {
 		return
 	}
-	totalPosts, latestPostDate, _ := publicFeedStats(fc.Posts)
-	window := computeSparklineWindow(fc.Posts)
+	totalPosts, latestPostDate, _ := feedStats(fc.Posts, fc.IncludePrivate)
+	window := computeSparklineWindow(fc.Posts, fc.IncludePrivate)
 	ctx.Set("feed_stats_total_posts", totalPosts)
 	ctx.Set("feed_stats_latest_post", latestPostDate)
-	ctx.Set("feed_sparkline_points", buildFeedSparkline(fc.Posts, window))
-	ctx.Set("feed_sparkline_data", buildFeedSparklineData(fc.Posts, window))
-	ctx.Set("feed_sparkline_title", buildFeedSparklineTitle(fc.Posts, window))
-	ctx.Set("feed_sparkline_summary", buildFeedSparklineSummary(fc.Posts, window))
+	ctx.Set("feed_sparkline_points", buildFeedSparkline(fc.Posts, window, fc.IncludePrivate))
+	ctx.Set("feed_sparkline_data", buildFeedSparklineData(fc.Posts, window, fc.IncludePrivate))
+	ctx.Set("feed_sparkline_title", buildFeedSparklineTitle(fc.Posts, window, fc.IncludePrivate))
+	ctx.Set("feed_sparkline_summary", buildFeedSparklineSummary(fc.Posts, window, fc.IncludePrivate))
 	ctx.Set("feed_sparkline_start", buildFeedSparklineStart(window))
 	ctx.Set("feed_sparkline_end", buildFeedSparklineEnd(window))
 }

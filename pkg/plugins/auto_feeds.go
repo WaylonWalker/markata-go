@@ -330,9 +330,11 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Collect only auto-generated feed configs
 	var autoFeedConfigs []models.FeedConfig
 
+	privateTagSlugs := getPrivateTagSlugs(config)
+
 	if useIncremental {
 		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, changedSet)
+			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, changedSet, privateTagSlugs)
 			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
 		}
 		if autoConfig.Categories.Enabled {
@@ -346,7 +348,7 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	} else {
 		// Generate tag feeds
 		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags)
+			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTagSlugs)
 			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
 		}
 
@@ -428,17 +430,24 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 }
 
 // generateTagFeeds creates feed configurations for each unique tag.
-func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
+func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig, privateTagSlugs map[string]bool) []models.FeedConfig {
 	groups := collectAutoTagGroups(posts)
 	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultTagsPrefix)
 	stringGroups := make([]autoStringGroup, 0, len(groups))
 	for _, group := range groups {
 		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, nil)
+	feeds := buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, nil)
+	for i := range feeds {
+		slug := strings.TrimPrefix(feeds[i].Slug, prefix+"/")
+		if privateTagSlugs[slug] {
+			feeds[i].IncludePrivate = true
+		}
+	}
+	return feeds
 }
 
-func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
+func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool, privateTagSlugs map[string]bool) []models.FeedConfig {
 	if len(changedSet) == 0 {
 		return nil
 	}
@@ -452,7 +461,14 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 	for _, group := range groups {
 		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, changedSlugs)
+	feeds := buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, config.Robots, changedSlugs)
+	for i := range feeds {
+		slug := strings.TrimPrefix(feeds[i].Slug, prefix+"/")
+		if privateTagSlugs[slug] {
+			feeds[i].IncludePrivate = true
+		}
+	}
+	return feeds
 }
 
 // generateCategoryFeeds creates feed configurations for each unique category.
@@ -910,6 +926,21 @@ func appendUniqueSorted(values []string, value string) []string {
 	values = append(values, value)
 	sort.Strings(values)
 	return values
+}
+
+// getPrivateTagSlugs extracts the set of private tag slugs from the encryption config.
+// These tag feeds should include private posts so encrypted content renders on the page.
+func getPrivateTagSlugs(config *lifecycle.Config) map[string]bool {
+	slugs := make(map[string]bool)
+	if modelsConfig, ok := getModelsConfig(config); ok {
+		for tag := range modelsConfig.Encryption.PrivateTags {
+			slug := slugify(tag)
+			if slug != "" {
+				slugs[slug] = true
+			}
+		}
+	}
+	return slugs
 }
 
 func buildTagFilterExpression(variants []string) string {

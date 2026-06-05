@@ -70,6 +70,7 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 	homeURL := feedHomePageURL(meta.URL, feed.Path)
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)
+	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
 
 	rss := RSS{
 		Version: "2.0",
@@ -85,7 +86,7 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 			Generator:      "markata-go",
 			Docs:           "https://www.rssboard.org/rss-specification",
 			AtomLinks:      buildRSSAtomLinks(feedURL, config),
-			Items:          make([]RSSItem, 0, len(feed.Posts)),
+			Items:          make([]RSSItem, 0, len(posts)),
 		},
 	}
 	if isArchiveFeedPath(feed.Path) {
@@ -95,17 +96,13 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 	}
 
 	// Set last build date based on most recent post date (deterministic)
-	latest := latestFeedTime(feed.Posts)
+	latest := latestFeedTime(posts)
 	if !latest.IsZero() {
 		rss.Channel.LastBuildDate = latest.Format(time.RFC1123Z)
 	}
 
 	// Add items
-	for _, post := range feed.Posts {
-		// Skip private posts from RSS feed
-		if post.Private {
-			continue
-		}
+	for _, post := range posts {
 		item := postToRSSItem(post, meta)
 		rss.Channel.Items = append(rss.Channel.Items, item)
 	}
@@ -140,11 +137,12 @@ func buildRSSAtomLinks(feedURL string, config *lifecycle.Config) []AtomLink {
 // GenerateRSSFromFeedConfig generates an RSS 2.0 feed from a FeedConfig.
 func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) (string, error) {
 	feed := &lifecycle.Feed{
-		Name:        fc.Slug,
-		Title:       fc.Title,
-		Description: fc.Description,
-		Posts:       fc.Posts,
-		Path:        fc.Slug,
+		Name:           fc.Slug,
+		Title:          fc.Title,
+		Description:    fc.Description,
+		Posts:          fc.Posts,
+		IncludePrivate: fc.IncludePrivate,
+		Path:           fc.Slug,
 	}
 	return GenerateRSS(feed, config)
 }
@@ -167,6 +165,8 @@ func postToRSSItem(post *models.Post, meta siteMetadata) RSSItem {
 	// Get description (use post description or truncated content)
 	var description string
 	switch {
+	case post.Private && post.ArticleHTML != "":
+		description = post.ArticleHTML
 	case post.Description != nil:
 		description = *post.Description
 	case post.ArticleHTML != "":

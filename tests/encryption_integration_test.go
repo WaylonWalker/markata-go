@@ -295,10 +295,10 @@ This is a public blog post.`)
 	}
 }
 
-// TestIntegration_Encryption_PrivateTagAutoFeedsExcludePrivate verifies that
-// private-tag posts are encrypted on their own pages but excluded from the
-// public auto-generated feed outputs for that tag.
-func TestIntegration_Encryption_PrivateTagAutoFeedsExcludePrivate(t *testing.T) {
+// TestIntegration_Encryption_PrivateTagAutoFeedIncludesPrivate verifies that
+// private-tag posts are encrypted on their own pages and included in the
+// auto-generated feed outputs for that tag with encrypted content.
+func TestIntegration_Encryption_PrivateTagAutoFeedIncludesPrivate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -404,19 +404,14 @@ This is a public post outside the private tag.`)
 	if diaryFeed == nil {
 		t.Fatal("tags/diary feed config not found")
 	}
-	if diaryFeed.IncludePrivate {
-		t.Fatal("tags/diary feed should not opt into private posts")
+	if !diaryFeed.IncludePrivate {
+		t.Fatal("tags/diary feed should opt into private posts (private tag auto-feed)")
 	}
-	if len(diaryFeed.Posts) != 0 {
-		t.Fatalf("tags/diary feed should exclude private-tag posts, got %d posts", len(diaryFeed.Posts))
+	if len(diaryFeed.Posts) != 2 {
+		t.Fatalf("tags/diary feed should include private-tag posts, got %d posts", len(diaryFeed.Posts))
 	}
-	if len(diaryFeed.Pages) != 0 {
-		t.Fatalf("tags/diary feed should not paginate an empty public feed, got %d pages", len(diaryFeed.Pages))
-	}
-	for _, post := range diaryFeed.Posts {
-		if post.Private {
-			t.Fatalf("tags/diary feed should not include private post %q", post.Slug)
-		}
+	if len(diaryFeed.Pages) == 0 {
+		t.Fatal("tags/diary feed should paginate with private posts included")
 	}
 
 	privatePage := site.readFile("private-diary/index.html")
@@ -424,28 +419,66 @@ This is a public post outside the private tag.`)
 		t.Fatal("private diary page should still render encrypted content")
 	}
 
-	if site.fileExists("tags/diary/page/2/index.html") {
-		t.Fatal("private-only auto feed should not generate a public page 2")
-	}
-
-	feedFiles := []string{
+	// The diary tag HTML feed pages should exist with private posts visible
+	htmlFeedFiles := []string{
 		"tags/diary/index.html",
 		"tags/diary/simple/index.html",
-		"tags/diary/rss.xml",
-		"tags/diary/atom.xml",
-		"tags/diary/feed.json",
-		"tags/diary.md",
-		"tags/diary.txt",
 	}
-
-	for _, path := range feedFiles {
+	for _, path := range htmlFeedFiles {
 		if !site.fileExists(path) {
 			continue
 		}
 		content := site.readFile(path)
-		if strings.Contains(content, privateTitle) || strings.Contains(content, secondPrivateTitle) || strings.Contains(content, "/private-diary/") || strings.Contains(content, "/second-private-diary/") {
-			t.Fatalf("private diary post leaked into %s", path)
+		if !strings.Contains(content, privateTitle) {
+			t.Fatalf("private diary title should be visible in %s", path)
 		}
+		if strings.Contains(content, privateMarker) {
+			t.Fatalf("private content marker leaked into %s", path)
+		}
+	}
+
+	machineFeedFiles := []string{
+		"tags/diary/rss.xml",
+		"tags/diary/atom.xml",
+		"tags/diary/feed.json",
+	}
+	for _, path := range machineFeedFiles {
+		if !site.fileExists(path) {
+			continue
+		}
+		content := site.readFile(path)
+		if !strings.Contains(content, privateTitle) {
+			t.Fatalf("private diary title should be visible in %s", path)
+		}
+		if !strings.Contains(content, "encrypted-content") {
+			t.Fatalf("encrypted content wrapper should be present in %s", path)
+		}
+		if strings.Contains(content, privateMarker) {
+			t.Fatalf("private content marker leaked into %s", path)
+		}
+	}
+
+	// Second page should exist since itemsPerPage=1 and we have 2 private posts
+	if !site.fileExists("tags/diary/page/2/index.html") {
+		t.Fatal("private tag auto feed should generate page 2 for second private post")
+	}
+
+	// Tutorial tag should still exclude private posts (not a private tag)
+	var tutorialFeed *models.FeedConfig
+	for i := range feedConfigs {
+		if feedConfigs[i].Slug == "tags/tutorial" {
+			tutorialFeed = &feedConfigs[i]
+			break
+		}
+	}
+	if tutorialFeed == nil {
+		t.Fatal("tags/tutorial feed config not found")
+	}
+	if tutorialFeed.IncludePrivate {
+		t.Fatal("tags/tutorial feed should not opt into private posts")
+	}
+	if len(tutorialFeed.Posts) != 1 {
+		t.Fatalf("tags/tutorial feed should include 1 public post")
 	}
 }
 

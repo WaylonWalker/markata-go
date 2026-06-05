@@ -155,6 +155,44 @@ func TestGenerateJSONFeed_UsesFeedMetadata(t *testing.T) {
 	}
 }
 
+func TestGenerateJSONFeed_IncludePrivateUsesEncryptedHTML(t *testing.T) {
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Example Site",
+	}
+
+	date := time.Date(2024, 2, 2, 12, 0, 0, 0, time.UTC)
+	feed := &lifecycle.Feed{
+		Title:          "Blog Archive",
+		Path:           "blog/archive",
+		IncludePrivate: true,
+		Posts: []*models.Post{{
+			Slug:        "one",
+			Href:        "/one/",
+			Title:       testStringPtr("One"),
+			Published:   true,
+			Private:     true,
+			Date:        &date,
+			Description: testStringPtr("secret summary"),
+			Content:     "secret body",
+			ArticleHTML: `<div class="encrypted-content">locked</div>`,
+		}},
+	}
+
+	jsonFeed, err := GenerateJSONFeed(feed, config)
+	if err != nil {
+		t.Fatalf("GenerateJSONFeed() error = %v", err)
+	}
+
+	if !strings.Contains(jsonFeed, `"content_html": "\u003cdiv class=\"encrypted-content\"\u003elocked\u003c/div\u003e"`) {
+		t.Fatalf("expected json feed to include encrypted HTML\n%s", jsonFeed)
+	}
+	if strings.Contains(jsonFeed, "secret summary") || strings.Contains(jsonFeed, "secret body") || strings.Contains(jsonFeed, `"content_text"`) {
+		t.Fatalf("json feed should not expose private plaintext\n%s", jsonFeed)
+	}
+}
+
 func testStringPtr(s string) *string {
 	return &s
 }

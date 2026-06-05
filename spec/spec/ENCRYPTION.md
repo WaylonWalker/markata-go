@@ -138,8 +138,8 @@ The following plugins respect `post.Private` to prevent leaking private content 
 | `embeds` | Private embed card | Shows a "Private Content" card instead of title/description/date |
 | `wikilinks` | Metadata attributes suppressed | `data-title`, `data-description`, `data-date` attributes are omitted for private targets |
 | `wikilink_hover` | Hover preview suppressed | No preview text or metadata shown for private targets |
-| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded from public feeds | Private posts are filtered out of public feed pages plus RSS, Atom, and JSON Feed outputs unless a feed explicitly opts into `include_private=true` |
-| `auto_feeds` | Excluded from public auto feeds | Auto-generated tag, category, and archive feeds never opt into private posts just because a tag is listed in `private_tags` |
+| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded unless explicitly opted in | Private posts are filtered out of public feed pages plus RSS, Atom, and JSON Feed outputs unless a feed explicitly opts into `include_private=true`; when included, private entries must render only encrypted HTML content and must not expose plaintext summaries or raw content |
+| `auto_feeds` | Private-tag feeds may opt in | Auto-generated tag feeds for tags listed in `private_tags` opt into private posts so encrypted post content can render in those feed outputs; other auto-generated feeds remain public-only |
 
 ### Error Handling
 

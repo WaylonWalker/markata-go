@@ -130,7 +130,7 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 	feedDefaults := getFeedDefaults(config)
-	sparklineRange := computeSparklineWindow(m.Posts())
+	sparklineRange := computeSparklineWindow(m.Posts(), false)
 
 	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults, sparklineRange)
 	if len(sections) == 0 {
@@ -192,7 +192,7 @@ func (p *FeedsListingPlugin) collectFeedSections(
 			continue
 		}
 
-		postCount, latestDate, latestTime := publicFeedStats(fc.Posts)
+		postCount, latestDate, latestTime := feedStats(fc.Posts, fc.IncludePrivate)
 		display, primary, archive, utility := splitFeedVariants(fc, syndication)
 		_, isConfigured := configuredSlugs[fc.Slug]
 		info := FeedListingInfo{
@@ -209,10 +209,10 @@ func (p *FeedsListingPlugin) collectFeedSections(
 			PrimaryVariants:  primary,
 			ArchiveVariants:  archive,
 			UtilityVariants:  utility,
-			SparklinePoints:  buildFeedSparkline(fc.Posts, sparklineRange),
-			SparklineData:    buildFeedSparklineData(fc.Posts, sparklineRange),
-			SparklineTitle:   buildFeedSparklineTitle(fc.Posts, sparklineRange),
-			SparklineSummary: buildFeedSparklineSummary(fc.Posts, sparklineRange),
+			SparklinePoints:  buildFeedSparkline(fc.Posts, sparklineRange, fc.IncludePrivate),
+			SparklineData:    buildFeedSparklineData(fc.Posts, sparklineRange, fc.IncludePrivate),
+			SparklineTitle:   buildFeedSparklineTitle(fc.Posts, sparklineRange, fc.IncludePrivate),
+			SparklineSummary: buildFeedSparklineSummary(fc.Posts, sparklineRange, fc.IncludePrivate),
 			SparklineStart:   buildFeedSparklineStart(sparklineRange),
 			SparklineEnd:     buildFeedSparklineEnd(sparklineRange),
 			GeneratedBySite:  !isConfigured,
@@ -294,10 +294,10 @@ func (p *FeedsListingPlugin) collectFeedSections(
 	return sections, generatedPages
 }
 
-func publicFeedStats(posts []*models.Post) (count int, latestDate string, latestTime time.Time) {
+func feedStats(posts []*models.Post, includePrivate bool) (count int, latestDate string, latestTime time.Time) {
 	var latest time.Time
 	for _, post := range posts {
-		if post == nil || post.Private || post.Skip || post.Draft || !post.Published {
+		if post == nil || post.Skip || post.Draft || !post.Published || (post.Private && !includePrivate) {
 			continue
 		}
 		count++
@@ -416,16 +416,16 @@ func configuredFeedSlugs(config *lifecycle.Config) map[string]int {
 	return slugs
 }
 
-func buildFeedSparkline(posts []*models.Post, window sparklineWindow) string {
-	buckets, months := monthlyPostBuckets(posts, window)
+func buildFeedSparkline(posts []*models.Post, window sparklineWindow, includePrivate bool) string {
+	buckets, months := monthlyPostBuckets(posts, window, includePrivate)
 	if len(buckets) < 2 {
 		return ""
 	}
 	return sparklinePolylinePoints(buckets, months)
 }
 
-func buildFeedSparklineData(posts []*models.Post, window sparklineWindow) []SparklinePoint {
-	buckets, months := monthlyPostBuckets(posts, window)
+func buildFeedSparklineData(posts []*models.Post, window sparklineWindow, includePrivate bool) []SparklinePoint {
+	buckets, months := monthlyPostBuckets(posts, window, includePrivate)
 	if len(buckets) < 2 {
 		return nil
 	}
@@ -490,8 +490,8 @@ func sparklinePolylinePoints(buckets []int, months []time.Time) string {
 	return strings.Join(points, " ")
 }
 
-func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) string {
-	buckets, _ := monthlyPostBuckets(posts, window)
+func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow, includePrivate bool) string {
+	buckets, _ := monthlyPostBuckets(posts, window, includePrivate)
 	if len(buckets) == 0 {
 		return ""
 	}
@@ -502,8 +502,8 @@ func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) strin
 	)
 }
 
-func buildFeedSparklineSummary(posts []*models.Post, window sparklineWindow) string {
-	data := buildFeedSparklineData(posts, window)
+func buildFeedSparklineSummary(posts []*models.Post, window sparklineWindow, includePrivate bool) string {
+	data := buildFeedSparklineData(posts, window, includePrivate)
 	if len(data) == 0 {
 		return ""
 	}
@@ -525,13 +525,13 @@ func buildFeedSparklineEnd(window sparklineWindow) string {
 	return window.End.Format("Jan 2006")
 }
 
-func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) ([]int, []time.Time) {
+func monthlyPostBuckets(posts []*models.Post, window sparklineWindow, includePrivate bool) ([]int, []time.Time) {
 	if window.Start.IsZero() || window.End.IsZero() || window.End.Before(window.Start) {
 		return nil, nil
 	}
 	counts := map[string]int{}
 	for _, post := range posts {
-		if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
+		if post == nil || post.Skip || post.Draft || !post.Published || post.Date == nil || (post.Private && !includePrivate) {
 			continue
 		}
 		month := firstOfMonth(post.Date.UTC())
@@ -550,10 +550,10 @@ func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) ([]int, []
 	return buckets, months
 }
 
-func computeSparklineWindow(posts []*models.Post) sparklineWindow {
+func computeSparklineWindow(posts []*models.Post, includePrivate bool) sparklineWindow {
 	dates := make([]time.Time, 0, len(posts))
 	for _, post := range posts {
-		if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
+		if post == nil || post.Skip || post.Draft || !post.Published || post.Date == nil || (post.Private && !includePrivate) {
 			continue
 		}
 		date := post.Date.UTC()
