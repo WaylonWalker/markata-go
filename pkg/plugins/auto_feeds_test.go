@@ -235,7 +235,7 @@ func TestAutoFeedsPlugin_GenerateTagFeedsForChanged_UsesCanonicalGroup(t *testin
 		{Path: "post2.md", Slug: "post2", Tags: []string{"open-source"}, Date: &date},
 	}
 
-	feeds := plugin.generateTagFeedsForChanged(posts, AutoFeedTypeConfig{SlugPrefix: "tags"}, map[string]bool{"post2": true})
+	feeds := plugin.generateTagFeedsForChanged(posts, AutoFeedTypeConfig{SlugPrefix: "tags"}, map[string]bool{"post2": true}, map[string]bool{})
 	if len(feeds) != 1 {
 		t.Fatalf("expected 1 changed feed, got %d", len(feeds))
 	}
@@ -971,18 +971,17 @@ func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
 // Private Tag Feed Tests
 // =============================================================================
 
-func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
+func TestAutoFeedsPlugin_PrivateTagIncludesPrivatePost(t *testing.T) {
 	m := lifecycle.NewManager()
 
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	m.SetPosts([]*models.Post{
-		{Path: "post1.md", Slug: "post1", Title: strPtr("Public Post"), Tags: []string{"python"}, Date: &date},
-		{Path: "post2.md", Slug: "post2", Title: strPtr("Gratitude Entry"), Tags: []string{"gratitude"}, Date: &date, Private: true},
-		{Path: "post3.md", Slug: "post3", Title: strPtr("Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date},
+		{Path: "post1.md", Slug: "post1", Title: strPtr("A"), Tags: []string{"python"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("B"), Tags: []string{"gratitude"}, Date: &date, Private: true},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("C"), Tags: []string{"tutorial"}, Date: &date},
 	})
 
-	// Configure auto feeds for tags with encryption private_tags
 	config := lifecycle.NewConfig()
 	config.Extra = map[string]interface{}{
 		"auto_feeds": AutoFeedsConfig{
@@ -1006,7 +1005,7 @@ func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
 		t.Fatalf("Collect() error: %v", err)
 	}
 
-	// Extract feed configs from cache to check IncludePrivate
+	// Extract feed configs from cache to check IncludePrivate and posts
 	cached, ok := m.Cache().Get("feed_configs")
 	if !ok {
 		t.Fatal("feed_configs not found in cache")
@@ -1023,13 +1022,16 @@ func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
 		configMap[fc.Slug] = fc
 	}
 
-	// Private tags must not opt auto-generated feeds into private content.
+	// Private tag feed should include private posts (with encrypted content).
 	gratitudeFeed, ok := configMap["tags/gratitude"]
 	if !ok {
 		t.Fatal("tags/gratitude feed config not found")
 	}
-	if gratitudeFeed.IncludePrivate {
-		t.Error("tags/gratitude feed should keep IncludePrivate=false")
+	if !gratitudeFeed.IncludePrivate {
+		t.Error("tags/gratitude feed should have IncludePrivate=true")
+	}
+	if len(gratitudeFeed.Posts) != 1 {
+		t.Errorf("tags/gratitude feed should have 1 post, got %d", len(gratitudeFeed.Posts))
 	}
 
 	// Python feed should NOT have IncludePrivate
@@ -1040,6 +1042,9 @@ func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
 	if pythonFeed.IncludePrivate {
 		t.Error("tags/python feed should have IncludePrivate=false, got true")
 	}
+	if len(pythonFeed.Posts) != 1 {
+		t.Errorf("tags/python feed should have 1 post, got %d", len(pythonFeed.Posts))
+	}
 
 	// Tutorial feed should NOT have IncludePrivate
 	tutorialFeed, ok := configMap["tags/tutorial"]
@@ -1049,9 +1054,12 @@ func TestAutoFeedsPlugin_PrivateTagStillExcludesPrivate(t *testing.T) {
 	if tutorialFeed.IncludePrivate {
 		t.Error("tags/tutorial feed should have IncludePrivate=false, got true")
 	}
+	if len(tutorialFeed.Posts) != 1 {
+		t.Errorf("tags/tutorial feed should have 1 post, got %d", len(tutorialFeed.Posts))
+	}
 }
 
-func TestAutoFeedsPlugin_PrivateTagCaseInsensitiveStillExcludesPrivate(t *testing.T) {
+func TestAutoFeedsPlugin_PrivateTagCaseInsensitiveIncludesPrivatePost(t *testing.T) {
 	m := lifecycle.NewManager()
 
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -1098,8 +1106,11 @@ func TestAutoFeedsPlugin_PrivateTagCaseInsensitiveStillExcludesPrivate(t *testin
 		t.Fatalf("expected 1 feed config, got %d", len(feedConfigs))
 	}
 
-	if feedConfigs[0].IncludePrivate {
-		t.Error("feed for tag 'Gratitude' should keep IncludePrivate=false")
+	if !feedConfigs[0].IncludePrivate {
+		t.Error("feed for tag 'Gratitude' should have IncludePrivate=true")
+	}
+	if len(feedConfigs[0].Posts) != 1 {
+		t.Errorf("feed should have 1 post, got %d", len(feedConfigs[0].Posts))
 	}
 }
 

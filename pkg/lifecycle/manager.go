@@ -98,6 +98,9 @@ type Feed struct {
 	// Posts are the posts included in the feed.
 	Posts []*models.Post
 
+	// IncludePrivate indicates this feed intentionally includes private posts.
+	IncludePrivate bool
+
 	// Content is the generated feed content.
 	Content string
 

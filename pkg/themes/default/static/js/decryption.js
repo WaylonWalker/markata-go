@@ -199,6 +199,11 @@
    * Handle decryption for a single encrypted content block.
    */
   function handleDecryption(container, allContainers) {
+    if (container.dataset.decryptionInitialized === 'true') {
+      return;
+    }
+    container.dataset.decryptionInitialized = 'true';
+
     const encryptedData = container.dataset.encrypted;
     const keyName = container.dataset.keyName || 'default';
     const input = container.querySelector('.encrypted-content__input');
@@ -404,4 +409,9 @@
   } else {
     init();
   }
+
+  window.addEventListener('view-transition-complete', init);
+
+  // Expose for scripts that inject encrypted content dynamically.
+  window.initDecryption = init;
 })();

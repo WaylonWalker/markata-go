@@ -67,6 +67,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 	homePageURL := feedHomePageURL(meta.URL, feedPath)
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)
+	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
 
 	jsonFeed := JSONFeed{
 		Version:     JSONFeedVersion,
@@ -76,7 +77,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 		Description: description,
 		Language:    meta.Language,
 		Icon:        meta.LogoURL,
-		Items:       make([]JSONFeedItem, 0, len(feed.Posts)),
+		Items:       make([]JSONFeedItem, 0, len(posts)),
 	}
 
 	// Add author if available
@@ -87,11 +88,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 	}
 
 	// Add items
-	for _, post := range feed.Posts {
-		// Skip private posts from JSON feed
-		if post.Private {
-			continue
-		}
+	for _, post := range posts {
 		item := postToJSONFeedItem(post, meta)
 		jsonFeed.Items = append(jsonFeed.Items, item)
 	}
@@ -108,11 +105,12 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 // GenerateJSONFeedFromFeedConfig generates a JSON Feed 1.1 from a FeedConfig.
 func GenerateJSONFeedFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) (string, error) {
 	feed := &lifecycle.Feed{
-		Name:        fc.Slug,
-		Title:       fc.Title,
-		Description: fc.Description,
-		Posts:       fc.Posts,
-		Path:        fc.Slug,
+		Name:           fc.Slug,
+		Title:          fc.Title,
+		Description:    fc.Description,
+		Posts:          fc.Posts,
+		IncludePrivate: fc.IncludePrivate,
+		Path:           fc.Slug,
 	}
 	return GenerateJSONFeed(feed, config)
 }
@@ -138,12 +136,12 @@ func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
 	if post.ArticleHTML != "" {
 		item.ContentHTML = post.ArticleHTML
 	}
-	if post.Content != "" {
+	if !post.Private && post.Content != "" {
 		item.ContentText = post.Content
 	}
 
 	// Add summary/description
-	if post.Description != nil && *post.Description != "" {
+	if !post.Private && post.Description != nil && *post.Description != "" {
 		item.Summary = *post.Description
 	}
 

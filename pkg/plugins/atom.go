@@ -77,10 +77,11 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 	}
 	feedURL := feedURLForFormat(siteURL, feedPath, "atom.xml")
 	homeURL := feedHomePageURL(siteURL, feedPath)
+	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
 
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)
-	updatedTime := latestFeedTime(feed.Posts)
+	updatedTime := latestFeedTime(posts)
 
 	atomFeed := AtomFeed{
 		XMLNS:    "http://www.w3.org/2005/Atom",
@@ -95,7 +96,7 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 		},
 		Author:    &AtomAuthor{Name: meta.Author, URI: meta.AuthorURL},
 		Generator: &AtomGenerator{URI: "https://github.com/WaylonWalker/markata-go", Value: "markata-go"},
-		Entries:   make([]AtomEntry, 0, len(feed.Posts)),
+		Entries:   make([]AtomEntry, 0, len(posts)),
 	}
 	if isArchiveFeedPath(feedPath) {
 		atomFeed.XMLNSFH = "http://purl.org/syndication/history/1.0"
@@ -114,11 +115,7 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 	}
 
 	// Add entries
-	for _, post := range feed.Posts {
-		// Skip private posts from Atom feed
-		if post.Private {
-			continue
-		}
+	for _, post := range posts {
 		entry := postToAtomEntry(post, meta, updatedTime)
 		atomFeed.Entries = append(atomFeed.Entries, entry)
 	}
@@ -137,11 +134,12 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 // GenerateAtomFromFeedConfig generates an Atom feed from a FeedConfig.
 func GenerateAtomFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) (string, error) {
 	feed := &lifecycle.Feed{
-		Name:        fc.Slug,
-		Title:       fc.Title,
-		Description: fc.Description,
-		Posts:       fc.Posts,
-		Path:        fc.Slug,
+		Name:           fc.Slug,
+		Title:          fc.Title,
+		Description:    fc.Description,
+		Posts:          fc.Posts,
+		IncludePrivate: fc.IncludePrivate,
+		Path:           fc.Slug,
 	}
 	return GenerateAtom(feed, config)
 }
@@ -188,7 +186,7 @@ func postToAtomEntry(post *models.Post, meta siteMetadata, fallback time.Time) A
 	}
 
 	// Add summary
-	if post.Description != nil && *post.Description != "" {
+	if !post.Private && post.Description != nil && *post.Description != "" {
 		entry.Summary = &AtomContent{
 			Type:  "text",
 			Value: *post.Description,
@@ -201,7 +199,7 @@ func postToAtomEntry(post *models.Post, meta siteMetadata, fallback time.Time) A
 			Type:  "html",
 			Value: post.ArticleHTML,
 		}
-	} else if post.Content != "" {
+	} else if !post.Private && post.Content != "" {
 		entry.Content = &AtomContent{
 			Type:  "text",
 			Value: post.Content,

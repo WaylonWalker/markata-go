@@ -161,7 +161,7 @@ func TestMonthlyPostBuckets_UsesSharedWindow(t *testing.T) {
 		{Title: &title, Published: true, Date: testDate(1, 15)},
 		{Title: &title, Published: true, Date: testDate(4, 2)},
 	}
-	buckets, _ := monthlyPostBuckets(posts, window)
+	buckets, _ := monthlyPostBuckets(posts, window, false)
 	if len(buckets) != 4 {
 		t.Fatalf("expected 4 monthly buckets, got %d", len(buckets))
 	}
@@ -180,7 +180,7 @@ func TestBuildFeedSparklineData_ComputesHitboxOffsets(t *testing.T) {
 		{Title: &title, Published: true, Date: testDate(1, 15)},
 		{Title: &title, Published: true, Date: testDate(3, 15)},
 	}
-	data := buildFeedSparklineData(posts, window)
+	data := buildFeedSparklineData(posts, window, false)
 	if len(data) != 3 {
 		t.Fatalf("expected 3 sparkline points, got %d", len(data))
 	}
