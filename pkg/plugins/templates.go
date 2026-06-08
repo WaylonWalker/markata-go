@@ -1908,6 +1908,17 @@ func feedsPageConfigFromExtra(raw interface{}) models.FeedsPageConfig {
 			SlugPrefix:  getStringFromMap(feedsPageVal, "slug_prefix"),
 			Robots:      getStringFromMap(feedsPageVal, "robots"),
 		}
+		if rawShowPrivate, ok := feedsPageVal["show_private_feeds"].([]interface{}); ok {
+			feedsPage.ShowPrivateFeeds = make([]string, 0, len(rawShowPrivate))
+			for _, value := range rawShowPrivate {
+				if s, ok := value.(string); ok {
+					feedsPage.ShowPrivateFeeds = append(feedsPage.ShowPrivateFeeds, s)
+				}
+			}
+		}
+		if rawShowPrivate, ok := feedsPageVal["show_private_feeds"].([]string); ok {
+			feedsPage.ShowPrivateFeeds = append([]string{}, rawShowPrivate...)
+		}
 		if enabled, ok := feedsPageVal["enabled"].(bool); ok {
 			feedsPage.Enabled = &enabled
 		}

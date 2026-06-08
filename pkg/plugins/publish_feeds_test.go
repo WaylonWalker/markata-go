@@ -20,6 +20,92 @@ func TestPublishFeedsPlugin_Name(t *testing.T) {
 	}
 }
 
+func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
+	t.Parallel()
+
+	p := NewPublishFeedsPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Example Site",
+	}
+
+	title := "Grid Shot"
+	description := "Overlay copy"
+	now := time.Date(2026, time.January, 2, 15, 4, 5, 0, time.UTC)
+
+	fc := &models.FeedConfig{
+		Slug:        "shots",
+		Title:       "Shots",
+		Description: "Photo and video posts",
+		Templates: models.FeedTemplates{
+			HTML: "feed-photo-grid.html",
+		},
+		Posts: []*models.Post{{
+			Slug:        "shots/grid-shot",
+			Href:        "/shots/grid-shot/",
+			Title:       &title,
+			Description: &description,
+			Date:        &now,
+			Published:   true,
+			Extra: map[string]interface{}{
+				"image": "https://example.com/grid-shot.webp",
+			},
+		}},
+	}
+	page := &models.FeedPage{Posts: fc.Posts, TotalPages: 1}
+
+	html, err := p.generateFeedPageHTML(fc, page, config, nil)
+	if err != nil {
+		t.Fatalf("generateFeedPageHTML() error = %v", err)
+	}
+
+	if !strings.Contains(html, `feed--photo-grid`) {
+		t.Fatalf("expected configured template output to contain photo grid feed class, got %q", html)
+	}
+	if !strings.Contains(html, `shot-card`) {
+		t.Fatalf("expected configured template output to contain shot-card markup, got %q", html)
+	}
+}
+
+func TestCleanupPaginatedFeedDirs_RemovesStalePageDirectories(t *testing.T) {
+	t.Parallel()
+
+	plugin := NewPublishFeedsPlugin()
+	feedDir := t.TempDir()
+
+	stalePaths := []string{
+		filepath.Join(feedDir, "page", "3"),
+		filepath.Join(feedDir, "page", "4"),
+		filepath.Join(feedDir, "simple", "page", "3"),
+		filepath.Join(feedDir, "simple", "page", "4"),
+	}
+	for _, stalePath := range stalePaths {
+		if err := os.MkdirAll(stalePath, 0o755); err != nil {
+			t.Fatalf("MkdirAll(%q) error = %v", stalePath, err)
+		}
+	}
+
+	pages := []models.FeedPage{{Number: 1}}
+
+	if err := plugin.cleanupPaginatedFeedDirs(feedDir, "", pages); err != nil {
+		t.Fatalf("cleanupPaginatedFeedDirs(html) error = %v", err)
+	}
+	if err := plugin.cleanupPaginatedFeedDirs(feedDir, "simple", pages); err != nil {
+		t.Fatalf("cleanupPaginatedFeedDirs(simple) error = %v", err)
+	}
+
+	for _, removedPath := range []string{
+		filepath.Join(feedDir, "page"),
+		filepath.Join(feedDir, "simple", "page"),
+	} {
+		if _, err := os.Stat(removedPath); !os.IsNotExist(err) {
+			t.Fatalf("expected %q to be removed, stat err = %v", removedPath, err)
+		}
+	}
+}
+
 // TestPublishFeedsPlugin_FormatRedirectsCreateDirectories tests that format redirects work correctly.
 // - For md/txt: Content at /slug.ext, reversed redirect from /slug/index.ext/index.html -> /slug.ext
 // - For json: Content at /slug/feed.json, forward redirect from /slug.json/index.html -> /slug/feed.json
@@ -531,6 +617,26 @@ func TestComputeFeedHash_PostContentChangeProducesDifferentHash(t *testing.T) {
 
 	if hash1 == hash2 {
 		t.Fatalf("hash should change when post feed content changes: %s", hash1)
+	}
+}
+
+func TestFeedConfigWithRenderablePosts_KeepsTitleOnlyPosts(t *testing.T) {
+	title := "Gratitude"
+	feed := &models.FeedConfig{
+		Slug:           "tags/gratitude",
+		IncludePrivate: true,
+		Posts: []*models.Post{
+			{Slug: "entry-1", Title: &title, Published: true, Private: true},
+			{Slug: "entry-2", Title: &title, Published: true, Private: true, Content: "has body"},
+		},
+	}
+
+	renderable := feedConfigWithRenderablePosts(feed)
+	if len(renderable.Posts) != 2 {
+		t.Fatalf("expected title-only posts to remain in feed pages, got %d posts", len(renderable.Posts))
+	}
+	if len(renderable.Pages) != 1 || len(renderable.Pages[0].Posts) != 2 {
+		t.Fatalf("expected pagination to include both posts, got %#v", renderable.Pages)
 	}
 }
 

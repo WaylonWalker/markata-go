@@ -308,23 +308,6 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
 	filterCache := newFeedFilterCache(posts)
 
-	changedSet := map[string]bool{}
-	useIncremental := false
-	if config.Extra != nil {
-		if incremental, ok := config.Extra["feeds_incremental"].(bool); ok && incremental {
-			if cache := GetBuildCache(m); cache != nil {
-				changed := cache.GetChangedFeedSlugs()
-				if len(changed) == 0 {
-					return nil
-				}
-				useIncremental = true
-				for _, slug := range changed {
-					changedSet[slug] = true
-				}
-			}
-		}
-	}
-
 	autoConfig := getAutoFeedsConfig(config)
 
 	// Collect only auto-generated feed configs
@@ -332,37 +315,21 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 	privateTagSlugs := getPrivateTagSlugs(config)
 
-	if useIncremental {
-		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, changedSet, privateTagSlugs)
-			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
-		}
-		if autoConfig.Categories.Enabled {
-			categoryFeeds := p.generateCategoryFeedsForChanged(posts, autoConfig.Categories, changedSet)
-			autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
-		}
-		if autoConfig.Archives.Enabled {
-			archiveFeeds := p.generateArchiveFeedsForChanged(posts, autoConfig.Archives, changedSet)
-			autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
-		}
-	} else {
-		// Generate tag feeds
-		if autoConfig.Tags.Enabled {
-			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTagSlugs)
-			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
-		}
+	// Auto-feed config generation is cheap, so always rebuild the full set.
+	// Partial regeneration drops unchanged auto feeds from the current build.
+	if autoConfig.Tags.Enabled {
+		tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTagSlugs)
+		autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
+	}
 
-		// Generate category feeds
-		if autoConfig.Categories.Enabled {
-			categoryFeeds := p.generateCategoryFeeds(posts, autoConfig.Categories)
-			autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
-		}
+	if autoConfig.Categories.Enabled {
+		categoryFeeds := p.generateCategoryFeeds(posts, autoConfig.Categories)
+		autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
+	}
 
-		// Generate archive feeds
-		if autoConfig.Archives.Enabled {
-			archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
-			autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
-		}
+	if autoConfig.Archives.Enabled {
+		archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
+		autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
 	}
 
 	// If no auto-feeds were generated, nothing to do

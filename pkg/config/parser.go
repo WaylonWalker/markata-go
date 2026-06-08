@@ -662,12 +662,13 @@ type tomlTagsConfig struct {
 }
 
 type tomlFeedsPageConfig struct {
-	Enabled     *bool  `toml:"enabled"`
-	Title       string `toml:"title"`
-	Description string `toml:"description"`
-	Template    string `toml:"template"`
-	SlugPrefix  string `toml:"slug_prefix"`
-	Robots      string `toml:"robots"`
+	Enabled          *bool    `toml:"enabled"`
+	Title            string   `toml:"title"`
+	Description      string   `toml:"description"`
+	Template         string   `toml:"template"`
+	SlugPrefix       string   `toml:"slug_prefix"`
+	Robots           string   `toml:"robots"`
+	ShowPrivateFeeds []string `toml:"show_private_feeds"`
 }
 
 func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
@@ -704,12 +705,13 @@ func (t *tomlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 	defaults := models.NewFeedsPageConfig()
 
 	config := models.FeedsPageConfig{
-		Enabled:     t.Enabled,
-		Title:       t.Title,
-		Description: t.Description,
-		Template:    t.Template,
-		SlugPrefix:  t.SlugPrefix,
-		Robots:      t.Robots,
+		Enabled:          t.Enabled,
+		Title:            t.Title,
+		Description:      t.Description,
+		Template:         t.Template,
+		SlugPrefix:       t.SlugPrefix,
+		Robots:           t.Robots,
+		ShowPrivateFeeds: append([]string{}, t.ShowPrivateFeeds...),
 	}
 
 	if config.Enabled == nil {
@@ -2165,24 +2167,26 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 }
 
 type yamlFeedsPageConfig struct {
-	Enabled     *bool  `yaml:"enabled"`
-	Title       string `yaml:"title"`
-	Description string `yaml:"description"`
-	Template    string `yaml:"template"`
-	SlugPrefix  string `yaml:"slug_prefix"`
-	Robots      string `yaml:"robots"`
+	Enabled          *bool    `yaml:"enabled"`
+	Title            string   `yaml:"title"`
+	Description      string   `yaml:"description"`
+	Template         string   `yaml:"template"`
+	SlugPrefix       string   `yaml:"slug_prefix"`
+	Robots           string   `yaml:"robots"`
+	ShowPrivateFeeds []string `yaml:"show_private_feeds"`
 }
 
 func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 	defaults := models.NewFeedsPageConfig()
 
 	config := models.FeedsPageConfig{
-		Enabled:     t.Enabled,
-		Title:       t.Title,
-		Description: t.Description,
-		Template:    t.Template,
-		SlugPrefix:  t.SlugPrefix,
-		Robots:      t.Robots,
+		Enabled:          t.Enabled,
+		Title:            t.Title,
+		Description:      t.Description,
+		Template:         t.Template,
+		SlugPrefix:       t.SlugPrefix,
+		Robots:           t.Robots,
+		ShowPrivateFeeds: append([]string{}, t.ShowPrivateFeeds...),
 	}
 
 	if config.Enabled == nil {
@@ -3651,12 +3655,13 @@ type jsonTagsConfig struct {
 }
 
 type jsonFeedsPageConfig struct {
-	Enabled     *bool  `json:"enabled"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Template    string `json:"template"`
-	SlugPrefix  string `json:"slug_prefix"`
-	Robots      string `json:"robots"`
+	Enabled          *bool    `json:"enabled"`
+	Title            string   `json:"title"`
+	Description      string   `json:"description"`
+	Template         string   `json:"template"`
+	SlugPrefix       string   `json:"slug_prefix"`
+	Robots           string   `json:"robots"`
+	ShowPrivateFeeds []string `json:"show_private_feeds"`
 }
 
 func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
@@ -3693,12 +3698,13 @@ func (t *jsonFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
 	defaults := models.NewFeedsPageConfig()
 
 	config := models.FeedsPageConfig{
-		Enabled:     t.Enabled,
-		Title:       t.Title,
-		Description: t.Description,
-		Template:    t.Template,
-		SlugPrefix:  t.SlugPrefix,
-		Robots:      t.Robots,
+		Enabled:          t.Enabled,
+		Title:            t.Title,
+		Description:      t.Description,
+		Template:         t.Template,
+		SlugPrefix:       t.SlugPrefix,
+		Robots:           t.Robots,
+		ShowPrivateFeeds: append([]string{}, t.ShowPrivateFeeds...),
 	}
 
 	if config.Enabled == nil {

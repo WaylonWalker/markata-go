@@ -1117,6 +1117,29 @@ Each post in `feed.posts` or `page.posts` has:
 | `striptags` | Remove HTML tags | `{{ html\|striptags }}` |
 | `truncate` | Truncate to length | `{{ text\|truncate:100 }}` |
 
+## Built-In Feed Templates
+
+Feeds can opt into a different built-in HTML layout without copying templates into the site.
+
+```toml
+[[markata-go.feeds]]
+slug = "shots"
+title = "Shots"
+filter = "templateKey == \"shots\""
+
+[markata-go.feeds.templates]
+html = "feed-photo-grid.html"
+```
+
+`feed-photo-grid.html` is a photo-grid archive designed for image-heavy feeds. It renders:
+
+- a tight multi-column grid
+- square cards by default
+- title and description overlays on hover and keyboard focus
+- `post.card_classes` span hooks such as `col-span-2`, `row-span-2`, and `col-span-4`
+
+That makes it a good fit for shots, screenshots, or gallery-style feeds where individual items should sometimes break out of the default square rhythm.
+
 ## Feed Discovery
 
 markata-go provides automatic feed discovery so visitors and feed readers can find the right feed for each page.

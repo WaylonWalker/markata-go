@@ -602,6 +602,17 @@ type BlogrollPlugin struct {
 	assetURLs map[string]string
 }
 
+type blogrollFetchOptions struct {
+	forceRefresh   bool
+	onFeedComplete func(BlogrollCacheRefreshProgress)
+}
+
+type blogrollRefreshSummary struct {
+	refreshed int
+	stale     int
+	failed    int
+}
+
 // NewBlogrollPlugin creates a new BlogrollPlugin.
 func NewBlogrollPlugin() *BlogrollPlugin {
 	return &BlogrollPlugin{
@@ -774,6 +785,13 @@ func (p *BlogrollPlugin) Write(m *lifecycle.Manager) error {
 
 // fetchFeeds fetches all configured feeds concurrently.
 func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.ExternalFeed, []*models.ExternalEntry, error) {
+	feeds, entries, _, err := p.fetchFeedsWithOptions(config, blogrollFetchOptions{})
+	return feeds, entries, err
+}
+
+// fetchFeedsWithOptions fetches all configured feeds concurrently with optional
+// cache-bypass behavior for direct cache refresh commands.
+func (p *BlogrollPlugin) fetchFeedsWithOptions(config models.BlogrollConfig, options blogrollFetchOptions) ([]*models.ExternalFeed, []*models.ExternalEntry, blogrollRefreshSummary, error) {
 	var activeFeeds []models.ExternalFeedConfig
 	for i := range config.Feeds {
 		if config.Feeds[i].IsActive() {
@@ -782,7 +800,7 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 	}
 
 	if len(activeFeeds) == 0 {
-		return nil, nil, nil
+		return nil, nil, blogrollRefreshSummary{}, nil
 	}
 
 	// Parse cache duration
@@ -794,7 +812,7 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 	// Create cache directory
 	if config.CacheDir != "" {
 		if err := os.MkdirAll(config.CacheDir, 0o755); err != nil {
-			return nil, nil, fmt.Errorf("create cache dir: %w", err)
+			return nil, nil, blogrollRefreshSummary{}, fmt.Errorf("create cache dir: %w", err)
 		}
 	}
 
@@ -816,6 +834,7 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 
 	semaphore := make(chan struct{}, concurrency)
 	resultsCh := make(chan *models.ExternalFeed, len(activeFeeds))
+	summaryCh := make(chan blogrollRefreshSummary, len(activeFeeds))
 	var wg sync.WaitGroup
 
 	for i := range activeFeeds {
@@ -827,20 +846,28 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 
 			// Use per-feed max_entries if set, otherwise global default
 			maxEntries := feedConfig.GetMaxEntries(globalMaxEntries)
-			feed := p.fetchFeed(feedConfig, config.CacheDir, cacheDuration, timeout, maxEntries)
+			feed, summary := p.fetchFeed(feedConfig, config.CacheDir, cacheDuration, timeout, maxEntries, options)
 			resultsCh <- feed
+			summaryCh <- summary
 		}(activeFeeds[i])
 	}
 
 	wg.Wait()
 	close(resultsCh)
+	close(summaryCh)
 
 	// Collect results
 	feeds := make([]*models.ExternalFeed, 0, len(activeFeeds))
 	var allEntries []*models.ExternalEntry
+	summary := blogrollRefreshSummary{}
 	for feed := range resultsCh {
 		feeds = append(feeds, feed)
 		allEntries = append(allEntries, feed.Entries...)
+	}
+	for result := range summaryCh {
+		summary.refreshed += result.refreshed
+		summary.stale += result.stale
+		summary.failed += result.failed
 	}
 
 	// Sort feeds by title
@@ -853,7 +880,7 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 		return compareEntries(allEntries[i], allEntries[j])
 	})
 
-	return feeds, allEntries, nil
+	return feeds, allEntries, summary, nil
 }
 
 // initFeedFromConfig creates a new ExternalFeed initialized from configuration.
@@ -936,14 +963,18 @@ func updateFeedFromParsed(feed *models.ExternalFeed, parsed *blogrollParsedFeed)
 }
 
 // fetchFeed fetches a single feed with caching.
-func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir string, cacheDuration time.Duration, timeout, maxEntries int) *models.ExternalFeed {
+func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir string, cacheDuration time.Duration, timeout, maxEntries int, options blogrollFetchOptions) (*models.ExternalFeed, blogrollRefreshSummary) {
 	feed := initFeedFromConfig(config)
 	var staleCached *models.ExternalFeed
 
 	// Check cache
 	if cacheDir != "" {
-		if cached := p.loadFromCache(config.URL, cacheDir, cacheDuration); cached != nil {
-			return mergeCachedFeed(cached, config)
+		if !options.forceRefresh {
+			if cached := p.loadFromCache(config.URL, cacheDir, cacheDuration); cached != nil {
+				cachedFeed := mergeCachedFeed(cached, config)
+				p.emitFetchProgress(options, config, cachedFeed, "cached", "")
+				return cachedFeed, blogrollRefreshSummary{}
+			}
 		}
 		staleCached = p.loadFromCacheAny(config.URL, cacheDir)
 	}
@@ -955,7 +986,9 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	req, err := http.NewRequestWithContext(ctx, "GET", config.URL, http.NoBody)
 	if err != nil {
 		feed.Error = fmt.Sprintf("create request: %v", err)
-		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		failedFeed, summary := p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		p.emitFetchFailureProgress(options, config, failedFeed, summary)
+		return failedFeed, summary
 	}
 
 	req.Header.Set("User-Agent", "markata-go/1.0 (RSS Reader)")
@@ -968,20 +1001,26 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	resp, err := client.Do(req)
 	if err != nil {
 		feed.Error = fmt.Sprintf("fetch: %v", err)
-		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		failedFeed, summary := p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		p.emitFetchFailureProgress(options, config, failedFeed, summary)
+		return failedFeed, summary
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		feed.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		failedFeed, summary := p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		p.emitFetchFailureProgress(options, config, failedFeed, summary)
+		return failedFeed, summary
 	}
 
 	// Parse the feed using simple XML parsing
 	parsedFeed, entries, err := parseBlogrollFeedResponse(resp)
 	if err != nil {
 		feed.Error = fmt.Sprintf("parse: %v", err)
-		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		failedFeed, summary := p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
+		p.emitFetchFailureProgress(options, config, failedFeed, summary)
+		return failedFeed, summary
 	}
 
 	// Update feed with parsed values
@@ -1012,21 +1051,53 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 		p.saveToCache(feed, cacheDir)
 	}
 
-	return feed
+	p.emitFetchProgress(options, config, feed, "refreshed", "")
+	return feed, blogrollRefreshSummary{refreshed: 1}
 }
 
-func (p *BlogrollPlugin) handleFeedFetchFailure(feed, staleCached *models.ExternalFeed, config models.ExternalFeedConfig, cacheDir string) *models.ExternalFeed {
+func (p *BlogrollPlugin) handleFeedFetchFailure(feed, staleCached *models.ExternalFeed, config models.ExternalFeedConfig, cacheDir string) (*models.ExternalFeed, blogrollRefreshSummary) {
 	now := time.Now()
 	if feed != nil {
 		feed.LastFetched = &now
 	}
 	if staleCached != nil {
-		return mergeCachedFeed(staleCached, config)
+		return mergeCachedFeed(staleCached, config), blogrollRefreshSummary{stale: 1}
 	}
 	if cacheDir != "" && feed != nil {
 		p.saveToCache(feed, cacheDir)
 	}
-	return feed
+	return feed, blogrollRefreshSummary{failed: 1}
+}
+
+func (p *BlogrollPlugin) emitFetchProgress(options blogrollFetchOptions, config models.ExternalFeedConfig, feed *models.ExternalFeed, status, errorMessage string) {
+	if options.onFeedComplete == nil {
+		return
+	}
+	title := config.Title
+	if feed != nil && feed.Title != "" {
+		title = feed.Title
+	}
+	if title == "" {
+		title = config.URL
+	}
+	options.onFeedComplete(BlogrollCacheRefreshProgress{
+		FeedURL:   config.URL,
+		FeedTitle: title,
+		Status:    status,
+		Error:     errorMessage,
+	})
+}
+
+func (p *BlogrollPlugin) emitFetchFailureProgress(options blogrollFetchOptions, config models.ExternalFeedConfig, feed *models.ExternalFeed, summary blogrollRefreshSummary) {
+	status := "failed"
+	if summary.stale > 0 {
+		status = "stale"
+	}
+	errorMessage := ""
+	if feed != nil {
+		errorMessage = feed.Error
+	}
+	p.emitFetchProgress(options, config, feed, status, errorMessage)
 }
 
 func compareEntries(a, b *models.ExternalEntry) bool {

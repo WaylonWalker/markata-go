@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
   {% endif %}
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
-  {% if body and 'feed h-feed' in body %}
+  {% if feed or (body and 'feed h-feed' in body) %}
   <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
   {% endif %}
   {% if post.webmentions or needs_webmentions_css %}
@@ -502,6 +502,13 @@
       paginationScript.src = '{{ 'js/pagination.js' | theme_asset_hashed }}';
       paginationScript.defer = true;
       document.body.appendChild(paginationScript);
+    }
+
+    if (document.querySelector('video[data-hover-play]')) {
+      const hoverPlayVideoScript = document.createElement('script');
+      hoverPlayVideoScript.src = '{{ 'js/hover-play-video.js' | theme_asset_hashed }}';
+      hoverPlayVideoScript.defer = true;
+      document.body.appendChild(hoverPlayVideoScript);
     }
 
     // GLightbox - load when page has zoomable images

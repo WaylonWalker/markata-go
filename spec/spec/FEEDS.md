@@ -108,6 +108,22 @@ json = "feed.json"                 # Template for JSON
 sitemap = "sitemap.xml"            # Template for sitemap
 ```
 
+Built-in HTML feed templates MAY be selected per feed with `templates.html`.
+
+Example:
+
+```toml
+[[markata-go.feeds]]
+slug = "shots"
+title = "Shots"
+filter = "templateKey == \"shots\""
+
+[markata-go.feeds.templates]
+html = "feed-photo-grid.html"
+```
+
+The built-in `feed-photo-grid.html` template renders a dense photo-first grid with square cards by default and hover/focus overlays for title and description. It MUST preserve `post.card_classes` frontmatter hooks such as `col-span-2` and `row-span-2` so selected cards can expand across the grid.
+
 ### Split Feed Definitions Across Files
 
 Feed definitions may be split across composed config files. Repeated feed slugs merge into one resolved feed.
@@ -441,6 +457,29 @@ The reader page aggregates the latest posts from all followed feeds into a curat
 - each entry map includes `feed_url`, `feed_title`, `source_icon_url`, `published_datetime`, `published_label`, `url`, `title`, `description`, and `image_url`
 - when available, `url` points at the resolved article URL rather than the discussion page for Hacker News items
 - `original_url` preserves the original HN discussion link when a feed item was normalized
+
+### Cache Refresh Command
+
+The CLI MUST expose a reader-cache refresh command:
+
+```bash
+markata-go reader update
+```
+
+Optional flag:
+
+```bash
+markata-go reader update --concurrency 12
+```
+
+Behavior requirements:
+
+- the command MUST refresh the external feed cache used by the reader/blogroll system without running a site build
+- the command MUST force remote feed fetches even when cached entries are still within `cache_duration`
+- the command MUST continue to use stale cached feed data as a fallback when a remote refresh fails
+- when `--concurrency` is provided, the command MUST use that value instead of the configured `concurrent_requests` for the current run only
+- the command MUST write primary results to `stdout`
+- the next `markata-go build` MUST reuse the refreshed cache data through the existing blogroll cache path
 
 ---
 
@@ -1489,3 +1528,19 @@ public/
 - [CONFIG.md](./CONFIG.md) - Feed configuration details
 - [TEMPLATES.md](./TEMPLATES.md) - Template system
 - [DATA_MODEL.md](./DATA_MODEL.md) - Post model
+
+## Feed Listings
+
+The generated `/feeds/` listing MUST hide feeds with `include_private = true` by default.
+Sites MAY opt specific private-enabled feeds into the listing with:
+
+```toml
+[markata-go.feeds_page]
+show_private_feeds = ["tags/gratitude"]
+```
+
+The `show_private_feeds` entries are exact feed slugs without a leading site URL.
+When a private-enabled feed is listed, the listing page may show feed titles,
+descriptions, counts, and feed variant links, but the underlying feed outputs remain
+responsible for rendering private post content through the encryption flow rather than
+exposing plaintext content.

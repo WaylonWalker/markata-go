@@ -6,6 +6,8 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 
 - use `markata-go build --fast` for faster development loops
 - use `markata-go serve --fast` for the normal live-edit loop
+- use `markata-go reader update` when you only need fresh `/reader/` feed data for the next build
+- use `markata-go reader update --concurrency <n>` when reader refresh latency is dominated by many remote feeds
 - use `-m fast.toml` or `--merge-config fast.toml` when you want a slimmer dev config without editing the main site config
 - compare warm builds, not just cold builds
 - use `markata-go build --benchmark-json benchmark.json` for structured timing

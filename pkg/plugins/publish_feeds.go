@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -562,7 +563,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	modelsConfig := ToModelsConfig(config)
 	syndication := getSyndicationConfig(config)
-	outputFC := feedConfigWithRenderablePosts(fc)
+	htmlFC := feedConfigWithRenderablePosts(fc)
+	syndicationFC := feedConfigWithOutputPosts(fc)
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
@@ -570,14 +572,14 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
-		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(outputFC, config, modelsConfig, feedDir) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(outputFC, config, modelsConfig, feedDir) }},
-		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(outputFC, config, feedDir, false) }},
-		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(outputFC, config, feedDir, false) }},
-		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(outputFC, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
-		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(outputFC, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
-		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(outputFC, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
-		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(outputFC, config, feedDir) }},
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(htmlFC, config, modelsConfig, feedDir) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(htmlFC, config, modelsConfig, feedDir) }},
+		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(syndicationFC, config, feedDir, false) }},
+		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(syndicationFC, config, feedDir, false) }},
+		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(syndicationFC, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
+		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(syndicationFC, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
+		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(syndicationFC, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
+		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(syndicationFC, config, feedDir) }},
 	}
 
 	for _, pub := range publishers {
@@ -593,9 +595,9 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		}
 
 		archivePublishers := []feedFormatPublisher{
-			{name: "Archive RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(outputFC, config, archiveDir, true) }},
-			{name: "Archive Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(outputFC, config, archiveDir, true) }},
-			{name: "Archive JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(outputFC, config, archiveDir, true) }},
+			{name: "Archive RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(syndicationFC, config, archiveDir, true) }},
+			{name: "Archive Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(syndicationFC, config, archiveDir, true) }},
+			{name: "Archive JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(syndicationFC, config, archiveDir, true) }},
 		}
 
 		for _, pub := range archivePublishers {
@@ -609,7 +611,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 }
 
 func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
-	clone := cloneFeedConfigWithPosts(fc, renderableFeedPosts(fc.Posts))
+	clone := cloneFeedConfigWithPosts(fc, filterFeedPagePosts(fc.Posts, fc.IncludePrivate))
 	baseURL := "/" + clone.Slug
 	if clone.Slug == "" {
 		baseURL = "/"
@@ -618,21 +620,14 @@ func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
 	return clone
 }
 
-func renderableFeedPosts(posts []*models.Post) []*models.Post {
-	if len(posts) == 0 {
-		return nil
+func feedConfigWithOutputPosts(fc *models.FeedConfig) *models.FeedConfig {
+	clone := cloneFeedConfigWithPosts(fc, filterFeedOutputPosts(fc.Posts, fc.IncludePrivate))
+	baseURL := "/" + clone.Slug
+	if clone.Slug == "" {
+		baseURL = "/"
 	}
-	filtered := make([]*models.Post, 0, len(posts))
-	for _, post := range posts {
-		if post == nil || post.Skip || post.Draft {
-			continue
-		}
-		if post.Content == "" && post.ArticleHTML == "" {
-			continue
-		}
-		filtered = append(filtered, post)
-	}
-	return filtered
+	clone.Paginate(baseURL)
+	return clone
 }
 
 // determineFeedDir returns the output directory for a feed based on its slug.
@@ -693,6 +688,10 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 
 // publishHTMLPages publishes HTML pages for a paginated feed.
 func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
+	if err := p.cleanupPaginatedFeedDirs(feedDir, "", fc.Pages); err != nil {
+		return fmt.Errorf("cleaning html pagination dirs: %w", err)
+	}
+
 	for i := range fc.Pages {
 		page := &fc.Pages[i]
 		// Determine output path
@@ -725,6 +724,9 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 // Output is written to feedDir/simple/ with pagination at feedDir/simple/page/N/.
 func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
 	simpleDir := filepath.Join(feedDir, "simple")
+	if err := p.cleanupPaginatedFeedDirs(feedDir, "simple", fc.Pages); err != nil {
+		return fmt.Errorf("cleaning simple pagination dirs: %w", err)
+	}
 
 	// Compute the base URL prefix for simple feed pagination links.
 	// For a feed with slug "blog", this is "/blog/simple".
@@ -763,6 +765,46 @@ func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, confi
 
 		if err := p.safeWriteFile(pagePath, []byte(htmlContent)); err != nil {
 			return fmt.Errorf("writing simple page %d: %w", adjustedPage.Number, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *PublishFeedsPlugin) cleanupPaginatedFeedDirs(feedDir, formatSubdir string, pages []models.FeedPage) error {
+	pageRoot := filepath.Join(feedDir, formatSubdir, "page")
+	entries, err := os.ReadDir(pageRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	validPages := make(map[int]struct{}, len(pages))
+	for _, page := range pages {
+		if page.Number > 1 {
+			validPages[page.Number] = struct{}{}
+		}
+	}
+
+	if len(validPages) == 0 {
+		return os.RemoveAll(pageRoot)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pageNum, err := strconv.Atoi(entry.Name())
+		if err != nil {
+			continue
+		}
+		if _, ok := validPages[pageNum]; ok {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(pageRoot, entry.Name())); err != nil {
+			return err
 		}
 	}
 
@@ -857,6 +899,11 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 
 // generateFeedPageHTML generates HTML for a feed page.
 func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
+	templateName := fc.Templates.HTML
+	if templateName == "" {
+		templateName = "feed.html"
+	}
+
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -884,9 +931,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		}
 	}
 
-	// Try to use pongo2 template engine with feed.html template (cached)
+	// Try to use pongo2 template engine with the configured HTML template (cached)
 	engine, err := p.getOrCreateEngine(templatesDir, themeName)
-	if err == nil && engine.TemplateExists("feed.html") {
+	if err == nil && engine.TemplateExists(templateName) {
 		// Use shared config conversion to ensure all fields are available
 		// (search, head, components, theme, etc. - required by base.html)
 		if modelsConfig == nil {
@@ -910,10 +957,10 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		}
 
 		// Render with pongo2 template
-		html, err := engine.Render("feed.html", ctx)
+		html, err := engine.Render(templateName, ctx)
 		if err != nil {
 			// Log template rendering errors to help debug issues
-			publishFeedsLog.Warnf("template rendering failed for feed.html: %v (falling back to built-in template)", err)
+			publishFeedsLog.Warnf("template rendering failed for %s: %v (falling back to built-in template)", templateName, err)
 		} else {
 			return html, nil
 		}

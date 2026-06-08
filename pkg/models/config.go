@@ -2809,18 +2809,24 @@ type FeedsPageConfig struct {
 	// Robots controls the robots meta tag for the feeds listing HTML pages.
 	// Example: "noindex,follow"
 	Robots string `json:"robots,omitempty" yaml:"robots,omitempty" toml:"robots,omitempty"`
+
+	// ShowPrivateFeeds lists private-enabled feed slugs that should appear on /feeds/.
+	// Public feeds are always listed; private-enabled feeds remain hidden unless their
+	// slug appears here.
+	ShowPrivateFeeds []string `json:"show_private_feeds,omitempty" yaml:"show_private_feeds,omitempty" toml:"show_private_feeds,omitempty"`
 }
 
 // NewFeedsPageConfig creates a new FeedsPageConfig with default values.
 func NewFeedsPageConfig() FeedsPageConfig {
 	enabled := true
 	return FeedsPageConfig{
-		Enabled:     &enabled,
-		Title:       "Feeds",
-		Description: "Browse the public feeds available on this site.",
-		Template:    "feeds.html",
-		SlugPrefix:  "feeds",
-		Robots:      "",
+		Enabled:          &enabled,
+		Title:            "Feeds",
+		Description:      "Browse the public feeds available on this site.",
+		Template:         "feeds.html",
+		SlugPrefix:       "feeds",
+		Robots:           "",
+		ShowPrivateFeeds: nil,
 	}
 }
 

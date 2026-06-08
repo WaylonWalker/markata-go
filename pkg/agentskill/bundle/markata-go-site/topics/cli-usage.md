@@ -11,6 +11,8 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go build --clean-all` (also remove external caches: blogroll, embeds, mentions)
 - `markata-go build --fast` (skip minification, CSS purging, Pagefind indexing)
 - `markata-go build --dry-run` (run through Collect, show counts, skip Write)
+- `markata-go reader update` (refresh external feed cache for `/reader/` without building)
+- `markata-go reader update --concurrency 12` (override reader refresh parallelism for one run)
 - `markata-go build --benchmark-json benchmark.json`
 - `markata-go build -v --benchmark-detailed`
 - `markata-go serve` (dev server with live reload)
@@ -148,6 +150,7 @@ markata-go lint --fix
 - validate config before deploy: `markata-go config validate`
 - validate palette contrast: `markata-go palette check <name>`
 - interactive local editing: `markata-go serve --fast`
+- refresh reader data without a build: `markata-go reader update`
 - final verification: `markata-go build`
 - bootstrap a new project: `markata-go init`
 - migrate from Python markata: `markata-go migrate config`

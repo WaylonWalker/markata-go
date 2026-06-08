@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -1111,6 +1112,70 @@ func TestAutoFeedsPlugin_PrivateTagCaseInsensitiveIncludesPrivatePost(t *testing
 	}
 	if len(feedConfigs[0].Posts) != 1 {
 		t.Errorf("feed should have 1 post, got %d", len(feedConfigs[0].Posts))
+	}
+}
+
+func TestAutoFeedsPlugin_IncrementalStillKeepsUnchangedAutoFeeds(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Tutorial"), Tags: []string{"tutorial"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Gratitude"), Tags: []string{"gratitude"}, Date: &date, Private: true},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds_incremental": true,
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+				Formats: models.FeedFormats{
+					HTML: true,
+				},
+			},
+		},
+		"models_config": &models.Config{
+			Encryption: models.EncryptionConfig{
+				PrivateTags: map[string]string{"gratitude": "default"},
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	cache := buildcache.New(t.TempDir())
+	cache.MarkFeedSlugChanged("post2")
+	m.Cache().Set("build_cache", cache)
+
+	plugin := NewAutoFeedsPlugin()
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feedsValue, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+	feedConfigs, ok := feedsValue.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", feedsValue)
+	}
+
+	feedMap := make(map[string]models.FeedConfig, len(feedConfigs))
+	for _, fc := range feedConfigs {
+		feedMap[fc.Slug] = fc
+	}
+
+	if _, ok := feedMap["tags/tutorial"]; !ok {
+		t.Fatal("tags/tutorial feed should remain present during incremental auto-feed rebuilds")
+	}
+	gratitudeFeed, ok := feedMap["tags/gratitude"]
+	if !ok {
+		t.Fatal("tags/gratitude feed should remain present during incremental auto-feed rebuilds")
+	}
+	if !gratitudeFeed.IncludePrivate {
+		t.Fatal("tags/gratitude should keep IncludePrivate=true during incremental auto-feed rebuilds")
 	}
 }
 

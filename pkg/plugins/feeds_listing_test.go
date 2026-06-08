@@ -72,7 +72,44 @@ func TestFeedsListingPlugin_Write(t *testing.T) {
 		t.Fatalf("feeds page should link to archive rss variant")
 	}
 	if strings.Contains(body, "Private") {
-		t.Fatalf("feeds page should not contain private feeds")
+		t.Fatalf("feeds page should not contain private feeds by default")
+	}
+}
+
+func TestFeedsListingPlugin_Write_IncludesOptedInPrivateFeed(t *testing.T) {
+	plugin := NewFeedsListingPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.OutputDir = t.TempDir()
+	feedsPage := models.NewFeedsPageConfig()
+	feedsPage.ShowPrivateFeeds = []string{"private-feed"}
+	defaults := models.NewFeedDefaults()
+	config.Extra = map[string]interface{}{
+		"title":         "Test Site",
+		"description":   "A test site",
+		"url":           "https://example.com",
+		"feeds_page":    feedsPage,
+		"feed_defaults": defaults,
+	}
+
+	m.Cache().Set("feed_configs", []models.FeedConfig{{
+		Slug:           "private-feed",
+		Title:          "Private",
+		IncludePrivate: true,
+		Formats:        models.FeedFormats{HTML: true, RSS: true},
+	}})
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(config.OutputDir, "feeds", "index.html"))
+	if err != nil {
+		t.Fatalf("ReadFile(feeds page) error = %v", err)
+	}
+	body := string(content)
+	if !strings.Contains(body, "Private") {
+		t.Fatalf("feeds page should contain opted-in private feed")
 	}
 }
 

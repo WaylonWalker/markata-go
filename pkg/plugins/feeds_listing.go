@@ -188,7 +188,7 @@ func (p *FeedsListingPlugin) collectFeedSections(
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.IncludePrivate {
+		if fc.IncludePrivate && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
 			continue
 		}
 
@@ -292,6 +292,19 @@ func (p *FeedsListingPlugin) collectFeedSections(
 	}
 
 	return sections, generatedPages
+}
+
+func feedsPageAllowsPrivateFeed(feedsPage *models.FeedsPageConfig, slug string) bool {
+	if feedsPage == nil {
+		return false
+	}
+	normalized := strings.Trim(slug, "/")
+	for _, allowed := range feedsPage.ShowPrivateFeeds {
+		if strings.Trim(allowed, "/") == normalized {
+			return true
+		}
+	}
+	return false
 }
 
 func feedStats(posts []*models.Post, includePrivate bool) (count int, latestDate string, latestTime time.Time) {
