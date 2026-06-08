@@ -67,7 +67,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 	homePageURL := feedHomePageURL(meta.URL, feedPath)
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)
-	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
+	posts := filterFeedPagePosts(feed.Posts, feed.IncludePrivate)
 
 	jsonFeed := JSONFeed{
 		Version:     JSONFeedVersion,

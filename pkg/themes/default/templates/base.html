@@ -43,7 +43,7 @@
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
 
   <!-- Feed CSS for dedicated feed pages and embedded render_feed() output -->
-  {% if body and 'feed h-feed' in body %}
+  {% if feed or (body and 'feed h-feed' in body) %}
   <link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
   {% endif %}
 
@@ -571,6 +571,14 @@
       runAfterLoad(function() {
         runWhenIdle(function() {
           appendDeferredScript('{{ 'js/pagination.js' | theme_asset_hashed }}');
+        });
+      });
+    }
+
+    if (document.querySelector('video[data-hover-play]')) {
+      runAfterLoad(function() {
+        runWhenIdle(function() {
+          appendDeferredScript('{{ 'js/hover-play-video.js' | theme_asset_hashed }}');
         });
       });
     }

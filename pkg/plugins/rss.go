@@ -70,7 +70,7 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 	homeURL := feedHomePageURL(meta.URL, feed.Path)
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)
-	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
+	posts := filterFeedPagePosts(feed.Posts, feed.IncludePrivate)
 
 	rss := RSS{
 		Version: "2.0",

@@ -520,6 +520,12 @@ func mergeFeedsPageConfig(base, override models.FeedsPageConfig) models.FeedsPag
 	if override.SlugPrefix != "" {
 		result.SlugPrefix = override.SlugPrefix
 	}
+	if override.Robots != "" {
+		result.Robots = override.Robots
+	}
+	if override.ShowPrivateFeeds != nil {
+		result.ShowPrivateFeeds = append([]string{}, override.ShowPrivateFeeds...)
+	}
 	return result
 }
 

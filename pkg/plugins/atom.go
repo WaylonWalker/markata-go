@@ -77,7 +77,7 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 	}
 	feedURL := feedURLForFormat(siteURL, feedPath, "atom.xml")
 	homeURL := feedHomePageURL(siteURL, feedPath)
-	posts := filterFeedOutputPosts(feed.Posts, feed.IncludePrivate)
+	posts := filterFeedPagePosts(feed.Posts, feed.IncludePrivate)
 
 	title := feedResolvedTitle(feed, meta)
 	description := feedResolvedDescription(feed, meta)

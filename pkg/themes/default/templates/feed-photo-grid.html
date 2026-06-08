@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
+{% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block page_wrapper_class %} page-wrapper--feed-only{% endblock %}
+{% block head %}
+{{ block.Super() }}
+<link rel="stylesheet" href="{{ 'css/feeds.css' | theme_asset_hashed }}">
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
+{% endblock %}
+
+{% block htmx %}
+{% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
+<script src="{% if config.Extra.asset_urls.htmx %}{{ config.Extra.asset_urls.htmx }}{% else %}/vendor/htmx/htmx.min.js{% endif %}"></script>
+{% if page.pagination_type == "htmx-infinite" %}
+<script src="{{ 'js/infinite-scroll.js' | theme_asset }}" defer></script>
+{% endif %}
+{% elif page.pagination_type == "js" %}
+<script src="{{ 'js/pagination.js' | theme_asset }}" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="feed h-feed feed--photo-grid">
+  {% if feed.title %}
+  <header class="feed-header">
+    <div class="feed-header-top">
+      <div class="feed-header-copy">
+        <h1 class="p-name">{{ feed.title }}</h1>
+        {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
+        <div class="feed-stats">
+          <span><strong>{{ feed_stats_total_posts }}</strong> posts</span>
+          {% if feed_stats_latest_post %}<span>latest post {{ feed_stats_latest_post }}</span>{% endif %}
+        </div>
+      </div>
+      {% if feed_sparkline_points %}
+      <div class="feed-header-sparkline">
+        <span class="feed-header-sparkline-label">Publishing rhythm</span>
+        <svg class="feed-header-sparkline-chart" viewBox="0 0 96 28" role="img" aria-label="{{ feed_sparkline_title }}">
+          <polyline points="{{ feed_sparkline_points }}"></polyline>
+          {% for point in feed_sparkline_data %}
+          <g class="feed-header-sparkline-point" data-label="{{ point.Month }} | {{ point.Value }} posts">
+            <line class="feed-header-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
+            <circle class="feed-header-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
+            <rect class="feed-header-sparkline-hit" x="{{ point.HitX }}" y="0" width="5.2" height="28"></rect>
+          </g>
+          {% endfor %}
+        </svg>
+        <div class="feed-header-sparkline-meta" aria-live="polite">
+          <span class="feed-header-sparkline-value">{{ feed_sparkline_summary }}</span>
+        </div>
+        {% if feed_sparkline_start and feed_sparkline_end %}
+        <div class="feed-header-sparkline-axis" aria-hidden="true">
+          <span>{{ feed_sparkline_start }}</span>
+          <span>{{ feed_sparkline_end }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </header>
+  {% endif %}
+  {% if config.author %}
+  <div class="feed-author-card p-author h-card visually-hidden">
+    {% if config.seo.author_image %}
+    <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
+    {% elif config.seo.default_image %}
+    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
+    {% endif %}
+    <a class="u-url u-uid p-name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
+  </div>
+  {% endif %}
+
+  <div class="posts posts-list posts-list--photo-grid" id="posts-list">
+    {% if page.pagination_type == "js" %}
+    {% for post in feed.posts %}
+    {% with post.image|default:post.cover|media_url:post.video as media_src %}
+    <article class="shot-card h-entry{% if post.card_classes %} {{ post.card_classes }}{% endif %}{% if media_src %} has-media{% endif %}{% if media_src|is_video %} has-video{% endif %}">
+      <a href="{{ post.href }}" class="shot-card-link u-url" aria-label="{{ post.title | default:post.description | default:'Shot' }}">
+        <div class="shot-card-frame">
+          {% if media_src %}
+          {% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="shot-card-media shot-card-media--video u-video" data-hover-play muted loop playsinline preload="none"{% if poster_candidate %} poster="{{ poster_candidate | with_size:'600' }}"{% endif %} aria-label="{{ post.title | default:post.description | default:'Shot' }}"><source src="{{ media_src|with_size:'600' }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}></video>
+          {% else %}<img src="{{ media_src|with_size:'600' }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 12 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 8 %} fetchpriority="high"{% endif %}>{% endif %}
+          {% else %}
+          <div class="shot-card-fallback" aria-hidden="true"></div>
+          {% endif %}
+          <div class="shot-card-overlay">
+            <div class="shot-card-copy">
+              <h2 class="shot-card-title p-name">{{ post.title | default:post.slug }}</h2>
+              {% if post.description %}<p class="shot-card-description p-summary">{{ post.description }}</p>{% endif %}
+            </div>
+            {% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
+          </div>
+        </div>
+      </a>
+    </article>
+    {% endwith %}
+    {% endfor %}
+    {% else %}
+    {% for post in page.posts %}
+    {% with post.image|default:post.cover|media_url:post.video as media_src %}
+    <article class="shot-card h-entry{% if post.card_classes %} {{ post.card_classes }}{% endif %}{% if media_src %} has-media{% endif %}{% if media_src|is_video %} has-video{% endif %}">
+      <a href="{{ post.href }}" class="shot-card-link u-url" aria-label="{{ post.title | default:post.description | default:'Shot' }}">
+        <div class="shot-card-frame">
+          {% if media_src %}
+          {% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="shot-card-media shot-card-media--video u-video" data-hover-play muted loop playsinline preload="none"{% if poster_candidate %} poster="{{ poster_candidate | with_size:'600' }}"{% endif %} aria-label="{{ post.title | default:post.description | default:'Shot' }}"><source src="{{ media_src|with_size:'600' }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}></video>
+          {% else %}<img src="{{ media_src|with_size:'600' }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 12 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 8 %} fetchpriority="high"{% endif %}>{% endif %}
+          {% else %}
+          <div class="shot-card-fallback" aria-hidden="true"></div>
+          {% endif %}
+          <div class="shot-card-overlay">
+            <div class="shot-card-copy">
+              <h2 class="shot-card-title p-name">{{ post.title | default:post.slug }}</h2>
+              {% if post.description %}<p class="shot-card-description p-summary">{{ post.description }}</p>{% endif %}
+            </div>
+            {% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
+          </div>
+        </div>
+      </a>
+    </article>
+    {% endwith %}
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  {% if page.total_pages > 1 %}
+  {% include "partials/pagination.html" %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -155,6 +155,7 @@ No additional config is needed. The sitemap plugin runs in the Write stage after
 ## Template Touchpoints
 
 - list/archive HTML usually uses `feed.html`
+- per-feed HTML can switch to another built-in template with `[markata-go.feeds.templates] html = "feed-photo-grid.html"`
 - card rendering often happens in a partial
 - RSS and Atom can use separate XML templates
 

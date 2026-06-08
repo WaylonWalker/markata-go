@@ -305,6 +305,52 @@ The resource profile is approximate. It is intended for local hotspot hunting, n
 
 ---
 
+### reader
+
+Refresh the cached external feed data used by the `/reader/` page without running a build.
+
+#### Usage
+
+```bash
+markata-go reader update
+```
+
+##### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--concurrency` | Override feed refresh concurrency for this run | config value, else `5` |
+
+#### Subcommands
+
+##### update
+
+Fetch all configured blogroll feeds and rewrite the on-disk reader cache so the next build can reuse fresh reader data.
+
+This command does not render pages or write site output. It only updates the external feed cache used by the blogroll and reader features.
+
+#### Examples
+
+```bash
+# Refresh reader cache using the auto-discovered config
+markata-go reader update
+
+# Refresh reader cache with higher parallelism for this run
+markata-go reader update --concurrency 12
+
+# Refresh reader cache using a specific config file
+markata-go reader update -c production.toml
+```
+
+#### Notes
+
+- requires `[markata-go.blogroll] enabled = true`
+- requires at least one `[[markata-go.blogroll.feeds]]` entry
+- bypasses normal cache age checks so it can fetch fresh remote feed data immediately
+- reuses stale cached feed data on fetch failures when available
+
+---
+
 ### serve
 
 Start a development server with live reload support.

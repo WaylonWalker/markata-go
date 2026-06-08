@@ -50,6 +50,18 @@ That means a file in the site's `templates/` directory wins.
 - `templates/components/`
 - `templates/partials/`
 
+Some built-in feed variants can be selected directly in config without creating a site template override. Example:
+
+```toml
+[[markata-go.feeds]]
+slug = "shots"
+
+[markata-go.feeds.templates]
+html = "feed-photo-grid.html"
+```
+
+Use that first when the request is “change one feed’s archive layout” and the built-in variant already matches the need.
+
 For first sites, assume:
 
 - `post.html` is the single-content template
