@@ -7,51 +7,70 @@
 
 {% block content %}
 <div class="blogroll-page">
-  <header class="blogroll-header">
-    <h1>{{ title | default:"Blogroll" }}</h1>
-    <p class="blogroll-subtitle">{{ description | default:"Blogs and feeds I follow" }}</p>
-    <p class="blogroll-count">{{ feed_count }} feeds</p>
+  <header class="blogroll-header blogroll-header--editorial">
+    <div class="blogroll-header-copy">
+      <p class="blogroll-kicker">Collected influences</p>
+      <h1>{{ title | default:"Blogroll" }}</h1>
+      <p class="blogroll-subtitle">{{ description | default:"Blogs and feeds I follow" }}</p>
+    </div>
+    <div class="blogroll-header-stats" aria-label="Blogroll stats">
+      <div>
+        <strong>{{ feed_count }}</strong>
+        <span>feeds</span>
+      </div>
+    </div>
   </header>
 
   <nav class="blogroll-nav" aria-label="Page navigation">
     <a href="/reader/">View Reader</a>
   </nav>
 
-  {% for category in categories %}
-  <section class="blogroll-category" id="category-{{ category.slug }}">
-    <h2>{{ category.name }}</h2>
-    <div class="blogroll-grid">
-      {% for feed in category.feeds %}
-      <article class="blogroll-card">
-        {% if feed.avatar_url %}
-        <img src="{{ feed.avatar_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" width="56" height="56" loading="lazy">
-        {% elif feed.image_url %}
-        <img src="{{ feed.image_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" width="56" height="56" loading="lazy">
-        {% else %}
-        <div class="blogroll-card-avatar-placeholder" aria-hidden="true">
-          {{ feed.title|default:'?'|first|upper }}
-        </div>
-        {% endif %}
-        <h3 class="blogroll-card-title">
-          {% if feed.site_url %}
-           <a href="{{ feed.site_url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}<span class="visually-hidden">(opens in new tab)</span></a>
+  <div class="blogroll-sections">
+    {% for category in categories %}
+    <section class="blogroll-category" id="category-{{ category.slug }}">
+      <div class="blogroll-category-heading">
+        <h2>{{ category.name }}</h2>
+      </div>
+      <div class="blogroll-grid">
+        {% for feed in category.feeds %}
+        <article class="blogroll-card">
+          {% if feed.avatar_url %}
+          <img src="{{ feed.avatar_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" width="64" height="64" loading="lazy">
+          {% elif feed.image_url %}
+          <img src="{{ feed.image_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" width="64" height="64" loading="lazy">
           {% else %}
-          {{ feed.title }}
+          <div class="blogroll-card-avatar-placeholder" aria-hidden="true">
+            {{ feed.title|default:'?'|first|upper }}
+          </div>
           {% endif %}
-        </h3>
-        {% if feed.description %}
-        <p class="blogroll-card-description">{{ feed.description | truncatewords:25 }}</p>
-        {% endif %}
-        <footer class="blogroll-card-meta">
-          <span class="blogroll-card-count">{{ feed.entry_count }} posts</span>
-          {% if feed.feed_url %}
-          <a href="{{ feed.feed_url }}" class="blogroll-card-feed" title="RSS Feed">RSS</a>
-          {% endif %}
-        </footer>
-      </article>
-      {% endfor %}
-    </div>
-  </section>
-  {% endfor %}
+          <div class="blogroll-card-content">
+            {% if feed.source_url and feed.source_label %}
+            <a href="{{ feed.source_url }}" target="_blank" rel="noopener noreferrer" class="blogroll-card-site">{{ feed.source_label }}<span class="visually-hidden">(opens in new tab)</span></a>
+            {% endif %}
+            <h3 class="blogroll-card-title">
+              {% if feed.site_url %}
+              <a href="{{ feed.site_url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}<span class="visually-hidden">(opens in new tab)</span></a>
+              {% elif feed.source_url %}
+              <a href="{{ feed.source_url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}<span class="visually-hidden">(opens in new tab)</span></a>
+              {% else %}
+              {{ feed.title }}
+              {% endif %}
+            </h3>
+            {% if feed.description %}
+            <p class="blogroll-card-description">{{ feed.description | truncatewords:25 }}</p>
+            {% endif %}
+            <footer class="blogroll-card-meta">
+              <span class="blogroll-card-count">{{ feed.entry_count }} posts</span>
+              {% if feed.feed_url %}
+              <a href="{{ feed.feed_url }}" class="blogroll-card-feed" title="RSS Feed">RSS</a>
+              {% endif %}
+            </footer>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

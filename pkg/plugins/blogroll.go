@@ -1901,11 +1901,14 @@ func (p *BlogrollPlugin) renderTemplate(m *lifecycle.Manager, templateName strin
 func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(feeds))
 	for i, feed := range feeds {
+		sourceURL, sourceLabel := blogrollSourceLink(feed.SiteURL, feed.FeedURL)
 		result[i] = map[string]interface{}{
 			"title":         feed.Title,
 			"description":   feed.Description,
 			"site_url":      feed.SiteURL,
 			"feed_url":      feed.FeedURL,
+			"source_url":    sourceURL,
+			"source_label":  sourceLabel,
 			"image_url":     feed.ImageURL,
 			"avatar_url":    feed.AvatarURL,
 			"avatar_source": feed.AvatarSource,
@@ -1918,6 +1921,45 @@ func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]
 		}
 	}
 	return result
+}
+
+func blogrollSourceLink(siteURL, feedURL string) (string, string) {
+	if rootURL, host := blogrollRootURL(siteURL); rootURL != "" && host != "" {
+		return rootURL, blogrollDisplayDomain(host)
+	}
+
+	if rootURL, host := blogrollRootURL(feedURL); rootURL != "" && host != "" {
+		return rootURL, blogrollDisplayDomain(host)
+	}
+
+	return "", ""
+}
+
+func blogrollRootURL(rawURL string) (string, string) {
+	if rawURL == "" {
+		return "", ""
+	}
+
+	parsed, err := neturl.Parse(rawURL)
+	if (err != nil || parsed.Hostname() == "") && !strings.Contains(rawURL, "://") {
+		parsed, err = neturl.Parse("https://" + rawURL)
+	}
+	if err != nil || parsed.Hostname() == "" {
+		return "", ""
+	}
+
+	scheme := parsed.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
+
+	return scheme + "://" + parsed.Host, parsed.Hostname()
+}
+
+func blogrollDisplayDomain(host string) string {
+	host = strings.TrimSpace(strings.ToLower(host))
+	host = strings.TrimPrefix(host, "www.")
+	return host
 }
 
 // entriesToMaps converts entries to template-friendly maps.
