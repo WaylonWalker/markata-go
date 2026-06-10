@@ -469,6 +469,16 @@ article.post > .post-content > .feed.h-feed {
   font-size: 0.88rem;
 }
 
+.feed-view-link {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, var(--color-text-muted, #666) 60%, transparent);
+  text-underline-offset: 0.14em;
+}
+
+.feed-view-link:hover {
+  color: var(--color-primary, #007bff);
+}
+
 .feed-links-display {
   gap: 0.35rem 0.9rem;
   padding-top: 0.15rem;
