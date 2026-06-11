@@ -48,6 +48,22 @@ For YouTube Atom feeds, reader entries should resolve the per-video thumbnail fr
 
 Reader template contexts may expose `preview_url`, `preview_kind`, `source_image_url`, and existing source metadata so themes can style each preview type differently.
 
+## Blogroll Add Metadata
+
+When `markata-go blogroll add <feed-url>` fetches metadata for a new external feed, the command MUST prefer feed-provided values for title, description, and tags before falling back to site-level HTML or OpenGraph metadata.
+
+This feed-first behavior is required for shared platforms such as YouTube, where generic site metadata may not match the subscribed channel or feed.
+
+Interactive runs MAY present both feed-derived and site-derived candidates and let the user choose a starting point before manual edits. Non-interactive runs MUST still apply the feed-first precedence automatically.
+
+`markata-go blogroll add` MAY also accept YouTube-specific inputs and normalize them to the canonical channel feed URL before validation and metadata fetches. Supported normalization targets SHOULD include:
+
+- `yt:<handle>` shortcuts such as `yt:devtoolsfm`
+- channel handle URLs such as `https://www.youtube.com/@devtoolsfm`
+- individual video URLs such as `https://www.youtube.com/watch?v=...`
+
+For video URLs, the command SHOULD resolve the creator channel first and then subscribe to that creator's feed instead of treating the single video page as a feed.
+
 ---
 
 ## Feed Configuration

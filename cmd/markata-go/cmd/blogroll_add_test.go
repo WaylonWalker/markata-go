@@ -1,8 +1,13 @@
 package cmd
 
 import (
+	"io"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/blogroll"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -55,7 +60,7 @@ func TestValidateFeedURL(t *testing.T) {
 		{
 			name:    "invalid - just scheme",
 			url:     "https://",
-			wantErr: false, // url.Parse accepts this, validation is minimal
+			wantErr: true,
 		},
 	}
 
@@ -67,6 +72,112 @@ func TestValidateFeedURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNormalizeBlogrollAddInput(t *testing.T) {
+	oldClientFactory := blogrollAddHTTPClientFactory
+	oldOEmbedEndpoint := youtubeOEmbedEndpoint
+	defer func() {
+		blogrollAddHTTPClientFactory = oldClientFactory
+		youtubeOEmbedEndpoint = oldOEmbedEndpoint
+	}()
+
+	responses := map[string]string{
+		"https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DaEkpFeJoKvk&format=json": `{"author_url":"https://www.youtube.com/@devtoolsfm"}`,
+		"https://www.youtube.com/@devtoolsfm": `<html><head><link rel="alternate" type="application/rss+xml" href="https://www.youtube.com/feeds/videos.xml?channel_id=UC12345678901234567890AB"></head></html>`,
+	}
+
+	blogrollAddHTTPClientFactory = func(timeout time.Duration) *http.Client {
+		return &http.Client{
+			Timeout: timeout,
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				body, ok := responses[req.URL.String()]
+				if !ok {
+					return &http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       io.NopCloser(strings.NewReader("not found")),
+						Header:     make(http.Header),
+						Request:    req,
+					}, nil
+				}
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Header:     make(http.Header),
+					Request:    req,
+				}, nil
+			}),
+		}
+	}
+	youtubeOEmbedEndpoint = "https://www.youtube.com/oembed"
+
+	cfg := &models.Config{Blogroll: models.BlogrollConfig{Timeout: 5}}
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr string
+	}{
+		{
+			name:  "yt shortcut",
+			input: "yt:devtoolsfm",
+			want:  "https://www.youtube.com/feeds/videos.xml?channel_id=UC12345678901234567890AB",
+		},
+		{
+			name:  "youtube handle url",
+			input: "https://www.youtube.com/@devtoolsfm",
+			want:  "https://www.youtube.com/feeds/videos.xml?channel_id=UC12345678901234567890AB",
+		},
+		{
+			name:  "youtube watch url",
+			input: "https://www.youtube.com/watch?v=aEkpFeJoKvk",
+			want:  "https://www.youtube.com/feeds/videos.xml?channel_id=UC12345678901234567890AB",
+		},
+		{
+			name:  "youtube channel url already has id",
+			input: "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+			want:  "https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuv",
+		},
+		{
+			name:  "non youtube url unchanged",
+			input: "https://example.com/feed.xml",
+			want:  "https://example.com/feed.xml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeBlogrollAddInput(cfg, tt.input)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("normalizeBlogrollAddInput() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("normalizeBlogrollAddInput() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractYouTubeChannelIDFromHTML(t *testing.T) {
+	html := `<html><head><meta itemprop="identifier" content="UC12345678901234567890AB"><link rel="alternate" type="application/rss+xml" href="https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuv"></head></html>`
+	got := extractYouTubeChannelIDFromHTML(html)
+	if got != "UCabcdefghijklmnopqrstuv" {
+		t.Fatalf("extractYouTubeChannelIDFromHTML() = %q, want %q", got, "UCabcdefghijklmnopqrstuv")
+	}
+}
+
+type roundTripFunc func(req *http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 func TestGenerateHandle(t *testing.T) {
@@ -415,6 +526,56 @@ func TestBuildFeedValues(t *testing.T) {
 		// Since we can't easily mock blogroll.Metadata, we verify the flag behavior indirectly
 		if blogrollAddTitle != "Override Title" {
 			t.Errorf("expected flag title to be set")
+		}
+	})
+
+	t.Run("prefers feed metadata before site metadata", func(t *testing.T) {
+		oldTitle := blogrollAddTitle
+		oldDesc := blogrollAddDescription
+		oldCategory := blogrollAddCategory
+		oldSiteURL := blogrollAddSiteURL
+		oldHandle := blogrollAddHandle
+		oldTags := blogrollAddTags
+
+		defer func() {
+			blogrollAddTitle = oldTitle
+			blogrollAddDescription = oldDesc
+			blogrollAddCategory = oldCategory
+			blogrollAddSiteURL = oldSiteURL
+			blogrollAddHandle = oldHandle
+			blogrollAddTags = oldTags
+		}()
+
+		blogrollAddTitle = ""
+		blogrollAddDescription = ""
+		blogrollAddCategory = ""
+		blogrollAddSiteURL = ""
+		blogrollAddHandle = ""
+		blogrollAddTags = nil
+
+		metadata := &blogroll.Metadata{
+			Title:           "YouTube",
+			Description:     "Generic site description",
+			Tags:            []string{"video", "streaming"},
+			SiteURL:         "https://www.youtube.com",
+			FeedTitle:       "My Channel",
+			FeedDescription: "Channel-specific description",
+			FeedTags:        []string{"golang", "tutorials"},
+		}
+
+		values := buildFeedValues(metadata, "https://www.youtube.com/feeds/videos.xml?channel_id=abc")
+
+		if values.title != "My Channel" {
+			t.Fatalf("title = %q, want %q", values.title, "My Channel")
+		}
+		if values.description != "Channel-specific description" {
+			t.Fatalf("description = %q, want %q", values.description, "Channel-specific description")
+		}
+		if len(values.tags) != 2 || values.tags[0] != "golang" || values.tags[1] != "tutorials" {
+			t.Fatalf("tags = %v, want [golang tutorials]", values.tags)
+		}
+		if values.siteURL != "https://www.youtube.com" {
+			t.Fatalf("siteURL = %q, want %q", values.siteURL, "https://www.youtube.com")
 		}
 	})
 }

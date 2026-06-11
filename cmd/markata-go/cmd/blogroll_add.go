@@ -3,18 +3,23 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
-
-	"github.com/spf13/cobra"
 
 	"github.com/WaylonWalker/markata-go/pkg/blogroll"
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
 )
 
 // Constants for blogroll add command.
@@ -22,6 +27,14 @@ const (
 	defaultCategory     = "Uncategorized"
 	promptDefaultYesStr = "Y/n"
 	promptDefaultNoStr  = "y/N"
+	youtubeFeedBaseURL  = "https://www.youtube.com/feeds/videos.xml?channel_id="
+)
+
+var (
+	youtubeChannelIDPattern      = regexp.MustCompile(`UC[a-zA-Z0-9_-]{22}`)
+	youtubeVideoIDPattern        = regexp.MustCompile(`^[a-zA-Z0-9_-]{11}$`)
+	youtubeOEmbedEndpoint        = "https://www.youtube.com/oembed"
+	blogrollAddHTTPClientFactory = func(timeout time.Duration) *http.Client { return &http.Client{Timeout: timeout} }
 )
 
 // Flags for blogroll add command.
@@ -74,16 +87,21 @@ func init() {
 }
 
 func runBlogrollAdd(_ *cobra.Command, args []string) error {
-	feedURL := args[0]
-
-	// Validate URL format
-	if err := validateFeedURL(feedURL); err != nil {
-		return err
-	}
+	rawInput := args[0]
 
 	// Load config and check for duplicates
 	configPath, cfg, err := loadConfigForBlogrollAdd()
 	if err != nil {
+		return err
+	}
+
+	feedURL, err := normalizeBlogrollAddInput(cfg, rawInput)
+	if err != nil {
+		return err
+	}
+
+	// Validate URL format
+	if err := validateFeedURL(feedURL); err != nil {
 		return err
 	}
 
@@ -110,7 +128,10 @@ func runBlogrollAdd(_ *cobra.Command, args []string) error {
 
 	// Interactive prompts if not disabled
 	if !blogrollAddNoPrompt {
-		feedValues = promptForFeedValues(feedValues)
+		feedValues, err = promptForFeedValues(cfg, metadata, feedValues)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Build the feed config
@@ -129,6 +150,10 @@ func runBlogrollAdd(_ *cobra.Command, args []string) error {
 	return saveFeedToConfig(configPath, cfg, feedConfig)
 }
 
+type youtubeOEmbedResponse struct {
+	AuthorURL string `json:"author_url"`
+}
+
 // feedValues holds the values for building a feed config.
 type feedValues struct {
 	title       string
@@ -140,13 +165,204 @@ type feedValues struct {
 	active      bool
 }
 
+type metadataChoice struct {
+	label       string
+	title       string
+	description string
+	tags        []string
+}
+
 // validateFeedURL validates that the URL is a valid HTTP/HTTPS URL.
 func validateFeedURL(feedURL string) error {
 	parsedURL, err := url.Parse(feedURL)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
 		return fmt.Errorf("invalid feed URL: must be a valid HTTP/HTTPS URL")
 	}
 	return nil
+}
+
+func normalizeBlogrollAddInput(cfg *models.Config, input string) (string, error) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return "", fmt.Errorf("invalid feed URL: must be a valid HTTP/HTTPS URL")
+	}
+
+	if strings.HasPrefix(strings.ToLower(trimmed), "yt:") {
+		handle := strings.TrimSpace(trimmed[3:])
+		if handle == "" {
+			return "", fmt.Errorf("invalid youtube shortcut: expected yt:<handle>")
+		}
+		trimmed = "https://www.youtube.com/@" + strings.TrimPrefix(handle, "@")
+	}
+
+	parsedURL, err := url.Parse(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("invalid feed URL: must be a valid HTTP/HTTPS URL")
+	}
+
+	if !isYouTubeURL(parsedURL) {
+		return trimmed, nil
+	}
+
+	if strings.Contains(parsedURL.Path, "/feeds/videos.xml") {
+		return trimmed, nil
+	}
+
+	if channelID := extractYouTubeChannelIDFromURL(trimmed); channelID != "" {
+		return youtubeFeedBaseURL + channelID, nil
+	}
+
+	if isYouTubeVideoURL(parsedURL) {
+		channelURL, err := fetchYouTubeAuthorURL(cfg, trimmed)
+		if err != nil {
+			return "", err
+		}
+		return resolveYouTubeChannelFeedURL(cfg, channelURL)
+	}
+
+	if isYouTubeChannelLikeURL(parsedURL) {
+		return resolveYouTubeChannelFeedURL(cfg, trimmed)
+	}
+
+	return trimmed, nil
+}
+
+func resolveYouTubeChannelFeedURL(cfg *models.Config, rawURL string) (string, error) {
+	if channelID := extractYouTubeChannelIDFromURL(rawURL); channelID != "" {
+		return youtubeFeedBaseURL + channelID, nil
+	}
+
+	channelID, err := fetchYouTubeChannelID(cfg, rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	return youtubeFeedBaseURL + channelID, nil
+}
+
+func fetchYouTubeAuthorURL(cfg *models.Config, videoURL string) (string, error) {
+	timeout := blogrollAddTimeout(cfg)
+	client := blogrollAddHTTPClientFactory(timeout)
+
+	oembedURL := youtubeOEmbedEndpoint + "?url=" + url.QueryEscape(videoURL) + "&format=json"
+	body, err := fetchBlogrollAddURL(client, oembedURL, "application/json")
+	if err != nil {
+		return "", fmt.Errorf("resolve youtube video channel: %w", err)
+	}
+
+	var response youtubeOEmbedResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", fmt.Errorf("parse youtube oembed response: %w", err)
+	}
+	if response.AuthorURL == "" {
+		return "", fmt.Errorf("resolve youtube video channel: author URL not found")
+	}
+
+	return response.AuthorURL, nil
+}
+
+func fetchYouTubeChannelID(cfg *models.Config, rawURL string) (string, error) {
+	timeout := blogrollAddTimeout(cfg)
+	client := blogrollAddHTTPClientFactory(timeout)
+	body, err := fetchBlogrollAddURL(client, rawURL, "text/html,application/xhtml+xml")
+	if err != nil {
+		return "", fmt.Errorf("resolve youtube channel feed: %w", err)
+	}
+
+	channelID := extractYouTubeChannelIDFromHTML(string(body))
+	if channelID == "" {
+		return "", fmt.Errorf("resolve youtube channel feed: channel ID not found")
+	}
+
+	return channelID, nil
+}
+
+func fetchBlogrollAddURL(client *http.Client, targetURL, accept string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, targetURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	if accept != "" {
+		req.Header.Set("Accept", accept)
+	}
+	req.Header.Set("User-Agent", "markata-go/1.0 (Blogroll Add)")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	return body, nil
+}
+
+func blogrollAddTimeout(cfg *models.Config) time.Duration {
+	timeout := 30 * time.Second
+	if cfg != nil && cfg.Blogroll.Timeout > 0 {
+		timeout = time.Duration(cfg.Blogroll.Timeout) * time.Second
+	}
+	return timeout
+}
+
+func isYouTubeURL(parsedURL *url.URL) bool {
+	host := strings.ToLower(parsedURL.Host)
+	host = strings.TrimPrefix(host, "www.")
+	host = strings.TrimPrefix(host, "m.")
+	return host == "youtube.com" || host == "youtu.be"
+}
+
+func isYouTubeVideoURL(parsedURL *url.URL) bool {
+	host := strings.ToLower(parsedURL.Host)
+	host = strings.TrimPrefix(host, "www.")
+	host = strings.TrimPrefix(host, "m.")
+
+	if host == "youtu.be" {
+		videoID := strings.Trim(strings.TrimPrefix(parsedURL.Path, "/"), "/")
+		return youtubeVideoIDPattern.MatchString(videoID)
+	}
+
+	if strings.HasPrefix(parsedURL.Path, "/watch") {
+		return youtubeVideoIDPattern.MatchString(parsedURL.Query().Get("v"))
+	}
+
+	if strings.HasPrefix(parsedURL.Path, "/shorts/") {
+		videoID := strings.TrimPrefix(parsedURL.Path, "/shorts/")
+		videoID = strings.Trim(videoID, "/")
+		return youtubeVideoIDPattern.MatchString(videoID)
+	}
+
+	return false
+}
+
+func isYouTubeChannelLikeURL(parsedURL *url.URL) bool {
+	return strings.HasPrefix(parsedURL.Path, "/@") || strings.HasPrefix(parsedURL.Path, "/channel/") || strings.HasPrefix(parsedURL.Path, "/user/") || strings.HasPrefix(parsedURL.Path, "/c/")
+}
+
+func extractYouTubeChannelIDFromURL(rawURL string) string {
+	if matches := youtubeChannelIDPattern.FindAllString(rawURL, -1); len(matches) > 0 {
+		return matches[0]
+	}
+	return ""
+}
+
+func extractYouTubeChannelIDFromHTML(html string) string {
+	if idx := strings.Index(html, youtubeFeedBaseURL); idx >= 0 {
+		candidate := html[idx+len(youtubeFeedBaseURL):]
+		if match := youtubeChannelIDPattern.FindString(candidate); match != "" {
+			return match
+		}
+	}
+
+	return extractYouTubeChannelIDFromURL(html)
 }
 
 // loadConfigForBlogrollAdd loads the config file for adding a feed.
@@ -203,18 +419,12 @@ func fetchFeedMetadataForAdd(cfg *models.Config, feedURL string) (*blogroll.Meta
 func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 	title := blogrollAddTitle
 	if title == "" {
-		title = metadata.Title
-		if title == "" {
-			title = metadata.FeedTitle
-		}
+		title = firstNonEmpty(metadata.FeedTitle, metadata.Title)
 	}
 
 	description := blogrollAddDescription
 	if description == "" {
-		description = metadata.Description
-		if description == "" {
-			description = metadata.FeedDescription
-		}
+		description = firstNonEmpty(metadata.FeedDescription, metadata.Description)
 	}
 
 	siteURL := blogrollAddSiteURL
@@ -232,13 +442,18 @@ func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 		handle = generateHandle(title, feedURL)
 	}
 
+	tags := blogrollAddTags
+	if len(tags) == 0 {
+		tags = copyTags(firstNonEmptyTags(metadata.FeedTags, metadata.Tags))
+	}
+
 	return feedValues{
 		title:       title,
 		description: description,
 		siteURL:     siteURL,
 		category:    category,
 		handle:      handle,
-		tags:        blogrollAddTags,
+		tags:        tags,
 		active:      blogrollAddActive,
 	}
 }
@@ -271,7 +486,15 @@ func displayFetchedInfo(title, description string) {
 }
 
 // promptForFeedValues prompts the user for feed values interactively.
-func promptForFeedValues(fv feedValues) feedValues {
+func promptForFeedValues(cfg *models.Config, metadata *blogroll.Metadata, fv feedValues) (feedValues, error) {
+	if inputIsTerminal() && outputIsTerminal() {
+		selected, err := promptForMetadataChoice(cfg, metadata, fv)
+		if err != nil {
+			return fv, err
+		}
+		fv = selected
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println()
 
@@ -279,18 +502,165 @@ func promptForFeedValues(fv feedValues) feedValues {
 	fv.description = promptBlogroll(reader, "Description", fv.description)
 	fv.category = promptBlogroll(reader, "Category", fv.category)
 
-	if fv.tags == nil {
-		tagsInput := promptBlogroll(reader, "Tags (comma-separated)", "")
-		if tagsInput != "" {
-			fv.tags = parseTagsBlogroll(tagsInput)
-		}
+	if len(blogrollAddTags) == 0 {
+		tagsInput := promptBlogroll(reader, "Tags (comma-separated)", strings.Join(fv.tags, ", "))
+		fv.tags = parseTagsBlogroll(tagsInput)
 	}
 
 	fv.siteURL = promptBlogroll(reader, "Site URL", fv.siteURL)
 	fv.handle = promptBlogroll(reader, "Handle (for @mentions)", fv.handle)
 	fv.active = promptYesNoBlogroll(reader, "Include in reader page?", fv.active)
 
-	return fv
+	return fv, nil
+}
+
+func promptForMetadataChoice(cfg *models.Config, metadata *blogroll.Metadata, fv feedValues) (feedValues, error) {
+	choices := buildMetadataChoices(metadata)
+	if len(choices) < 2 {
+		return fv, nil
+	}
+
+	selectedLabel := choices[0].label
+	options := make([]huh.Option[string], 0, len(choices))
+	for _, choice := range choices {
+		options = append(options, huh.NewOption(choice.label, choice.label))
+	}
+
+	noteDescription := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		noteDescription = append(noteDescription, formatMetadataChoice(choice))
+	}
+
+	paletteName := ""
+	if cfg != nil {
+		paletteName = cfg.Theme.Palette
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Metadata Source").
+				Description(strings.Join(noteDescription, "\n\n")+"\n\nChoose a starting point. You can still edit the fields next."),
+			huh.NewSelect[string]().
+				Title("Use which metadata?").
+				Options(options...).
+				Value(&selectedLabel),
+		),
+	).WithTheme(createHuhTheme(paletteName))
+
+	if err := form.Run(); err != nil {
+		return fv, err
+	}
+
+	for _, choice := range choices {
+		if choice.label != selectedLabel {
+			continue
+		}
+		if blogrollAddTitle == "" {
+			fv.title = choice.title
+		}
+		if blogrollAddDescription == "" {
+			fv.description = choice.description
+		}
+		if len(blogrollAddTags) == 0 {
+			fv.tags = copyTags(choice.tags)
+		}
+		break
+	}
+
+	return fv, nil
+}
+
+func buildMetadataChoices(metadata *blogroll.Metadata) []metadataChoice {
+	feed := metadataChoice{
+		label:       "Feed metadata",
+		title:       metadata.FeedTitle,
+		description: metadata.FeedDescription,
+		tags:        copyTags(metadata.FeedTags),
+	}
+	site := metadataChoice{
+		label:       "Site metadata",
+		title:       metadata.Title,
+		description: metadata.Description,
+		tags:        copyTags(metadata.Tags),
+	}
+
+	choices := make([]metadataChoice, 0, 2)
+	if hasMetadataChoice(feed) {
+		choices = append(choices, feed)
+	}
+	if hasMetadataChoice(site) && !metadataChoicesEqual(feed, site) {
+		choices = append(choices, site)
+	}
+
+	return choices
+}
+
+func hasMetadataChoice(choice metadataChoice) bool {
+	return choice.title != "" || choice.description != "" || len(choice.tags) > 0
+}
+
+func metadataChoicesEqual(a, b metadataChoice) bool {
+	if a.title != b.title || a.description != b.description || len(a.tags) != len(b.tags) {
+		return false
+	}
+	for i := range a.tags {
+		if a.tags[i] != b.tags[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func formatMetadataChoice(choice metadataChoice) string {
+	parts := []string{choice.label + ":"}
+	parts = append(parts, "title="+formatMetadataField(choice.title))
+	parts = append(parts, "description="+formatMetadataField(truncateMetadataField(choice.description, 80)))
+	if len(choice.tags) == 0 {
+		parts = append(parts, "tags=(none)")
+	} else {
+		parts = append(parts, "tags="+strings.Join(choice.tags, ", "))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func truncateMetadataField(value string, maxLen int) string {
+	if len(value) <= maxLen {
+		return value
+	}
+	return value[:maxLen-3] + "..."
+}
+
+func formatMetadataField(value string) string {
+	if value == "" {
+		return "(empty)"
+	}
+	return value
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmptyTags(options ...[]string) []string {
+	for _, option := range options {
+		if len(option) > 0 {
+			return option
+		}
+	}
+	return nil
+}
+
+func copyTags(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	return append([]string{}, tags...)
 }
 
 // buildFeedConfig builds the ExternalFeedConfig from feed values.
