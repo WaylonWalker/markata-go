@@ -97,6 +97,20 @@ active = true                            # Optional: set false to disable withou
 max_entries = 50                         # Optional: override global max_entries_per_feed
 ```
 
+`markata-go blogroll add <feed-url>` prefers the feed's own title, description, and tags before falling back to site metadata. This is especially useful for shared hosts such as YouTube, where the site title and description can be too generic.
+
+In an interactive terminal, if feed metadata and site metadata disagree, the command can show both options first so you can choose the better starting point and then edit the fields before saving.
+
+You can also pass common YouTube channel inputs and let markata-go resolve them to the underlying channel feed automatically:
+
+```bash
+markata-go blogroll add yt:devtoolsfm
+markata-go blogroll add https://www.youtube.com/@devtoolsfm
+markata-go blogroll add https://www.youtube.com/watch?v=aEkpFeJoKvk
+```
+
+For a single YouTube video URL, markata-go resolves the owning channel and subscribes to that channel's feed.
+
 ### Per-Feed Entry Limits
 
 Override the global `max_entries_per_feed` for individual feeds:

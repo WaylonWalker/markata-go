@@ -18,11 +18,14 @@ import (
 // Pre-compiled regex patterns for HTML metadata extraction.
 var (
 	// parseHTMLMetadata patterns
-	htmlTitleRe = regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
-	htmlMetaRe  = regexp.MustCompile(`(?i)<meta\s+[^>]*(?:property|name)=["']([^"']+)["'][^>]*content=["']([^"']*)["'][^>]*>`)
-	htmlMetaRe2 = regexp.MustCompile(`(?i)<meta\s+[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']([^"']+)["'][^>]*>`)
-	htmlIconRe  = regexp.MustCompile(`(?i)<link\s+[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>`)
-	htmlIconRe2 = regexp.MustCompile(`(?i)<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*>`)
+	htmlTitleRe        = regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
+	htmlMetaRe         = regexp.MustCompile(`(?i)<meta\s+[^>]*(?:property|name)=["']([^"']+)["'][^>]*content=["']([^"']*)["'][^>]*>`)
+	htmlMetaRe2        = regexp.MustCompile(`(?i)<meta\s+[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']([^"']+)["'][^>]*>`)
+	htmlIconRe         = regexp.MustCompile(`(?i)<link\s+[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>`)
+	htmlIconRe2        = regexp.MustCompile(`(?i)<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*>`)
+	rssCategoryRe      = regexp.MustCompile(`(?is)<category[^>]*>(.*?)</category>`)
+	atomCategoryTermRe = regexp.MustCompile(`(?is)<category\b[^>]*term=["']([^"']+)["'][^>]*/?>`)
+	atomCategoryTextRe = regexp.MustCompile(`(?is)<category\b[^>]*>(.*?)</category>`)
 )
 
 // xmlTagCache caches compiled regex patterns for XML tag extraction.
@@ -67,10 +70,11 @@ func NewUpdater(timeout time.Duration) *Updater {
 // Metadata represents extracted metadata from a website.
 type Metadata struct {
 	// From OpenGraph
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	ImageURL    string `json:"image_url,omitempty"`
-	SiteURL     string `json:"site_url,omitempty"`
+	Title       string   `json:"title,omitempty"`
+	Description string   `json:"description,omitempty"`
+	ImageURL    string   `json:"image_url,omitempty"`
+	SiteURL     string   `json:"site_url,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 
 	// Author information
 	Author string `json:"author,omitempty"`
@@ -85,6 +89,7 @@ type Metadata struct {
 	FeedDescription string     `json:"feed_description,omitempty"`
 	FeedAuthor      string     `json:"feed_author,omitempty"`
 	FeedImageURL    string     `json:"feed_image_url,omitempty"`
+	FeedTags        []string   `json:"feed_tags,omitempty"`
 	LastUpdated     *time.Time `json:"last_updated,omitempty"`
 
 	// Source tracking
@@ -275,10 +280,14 @@ func processHTMLMeta(name, content string, metadata *Metadata, baseURL string) {
 		if metadata.Description == "" {
 			metadata.Description = content
 		}
+	case "keywords":
+		metadata.Tags = uniqueTags(append(metadata.Tags, splitMetadataTags(content)...))
 	case "author":
 		if metadata.Author == "" {
 			metadata.Author = content
 		}
+	case "article:tag":
+		metadata.Tags = uniqueTags(append(metadata.Tags, content))
 	case "twitter:title":
 		if metadata.Title == "" {
 			metadata.Title = content
@@ -340,6 +349,8 @@ func parseAtomFeedMetadata(content string, metadata *Metadata) {
 			metadata.LastUpdated = &t
 		}
 	}
+
+	metadata.FeedTags = extractAtomFeedTags(content)
 }
 
 // parseRSSFeedMetadata parses RSS feed metadata.
@@ -392,6 +403,88 @@ func parseRSSFeedMetadata(content string, metadata *Metadata) {
 			metadata.LastUpdated = &t
 		}
 	}
+
+	metadata.FeedTags = extractRSSFeedTags(channel)
+}
+
+func extractRSSFeedTags(channel string) []string {
+	itemStart := strings.Index(channel, "<item")
+	searchContent := channel
+	if itemStart > 0 {
+		searchContent = channel[:itemStart]
+	}
+
+	tags := make([]string, 0)
+	for _, match := range rssCategoryRe.FindAllStringSubmatch(searchContent, -1) {
+		if len(match) > 1 {
+			tags = append(tags, stripCDATA(match[1]))
+		}
+	}
+
+	return uniqueTags(tags)
+}
+
+func extractAtomFeedTags(content string) []string {
+	entryStart := strings.Index(content, "<entry")
+	searchContent := content
+	if entryStart > 0 {
+		searchContent = content[:entryStart]
+	}
+
+	tags := make([]string, 0)
+	for _, match := range atomCategoryTermRe.FindAllStringSubmatch(searchContent, -1) {
+		if len(match) > 1 {
+			tags = append(tags, stripCDATA(match[1]))
+		}
+	}
+	for _, match := range atomCategoryTextRe.FindAllStringSubmatch(searchContent, -1) {
+		if len(match) > 1 {
+			tags = append(tags, stripCDATA(match[1]))
+		}
+	}
+
+	return uniqueTags(tags)
+}
+
+func splitMetadataTags(content string) []string {
+	parts := strings.Split(content, ",")
+	tags := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags
+}
+
+func uniqueTags(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(tags))
+	result := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" {
+			continue
+		}
+
+		key := strings.ToLower(trimmed)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		result = append(result, trimmed)
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+
+	return result
 }
 
 // extractChannelTag extracts a tag value from the channel section, avoiding item content.
@@ -534,6 +627,9 @@ func mergeMetadata(target, source *Metadata) {
 	if source.SiteURL != "" {
 		target.SiteURL = source.SiteURL
 	}
+	if len(source.Tags) > 0 {
+		target.Tags = append([]string{}, source.Tags...)
+	}
 	if source.Author != "" {
 		target.Author = source.Author
 	}
@@ -552,6 +648,9 @@ func mergeMetadata(target, source *Metadata) {
 	}
 	if source.FeedImageURL != "" {
 		target.FeedImageURL = source.FeedImageURL
+	}
+	if len(source.FeedTags) > 0 {
+		target.FeedTags = append([]string{}, source.FeedTags...)
 	}
 	if source.LastUpdated != nil {
 		target.LastUpdated = source.LastUpdated
@@ -575,6 +674,9 @@ func mergeMetadataWithoutOverwrite(target, source *Metadata) {
 	if target.Author == "" && source.FeedAuthor != "" {
 		target.Author = source.FeedAuthor
 	}
+	if len(target.Tags) == 0 && len(source.FeedTags) > 0 {
+		target.Tags = append([]string{}, source.FeedTags...)
+	}
 	if target.AvatarURL == "" && source.AvatarURL != "" {
 		target.AvatarURL = source.AvatarURL
 		target.AvatarSource = source.AvatarSource
@@ -594,5 +696,8 @@ func mergeMetadataWithoutOverwrite(target, source *Metadata) {
 	}
 	if source.FeedImageURL != "" {
 		target.FeedImageURL = source.FeedImageURL
+	}
+	if len(source.FeedTags) > 0 {
+		target.FeedTags = append([]string{}, source.FeedTags...)
 	}
 }
