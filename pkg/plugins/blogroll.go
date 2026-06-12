@@ -1923,7 +1923,7 @@ func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]
 	return result
 }
 
-func blogrollSourceLink(siteURL, feedURL string) (string, string) {
+func blogrollSourceLink(siteURL, feedURL string) (sourceURL, sourceLabel string) {
 	if rootURL, host := blogrollRootURL(siteURL); rootURL != "" && host != "" {
 		return rootURL, blogrollDisplayDomain(host)
 	}
@@ -1935,7 +1935,7 @@ func blogrollSourceLink(siteURL, feedURL string) (string, string) {
 	return "", ""
 }
 
-func blogrollRootURL(rawURL string) (string, string) {
+func blogrollRootURL(rawURL string) (rootURL, host string) {
 	if rawURL == "" {
 		return "", ""
 	}
@@ -1950,7 +1950,7 @@ func blogrollRootURL(rawURL string) (string, string) {
 
 	scheme := parsed.Scheme
 	if scheme == "" {
-		scheme = "https"
+		scheme = schemeHTTPS
 	}
 
 	return scheme + "://" + parsed.Host, parsed.Hostname()

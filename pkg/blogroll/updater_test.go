@@ -118,7 +118,7 @@ func TestFetchMetadata_UsesFeedSiteURLForSiteMetadata(t *testing.T) {
 		switch r.URL.Path {
 		case "/feed":
 			w.Header().Set("Content-Type", "application/atom+xml")
-			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+			if _, err := w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 				<feed xmlns="http://www.w3.org/2005/Atom">
 				  <title>DevTools FM</title>
 				  <link rel="alternate" href="` + server.URL + `/channel" />
@@ -129,13 +129,19 @@ func TestFetchMetadata_UsesFeedSiteURLForSiteMetadata(t *testing.T) {
 				  <entry>
 				    <title>Episode</title>
 				  </entry>
-				</feed>`))
+				</feed>`)); err != nil {
+				t.Fatalf("write feed response: %v", err)
+			}
 		case "/channel":
 			w.Header().Set("Content-Type", "text/html")
-			_, _ = w.Write([]byte(`<html><head><meta name="description" content="Channel-specific description"></head><body></body></html>`))
+			if _, err := w.Write([]byte(`<html><head><meta name="description" content="Channel-specific description"></head><body></body></html>`)); err != nil {
+				t.Fatalf("write channel response: %v", err)
+			}
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
-			_, _ = w.Write([]byte(`<html><head><meta name="description" content="Generic site description"></head><body></body></html>`))
+			if _, err := w.Write([]byte(`<html><head><meta name="description" content="Generic site description"></head><body></body></html>`)); err != nil {
+				t.Fatalf("write root response: %v", err)
+			}
 		default:
 			http.NotFound(w, r)
 		}

@@ -48,8 +48,7 @@ func getFeedsPageConfig(config *lifecycle.Config) models.FeedsPageConfig {
 						feedsPage.SlugPrefix = defaults.SlugPrefix
 					}
 					if feedsPage.ShowPrivateFeeds == nil {
-						switch rawFeedsPage := raw.(type) {
-						case map[string]interface{}:
+						if rawFeedsPage, ok := raw.(map[string]interface{}); ok {
 							if rawShowPrivate, ok := rawFeedsPage["show_private_feeds"].([]interface{}); ok {
 								feedsPage.ShowPrivateFeeds = make([]string, 0, len(rawShowPrivate))
 								for _, value := range rawShowPrivate {
