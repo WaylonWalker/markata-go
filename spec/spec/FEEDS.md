@@ -50,11 +50,9 @@ Reader template contexts may expose `preview_url`, `preview_kind`, `source_image
 
 ## Blogroll Add Metadata
 
-When `markata-go blogroll add <feed-url>` fetches metadata for a new external feed, the command MUST prefer feed-provided values for title, description, and tags before falling back to site-level HTML or OpenGraph metadata.
+When `markata-go blogroll add <feed-url>` fetches metadata for a new external feed, the command MUST use site-level HTML or OpenGraph metadata for the editable title, description, and tags shown to the user.
 
-This feed-first behavior is required for shared platforms such as YouTube, where generic site metadata may not match the subscribed channel or feed.
-
-Interactive runs MAY present both feed-derived and site-derived candidates and let the user choose a starting point before manual edits. Non-interactive runs MUST still apply the feed-first precedence automatically.
+Feed metadata may still be fetched for canonical feed identity, channel resolution, or related enrichment, but it MUST NOT be the default source for the user-facing title, description, or tags in `blogroll add`.
 
 `markata-go blogroll add` MAY also accept YouTube-specific inputs and normalize them to the canonical channel feed URL before validation and metadata fetches. Supported normalization targets SHOULD include:
 

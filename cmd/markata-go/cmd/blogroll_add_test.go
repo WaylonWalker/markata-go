@@ -554,12 +554,12 @@ func TestBuildFeedValues(t *testing.T) {
 		blogrollAddTags = nil
 
 		metadata := &blogroll.Metadata{
-			Title:           "YouTube",
-			Description:     "Generic site description",
+			Title:           "My Channel",
+			Description:     "Channel-specific description",
 			Tags:            []string{"video", "streaming"},
 			SiteURL:         "https://www.youtube.com",
-			FeedTitle:       "My Channel",
-			FeedDescription: "Channel-specific description",
+			FeedTitle:       "YouTube",
+			FeedDescription: "Generic feed description",
 			FeedTags:        []string{"golang", "tutorials"},
 		}
 
@@ -571,8 +571,8 @@ func TestBuildFeedValues(t *testing.T) {
 		if values.description != "Channel-specific description" {
 			t.Fatalf("description = %q, want %q", values.description, "Channel-specific description")
 		}
-		if len(values.tags) != 2 || values.tags[0] != "golang" || values.tags[1] != "tutorials" {
-			t.Fatalf("tags = %v, want [golang tutorials]", values.tags)
+		if len(values.tags) != 2 || values.tags[0] != "video" || values.tags[1] != "streaming" {
+			t.Fatalf("tags = %v, want [video streaming]", values.tags)
 		}
 		if values.siteURL != "https://www.youtube.com" {
 			t.Fatalf("siteURL = %q, want %q", values.siteURL, "https://www.youtube.com")

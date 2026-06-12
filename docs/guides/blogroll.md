@@ -97,9 +97,7 @@ active = true                            # Optional: set false to disable withou
 max_entries = 50                         # Optional: override global max_entries_per_feed
 ```
 
-`markata-go blogroll add <feed-url>` prefers the feed's own title, description, and tags before falling back to site metadata. This is especially useful for shared hosts such as YouTube, where the site title and description can be too generic.
-
-In an interactive terminal, if feed metadata and site metadata disagree, the command can show both options first so you can choose the better starting point and then edit the fields before saving.
+`markata-go blogroll add <feed-url>` now uses site metadata for the suggested title, description, and tags shown in the prompt. This works better for sources like YouTube, where the feed itself often lacks useful channel-level description and tag metadata.
 
 You can also pass common YouTube channel inputs and let markata-go resolve them to the underlying channel feed automatically:
 
