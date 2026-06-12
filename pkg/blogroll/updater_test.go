@@ -1,6 +1,12 @@
 package blogroll
 
-import "testing"
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
 
 func TestParseFeedMetadata_RSSFeedTags(t *testing.T) {
 	metadata := parseFeedMetadata(`
@@ -30,6 +36,7 @@ func TestParseFeedMetadata_AtomFeedTags(t *testing.T) {
 		<feed xmlns="http://www.w3.org/2005/Atom">
 		  <title>Channel Feed</title>
 		  <subtitle>Channel Description</subtitle>
+		  <link rel="alternate" href="https://example.com/channel" />
 		  <category term="Video" />
 		  <category term="Tutorials" />
 		  <entry>
@@ -43,6 +50,9 @@ func TestParseFeedMetadata_AtomFeedTags(t *testing.T) {
 	}
 	if len(metadata.FeedTags) != 2 || metadata.FeedTags[0] != "Video" || metadata.FeedTags[1] != "Tutorials" {
 		t.Fatalf("FeedTags = %v, want [Video Tutorials]", metadata.FeedTags)
+	}
+	if metadata.SiteURL != "https://example.com/channel" {
+		t.Fatalf("SiteURL = %q, want %q", metadata.SiteURL, "https://example.com/channel")
 	}
 }
 
@@ -62,5 +72,88 @@ func TestParseHTMLMetadata_Tags(t *testing.T) {
 	}
 	if metadata.Tags[0] != "go" || metadata.Tags[1] != "rss" || metadata.Tags[2] != "feeds" || metadata.Tags[3] != "atom" {
 		t.Fatalf("Tags = %v, want [go rss feeds atom]", metadata.Tags)
+	}
+}
+
+func TestParseHTMLMetadata_DecodesEntitiesAndQuotedTags(t *testing.T) {
+	metadata := parseHTMLMetadata(`
+		<html>
+		  <head>
+		    <title>devtools-fm - YouTube</title>
+		    <meta name="description" content="Hi, we&#39;re Andrew and Justin">
+		    <meta name="keywords" content="podcast technology coding programming developer &quot;developer tools&quot;">
+		  </head>
+		</html>`, "https://example.com")
+
+	if metadata.Description != "Hi, we're Andrew and Justin" {
+		t.Fatalf("Description = %q, want %q", metadata.Description, "Hi, we're Andrew and Justin")
+	}
+	wantTags := []string{"podcast", "technology", "coding", "programming", "developer", "developer tools"}
+	if len(metadata.Tags) != len(wantTags) {
+		t.Fatalf("Tags length = %d, want %d (%v)", len(metadata.Tags), len(wantTags), metadata.Tags)
+	}
+	for i, want := range wantTags {
+		if metadata.Tags[i] != want {
+			t.Fatalf("Tags[%d] = %q, want %q (all=%v)", i, metadata.Tags[i], want, metadata.Tags)
+		}
+	}
+}
+
+func TestParseHTMLMetadata_StripsYouTubeTitleSuffix(t *testing.T) {
+	metadata := parseHTMLMetadata(`
+		<html>
+		  <head>
+		    <title>devtools-fm - YouTube</title>
+		  </head>
+		</html>`, "https://www.youtube.com/channel/UCFsRlOn7gODgv6WUriLrzXg")
+
+	if metadata.Title != "devtools-fm" {
+		t.Fatalf("Title = %q, want %q", metadata.Title, "devtools-fm")
+	}
+}
+
+func TestFetchMetadata_UsesFeedSiteURLForSiteMetadata(t *testing.T) {
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/feed":
+			w.Header().Set("Content-Type", "application/atom+xml")
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+				<feed xmlns="http://www.w3.org/2005/Atom">
+				  <title>DevTools FM</title>
+				  <link rel="alternate" href="` + server.URL + `/channel" />
+				  <author>
+				    <name>DevTools FM</name>
+				    <uri>` + server.URL + `/channel</uri>
+				  </author>
+				  <entry>
+				    <title>Episode</title>
+				  </entry>
+				</feed>`))
+		case "/channel":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<html><head><meta name="description" content="Channel-specific description"></head><body></body></html>`))
+		case "/":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<html><head><meta name="description" content="Generic site description"></head><body></body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	updater := NewUpdater(5 * time.Second)
+	metadata, err := updater.FetchMetadata(context.Background(), server.URL+"/feed")
+	if err != nil {
+		t.Fatalf("FetchMetadata() error = %v", err)
+	}
+	if metadata.Description != "Channel-specific description" {
+		t.Fatalf("Description = %q, want %q", metadata.Description, "Channel-specific description")
+	}
+	if metadata.SiteURL != server.URL+"/channel" {
+		t.Fatalf("SiteURL = %q, want %q", metadata.SiteURL, server.URL+"/channel")
+	}
+	if metadata.FeedTitle != "DevTools FM" {
+		t.Fatalf("FeedTitle = %q, want %q", metadata.FeedTitle, "DevTools FM")
 	}
 }

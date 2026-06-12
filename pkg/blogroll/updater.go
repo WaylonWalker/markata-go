@@ -4,6 +4,7 @@ package blogroll
 import (
 	"context"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -26,6 +27,9 @@ var (
 	rssCategoryRe      = regexp.MustCompile(`(?is)<category[^>]*>(.*?)</category>`)
 	atomCategoryTermRe = regexp.MustCompile(`(?is)<category\b[^>]*term=["']([^"']+)["'][^>]*/?>`)
 	atomCategoryTextRe = regexp.MustCompile(`(?is)<category\b[^>]*>(.*?)</category>`)
+	atomAltLinkRe      = regexp.MustCompile(`(?is)<link\b[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*/?>`)
+	atomAltLinkRe2     = regexp.MustCompile(`(?is)<link\b[^>]*href=["']([^"']+)["'][^>]*rel=["']alternate["'][^>]*/?>`)
+	quotedTagRe        = regexp.MustCompile(`"([^"]+)"|(\S+)`)
 )
 
 // xmlTagCache caches compiled regex patterns for XML tag extraction.
@@ -119,9 +123,16 @@ func (u *Updater) FetchMetadataWithResource(ctx context.Context, feedURL, resour
 	metadata := &Metadata{}
 
 	// First, try to extract site URL from feed URL
-	siteURL, err := extractSiteURL(feedURL)
+	defaultSiteURL, err := extractSiteURL(feedURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid feed URL: %w", err)
+	}
+
+	// Fetch feed metadata
+	feedMetadata, feedErr := u.fetchFeedMetadata(ctx, feedURL)
+	siteURL := defaultSiteURL
+	if feedErr == nil && feedMetadata != nil && feedMetadata.SiteURL != "" {
+		siteURL = feedMetadata.SiteURL
 	}
 
 	// Fetch site metadata (OpenGraph + HTML meta)
@@ -130,8 +141,6 @@ func (u *Updater) FetchMetadataWithResource(ctx context.Context, feedURL, resour
 		mergeMetadata(metadata, siteMetadata)
 	}
 
-	// Fetch feed metadata
-	feedMetadata, feedErr := u.fetchFeedMetadata(ctx, feedURL)
 	if feedErr == nil && feedMetadata != nil {
 		// Feed metadata fills in gaps but doesn't overwrite
 		mergeMetadataWithoutOverwrite(metadata, feedMetadata)
@@ -209,7 +218,7 @@ func parseHTMLMetadata(htmlContent, baseURL string) *Metadata {
 
 	// Extract <title> tag
 	if matches := htmlTitleRe.FindStringSubmatch(htmlContent); len(matches) > 1 {
-		metadata.Title = strings.TrimSpace(matches[1])
+		metadata.Title = decodeMetadataText(matches[1])
 	}
 
 	// Extract meta tags with pattern: <meta property="..." content="..."> or <meta name="..." content="...">
@@ -239,6 +248,8 @@ func parseHTMLMetadata(htmlContent, baseURL string) *Metadata {
 		}
 	}
 
+	metadata.Title = normalizeSiteMetadataTitle(metadata.Title, baseURL)
+
 	if metadata.Title != "" || metadata.Description != "" || metadata.ImageURL != "" {
 		metadata.Source = "opengraph"
 	}
@@ -248,6 +259,9 @@ func parseHTMLMetadata(htmlContent, baseURL string) *Metadata {
 
 // processOpenGraphMeta handles OpenGraph protocol meta tags.
 func processOpenGraphMeta(property, content string, metadata *Metadata, baseURL string) {
+	content = decodeMetadataText(content)
+	property = strings.ToLower(strings.TrimSpace(property))
+
 	switch property {
 	case "og:title":
 		if metadata.Title == "" {
@@ -275,6 +289,9 @@ func processOpenGraphMeta(property, content string, metadata *Metadata, baseURL 
 
 // processHTMLMeta handles standard HTML meta tags.
 func processHTMLMeta(name, content string, metadata *Metadata, baseURL string) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	content = decodeMetadataText(content)
+
 	switch name {
 	case "description":
 		if metadata.Description == "" {
@@ -335,6 +352,12 @@ func parseAtomFeedMetadata(content string, metadata *Metadata) {
 	if authorName := extractNestedXMLTag(content, "author", "name"); authorName != "" {
 		metadata.FeedAuthor = stripCDATA(authorName)
 	}
+	if authorURI := extractNestedXMLTag(content, "author", "uri"); authorURI != "" {
+		metadata.SiteURL = stripCDATA(authorURI)
+	}
+	if metadata.SiteURL == "" {
+		metadata.SiteURL = extractAtomAlternateLink(content)
+	}
 
 	// Extract icon/logo
 	if icon := extractXMLTag(content, "icon"); icon != "" {
@@ -371,6 +394,10 @@ func parseRSSFeedMetadata(content string, metadata *Metadata) {
 	// Extract description
 	if desc := extractChannelTag(channel, "description"); desc != "" {
 		metadata.FeedDescription = stripCDATA(desc)
+	}
+
+	if link := extractChannelTag(channel, "link"); link != "" {
+		metadata.SiteURL = stripCDATA(link)
 	}
 
 	// Extract managing editor or webmaster as author
@@ -446,15 +473,48 @@ func extractAtomFeedTags(content string) []string {
 	return uniqueTags(tags)
 }
 
-func splitMetadataTags(content string) []string {
-	parts := strings.Split(content, ",")
-	tags := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			tags = append(tags, trimmed)
+func extractAtomAlternateLink(content string) string {
+	for _, match := range atomAltLinkRe.FindAllStringSubmatch(content, -1) {
+		if len(match) > 1 {
+			return strings.TrimSpace(match[1])
 		}
 	}
+	for _, match := range atomAltLinkRe2.FindAllStringSubmatch(content, -1) {
+		if len(match) > 1 {
+			return strings.TrimSpace(match[1])
+		}
+	}
+	return ""
+}
+
+func splitMetadataTags(content string) []string {
+	content = decodeMetadataText(content)
+	if content == "" {
+		return nil
+	}
+
+	if strings.Contains(content, ",") {
+		parts := strings.Split(content, ",")
+		tags := make([]string, 0, len(parts))
+		for _, part := range parts {
+			trimmed := strings.Trim(strings.TrimSpace(part), `"`)
+			if trimmed != "" {
+				tags = append(tags, trimmed)
+			}
+		}
+		return tags
+	}
+
+	tags := make([]string, 0)
+	for _, match := range quotedTagRe.FindAllStringSubmatch(content, -1) {
+		switch {
+		case len(match) > 1 && strings.TrimSpace(match[1]) != "":
+			tags = append(tags, strings.TrimSpace(match[1]))
+		case len(match) > 2 && strings.TrimSpace(match[2]) != "":
+			tags = append(tags, strings.TrimSpace(match[2]))
+		}
+	}
+
 	return tags
 }
 
@@ -532,7 +592,28 @@ func stripCDATA(s string) string {
 	if strings.HasPrefix(s, "<![CDATA[") && strings.HasSuffix(s, "]]>") {
 		s = s[9 : len(s)-3]
 	}
-	return strings.TrimSpace(s)
+	return decodeMetadataText(s)
+}
+
+func decodeMetadataText(s string) string {
+	return strings.TrimSpace(html.UnescapeString(s))
+}
+
+func normalizeSiteMetadataTitle(title, baseURL string) string {
+	title = decodeMetadataText(title)
+	if title == "" {
+		return ""
+	}
+
+	u, err := url.Parse(baseURL)
+	if err == nil {
+		host := strings.ToLower(strings.TrimPrefix(u.Host, "www."))
+		if host == "youtube.com" {
+			title = strings.TrimSpace(strings.TrimSuffix(title, " - YouTube"))
+		}
+	}
+
+	return title
 }
 
 // extractEmailName extracts a name from an email format like "email (Name)" or "Name <email>".

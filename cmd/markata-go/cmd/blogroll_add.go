@@ -165,13 +165,6 @@ type feedValues struct {
 	active      bool
 }
 
-type metadataChoice struct {
-	label       string
-	title       string
-	description string
-	tags        []string
-}
-
 // validateFeedURL validates that the URL is a valid HTTP/HTTPS URL.
 func validateFeedURL(feedURL string) error {
 	parsedURL, err := url.Parse(feedURL)
@@ -419,12 +412,12 @@ func fetchFeedMetadataForAdd(cfg *models.Config, feedURL string) (*blogroll.Meta
 func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 	title := blogrollAddTitle
 	if title == "" {
-		title = firstNonEmpty(metadata.FeedTitle, metadata.Title)
+		title = firstNonEmpty(metadata.Title, metadata.FeedTitle)
 	}
 
 	description := blogrollAddDescription
 	if description == "" {
-		description = firstNonEmpty(metadata.FeedDescription, metadata.Description)
+		description = firstNonEmpty(metadata.Description, metadata.FeedDescription)
 	}
 
 	siteURL := blogrollAddSiteURL
@@ -444,7 +437,7 @@ func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 
 	tags := blogrollAddTags
 	if len(tags) == 0 {
-		tags = copyTags(firstNonEmptyTags(metadata.FeedTags, metadata.Tags))
+		tags = copyTags(firstNonEmptyTags(metadata.Tags, metadata.FeedTags))
 	}
 
 	return feedValues{
@@ -486,13 +479,9 @@ func displayFetchedInfo(title, description string) {
 }
 
 // promptForFeedValues prompts the user for feed values interactively.
-func promptForFeedValues(cfg *models.Config, metadata *blogroll.Metadata, fv feedValues) (feedValues, error) {
+func promptForFeedValues(cfg *models.Config, _ *blogroll.Metadata, fv feedValues) (feedValues, error) {
 	if inputIsTerminal() && outputIsTerminal() {
-		selected, err := promptForMetadataChoice(cfg, metadata, fv)
-		if err != nil {
-			return fv, err
-		}
-		fv = selected
+		return promptForFeedValuesHuh(cfg, fv)
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -514,128 +503,73 @@ func promptForFeedValues(cfg *models.Config, metadata *blogroll.Metadata, fv fee
 	return fv, nil
 }
 
-func promptForMetadataChoice(cfg *models.Config, metadata *blogroll.Metadata, fv feedValues) (feedValues, error) {
-	choices := buildMetadataChoices(metadata)
-	if len(choices) < 2 {
-		return fv, nil
-	}
-
-	selectedLabel := choices[0].label
-	options := make([]huh.Option[string], 0, len(choices))
-	for _, choice := range choices {
-		options = append(options, huh.NewOption(choice.label, choice.label))
-	}
-
-	noteDescription := make([]string, 0, len(choices))
-	for _, choice := range choices {
-		noteDescription = append(noteDescription, formatMetadataChoice(choice))
-	}
-
+func promptForFeedValuesHuh(cfg *models.Config, fv feedValues) (feedValues, error) {
 	paletteName := ""
 	if cfg != nil {
 		paletteName = cfg.Theme.Palette
 	}
+	theme := createHuhTheme(paletteName)
 
+	tagsInput := strings.Join(fv.tags, ", ")
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("Metadata Source").
-				Description(strings.Join(noteDescription, "\n\n")+"\n\nChoose a starting point. You can still edit the fields next."),
-			huh.NewSelect[string]().
-				Title("Use which metadata?").
-				Options(options...).
-				Value(&selectedLabel),
+				Title("Add Blogroll Feed").
+				Description("Review the fetched metadata and edit any fields before saving."),
+			huh.NewInput().
+				Title("Title").
+				Description("Display name for this feed").
+				Value(&fv.title).
+				Placeholder("My Favorite Feed").
+				Validate(func(s string) error {
+					if strings.TrimSpace(s) == "" {
+						return fmt.Errorf("title is required")
+					}
+					return nil
+				}),
+			huh.NewInput().
+				Title("Description").
+				Description("Short summary for your reader and feeds").
+				Value(&fv.description),
+			huh.NewInput().
+				Title("Category").
+				Description("Grouping label for this source").
+				Value(&fv.category).
+				Placeholder(defaultCategory),
+			huh.NewInput().
+				Title("Tags").
+				Description("Comma-separated tags").
+				Value(&tagsInput),
+			huh.NewInput().
+				Title("Site URL").
+				Description("Main website or channel URL").
+				Value(&fv.siteURL),
+			huh.NewInput().
+				Title("Handle").
+				Description("Used for @mentions").
+				Value(&fv.handle).
+				Placeholder("myfeed").
+				Validate(func(s string) error {
+					if strings.TrimSpace(s) == "" {
+						return fmt.Errorf("handle is required")
+					}
+					return nil
+				}),
+			huh.NewConfirm().
+				Title("Include in reader page?").
+				Value(&fv.active),
 		),
-	).WithTheme(createHuhTheme(paletteName))
+	).WithTheme(theme)
 
 	if err := form.Run(); err != nil {
 		return fv, err
 	}
 
-	for _, choice := range choices {
-		if choice.label != selectedLabel {
-			continue
-		}
-		if blogrollAddTitle == "" {
-			fv.title = choice.title
-		}
-		if blogrollAddDescription == "" {
-			fv.description = choice.description
-		}
-		if len(blogrollAddTags) == 0 {
-			fv.tags = copyTags(choice.tags)
-		}
-		break
+	if len(blogrollAddTags) == 0 {
+		fv.tags = parseTagsBlogroll(tagsInput)
 	}
 
 	return fv, nil
-}
-
-func buildMetadataChoices(metadata *blogroll.Metadata) []metadataChoice {
-	feed := metadataChoice{
-		label:       "Feed metadata",
-		title:       metadata.FeedTitle,
-		description: metadata.FeedDescription,
-		tags:        copyTags(metadata.FeedTags),
-	}
-	site := metadataChoice{
-		label:       "Site metadata",
-		title:       metadata.Title,
-		description: metadata.Description,
-		tags:        copyTags(metadata.Tags),
-	}
-
-	choices := make([]metadataChoice, 0, 2)
-	if hasMetadataChoice(feed) {
-		choices = append(choices, feed)
-	}
-	if hasMetadataChoice(site) && !metadataChoicesEqual(feed, site) {
-		choices = append(choices, site)
-	}
-
-	return choices
-}
-
-func hasMetadataChoice(choice metadataChoice) bool {
-	return choice.title != "" || choice.description != "" || len(choice.tags) > 0
-}
-
-func metadataChoicesEqual(a, b metadataChoice) bool {
-	if a.title != b.title || a.description != b.description || len(a.tags) != len(b.tags) {
-		return false
-	}
-	for i := range a.tags {
-		if a.tags[i] != b.tags[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func formatMetadataChoice(choice metadataChoice) string {
-	parts := []string{choice.label + ":"}
-	parts = append(parts, "title="+formatMetadataField(choice.title))
-	parts = append(parts, "description="+formatMetadataField(truncateMetadataField(choice.description, 80)))
-	if len(choice.tags) == 0 {
-		parts = append(parts, "tags=(none)")
-	} else {
-		parts = append(parts, "tags="+strings.Join(choice.tags, ", "))
-	}
-	return strings.Join(parts, "\n")
-}
-
-func truncateMetadataField(value string, maxLen int) string {
-	if len(value) <= maxLen {
-		return value
-	}
-	return value[:maxLen-3] + "..."
-}
-
-func formatMetadataField(value string) string {
-	if value == "" {
-		return "(empty)"
-	}
-	return value
 }
 
 func firstNonEmpty(values ...string) string {
