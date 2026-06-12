@@ -782,9 +782,9 @@ func (p *PublishFeedsPlugin) cleanupPaginatedFeedDirs(feedDir, formatSubdir stri
 	}
 
 	validPages := make(map[int]struct{}, len(pages))
-	for _, page := range pages {
-		if page.Number > 1 {
-			validPages[page.Number] = struct{}{}
+	for i := range pages {
+		if pages[i].Number > 1 {
+			validPages[pages[i].Number] = struct{}{}
 		}
 	}
 

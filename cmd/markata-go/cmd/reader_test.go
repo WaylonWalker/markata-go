@@ -15,7 +15,7 @@ import (
 func TestRunReaderUpdateCommand_UsesCommandWriterAndRefreshesCache(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/rss+xml")
-		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+		if _, err := w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
     <title>Example Feed</title>
@@ -29,7 +29,9 @@ func TestRunReaderUpdateCommand_UsesCommandWriterAndRefreshesCache(t *testing.T)
       <description>Hello reader</description>
     </item>
   </channel>
-</rss>`))
+</rss>`)); err != nil {
+			t.Fatalf("write response: %v", err)
+		}
 	}))
 	defer server.Close()
 

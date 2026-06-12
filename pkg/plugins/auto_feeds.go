@@ -4,7 +4,6 @@ package plugins
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -414,7 +413,7 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	return feeds
 }
 
-func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool, privateTagSlugs map[string]bool) []models.FeedConfig {
+func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet, privateTagSlugs map[string]bool) []models.FeedConfig {
 	if len(changedSet) == 0 {
 		return nil
 	}
@@ -443,19 +442,6 @@ func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config Aut
 	groups := collectAutoCategoryGroups(posts)
 	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
 	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, config.Robots, nil)
-}
-
-func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
-	if len(changedSet) == 0 {
-		return nil
-	}
-	changedSlugs := collectChangedCategorySlugs(posts, changedSet)
-	if len(changedSlugs) == 0 {
-		return nil
-	}
-	groups := collectAutoCategoryGroups(posts)
-	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
-	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, config.Robots, changedSlugs)
 }
 
 // generateArchiveFeeds creates feed configurations for year and month archives.
@@ -531,95 +517,6 @@ func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config Auto
 				Sort:        "date",
 				Reverse:     true,
 				Formats:     config.Formats,
-			})
-		}
-	}
-
-	return feeds
-}
-
-func (p *AutoFeedsPlugin) generateArchiveFeedsForChanged(posts []*models.Post, config AutoArchiveConfig, changedSet map[string]bool) []models.FeedConfig {
-	if len(changedSet) == 0 {
-		return nil
-	}
-	// Collect year/month combos from changed posts
-	yearMonths := make(map[string]bool)
-	years := make(map[int]bool)
-	for _, post := range posts {
-		if !changedSet[post.Slug] {
-			continue
-		}
-		if post.Date == nil {
-			continue
-		}
-		year := post.Date.Year()
-		month := post.Date.Month()
-		years[year] = true
-		yearMonths[fmt.Sprintf("%d/%02d", year, int(month))] = true
-	}
-	if len(years) == 0 && len(yearMonths) == 0 {
-		return nil
-	}
-
-	feeds := make([]models.FeedConfig, 0)
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultArchivePrefix
-	}
-
-	// Year feeds
-	yearList := make([]int, 0, len(years))
-	for year := range years {
-		yearList = append(yearList, year)
-	}
-	sort.Ints(yearList)
-	for _, year := range yearList {
-		slug := fmt.Sprintf("%s/%d", prefix, year)
-		title := fmt.Sprintf("Archive: %d", year)
-		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       title,
-			Description: fmt.Sprintf("All posts from %d", year),
-			Filter:      fmt.Sprintf("date.year == %d", year),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
-			Robots:      config.Robots,
-		})
-	}
-
-	// Month feeds
-	if len(yearMonths) > 0 {
-		yearMonthsList := make([]string, 0, len(yearMonths))
-		for ym := range yearMonths {
-			yearMonthsList = append(yearMonthsList, ym)
-		}
-		sort.Strings(yearMonthsList)
-		for _, ym := range yearMonthsList {
-			slug := fmt.Sprintf("%s/%s", prefix, ym)
-			parts := strings.Split(ym, "/")
-			if len(parts) != 2 {
-				continue
-			}
-			year, err := strconv.Atoi(parts[0])
-			if err != nil {
-				continue
-			}
-			month, err := strconv.Atoi(parts[1])
-			if err != nil {
-				continue
-			}
-			monthName := time.Month(month).String()
-			title := fmt.Sprintf("Archive: %s %d", monthName, year)
-			feeds = append(feeds, models.FeedConfig{
-				Slug:        slug,
-				Title:       title,
-				Description: fmt.Sprintf("All posts from %s %d", monthName, year),
-				Filter:      fmt.Sprintf("date.year == %d and date.month == %d", year, month),
-				Sort:        "date",
-				Reverse:     true,
-				Formats:     config.Formats,
-				Robots:      config.Robots,
 			})
 		}
 	}
@@ -831,24 +728,6 @@ func collectChangedTagSlugs(posts []*models.Post, changedSet map[string]bool) ma
 			if slug != "" {
 				result[slug] = true
 			}
-		}
-	}
-	return result
-}
-
-func collectChangedCategorySlugs(posts []*models.Post, changedSet map[string]bool) map[string]bool {
-	result := make(map[string]bool)
-	for _, post := range posts {
-		if !changedSet[post.Slug] {
-			continue
-		}
-		cat, ok := post.Extra["category"].(string)
-		if !ok || cat == "" {
-			continue
-		}
-		slug := slugify(cat)
-		if slug != "" {
-			result[slug] = true
 		}
 	}
 	return result
