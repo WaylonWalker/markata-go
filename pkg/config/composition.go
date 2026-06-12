@@ -50,8 +50,24 @@ func loadResolvedRawConfig(configPath string) (map[string]any, error) {
 	return loader.load(absPath, nil)
 }
 
+// DiscoverIncludedConfigPaths returns the root config file plus any recursively
+// included config files in the order they are resolved.
+func DiscoverIncludedConfigPaths(configPath string) ([]string, error) {
+	absPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve config path %s: %w", configPath, err)
+	}
+
+	collector := &rawConfigPathCollector{seen: make(map[string]bool)}
+	return collector.collect(absPath, nil)
+}
+
 type rawConfigLoader struct {
 	loaded map[string]bool
+}
+
+type rawConfigPathCollector struct {
+	seen map[string]bool
 }
 
 func (l *rawConfigLoader) load(configPath string, stack []string) (map[string]any, error) {
@@ -97,6 +113,51 @@ func (l *rawConfigLoader) load(configPath string, stack []string) (map[string]an
 
 	l.loaded[configPath] = true
 	return merged, nil
+}
+
+func (c *rawConfigPathCollector) collect(configPath string, stack []string) ([]string, error) {
+	configPath = filepath.Clean(configPath)
+
+	if containsPath(stack, configPath) {
+		cycle := append(append([]string{}, stack...), configPath)
+		return nil, fmt.Errorf("config include cycle detected: %s", strings.Join(cycle, " -> "))
+	}
+
+	if c.seen[configPath] {
+		return nil, nil
+	}
+
+	rawWrapper, err := loadRawConfigFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	c.seen[configPath] = true
+	paths := []string{configPath}
+	childStack := append(append([]string{}, stack...), configPath)
+	baseDir := filepath.Dir(configPath)
+
+	includes, err := extractIncludePatterns(rawWrapper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse includes in %s: %w", configPath, err)
+	}
+
+	for _, pattern := range includes {
+		matches, err := resolveIncludePattern(baseDir, pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve include %q in %s: %w", pattern, configPath, err)
+		}
+
+		for _, match := range matches {
+			childPaths, err := c.collect(match, childStack)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, childPaths...)
+		}
+	}
+
+	return paths, nil
 }
 
 func loadRawConfigFile(configPath string) (map[string]any, error) {

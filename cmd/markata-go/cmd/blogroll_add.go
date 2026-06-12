@@ -11,13 +11,17 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/blogroll"
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/plugins"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
@@ -28,6 +32,7 @@ const (
 	promptDefaultYesStr = "Y/n"
 	promptDefaultNoStr  = "y/N"
 	youtubeFeedBaseURL  = "https://www.youtube.com/feeds/videos.xml?channel_id="
+	categoryCustomValue = "__custom__"
 )
 
 var (
@@ -360,21 +365,93 @@ func extractYouTubeChannelIDFromHTML(html string) string {
 
 // loadConfigForBlogrollAdd loads the config file for adding a feed.
 func loadConfigForBlogrollAdd() (string, *models.Config, error) {
-	configPath := cfgFile
-	if configPath == "" {
+	rootConfigPath := cfgFile
+	if rootConfigPath == "" {
 		var err error
-		configPath, err = config.Discover()
+		rootConfigPath, err = config.Discover()
 		if err != nil {
 			return "", nil, fmt.Errorf("no config file found: run 'markata-go init' first")
 		}
 	}
 
-	cfg, err := config.Load(configPath)
+	cfg, err := config.Load(rootConfigPath)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	return configPath, cfg, nil
+	targetConfigPath, err := resolveBlogrollTargetConfigPath(rootConfigPath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return targetConfigPath, cfg, nil
+}
+
+func resolveBlogrollTargetConfigPath(rootConfigPath string) (string, error) {
+	paths, err := config.DiscoverIncludedConfigPaths(rootConfigPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve config includes: %w", err)
+	}
+
+	candidates := make([]string, 0)
+	for _, path := range paths {
+		ok, err := configFileHasBlogroll(path)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			candidates = append(candidates, path)
+		}
+	}
+
+	switch len(candidates) {
+	case 0:
+		return rootConfigPath, nil
+	case 1:
+		return candidates[0], nil
+	default:
+		if inputIsTerminal() && outputIsTerminal() {
+			return promptForBlogrollConfigPath(candidates)
+		}
+
+		return "", fmt.Errorf("multiple config files contain blogroll config: %s (pass --config to choose the root config file)", strings.Join(candidates, ", "))
+	}
+}
+
+func configFileHasBlogroll(path string) (bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect config file %s: %w", path, err)
+	}
+	content := string(data)
+	return strings.Contains(content, "[markata-go.blogroll]") ||
+		strings.Contains(content, "[[markata-go.blogroll.feeds]]") ||
+		strings.Contains(content, "[blogroll]") ||
+		strings.Contains(content, "[[blogroll.feeds]]"), nil
+}
+
+func promptForBlogrollConfigPath(paths []string) (string, error) {
+	options := make([]huh.Option[string], 0, len(paths))
+	for _, path := range paths {
+		options = append(options, huh.NewOption(path, path))
+	}
+
+	selected := paths[0]
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Blogroll Config File").
+				Description("Multiple config files contain blogroll settings. Choose where to append the new feed.").
+				Options(options...).
+				Value(&selected),
+		),
+	).WithTheme(createHuhTheme(""))
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
 
 // checkDuplicateFeedURL checks if a feed with the given URL already exists.
@@ -511,58 +588,100 @@ func promptForFeedValuesHuh(cfg *models.Config, fv feedValues) (feedValues, erro
 	theme := createHuhTheme(paletteName)
 
 	tagsInput := strings.Join(fv.tags, ", ")
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewNote().
-				Title("Add Blogroll Feed").
-				Description("Review the fetched metadata and edit any fields before saving."),
-			huh.NewInput().
-				Title("Title").
-				Description("Display name for this feed").
-				Value(&fv.title).
-				Placeholder("My Favorite Feed").
-				Validate(func(s string) error {
-					if strings.TrimSpace(s) == "" {
-						return fmt.Errorf("title is required")
-					}
-					return nil
-				}),
-			huh.NewInput().
-				Title("Description").
-				Description("Short summary for your reader and feeds").
-				Value(&fv.description),
-			huh.NewInput().
+	categoryOptions := discoverExistingCategories(cfg)
+	categoryChoice := fv.category
+	customCategory := ""
+	categoryGroup := huh.NewGroup(
+		huh.NewInput().
+			Title("Category").
+			Description("Grouping label for this source").
+			Value(&fv.category).
+			Placeholder(defaultCategory),
+	)
+	groups := []*huh.Group{categoryGroup}
+	if len(categoryOptions) > 0 {
+		categoryChoice, customCategory = initialCategorySelection(fv.category, categoryOptions)
+		categoryGroup = huh.NewGroup(
+			huh.NewSelect[string]().
 				Title("Category").
-				Description("Grouping label for this source").
-				Value(&fv.category).
-				Placeholder(defaultCategory),
+				Description("Type to filter existing categories or choose a custom one").
+				Options(buildCategoryOptions(categoryOptions)...).
+				Filtering(true).
+				Value(&categoryChoice),
+		)
+		customCategoryGroup := huh.NewGroup(
 			huh.NewInput().
-				Title("Tags").
-				Description("Comma-separated tags").
-				Value(&tagsInput),
-			huh.NewInput().
-				Title("Site URL").
-				Description("Main website or channel URL").
-				Value(&fv.siteURL),
-			huh.NewInput().
-				Title("Handle").
-				Description("Used for @mentions").
-				Value(&fv.handle).
-				Placeholder("myfeed").
+				Title("Custom Category").
+				Description("Enter a new category").
+				Value(&customCategory).
+				Placeholder(defaultCategory).
 				Validate(func(s string) error {
-					if strings.TrimSpace(s) == "" {
-						return fmt.Errorf("handle is required")
+					if categoryChoice == categoryCustomValue && strings.TrimSpace(s) == "" {
+						return fmt.Errorf("category is required")
 					}
 					return nil
 				}),
-			huh.NewConfirm().
-				Title("Include in reader page?").
-				Value(&fv.active),
-		),
-	).WithTheme(theme)
+		).WithHideFunc(func() bool {
+			return categoryChoice != categoryCustomValue
+		})
+		groups = []*huh.Group{categoryGroup, customCategoryGroup}
+	}
+
+	groups = append([]*huh.Group{huh.NewGroup(
+		huh.NewNote().
+			Title("Add Blogroll Feed").
+			Description("Review the fetched metadata and edit any fields before saving."),
+		huh.NewInput().
+			Title("Title").
+			Description("Display name for this feed").
+			Value(&fv.title).
+			Placeholder("My Favorite Feed").
+			Validate(func(s string) error {
+				if strings.TrimSpace(s) == "" {
+					return fmt.Errorf("title is required")
+				}
+				return nil
+			}),
+		huh.NewInput().
+			Title("Description").
+			Description("Short summary for your reader and feeds").
+			Value(&fv.description),
+		huh.NewInput().
+			Title("Tags").
+			Description("Comma-separated tags").
+			Value(&tagsInput),
+		huh.NewInput().
+			Title("Site URL").
+			Description("Main website or channel URL").
+			Value(&fv.siteURL),
+		huh.NewInput().
+			Title("Handle").
+			Description("Used for @mentions").
+			Value(&fv.handle).
+			Placeholder("myfeed").
+			Validate(func(s string) error {
+				if strings.TrimSpace(s) == "" {
+					return fmt.Errorf("handle is required")
+				}
+				return nil
+			}),
+		huh.NewConfirm().
+			Title("Include in reader page?").
+			Value(&fv.active),
+	)}, groups...)
+
+	form := huh.NewForm(groups...).WithTheme(theme)
 
 	if err := form.Run(); err != nil {
 		return fv, err
+	}
+
+	if len(categoryOptions) > 0 {
+		if categoryChoice == categoryCustomValue {
+			fv.category = strings.TrimSpace(customCategory)
+		} else {
+			fv.category = categoryChoice
+		}
 	}
 
 	if len(blogrollAddTags) == 0 {
@@ -579,6 +698,92 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func discoverExistingCategories(cfg *models.Config) []string {
+	categoryCounts := map[string]int{
+		defaultCategory: 1,
+	}
+
+	if cfg != nil {
+		for _, feed := range cfg.Blogroll.Feeds {
+			if category := strings.TrimSpace(feed.Category); category != "" {
+				categoryCounts[category]++
+			}
+		}
+
+		patterns := cfg.GlobConfig.Patterns
+		if len(patterns) == 0 {
+			patterns = []string{"**/*.md"}
+		}
+		for _, pattern := range patterns {
+			matches, err := doublestar.FilepathGlob(pattern)
+			if err != nil {
+				continue
+			}
+			for _, path := range matches {
+				content, err := os.ReadFile(path)
+				if err != nil {
+					continue
+				}
+				metadata, _, err := plugins.ParseFrontmatter(string(content))
+				if err != nil {
+					continue
+				}
+				if category, ok := metadata["category"].(string); ok {
+					if trimmed := strings.TrimSpace(category); trimmed != "" {
+						categoryCounts[trimmed]++
+					}
+				}
+			}
+		}
+	}
+
+	categories := make([]string, 0, len(categoryCounts))
+	for category := range categoryCounts {
+		categories = append(categories, category)
+	}
+	sort.Slice(categories, func(i, j int) bool {
+		left := categories[i]
+		right := categories[j]
+		if categoryCounts[left] != categoryCounts[right] {
+			return categoryCounts[left] > categoryCounts[right]
+		}
+		if left == defaultCategory {
+			return false
+		}
+		if right == defaultCategory {
+			return true
+		}
+		return strings.ToLower(left) < strings.ToLower(right)
+	})
+	return categories
+}
+
+func buildCategoryOptions(categories []string) []huh.Option[string] {
+	options := make([]huh.Option[string], 0, len(categories)+1)
+	for _, category := range categories {
+		options = append(options, huh.NewOption(category, category))
+	}
+	options = append(options, huh.NewOption("Custom...", categoryCustomValue))
+	return options
+}
+
+func initialCategorySelection(current string, categories []string) (string, string) {
+	trimmedCurrent := strings.TrimSpace(current)
+	if trimmedCurrent == "" || trimmedCurrent == defaultCategory {
+		if len(categories) > 0 {
+			return categories[0], ""
+		}
+		return defaultCategory, ""
+	}
+
+	for _, category := range categories {
+		if category == trimmedCurrent {
+			return category, ""
+		}
+	}
+	return categoryCustomValue, trimmedCurrent
 }
 
 func firstNonEmptyTags(options ...[]string) []string {
@@ -620,6 +825,17 @@ func buildFeedConfig(feedURL string, fv feedValues, metadata *blogroll.Metadata)
 
 // saveFeedToConfig adds the feed to the config and writes it.
 func saveFeedToConfig(configPath string, cfg *models.Config, feedConfig models.ExternalFeedConfig) error {
+	if strings.EqualFold(filepath.Ext(configPath), ".toml") {
+		if err := appendFeedToTOMLConfig(configPath, feedConfig, !cfg.Blogroll.Enabled); err != nil {
+			return fmt.Errorf("failed to append feed to config: %w", err)
+		}
+		if !cfg.Blogroll.Enabled {
+			fmt.Println("\nEnabled blogroll in config (was disabled)")
+		}
+		fmt.Printf("\nFeed added to %s\n", configPath)
+		return nil
+	}
+
 	cfg.Blogroll.Feeds = append(cfg.Blogroll.Feeds, feedConfig)
 
 	// Enable blogroll if not already enabled
@@ -635,6 +851,88 @@ func saveFeedToConfig(configPath string, cfg *models.Config, feedConfig models.E
 
 	fmt.Printf("\nFeed added to %s\n", configPath)
 	return nil
+}
+
+func appendFeedToTOMLConfig(configPath string, feedConfig models.ExternalFeedConfig, ensureEnabled bool) error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	content := string(data)
+	prefix := detectBlogrollTablePrefix(content)
+	var snippet strings.Builder
+
+	if trimmed := strings.TrimRight(content, "\n"); trimmed != content {
+		content = trimmed
+	}
+
+	if content != "" {
+		snippet.WriteString("\n\n")
+	}
+
+	if ensureEnabled && !strings.Contains(content, "["+prefix+"]") {
+		snippet.WriteString("[" + prefix + "]\n")
+		snippet.WriteString("enabled = true\n\n")
+	}
+
+	snippet.WriteString("[[" + prefix + ".feeds]]\n")
+	snippet.WriteString("url = " + formatTOMLString(feedConfig.URL) + "\n")
+	if feedConfig.Title != "" {
+		snippet.WriteString("title = " + formatTOMLString(feedConfig.Title) + "\n")
+	}
+	if feedConfig.Description != "" {
+		snippet.WriteString("description = " + formatTOMLString(feedConfig.Description) + "\n")
+	}
+	if feedConfig.Category != "" {
+		snippet.WriteString("category = " + formatTOMLString(feedConfig.Category) + "\n")
+	}
+	if len(feedConfig.Tags) > 0 {
+		snippet.WriteString("tags = [" + formatTOMLStringArray(feedConfig.Tags) + "]\n")
+	}
+	if feedConfig.SiteURL != "" {
+		snippet.WriteString("site_url = " + formatTOMLString(feedConfig.SiteURL) + "\n")
+	}
+	if feedConfig.Handle != "" {
+		snippet.WriteString("handle = " + formatTOMLString(feedConfig.Handle) + "\n")
+	}
+	if feedConfig.ImageURL != "" {
+		snippet.WriteString("image_url = " + formatTOMLString(feedConfig.ImageURL) + "\n")
+	}
+	if feedConfig.Active != nil {
+		snippet.WriteString("active = " + strconv.FormatBool(*feedConfig.Active) + "\n")
+	}
+
+	updated := content + snippet.String() + "\n"
+	info, err := os.Stat(configPath)
+	if err != nil {
+		return fmt.Errorf("stat config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, []byte(updated), info.Mode().Perm()); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+
+	return nil
+}
+
+func detectBlogrollTablePrefix(content string) string {
+	if strings.Contains(content, "[blogroll]") || strings.Contains(content, "[[blogroll.feeds]]") {
+		return "blogroll"
+	}
+	return "markata-go.blogroll"
+}
+
+func formatTOMLString(value string) string {
+	return strconv.Quote(value)
+}
+
+func formatTOMLStringArray(values []string) string {
+	quoted := make([]string, 0, len(values))
+	for _, value := range values {
+		quoted = append(quoted, formatTOMLString(value))
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // promptBlogroll displays a prompt and returns user input or default.

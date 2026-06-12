@@ -3,6 +3,8 @@ package cmd
 import (
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -578,4 +580,164 @@ func TestBuildFeedValues(t *testing.T) {
 			t.Fatalf("siteURL = %q, want %q", values.siteURL, "https://www.youtube.com")
 		}
 	})
+}
+
+func TestResolveBlogrollTargetConfigPath_UsesIncludedBlogrollFile(t *testing.T) {
+	dir := t.TempDir()
+	rootPath := filepath.Join(dir, "markata-go.toml")
+	blogrollDir := filepath.Join(dir, "config")
+	blogrollPath := filepath.Join(blogrollDir, "blogroll.toml")
+
+	if err := os.MkdirAll(blogrollDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(rootPath, []byte("[markata-go]\ninclude = [\"config/blogroll.toml\"]\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(root) error = %v", err)
+	}
+	if err := os.WriteFile(blogrollPath, []byte("[markata-go.blogroll]\nenabled = true\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(blogroll) error = %v", err)
+	}
+
+	got, err := resolveBlogrollTargetConfigPath(rootPath)
+	if err != nil {
+		t.Fatalf("resolveBlogrollTargetConfigPath() error = %v", err)
+	}
+	if got != blogrollPath {
+		t.Fatalf("resolveBlogrollTargetConfigPath() = %q, want %q", got, blogrollPath)
+	}
+}
+
+func TestAppendFeedToTOMLConfig_AppendsFeedTable(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "blogroll.toml")
+	initial := "[markata-go.blogroll]\nenabled = true\n"
+	if err := os.WriteFile(configPath, []byte(initial), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	active := true
+	feedConfig := models.ExternalFeedConfig{
+		URL:         "https://example.com/feed.xml",
+		Title:       "Example Feed",
+		Description: "Example Description",
+		Category:    "developer",
+		Tags:        []string{"go", "podcast"},
+		SiteURL:     "https://example.com",
+		Handle:      "example",
+		ImageURL:    "https://example.com/icon.png",
+		Active:      &active,
+	}
+
+	if err := appendFeedToTOMLConfig(configPath, feedConfig, false); err != nil {
+		t.Fatalf("appendFeedToTOMLConfig() error = %v", err)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	content := string(data)
+	checks := []string{
+		"[[markata-go.blogroll.feeds]]",
+		"url = \"https://example.com/feed.xml\"",
+		"title = \"Example Feed\"",
+		"tags = [\"go\", \"podcast\"]",
+		"handle = \"example\"",
+	}
+	for _, check := range checks {
+		if !strings.Contains(content, check) {
+			t.Fatalf("config missing %q\n%s", check, content)
+		}
+	}
+}
+
+func TestInitialCategorySelection(t *testing.T) {
+	tests := []struct {
+		name       string
+		current    string
+		categories []string
+		wantChoice string
+		wantCustom string
+	}{
+		{
+			name:       "existing category selected",
+			current:    "developer",
+			categories: []string{"Blog", "developer", "Uncategorized"},
+			wantChoice: "developer",
+			wantCustom: "",
+		},
+		{
+			name:       "empty category defaults",
+			current:    "",
+			categories: []string{"Blog", "developer", "Uncategorized"},
+			wantChoice: "Blog",
+			wantCustom: "",
+		},
+		{
+			name:       "uncategorized starts at top option",
+			current:    defaultCategory,
+			categories: []string{"Blog", "developer", "Uncategorized"},
+			wantChoice: "Blog",
+			wantCustom: "",
+		},
+		{
+			name:       "custom category uses sentinel",
+			current:    "podcasts",
+			categories: []string{"Blog", "developer", "Uncategorized"},
+			wantChoice: categoryCustomValue,
+			wantCustom: "podcasts",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotChoice, gotCustom := initialCategorySelection(tt.current, tt.categories)
+			if gotChoice != tt.wantChoice || gotCustom != tt.wantCustom {
+				t.Fatalf("initialCategorySelection() = (%q, %q), want (%q, %q)", gotChoice, gotCustom, tt.wantChoice, tt.wantCustom)
+			}
+		})
+	}
+}
+
+func TestDiscoverExistingCategories(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	pagesDir := filepath.Join(dir, "pages")
+	if err := os.MkdirAll(pagesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	content := "---\ntitle: Example\ncategory: Blog\n---\nhello\n"
+	if err := os.WriteFile(filepath.Join(pagesDir, "post.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg := &models.Config{
+		GlobConfig: models.GlobConfig{Patterns: []string{"pages/**/*.md"}},
+		Blogroll:   models.BlogrollConfig{Feeds: []models.ExternalFeedConfig{{Category: "developer"}}},
+	}
+
+	got := discoverExistingCategories(cfg)
+	wantContains := []string{"Blog", "developer", defaultCategory}
+	for _, want := range wantContains {
+		if !containsStringValue(got, want) {
+			t.Fatalf("discoverExistingCategories() missing %q in %v", want, got)
+		}
+	}
+}
+
+func TestDiscoverExistingCategories_NoConfigIncludesDefault(t *testing.T) {
+	got := discoverExistingCategories(nil)
+	if len(got) != 1 || got[0] != defaultCategory {
+		t.Fatalf("discoverExistingCategories(nil) = %v, want [%q]", got, defaultCategory)
+	}
+}
+
+func containsStringValue(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
