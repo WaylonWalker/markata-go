@@ -14,8 +14,10 @@ var (
 	trustedMediaMu      sync.RWMutex
 	trustedMediaDomains = buildTrustedMediaDomainSet(models.DefaultTrustedMediaDomains)
 	videoMimeTypes      = map[string]string{
+		".avi":  "video/x-msvideo",
+		".mkv":  "video/x-matroska",
 		".mp4":  "video/mp4",
-		".m4v":  "video/mp4",
+		".m4v":  "video/x-m4v",
 		".webm": "video/webm",
 		".mov":  "video/quicktime",
 		".ogv":  "video/ogg",

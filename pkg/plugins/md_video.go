@@ -2,6 +2,8 @@
 package plugins
 
 import (
+	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -176,15 +178,9 @@ func (p *MDVideoPlugin) processPost(post *models.Post) error {
 // isVideoURL checks if a URL ends with a recognized video extension.
 // It handles URLs with query parameters.
 func (p *MDVideoPlugin) isVideoURL(url string) bool {
-	// Remove query parameters for extension check
-	urlPath := url
-	if idx := strings.Index(url, "?"); idx != -1 {
-		urlPath = url[:idx]
-	}
-
-	urlLower := strings.ToLower(urlPath)
+	urlLower := videoExtension(url)
 	for _, ext := range p.config.VideoExtensions {
-		if strings.HasSuffix(urlLower, strings.ToLower(ext)) {
+		if strings.EqualFold(urlLower, ext) {
 			return true
 		}
 	}
@@ -193,30 +189,18 @@ func (p *MDVideoPlugin) isVideoURL(url string) bool {
 
 // getVideoMIMEType returns the MIME type for a video URL based on extension.
 func (p *MDVideoPlugin) getVideoMIMEType(url string) string {
-	// Remove query parameters for extension check
-	urlPath := url
-	if idx := strings.Index(url, "?"); idx != -1 {
-		urlPath = url[:idx]
+	if mimeType := templates.VideoMIMEType(url); mimeType != "" {
+		return mimeType
 	}
+	return "video/mp4" // Default fallback
+}
 
-	urlLower := strings.ToLower(urlPath)
-
-	switch {
-	case strings.HasSuffix(urlLower, ".mp4"):
-		return "video/mp4"
-	case strings.HasSuffix(urlLower, ".webm"):
-		return "video/webm"
-	case strings.HasSuffix(urlLower, ".ogg"), strings.HasSuffix(urlLower, ".ogv"):
-		return "video/ogg"
-	case strings.HasSuffix(urlLower, ".mov"):
-		return "video/quicktime"
-	case strings.HasSuffix(urlLower, ".avi"):
-		return "video/x-msvideo"
-	case strings.HasSuffix(urlLower, ".m4v"):
-		return "video/x-m4v"
-	default:
-		return "video/mp4" // Default fallback
+func videoExtension(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return strings.ToLower(filepath.Ext(raw))
 	}
+	return strings.ToLower(filepath.Ext(u.Path))
 }
 
 // buildVideoTag constructs the HTML video element.
