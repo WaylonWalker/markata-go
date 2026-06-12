@@ -1174,7 +1174,7 @@ h4:hover .heading-anchor {
 ```toml
 [markata-go.md_video]
 enabled = true                    # Enable the plugin (default: true)
-video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]  # Extensions to treat as video
+video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"]  # Extensions to treat as video
 video_class = "md-video"          # CSS class for video elements (default)
 controls = true                   # Show video controls (default: true)
 autoplay = true                   # Auto-start playback (default: true)
@@ -1212,6 +1212,7 @@ controls = true
 3. Replaces matching `<img>` tags with `<video>` elements
 4. Preserves the `alt` text as fallback content
 5. Automatically detects MIME type from file extension
+6. Derives a `.webp` poster for trusted video URLs on every supported video format
 
 **HTML output:**
 ```html
@@ -1231,6 +1232,7 @@ controls = true
 | `.mov` | `video/quicktime` |
 | `.m4v` | `video/x-m4v` |
 | `.avi` | `video/x-msvideo` |
+| `.mkv` | `video/x-matroska` |
 
 **CSS styling:**
 ```css

@@ -741,7 +741,7 @@ for post in core.filter("not skip"):
 ```toml
 [markata-go.md_video]
 enabled = true
-video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]
+video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"]
 video_class = "md-video"
 controls = true
 autoplay = true                    # GIF-like behavior
@@ -771,6 +771,7 @@ preload = "metadata"
 3. Replace with `<video>` element with configured attributes
 4. Preserve alt text as fallback content
 5. Auto-detect MIME type from extension
+6. Resolve a poster image for trusted video URLs across every supported video format
 
 **Markdown syntax:**
 ```markdown

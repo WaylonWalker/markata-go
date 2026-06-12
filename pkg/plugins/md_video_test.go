@@ -135,6 +135,48 @@ func TestMDVideoPlugin_ProcessPost_DownsizesPosterOnly(t *testing.T) {
 	}
 }
 
+func TestMDVideoPlugin_ProcessPost_DerivesPosterForSupportedVideoFormats(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      string
+		wantType string
+		wantWebP string
+	}{
+		{"webm", "https://dropper.waylonwalker.com/file/demo.webm?width=500#watch", "video/webm", "demo.webp"},
+		{"ogv", "https://dropper.waylonwalker.com/file/demo.ogv?width=500#watch", "video/ogg", "demo.webp"},
+		{"mov", "https://dropper.waylonwalker.com/file/demo.mov?width=500#watch", "video/quicktime", "demo.webp"},
+		{"m4v", "https://dropper.waylonwalker.com/file/demo.m4v?width=500#watch", "video/x-m4v", "demo.webp"},
+		{"avi", "https://dropper.waylonwalker.com/file/demo.avi?width=500#watch", "video/x-msvideo", "demo.webp"},
+		{"mkv", "https://dropper.waylonwalker.com/file/demo.mkv?width=500#watch", "video/x-matroska", "demo.webp"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewMDVideoPlugin()
+			post := &models.Post{
+				ArticleHTML: `<img src="` + tt.src + `" alt="demo">`,
+			}
+
+			if err := p.processPost(post); err != nil {
+				t.Fatalf("processPost() error = %v", err)
+			}
+
+			if !strings.Contains(post.ArticleHTML, `<video`) {
+				t.Fatalf("Expected video tag, got: %s", post.ArticleHTML)
+			}
+			if !strings.Contains(post.ArticleHTML, `type="`+tt.wantType+`"`) {
+				t.Fatalf("Expected MIME type %q, got: %s", tt.wantType, post.ArticleHTML)
+			}
+			if !strings.Contains(post.ArticleHTML, `poster="https://dropper.waylonwalker.com/file/`+tt.wantWebP) {
+				t.Fatalf("Expected derived poster for %s, got: %s", tt.name, post.ArticleHTML)
+			}
+			if !strings.Contains(post.ArticleHTML, `w=1200`) || !strings.Contains(post.ArticleHTML, `h=675`) {
+				t.Fatalf("Expected downsized poster dimensions, got: %s", post.ArticleHTML)
+			}
+		})
+	}
+}
+
 func TestMDVideoPlugin_ProcessPost_DifferentExtensions(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -147,6 +189,7 @@ func TestMDVideoPlugin_ProcessPost_DifferentExtensions(t *testing.T) {
 		{"ogv", "video.ogv", "video/ogg"},
 		{"mov", "video.mov", "video/quicktime"},
 		{"m4v", "video.m4v", "video/x-m4v"},
+		{"mkv", "video.mkv", "video/x-matroska"},
 		{"MP4 uppercase", "video.MP4", "video/mp4"},
 	}
 
@@ -380,10 +423,13 @@ func TestMDVideoPlugin_isVideoURL(t *testing.T) {
 		{"video.ogv", true},
 		{"video.mov", true},
 		{"video.m4v", true},
+		{"video.avi", true},
+		{"video.mkv", true},
 		{"VIDEO.MP4", true}, // case insensitive
 		{"video.MP4", true},
 		{"https://example.com/video.mp4", true},
 		{"https://example.com/video.mp4?width=500", true}, // with query params
+		{"https://example.com/video.webm?width=500#watch", true},
 		{"image.jpg", false},
 		{"image.png", false},
 		{"document.pdf", false},
@@ -413,6 +459,8 @@ func TestMDVideoPlugin_getVideoMIMEType(t *testing.T) {
 		{"video.mov", "video/quicktime"},
 		{"video.m4v", "video/x-m4v"},
 		{"video.avi", "video/x-msvideo"},
+		{"video.mkv", "video/x-matroska"},
+		{"video.webm?query=param#watch", "video/webm"},
 		{"video.unknown", "video/mp4"}, // fallback
 		{"video.mp4?query=param", "video/mp4"},
 	}

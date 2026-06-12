@@ -1483,7 +1483,7 @@ type MDVideoConfig struct {
 func NewMDVideoConfig() MDVideoConfig {
 	return MDVideoConfig{
 		Enabled:         true,
-		VideoExtensions: []string{".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"},
+		VideoExtensions: []string{".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"},
 		VideoClass:      "md-video",
 		Controls:        true,
 		Autoplay:        true,
