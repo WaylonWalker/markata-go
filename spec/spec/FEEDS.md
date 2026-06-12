@@ -54,6 +54,8 @@ When `markata-go blogroll add <feed-url>` fetches metadata for a new external fe
 
 Feed metadata may still be fetched for canonical feed identity, channel resolution, or related enrichment, but it MUST NOT be the default source for the user-facing title, description, or tags in `blogroll add`.
 
+When the discovered root config composes additional config files via `markata-go.include`, `markata-go blogroll add` SHOULD append the new feed to the single included file that already owns the blogroll section when that owner is unambiguous.
+
 `markata-go blogroll add` MAY also accept YouTube-specific inputs and normalize them to the canonical channel feed URL before validation and metadata fetches. Supported normalization targets SHOULD include:
 
 - `yt:<handle>` shortcuts such as `yt:devtoolsfm`

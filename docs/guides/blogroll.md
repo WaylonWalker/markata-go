@@ -99,6 +99,8 @@ max_entries = 50                         # Optional: override global max_entries
 
 `markata-go blogroll add <feed-url>` now uses site metadata for the suggested title, description, and tags shown in the prompt. This works better for sources like YouTube, where the feed itself often lacks useful channel-level description and tag metadata.
 
+If your site composes multiple config files with `markata-go.include`, `markata-go blogroll add` tries to append the new feed to the file that already contains the blogroll section instead of rewriting the root config file.
+
 You can also pass common YouTube channel inputs and let markata-go resolve them to the underlying channel feed automatically:
 
 ```bash
