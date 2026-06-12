@@ -8,7 +8,9 @@ For standalone sites, prefer `markata-go.toml` unless the repo is already using 
 
 When a site has many feeds or environment-specific settings, keep `markata-go.toml` as the entrypoint and split the rest with `[markata-go].include`.
 
-For blogroll work, remember that explicit feed config overrides such as `site_url`, `image_url`, `title`, `handle`, aliases, category, and tags should take effect even when cached feed data is reused. Do not assume a stale cache must be deleted before config fixes apply.
+For blogroll work, remember that explicit feed config overrides such as `site_url`, `image_url`, `title`, `handle`, aliases, category, `type`, and tags should take effect even when cached feed data is reused. Do not assume a stale cache must be deleted before config fixes apply.
+
+If the site uses `[markata-go].include`, treat the included file that already owns `[markata-go.blogroll]` as the canonical place to append or edit blogroll feeds instead of rewriting the root config entrypoint.
 
 ## Config Discovery
 

@@ -47,6 +47,7 @@ var (
 	blogrollAddTitle       string
 	blogrollAddDescription string
 	blogrollAddCategory    string
+	blogrollAddType        string
 	blogrollAddTags        []string
 	blogrollAddSiteURL     string
 	blogrollAddHandle      string
@@ -83,6 +84,7 @@ func init() {
 	blogrollAddCmd.Flags().StringVar(&blogrollAddTitle, "title", "", "feed title (auto-fetched if not set)")
 	blogrollAddCmd.Flags().StringVar(&blogrollAddDescription, "description", "", "feed description (auto-fetched if not set)")
 	blogrollAddCmd.Flags().StringVar(&blogrollAddCategory, "category", "", "category for grouping (default: "+defaultCategory+")")
+	blogrollAddCmd.Flags().StringVar(&blogrollAddType, "type", "", "reader type: written, video, or podcast")
 	blogrollAddCmd.Flags().StringSliceVar(&blogrollAddTags, "tags", nil, "comma-separated tags")
 	blogrollAddCmd.Flags().StringVar(&blogrollAddSiteURL, "site-url", "", "main website URL (auto-fetched if not set)")
 	blogrollAddCmd.Flags().StringVar(&blogrollAddHandle, "handle", "", "handle for @mentions (auto-generated if not set)")
@@ -103,6 +105,9 @@ func runBlogrollAdd(_ *cobra.Command, args []string) error {
 	feedURL, err := normalizeBlogrollAddInput(cfg, rawInput)
 	if err != nil {
 		return err
+	}
+	if blogrollAddType != "" && parseReaderFeedType(blogrollAddType) == "" {
+		return fmt.Errorf("invalid --type %q: expected written, video, or podcast", blogrollAddType)
 	}
 
 	// Validate URL format
@@ -165,6 +170,7 @@ type feedValues struct {
 	description string
 	siteURL     string
 	category    string
+	feedType    models.ReaderFeedType
 	handle      string
 	tags        []string
 	active      bool
@@ -507,6 +513,11 @@ func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 		category = defaultCategory
 	}
 
+	feedType := parseReaderFeedType(blogrollAddType)
+	if feedType == "" {
+		feedType = inferReaderFeedType(metadata, feedURL)
+	}
+
 	handle := blogrollAddHandle
 	if handle == "" {
 		handle = generateHandle(title, feedURL)
@@ -522,6 +533,7 @@ func buildFeedValues(metadata *blogroll.Metadata, feedURL string) feedValues {
 		description: description,
 		siteURL:     siteURL,
 		category:    category,
+		feedType:    feedType,
 		handle:      handle,
 		tags:        tags,
 		active:      blogrollAddActive,
@@ -567,6 +579,10 @@ func promptForFeedValues(cfg *models.Config, _ *blogroll.Metadata, fv feedValues
 	fv.title = promptBlogroll(reader, "Title", fv.title)
 	fv.description = promptBlogroll(reader, "Description", fv.description)
 	fv.category = promptBlogroll(reader, "Category", fv.category)
+	fv.feedType = parseReaderFeedType(promptBlogroll(reader, "Type (written/video/podcast)", string(fv.feedType)))
+	if fv.feedType == "" {
+		fv.feedType = models.ReaderFeedTypeWritten
+	}
 
 	if len(blogrollAddTags) == 0 {
 		tagsInput := promptBlogroll(reader, "Tags (comma-separated)", strings.Join(fv.tags, ", "))
@@ -588,6 +604,10 @@ func promptForFeedValuesHuh(cfg *models.Config, fv feedValues) (feedValues, erro
 	theme := createHuhTheme(paletteName)
 
 	tagsInput := strings.Join(fv.tags, ", ")
+	typeChoice := string(fv.feedType)
+	if typeChoice == "" {
+		typeChoice = string(models.ReaderFeedTypeWritten)
+	}
 	categoryOptions := discoverExistingCategories(cfg)
 	categoryChoice := fv.category
 	customCategory := ""
@@ -646,6 +666,15 @@ func promptForFeedValuesHuh(cfg *models.Config, fv feedValues) (feedValues, erro
 			Title("Description").
 			Description("Short summary for your reader and feeds").
 			Value(&fv.description),
+		huh.NewSelect[string]().
+			Title("Type").
+			Description("Choose which reader stream this feed belongs to").
+			Options(
+				huh.NewOption("Written", string(models.ReaderFeedTypeWritten)),
+				huh.NewOption("Video", string(models.ReaderFeedTypeVideo)),
+				huh.NewOption("Podcast", string(models.ReaderFeedTypePodcast)),
+			).
+			Value(&typeChoice),
 		huh.NewInput().
 			Title("Tags").
 			Description("Comma-separated tags").
@@ -683,6 +712,10 @@ func promptForFeedValuesHuh(cfg *models.Config, fv feedValues) (feedValues, erro
 			fv.category = categoryChoice
 		}
 	}
+	fv.feedType = parseReaderFeedType(typeChoice)
+	if fv.feedType == "" {
+		fv.feedType = models.ReaderFeedTypeWritten
+	}
 
 	if len(blogrollAddTags) == 0 {
 		fv.tags = parseTagsBlogroll(tagsInput)
@@ -700,13 +733,49 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+func parseReaderFeedType(value string) models.ReaderFeedType {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(models.ReaderFeedTypeWritten):
+		return models.ReaderFeedTypeWritten
+	case string(models.ReaderFeedTypeVideo):
+		return models.ReaderFeedTypeVideo
+	case string(models.ReaderFeedTypePodcast):
+		return models.ReaderFeedTypePodcast
+	default:
+		return ""
+	}
+}
+
+func inferReaderFeedType(metadata *blogroll.Metadata, feedURL string) models.ReaderFeedType {
+	combined := strings.ToLower(strings.Join([]string{
+		feedURL,
+		metadata.Title,
+		metadata.Description,
+		metadata.FeedTitle,
+		metadata.FeedDescription,
+		metadata.SiteURL,
+		strings.Join(metadata.Tags, " "),
+		strings.Join(metadata.FeedTags, " "),
+	}, " "))
+
+	switch {
+	case strings.Contains(combined, "youtube.com") || strings.Contains(combined, "youtu.be"):
+		return models.ReaderFeedTypeVideo
+	case strings.Contains(combined, "podcast") || strings.Contains(combined, "hx-pod"):
+		return models.ReaderFeedTypePodcast
+	default:
+		return models.ReaderFeedTypeWritten
+	}
+}
+
 func discoverExistingCategories(cfg *models.Config) []string {
 	categoryCounts := map[string]int{
 		defaultCategory: 1,
 	}
 
 	if cfg != nil {
-		for _, feed := range cfg.Blogroll.Feeds {
+		for i := range cfg.Blogroll.Feeds {
+			feed := &cfg.Blogroll.Feeds[i]
 			if category := strings.TrimSpace(feed.Category); category != "" {
 				categoryCounts[category]++
 			}
@@ -769,7 +838,7 @@ func buildCategoryOptions(categories []string) []huh.Option[string] {
 	return options
 }
 
-func initialCategorySelection(current string, categories []string) (string, string) {
+func initialCategorySelection(current string, categories []string) (choice, custom string) {
 	trimmedCurrent := strings.TrimSpace(current)
 	if trimmedCurrent == "" || trimmedCurrent == defaultCategory {
 		if len(categories) > 0 {
@@ -809,6 +878,7 @@ func buildFeedConfig(feedURL string, fv feedValues, metadata *blogroll.Metadata)
 		Title:       fv.title,
 		Description: fv.description,
 		Category:    fv.category,
+		Type:        fv.feedType,
 		Tags:        fv.tags,
 		SiteURL:     fv.siteURL,
 		Handle:      fv.handle,
@@ -886,6 +956,9 @@ func appendFeedToTOMLConfig(configPath string, feedConfig models.ExternalFeedCon
 	}
 	if feedConfig.Category != "" {
 		snippet.WriteString("category = " + formatTOMLString(feedConfig.Category) + "\n")
+	}
+	if feedConfig.Type != "" {
+		snippet.WriteString("type = " + formatTOMLString(string(feedConfig.Type)) + "\n")
 	}
 	if len(feedConfig.Tags) > 0 {
 		snippet.WriteString("tags = [" + formatTOMLStringArray(feedConfig.Tags) + "]\n")
@@ -1057,6 +1130,9 @@ func printFeedConfigTOML(feed models.ExternalFeedConfig) {
 	if feed.Category != "" && feed.Category != defaultCategory {
 		fmt.Printf("category = %q\n", feed.Category)
 	}
+	if feed.Type != "" {
+		fmt.Printf("type = %q\n", feed.Type)
+	}
 	if len(feed.Tags) > 0 {
 		fmt.Printf("tags = %s\n", formatTOMLArray(feed.Tags))
 	}
@@ -1085,6 +1161,9 @@ func printFeedConfigYAML(feed models.ExternalFeedConfig) {
 	}
 	if feed.Category != "" && feed.Category != defaultCategory {
 		fmt.Println("  category:", feed.Category)
+	}
+	if feed.Type != "" {
+		fmt.Println("  type:", feed.Type)
 	}
 	if len(feed.Tags) > 0 {
 		fmt.Print("  tags: [")

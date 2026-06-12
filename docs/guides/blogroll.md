@@ -90,6 +90,7 @@ url = "https://example.com/feed.xml"    # Required: RSS/Atom feed URL
 title = "Example Blog"                   # Optional: display name (auto-fetched if not set)
 description = "A great blog about stuff" # Optional: short description
 category = "Technology"                  # Optional: groups feeds on blogroll page
+type = "written"                         # Optional: written, video, or podcast
 tags = ["python", "web"]                 # Optional: additional labels
 site_url = "https://example.com"         # Optional: main website URL
 image_url = "https://example.com/logo.png" # Optional: logo/icon
@@ -335,12 +336,22 @@ The reader page shows the latest posts from all feeds in reverse chronological o
 
 **Default layout:**
 - Editorial header with page stats
+- Type switch links between the full reader and any typed readers
 - Entries grouped by day with a large date rail
 - Two-column entry grid on desktop, single column on mobile
 - Each entry shows: source favicon, source name, date, title, description, optional image
 - Links to the original article
 - Hacker News discussion URLs are normalized to the outbound article URL when one is available, while the source feed label stays visible and the original discussion link remains available as "Found on HN"
 - Pagination navigation (when more than one page)
+
+If you assign feed types, markata-go also generates typed reader pages:
+
+```text
+/reader/           # all feeds
+/reader/written/   # written feeds only
+/reader/video/     # video feeds only
+/reader/podcast/   # podcast feeds only
+```
 
 **Deterministic ordering:**
 1. Most recent publish/update date first
