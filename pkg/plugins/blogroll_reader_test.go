@@ -87,6 +87,44 @@ func TestBlogrollPlugin_ReaderDayGroups(t *testing.T) {
 	}
 }
 
+func TestBuildReaderVariants(t *testing.T) {
+	config := models.BlogrollConfig{ReaderSlug: "reader"}
+	feeds := []*models.ExternalFeed{
+		{FeedURL: "https://example.com/written.xml", Config: models.ExternalFeedConfig{Type: models.ReaderFeedTypeWritten}, Type: models.ReaderFeedTypeWritten},
+		{FeedURL: "https://example.com/video.xml", Config: models.ExternalFeedConfig{Type: models.ReaderFeedTypeVideo}, Type: models.ReaderFeedTypeVideo},
+	}
+	entries := []*models.ExternalEntry{
+		{FeedURL: "https://example.com/written.xml", Title: "Post"},
+		{FeedURL: "https://example.com/video.xml", Title: "Video"},
+	}
+	variants := buildReaderVariants(feeds, entries, config, buildFeedIndex(feeds), t.TempDir())
+	if len(variants) != 3 {
+		t.Fatalf("len(variants) = %d, want 3", len(variants))
+	}
+	if variants[0].Key != "all" || variants[1].Key != "written" || variants[2].Key != "video" {
+		t.Fatalf("variant keys = %v, want [all written video]", []string{variants[0].Key, variants[1].Key, variants[2].Key})
+	}
+	if variants[2].BaseURL != "/reader/video" {
+		t.Fatalf("video BaseURL = %q, want %q", variants[2].BaseURL, "/reader/video")
+	}
+}
+
+func TestRenderReaderTypeLinks(t *testing.T) {
+	markup := renderReaderTypeLinks([]map[string]interface{}{
+		{"title": "Reader", "url": "/reader/", "active": true, "entry_count": 10},
+		{"title": "Reader: Video", "url": "/reader/video/", "active": false, "entry_count": 3},
+	})
+	if !strings.Contains(markup, `Reader (10)`) {
+		t.Fatalf("markup missing all-reader count: %s", markup)
+	}
+	if !strings.Contains(markup, `href="/reader/video/"`) {
+		t.Fatalf("markup missing video link: %s", markup)
+	}
+	if !strings.Contains(markup, `class="active"`) {
+		t.Fatalf("markup missing active reader type: %s", markup)
+	}
+}
+
 func TestReaderPreviewForEntry_Hierarchy(t *testing.T) {
 	tests := []struct {
 		name            string

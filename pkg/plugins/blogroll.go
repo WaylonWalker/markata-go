@@ -38,6 +38,22 @@ const (
 	blogrollCacheVersion = "hn-meta-v2"
 )
 
+var readerFeedTypeOrder = []models.ReaderFeedType{
+	models.ReaderFeedTypeWritten,
+	models.ReaderFeedTypeVideo,
+	models.ReaderFeedTypePodcast,
+}
+
+type readerVariant struct {
+	Key         string
+	Title       string
+	Description string
+	BaseURL     string
+	OutputDir   string
+	FeedType    models.ReaderFeedType
+	EntryCount  int
+}
+
 // Default directory constants.
 const (
 	defaultOutputDir  = "output"
@@ -889,6 +905,7 @@ func initFeedFromConfig(config models.ExternalFeedConfig) *models.ExternalFeed {
 		Config:   config,
 		FeedURL:  config.URL,
 		Category: config.Category,
+		Type:     config.GetReaderType(),
 		Tags:     config.Tags,
 		Entries:  make([]*models.ExternalEntry, 0),
 	}
@@ -915,6 +932,7 @@ func initFeedFromConfig(config models.ExternalFeedConfig) *models.ExternalFeed {
 func mergeCachedFeed(cached *models.ExternalFeed, config models.ExternalFeedConfig) *models.ExternalFeed {
 	normalizeExternalFeed(cached)
 	cached.Config = config
+	cached.Type = config.GetReaderType()
 	if config.Title != "" {
 		cached.Title = config.Title
 	}
@@ -1294,78 +1312,161 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 // writeReaderPage generates the paginated /reader pages.
 // Pages are written concurrently for better I/O throughput.
 func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, feeds []*models.ExternalFeed, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
-	// Use configured slug or default to "reader"
-	slug := config.ReaderSlug
-	if slug == "" {
-		slug = defaultReaderSlug
+	feedIndex := buildFeedIndex(feeds)
+	variants := buildReaderVariants(feeds, entries, config, feedIndex, outputDir)
+	for _, variant := range variants {
+		variantEntries := filterEntriesByReaderVariant(entries, feedIndex, variant)
+		if err := p.writeReaderVariantPages(m, feedIndex, config, variant, variants, variantEntries); err != nil {
+			return err
+		}
 	}
 
-	// Create output directory
-	readerDir := filepath.Join(outputDir, slug)
-	if err := os.MkdirAll(readerDir, 0o755); err != nil {
+	return nil
+}
+
+func buildReaderVariants(feeds []*models.ExternalFeed, entries []*models.ExternalEntry, config models.BlogrollConfig, feedIndex map[string]*models.ExternalFeed, outputDir string) []readerVariant {
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
+
+	variants := []readerVariant{{
+		Key:         "all",
+		Title:       "Reader",
+		Description: "Latest posts from blogs I follow",
+		BaseURL:     "/" + readerSlug,
+		OutputDir:   filepath.Join(outputDir, readerSlug),
+		EntryCount:  len(entries),
+	}}
+
+	present := make(map[models.ReaderFeedType]bool)
+	for _, feed := range feeds {
+		if feed == nil {
+			continue
+		}
+		present[effectiveReaderFeedType(feed)] = true
+	}
+
+	for _, feedType := range readerFeedTypeOrder {
+		if !present[feedType] {
+			continue
+		}
+		variant := readerVariant{
+			Key:         string(feedType),
+			Title:       "Reader: " + readerFeedTypeLabel(feedType),
+			Description: "Latest " + string(feedType) + " posts from blogs I follow",
+			BaseURL:     "/" + readerSlug + "/" + string(feedType),
+			OutputDir:   filepath.Join(outputDir, readerSlug, string(feedType)),
+			FeedType:    feedType,
+		}
+		variant.EntryCount = len(filterEntriesByReaderVariant(entries, feedIndex, variant))
+		variants = append(variants, variant)
+	}
+
+	return variants
+}
+
+func readerFeedTypeLabel(feedType models.ReaderFeedType) string {
+	value := string(feedType)
+	if value == "" {
+		return "Reader"
+	}
+	return strings.ToUpper(value[:1]) + value[1:]
+}
+
+func effectiveReaderFeedType(feed *models.ExternalFeed) models.ReaderFeedType {
+	if feed == nil {
+		return models.ReaderFeedTypeWritten
+	}
+	if feed.Type != "" {
+		return feed.Type
+	}
+	return feed.Config.GetReaderType()
+}
+
+func filterEntriesByReaderVariant(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, variant readerVariant) []*models.ExternalEntry {
+	if variant.FeedType == "" {
+		return entries
+	}
+	filtered := make([]*models.ExternalEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+		feed := feedIndex[entry.FeedURL]
+		if effectiveReaderFeedType(feed) == variant.FeedType {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
+}
+
+func (p *BlogrollPlugin) writeReaderVariantPages(m *lifecycle.Manager, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig, variant readerVariant, variants []readerVariant, entries []*models.ExternalEntry) error {
+	if err := os.MkdirAll(variant.OutputDir, 0o755); err != nil {
 		return err
 	}
 
-	// Paginate entries
-	pages := p.paginateEntries(entries, config, "/reader")
-	feedIndex := buildFeedIndex(feeds)
-
-	// If no pages (no entries), generate empty page
+	pages := p.paginateEntries(entries, config, variant.BaseURL)
+	readerTypes := readerVariantsToMaps(variants, variant.Key)
 	if len(pages) == 0 {
-		return p.writeReaderPageFile(m, readerDir, feedIndex, config, models.ReaderPage{
+		return p.writeReaderPageFile(m, variant.OutputDir, feedIndex, config, models.ReaderPage{
 			Number:         1,
 			Entries:        []*models.ExternalEntry{},
 			TotalPages:     1,
 			TotalItems:     0,
 			ItemsPerPage:   config.ItemsPerPage,
 			PaginationType: config.PaginationType,
-			PageURLs:       []string{"/reader/"},
-		}, true)
+			PageURLs:       []string{variant.BaseURL + "/"},
+		}, true, variant, readerTypes)
 	}
 
-	// Generate pages concurrently
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(pages))
-
 	for i := range pages {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			isFirstPage := idx == 0
-			if err := p.writeReaderPageFile(m, readerDir, feedIndex, config, pages[idx], isFirstPage); err != nil {
+			if err := p.writeReaderPageFile(m, variant.OutputDir, feedIndex, config, pages[idx], idx == 0, variant, readerTypes); err != nil {
 				errCh <- err
 			}
 		}(i)
 	}
-
 	wg.Wait()
 	close(errCh)
-
-	// Return first error if any
 	for err := range errCh {
 		return err
 	}
-
 	return nil
 }
 
+func readerVariantsToMaps(variants []readerVariant, activeKey string) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(variants))
+	for _, variant := range variants {
+		result = append(result, map[string]interface{}{
+			"key":         variant.Key,
+			"title":       variant.Title,
+			"description": variant.Description,
+			"url":         variant.BaseURL + "/",
+			"active":      variant.Key == activeKey,
+			"entry_count": variant.EntryCount,
+		})
+	}
+	return result
+}
+
 // writeReaderPageFile writes a single reader page (full and partial for HTMX).
-func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir string, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig, page models.ReaderPage, isFirstPage bool) error {
+func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir string, feedIndex map[string]*models.ExternalFeed, config models.BlogrollConfig, page models.ReaderPage, isFirstPage bool, variant readerVariant, readerTypes []map[string]interface{}) error {
 	// Get slugs for cross-linking
 	blogrollSlug := config.BlogrollSlug
 	if blogrollSlug == "" {
 		blogrollSlug = defaultBlogrollSlug
 	}
-	readerSlug := config.ReaderSlug
-	if readerSlug == "" {
-		readerSlug = defaultReaderSlug
-	}
 
 	// Build template context with config for theme inheritance
 	updated := latestEntryDate(page.Entries)
 	ctx := map[string]interface{}{
-		"title":           "Reader",
-		"description":     "Latest posts from blogs I follow",
+		"title":           variant.Title,
+		"description":     variant.Description,
 		"entries":         p.entriesToMaps(page.Entries, feedIndex, config),
 		"day_groups":      p.readerDayGroups(page.Entries, feedIndex, config),
 		"entry_count":     page.TotalItems,
@@ -1373,7 +1474,9 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 		"page":            p.readerPageToMap(page),
 		"pagination_type": string(page.PaginationType),
 		"blogroll_url":    "/" + blogrollSlug + "/",
-		"reader_url":      "/" + readerSlug + "/",
+		"reader_url":      variant.BaseURL + "/",
+		"reader_type":     variant.Key,
+		"reader_types":    readerTypes,
 		"updated":         updated,
 	}
 
@@ -1396,7 +1499,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 	content, err := p.renderTemplate(m, config.Templates.Reader, ctx)
 	if err != nil {
 		// Fall back to built-in template
-		content = p.renderReaderFallback(page.Entries, feedIndex, page, config)
+		content = p.renderReaderFallback(page.Entries, feedIndex, page, config, variant, readerTypes)
 	}
 
 	// Write the full page
@@ -1410,7 +1513,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 			return err
 		}
 
-		partialContent := p.renderReaderPartial(page.Entries, feedIndex, page, config)
+		partialContent := p.renderReaderPartial(page.Entries, feedIndex, page, config, variant, readerTypes)
 		partialFile := filepath.Join(partialDir, "index.html")
 		if err := os.WriteFile(partialFile, []byte(partialContent), 0o644); err != nil { //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 			return err
@@ -1779,10 +1882,15 @@ func (p *BlogrollPlugin) readerEntryMap(entry *models.ExternalEntry, feed *model
 	if sourceDomain == "" {
 		sourceDomain = readerDomain(sourceSiteURL)
 	}
+	feedType := models.ReaderFeedTypeWritten
+	if feed != nil {
+		feedType = effectiveReaderFeedType(feed)
+	}
 
 	result := map[string]interface{}{
 		"feed_url":         entry.FeedURL,
 		"feed_title":       sourceTitle,
+		"feed_type":        string(feedType),
 		"id":               entry.ID,
 		"url":              entry.URL,
 		"original_url":     entry.OriginalURL,
@@ -2666,7 +2774,7 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 }
 
 // renderReaderFallback generates a basic reader page that uses theme CSS if available.
-func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig) string {
+func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig, variant readerVariant, readerTypes []map[string]interface{}) string {
 	var sb strings.Builder
 
 	// Get configured slugs with defaults
@@ -2684,7 +2792,7 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, f
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reader</title>
+  <title>` + html.EscapeString(variant.Title) + `</title>
   <!-- Theme CSS - uses site's configured palette if available -->
   <link rel="stylesheet" href="/css/variables.css">
   <link rel="stylesheet" href="/css/palette.css">
@@ -2793,6 +2901,26 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, f
       color: var(--color-text);
       margin-right: 1rem;
     }
+    .reader-type-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 0 0 1.5rem;
+    }
+    .reader-type-links a, .reader-type-links span {
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      text-decoration: none;
+      color: var(--color-text);
+      background: var(--color-surface);
+      font-size: 0.95rem;
+    }
+    .reader-type-links .active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: white;
+    }
     @media (max-width: 600px) {
       .entry {
         flex-direction: column;
@@ -2818,10 +2946,11 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, f
   </nav>
   <div class="reader-page">
     <header class="reader-header" style="text-align: left;">
-      <h1>Reader</h1>
-      <p class="reader-subtitle">Latest posts from blogs I follow</p>
+      <h1>` + html.EscapeString(variant.Title) + `</h1>
+      <p class="reader-subtitle">` + html.EscapeString(variant.Description) + `</p>
     </header>
 `)
+	sb.WriteString(renderReaderTypeLinks(readerTypes))
 
 	// Add content container for HTMX
 	if page.PaginationType == models.PaginationHTMX {
@@ -2847,14 +2976,43 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, f
 }
 
 // renderReaderPartial generates just the content portion for HTMX updates.
-func (p *BlogrollPlugin) renderReaderPartial(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig) string {
+func (p *BlogrollPlugin) renderReaderPartial(entries []*models.ExternalEntry, feedIndex map[string]*models.ExternalFeed, page models.ReaderPage, config models.BlogrollConfig, _ readerVariant, readerTypes []map[string]interface{}) string {
 	var sb strings.Builder
+	sb.WriteString(renderReaderTypeLinks(readerTypes))
 
 	sb.WriteString(p.renderReaderTimeline(p.readerDayGroups(entries, feedIndex, config), false))
 
 	// Render pagination
 	sb.WriteString(p.renderPagination(page))
 
+	return sb.String()
+}
+
+func renderReaderTypeLinks(readerTypes []map[string]interface{}) string {
+	if len(readerTypes) <= 1 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("    <nav class=\"reader-type-links\" aria-label=\"Reader types\">\n")
+	for _, item := range readerTypes {
+		title := stringValue(item, "title")
+		url := stringValue(item, "url")
+		count := 0
+		if v, ok := item["entry_count"].(int); ok {
+			count = v
+		}
+		label := html.EscapeString(title)
+		if count > 0 {
+			label += fmt.Sprintf(" (%d)", count)
+		}
+		if active, ok := item["active"].(bool); ok && active {
+			sb.WriteString("      <span class=\"active\">" + label + "</span>\n")
+		} else {
+			sb.WriteString("      <a href=\"" + html.EscapeString(url) + "\">" + label + "</a>\n")
+		}
+	}
+	sb.WriteString("    </nav>\n")
 	return sb.String()
 }
 

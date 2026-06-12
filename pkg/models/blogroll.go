@@ -2,6 +2,15 @@ package models
 
 import "time"
 
+// ReaderFeedType represents the reader stream classification for a blogroll feed.
+type ReaderFeedType string
+
+const (
+	ReaderFeedTypeWritten ReaderFeedType = "written"
+	ReaderFeedTypeVideo   ReaderFeedType = "video"
+	ReaderFeedTypePodcast ReaderFeedType = "podcast"
+)
+
 // BlogrollConfig configures the blogroll and RSS reader functionality.
 type BlogrollConfig struct {
 	// Enabled controls whether blogroll functionality is active (default: false)
@@ -98,6 +107,9 @@ type ExternalFeedConfig struct {
 	// Category groups feeds together (e.g., "technology", "design")
 	Category string `json:"category" yaml:"category" toml:"category"`
 
+	// Type classifies the feed for typed reader pages.
+	Type ReaderFeedType `json:"type,omitempty" yaml:"type,omitempty" toml:"type,omitempty"`
+
 	// Tags are additional labels for filtering
 	Tags []string `json:"tags" yaml:"tags" toml:"tags"`
 
@@ -138,6 +150,17 @@ func (f *ExternalFeedConfig) IsActive() bool {
 		return true
 	}
 	return *f.Active
+}
+
+// GetReaderType returns the effective reader type for this feed.
+// Existing configs without a type default to written.
+func (f *ExternalFeedConfig) GetReaderType() ReaderFeedType {
+	switch f.Type {
+	case ReaderFeedTypeVideo, ReaderFeedTypePodcast, ReaderFeedTypeWritten:
+		return f.Type
+	default:
+		return ReaderFeedTypeWritten
+	}
 }
 
 // GetMaxEntries returns the per-feed max_entries if set, otherwise the global default.
@@ -192,6 +215,9 @@ type ExternalFeed struct {
 
 	// Category is the feed category
 	Category string `json:"category"`
+
+	// Type is the feed's reader stream classification.
+	Type ReaderFeedType `json:"type,omitempty"`
 
 	// Tags are the feed tags
 	Tags []string `json:"tags"`

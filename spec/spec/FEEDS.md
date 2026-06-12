@@ -64,6 +64,26 @@ When the discovered root config composes additional config files via `markata-go
 
 For video URLs, the command SHOULD resolve the creator channel first and then subscribe to that creator's feed instead of treating the single video page as a feed.
 
+## Reader Types
+
+Blogroll feeds MAY declare a reader `type` to support multiple reader streams from the same source list.
+
+Supported feed types are:
+
+- `written`
+- `video`
+- `podcast`
+
+`markata-go blogroll add` SHOULD let the user set the type interactively and SHOULD infer an initial value when the source is obvious, for example YouTube feeds defaulting to `video`.
+
+Reader output requirements:
+
+- `/reader/` MUST remain the combined stream across all feed types.
+- Additional typed reader pages MUST be generated at `/reader/<type>/` for every configured type present in the blogroll.
+- Typed reader pagination MUST mirror the main reader pagination structure, for example `/reader/video/page/2/`.
+- Reader template contexts and fallback rendering MUST expose links for switching between the combined reader and the typed readers.
+- Existing feeds without an explicit `type` MUST continue to work and SHOULD default to `written`.
+
 ---
 
 ## Feed Configuration

@@ -171,8 +171,10 @@ Use these only after inspecting the active site templates and rendered output. S
 ## Reader Page Context
 
 - `day_groups` on `/reader/` templates
+- `reader_type` for the active reader stream (`all`, `written`, `video`, `podcast`)
+- `reader_types` for switch links between the combined reader and typed reader pages
 - each group provides `date_iso`, `weekday`, `title`, `year`, `count`, and `entries`
-- reader entry maps include `source_icon_url`, `published_datetime`, `published_label`, `preview_url`, `preview_kind`, `source_image_url`, and `source_initial`
+- reader entry maps include `feed_type`, `source_icon_url`, `published_datetime`, `published_label`, `preview_url`, `preview_kind`, `source_image_url`, and `source_initial`
 
 ## Sidebar/Navigation Context
 

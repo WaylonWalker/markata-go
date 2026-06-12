@@ -1380,6 +1380,7 @@ type tomlExternalFeedConfig struct {
 	Title         string   `toml:"title"`
 	Description   string   `toml:"description"`
 	Category      string   `toml:"category"`
+	Type          string   `toml:"type"`
 	Tags          []string `toml:"tags"`
 	Active        *bool    `toml:"active"`
 	SiteURL       string   `toml:"site_url"`
@@ -1553,6 +1554,7 @@ func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 			Title:         fc.Title,
 			Description:   fc.Description,
 			Category:      fc.Category,
+			Type:          models.ReaderFeedType(fc.Type),
 			Tags:          fc.Tags,
 			Active:        fc.Active,
 			SiteURL:       fc.SiteURL,
@@ -3091,6 +3093,7 @@ type yamlExternalFeedConfig struct {
 	Title         string   `yaml:"title"`
 	Description   string   `yaml:"description"`
 	Category      string   `yaml:"category"`
+	Type          string   `yaml:"type"`
 	Tags          []string `yaml:"tags"`
 	Active        *bool    `yaml:"active"`
 	SiteURL       string   `yaml:"site_url"`
@@ -3144,6 +3147,7 @@ func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 			Title:         fc.Title,
 			Description:   fc.Description,
 			Category:      fc.Category,
+			Type:          models.ReaderFeedType(fc.Type),
 			Tags:          fc.Tags,
 			Active:        fc.Active,
 			SiteURL:       fc.SiteURL,
@@ -4609,6 +4613,7 @@ type jsonExternalFeedConfig struct {
 	Title         string   `json:"title"`
 	Description   string   `json:"description"`
 	Category      string   `json:"category"`
+	Type          string   `json:"type"`
 	Tags          []string `json:"tags"`
 	Active        *bool    `json:"active"`
 	SiteURL       string   `json:"site_url"`
@@ -4662,6 +4667,7 @@ func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 			Title:         fc.Title,
 			Description:   fc.Description,
 			Category:      fc.Category,
+			Type:          models.ReaderFeedType(fc.Type),
 			Tags:          fc.Tags,
 			Active:        fc.Active,
 			SiteURL:       fc.SiteURL,

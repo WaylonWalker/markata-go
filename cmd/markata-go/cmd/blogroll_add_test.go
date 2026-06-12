@@ -573,6 +573,9 @@ func TestBuildFeedValues(t *testing.T) {
 		if values.description != "Channel-specific description" {
 			t.Fatalf("description = %q, want %q", values.description, "Channel-specific description")
 		}
+		if values.feedType != models.ReaderFeedTypeVideo {
+			t.Fatalf("feedType = %q, want %q", values.feedType, models.ReaderFeedTypeVideo)
+		}
 		if len(values.tags) != 2 || values.tags[0] != "video" || values.tags[1] != "streaming" {
 			t.Fatalf("tags = %v, want [video streaming]", values.tags)
 		}
@@ -580,6 +583,42 @@ func TestBuildFeedValues(t *testing.T) {
 			t.Fatalf("siteURL = %q, want %q", values.siteURL, "https://www.youtube.com")
 		}
 	})
+}
+
+func TestInferReaderFeedType(t *testing.T) {
+	tests := []struct {
+		name     string
+		metadata *blogroll.Metadata
+		feedURL  string
+		want     models.ReaderFeedType
+	}{
+		{
+			name:     "youtube infers video",
+			metadata: &blogroll.Metadata{SiteURL: "https://www.youtube.com/@devtoolsfm"},
+			feedURL:  "https://www.youtube.com/feeds/videos.xml?channel_id=abc",
+			want:     models.ReaderFeedTypeVideo,
+		},
+		{
+			name:     "podcast tag infers podcast",
+			metadata: &blogroll.Metadata{Tags: []string{"podcast", "tech"}},
+			feedURL:  "https://example.com/feed.xml",
+			want:     models.ReaderFeedTypePodcast,
+		},
+		{
+			name:     "default infers written",
+			metadata: &blogroll.Metadata{Title: "Example Blog"},
+			feedURL:  "https://example.com/feed.xml",
+			want:     models.ReaderFeedTypeWritten,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := inferReaderFeedType(tt.metadata, tt.feedURL); got != tt.want {
+				t.Fatalf("inferReaderFeedType() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestResolveBlogrollTargetConfigPath_UsesIncludedBlogrollFile(t *testing.T) {
@@ -708,7 +747,7 @@ func TestDiscoverExistingCategories(t *testing.T) {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	content := "---\ntitle: Example\ncategory: Blog\n---\nhello\n"
-	if err := os.WriteFile(filepath.Join(pagesDir, "post.md"), []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(pagesDir, "post.md"), []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
