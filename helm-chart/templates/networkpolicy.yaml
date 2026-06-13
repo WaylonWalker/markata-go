@@ -1,0 +1,44 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-runtime-egress"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: service
+        operator: In
+        values:
+          - "{{ .Values.project_identifier }}-notes-site"
+          - "{{ .Values.project_identifier }}-notes-search"
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: coredns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

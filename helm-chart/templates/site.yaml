@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-site"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-site"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.site.replicaCount }}
+  selector:
+    matchLabels:
+      service: "{{ .Values.project_identifier }}-notes-site"
+  template:
+    metadata:
+      labels:
+        service: "{{ .Values.project_identifier }}-notes-site"
+        {{- include "markata-notes.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: "{{ include "markata-notes.serviceAccountName" . }}"
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      enableServiceLinks: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: "{{ .Values.project_identifier }}-notes-site"
+          image: "{{ .Values.site.image.name }}:{{ .Values.site.image.tag }}"
+          imagePullPolicy: {{ .Values.site.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.siteSecurityContext | nindent 12 }}
+          ports:
+            - containerPort: 80
+          resources:
+            {{- toYaml .Values.site.resources | nindent 12 }}
+          volumeMounts:
+            - name: site
+              mountPath: /usr/share/nginx/html
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          startupProbe:
+            httpGet:
+              path: /
+              port: 80
+            timeoutSeconds: 1
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 12
+      volumes:
+        - name: site
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.sitePvcName" . }}"
+        - name: nginx-config
+          configMap:
+            name: "{{ .Values.project_identifier }}-notes-nginx-config"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-site"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-site"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  selector:
+    service: "{{ .Values.project_identifier }}-notes-site"
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

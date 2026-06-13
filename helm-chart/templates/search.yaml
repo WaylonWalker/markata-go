@@ -1,0 +1,142 @@
+{{- if .Values.search.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-search"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-search"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.search.replicaCount }}
+  selector:
+    matchLabels:
+      service: "{{ .Values.project_identifier }}-notes-search"
+  template:
+    metadata:
+      labels:
+        service: "{{ .Values.project_identifier }}-notes-search"
+        {{- include "markata-notes.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: "{{ include "markata-notes.serviceAccountName" . }}"
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      enableServiceLinks: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.build.enabled (ne .Values.search.mode "read-only-index") .Values.search.waitForSource.enabled }}
+      initContainers:
+        - name: wait-for-source
+          image: "{{ .Values.search.image.name }}:{{ .Values.search.image.tag }}"
+          imagePullPolicy: {{ .Values.search.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ceu
+          args:
+            - |
+              deadline=$(($(date +%s) + {{ .Values.search.waitForSource.timeoutSeconds }}))
+              until [ -f /data/source/.markata-notes-source-ready ] || [ -f /data/source/markata-go.toml ] || [ -f /data/source/markata.toml ] || [ -d /data/source/pages ] || [ -d /data/source/content ]; do
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                  echo "timed out waiting for source content in /data/source" >&2
+                  ls -la /data/source >&2
+                  exit 1
+                fi
+                sleep {{ .Values.search.waitForSource.pollIntervalSeconds }}
+              done
+          securityContext:
+            {{- toYaml .Values.searchSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.search.waitForSource.resources | nindent 12 }}
+          volumeMounts:
+            - name: source
+              mountPath: /data/source
+      {{- end }}
+      containers:
+        - name: "{{ .Values.project_identifier }}-notes-search"
+          image: "{{ .Values.search.image.name }}:{{ .Values.search.image.tag }}"
+          imagePullPolicy: {{ .Values.search.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.searchSecurityContext | nindent 12 }}
+          workingDir: /data/source
+          command:
+            - markata-go
+            - search-server
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - {{ .Values.search.port | quote }}
+            - --mode
+            - {{ .Values.search.mode | quote }}
+            - --index-dir
+            - /data/search/search.bleve
+            {{- if eq .Values.search.mode "watch-content" }}
+            - --watch-debounce
+            - {{ .Values.search.watchDebounce | quote }}
+            {{- end }}
+          {{- if .Values.markataEncryption.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.markataEncryption.secretName | quote }}
+          {{- end }}
+          env:
+            - name: HTTP_PROXY
+              value: {{ .Values.build.proxy.http | quote }}
+            - name: HTTPS_PROXY
+              value: {{ .Values.build.proxy.https | quote }}
+          ports:
+            - containerPort: {{ .Values.search.port }}
+              name: http
+          resources:
+            {{- toYaml .Values.search.resources | nindent 12 }}
+          volumeMounts:
+            {{- if ne .Values.search.mode "read-only-index" }}
+            - name: source
+              mountPath: /data/source
+            {{- end }}
+            - name: search
+              mountPath: /data/search
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            timeoutSeconds: 1
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 12
+      volumes:
+        {{- if ne .Values.search.mode "read-only-index" }}
+        - name: source
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.sourcePvcName" . }}"
+        {{- end }}
+        - name: search
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.searchPvcName" . }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-search"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-search"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  selector:
+    service: "{{ .Values.project_identifier }}-notes-search"
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.search.port }}
+      targetPort: http
+{{- end }}

@@ -1,0 +1,170 @@
+project_identifier: example
+project_name: example
+environment: prod
+
+imagePullSecrets:
+  - name: global-regcred
+
+serviceAccount:
+  create: true
+  name: ""
+  automountServiceAccountToken: false
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+siteSecurityContext:
+  allowPrivilegeEscalation: false
+
+searchSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+networkPolicy:
+  enabled: true
+
+build:
+  enabled: true
+  schedule: "02 23 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 6
+  failedJobsHistoryLimit: 6
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 1800
+  mermaid:
+    mode: client
+  lock:
+    enabled: true
+    dirName: ".markata-notes-build-lock"
+    pollIntervalSeconds: 5
+    staleAfterBufferSeconds: 600
+  releases:
+    keep: 3
+  fetchImage:
+    name: ghcr.io/waylonwalker/markata-go-builder
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  builderImage:
+    name: ghcr.io/waylonwalker/markata-go-builder
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  proxy:
+    http: ""
+    https: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+      ephemeral-storage: 1Gi
+    limits:
+      memory: 2Gi
+      ephemeral-storage: 4Gi
+
+site:
+  replicaCount: 1
+  image:
+    name: nginx
+    tag: "1.27.5-alpine"
+    pullPolicy: IfNotPresent
+  use404Page: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 128Mi
+      ephemeral-storage: 500Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 1Gi
+
+search:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: ghcr.io/waylonwalker/markata-go-builder
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  mode: watch-content
+  port: 3001
+  watchDebounce: 5s
+  waitForSource:
+    enabled: true
+    timeoutSeconds: 900
+    pollIntervalSeconds: 5
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+      ephemeral-storage: 500Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 1Gi
+
+sourceArchive:
+  bucket: "example-bucket"
+  location: "/example-share/outputs/example"
+  key: "source.tar.gz"
+  encryption:
+    enabled: false
+
+markataEncryption:
+  secretName: "markata-go-encryption"
+  sealedSecret:
+    enabled: false
+    encryptedData:
+      MARKATA_GO_ENCRYPTION_KEY_DEFAULT: ""
+
+aws:
+  existingSecretName: aws-default
+  sealedSecret:
+    enabled: false
+    encryptedData: {}
+
+storage:
+  source:
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteMany
+    pvcNameSuffix: ""
+  site:
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteMany
+    pvcNameSuffix: ""
+  search:
+    storageClassName: longhorn
+    size: 5Gi
+    accessModes:
+      - ReadWriteOnce
+    pvcNameSuffix: ""
+
+ingress:
+  enabled: true
+  host: ""
+  ingressClassName: ""
+  annotations: {}
+  extraCnames: []
+  searchPath: /api/search
+  auth:
+    enabled: false
+    provider: traefik
+    mode: redirect
+    url: ""
+    internalUrl: ""
+    access: authenticated
+    roleName: ""
+    responseHeaders:
+      - Remote-User
+      - Remote-Email
+      - Remote-Name
+      - Remote-Roles

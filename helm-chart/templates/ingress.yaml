@@ -1,0 +1,75 @@
+{{- if .Values.ingress.enabled }}
+{{- $authAccess := .Values.ingress.auth.access | default "authenticated" }}
+{{- $authTarget := $authAccess }}
+{{- if and (eq $authAccess "role") .Values.ingress.auth.roleName }}
+{{- $authTarget = .Values.ingress.auth.roleName }}
+{{- end }}
+{{- $authUrlBase := .Values.ingress.auth.url | default .Values.ingress.auth.radaUrl | default "" }}
+{{- $authUrl := printf "%s/_auth/%s?mode=%s" ($authUrlBase | trimSuffix "/") $authTarget (.Values.ingress.auth.mode | default "redirect") }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.project_identifier }}-notes"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+  {{- if or .Values.ingress.annotations .Values.ingress.auth.enabled }}
+  annotations:
+    {{- if .Values.ingress.annotations }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- end }}
+    {{- if and .Values.ingress.auth.enabled (eq (.Values.ingress.auth.provider | default "traefik") "traefik") }}
+    traefik.ingress.kubernetes.io/router.middlewares: "{{ include "markata-notes.namespace" . }}-{{ .Values.project_identifier }}-notes-forward-auth@kubernetescrd"
+    {{- end }}
+    {{- if and .Values.ingress.auth.enabled (eq .Values.ingress.auth.provider "nginx") }}
+    nginx.ingress.kubernetes.io/auth-url: {{ $authUrl | quote }}
+    nginx.ingress.kubernetes.io/auth-signin: {{ printf "%s/login" ($authUrlBase | trimSuffix "/") | quote }}
+    nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," .Values.ingress.auth.responseHeaders | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName | quote }}
+  {{- end }}
+  rules:
+    - host: "{{ include "markata-notes.host" . }}"
+      http:
+        paths:
+          {{- if .Values.search.enabled }}
+          - path: {{ .Values.ingress.searchPath | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ .Values.project_identifier }}-notes-search"
+                port:
+                  number: {{ .Values.search.port }}
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ .Values.project_identifier }}-notes-site"
+                port:
+                  number: 80
+    {{- range .Values.ingress.extraCnames }}
+    - host: "{{ . }}"
+      http:
+        paths:
+          {{- if $.Values.search.enabled }}
+          - path: {{ $.Values.ingress.searchPath | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ $.Values.project_identifier }}-notes-search"
+                port:
+                  number: {{ $.Values.search.port }}
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ $.Values.project_identifier }}-notes-site"
+                port:
+                  number: 80
+    {{- end }}
+{{- end }}

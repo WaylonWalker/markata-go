@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ include "markata-notes.sourcePvcName" . }}"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.source.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.storage.source.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.source.size | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ include "markata-notes.sitePvcName" . }}"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.site.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.storage.site.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.site.size | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ include "markata-notes.searchPvcName" . }}"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.search.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.storage.search.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.search.size | quote }}
