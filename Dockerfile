@@ -88,6 +88,24 @@ RUN wget -q "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAI
 # Copy the binary
 COPY --from=builder /app/markata-go /usr/local/bin/markata-go
 
+# Pre-seed the builder image with the CDN asset cache and MermaidJS source so
+# markata-go builds can run without internet access at runtime.
+ARG BUNDLED_ASSETS_CACHE_DIR=/usr/local/share/markata-go/assets-cache
+ARG BUNDLED_MERMAID_DIR=/usr/local/share/markata-go/mermaid
+ARG MERMAID_JS_VERSION=10.9.5
+RUN mkdir -p /tmp/markata-assets \
+    && cd /tmp/markata-assets \
+    && /usr/local/bin/markata-go assets download \
+    && mkdir -p "${BUNDLED_ASSETS_CACHE_DIR}" "${BUNDLED_MERMAID_DIR}" \
+    && cp -a .markata/assets-cache/. "${BUNDLED_ASSETS_CACHE_DIR}/" \
+    && wget -q "https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_JS_VERSION}/dist/mermaid.min.js" \
+        -O "${BUNDLED_MERMAID_DIR}/mermaid-v${MERMAID_JS_VERSION}.min.js" \
+    && rm -rf /tmp/markata-assets
+
+ENV MARKATA_GO_OFFLINE=true \
+    MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR=${BUNDLED_ASSETS_CACHE_DIR} \
+    MARKATA_GO_BUNDLED_MERMAID_DIR=${BUNDLED_MERMAID_DIR}
+
 # Set working directory for user content
 WORKDIR /site
 

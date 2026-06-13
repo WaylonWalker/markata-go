@@ -18,6 +18,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 	gmermaid "go.abhg.dev/goldmark/mermaid"
 	"go.abhg.dev/goldmark/mermaid/mermaidcdp"
 )
@@ -244,7 +245,7 @@ type chromiumRenderer struct {
 }
 
 // mermaidJSVersion is the MermaidJS version to download for chromium rendering.
-const mermaidJSVersion = "10"
+const mermaidJSVersion = "10.9.5"
 
 // getMermaidJSCacheDir returns the cache directory for MermaidJS source files,
 // following XDG conventions (~/.cache/markata-go/mermaid/).
@@ -264,12 +265,35 @@ func getMermaidJSCacheDir() (string, error) {
 	return cacheDir, nil
 }
 
+func loadBundledMermaidJSSource(version string) (string, error) {
+	bundledDir := runtimeenv.BundledMermaidDir()
+	if bundledDir == "" {
+		return "", os.ErrNotExist
+	}
+	cacheFile := filepath.Join(bundledDir, fmt.Sprintf("mermaid-v%s.min.js", version))
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		return "", err
+	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("bundled MermaidJS source is empty: %s", cacheFile)
+	}
+	log.Printf("[mermaid] chromium: loaded MermaidJS from bundled cache (%d bytes)", len(data))
+	return string(data), nil
+}
+
 // loadOrDownloadJSSource loads the MermaidJS source from the local cache,
 // downloading it if not already cached. The cached file is stored at
 // ~/.cache/markata-go/mermaid/mermaid-v{version}.min.js
 func loadOrDownloadJSSource(ctx context.Context, version string) (string, error) {
 	cacheDir, err := getMermaidJSCacheDir()
 	if err != nil {
+		if bundledSource, bundledErr := loadBundledMermaidJSSource(version); bundledErr == nil {
+			return bundledSource, nil
+		}
+		if runtimeenv.OfflineEnabled() {
+			return "", fmt.Errorf("failed to access MermaidJS cache in offline mode: %w", err)
+		}
 		// Cache dir unavailable; fall back to direct download
 		log.Printf("[mermaid] chromium: cache unavailable (%v), downloading directly", err)
 		return mermaidcdp.DownloadJSSource(ctx, version)
@@ -281,6 +305,12 @@ func loadOrDownloadJSSource(ctx context.Context, version string) (string, error)
 	if data, err := os.ReadFile(cacheFile); err == nil && len(data) > 0 {
 		log.Printf("[mermaid] chromium: loaded MermaidJS from cache (%d bytes)", len(data))
 		return string(data), nil
+	}
+	if bundledSource, err := loadBundledMermaidJSSource(version); err == nil {
+		return bundledSource, nil
+	}
+	if runtimeenv.OfflineEnabled() {
+		return "", fmt.Errorf("mermaid JS source mermaid-v%s.min.js is not available in cache or bundled assets while offline", version)
 	}
 
 	// Download and cache

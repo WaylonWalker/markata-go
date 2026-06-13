@@ -195,7 +195,7 @@ func TestTailwindPlugin_ResolveBuildInput_GeneratesDefaultInput(t *testing.T) {
 	}
 }
 
-func TestTailwindPlugin_FindOrInstallTailwind_PrefersManagedBinary(t *testing.T) {
+func TestTailwindPlugin_FindOrInstallTailwind_PrefersPathWhenAvailable(t *testing.T) {
 	plugin := NewTailwindPlugin()
 	plugin.config = models.NewTailwindConfig()
 	plugin.config.Version = "v3.4.19"
@@ -226,14 +226,14 @@ func TestTailwindPlugin_FindOrInstallTailwind_PrefersManagedBinary(t *testing.T)
 	if err != nil {
 		t.Fatalf("findOrInstallTailwind() error = %v", err)
 	}
-	if path != "/managed/tailwindcss" {
-		t.Fatalf("findOrInstallTailwind() = %q, want /managed/tailwindcss", path)
+	if path != "/usr/bin/tailwindcss" {
+		t.Fatalf("findOrInstallTailwind() = %q, want /usr/bin/tailwindcss", path)
 	}
-	if !installed {
-		t.Fatal("expected managed installer to be used")
+	if installed {
+		t.Fatal("expected system tailwindcss binary to be used before auto-install")
 	}
-	if lookups != 0 {
-		t.Fatalf("expected PATH lookup to be skipped when auto-install enabled, got %d lookups", lookups)
+	if lookups != 1 {
+		t.Fatalf("expected one PATH lookup when auto-install enabled, got %d lookups", lookups)
 	}
 }
 
@@ -264,5 +264,37 @@ func TestTailwindPlugin_FindOrInstallTailwind_UsesPathWhenAutoInstallDisabled(t 
 	}
 	if path != "/usr/bin/tailwindcss" {
 		t.Fatalf("findOrInstallTailwind() = %q, want /usr/bin/tailwindcss", path)
+	}
+}
+
+func TestTailwindPlugin_FindOrInstallTailwind_UsesManagedInstallerWhenPathMissing(t *testing.T) {
+	plugin := NewTailwindPlugin()
+	plugin.config = models.NewTailwindConfig()
+	plugin.config.Version = "v3.4.19"
+
+	origLookPath := tailwindLookPath
+	origInstaller := newTailwindInstaller
+	t.Cleanup(func() {
+		tailwindLookPath = origLookPath
+		newTailwindInstaller = origInstaller
+	})
+
+	tailwindLookPath = func(_ string) (string, error) {
+		return "", os.ErrNotExist
+	}
+
+	newTailwindInstaller = func(config TailwindInstallerConfig) tailwindInstaller {
+		if config.Version != "v3.4.19" {
+			t.Fatalf("installer version = %q, want v3.4.19", config.Version)
+		}
+		return stubTailwindInstaller{path: "/managed/tailwindcss"}
+	}
+
+	path, err := plugin.findOrInstallTailwind()
+	if err != nil {
+		t.Fatalf("findOrInstallTailwind() error = %v", err)
+	}
+	if path != "/managed/tailwindcss" {
+		t.Fatalf("findOrInstallTailwind() = %q, want /managed/tailwindcss", path)
 	}
 }

@@ -368,10 +368,11 @@ func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 		}
 	}
 
+	if path, err := tailwindLookPath(getTailwindBinaryName()); err == nil {
+		return path, nil
+	}
+
 	if !p.config.IsAutoInstallEnabled() {
-		if path, err := tailwindLookPath(getTailwindBinaryName()); err == nil {
-			return path, nil
-		}
 		tailwindLog.Warnf("tailwindcss not found in PATH, skipping build")
 		tailwindLog.Printf("Install it or set [markata-go.tailwind].auto_install = true")
 		return "", nil
