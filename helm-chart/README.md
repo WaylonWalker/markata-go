@@ -132,6 +132,8 @@ storage:
 
 This mode is node-local. The chart does not add any scheduling guard, so make sure the workloads land on a node where those paths exist.
 
+The search deployment defaults to `Recreate` strategy because the bundled search index PVC is typically `ReadWriteOnce`, which prevents safe rolling updates across old and new pods.
+
 ```yaml
 nodeSelector:
   kubernetes.io/hostname: falcon3
