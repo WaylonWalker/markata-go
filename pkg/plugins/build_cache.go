@@ -58,8 +58,9 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Load existing cache
-	cacheDir := filepath.Join(config.OutputDir, "..", ".markata")
+	// Load existing cache. Default to content-dir-local .markata so incremental
+	// build state survives when output is redirected to a temp/workspace path.
+	cacheDir := filepath.Join(config.ContentDir, ".markata")
 	if config.Extra != nil {
 		if dir, ok := config.Extra["cache_dir"].(string); ok && dir != "" {
 			cacheDir = dir
