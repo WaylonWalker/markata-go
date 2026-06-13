@@ -167,8 +167,8 @@ Unexpected diagnostic detail belongs in verbose/debug modes, not normal output.
 - `build` and `serve` print progress and warnings to `stderr`, with summaries and
   explicit results remaining readable in both terminal and redirected use.
 - `build` SHOULD include a concise benchmark summary in its final result output,
-  including estimated wall-time spent on CPU work, network wait, disk wait, and
-  idle time, plus the slowest lifecycle hotspots.
+  including estimated wall-time spent on CPU work, network wait, disk read wait,
+  disk write wait, and idle time, plus the slowest lifecycle hotspots.
 - `build` SHOULD offer an explicit machine-readable benchmark mode such as
   `--benchmark-json` for scripting and regression analysis.
 - Detailed per-stage benchmark summaries SHOULD be opt-in via verbose mode or a

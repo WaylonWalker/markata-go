@@ -50,7 +50,8 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - The second warm build is the best steady-state comparison point.
 - Avoid deleting caches unless you specifically need a cold-build measurement.
 - If output is network-bound, inspect plugins that fetch remote content.
-- If output is disk-bound, inspect globbing, cache load/save, feed publishing, and static output.
+- If output is read-heavy, inspect globbing, cache loads, and broad content scans.
+- If output is write-heavy, inspect cache saves, feed publishing, Pagefind output, and static output.
 - Prefer targeted fixes over broad cache-busting changes.
 - For sites that use `[markata-go.mermaid] mode = "chromium"` or `"cli"`, unchanged
   diagrams should reuse cached SVG output on warm builds; if Mermaid remains a hotspot,
