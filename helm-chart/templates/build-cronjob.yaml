@@ -1,0 +1,196 @@
+{{- if .Values.build.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-build"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-build"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.build.schedule | quote }}
+  concurrencyPolicy: {{ .Values.build.concurrencyPolicy | quote }}
+  successfulJobsHistoryLimit: {{ .Values.build.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.build.failedJobsHistoryLimit }}
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: {{ .Values.build.ttlSecondsAfterFinished }}
+      activeDeadlineSeconds: {{ .Values.build.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            service: "{{ .Values.project_identifier }}-notes-build"
+            {{- include "markata-notes.labels" . | nindent 12 }}
+        spec:
+          serviceAccountName: "{{ include "markata-notes.serviceAccountName" . }}"
+          automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+          enableServiceLinks: false
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          restartPolicy: OnFailure
+          {{- if .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+          {{- end }}
+          initContainers:
+            - name: prepare-source
+              image: "{{ .Values.build.fetchImage.name }}:{{ .Values.build.fetchImage.tag }}"
+              imagePullPolicy: {{ .Values.build.fetchImage.pullPolicy }}
+              command:
+                - /bin/sh
+                - -ceu
+              args:
+                - |
+                  set -eu
+                  if ! command -v aws >/dev/null 2>&1 || ! command -v openssl >/dev/null 2>&1; then
+                    if command -v apk >/dev/null 2>&1; then
+                      apk add --no-cache aws-cli openssl
+                    else
+                      echo "fetch image must provide aws, openssl, and /bin/sh" >&2
+                      exit 1
+                    fi
+                  fi
+                  {{- if .Values.build.lock.enabled }}
+                  lock_dir=/data/source/{{ .Values.build.lock.dirName }}
+                  lock_owner="${lock_dir}/owner"
+                  lock_started="${lock_dir}/started_at"
+                  stale_after={{ add (int .Values.build.activeDeadlineSeconds) (int .Values.build.lock.staleAfterBufferSeconds) }}
+                  keep_lock=0
+                  cleanup_lock() {
+                    if [ "${keep_lock}" -eq 0 ] && [ -d "${lock_dir}" ]; then
+                      rm -rf "${lock_dir}"
+                    fi
+                  }
+                  trap cleanup_lock EXIT INT TERM
+                  while ! mkdir "${lock_dir}" 2>/dev/null; do
+                    if [ -f "${lock_started}" ]; then
+                      now=$(date +%s)
+                      started=$(cat "${lock_started}" 2>/dev/null || echo 0)
+                      age=$((now - started))
+                      if [ "${age}" -ge "${stale_after}" ]; then
+                        echo "removing stale build lock at ${lock_dir} (age=${age}s)" >&2
+                        rm -rf "${lock_dir}"
+                        continue
+                      fi
+                    fi
+                    owner=$(cat "${lock_owner}" 2>/dev/null || echo unknown)
+                    echo "waiting for existing build lock held by ${owner}" >&2
+                    sleep {{ .Values.build.lock.pollIntervalSeconds }}
+                  done
+                  printf '%s\n' "${HOSTNAME}" > "${lock_owner}"
+                  date +%s > "${lock_started}"
+                  {{- end }}
+                  mkdir -p /workspace/source /workspace/source/extracted /data/source
+                  archive=/workspace/source/source.tar.gz
+                  aws s3 cp s3://{{ .Values.sourceArchive.bucket }}{{ .Values.sourceArchive.location }}/{{ .Values.sourceArchive.key }} "${archive}"
+                  {{- if .Values.sourceArchive.encryption.enabled }}
+                  decrypted=/workspace/source/source.decrypted.tar.gz
+                  openssl enc -d -aes-256-cbc -pbkdf2 -in "${archive}" -out "${decrypted}" -pass env:MARKATA_GO_ENCRYPTION_KEY_DEFAULT
+                  archive="${decrypted}"
+                  {{- end }}
+                  rm -rf /workspace/source/extracted/*
+                  tar -xzf "${archive}" -C /workspace/source/extracted
+                  find /data/source -mindepth 1 -maxdepth 1 {{- if .Values.build.lock.enabled }} ! -name {{ .Values.build.lock.dirName | quote }}{{- end }} -exec rm -rf {} +
+                  cp -a /workspace/source/extracted/. /data/source/
+                  touch /data/source/.markata-notes-source-ready
+                  {{- if .Values.build.lock.enabled }}
+                  keep_lock=1
+                  {{- end }}
+              {{- if or .Values.aws.existingSecretName .Values.markataEncryption.secretName }}
+              envFrom:
+                {{- if .Values.aws.existingSecretName }}
+                - secretRef:
+                    name: {{ .Values.aws.existingSecretName | quote }}
+                {{- end }}
+                {{- if .Values.markataEncryption.secretName }}
+                - secretRef:
+                    name: {{ .Values.markataEncryption.secretName | quote }}
+                {{- end }}
+              {{- end }}
+              env:
+                - name: HTTP_PROXY
+                  value: {{ .Values.build.proxy.http | quote }}
+                - name: HTTPS_PROXY
+                  value: {{ .Values.build.proxy.https | quote }}
+              resources:
+                {{- toYaml .Values.build.resources | nindent 16 }}
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+                - name: source
+                  mountPath: /data/source
+          containers:
+            - name: build-site
+              image: "{{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}"
+              imagePullPolicy: {{ .Values.build.builderImage.pullPolicy }}
+              command:
+                - /bin/sh
+                - -ceu
+              args:
+                - |
+                  {{- if .Values.build.lock.enabled }}
+                  lock_dir=/data/source/{{ .Values.build.lock.dirName }}
+                  cleanup_lock() {
+                    rm -rf "${lock_dir}"
+                  }
+                  trap cleanup_lock EXIT INT TERM
+                  {{- end }}
+                  mkdir -p /workspace/cache /workspace/build/site /data/site/releases
+                  cd /data/source
+                  {{- if .Values.build.mermaid.mode }}
+                  cat <<'EOF' >/tmp/markata-go-build-override.toml
+                  [markata-go.mermaid]
+                  mode = {{ .Values.build.mermaid.mode | squote }}
+                  EOF
+                  markata-go build -m /tmp/markata-go-build-override.toml --output /workspace/build/site
+                  {{- else }}
+                  markata-go build --output /workspace/build/site
+                  {{- end }}
+                  release_name="$(date -u +%Y%m%dT%H%M%SZ)-${HOSTNAME}"
+                  release_dir="/data/site/releases/${release_name}"
+                  release_tmp="${release_dir}.tmp"
+                  rm -rf "${release_tmp}"
+                  mkdir -p "${release_tmp}"
+                  if [ -e /data/site/current ]; then
+                    cp -al /data/site/current/. "${release_tmp}/"
+                  fi
+                  rsync -a --checksum --delete-delay --delay-updates /workspace/build/site/ "${release_tmp}/"
+                  mv "${release_tmp}" "${release_dir}"
+                  ln -sfn "releases/${release_name}" /data/site/current.next
+                  mv -Tf /data/site/current.next /data/site/current
+                  find /data/site/releases -mindepth 1 -maxdepth 1 -type d \
+                    | sort -r \
+                    | tail -n +{{ add (int .Values.build.releases.keep) 1 }} \
+                    | xargs -r rm -rf
+              {{- if .Values.markataEncryption.secretName }}
+              envFrom:
+                - secretRef:
+                    name: {{ .Values.markataEncryption.secretName | quote }}
+              {{- end }}
+              env:
+                - name: HTTP_PROXY
+                  value: {{ .Values.build.proxy.http | quote }}
+                - name: HTTPS_PROXY
+                  value: {{ .Values.build.proxy.https | quote }}
+                - name: XDG_CACHE_HOME
+                  value: /workspace/cache
+              resources:
+                {{- toYaml .Values.build.resources | nindent 16 }}
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+                - name: source
+                  mountPath: /data/source
+                - name: site
+                  mountPath: /data/site
+          volumes:
+            - name: workspace
+              emptyDir: {}
+            - name: source
+              persistentVolumeClaim:
+                claimName: "{{ include "markata-notes.sourcePvcName" . }}"
+            - name: site
+              persistentVolumeClaim:
+                claimName: "{{ include "markata-notes.sitePvcName" . }}"
+{{- end }}

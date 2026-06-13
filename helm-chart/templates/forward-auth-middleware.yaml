@@ -1,0 +1,25 @@
+{{- if and .Values.ingress.enabled .Values.ingress.auth.enabled (eq (.Values.ingress.auth.provider | default "traefik") "traefik") }}
+{{- $authAccess := .Values.ingress.auth.access | default "authenticated" }}
+{{- $authTarget := $authAccess }}
+{{- $authBaseUrl := .Values.ingress.auth.internalUrl | default .Values.ingress.auth.url | default .Values.ingress.auth.internalRadaUrl | default .Values.ingress.auth.radaUrl }}
+{{- if and (eq $authAccess "role") .Values.ingress.auth.roleName }}
+{{- $authTarget = .Values.ingress.auth.roleName }}
+{{- end }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-forward-auth"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  forwardAuth:
+    address: "{{ $authBaseUrl | trimSuffix "/" }}/_auth/{{ $authTarget }}?mode={{ .Values.ingress.auth.mode | default "redirect" }}"
+    tls:
+      insecureSkipVerify: true
+    trustForwardHeader: true
+    authResponseHeaders:
+      {{- range .Values.ingress.auth.responseHeaders }}
+      - {{ . | quote }}
+      {{- end }}
+{{- end }}
