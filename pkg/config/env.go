@@ -126,60 +126,28 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.FeedDefaults.Syndication.SiteArchiveDisabled = parseBool(value)
 	case "feed_defaults_syndication_feed_archives_disabled", "feeds_defaults_syndication_feed_archives_disabled":
 		config.FeedDefaults.Syndication.FeedArchivesDisabled = parseBool(value)
+	case "search_endpoint":
+		config.Search.Endpoint = value
+	case "search_backend":
+		config.Search.Backend = value
+	case "search_bleve_endpoint":
+		config.Search.Bleve.Endpoint = value
 	// Pagefind search settings
 	case "search_pagefind_auto_install":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
-			autoInstall := parseBool(value)
-			searchConfig.Pagefind.AutoInstall = &autoInstall
-			config.Extra["search"] = searchConfig
-		}
+		autoInstall := parseBool(value)
+		config.Search.Pagefind.AutoInstall = &autoInstall
 	case "search_pagefind_cache_dir":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
-			searchConfig.Pagefind.CacheDir = value
-			config.Extra["search"] = searchConfig
-		}
+		config.Search.Pagefind.CacheDir = value
 	case "search_pagefind_version":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
-			searchConfig.Pagefind.Version = value
-			config.Extra["search"] = searchConfig
-		}
+		config.Search.Pagefind.Version = value
 	case "search_pagefind_bundle_dir":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
-			searchConfig.Pagefind.BundleDir = value
-			config.Extra["search"] = searchConfig
-		}
+		config.Search.Pagefind.BundleDir = value
 	case "search_pagefind_verbose":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
-			verbose := parseBool(value)
-			searchConfig.Pagefind.Verbose = &verbose
-			config.Extra["search"] = searchConfig
-		}
+		verbose := parseBool(value)
+		config.Search.Pagefind.Verbose = &verbose
 	case "search_enabled":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		searchConfig, ok := config.Extra["search"].(models.SearchConfig)
-		if !ok {
-			searchConfig = models.SearchConfig{}
-		}
 		enabled := parseBool(value)
-		searchConfig.Enabled = &enabled
-		config.Extra["search"] = searchConfig
+		config.Search.Enabled = &enabled
 	case "tailwind_build":
 		if config.Extra == nil {
 			config.Extra = make(map[string]interface{})

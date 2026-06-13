@@ -14,19 +14,30 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 		expectedFunc func(*models.Config) bool
 	}{
 		{
+			name: "search_endpoint",
+			envVars: map[string]string{
+				"MARKATA_GO_SEARCH_ENDPOINT": "https://go.waylonwalker.com/api/search",
+			},
+			expectedFunc: func(c *models.Config) bool {
+				return c.Search.Endpoint == "https://go.waylonwalker.com/api/search"
+			},
+		},
+		{
+			name: "search_bleve_endpoint",
+			envVars: map[string]string{
+				"MARKATA_GO_SEARCH_BLEVE_ENDPOINT": "https://go.waylonwalker.com/api/search",
+			},
+			expectedFunc: func(c *models.Config) bool {
+				return c.Search.Bleve.Endpoint == "https://go.waylonwalker.com/api/search"
+			},
+		},
+		{
 			name: "search_enabled false",
 			envVars: map[string]string{
 				"MARKATA_GO_SEARCH_ENABLED": "false",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Enabled != nil && *searchConfig.Enabled == false
+				return c.Search.Enabled != nil && *c.Search.Enabled == false
 			},
 		},
 		{
@@ -35,14 +46,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_AUTO_INSTALL": "true",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.AutoInstall != nil && *searchConfig.Pagefind.AutoInstall == true
+				return c.Search.Pagefind.AutoInstall != nil && *c.Search.Pagefind.AutoInstall == true
 			},
 		},
 		{
@@ -51,14 +55,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_AUTO_INSTALL": "false",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.AutoInstall != nil && *searchConfig.Pagefind.AutoInstall == false
+				return c.Search.Pagefind.AutoInstall != nil && *c.Search.Pagefind.AutoInstall == false
 			},
 		},
 		{
@@ -67,14 +64,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_CACHE_DIR": "/tmp/pagefind-cache",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.CacheDir == "/tmp/pagefind-cache"
+				return c.Search.Pagefind.CacheDir == "/tmp/pagefind-cache"
 			},
 		},
 		{
@@ -83,14 +73,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_VERSION": "v1.4.0",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.Version == "v1.4.0"
+				return c.Search.Pagefind.Version == "v1.4.0"
 			},
 		},
 		{
@@ -99,14 +82,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_BUNDLE_DIR": "_search",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.BundleDir == "_search"
+				return c.Search.Pagefind.BundleDir == "_search"
 			},
 		},
 		{
@@ -115,14 +91,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_VERBOSE": "true",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.Verbose != nil && *searchConfig.Pagefind.Verbose == true
+				return c.Search.Pagefind.Verbose != nil && *c.Search.Pagefind.Verbose == true
 			},
 		},
 		{
@@ -134,17 +103,10 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 				"MARKATA_GO_SEARCH_PAGEFIND_VERBOSE":      "true",
 			},
 			expectedFunc: func(c *models.Config) bool {
-				if c.Extra == nil {
-					return false
-				}
-				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
-				if !ok {
-					return false
-				}
-				return searchConfig.Pagefind.AutoInstall != nil && *searchConfig.Pagefind.AutoInstall == true &&
-					searchConfig.Pagefind.CacheDir == "/tmp/cache" &&
-					searchConfig.Pagefind.Version == "v1.4.0" &&
-					searchConfig.Pagefind.Verbose != nil && *searchConfig.Pagefind.Verbose == true
+				return c.Search.Pagefind.AutoInstall != nil && *c.Search.Pagefind.AutoInstall == true &&
+					c.Search.Pagefind.CacheDir == "/tmp/cache" &&
+					c.Search.Pagefind.Version == "v1.4.0" &&
+					c.Search.Pagefind.Verbose != nil && *c.Search.Pagefind.Verbose == true
 			},
 		},
 	}
@@ -163,11 +125,7 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 			}()
 
 			// Create a config with default search settings
-			config := &models.Config{
-				Extra: map[string]interface{}{
-					"search": models.NewSearchConfig(),
-				},
-			}
+			config := &models.Config{Search: models.NewSearchConfig()}
 
 			// Apply env overrides
 			err := ApplyEnvOverrides(config)
