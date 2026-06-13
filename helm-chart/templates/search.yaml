@@ -93,6 +93,9 @@ spec:
               value: {{ .Values.offline.bundledAssetsCacheDir | quote }}
             - name: MARKATA_GO_BUNDLED_MERMAID_DIR
               value: {{ .Values.offline.bundledMermaidDir | quote }}
+            {{- with .Values.search.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.search.port }}
               name: http
@@ -122,8 +125,14 @@ spec:
       volumes:
         {{- if ne .Values.search.mode "read-only-index" }}
         - name: source
+          {{- if eq (.Values.storage.source.mode | default "pvc") "hostPath" }}
+          hostPath:
+            path: {{ .Values.storage.source.hostPath.path | quote }}
+            type: {{ .Values.storage.source.hostPath.type | quote }}
+          {{- else }}
           persistentVolumeClaim:
             claimName: "{{ include "markata-notes.sourcePvcName" . }}"
+          {{- end }}
         {{- end }}
         - name: search
           persistentVolumeClaim:

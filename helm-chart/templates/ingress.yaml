@@ -31,6 +31,15 @@ spec:
   {{- if .Values.ingress.ingressClassName }}
   ingressClassName: {{ .Values.ingress.ingressClassName | quote }}
   {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - secretName: {{ include "markata-notes.tlsSecretName" . | quote }}
+      hosts:
+        - {{ include "markata-notes.host" . | quote }}
+        {{- range .Values.ingress.extraCnames }}
+        - {{ . | quote }}
+        {{- end }}
+  {{- end }}
   rules:
     - host: "{{ include "markata-notes.host" . }}"
       http:

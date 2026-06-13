@@ -1,3 +1,4 @@
+{{- if eq (.Values.storage.source.mode | default "pvc") "pvc" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -12,7 +13,11 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.source.size | quote }}
+{{- end }}
+{{- if and (eq (.Values.storage.source.mode | default "pvc") "pvc") (eq (.Values.storage.site.mode | default "pvc") "pvc") }}
 ---
+{{- end }}
+{{- if eq (.Values.storage.site.mode | default "pvc") "pvc" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -28,6 +33,7 @@ spec:
     requests:
       storage: {{ .Values.storage.site.size | quote }}
 ---
+{{- end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

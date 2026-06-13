@@ -58,8 +58,14 @@ spec:
             failureThreshold: 12
       volumes:
         - name: site
+          {{- if eq (.Values.storage.site.mode | default "pvc") "hostPath" }}
+          hostPath:
+            path: {{ .Values.storage.site.hostPath.path | quote }}
+            type: {{ .Values.storage.site.hostPath.type | quote }}
+          {{- else }}
           persistentVolumeClaim:
             claimName: "{{ include "markata-notes.sitePvcName" . }}"
+          {{- end }}
         - name: nginx-config
           configMap:
             name: "{{ .Values.project_identifier }}-notes-nginx-config"
