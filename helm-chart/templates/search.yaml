@@ -87,6 +87,12 @@ spec:
               value: {{ .Values.build.proxy.http | quote }}
             - name: HTTPS_PROXY
               value: {{ .Values.build.proxy.https | quote }}
+            - name: MARKATA_GO_OFFLINE
+              value: {{ ternary "true" "false" .Values.offline.enabled | quote }}
+            - name: MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR
+              value: {{ .Values.offline.bundledAssetsCacheDir | quote }}
+            - name: MARKATA_GO_BUNDLED_MERMAID_DIR
+              value: {{ .Values.offline.bundledMermaidDir | quote }}
           ports:
             - containerPort: {{ .Values.search.port }}
               name: http

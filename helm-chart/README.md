@@ -67,6 +67,38 @@ just push
 - Set `ingress.host` explicitly if you do not want the default `<project>.example.com` hostname.
 - Ingress auth is disabled by default. If you enable it, set `ingress.auth.url` and optionally `ingress.auth.internalUrl` for your auth provider.
 
+## Offline builds
+
+The official `ghcr.io/waylonwalker/markata-go-builder` image ships with:
+
+- preloaded bundled CDN asset cache
+- bundled Mermaid JS source
+- `aws` and `openssl` for the source fetch/decrypt step
+
+That means the chart can run without internet egress as long as your workload can still reach the configured source archive location and your site only needs assets that are already bundled or already cached.
+
+Simple Helm values:
+
+```yaml
+offline:
+  enabled: true
+```
+
+When `offline.enabled` is true, the build and search workloads run with:
+
+- `MARKATA_GO_OFFLINE=true`
+- `MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR=/usr/local/share/markata-go/assets-cache`
+- `MARKATA_GO_BUNDLED_MERMAID_DIR=/usr/local/share/markata-go/mermaid`
+
+If your site depends on extra self-hosted CDN assets beyond the bundled cache, pre-populate `.markata/assets-cache` in the source archive before publishing it:
+
+```bash
+markata-go assets download
+just push
+```
+
+Or override `offline.bundledAssetsCacheDir` / `offline.bundledMermaidDir` to point at a custom preloaded location in your image.
+
 ## Manual rebuild
 
 ```bash

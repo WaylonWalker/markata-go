@@ -32,9 +32,11 @@ The builder image is intended for CI pipelines, sidecar builders, and scripts th
 The builder image MUST include:
 
 - `markata-go` binary
+- `aws` CLI
 - POSIX shell at `/bin/sh`
 - Filesystem utilities: `find`, `sort`, `xargs`, `sha256sum`, `awk`
 - Core utilities: `date`, `ln`, `rm`, `mkdir`, `cp`, `mv`, `sleep`
+- `openssl` for source archive decryption and related build workflows
 - `rsync` for publish/sync workflows
 - `ca-certificates` for HTTPS access
 
@@ -57,6 +59,8 @@ Note: `nodejs`, `npm`, and `@mermaid-js/mermaid-cli` are NOT required. Mermaid r
 
 - The builder image MUST allow running shell scripts directly.
 - `docker run --rm <builder-image> sh -c 'markata-go --help'` MUST succeed.
+- `docker run --rm <builder-image> sh -c 'aws --version'` MUST succeed.
+- `docker run --rm <builder-image> sh -c 'openssl version'` MUST succeed.
 - `docker run --rm <builder-image> sh -c 'rsync --version'` MUST succeed.
 
 ## Tagging and Versioning
