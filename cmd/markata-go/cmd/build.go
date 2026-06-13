@@ -299,7 +299,8 @@ func printBuildBenchmarkSummary(summary buildstats.Summary) {
 	outlnf("  %s %s", buildLabel("Resource profile:"), colorizeOutput("estimated wall time", currentLogTheme.Component))
 	printResourceLine("CPU", summary.Resources.CPU, summary.Total)
 	printResourceLine("Network wait", summary.Resources.NetworkWait, summary.Total)
-	printResourceLine("Disk wait", summary.Resources.DiskWait, summary.Total)
+	printResourceLine("Disk read", summary.Resources.DiskReadWait, summary.Total)
+	printResourceLine("Disk write", summary.Resources.DiskWriteWait, summary.Total)
 	printResourceLine("Idle", summary.Resources.Idle, summary.Total)
 
 	if verbose || buildBenchmarkDetailed {
@@ -329,12 +330,13 @@ func printStageBenchmarkSummary(summary buildstats.Summary) {
 
 	outlnf("  %s %s", buildLabel("Stage resources:"), colorizeOutput("estimated wall time", currentLogTheme.Component))
 	for _, stage := range stages {
-		outlnf("    %s total=%-8s cpu=%-8s net=%-8s disk=%-8s idle=%-8s",
+		outlnf("    %s total=%-8s cpu=%-8s net=%-8s read=%-8s write=%-8s idle=%-8s",
 			colorizeOutput(stage.Stage, stageThemeColor(stage.Stage)),
 			formatDuration(stage.Duration),
 			formatDuration(stage.Resources.CPU),
 			formatDuration(stage.Resources.NetworkWait),
-			formatDuration(stage.Resources.DiskWait),
+			formatDuration(stage.Resources.DiskReadWait),
+			formatDuration(stage.Resources.DiskWriteWait),
 			formatDuration(stage.Resources.Idle),
 		)
 	}

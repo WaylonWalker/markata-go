@@ -292,7 +292,7 @@ and Pagefind indexing for a tighter dev loop.
 
 Successful builds also print a compact benchmark summary with:
 
-- estimated wall-time spent on CPU work, network wait, disk wait, and idle time
+- estimated wall-time spent on CPU work, network wait, disk read wait, disk write wait, and idle time
 - the slowest lifecycle hotspots so you can spot expensive plugins quickly
 
 For deeper analysis:

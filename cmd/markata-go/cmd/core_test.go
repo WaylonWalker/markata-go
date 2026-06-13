@@ -63,10 +63,11 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 		Benchmark: buildstats.Summary{
 			Total: 10 * time.Second,
 			Resources: buildstats.ResourceBreakdown{
-				CPU:         2 * time.Second,
-				NetworkWait: 5 * time.Second,
-				DiskWait:    2 * time.Second,
-				Idle:        1 * time.Second,
+				CPU:           2 * time.Second,
+				NetworkWait:   5 * time.Second,
+				DiskReadWait:  750 * time.Millisecond,
+				DiskWriteWait: 1250 * time.Millisecond,
+				Idle:          1 * time.Second,
 			},
 			Hotspots: []buildstats.Hotspot{
 				{Stage: "collect", Plugin: "blogroll", Duration: 3 * time.Second},
@@ -83,7 +84,8 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 		"Resource profile: estimated wall time",
 		"CPU",
 		"Network wait",
-		"Disk wait",
+		"Disk read",
+		"Disk write",
 		"Idle",
 		"Hotspots:",
 		"collect/blogroll",

@@ -12,10 +12,11 @@ const sampleInterval = 100 * time.Millisecond
 
 // ResourceBreakdown is an estimated wall-time split for a build.
 type ResourceBreakdown struct {
-	CPU         time.Duration
-	NetworkWait time.Duration
-	DiskWait    time.Duration
-	Idle        time.Duration
+	CPU           time.Duration
+	NetworkWait   time.Duration
+	DiskReadWait  time.Duration
+	DiskWriteWait time.Duration
+	Idle          time.Duration
 }
 
 // Hotspot identifies a slow plugin hook.
@@ -223,13 +224,15 @@ func (p *Profile) sample() {
 	p.mu.Lock()
 	p.resources.CPU += delta.CPU
 	p.resources.NetworkWait += delta.NetworkWait
-	p.resources.DiskWait += delta.DiskWait
+	p.resources.DiskReadWait += delta.DiskReadWait
+	p.resources.DiskWriteWait += delta.DiskWriteWait
 	p.resources.Idle += delta.Idle
 	if p.current != "" {
 		usage := p.stageUsage[p.current]
 		usage.CPU += delta.CPU
 		usage.NetworkWait += delta.NetworkWait
-		usage.DiskWait += delta.DiskWait
+		usage.DiskReadWait += delta.DiskReadWait
+		usage.DiskWriteWait += delta.DiskWriteWait
 		usage.Idle += delta.Idle
 		p.stageUsage[p.current] = usage
 	}
@@ -257,15 +260,45 @@ func classifyInterval(prev, current runtimeSample, networkActive bool) ResourceB
 		return breakdown
 	}
 
-	diskChanged := current.ReadBytes > prev.ReadBytes || current.WriteBytes > prev.WriteBytes
+	readDelta := deltaBytes(prev.ReadBytes, current.ReadBytes)
+	writeDelta := deltaBytes(prev.WriteBytes, current.WriteBytes)
 	switch {
 	case networkActive:
 		breakdown.NetworkWait = remaining
-	case diskChanged:
-		breakdown.DiskWait = remaining
+	case readDelta > 0 || writeDelta > 0:
+		breakdown.DiskReadWait, breakdown.DiskWriteWait = splitDiskWait(remaining, readDelta, writeDelta)
 	default:
 		breakdown.Idle = remaining
 	}
 
 	return breakdown
+}
+
+func deltaBytes(prev, current uint64) uint64 {
+	if current <= prev {
+		return 0
+	}
+	return current - prev
+}
+
+func splitDiskWait(remaining time.Duration, readDelta, writeDelta uint64) (time.Duration, time.Duration) {
+	total := readDelta + writeDelta
+	if total == 0 {
+		return 0, 0
+	}
+	if readDelta == 0 {
+		return 0, remaining
+	}
+	if writeDelta == 0 {
+		return remaining, 0
+	}
+
+	readWait := time.Duration(int64(remaining) * int64(readDelta) / int64(total))
+	if readWait < 0 {
+		readWait = 0
+	}
+	if readWait > remaining {
+		readWait = remaining
+	}
+	return readWait, remaining - readWait
 }
