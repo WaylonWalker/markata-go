@@ -138,7 +138,7 @@ spec:
                   }
                   trap cleanup_lock EXIT INT TERM
                   {{- end }}
-                  mkdir -p /workspace/cache /workspace/build/site /data/site/releases
+                  mkdir -p {{ .Values.build.cacheDir | quote }} /workspace/build/site /data/site/releases
                   cd /data/source
                   {{- if .Values.build.mermaid.mode }}
                   cat <<'EOF' >/tmp/markata-go-build-override.toml
@@ -182,7 +182,7 @@ spec:
                 - name: MARKATA_GO_BUNDLED_MERMAID_DIR
                   value: {{ .Values.offline.bundledMermaidDir | quote }}
                 - name: XDG_CACHE_HOME
-                  value: /workspace/cache
+                  value: {{ .Values.build.cacheDir | quote }}
                 {{- with .Values.build.extraEnv }}
                 {{- toYaml . | nindent 16 }}
                 {{- end }}

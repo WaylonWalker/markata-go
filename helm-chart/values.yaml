@@ -61,6 +61,7 @@ build:
   proxy:
     http: ""
     https: ""
+  cacheDir: /data/site/.cache/xdg
   extraEnv: []
   resources:
     requests:

@@ -70,6 +70,7 @@ just push
 - Use `build.extraEnv` for host-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` or `MARKATA_GO_SEARCH_ENDPOINT`.
 - `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
 - Use `nodeSelector` when hostPath-backed content exists only on a specific node.
+- `build.cacheDir` defaults to `/data/site/.cache/xdg` so tool caches survive between builds on the site volume.
 
 ## Offline builds
 
@@ -135,6 +136,8 @@ This mode is node-local. The chart does not add any scheduling guard, so make su
 The search deployment defaults to `Recreate` strategy because the bundled search index PVC is typically `ReadWriteOnce`, which prevents safe rolling updates across old and new pods.
 
 In `watch-content` mode the search server runs with `/data/search` as its working directory and uses `search.configPath` to load the site config from the mounted source tree. This keeps `.markata/cache` and the Bleve index on writable storage instead of trying to write cache files into the source hostPath.
+
+To preserve build-time tool caches between runs, keep `build.cacheDir` on persistent storage. The default points at the site volume so cached helper binaries and assets survive CronJob restarts instead of being lost with the pod `emptyDir`.
 
 ```yaml
 nodeSelector:
