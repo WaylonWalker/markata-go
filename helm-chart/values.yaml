@@ -90,6 +90,8 @@ site:
 search:
   enabled: true
   replicaCount: 1
+  strategy:
+    type: Recreate
   image:
     name: ghcr.io/waylonwalker/markata-go-builder
     tag: "latest"

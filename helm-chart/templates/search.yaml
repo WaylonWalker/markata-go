@@ -9,6 +9,8 @@ metadata:
     {{- include "markata-notes.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.search.replicaCount }}
+  strategy:
+    type: {{ .Values.search.strategy.type | quote }}
   selector:
     matchLabels:
       service: "{{ .Values.project_identifier }}-notes-search"
