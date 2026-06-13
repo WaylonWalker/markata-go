@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 const maxArchiveExtractBytes = 64 << 20
@@ -41,22 +43,29 @@ type DownloadResult struct {
 
 // Downloader handles downloading and caching of CDN assets.
 type Downloader struct {
-	cacheDir        string
-	verifyIntegrity bool
-	httpClient      *http.Client
-	userAgent       string
+	cacheDir          string
+	fallbackCacheDirs []string
+	verifyIntegrity   bool
+	offline           bool
+	httpClient        *http.Client
+	userAgent         string
 }
 
 // NewDownloader creates a new asset downloader.
 func NewDownloader(cacheDir string, verifyIntegrity bool) *Downloader {
-	return &Downloader{
+	d := &Downloader{
 		cacheDir:        cacheDir,
 		verifyIntegrity: verifyIntegrity,
+		offline:         runtimeenv.OfflineEnabled(),
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
 		userAgent: "markata-go/1.0 (CDN Asset Downloader)",
 	}
+	if bundledDir := runtimeenv.BundledAssetsCacheDir(); bundledDir != "" && bundledDir != cacheDir {
+		d.fallbackCacheDirs = append(d.fallbackCacheDirs, bundledDir)
+	}
+	return d
 }
 
 // Download downloads a single asset to the cache directory.
@@ -66,23 +75,36 @@ func (d *Downloader) Download(ctx context.Context, asset Asset) (*DownloadResult
 	result := &DownloadResult{Asset: asset}
 
 	// Check if already cached
-	cachedPath := d.getCachePath(asset)
-	if info, err := os.Stat(cachedPath); err == nil && !d.isArchiveAsset(asset) {
-		result.Cached = true
-		result.Size = info.Size()
-		result.Duration = time.Since(start)
-		return result, nil
-	}
-	if d.isArchiveAsset(asset) {
-		if info, err := os.Stat(d.getArchiveMarkerPath(asset)); err == nil {
+	if cachedRoot, ok := d.findCachedRoot(asset); ok {
+		cachedPath := d.getCachePathForRoot(cachedRoot, asset)
+		if !d.isArchiveAsset(asset) {
+			info, err := os.Stat(cachedPath)
+			if err != nil {
+				result.Error = fmt.Errorf("stat cached asset: %w", err)
+				return result, result.Error
+			}
 			result.Cached = true
 			result.Size = info.Size()
 			result.Duration = time.Since(start)
 			return result, nil
 		}
+		info, err := os.Stat(d.getArchiveMarkerPathForRoot(cachedRoot, asset))
+		if err != nil {
+			result.Error = fmt.Errorf("stat cached archive marker: %w", err)
+			return result, result.Error
+		}
+		result.Cached = true
+		result.Size = info.Size()
+		result.Duration = time.Since(start)
+		return result, nil
+	}
+	if d.offline {
+		result.Error = fmt.Errorf("%w: %s not available in cache while offline", ErrDownloadFailed, asset.Name)
+		return result, result.Error
 	}
 
 	// Create cache directory
+	cachedPath := d.getCachePath(asset)
 	cacheDir := filepath.Dir(cachedPath)
 	if d.isArchiveAsset(asset) {
 		cacheDir = cachedPath
@@ -194,35 +216,23 @@ func (d *Downloader) DownloadAll(ctx context.Context, concurrency int) []Downloa
 
 // IsCached checks if an asset is already cached.
 func (d *Downloader) IsCached(asset Asset) bool {
-	cachedPath := d.getCachePath(asset)
-	if d.isArchiveAsset(asset) {
-		_, err := os.Stat(d.getArchiveMarkerPath(asset))
-		return err == nil
-	}
-	_, err := os.Stat(cachedPath)
-	return err == nil
+	_, ok := d.findCachedRoot(asset)
+	return ok
 }
 
 // GetCachedPath returns the path to the cached asset file.
 // Returns empty string if not cached.
 func (d *Downloader) GetCachedPath(asset Asset) string {
-	cachedPath := d.getCachePath(asset)
-	if d.isArchiveAsset(asset) {
-		if _, err := os.Stat(d.getArchiveMarkerPath(asset)); err == nil {
-			return cachedPath
-		}
-		return ""
-	}
-	if _, err := os.Stat(cachedPath); err == nil {
-		return cachedPath
+	if cachedRoot, ok := d.findCachedRoot(asset); ok {
+		return d.getCachePathForRoot(cachedRoot, asset)
 	}
 	return ""
 }
 
 // CopyToOutput copies a cached asset to the output directory.
 func (d *Downloader) CopyToOutput(asset Asset, outputDir string) error {
-	cachedPath := d.getCachePath(asset)
-	if _, err := os.Stat(cachedPath); err != nil {
+	cachedPath := d.GetCachedPath(asset)
+	if cachedPath == "" {
 		return fmt.Errorf("asset not cached: %s", asset.Name)
 	}
 
@@ -283,7 +293,7 @@ func (d *Downloader) Status() []AssetStatus {
 			Cached: d.IsCached(asset),
 		}
 		if statuses[i].Cached {
-			if info, err := os.Stat(d.getCachePath(asset)); err == nil {
+			if info, err := os.Stat(d.GetCachedPath(asset)); err == nil {
 				statuses[i].Size = info.Size()
 				statuses[i].CachedAt = info.ModTime()
 			}
@@ -302,15 +312,44 @@ type AssetStatus struct {
 
 // getCachePath returns the full path to the cached asset file.
 func (d *Downloader) getCachePath(asset Asset) string {
-	return filepath.Join(d.cacheDir, asset.LocalPath)
+	return d.getCachePathForRoot(d.cacheDir, asset)
 }
 
 func (d *Downloader) getArchiveMarkerPath(asset Asset) string {
-	return filepath.Join(d.cacheDir, asset.LocalPath+".complete")
+	return d.getArchiveMarkerPathForRoot(d.cacheDir, asset)
 }
 
 func (d *Downloader) isArchiveAsset(asset Asset) bool {
 	return asset.ExtractPath != ""
+}
+
+func (d *Downloader) getCachePathForRoot(root string, asset Asset) string {
+	return filepath.Join(root, asset.LocalPath)
+}
+
+func (d *Downloader) getArchiveMarkerPathForRoot(root string, asset Asset) string {
+	return filepath.Join(root, asset.LocalPath+".complete")
+}
+
+func (d *Downloader) cacheRoots() []string {
+	roots := []string{d.cacheDir}
+	roots = append(roots, d.fallbackCacheDirs...)
+	return roots
+}
+
+func (d *Downloader) findCachedRoot(asset Asset) (string, bool) {
+	for _, root := range d.cacheRoots() {
+		if d.isArchiveAsset(asset) {
+			if _, err := os.Stat(d.getArchiveMarkerPathForRoot(root, asset)); err == nil {
+				return root, true
+			}
+			continue
+		}
+		if _, err := os.Stat(d.getCachePathForRoot(root, asset)); err == nil {
+			return root, true
+		}
+	}
+	return "", false
 }
 
 func (d *Downloader) extractArchive(asset Asset, data []byte, destDir string) error {

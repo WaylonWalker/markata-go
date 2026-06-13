@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 func TestNewDownloader(t *testing.T) {
@@ -303,6 +305,58 @@ func TestDownloader_CopyToOutput_NotCached(t *testing.T) {
 	err := d.CopyToOutput(asset, outputDir)
 	if err == nil {
 		t.Error("expected error when copying uncached asset")
+	}
+}
+
+func TestDownloader_Download_UsesBundledFallbackCacheWhenOffline(t *testing.T) {
+	cacheDir := t.TempDir()
+	bundledDir := t.TempDir()
+	t.Setenv(runtimeenv.EnvOffline, "true")
+	t.Setenv(runtimeenv.EnvBundledAssetsCacheDir, bundledDir)
+
+	asset := Asset{
+		Name:      "bundled-asset",
+		URL:       "https://example.invalid/bundled.js",
+		LocalPath: "bundled/file.js",
+		Type:      "js",
+	}
+	bundledPath := filepath.Join(bundledDir, asset.LocalPath)
+	if err := os.MkdirAll(filepath.Dir(bundledPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bundledPath, []byte("bundled content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDownloader(cacheDir, false)
+	result, err := d.Download(context.Background(), asset)
+	if err != nil {
+		t.Fatalf("unexpected error loading bundled cached asset: %v", err)
+	}
+	if !result.Cached {
+		t.Fatal("expected bundled asset to be treated as cached")
+	}
+	if got := d.GetCachedPath(asset); got != bundledPath {
+		t.Fatalf("GetCachedPath() = %q, want %q", got, bundledPath)
+	}
+}
+
+func TestDownloader_Download_OfflineMissingFails(t *testing.T) {
+	cacheDir := t.TempDir()
+	t.Setenv(runtimeenv.EnvOffline, "true")
+	t.Setenv(runtimeenv.EnvBundledAssetsCacheDir, t.TempDir())
+
+	d := NewDownloader(cacheDir, false)
+	asset := Asset{
+		Name:      "missing-asset",
+		URL:       "https://example.invalid/missing.js",
+		LocalPath: "missing/file.js",
+		Type:      "js",
+	}
+
+	_, err := d.Download(context.Background(), asset)
+	if err == nil {
+		t.Fatal("expected offline download to fail when asset is not cached")
 	}
 }
 

@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 // CDNAssetsPlugin handles downloading and self-hosting external CDN assets.
@@ -59,12 +61,14 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Check for errors and log them (but don't fail - we can still use CDN fallback)
 	var successCount, cachedCount, errorCount int
+	var missingAssets []string
 	for i := range results {
 		result := &results[i]
 		switch {
 		case result.Error != nil:
 			log.Printf("[cdn_assets] Warning: failed to download %s: %v", result.Asset.Name, result.Error)
 			errorCount++
+			missingAssets = append(missingAssets, result.Asset.Name)
 		case result.Cached:
 			cachedCount++
 		default:
@@ -73,6 +77,9 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 	log.Printf("[cdn_assets] Download complete: %d downloaded, %d cached, %d errors",
 		successCount, cachedCount, errorCount)
+	if errorCount > 0 && runtimeenv.OfflineEnabled() {
+		return fmt.Errorf("offline mode missing required CDN assets: %s", strings.Join(missingAssets, ", "))
+	}
 
 	// Store URL mappings in config.Extra for assets that are actually available
 	availableAssets := make([]assets.Asset, 0, len(assetsToDownload))
