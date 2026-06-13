@@ -133,6 +133,28 @@ func TestCache_MarkRebuiltWithSlug_TracksChange(t *testing.T) {
 	}
 }
 
+func TestCache_MarkRebuiltWithSlug_PreservesCachedHTMLPaths(t *testing.T) {
+	cache := New("")
+	cache.Posts["pages/post-a.md"] = &PostCache{
+		ArticleHTMLPath:    "/tmp/article.html",
+		FullHTMLPath:       "/tmp/full.html",
+		FeedMembershipHash: "membership-hash",
+	}
+
+	cache.MarkRebuiltWithSlug("pages/post-a.md", "post-a", "hash123", "output/post-a/index.html", "post.html")
+
+	got := cache.Posts["pages/post-a.md"]
+	if got.ArticleHTMLPath != "/tmp/article.html" {
+		t.Fatalf("ArticleHTMLPath = %q, want preserved path", got.ArticleHTMLPath)
+	}
+	if got.FullHTMLPath != "/tmp/full.html" {
+		t.Fatalf("FullHTMLPath = %q, want preserved path", got.FullHTMLPath)
+	}
+	if got.FeedMembershipHash != "membership-hash" {
+		t.Fatalf("FeedMembershipHash = %q, want preserved hash", got.FeedMembershipHash)
+	}
+}
+
 func TestCache_MarkChangedPaths(t *testing.T) {
 	cache := New("")
 

@@ -448,10 +448,16 @@ func (c *Cache) MarkRebuilt(sourcePath, inputHash, outputPath, template string) 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.Posts[sourcePath] = &PostCache{
-		InputHash:  inputHash,
-		OutputPath: outputPath,
-		Template:   template,
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.InputHash = inputHash
+		cached.OutputPath = outputPath
+		cached.Template = template
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			InputHash:  inputHash,
+			OutputPath: outputPath,
+			Template:   template,
+		}
 	}
 	c.dirty = true
 	c.rebuiltCount.Add(1)
@@ -463,10 +469,16 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.Posts[sourcePath] = &PostCache{
-		InputHash:  inputHash,
-		OutputPath: outputPath,
-		Template:   template,
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.InputHash = inputHash
+		cached.OutputPath = outputPath
+		cached.Template = template
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			InputHash:  inputHash,
+			OutputPath: outputPath,
+			Template:   template,
+		}
 	}
 	c.dirty = true
 	c.rebuiltCount.Add(1)
