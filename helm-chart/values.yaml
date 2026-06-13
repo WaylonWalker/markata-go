@@ -92,6 +92,7 @@ search:
   replicaCount: 1
   strategy:
     type: Recreate
+  configPath: /data/source/markata-go.toml
   image:
     name: ghcr.io/waylonwalker/markata-go-builder
     tag: "latest"
