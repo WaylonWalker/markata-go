@@ -74,28 +74,11 @@ func (d *Downloader) Download(ctx context.Context, asset Asset) (*DownloadResult
 	start := time.Now()
 	result := &DownloadResult{Asset: asset}
 
-	// Check if already cached
-	if cachedRoot, ok := d.findCachedRoot(asset); ok {
-		cachedPath := d.getCachePathForRoot(cachedRoot, asset)
-		if !d.isArchiveAsset(asset) {
-			info, err := os.Stat(cachedPath)
-			if err != nil {
-				result.Error = fmt.Errorf("stat cached asset: %w", err)
-				return result, result.Error
-			}
-			result.Cached = true
-			result.Size = info.Size()
-			result.Duration = time.Since(start)
-			return result, nil
-		}
-		info, err := os.Stat(d.getArchiveMarkerPathForRoot(cachedRoot, asset))
+	if ok, err := d.restoreCachedResult(result, asset, start); ok || err != nil {
 		if err != nil {
-			result.Error = fmt.Errorf("stat cached archive marker: %w", err)
+			result.Error = err
 			return result, result.Error
 		}
-		result.Cached = true
-		result.Size = info.Size()
-		result.Duration = time.Since(start)
 		return result, nil
 	}
 	if d.offline {
@@ -103,80 +86,112 @@ func (d *Downloader) Download(ctx context.Context, asset Asset) (*DownloadResult
 		return result, result.Error
 	}
 
-	// Create cache directory
 	cachedPath := d.getCachePath(asset)
-	cacheDir := filepath.Dir(cachedPath)
-	if d.isArchiveAsset(asset) {
-		cacheDir = cachedPath
-	}
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		result.Error = fmt.Errorf("create cache dir: %w", err)
-		return result, result.Error
-	}
-
-	// Download the asset
-	req, err := http.NewRequestWithContext(ctx, "GET", asset.URL, http.NoBody)
+	data, err := d.fetchAsset(ctx, asset, cachedPath)
 	if err != nil {
-		result.Error = fmt.Errorf("create request: %w", err)
-		return result, result.Error
-	}
-	req.Header.Set("User-Agent", d.userAgent)
-
-	resp, err := d.httpClient.Do(req)
-	if err != nil {
-		result.Error = fmt.Errorf("%w: %w", ErrDownloadFailed, err)
-		return result, result.Error
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		result.Error = fmt.Errorf("%w: HTTP %d", ErrDownloadFailed, resp.StatusCode)
+		result.Error = err
 		return result, result.Error
 	}
 
-	// Read the response body
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		result.Error = fmt.Errorf("read response: %w", err)
+	if err := d.writeAssetToCache(asset, data, cachedPath); err != nil {
+		result.Error = err
 		return result, result.Error
-	}
-
-	// Verify integrity if hash provided and verification enabled
-	if d.verifyIntegrity && asset.Integrity != "" {
-		if err := verifyIntegrity(data, asset.Integrity); err != nil {
-			result.Error = fmt.Errorf("%w: %w", ErrIntegrityMismatch, err)
-			return result, result.Error
-		}
-	}
-
-	if d.isArchiveAsset(asset) {
-		if err := os.RemoveAll(cachedPath); err != nil {
-			result.Error = fmt.Errorf("reset archive cache: %w", err)
-			return result, result.Error
-		}
-		if err := os.MkdirAll(cachedPath, 0o755); err != nil {
-			result.Error = fmt.Errorf("create archive cache dir: %w", err)
-			return result, result.Error
-		}
-		if err := d.extractArchive(asset, data, cachedPath); err != nil {
-			result.Error = err
-			return result, result.Error
-		}
-		if err := os.WriteFile(d.getArchiveMarkerPath(asset), []byte(asset.Version), 0o644); err != nil { //nolint:gosec // marker file is local cache metadata
-			result.Error = fmt.Errorf("write archive marker: %w", err)
-			return result, result.Error
-		}
-	} else {
-		// Write to cache
-		if err := os.WriteFile(cachedPath, data, 0o644); err != nil { //nolint:gosec // cache files need to be readable by user
-			result.Error = fmt.Errorf("write cache file: %w", err)
-			return result, result.Error
-		}
 	}
 
 	result.Size = int64(len(data))
 	result.Duration = time.Since(start)
 	return result, nil
+}
+
+func (d *Downloader) restoreCachedResult(result *DownloadResult, asset Asset, start time.Time) (bool, error) {
+	cachedRoot, ok := d.findCachedRoot(asset)
+	if !ok {
+		return false, nil
+	}
+
+	cachedPath := d.getCachePathForRoot(cachedRoot, asset)
+	statPath := cachedPath
+	statErr := "stat cached asset"
+	if d.isArchiveAsset(asset) {
+		statPath = d.getArchiveMarkerPathForRoot(cachedRoot, asset)
+		statErr = "stat cached archive marker"
+	}
+
+	info, err := os.Stat(statPath)
+	if err != nil {
+		return true, fmt.Errorf("%s: %w", statErr, err)
+	}
+	result.Cached = true
+	result.Size = info.Size()
+	result.Duration = time.Since(start)
+	return true, nil
+}
+
+func (d *Downloader) fetchAsset(ctx context.Context, asset Asset, cachedPath string) ([]byte, error) {
+	if err := d.ensureCacheDir(asset, cachedPath); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", asset.URL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("User-Agent", d.userAgent)
+
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrDownloadFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: HTTP %d", ErrDownloadFailed, resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+	if d.verifyIntegrity && asset.Integrity != "" {
+		if err := verifyIntegrity(data, asset.Integrity); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrIntegrityMismatch, err)
+		}
+	}
+	return data, nil
+}
+
+func (d *Downloader) ensureCacheDir(asset Asset, cachedPath string) error {
+	cacheDir := filepath.Dir(cachedPath)
+	if d.isArchiveAsset(asset) {
+		cacheDir = cachedPath
+	}
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return fmt.Errorf("create cache dir: %w", err)
+	}
+	return nil
+}
+
+func (d *Downloader) writeAssetToCache(asset Asset, data []byte, cachedPath string) error {
+	if !d.isArchiveAsset(asset) {
+		if err := os.WriteFile(cachedPath, data, 0o644); err != nil { //nolint:gosec // cache files need to be readable by user
+			return fmt.Errorf("write cache file: %w", err)
+		}
+		return nil
+	}
+
+	if err := os.RemoveAll(cachedPath); err != nil {
+		return fmt.Errorf("reset archive cache: %w", err)
+	}
+	if err := os.MkdirAll(cachedPath, 0o755); err != nil {
+		return fmt.Errorf("create archive cache dir: %w", err)
+	}
+	if err := d.extractArchive(asset, data, cachedPath); err != nil {
+		return err
+	}
+	if err := os.WriteFile(d.getArchiveMarkerPath(asset), []byte(asset.Version), 0o644); err != nil { //nolint:gosec // marker file is local cache metadata
+		return fmt.Errorf("write archive marker: %w", err)
+	}
+	return nil
 }
 
 // DownloadAssets downloads the provided assets concurrently.
