@@ -3,6 +3,7 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -80,4 +81,40 @@ func TestConfigHashInput_IsStableForEquivalentConfig(t *testing.T) {
 	if first != second {
 		t.Fatalf("expected effective config hash to be stable for equivalent config: %q != %q", first, second)
 	}
+}
+
+func TestBuildCacheConfigure_DefaultsCacheDirToContentDir(t *testing.T) {
+	contentDir := t.TempDir()
+	outputDir := filepath.Join(t.TempDir(), "build", "site")
+
+	config := &lifecycle.Config{
+		ContentDir: contentDir,
+		OutputDir:  outputDir,
+		Extra: map[string]interface{}{
+			"config_path": filepath.Join(contentDir, "markata-go.toml"),
+		},
+	}
+
+	plugin := NewBuildCachePlugin()
+	manager := lifecycle.NewManager()
+	cfg := manager.Config()
+	*cfg = *config
+
+	if err := plugin.Configure(manager); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	cache := GetBuildCache(manager)
+	if cache == nil {
+		t.Fatal("expected build cache to be stored on manager")
+	}
+
+	want := filepath.Join(contentDir, ".markata", buildcache.CacheFileName)
+	if cachePath := cachePathForTest(cache); cachePath != want {
+		t.Fatalf("cache path = %q, want %q", cachePath, want)
+	}
+}
+
+func cachePathForTest(c *buildcache.Cache) string {
+	return filepath.Clean(reflect.ValueOf(c).Elem().FieldByName("path").String())
 }
