@@ -55,6 +55,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 # markata-go's "chromium" mode uses chromedp (Go-native CDP) directly,
 # and pagefind is installed as a standalone binary below.
 RUN apk add --no-cache \
+    aws-cli \
     ca-certificates \
     coreutils \
     findutils \
@@ -62,6 +63,7 @@ RUN apk add --no-cache \
     git \
     libavif-apps \
     libwebp-tools \
+    openssl \
     chromium \
     openssh-client \
     rsync \

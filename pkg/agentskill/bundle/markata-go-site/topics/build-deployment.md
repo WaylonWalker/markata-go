@@ -15,6 +15,7 @@ Use this topic when the task involves local preview, CI, publishing, or hosting 
 - treat `output_dir` as the deploy artifact root
 - prefer clean builds for deployment validation
 - validate config before deploy if the workflow can afford it
+- if the deploy target runs with limited or no internet egress, prefetch self-hosted CDN assets with `markata-go assets download` before shipping the repo or build input
 
 Examples:
 
@@ -97,6 +98,7 @@ steps:
 - If the repo already has CI, extend the existing workflow instead of replacing it.
 - If a deploy bug is path-related, inspect `output_dir`, `url`, asset paths, and feed URLs before changing templates.
 - If previews and production use different domains, inject `MARKATA_GO_URL` per environment instead of hardcoding one value.
+- if the runtime build environment is offline, make sure `.markata/assets-cache` or another configured asset cache is already populated before relying on self-hosted CDN assets.
 - Validate that feed URLs, social URLs, and asset URLs use the expected domain after build.
 
 ## Markata-Go-Specific Checks Before Shipping

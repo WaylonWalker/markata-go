@@ -26,6 +26,11 @@ searchSecurityContext:
 networkPolicy:
   enabled: true
 
+offline:
+  enabled: true
+  bundledAssetsCacheDir: /usr/local/share/markata-go/assets-cache
+  bundledMermaidDir: /usr/local/share/markata-go/mermaid
+
 build:
   enabled: true
   schedule: "02 23 * * *"
