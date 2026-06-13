@@ -80,7 +80,7 @@ func TestRunReaderUpdateCommand_UsesCommandWriterAndRefreshesCache(t *testing.T)
 	if !strings.Contains(stdout.String(), "Reader cache updated: 1 refreshed, 0 stale fallback, 0 failed, 1 entries") {
 		t.Fatalf("expected refresh summary in stdout, got %q", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), cacheDir) {
+	if !strings.Contains(filepath.ToSlash(stdout.String()), filepath.ToSlash(filepath.Join("cache", "blogroll"))) {
 		t.Fatalf("expected resolved cache dir in stdout, got %q", stdout.String())
 	}
 	if !strings.Contains(stderr.String(), "Refreshing reader cache for 1 feed(s) with concurrency 3...") {
