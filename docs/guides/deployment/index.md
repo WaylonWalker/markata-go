@@ -23,6 +23,7 @@ markata-go generates static sites that can be deployed anywhere that serves HTML
 | [Cloudflare Pages](./cloudflare-pages/) | Unlimited | Yes (HTTPS) | ~2 min | Global CDN, Workers |
 | [AWS S3](./aws-s3/) | 5 GB (12 mo) | Yes (via CF) | Manual | Enterprise, AWS stack |
 | [Docker](./docker/) | N/A | Self-managed | ~30 sec | Self-hosted, control |
+| Kubernetes Helm | N/A | Yes | Cluster-dependent | Homelabs, ArgoCD, in-cluster builds |
 
 ## Quick Decision Guide
 
@@ -55,6 +56,11 @@ markata-go generates static sites that can be deployed anywhere that serves HTML
 - You want full control
 - You're self-hosting other services
 - You need offline capabilities
+
+**Choose Kubernetes Helm if:**
+- You already deploy with ArgoCD or Helm
+- You want in-cluster builds from a source archive
+- You want same-origin `/api/search` served with the site
 
 ## Building for Production
 
@@ -108,5 +114,7 @@ Choose a platform guide to get started:
 - [Cloudflare Pages](./cloudflare-pages/) - Unlimited bandwidth
 - [AWS S3](./aws-s3/) - Enterprise-grade static hosting
 - [Docker](./docker/) - Self-hosted containers
+
+For Kubernetes and source-archive deployments, see the chart README under `helm-chart/README.md` in the markata-go repository.
 
 For self-hosting on your own servers, see the [Self-Hosting Guide](../self-hosting/).

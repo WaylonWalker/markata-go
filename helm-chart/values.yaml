@@ -59,6 +59,7 @@ build:
   proxy:
     http: ""
     https: ""
+  extraEnv: []
   resources:
     requests:
       cpu: 100m
@@ -112,6 +113,7 @@ search:
     limits:
       memory: 1Gi
       ephemeral-storage: 1Gi
+  extraEnv: []
 
 sourceArchive:
   bucket: "example-bucket"
@@ -135,17 +137,25 @@ aws:
 
 storage:
   source:
+    mode: pvc
     storageClassName: longhorn
     size: 10Gi
     accessModes:
       - ReadWriteMany
     pvcNameSuffix: ""
+    hostPath:
+      path: ""
+      type: Directory
   site:
+    mode: pvc
     storageClassName: longhorn
     size: 10Gi
     accessModes:
       - ReadWriteMany
     pvcNameSuffix: ""
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
   search:
     storageClassName: longhorn
     size: 5Gi
@@ -158,6 +168,9 @@ ingress:
   host: ""
   ingressClassName: ""
   annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
   extraCnames: []
   searchPath: /api/search
   auth:

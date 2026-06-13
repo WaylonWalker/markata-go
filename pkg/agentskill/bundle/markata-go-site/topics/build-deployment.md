@@ -99,6 +99,8 @@ steps:
 - If a deploy bug is path-related, inspect `output_dir`, `url`, asset paths, and feed URLs before changing templates.
 - If previews and production use different domains, inject `MARKATA_GO_URL` per environment instead of hardcoding one value.
 - if the runtime build environment is offline, make sure `.markata/assets-cache` or another configured asset cache is already populated before relying on self-hosted CDN assets.
+- for Helm or ArgoCD source-archive deployments, prefer environment-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` instead of editing the repo just to change hostnames
+- for Kubernetes hostPath deployments, confirm the mounted source path and served site root are the real node paths, and remember the served site root may contain release directories plus a `current` symlink rather than a flat output tree
 - Validate that feed URLs, social URLs, and asset URLs use the expected domain after build.
 
 ## Markata-Go-Specific Checks Before Shipping

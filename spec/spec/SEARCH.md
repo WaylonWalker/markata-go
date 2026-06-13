@@ -688,6 +688,11 @@ The implementation and docs MUST support three recommended deployment patterns.
 - search pods run in `read-only-index` mode
 - this is the preferred production scale-out architecture
 
+Recommended Kubernetes deployment ergonomics:
+
+- source-archive deployments SHOULD allow host-specific config overrides through environment variables so one content repo can safely drive preview and production hostnames
+- ingress configuration SHOULD support optional TLS termination with a configurable secret name and the primary host plus any configured aliases
+
 ### Privacy Requirements
 
 Bleve search MUST continue to enforce these rules across all modes:

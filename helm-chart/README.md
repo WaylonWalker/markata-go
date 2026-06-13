@@ -65,7 +65,10 @@ just push
 
 - Set `project_identifier`, `project_name`, `sourceArchive.bucket`, and `sourceArchive.location` for your site before installing.
 - Set `ingress.host` explicitly if you do not want the default `<project>.example.com` hostname.
+- Enable `ingress.tls.enabled` and set `ingress.tls.secretName` when your ingress should terminate HTTPS with a named secret.
 - Ingress auth is disabled by default. If you enable it, set `ingress.auth.url` and optionally `ingress.auth.internalUrl` for your auth provider.
+- Use `build.extraEnv` for host-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` or `MARKATA_GO_SEARCH_ENDPOINT`.
+- `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
 
 ## Offline builds
 
@@ -83,6 +86,77 @@ Simple Helm values:
 offline:
   enabled: true
 ```
+
+## Host-specific build overrides
+
+Use `build.extraEnv` when the same content repo needs a different deploy hostname or search endpoint in one environment.
+
+```yaml
+build:
+  extraEnv:
+    - name: MARKATA_GO_URL
+      value: "https://go.waylonwalker.com"
+    - name: MARKATA_GO_SEARCH_ENDPOINT
+      value: "https://go.waylonwalker.com/api/search"
+```
+
+If the search server itself also needs matching config overrides, set them under `search.extraEnv`.
+
+## HostPath source and site mode
+
+Use hostPath mode when your source repo or rendered site already lives on the node filesystem.
+
+When `storage.source.mode` is `hostPath`, the build job skips the source archive download step and reads directly from the mounted directory.
+
+The site volume still uses the chart's release layout under the mounted path:
+
+- `releases/<timestamp-hostname>/`
+- `current` symlink
+
+That means a site hostPath should point at the root directory that serves the site, not directly at a single rendered release directory.
+
+```yaml
+storage:
+  source:
+    mode: hostPath
+    hostPath:
+      path: /mnt/main/walkershare/waylon/vaults/go.waylonwalker.com
+      type: Directory
+  site:
+    mode: hostPath
+    hostPath:
+      path: /mnt/main/walkershare/waylon/sites/go.waylonwalker.com
+      type: DirectoryOrCreate
+```
+
+This mode is node-local. The chart does not add any scheduling guard, so make sure the workloads land on a node where those paths exist.
+
+## Example test rollout for `go.waylonwalker.com`
+
+```yaml
+project_identifier: go-waylonwalker-com
+project_name: waylonwalker-com
+
+sourceArchive:
+  bucket: YOUR_BUCKET
+  location: /YOUR_SHARE/outputs/waylonwalker-com
+
+ingress:
+  host: go.waylonwalker.com
+  ingressClassName: traefik
+  tls:
+    enabled: true
+    secretName: go-waylonwalker-com-tls
+
+build:
+  extraEnv:
+    - name: MARKATA_GO_URL
+      value: "https://go.waylonwalker.com"
+    - name: MARKATA_GO_SEARCH_ENDPOINT
+      value: "https://go.waylonwalker.com/api/search"
+```
+
+That lets you validate the chart on the existing `go.waylonwalker.com` hostname before switching `waylonwalker.com` itself.
 
 When `offline.enabled` is true, the build and search workloads run with:
 

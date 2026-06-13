@@ -32,6 +32,10 @@ helm.sh/chart: "{{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }
 {{- default (printf "%s.example.com" .Values.project_identifier) .Values.ingress.host -}}
 {{- end -}}
 
+{{- define "markata-notes.tlsSecretName" -}}
+{{- default (printf "%s-notes-tls" .Values.project_identifier) .Values.ingress.tls.secretName -}}
+{{- end -}}
+
 {{- define "markata-notes.serviceAccountName" -}}
 {{- if .Values.serviceAccount.name -}}
 {{- .Values.serviceAccount.name -}}

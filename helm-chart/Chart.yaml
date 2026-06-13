@@ -1,7 +1,7 @@
 apiVersion: v2
 name: markata-notes
-version: 0.1.6
-appVersion: 0.1.6
+version: 0.1.8
+appVersion: 0.1.8
 description: |
   Deploy a markata-go notes site by pulling a source archive, rendering in-cluster,
   and serving same-origin bleve search.
