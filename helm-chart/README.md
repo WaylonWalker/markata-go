@@ -69,6 +69,7 @@ just push
 - Ingress auth is disabled by default. If you enable it, set `ingress.auth.url` and optionally `ingress.auth.internalUrl` for your auth provider.
 - Use `build.extraEnv` for host-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` or `MARKATA_GO_SEARCH_ENDPOINT`.
 - `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
+- Use `nodeSelector` when hostPath-backed content exists only on a specific node.
 
 ## Offline builds
 
@@ -130,6 +131,11 @@ storage:
 ```
 
 This mode is node-local. The chart does not add any scheduling guard, so make sure the workloads land on a node where those paths exist.
+
+```yaml
+nodeSelector:
+  kubernetes.io/hostname: falcon3
+```
 
 ## Example test rollout for `go.waylonwalker.com`
 

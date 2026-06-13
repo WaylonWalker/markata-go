@@ -10,6 +10,8 @@ serviceAccount:
   name: ""
   automountServiceAccountToken: false
 
+nodeSelector: {}
+
 podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
