@@ -139,6 +139,8 @@ In `watch-content` mode the search server runs with `/data/search` as its workin
 
 To preserve build-time tool caches between runs, keep `build.cacheDir` on persistent storage. The default points at the site volume so cached helper binaries and assets survive CronJob restarts instead of being lost with the pod `emptyDir`.
 
+For large sites using hardlinked releases, the build job now seeds a stable work directory at `/data/site/.build-work` from `current` before running `markata-go build`. That gives incremental write stages a real on-disk baseline for unchanged files while still publishing via an atomic `current` symlink swap at the end.
+
 ```yaml
 nodeSelector:
   kubernetes.io/hostname: falcon3

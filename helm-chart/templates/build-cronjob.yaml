@@ -138,27 +138,27 @@ spec:
                   }
                   trap cleanup_lock EXIT INT TERM
                   {{- end }}
-                  mkdir -p {{ .Values.build.cacheDir | quote }} /workspace/build/site /data/site/releases
+                  build_work="/data/site/.build-work"
+                  mkdir -p {{ .Values.build.cacheDir | quote }} /data/site/releases
+                  rm -rf "${build_work}"
+                  mkdir -p "${build_work}"
+                  if [ -e /data/site/current ]; then
+                    cp -al /data/site/current/. "${build_work}/"
+                  fi
                   cd /data/source
                   {{- if .Values.build.mermaid.mode }}
                   cat <<'EOF' >/tmp/markata-go-build-override.toml
                   [markata-go.mermaid]
                   mode = {{ .Values.build.mermaid.mode | squote }}
                   EOF
-                  markata-go build -m /tmp/markata-go-build-override.toml --output /workspace/build/site
+                  markata-go build -m /tmp/markata-go-build-override.toml --output "${build_work}"
                   {{- else }}
-                  markata-go build --output /workspace/build/site
+                  markata-go build --output "${build_work}"
                   {{- end }}
                   release_name="$(date -u +%Y%m%dT%H%M%SZ)-${HOSTNAME}"
                   release_dir="/data/site/releases/${release_name}"
-                  release_tmp="${release_dir}.tmp"
-                  rm -rf "${release_tmp}"
-                  mkdir -p "${release_tmp}"
-                  if [ -e /data/site/current ]; then
-                    cp -al /data/site/current/. "${release_tmp}/"
-                  fi
-                  rsync -a --checksum --delete-delay --delay-updates /workspace/build/site/ "${release_tmp}/"
-                  mv "${release_tmp}" "${release_dir}"
+                  rm -rf "${release_dir}"
+                  mv "${build_work}" "${release_dir}"
                   ln -sfn "releases/${release_name}" /data/site/current.next
                   mv -Tf /data/site/current.next /data/site/current
                   find /data/site/releases -mindepth 1 -maxdepth 1 -type d \
@@ -189,15 +189,11 @@ spec:
               resources:
                 {{- toYaml .Values.build.resources | nindent 16 }}
               volumeMounts:
-                - name: workspace
-                  mountPath: /workspace
                 - name: source
                   mountPath: /data/source
                 - name: site
                   mountPath: /data/site
           volumes:
-            - name: workspace
-              emptyDir: {}
             - name: source
               {{- if eq (.Values.storage.source.mode | default "pvc") "hostPath" }}
               hostPath:
