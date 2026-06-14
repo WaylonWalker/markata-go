@@ -145,6 +145,38 @@ func TestBlogrollPlugin_LoadFromCache_UsesLastFetchedTimestamp(t *testing.T) {
 	}
 }
 
+func TestBlogrollPlugin_AggregateCache_RoundTripAndHashCheck(t *testing.T) {
+	tmpDir := t.TempDir()
+	p := NewBlogrollPlugin()
+
+	feeds := []*models.ExternalFeed{{
+		FeedURL: "https://example.com/feed.xml",
+		Title:   "Example",
+	}}
+	entries := []*models.ExternalEntry{{
+		FeedURL: "https://example.com/feed.xml",
+		ID:      "entry-1",
+		Title:   "First Entry",
+	}}
+
+	p.saveAggregateCache(tmpDir, "hash-a", feeds, entries)
+
+	cached := p.loadAggregateCache(tmpDir, 24*time.Hour, "hash-a")
+	if cached == nil {
+		t.Fatal("loadAggregateCache() = nil, want cached snapshot")
+	}
+	if len(cached.Feeds) != 1 || cached.Feeds[0].Title != "Example" {
+		t.Fatalf("cached.Feeds = %#v, want one Example feed", cached.Feeds)
+	}
+	if len(cached.Entries) != 1 || cached.Entries[0].Title != "First Entry" {
+		t.Fatalf("cached.Entries = %#v, want one First Entry", cached.Entries)
+	}
+
+	if got := p.loadAggregateCache(tmpDir, 24*time.Hour, "hash-b"); got != nil {
+		t.Fatalf("loadAggregateCache() with mismatched hash = %#v, want nil", got)
+	}
+}
+
 func TestMergeCachedFeed_AppliesConfigOverrides(t *testing.T) {
 	cached := &models.ExternalFeed{
 		Config: models.ExternalFeedConfig{

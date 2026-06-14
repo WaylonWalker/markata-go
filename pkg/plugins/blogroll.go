@@ -36,6 +36,7 @@ const (
 	defaultBlogrollSlug  = "blogroll"
 	defaultReaderSlug    = "reader"
 	blogrollCacheVersion = "hn-meta-v2"
+	aggregateCacheFile   = "blogroll-aggregate-v1.json"
 )
 
 var readerFeedTypeOrder = []models.ReaderFeedType{
@@ -629,6 +630,12 @@ type blogrollRefreshSummary struct {
 	failed    int
 }
 
+type blogrollAggregateCache struct {
+	ConfigHash string                 `json:"config_hash"`
+	Feeds      []*models.ExternalFeed `json:"feeds"`
+	Entries    []*models.ExternalEntry `json:"entries"`
+}
+
 // NewBlogrollPlugin creates a new BlogrollPlugin.
 func NewBlogrollPlugin() *BlogrollPlugin {
 	return &BlogrollPlugin{
@@ -832,6 +839,13 @@ func (p *BlogrollPlugin) fetchFeedsWithOptions(config models.BlogrollConfig, opt
 		}
 	}
 
+	if config.CacheDir != "" && !options.forceRefresh {
+		configHash := p.aggregateConfigHash(activeFeeds)
+		if cached := p.loadAggregateCache(config.CacheDir, cacheDuration, configHash); cached != nil {
+			return cached.Feeds, cached.Entries, blogrollRefreshSummary{}, nil
+		}
+	}
+
 	// Fetch feeds concurrently
 	concurrency := config.ConcurrentRequests
 	if concurrency <= 0 {
@@ -896,7 +910,59 @@ func (p *BlogrollPlugin) fetchFeedsWithOptions(config models.BlogrollConfig, opt
 		return compareEntries(allEntries[i], allEntries[j])
 	})
 
+	if config.CacheDir != "" {
+		p.saveAggregateCache(config.CacheDir, p.aggregateConfigHash(activeFeeds), feeds, allEntries)
+	}
+
 	return feeds, allEntries, summary, nil
+}
+
+func (p *BlogrollPlugin) aggregateConfigHash(feeds []models.ExternalFeedConfig) string {
+	data, err := json.Marshal(feeds)
+	if err != nil {
+		return ""
+	}
+	hash := sha256.Sum256(append([]byte(blogrollCacheVersion+"|aggregate|"), data...))
+	return hex.EncodeToString(hash[:])
+}
+
+func (p *BlogrollPlugin) loadAggregateCache(cacheDir string, maxAge time.Duration, configHash string) *blogrollAggregateCache {
+	cacheFile := filepath.Join(cacheDir, aggregateCacheFile)
+	info, err := os.Stat(cacheFile)
+	if err != nil || time.Since(info.ModTime()) > maxAge {
+		return nil
+	}
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		return nil
+	}
+	var cached blogrollAggregateCache
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return nil
+	}
+	if cached.ConfigHash != configHash {
+		return nil
+	}
+	for _, feed := range cached.Feeds {
+		if feed != nil {
+			normalizeExternalFeed(feed)
+		}
+	}
+	return &cached
+}
+
+func (p *BlogrollPlugin) saveAggregateCache(cacheDir, configHash string, feeds []*models.ExternalFeed, entries []*models.ExternalEntry) {
+	cacheFile := filepath.Join(cacheDir, aggregateCacheFile)
+	payload := blogrollAggregateCache{
+		ConfigHash: configHash,
+		Feeds:      feeds,
+		Entries:    entries,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(cacheFile, data, 0o600)
 }
 
 // initFeedFromConfig creates a new ExternalFeed initialized from configuration.
