@@ -138,17 +138,7 @@ spec:
                   }
                   trap cleanup_lock EXIT INT TERM
                   {{- end }}
-                  mkdir -p {{ .Values.build.cacheDir | quote }} /workspace/build/site /data/site/releases
-                  cd /data/source
-                  {{- if .Values.build.mermaid.mode }}
-                  cat <<'EOF' >/tmp/markata-go-build-override.toml
-                  [markata-go.mermaid]
-                  mode = {{ .Values.build.mermaid.mode | squote }}
-                  EOF
-                  markata-go build -m /tmp/markata-go-build-override.toml --output /workspace/build/site
-                  {{- else }}
-                  markata-go build --output /workspace/build/site
-                  {{- end }}
+                  mkdir -p {{ .Values.build.cacheDir | quote }} /data/site/releases
                   release_name="$(date -u +%Y%m%dT%H%M%SZ)-${HOSTNAME}"
                   release_dir="/data/site/releases/${release_name}"
                   release_tmp="${release_dir}.tmp"
@@ -157,7 +147,16 @@ spec:
                   if [ -e /data/site/current ]; then
                     cp -al /data/site/current/. "${release_tmp}/"
                   fi
-                  rsync -a --checksum --delete-delay --delay-updates /workspace/build/site/ "${release_tmp}/"
+                  cd /data/source
+                  {{- if .Values.build.mermaid.mode }}
+                  cat <<'EOF' >/tmp/markata-go-build-override.toml
+                  [markata-go.mermaid]
+                  mode = {{ .Values.build.mermaid.mode | squote }}
+                  EOF
+                  markata-go build -m /tmp/markata-go-build-override.toml --output "${release_tmp}"
+                  {{- else }}
+                  markata-go build --output "${release_tmp}"
+                  {{- end }}
                   mv "${release_tmp}" "${release_dir}"
                   ln -sfn "releases/${release_name}" /data/site/current.next
                   mv -Tf /data/site/current.next /data/site/current
