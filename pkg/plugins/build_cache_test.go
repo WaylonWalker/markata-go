@@ -83,6 +83,39 @@ func TestConfigHashInput_IsStableForEquivalentConfig(t *testing.T) {
 	}
 }
 
+func TestConfigHashInput_IgnoresOutputDir(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "markata-go.toml")
+	if err := os.WriteFile(base, []byte("title = 'base'\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(base) error = %v", err)
+	}
+
+	configA := &lifecycle.Config{
+		ContentDir:   ".",
+		OutputDir:    "output",
+		GlobPatterns: []string{"**/*.md"},
+		Extra: map[string]interface{}{
+			"config_path":  base,
+			"config_paths": []string{base},
+		},
+	}
+	configB := &lifecycle.Config{
+		ContentDir:   ".",
+		OutputDir:    "/data/site/releases/20260614T000000Z-site.tmp",
+		GlobPatterns: []string{"**/*.md"},
+		Extra: map[string]interface{}{
+			"config_path":  base,
+			"config_paths": []string{base},
+		},
+	}
+
+	first := buildcache.ContentHash(configHashInput(configA, []string{base}))
+	second := buildcache.ContentHash(configHashInput(configB, []string{base}))
+	if first != second {
+		t.Fatalf("expected config hash to ignore output dir changes: %q != %q", first, second)
+	}
+}
+
 func TestBuildCacheConfigure_DefaultsCacheDirToContentDir(t *testing.T) {
 	contentDir := t.TempDir()
 	outputDir := filepath.Join(t.TempDir(), "build", "site")
