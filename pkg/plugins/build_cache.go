@@ -167,7 +167,7 @@ func configHashInput(config *lifecycle.Config, paths []string) string {
 		components = append(components, pathHash)
 	}
 	if config != nil {
-		components = append(components, config.OutputDir, config.ContentDir, strings.Join(config.GlobPatterns, "\x00"))
+		components = append(components, config.ContentDir, strings.Join(config.GlobPatterns, "\x00"))
 	}
 	return strings.Join(components, "\n")
 }
