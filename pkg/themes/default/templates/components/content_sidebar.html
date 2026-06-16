@@ -7,6 +7,9 @@
 {% if sidebar.enabled and sidebar.slug %}
 <aside class="content-sidebar content-sidebar--{{ sidebar.position | default:'right' }}"
        aria-label="Content sidebar">
+    <button type="button" class="sidebar-pin-toggle" aria-label="Pin sidebar open" title="Pin sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.828 1.172a2 2 0 0 1 2.828 0l2.172 2.172a2 2 0 0 1 0 2.828L12.5 8.5l.5.5v2l-3-3-4 4H4.5L4 13l-1-1 .5-1.5V9l4-4-3-3h2l.5.5 2.328-2.328z" fill="currentColor"/></svg>
+    </button>
     <div class="content-sidebar-inner">
         {{ include_post(sidebar.slug) | safe }}
     </div>

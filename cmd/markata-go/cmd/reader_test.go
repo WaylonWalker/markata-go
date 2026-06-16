@@ -97,11 +97,24 @@ func TestRunReaderUpdateCommand_UsesCommandWriterAndRefreshesCache(t *testing.T)
 	if err != nil {
 		t.Fatalf("read cache dir: %v", err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("expected 1 cache file, got %d", len(entries))
+
+	feedCacheFiles := make([]string, 0, len(entries))
+	hasAggregate := false
+	for _, entry := range entries {
+		if entry.Name() == "blogroll-aggregate-v1.json" {
+			hasAggregate = true
+			continue
+		}
+		feedCacheFiles = append(feedCacheFiles, entry.Name())
+	}
+	if !hasAggregate {
+		t.Fatalf("expected aggregate cache file, got %v", entries)
+	}
+	if len(feedCacheFiles) != 1 {
+		t.Fatalf("expected 1 feed cache file, got %d", len(feedCacheFiles))
 	}
 
-	cacheData, err := os.ReadFile(filepath.Join(cacheDir, entries[0].Name()))
+	cacheData, err := os.ReadFile(filepath.Join(cacheDir, feedCacheFiles[0]))
 	if err != nil {
 		t.Fatalf("read cache file: %v", err)
 	}
