@@ -396,7 +396,7 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, co
 	writeBoolField(syndication.FeedArchivesDisabled)
 
 	// Hash sidebar config
-	writeBoolField(fc.Sidebar)
+	writeBoolField(fc.Sidebar != nil && *fc.Sidebar)
 	writeStringField(fc.SidebarTitle)
 	writeIntField(fc.SidebarOrder)
 	writeStringField(fc.SidebarGroupBy)

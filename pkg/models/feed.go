@@ -75,8 +75,9 @@ type FeedConfig struct {
 	// Templates specifies custom templates for each format
 	Templates FeedTemplates `json:"templates" yaml:"templates" toml:"templates"`
 
-	// Sidebar enables auto-generation of sidebar navigation from this feed's posts
-	Sidebar bool `json:"sidebar" yaml:"sidebar" toml:"sidebar"`
+	// Sidebar controls whether this feed appears in the sidebar feed picker.
+	// Default (nil/unset): included. Set to false to exclude from the picker.
+	Sidebar *bool `json:"sidebar,omitempty" yaml:"sidebar,omitempty" toml:"sidebar,omitempty"`
 
 	// SidebarTitle overrides the feed title in sidebar navigation
 	SidebarTitle string `json:"sidebar_title" yaml:"sidebar_title" toml:"sidebar_title"`

@@ -1078,6 +1078,10 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 		if fc == nil || fc.IncludePrivate || seen[fc.Slug] {
 			return
 		}
+		// Exclude feeds explicitly opted out of the sidebar picker
+		if fc.Sidebar != nil && !*fc.Sidebar {
+			return
+		}
 		seen[fc.Slug] = true
 		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication, postFormats))
 	}
@@ -1144,9 +1148,15 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 		windowedPosts = posts[start:end]
 	}
 
+	feedTitle := fc.Title
+	if feedTitle == "" {
+		feedTitle = strings.ReplaceAll(fc.Slug, "-", " ")
+		feedTitle = strings.Title(feedTitle)
+	}
+
 	feed := sidebarFeedJSON{
 		Slug:                fc.Slug,
-		Title:               fc.Title,
+		Title:               feedTitle,
 		Priority:            priority,
 		Primary:             fc.Primary,
 		ContainsCurrentPost: currentPos >= 0,
@@ -1339,10 +1349,11 @@ func (p *TemplatesPlugin) collectAutoDiscoveredFeeds(
 		return
 	}
 
-	skipSlugs := map[string]bool{
-		"archive": true, "all": true, "sitemap": true, "search": true,
-	}
 	skipPrefixes := []string{"subscription-", "tags/"}
+
+	// Feeds can be excluded from the picker via include_private = true
+	// in their feed config. No hardcoded skip list — all feeds that
+	// contain the current post are candidates.
 
 	type autoCandidate struct {
 		fc    *models.FeedConfig
@@ -1352,7 +1363,7 @@ func (p *TemplatesPlugin) collectAutoDiscoveredFeeds(
 
 	for i := range configs {
 		fc := &configs[i]
-		if skipSlugs[fc.Slug] || seen[fc.Slug] || len(fc.Posts) > maxAutoFeedPosts {
+		if seen[fc.Slug] || fc.IncludePrivate || len(fc.Posts) > maxAutoFeedPosts {
 			continue
 		}
 		if hasAnyPrefix(fc.Slug, skipPrefixes) {
@@ -1468,7 +1479,15 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 	syndication := getSyndicationConfig(config)
 	for i := range configs {
 		fc := &configs[i]
-		if seen[fc.Slug] || !fc.Primary || fc.IncludePrivate {
+		if seen[fc.Slug] || fc.IncludePrivate {
+			continue
+		}
+		if fc.Sidebar != nil && !*fc.Sidebar {
+			continue
+		}
+		// Include if explicitly sidebar=true OR if primary (and not sidebar=false)
+		sidebarExplicit := fc.Sidebar != nil && *fc.Sidebar
+		if !sidebarExplicit && !fc.Primary {
 			continue
 		}
 		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication, postFormats))
@@ -1489,12 +1508,29 @@ func (p *TemplatesPlugin) buildRotationFeedSlugs(m *lifecycle.Manager, seen map[
 		return rotationFeedSlugs
 	}
 
+	// First pass: collect primary or sidebar=true feeds that appear in the sidebar candidate set
 	for i := range configs {
 		fc := &configs[i]
-		if !fc.Primary || fc.IncludePrivate || !seen[fc.Slug] {
+		if fc.IncludePrivate || !seen[fc.Slug] {
+			continue
+		}
+		sidebarExplicit := fc.Sidebar != nil && *fc.Sidebar
+		if !sidebarExplicit && !fc.Primary {
 			continue
 		}
 		rotationFeedSlugs = append(rotationFeedSlugs, fc.Slug)
+	}
+
+	// Fallback: if no primary feeds matched, include all sidebar candidate feeds
+	// so users can still cycle through available feeds.
+	// Use the seen set directly since it represents all candidate feeds for
+	// this post, including auto-generated tag feeds not in feed_configs.
+	if len(rotationFeedSlugs) == 0 {
+		for slug := range seen {
+			rotationFeedSlugs = append(rotationFeedSlugs, slug)
+		}
+		// Sort for deterministic order
+		sort.Strings(rotationFeedSlugs)
 	}
 
 	return rotationFeedSlugs

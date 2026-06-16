@@ -354,7 +354,7 @@ func (p *SeriesPlugin) buildFeedConfig(group *seriesGroup, feedSlug string, cfg 
 		Filter:  fmt.Sprintf("series_slug == %q and published == true and draft == false and skip == false", feedSlug),
 		Sort:    "series_order",
 		Reverse: false, // ascending order
-		Sidebar: cfg.Defaults.Sidebar,
+		Sidebar: func() *bool { v := cfg.Defaults.Sidebar; return &v }(),
 		Posts:   posts,
 	}
 

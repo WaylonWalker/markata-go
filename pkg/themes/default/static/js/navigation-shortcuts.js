@@ -522,9 +522,7 @@
       // [ and ] - Previous/Next page
       // Priority 55: higher than palette-switcher (50) so pagination wins.
       // Registered unconditionally -- handlers gracefully no-op when prev/next
-      // elements aren't on the current page. This ensures [/] work after
-      // view-transition navigation from a page without pagination (e.g. homepage)
-      // to a page with pagination (e.g. a post).
+      // elements aren't on the current page.
       window.shortcutsRegistry.register({
         key: '[',
         modifiers: [],
@@ -545,6 +543,31 @@
         handler: function(e) {
           e.preventDefault();
           nextPage();
+        },
+        priority: 55
+      });
+
+      // b and B - Toggle sidebar pinned open/closed
+      window.shortcutsRegistry.register({
+        key: 'b',
+        modifiers: [],
+        description: 'Toggle left sidebar',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          if (window.toggleSidebarPinned) window.toggleSidebarPinned('left');
+        },
+        priority: 55
+      });
+
+      window.shortcutsRegistry.register({
+        key: 'B',
+        modifiers: [],
+        description: 'Toggle right sidebar',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          if (window.toggleSidebarPinned) window.toggleSidebarPinned('right');
         },
         priority: 55
       });
