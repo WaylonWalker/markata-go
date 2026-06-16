@@ -765,12 +765,33 @@
     var feedList = document.querySelector('#feed-nav-collapsible');
     var savedScrollTop = feedList ? feedList.scrollTop : 0;
 
+    // Preserve sidebar pinned state across DOM swap
+    var pinnedLeft = !!document.querySelector('.feed-sidebar--left.sidebar--pinned, .doc-sidebar--left.sidebar--pinned, .content-sidebar--left.sidebar--pinned');
+    var pinnedRight = !!document.querySelector('.feed-sidebar--right.sidebar--pinned, .doc-sidebar--right.sidebar--pinned, .content-sidebar--right.sidebar--pinned');
+
     // Replace the full wrapper so page-specific layout classes do not leak
     // across feed -> post and post -> feed navigations.
     const replacedPage = replaceElement('#view-transition-page', newDoc);
     if (!replacedPage) {
       document.body.innerHTML = newDoc.body.innerHTML;
       return false;
+    }
+
+    // Mark new sidebars as hydrating so they stay hidden until scripts reinit
+    document.querySelectorAll('.feed-sidebar, .doc-sidebar, .content-sidebar').forEach(function(el) {
+      el.setAttribute('data-sidebar-hydrating', '');
+    });
+
+    // Restore sidebar pinned state on new elements
+    if (pinnedLeft) {
+      document.querySelectorAll('.feed-sidebar--left, .doc-sidebar--left, .content-sidebar--left').forEach(function(el) {
+        el.classList.add('sidebar--pinned');
+      });
+    }
+    if (pinnedRight) {
+      document.querySelectorAll('.feed-sidebar--right, .doc-sidebar--right, .content-sidebar--right').forEach(function(el) {
+        el.classList.add('sidebar--pinned');
+      });
     }
 
     // Restore feed sidebar scroll position after content swap
@@ -816,7 +837,7 @@
     }
 
     if (updateOptions.reinitialize) {
-      reinitializeDocument(metrics);
+      reinitializeDocument(metrics, undefined, newDoc);
     }
 
     // Scroll to top (or to hash if present)
@@ -832,11 +853,11 @@
     }
   }
 
-  function reinitializeDocument(metrics, options) {
+  function reinitializeDocument(metrics, options, newDoc) {
     const reinitOptions = Object.assign({ skipCritical: false }, options || {});
     const reinitStartedAt = getNow();
     reexecuteInlineModuleScripts();
-    reinitializeScripts(reinitOptions);
+    reinitializeScripts(reinitOptions, newDoc);
 
     if (metrics) {
       metrics.reinitMs += getNow() - reinitStartedAt;
@@ -920,7 +941,7 @@
   /**
    * Re-initialize scripts after content replacement
    */
-  function reinitializeScripts(options) {
+  function reinitializeScripts(options, newDoc) {
     const reinitOptions = Object.assign({ skipCritical: false }, options || {});
 
     // Dispatch custom event for other scripts to listen to
@@ -936,6 +957,26 @@
       callOptionalInit('initFeedCycling', window.initFeedCycling);
     }
 
+    // If feed cycling script was never loaded (e.g. navigating from a page
+    // without a feed sidebar to one that has it), load it dynamically.
+    if (typeof window.initFeedCycling !== 'function' && document.getElementById('feed-sidebar-data')) {
+      var existing = document.querySelector('script[src*="feed-cycling"]');
+      if (!existing) {
+        var searchDoc = newDoc || document;
+        var inlines = searchDoc.querySelectorAll('script:not([src])');
+        for (var si = 0; si < inlines.length; si++) {
+          var m = inlines[si].textContent.match(/['"]([^'"]*feed-cycling[^'"]*\.js)['"]/);
+          if (m) {
+            var s = document.createElement('script');
+            s.src = m[1];
+            s.defer = true;
+            document.body.appendChild(s);
+            break;
+          }
+        }
+      }
+    }
+
     // Re-initialize common scripts if they exist
     callOptionalInit('initScrollSpy', window.initScrollSpy);
     callOptionalInit('initTooltips', window.initTooltips);
@@ -948,6 +989,9 @@
 
     // Re-bind feed sidebar collapse toggle (tablet/mobile)
     callOptionalInit('initSidebarToggle', window.initSidebarToggle);
+
+    // Re-bind sidebar pin toggle buttons
+    callOptionalInit('initSidebarPinButtons', window.initSidebarPinButtons);
 
     // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
     var openHamburger = document.querySelector('.hamburger-toggle--open');
@@ -963,6 +1007,11 @@
 
     // Re-attach event listeners
     initNavigationInterceptor();
+
+    // Reveal sidebars now that all scripts have rehydrated
+    document.querySelectorAll('[data-sidebar-hydrating]').forEach(function(el) {
+      el.removeAttribute('data-sidebar-hydrating');
+    });
   }
 
   async function navigateWithViewTransition(url, options) {
@@ -1029,7 +1078,7 @@
       });
 
       await transition.finished;
-      reinitializeDocument(metrics, { skipCritical: true });
+      reinitializeDocument(metrics, { skipCritical: true }, newDoc);
       finalizeNavigationMetrics(metrics);
       return true;
     } finally {
@@ -1105,7 +1154,7 @@
       });
 
       await transition.finished;
-      reinitializeDocument(metrics, { skipCritical: true });
+      reinitializeDocument(metrics, { skipCritical: true }, newDoc);
 
       finalizeNavigationMetrics(metrics);
     } catch (error) {
@@ -1218,14 +1267,91 @@
     container.scrollTop = activeTop - (containerHeight / 2) + (activeHeight / 2);
   };
 
+  // ── Feed Sidebar: mobile/tablet collapse toggle ──
+  // The feed-nav-header has role="button" and aria-controls="feed-nav-collapsible".
+  // On narrow viewports (≤1200px) the CSS hides #feed-nav-collapsible and shows
+  // it when .feed-sidebar has the --expanded modifier.  This wires up the click.
+  window.initSidebarToggle = function() {
+    var header = document.querySelector('.feed-nav-header[aria-controls="feed-nav-collapsible"]');
+    if (!header) return;
+    // Avoid double-binding
+    if (header._sidebarToggleBound) return;
+    header._sidebarToggleBound = true;
+
+    function toggle() {
+      var sidebar = header.closest('.feed-sidebar');
+      if (!sidebar) return;
+      var expanded = sidebar.classList.toggle('feed-sidebar--expanded');
+      header.setAttribute('aria-expanded', String(expanded));
+    }
+
+    header.addEventListener('click', toggle);
+    header.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  };
+
+  // ── Sidebar pin toggle buttons ──
+  // Click handler for .sidebar-pin-toggle buttons inside sidebars
+  window.initSidebarPinButtons = function() {
+    document.querySelectorAll('.sidebar-pin-toggle').forEach(function(btn) {
+      if (btn._pinToggleBound) return;
+      btn._pinToggleBound = true;
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var sidebar = btn.closest('.feed-sidebar, .doc-sidebar, .content-sidebar');
+        if (!sidebar) return;
+        var wasPinned = sidebar.classList.toggle('sidebar--pinned');
+        btn.setAttribute('aria-label', wasPinned ? 'Unpin sidebar' : 'Pin sidebar open');
+        if (!wasPinned) {
+          sidebar.classList.add('sidebar--unpinning');
+          setTimeout(function() {
+            sidebar.classList.remove('sidebar--unpinning');
+          }, 350);
+        }
+      });
+    });
+  };
+
+  // ── Keyboard shortcuts to pin/unpin sidebars ──
+  // [ = toggle left sidebar, ] = toggle right sidebar
+  // Registered via shortcuts registry in navigation-shortcuts.js.
+  // This function is called by the registry handlers.
+  window.toggleSidebarPinned = function(side) {
+    if (window.innerWidth < 1201) return;
+    var selector = side === 'left'
+      ? '.feed-sidebar--left, .doc-sidebar--left, .content-sidebar--left'
+      : '.feed-sidebar--right, .doc-sidebar--right, .content-sidebar--right';
+    var els = document.querySelectorAll(selector);
+    els.forEach(function(el) {
+      var wasPinned = el.classList.contains('sidebar--pinned');
+      el.classList.toggle('sidebar--pinned');
+      if (wasPinned) {
+        // Bypass the 300ms mouse grace delay for keyboard unpin
+        el.classList.add('sidebar--unpinning');
+        // Remove after transition completes so hover delay works again
+        setTimeout(function() {
+          el.classList.remove('sidebar--unpinning');
+        }, 350);
+      }
+    });
+  };
+
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       init();
       window.initFeedSidebarScroll();
+      window.initSidebarToggle();
+      window.initSidebarPinButtons();
     });
   } else {
     init();
     window.initFeedSidebarScroll();
+    window.initSidebarToggle();
+    window.initSidebarPinButtons();
   }
 })();

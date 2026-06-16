@@ -958,6 +958,377 @@
 /* Remove old contradictory tablet override -- now handled above */
 
 /* ==========================================================================
+   Hover-to-Reveal Sidebars (Desktop ≥ 1201px)
+
+   Sidebars are fixed to viewport edges, hidden off-screen by default, and
+   slide in on hover over the sidebar or a generous edge zone.  Content gets
+   full-width centred layout since sidebars are out of normal flow.
+
+   Hovering over the article area shows both sidebars in a muted/ghosted
+   state so users always know navigation is available.
+   ========================================================================== */
+@media (min-width: 1201px) {
+  /* Content centres itself when sidebars are out of normal flow */
+  .page-wrapper {
+    display: block;
+  }
+
+  .page-wrapper > .main-content {
+    width: min(100%, var(--page-width, 1200px));
+    max-width: min(100%, var(--page-width, 1200px));
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ---- Shared fixed-sidebar base ---- */
+  .feed-sidebar,
+  .doc-sidebar,
+  .content-sidebar {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    z-index: var(--z-sidebar, 90);
+    /* Close transition: 300ms delay gives users time to move to sidebar.
+       The .sidebar--unpinning class (added by JS keybind) overrides to 0s
+       so keyboard toggle is instant. */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s,
+                opacity 0.3s ease 0.3s;
+    overflow: visible;
+    background: var(--color-background, #fff);
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  /* Scrollable inner content */
+  .feed-sidebar > *,
+  .doc-sidebar > *,
+  .content-sidebar > * {
+    overflow-y: auto;
+    max-height: calc(100vh - var(--layout-header-height, 64px) - 1rem);
+  }
+
+  /* Large invisible hover zone pseudo-element.
+     Nearly as wide as the sidebar itself so hovering anywhere
+     near the edge triggers the reveal. */
+  .feed-sidebar::before,
+  .doc-sidebar::before,
+  .content-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: -1;
+  }
+
+  /* ---- Left-side sidebars ---- */
+  .feed-sidebar--left,
+  .doc-sidebar--left,
+  .content-sidebar--left {
+    left: 0;
+    right: auto;
+    transform: translateX(calc(-100% + 6px));
+    border-right: 1px solid var(--color-border);
+    border-left: none;
+    padding-top: calc(var(--layout-header-height, 64px) + 1rem);
+  }
+
+  /* Hover zone nearly as wide as the sidebar (200px) */
+  .feed-sidebar--left::before,
+  .doc-sidebar--left::before,
+  .content-sidebar--left::before {
+    right: -200px;
+    width: 200px;
+  }
+
+  .feed-sidebar--left:hover,
+  .feed-sidebar--left:focus-within,
+  .doc-sidebar--left:hover,
+  .doc-sidebar--left:focus-within,
+  .content-sidebar--left:hover,
+  .content-sidebar--left:focus-within {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    opacity: 1;
+    transition-delay: 0s;
+  }
+
+  /* ---- Right-side sidebars ---- */
+  .feed-sidebar--right,
+  .doc-sidebar--right,
+  .content-sidebar--right {
+    right: 0;
+    left: auto;
+    transform: translateX(calc(100% - 6px));
+    border-left: 1px solid var(--color-border);
+    border-right: none;
+    padding-top: calc(var(--layout-header-height, 64px) + 1rem);
+  }
+
+  /* Hover zone nearly as wide as the sidebar (200px) */
+  .feed-sidebar--right::before,
+  .doc-sidebar--right::before,
+  .content-sidebar--right::before {
+    left: -200px;
+    width: 200px;
+  }
+
+  .feed-sidebar--right:hover,
+  .feed-sidebar--right:focus-within,
+  .doc-sidebar--right:hover,
+  .doc-sidebar--right:focus-within,
+  .content-sidebar--right:hover,
+  .content-sidebar--right:focus-within {
+    transform: translateX(0);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    opacity: 1;
+    transition-delay: 0s;
+  }
+
+  /* ---- Ghosted/muted sidebars when hovering article ----
+     When hovering the article itself (not the full main-content area),
+     slide sidebars into view at reduced opacity so users see navigation
+     is available without it dominating the reading experience. */
+
+  /* Catch left sidebars (they appear before .main-content in DOM) */
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--left,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--left,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--left {
+    opacity: 0.4;
+    transform: translateX(0);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s ease;
+    transition-delay: 0s;
+  }
+
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--right,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--right,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--right {
+    opacity: 0.4;
+    transform: translateX(0);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s ease;
+    transition-delay: 0s;
+  }
+
+  /* When directly hovering the sidebar itself, go full opacity */
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--left:hover,
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--left:focus-within,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--left:hover,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--left:focus-within,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--left:hover,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--left:focus-within,
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--right:hover,
+  .page-wrapper:has(article.post:hover) > .feed-sidebar--right:focus-within,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--right:hover,
+  .page-wrapper:has(article.post:hover) > .doc-sidebar--right:focus-within,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--right:hover,
+  .page-wrapper:has(article.post:hover) > .content-sidebar--right:focus-within {
+    opacity: 1;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* ---- Feed sidebar specifics ---- */
+  .feed-sidebar {
+    width: var(--feed-sidebar-width, 280px);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .feed-sidebar .feed-nav {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .feed-sidebar .feed-nav-chrome {
+    padding: 0;
+  }
+
+  /* ---- Doc sidebar specifics ---- */
+  .doc-sidebar {
+    width: 260px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .doc-sidebar .toc {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* ---- Content sidebar specifics ---- */
+  .content-sidebar {
+    width: 340px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* ---- Edge glow indicators on main content ----
+     Subtle gradient hints on content edges showing sidebars are available.
+     Visible when NOT hovering the content (since hovering shows ghosted sidebars). */
+  .main-content {
+    position: relative;
+  }
+
+  .page-wrapper:has(.feed-sidebar--left) > .main-content::before,
+  .page-wrapper:has(.doc-sidebar--left) > .main-content::before,
+  .page-wrapper:has(.content-sidebar--left) > .main-content::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: var(--layout-header-height, 64px);
+    bottom: 0;
+    width: 3px;
+    background: var(--color-primary);
+    opacity: 0.25;
+    border-radius: 0 2px 2px 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .page-wrapper:has(.feed-sidebar--right) > .main-content::after,
+  .page-wrapper:has(.doc-sidebar--right) > .main-content::after,
+  .page-wrapper:has(.content-sidebar--right) > .main-content::after {
+    content: '';
+    position: fixed;
+    right: 0;
+    top: var(--layout-header-height, 64px);
+    bottom: 0;
+    width: 3px;
+    background: var(--color-primary);
+    opacity: 0.25;
+    border-radius: 2px 0 0 2px;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Hide edge indicators when sidebar is visible (hovering article or sidebar) */
+  .page-wrapper:has(.feed-sidebar--left:hover) > .main-content::before,
+  .page-wrapper:has(.feed-sidebar--left:focus-within) > .main-content::before,
+  .page-wrapper:has(.doc-sidebar--left:hover) > .main-content::before,
+  .page-wrapper:has(.content-sidebar--left:hover) > .main-content::before,
+  .page-wrapper:has(article.post:hover) > .main-content::before {
+    opacity: 0;
+  }
+
+  .page-wrapper:has(.feed-sidebar--right:hover) > .main-content::after,
+  .page-wrapper:has(.feed-sidebar--right:focus-within) > .main-content::after,
+  .page-wrapper:has(.doc-sidebar--right:hover) > .main-content::after,
+  .page-wrapper:has(.content-sidebar--right:hover) > .main-content::after,
+  .page-wrapper:has(article.post:hover) > .main-content::after {
+    opacity: 0;
+  }
+
+  /* ---- View transition readiness ----
+     Hide sidebars during view transitions so partially-hydrated state is not
+     visible.  Sidebars fade back in after reinitializeScripts fires. */
+  .feed-sidebar[data-sidebar-hydrating],
+  .doc-sidebar[data-sidebar-hydrating],
+  .content-sidebar[data-sidebar-hydrating] {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+}
+
+/* ---- Keyboard-pinned sidebars ----
+   Toggled via [ and ] keys. Pinned sidebars stay fully visible
+   until the user presses the key again. */
+  .feed-sidebar--left.sidebar--pinned,
+  .doc-sidebar--left.sidebar--pinned,
+  .content-sidebar--left.sidebar--pinned {
+    transform: translateX(0);
+    opacity: 1;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    transition-delay: 0s;
+  }
+
+  .feed-sidebar--right.sidebar--pinned,
+  .doc-sidebar--right.sidebar--pinned,
+  .content-sidebar--right.sidebar--pinned {
+    transform: translateX(0);
+    opacity: 1;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    transition-delay: 0s;
+  }
+
+  /* Instant close when unpinning via keyboard (no 300ms mouse grace delay) */
+  .feed-sidebar.sidebar--unpinning,
+  .doc-sidebar.sidebar--unpinning,
+  .content-sidebar.sidebar--unpinning {
+    transition-delay: 0s;
+  }
+
+  /* ---- Sidebar pin toggle button ---- */
+  .sidebar-pin-toggle {
+    position: absolute;
+    top: calc(var(--layout-header-height, 64px) + 0.5rem);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-background, #fff);
+    color: var(--color-text-muted, #666);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+  }
+
+  /* Position: right side for left sidebars, left side for right sidebars */
+  .feed-sidebar--left .sidebar-pin-toggle,
+  .doc-sidebar--left .sidebar-pin-toggle,
+  .content-sidebar--left .sidebar-pin-toggle {
+    right: 8px;
+  }
+  .feed-sidebar--right .sidebar-pin-toggle,
+  .doc-sidebar--right .sidebar-pin-toggle,
+  .content-sidebar--right .sidebar-pin-toggle {
+    left: 8px;
+  }
+
+  /* Show button when sidebar is visible (hovered or pinned) */
+  .feed-sidebar:hover .sidebar-pin-toggle,
+  .feed-sidebar:focus-within .sidebar-pin-toggle,
+  .feed-sidebar.sidebar--pinned .sidebar-pin-toggle,
+  .doc-sidebar:hover .sidebar-pin-toggle,
+  .doc-sidebar:focus-within .sidebar-pin-toggle,
+  .doc-sidebar.sidebar--pinned .sidebar-pin-toggle,
+  .content-sidebar:hover .sidebar-pin-toggle,
+  .content-sidebar:focus-within .sidebar-pin-toggle,
+  .content-sidebar.sidebar--pinned .sidebar-pin-toggle {
+    opacity: 1;
+  }
+
+  .sidebar-pin-toggle:hover {
+    color: var(--color-primary, #3b82f6);
+    background: var(--color-surface, #f5f5f5);
+  }
+
+  /* Rotated pin icon when pinned */
+  .sidebar--pinned > .sidebar-pin-toggle {
+    color: var(--color-primary, #3b82f6);
+    transform: rotate(45deg);
+  }
+}
+
+/* Reduced-motion: instant reveal instead of slide */
+@media (min-width: 1201px) and (prefers-reduced-motion: reduce) {
+  .feed-sidebar,
+  .doc-sidebar,
+  .content-sidebar {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
    Markdown-Driven Component Slots
    ========================================================================== */
 

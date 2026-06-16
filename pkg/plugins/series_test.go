@@ -126,7 +126,7 @@ func TestSeriesPlugin_BasicSeries(t *testing.T) {
 	}
 
 	// Check sidebar
-	if !fc.Sidebar {
+	if fc.Sidebar == nil || !*fc.Sidebar {
 		t.Error("feed sidebar should be true")
 	}
 
@@ -519,7 +519,7 @@ func TestSeriesPlugin_DefaultsConfig(t *testing.T) {
 	if fc.ItemsPerPage != 5 {
 		t.Errorf("items_per_page = %d, want 5", fc.ItemsPerPage)
 	}
-	if fc.Sidebar {
+	if fc.Sidebar != nil && *fc.Sidebar {
 		t.Error("sidebar should be false")
 	}
 }

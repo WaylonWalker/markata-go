@@ -631,8 +631,8 @@ type blogrollRefreshSummary struct {
 }
 
 type blogrollAggregateCache struct {
-	ConfigHash string                 `json:"config_hash"`
-	Feeds      []*models.ExternalFeed `json:"feeds"`
+	ConfigHash string                  `json:"config_hash"`
+	Feeds      []*models.ExternalFeed  `json:"feeds"`
 	Entries    []*models.ExternalEntry `json:"entries"`
 }
 
@@ -962,7 +962,9 @@ func (p *BlogrollPlugin) saveAggregateCache(cacheDir, configHash string, feeds [
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(cacheFile, data, 0o600)
+	if err := os.WriteFile(cacheFile, data, 0o600); err != nil {
+		return
+	}
 }
 
 // initFeedFromConfig creates a new ExternalFeed initialized from configuration.
