@@ -15,6 +15,8 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var templatesLog = logging.Component("templates").Phase("render")
@@ -1151,7 +1153,7 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	feedTitle := fc.Title
 	if feedTitle == "" {
 		feedTitle = strings.ReplaceAll(fc.Slug, "-", " ")
-		feedTitle = strings.Title(feedTitle)
+		feedTitle = cases.Title(language.English).String(feedTitle)
 	}
 
 	feed := sidebarFeedJSON{

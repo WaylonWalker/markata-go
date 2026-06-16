@@ -6,6 +6,10 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 func TestBuilder_BuildFromFeed(t *testing.T) {
 	title1 := "Getting Started"
 	title2 := "Installation"
@@ -170,21 +174,21 @@ func TestBuilder_BuildFromFeeds(t *testing.T) {
 		"docs": {
 			Slug:         "docs",
 			Title:        "Documentation",
-			Sidebar:      true,
+			Sidebar:      boolPtr(true),
 			SidebarOrder: 1,
 			Posts:        []*models.Post{{Title: &title1, Href: "/docs/doc-1/"}},
 		},
 		"guides": {
 			Slug:         "guides",
 			Title:        "Guides",
-			Sidebar:      true,
+			Sidebar:      boolPtr(true),
 			SidebarOrder: 2,
 			Posts:        []*models.Post{{Title: &title2, Href: "/guides/guide-1/"}},
 		},
 		"hidden": {
 			Slug:    "hidden",
 			Title:   "Hidden",
-			Sidebar: false, // Not included
+			Sidebar: boolPtr(false), // Not included
 			Posts:   []*models.Post{},
 		},
 	}

@@ -343,7 +343,7 @@ func (b *Builder) BuildFromFeeds() []models.SidebarNavItem {
 	// Collect feeds with sidebar enabled
 	var sidebarFeeds []*models.FeedConfig
 	for _, feed := range b.feeds {
-		if feed.Sidebar {
+		if feed.Sidebar == nil || *feed.Sidebar {
 			sidebarFeeds = append(sidebarFeeds, feed)
 		}
 	}

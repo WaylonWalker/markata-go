@@ -281,7 +281,7 @@ func deltaBytes(prev, current uint64) uint64 {
 	return current - prev
 }
 
-func splitDiskWait(remaining time.Duration, readDelta, writeDelta uint64) (time.Duration, time.Duration) {
+func splitDiskWait(remaining time.Duration, readDelta, writeDelta uint64) (readWait, writeWait time.Duration) {
 	total := readDelta + writeDelta
 	if total == 0 {
 		return 0, 0
@@ -293,12 +293,13 @@ func splitDiskWait(remaining time.Duration, readDelta, writeDelta uint64) (time.
 		return remaining, 0
 	}
 
-	readWait := time.Duration(int64(remaining) * int64(readDelta) / int64(total))
+	readWait = time.Duration(float64(remaining) * (float64(readDelta) / float64(total)))
 	if readWait < 0 {
 		readWait = 0
 	}
 	if readWait > remaining {
 		readWait = remaining
 	}
-	return readWait, remaining - readWait
+	writeWait = remaining - readWait
+	return readWait, writeWait
 }
