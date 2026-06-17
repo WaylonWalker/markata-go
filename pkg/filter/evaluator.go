@@ -42,7 +42,7 @@ var templateFilterAliases = map[string]string{
 	"bookmark": "link",
 	"link":     "link",
 	"stars":    "link",
-	"til":      "link",
+	"til":      "inline",
 
 	"quotation": "quote",
 	"quote":     "quote",

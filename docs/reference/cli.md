@@ -905,10 +905,10 @@ markata-go new [title] [flags]
 | `note` (`ping`, `thought`, `status`, `tweet`) | `pages/note/` | Short note and micro-post content |
 | `photo` (`shot`, `shots`, `image`, `gallery`) | `pages/photo/` | Image-focused posts |
 | `video` (`clip`, `cast`, `stream`) | `pages/video/` | Video posts |
-| `link` (`bookmark`, `til`, `stars`) | `pages/link/` | Link and bookmark posts |
+| `link` (`bookmark`, `stars`) | `pages/link/` | Link and bookmark posts |
 | `quote` (`quotation`) | `pages/quote/` | Quote posts with attribution |
 | `guide` (`series`, `step`, `chapter`) | `pages/guide/` | Guides and multi-part content |
-| `inline` (`gratitude`, `micro`) | `pages/inline/` | Inline feed-first content |
+| `inline` (`gratitude`, `micro`, `til`) | `pages/inline/` | Inline feed-first content |
 | `contact` (`character`, `person`) | `pages/contact/` | Profile/contact pages |
 | `author` | `pages/author/` | Author profile pages |
 

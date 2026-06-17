@@ -332,7 +332,7 @@ func DefaultCardMappings() map[string]string {
 		// Link card - URL preview style
 		"link":     "link",
 		"bookmark": "link",
-		"til":      "link",
+		"til":      "inline",
 		"stars":    "link",
 
 		// Quote card - blockquote styling
