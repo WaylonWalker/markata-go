@@ -157,10 +157,10 @@ template: note  # This determines the card type!
 - `note`, `ping`, `thought`, `status`, `tweet` → note-card.html
 - `photo`, `shot`, `shots`, `image`, `gallery` → photo-card.html
 - `video`, `clip`, `cast`, `stream` → video-card.html
-- `link`, `bookmark`, `til`, `stars` → link-card.html
+- `link`, `bookmark`, `stars` → link-card.html
 - `quote`, `quotation` → quote-card.html
 - `guide`, `series`, `step`, `chapter` → guide-card.html
-- `gratitude`, `inline`, `micro` → inline-card.html
+- `gratitude`, `inline`, `micro`, `til` → inline-card.html
 - (no template field) → default-card.html
 
 **To get different card types**, add `template:` to your post frontmatter:

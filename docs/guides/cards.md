@@ -49,10 +49,10 @@ Both `template` and `templateKey` work in markata-go frontmatter.
 | `note` | `note`, `ping`, `thought`, `status`, `tweet` | Short thoughts, micro-posts |
 | `photo` | `photo`, `shot`, `shots`, `image`, `gallery` | Image-focused posts |
 | `video` | `video`, `clip`, `cast`, `stream` | Video content with thumbnail |
-| `link` | `link`, `bookmark`, `til`, `stars` | External links, bookmarks |
+| `link` | `link`, `bookmark`, `stars` | External links, bookmarks |
 | `quote` | `quote`, `quotation` | Quoted text with attribution |
 | `guide` | `guide`, `series`, `step`, `chapter` | Multi-part tutorials |
-| `inline` | `gratitude`, `inline`, `micro` | Full content shown in feed |
+| `inline` | `gratitude`, `inline`, `micro`, `til` | Full content shown in feed |
 | `contact` | `contact`, `character`, `person` | Person/character profile cards |
 | `default` | (any other value) | Fallback for unmapped types |
 
