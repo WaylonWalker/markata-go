@@ -15,6 +15,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 const (
@@ -79,21 +80,26 @@ func (p *WebAwesomePlugin) Priority(stage lifecycle.Stage) int {
 // Configure reads [markata-go.webawesome] from config.Extra.
 func (p *WebAwesomePlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
+	sourceExplicit := false
 	if config.Extra != nil {
 		webawesomeConfig, ok := config.Extra["webawesome"]
 		if ok {
 			cfgMap, ok := webawesomeConfig.(map[string]interface{})
 			if ok {
-				p.parseConfigMap(cfgMap)
+				sourceExplicit = p.parseConfigMap(cfgMap)
 			}
 		}
+	}
+	if runtimeenv.OfflineEnabled() && !sourceExplicit && !hasExplicitSelfHostedAssetsConfig(config) {
+		p.config.Source = "cdn"
 	}
 	p.enableVendorAsset(config)
 
 	return nil
 }
 
-func (p *WebAwesomePlugin) parseConfigMap(cfgMap map[string]interface{}) {
+func (p *WebAwesomePlugin) parseConfigMap(cfgMap map[string]interface{}) bool {
+	sourceExplicit := false
 	if enabled, ok := cfgMap["enabled"].(bool); ok {
 		p.config.Enabled = enabled
 	}
@@ -103,6 +109,7 @@ func (p *WebAwesomePlugin) parseConfigMap(cfgMap map[string]interface{}) {
 	}
 	if source, ok := cfgMap["source"].(string); ok && source != "" {
 		p.config.Source = source
+		sourceExplicit = true
 	}
 	if cdnBase, ok := cfgMap["cdn_base_url"].(string); ok && cdnBase != "" {
 		p.config.CDNBase = strings.TrimRight(cdnBase, "/")
@@ -119,6 +126,24 @@ func (p *WebAwesomePlugin) parseConfigMap(cfgMap map[string]interface{}) {
 	if brand, ok := cfgMap["brand"].(string); ok && brand != "" {
 		p.config.Brand = brand
 	}
+	return sourceExplicit
+}
+
+func hasExplicitSelfHostedAssetsConfig(config *lifecycle.Config) bool {
+	if config == nil || config.Extra == nil {
+		return false
+	}
+
+	switch assetsConfig := config.Extra["assets"].(type) {
+	case models.AssetsConfig:
+		return assetsConfig.IsSelfHosted()
+	case *models.AssetsConfig:
+		return assetsConfig != nil && assetsConfig.IsSelfHosted()
+	case map[string]interface{}:
+		mode, ok := assetsConfig["mode"].(string)
+		return ok && (mode == "self-hosted" || mode == "auto")
+	}
+	return false
 }
 
 // Render processes Web Awesome markdown containers and marks pages that need assets.

@@ -20,6 +20,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 	"github.com/yuin/goldmark"
 )
 
@@ -279,6 +280,73 @@ func TestWebAwesomePlugin_ConfigureRegistersDefaultVendorAssetWithoutConfig(t *t
 	}
 	if assets[0].Integrity != webAwesomeDefaultSRI {
 		t.Fatalf("integrity = %q, want default SRI", assets[0].Integrity)
+	}
+}
+
+func TestWebAwesomePlugin_OfflineDefaultUsesCDNWithoutRequiredVendorAsset(t *testing.T) {
+	t.Setenv(runtimeenv.EnvOffline, "true")
+
+	plugin := NewWebAwesomePlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	if plugin.config.Source != "cdn" {
+		t.Fatalf("source = %q, want cdn", plugin.config.Source)
+	}
+	if _, ok := m.Config().Extra["cdn_assets_extra"]; ok {
+		t.Fatalf("cdn_assets_extra should not be registered by default while offline: %#v", m.Config().Extra["cdn_assets_extra"])
+	}
+}
+
+func TestWebAwesomePlugin_OfflineExplicitVendorStillRequiresVendorAsset(t *testing.T) {
+	t.Setenv(runtimeenv.EnvOffline, "true")
+
+	plugin := NewWebAwesomePlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{
+		"webawesome": map[string]interface{}{
+			"source": "vendor",
+		},
+	}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(assets) != 1 {
+		t.Fatalf("cdn_assets_extra = %#v, want one vendor asset", m.Config().Extra["cdn_assets_extra"])
+	}
+	if assets[0].Name != webAwesomeAssetName {
+		t.Fatalf("asset name = %q, want %q", assets[0].Name, webAwesomeAssetName)
+	}
+}
+
+func TestWebAwesomePlugin_OfflineExplicitSelfHostedAssetsStillRequiresVendorAsset(t *testing.T) {
+	t.Setenv(runtimeenv.EnvOffline, "true")
+
+	plugin := NewWebAwesomePlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{
+		"assets": map[string]interface{}{
+			"mode": "self-hosted",
+		},
+	}})
+
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	if !ok || len(assets) != 1 {
+		t.Fatalf("cdn_assets_extra = %#v, want one vendor asset", m.Config().Extra["cdn_assets_extra"])
+	}
+	if assets[0].Name != webAwesomeAssetName {
+		t.Fatalf("asset name = %q, want %q", assets[0].Name, webAwesomeAssetName)
 	}
 }
 
