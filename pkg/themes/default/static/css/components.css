@@ -303,7 +303,7 @@
 }
 
 .toc {
-  margin: var(--space-6) 0;
+  margin: 0;
   padding: 1rem;
   background-color: var(--color-surface);
   border-radius: 8px;
@@ -399,7 +399,7 @@
 /* Chrome: header + format links + hotkeys -- non-scrolling top area */
 .feed-nav-chrome {
   flex-shrink: 0;
-  padding: 1.25rem 1.25rem 0;
+  padding: 1rem 1rem 0;
   background-color: var(--color-surface);
 }
 
@@ -408,7 +408,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 1.25rem 1.25rem;
+  padding: 0 1rem 1rem;
 
   /* Themed scrollbar - Firefox */
   scrollbar-width: thin;
@@ -725,6 +725,7 @@
 
 .content-sidebar-inner {
   font-size: var(--text-sm);
+  padding: 1rem;
 }
 
 /* Slash pages grid (rendered by render_slashes() in content sidebar) */
@@ -985,9 +986,9 @@
   .doc-sidebar,
   .content-sidebar {
     position: fixed;
-    top: 0;
-    height: 100vh;
-    max-height: 100vh;
+    top: calc(var(--layout-header-height, 64px) + var(--space-6, 1.5rem));
+    height: calc(100vh - var(--layout-header-height, 64px) - var(--space-6, 1.5rem));
+    max-height: calc(100vh - var(--layout-header-height, 64px) - var(--space-6, 1.5rem));
     z-index: var(--z-sidebar, 90);
     /* Close transition: 300ms delay gives users time to move to sidebar.
        The .sidebar--unpinning class (added by JS keybind) overrides to 0s
@@ -1005,20 +1006,24 @@
   .doc-sidebar > *,
   .content-sidebar > * {
     overflow-y: auto;
-    max-height: calc(100vh - var(--layout-header-height, 64px) - 1rem);
+    max-height: 100%;
   }
 
-  /* Large invisible hover zone pseudo-element.
-     Nearly as wide as the sidebar itself so hovering anywhere
-     near the edge triggers the reveal. */
-  .feed-sidebar::before,
-  .doc-sidebar::before,
-  .content-sidebar::before {
-    content: '';
-    position: absolute;
-    top: 0;
+  .sidebar-edge-target {
+    position: fixed;
+    top: var(--layout-header-height, 64px);
     bottom: 0;
-    z-index: -1;
+    width: 64px;
+    z-index: calc(var(--z-sidebar, 90) - 1);
+    background: transparent;
+  }
+
+  .sidebar-edge-target--left {
+    left: 0;
+  }
+
+  .sidebar-edge-target--right {
+    right: 0;
   }
 
   /* ---- Left-side sidebars ---- */
@@ -1030,17 +1035,11 @@
     transform: translateX(calc(-100% + 6px));
     border-right: 1px solid var(--color-border);
     border-left: none;
-    padding-top: calc(var(--layout-header-height, 64px) + 1rem);
   }
 
-  /* Hover zone nearly as wide as the sidebar (200px) */
-  .feed-sidebar--left::before,
-  .doc-sidebar--left::before,
-  .content-sidebar--left::before {
-    right: -200px;
-    width: 200px;
-  }
-
+  .page-wrapper:has(.sidebar-edge-target--left:hover) .feed-sidebar--left,
+  .page-wrapper:has(.sidebar-edge-target--left:hover) .doc-sidebar--left,
+  .page-wrapper:has(.sidebar-edge-target--left:hover) .content-sidebar--left,
   .feed-sidebar--left:hover,
   .feed-sidebar--left:focus-within,
   .doc-sidebar--left:hover,
@@ -1062,17 +1061,11 @@
     transform: translateX(calc(100% - 6px));
     border-left: 1px solid var(--color-border);
     border-right: none;
-    padding-top: calc(var(--layout-header-height, 64px) + 1rem);
   }
 
-  /* Hover zone nearly as wide as the sidebar (200px) */
-  .feed-sidebar--right::before,
-  .doc-sidebar--right::before,
-  .content-sidebar--right::before {
-    left: -200px;
-    width: 200px;
-  }
-
+  .page-wrapper:has(.sidebar-edge-target--right:hover) .feed-sidebar--right,
+  .page-wrapper:has(.sidebar-edge-target--right:hover) .doc-sidebar--right,
+  .page-wrapper:has(.sidebar-edge-target--right:hover) .content-sidebar--right,
   .feed-sidebar--right:hover,
   .feed-sidebar--right:focus-within,
   .doc-sidebar--right:hover,
@@ -1131,8 +1124,8 @@
   /* ---- Feed sidebar specifics ---- */
   .feed-sidebar {
     width: var(--feed-sidebar-width, 280px);
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .feed-sidebar .feed-nav {
@@ -1143,28 +1136,28 @@
   }
 
   .feed-sidebar .feed-nav-chrome {
-    padding: 0;
+    padding: 0 1.25rem;
   }
 
   /* ---- Doc sidebar specifics ---- */
   .doc-sidebar {
     width: 260px;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .doc-sidebar .toc {
     border: none;
     background: transparent;
-    padding: 0;
+    padding: 0 1.25rem 1rem;
     margin: 0;
   }
 
   /* ---- Content sidebar specifics ---- */
   .content-sidebar {
     width: 340px;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   /* ---- Edge glow indicators on main content ----
@@ -1265,8 +1258,8 @@
   /* ---- Sidebar pin toggle button ---- */
   .sidebar-pin-toggle {
     position: absolute;
-    top: calc(var(--layout-header-height, 64px) + 0.5rem);
-    z-index: 10;
+    top: 0.5rem;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
