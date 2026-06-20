@@ -71,6 +71,7 @@ just push
 - `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
 - Use `nodeSelector` when hostPath-backed content exists only on a specific node.
 - `build.cacheDir` defaults to `/data/site/.cache/xdg` so tool caches survive between builds on the site volume.
+- Enable `storage.cache` when you want a dedicated PVC for build caches. The build CronJob recreates `.markata` and `.markata-cache` in the source tree as symlinks into that cache volume, which keeps incremental state out of source sync paths.
 
 ## Offline builds
 
@@ -138,6 +139,23 @@ The search deployment defaults to `Recreate` strategy because the bundled search
 In `watch-content` mode the search server runs with `/data/search` as its working directory and uses `search.configPath` to load the site config from the mounted source tree. This keeps `.markata/cache` and the Bleve index on writable storage instead of trying to write cache files into the source hostPath.
 
 To preserve build-time tool caches between runs, keep `build.cacheDir` on persistent storage. The default points at the site volume so cached helper binaries and assets survive CronJob restarts instead of being lost with the pod `emptyDir`.
+
+For deployments that sync the source tree with `rsync --delete` or otherwise treat `/data/source` as disposable, prefer a dedicated cache volume:
+
+```yaml
+storage:
+  cache:
+    enabled: true
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+
+build:
+  cacheDir: /data/cache/xdg
+```
+
+That keeps XDG caches plus markata's `.markata` and `.markata-cache` incremental state outside the synced source tree while still letting the build recreate source-root symlinks on each run.
 
 For large sites using hardlinked releases, the build job now seeds a stable work directory at `/data/site/.build-work` from `current` before running `markata-go build`. That gives incremental write stages a real on-disk baseline for unchanged files while still publishing via an atomic `current` symlink swap at the end.
 
