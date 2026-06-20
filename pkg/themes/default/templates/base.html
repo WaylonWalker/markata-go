@@ -402,6 +402,10 @@
 
   <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
+      {% if (config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not feed) or (not feed and resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left') %}
+      <div class="sidebar-edge-target sidebar-edge-target--left" aria-hidden="true"></div>
+      {% endif %}
+
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not feed %}
       {% include "components/feed_sidebar.html" %}
@@ -424,6 +428,10 @@
       {# Right sidebar for document TOC (if enabled) #}
       {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
       {% include "components/doc_sidebar.html" %}
+      {% endif %}
+
+      {% if (not feed and resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right') or (config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right') %}
+      <div class="sidebar-edge-target sidebar-edge-target--right" aria-hidden="true"></div>
       {% endif %}
     {% endblock %}
   </div>
