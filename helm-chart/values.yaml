@@ -168,6 +168,18 @@ storage:
     accessModes:
       - ReadWriteOnce
     pvcNameSuffix: ""
+  cache:
+    enabled: false
+    mode: pvc
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+    pvcNameSuffix: ""
+    mountPath: /data/cache
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
 
 ingress:
   enabled: true

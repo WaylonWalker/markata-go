@@ -138,6 +138,12 @@ spec:
                   }
                   trap cleanup_lock EXIT INT TERM
                   {{- end }}
+                  {{- if .Values.storage.cache.enabled }}
+                  mkdir -p {{ .Values.storage.cache.mountPath | quote }}/build {{ .Values.storage.cache.mountPath | quote }}/plugin {{ .Values.storage.cache.mountPath | quote }}/xdg
+                  rm -rf /data/source/.markata /data/source/.markata-cache
+                  ln -sfn {{ printf "%s/build" .Values.storage.cache.mountPath | quote }} /data/source/.markata
+                  ln -sfn {{ printf "%s/plugin" .Values.storage.cache.mountPath | quote }} /data/source/.markata-cache
+                  {{- end }}
                   build_work="/data/site/.build-work"
                   mkdir -p {{ .Values.build.cacheDir | quote }} /data/site/releases
                   rm -rf "${build_work}"
@@ -193,6 +199,10 @@ spec:
                   mountPath: /data/source
                 - name: site
                   mountPath: /data/site
+                {{- if .Values.storage.cache.enabled }}
+                - name: cache
+                  mountPath: {{ .Values.storage.cache.mountPath | quote }}
+                {{- end }}
           volumes:
             - name: source
               {{- if eq (.Values.storage.source.mode | default "pvc") "hostPath" }}
@@ -212,4 +222,15 @@ spec:
               persistentVolumeClaim:
                 claimName: "{{ include "markata-notes.sitePvcName" . }}"
               {{- end }}
+            {{- if .Values.storage.cache.enabled }}
+            - name: cache
+              {{- if eq (.Values.storage.cache.mode | default "pvc") "hostPath" }}
+              hostPath:
+                path: {{ .Values.storage.cache.hostPath.path | quote }}
+                type: {{ .Values.storage.cache.hostPath.type | quote }}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: "{{ include "markata-notes.cachePvcName" . }}"
+              {{- end }}
+            {{- end }}
 {{- end }}

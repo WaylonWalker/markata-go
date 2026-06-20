@@ -28,6 +28,10 @@ helm.sh/chart: "{{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }
 {{- printf "%s-notes-search%s-pvc" .Values.project_identifier (.Values.storage.search.pvcNameSuffix | default "") -}}
 {{- end -}}
 
+{{- define "markata-notes.cachePvcName" -}}
+{{- printf "%s-notes-cache%s-pvc" .Values.project_identifier (.Values.storage.cache.pvcNameSuffix | default "") -}}
+{{- end -}}
+
 {{- define "markata-notes.host" -}}
 {{- default (printf "%s.example.com" .Values.project_identifier) .Values.ingress.host -}}
 {{- end -}}
