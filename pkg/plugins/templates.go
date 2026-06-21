@@ -412,11 +412,14 @@ func (p *TemplatesPlugin) batchRestoreCachedHTML(
 		html string
 	}
 
-	results := make([]result, 0, len(posts))
-	resultCh := make(chan result, len(posts))
+	resultCh := make(chan result, concurrency)
 
-	// Use a worker pool with bounded concurrency for parallel file reads
-	numWorkers := concurrency
+	// Keep restore fan-out modest to avoid PVC read thrash and heap spikes when
+	// restoring thousands of cached full-page HTML blobs in fresh pods.
+	numWorkers := min(concurrency, 4)
+	if numWorkers < 1 {
+		numWorkers = 1
+	}
 	if numWorkers > len(posts) {
 		numWorkers = len(posts)
 	}
@@ -446,12 +449,9 @@ func (p *TemplatesPlugin) batchRestoreCachedHTML(
 		close(resultCh)
 	}()
 
+	// Assign HTML immediately as results arrive instead of buffering all restored
+	// pages in memory first.
 	for r := range resultCh {
-		results = append(results, r)
-	}
-
-	// Assign HTML to posts, moving cache misses to postsNeedingRender
-	for _, r := range results {
 		if r.html != "" {
 			posts[r.idx].post.HTML = r.html
 		} else {
