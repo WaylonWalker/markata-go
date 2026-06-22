@@ -144,15 +144,7 @@ spec:
                     {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
                     build_finished=$(date +%s)
                     elapsed_seconds=$((build_finished - build_started))
-                    message=$(cat <<EOF
-project={{ .Values.project_identifier }}
-status=${status}
-job=${HOSTNAME}
-elapsed_seconds=${elapsed_seconds}
-builder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}
-cache_dir={{ .Values.build.cacheDir }}
-EOF
-)
+                    message=$(printf 'project={{ .Values.project_identifier }}\nstatus=%s\njob=%s\nelapsed_seconds=%s\nbuilder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}\ncache_dir={{ .Values.build.cacheDir }}\n' "${status}" "${HOSTNAME}" "${elapsed_seconds}")
                     wget -qO- \
                       --timeout=10 \
                       --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
@@ -184,15 +176,7 @@ EOF
                     {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
                     build_finished=$(date +%s)
                     elapsed_seconds=$((build_finished - build_started))
-                    message=$(cat <<EOF
-project={{ .Values.project_identifier }}
-status=${status}
-job=${HOSTNAME}
-elapsed_seconds=${elapsed_seconds}
-builder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}
-cache_dir={{ .Values.build.cacheDir }}
-EOF
-)
+                    message=$(printf 'project={{ .Values.project_identifier }}\nstatus=%s\njob=%s\nelapsed_seconds=%s\nbuilder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}\ncache_dir={{ .Values.build.cacheDir }}\n' "${status}" "${HOSTNAME}" "${elapsed_seconds}")
                     wget -qO- \
                       --timeout=10 \
                       --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
