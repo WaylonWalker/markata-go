@@ -133,10 +133,83 @@ spec:
                 - |
                   {{- if .Values.build.lock.enabled }}
                   lock_dir=/data/source/{{ .Values.build.lock.dirName }}
+                  notified=0
+                  build_started=$(date +%s)
+                  notify_result() {
+                    status="$1"
+                    if [ "${notified}" -ne 0 ]; then
+                      return 0
+                    fi
+                    notified=1
+                    {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
+                    build_finished=$(date +%s)
+                    elapsed_seconds=$((build_finished - build_started))
+                    message=$(cat <<EOF
+project={{ .Values.project_identifier }}
+status=${status}
+job=${HOSTNAME}
+elapsed_seconds=${elapsed_seconds}
+builder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}
+cache_dir={{ .Values.build.cacheDir }}
+EOF
+)
+                    wget -qO- \
+                      --timeout=10 \
+                      --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
+                      --post-data="${message}" \
+                      {{ .Values.build.notify.url | quote }} >/dev/null 2>&1 || true
+                    {{- end }}
+                  }
                   cleanup_lock() {
+                    rc=$?
+                    if [ "${rc}" -eq 0 ]; then
+                      notify_result success
+                    else
+                      notify_result failed
+                    fi
                     rm -rf "${lock_dir}"
+                    exit "${rc}"
                   }
                   trap cleanup_lock EXIT INT TERM
+                  {{- end }}
+                  {{- if not .Values.build.lock.enabled }}
+                  notified=0
+                  build_started=$(date +%s)
+                  notify_result() {
+                    status="$1"
+                    if [ "${notified}" -ne 0 ]; then
+                      return 0
+                    fi
+                    notified=1
+                    {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
+                    build_finished=$(date +%s)
+                    elapsed_seconds=$((build_finished - build_started))
+                    message=$(cat <<EOF
+project={{ .Values.project_identifier }}
+status=${status}
+job=${HOSTNAME}
+elapsed_seconds=${elapsed_seconds}
+builder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}
+cache_dir={{ .Values.build.cacheDir }}
+EOF
+)
+                    wget -qO- \
+                      --timeout=10 \
+                      --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
+                      --post-data="${message}" \
+                      {{ .Values.build.notify.url | quote }} >/dev/null 2>&1 || true
+                    {{- end }}
+                  }
+                  cleanup_job() {
+                    rc=$?
+                    if [ "${rc}" -eq 0 ]; then
+                      notify_result success
+                    else
+                      notify_result failed
+                    fi
+                    exit "${rc}"
+                  }
+                  trap cleanup_job EXIT INT TERM
                   {{- end }}
                   {{- if .Values.storage.cache.enabled }}
                   mkdir -p {{ .Values.storage.cache.mountPath | quote }}/build {{ .Values.storage.cache.mountPath | quote }}/plugin {{ .Values.storage.cache.mountPath | quote }}/xdg
