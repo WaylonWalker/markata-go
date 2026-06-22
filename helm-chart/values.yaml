@@ -41,6 +41,9 @@ build:
   failedJobsHistoryLimit: 6
   ttlSecondsAfterFinished: 259200
   activeDeadlineSeconds: 1800
+  notify:
+    enabled: false
+    url: ""
   mermaid:
     mode: client
   lock:
