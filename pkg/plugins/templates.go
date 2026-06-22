@@ -414,11 +414,16 @@ func (p *TemplatesPlugin) batchRestoreCachedHTML(
 
 	resultCh := make(chan result, concurrency)
 
-	// Keep restore fan-out modest to avoid PVC read thrash and heap spikes when
-	// restoring thousands of cached full-page HTML blobs in fresh pods.
-	numWorkers := min(concurrency, 4)
-	if numWorkers < 1 {
-		numWorkers = 1
+	// Use a wider restore fan-out than the general build concurrency. On the
+	// live notes workload the global concurrency is intentionally conservative
+	// for memory, but cached HTML restore is mostly file I/O and benefits from
+	// additional parallelism once caches live on node-local storage.
+	numWorkers := concurrency
+	if numWorkers < 8 {
+		numWorkers = 8
+	}
+	if numWorkers > 16 {
+		numWorkers = 16
 	}
 	if numWorkers > len(posts) {
 		numWorkers = len(posts)
