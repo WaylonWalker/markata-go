@@ -186,6 +186,12 @@ func TestEmbedsPlugin_InternalEmbed_PhotoRendersFigure(t *testing.T) {
 	if !containsString(result.Content, "<figure class=\"embed-figure\">") {
 		t.Fatalf("expected figure wrapper for photo embed, got: %s", result.Content)
 	}
+	if !containsString(result.Content, `width="1200"`) {
+		t.Fatalf("expected full-width photo embed image, got: %s", result.Content)
+	}
+	if containsString(result.Content, `height="150"`) {
+		t.Fatalf("expected photo embed to avoid fixed thumbnail height, got: %s", result.Content)
+	}
 	if !containsString(result.Content, "<figcaption>") {
 		t.Fatalf("expected figcaption for photo embed, got: %s", result.Content)
 	}

@@ -588,11 +588,19 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	mediaSource := ""
 	posterURL := ""
 	if mediaURL != "" {
-		mediaSource = templates.WithSize(mediaURL, 200, 150)
+		if isPhotoCard {
+			mediaSource = templates.WithSize(mediaURL, 1200, 0)
+		} else {
+			mediaSource = templates.WithSize(mediaURL, 200, 150)
+		}
 		if isVideo {
 			posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
 			if posterURL != "" {
-				posterURL = templates.WithSize(posterURL, 200, 150)
+				if isPhotoCard {
+					posterURL = templates.WithSize(posterURL, 1200, 0)
+				} else {
+					posterURL = templates.WithSize(posterURL, 200, 150)
+				}
 			}
 		}
 	}
@@ -609,12 +617,33 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		sb.WriteString(html.EscapeString(href))
 		sb.WriteString(`" class="u-url">`)
 		sb.WriteString("\n")
-		sb.WriteString(`    <img src="`)
-		sb.WriteString(html.EscapeString(mediaSource))
-		sb.WriteString(`" alt="`)
-		sb.WriteString(html.EscapeString(title))
-		sb.WriteString(`" width="200" height="150" loading="lazy">`)
-		sb.WriteString("\n")
+		if isVideo {
+			sb.WriteString(`    <video autoplay muted loop playsinline preload="metadata"`)
+			if posterURL != "" {
+				sb.WriteString(` poster="`)
+				sb.WriteString(html.EscapeString(posterURL))
+				sb.WriteString(`"`)
+			}
+			sb.WriteString(`>`)
+			sb.WriteString("\n")
+			sb.WriteString(`      <source src="`)
+			sb.WriteString(html.EscapeString(mediaSource))
+			if mimeType := templates.VideoMIMEType(mediaURL); mimeType != "" {
+				sb.WriteString(`" type="`)
+				sb.WriteString(html.EscapeString(mimeType))
+			}
+			sb.WriteString(`">`)
+			sb.WriteString("\n")
+			sb.WriteString(`    </video>`)
+			sb.WriteString("\n")
+		} else {
+			sb.WriteString(`    <img src="`)
+			sb.WriteString(html.EscapeString(mediaSource))
+			sb.WriteString(`" alt="`)
+			sb.WriteString(html.EscapeString(title))
+			sb.WriteString(`" width="1200" loading="lazy">`)
+			sb.WriteString("\n")
+		}
 		sb.WriteString(`  </a>`)
 		sb.WriteString("\n")
 		sb.WriteString(`  <figcaption>`)
