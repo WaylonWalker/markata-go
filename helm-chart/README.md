@@ -157,6 +157,17 @@ build:
 
 That keeps XDG caches plus markata's `.markata` and `.markata-cache` incremental state outside the synced source tree while still letting the build recreate source-root symlinks on each run.
 
+You can also enable a best-effort build notification hook:
+
+```yaml
+build:
+  notify:
+    enabled: true
+    url: https://ntfy.example.com/topic
+```
+
+When enabled, the build CronJob posts a small result summary on success or failure. Notification failures do not fail the build.
+
 For large sites using hardlinked releases, the build job now seeds a stable work directory at `/data/site/.build-work` from `current` before running `markata-go build`. That gives incremental write stages a real on-disk baseline for unchanged files while still publishing via an atomic `current` symlink swap at the end.
 
 ```yaml
