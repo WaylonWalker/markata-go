@@ -214,7 +214,7 @@ spec:
                   [markata-go.mermaid]
                   mode = {{ .Values.build.mermaid.mode | squote }}
                   EOF
-                  markata-go build -m /tmp/markata-go-build-override.toml --output "${build_work}"
+                  markata-go build {{- if .Values.build.fast }} --fast{{- end }} -m /tmp/markata-go-build-override.toml --output "${build_work}"
                   {{- else }}
                   markata-go build --output "${build_work}"
                   {{- end }}
