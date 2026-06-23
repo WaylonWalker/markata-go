@@ -41,6 +41,7 @@ build:
   failedJobsHistoryLimit: 6
   ttlSecondsAfterFinished: 259200
   activeDeadlineSeconds: 1800
+  fast: false
   notify:
     enabled: false
     url: ""
