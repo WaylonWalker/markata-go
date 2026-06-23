@@ -56,7 +56,7 @@ func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
 	}
 	page := &models.FeedPage{Posts: fc.Posts, TotalPages: 1}
 
-	html, err := p.generateFeedPageHTML(fc, page, config, nil)
+	html, err := p.generateFeedPageHTML(fc, page, config, nil, buildFeedRenderContext(fc))
 	if err != nil {
 		t.Fatalf("generateFeedPageHTML() error = %v", err)
 	}
