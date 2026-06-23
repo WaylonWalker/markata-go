@@ -78,7 +78,16 @@ func (p *TailwindPlugin) buildTailwindManifest(m *lifecycle.Manager) string {
 	manifestTokens := make(map[string]struct{}, 512)
 
 	for _, post := range posts {
-		if post == nil || post.Skip || strings.TrimSpace(post.HTML) == "" {
+		if post == nil || post.Skip {
+			continue
+		}
+
+		if strings.TrimSpace(post.HTML) == "" {
+			if tokens, ok := getStoredTailwindTokens(cache, post.Path); ok {
+				for _, token := range strings.Fields(tokens) {
+					manifestTokens[token] = struct{}{}
+				}
+			}
 			continue
 		}
 
@@ -190,6 +199,13 @@ func getCachedTailwindTokens(cache *buildcache.Cache, path, htmlHash string) (st
 		return "", false
 	}
 	return cache.GetCachedTailwindTokens(path, htmlHash)
+}
+
+func getStoredTailwindTokens(cache *buildcache.Cache, path string) (string, bool) {
+	if cache == nil {
+		return "", false
+	}
+	return cache.GetStoredTailwindTokens(path)
 }
 
 func extractTailwindTokens(content string) string {
