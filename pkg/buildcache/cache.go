@@ -216,6 +216,13 @@ type PostCache struct {
 
 	// TailwindTokens stores the extracted Tailwind-relevant tokens for the post.
 	TailwindTokens string `json:"tailwind_tokens,omitempty"`
+
+	// MentionsHash is a hash of the Content input + mention resolution state.
+	// When either the raw content or resolved mention metadata changes, this hash changes.
+	MentionsHash string `json:"mentions_hash,omitempty"`
+
+	// MentionsContent is the cached Content output after mentions transform processing.
+	MentionsContent string `json:"mentions_content,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -796,6 +803,43 @@ func (c *Cache) CacheGlossaryHTML(sourcePath, combinedHash, html string) {
 	c.dirty = true
 }
 
+// GetCachedMentionsContent returns cached mentions transform output if the hash matches.
+// Returns the cached content and true if valid, empty string and false otherwise.
+func (c *Cache) GetCachedMentionsContent(sourcePath, contentHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.MentionsHash == "" || cached.MentionsHash != contentHash {
+		return "", false
+	}
+	return cached.MentionsContent, true
+}
+
+// CacheMentionsContent stores the mentions transform output keyed by content hash.
+func (c *Cache) CacheMentionsContent(sourcePath, contentHash, content string) {
+	if sourcePath == "" || contentHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.MentionsHash = contentHash
+		cached.MentionsContent = content
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			MentionsHash:    contentHash,
+			MentionsContent: content,
+		}
+	}
+	c.dirty = true
+}
+
 // GetCachedTailwindTokens returns cached Tailwind tokens if the HTML hash matches.
 func (c *Cache) GetCachedTailwindTokens(sourcePath, htmlHash string) (string, bool) {
 	c.mu.RLock()
@@ -806,6 +850,21 @@ func (c *Cache) GetCachedTailwindTokens(sourcePath, htmlHash string) (string, bo
 		return "", false
 	}
 	if cached.TailwindHTMLHash == "" || cached.TailwindHTMLHash != htmlHash {
+		return "", false
+	}
+	return cached.TailwindTokens, true
+}
+
+// GetStoredTailwindTokens returns cached Tailwind tokens without validating the
+// HTML hash. This is safe for unchanged posts whose final HTML is known to be
+// identical to the prior build even if the current build has not eagerly
+// restored the cached full-page HTML into memory.
+func (c *Cache) GetStoredTailwindTokens(sourcePath string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok || cached.TailwindTokens == "" {
 		return "", false
 	}
 	return cached.TailwindTokens, true
