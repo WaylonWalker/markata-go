@@ -159,7 +159,9 @@ func executeHooks[T Plugin](
 		}
 
 		start := time.Now()
+		buildstats.SetActivePlugin(p.Name())
 		if err := execute(typed); err != nil {
+			buildstats.SetActivePlugin("")
 			// Check if the error itself is marked as critical
 			errIsCritical := critical || isCriticalError(err)
 			hookErrors.Add(stage, p.Name(), err, errIsCritical)
@@ -168,6 +170,7 @@ func executeHooks[T Plugin](
 				return hookErrors
 			}
 		}
+		buildstats.SetActivePlugin("")
 		elapsed := time.Since(start)
 		buildstats.RecordPlugin(string(stage), p.Name(), elapsed)
 		if elapsed > 50*time.Millisecond {

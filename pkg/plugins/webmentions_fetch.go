@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -43,11 +44,14 @@ type WebmentionsFetchPlugin struct {
 
 // NewWebmentionsFetchPlugin creates a new WebmentionsFetchPlugin.
 func NewWebmentionsFetchPlugin() *WebmentionsFetchPlugin {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	buildstats.InstrumentHTTPClient(client)
+
 	return &WebmentionsFetchPlugin{
-		config: models.NewWebMentionsConfig(),
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		config:        models.NewWebMentionsConfig(),
+		httpClient:    client,
 		mentions:      make([]ReceivedWebMention, 0),
 		mentionsByURL: make(map[string][]ReceivedWebMention),
 	}
