@@ -1368,6 +1368,7 @@ type tomlBlogrollConfig struct {
 	ReaderSlug           string                   `toml:"reader_slug"`
 	CacheDir             string                   `toml:"cache_dir"`
 	CacheDuration        string                   `toml:"cache_duration"`
+	RefreshOnBuild       *bool                    `toml:"refresh_on_build"`
 	Timeout              int                      `toml:"timeout"`
 	ConcurrentRequests   int                      `toml:"concurrent_requests"`
 	MaxEntriesPerFeed    int                      `toml:"max_entries_per_feed"`
@@ -1538,6 +1539,7 @@ func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		ReaderSlug:           b.ReaderSlug,
 		CacheDir:             b.CacheDir,
 		CacheDuration:        b.CacheDuration,
+		RefreshOnBuild:       b.RefreshOnBuild,
 		Timeout:              b.Timeout,
 		ConcurrentRequests:   b.ConcurrentRequests,
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
@@ -3083,6 +3085,7 @@ type yamlBlogrollConfig struct {
 	ReaderSlug           string                   `yaml:"reader_slug"`
 	CacheDir             string                   `yaml:"cache_dir"`
 	CacheDuration        string                   `yaml:"cache_duration"`
+	RefreshOnBuild       *bool                    `yaml:"refresh_on_build"`
 	Timeout              int                      `yaml:"timeout"`
 	ConcurrentRequests   int                      `yaml:"concurrent_requests"`
 	MaxEntriesPerFeed    int                      `yaml:"max_entries_per_feed"`
@@ -3133,6 +3136,7 @@ func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		ReaderSlug:           b.ReaderSlug,
 		CacheDir:             b.CacheDir,
 		CacheDuration:        b.CacheDuration,
+		RefreshOnBuild:       b.RefreshOnBuild,
 		Timeout:              b.Timeout,
 		ConcurrentRequests:   b.ConcurrentRequests,
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
@@ -4605,6 +4609,7 @@ type jsonBlogrollConfig struct {
 	ReaderSlug           string                   `json:"reader_slug"`
 	CacheDir             string                   `json:"cache_dir"`
 	CacheDuration        string                   `json:"cache_duration"`
+	RefreshOnBuild       *bool                    `json:"refresh_on_build"`
 	Timeout              int                      `json:"timeout"`
 	ConcurrentRequests   int                      `json:"concurrent_requests"`
 	MaxEntriesPerFeed    int                      `json:"max_entries_per_feed"`
@@ -4655,6 +4660,7 @@ func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		ReaderSlug:           b.ReaderSlug,
 		CacheDir:             b.CacheDir,
 		CacheDuration:        b.CacheDuration,
+		RefreshOnBuild:       b.RefreshOnBuild,
 		Timeout:              b.Timeout,
 		ConcurrentRequests:   b.ConcurrentRequests,
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
