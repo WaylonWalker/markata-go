@@ -530,6 +530,14 @@ go tool pprof -http=:8080 /tmp/cpu.prof
 go tool pprof -top /tmp/mem.prof
 ```
 
+### Benchmark Prerequisites For Real Sites
+
+- If the target site uses encrypted/private posts, benchmark commands must either:
+  - provide the required `MARKATA_GO_ENCRYPTION_KEY_*` environment variables, or
+  - explicitly disable encryption for both baseline and candidate runs with `MARKATA_GO_ENCRYPTION_ENABLED=false`
+- Do not assume the benchmark shell has access to a developer's local secrets or `.env` loader.
+- When encryption is disabled to unblock local measurements, call that out in the benchmark report so comparisons are interpreted correctly.
+
 The lifecycle timing instrumentation in `hooks.go` logs any plugin taking >50ms. This is a permanent feature -- use these logs to identify bottlenecks.
 
 ### Plugin Caching Pattern
