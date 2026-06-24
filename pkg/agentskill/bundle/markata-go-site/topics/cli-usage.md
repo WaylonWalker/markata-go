@@ -13,6 +13,7 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go build --dry-run` (run through Collect, show counts, skip Write)
 - `markata-go reader update` (refresh external feed cache for `/reader/` without building)
 - `markata-go reader update --concurrency 12` (override reader refresh parallelism for one run)
+- `MARKATA_GO_BLOGROLL_REFRESH_ON_BUILD=false markata-go build` (keep blogroll pages but skip remote refresh during the build)
 - `markata-go build --benchmark-json benchmark.json`
 - `markata-go build -v --benchmark-detailed`
 - `markata-go serve` (dev server with live reload)

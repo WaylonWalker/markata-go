@@ -294,12 +294,15 @@ Successful builds also print a compact benchmark summary with:
 
 - estimated wall-time spent on CPU work, network wait, disk read wait, disk write wait, and idle time
 - the slowest lifecycle hotspots so you can spot expensive plugins quickly
+- the slowest outbound HTTP requests so network-bound plugins stop hiding in aggregate wait time
 
 For deeper analysis:
 
 - `markata-go build --benchmark-json benchmark.json` writes machine-readable benchmark data to a file
 - `markata-go build --benchmark-json -` writes only the benchmark JSON to stdout
 - `markata-go build -v --benchmark-detailed` adds per-stage resource summaries to the build footer
+
+When requests are present, the footer prints the 10 slowest network waits with stage, plugin, method, sanitized URL, duration, and either HTTP status or the request error.
 
 The resource profile is approximate. It is intended for local hotspot hunting, not precise system profiling.
 

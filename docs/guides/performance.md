@@ -69,6 +69,7 @@ The default `markata-go build` summary now includes two fast feedback signals:
 
 - **Resource profile** - estimated wall-time spent on CPU work, network wait, disk read wait, disk write wait, and idle time
 - **Hotspots** - the slowest lifecycle plugin hooks from that build
+- **Slowest requests** - the longest outbound HTTP requests with plugin attribution
 
 Example:
 
@@ -84,15 +85,42 @@ Build completed successfully!
     collect/blogroll 31.77s
     cleanup/pagefind 26.32s
     write/publish_feeds 8.54s
+  Slowest requests:
+    collect/blogroll GET https://example.com/feed.xml 12.40s (HTTP 200)
+    transform/mentions GET https://slow.example.com/ 6.80s (context deadline exceeded)
 ```
 
 Use this summary to decide what tool to reach for next:
 
 - mostly `CPU` -> capture a CPU profile with `just perf-profile`
-- mostly `Network wait` -> inspect plugins that fetch remote content or external metadata
+- mostly `Network wait` -> inspect `Slowest requests` first, then the owning plugins that fetch remote content or external metadata
 - mostly `Disk read` -> inspect globbing, cache loads, index reads, and wide content scans
 - mostly `Disk write` -> inspect publishing, cache saves, index generation, and emitted static output
 - mostly `Idle` -> look for subprocess waits, scheduler gaps, or work that is happening outside the Go process
+
+### Concrete Flow For Real Site Builds
+
+Use this flow when you want to answer "what feature is slowing this build down?"
+
+1. Run a build that matches the feature set you care about.
+   - for the everyday dev loop, use `markata-go build --fast`
+   - for real feature attribution, run the full build without `--fast`
+2. Read the footer in this order:
+   - `Resource profile` tells you whether the build is mostly CPU, network, disk read, or disk write bound
+   - `Hotspots` tells you which plugin hooks are slow overall
+   - `Slowest requests` tells you which exact network calls dominated wall time
+3. If `Slowest requests` points to one plugin repeatedly, fix that plugin first.
+   - add or verify cache reuse
+   - reduce duplicate fetches
+   - batch requests or lower request count
+   - make timeouts and concurrency explicit
+4. Export structured data when you need a diffable artifact:
+
+```bash
+markata-go build --benchmark-json benchmark.json
+```
+
+5. If the build is still mostly CPU after network fixes, capture `--cpuprofile` and inspect the hottest functions with `go tool pprof`.
 
 ### JSON Benchmarks
 
@@ -109,6 +137,7 @@ The JSON output includes:
 - whole-build resource totals
 - per-stage timings and per-stage estimated resources
 - plugin timing entries used for hotspot ranking
+- request timing entries used for the slowest-request list
 - build counts and warnings
 
 ### Per-Stage Detail

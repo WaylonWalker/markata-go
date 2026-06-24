@@ -3,7 +3,9 @@ package buildstats
 import (
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,6 +29,18 @@ type Hotspot struct {
 	Duration time.Duration
 }
 
+// RequestTiming records a single outbound HTTP request made during a build.
+type RequestTiming struct {
+	Stage    string
+	Plugin   string
+	Method   string
+	Host     string
+	URL      string
+	Status   int
+	Error    string
+	Duration time.Duration
+}
+
 // StageTiming records how long a lifecycle stage took.
 type StageTiming struct {
 	Stage     string
@@ -39,6 +53,7 @@ type Summary struct {
 	Total     time.Duration
 	Resources ResourceBreakdown
 	Hotspots  []Hotspot
+	Requests  []RequestTiming
 	Stages    []StageTiming
 }
 
@@ -61,6 +76,8 @@ type Profile struct {
 	stageTimes map[string]time.Duration
 	stageUsage map[string]ResourceBreakdown
 	current    string
+	plugin     string
+	requests   []RequestTiming
 
 	networkOps atomic.Int64
 	stopOnce   sync.Once
@@ -118,10 +135,25 @@ func (p *Profile) Stop() Summary {
 		stages = append(stages, StageTiming{Stage: stage, Duration: p.stageTimes[stage], Resources: p.stageUsage[stage]})
 	}
 
+	requests := append([]RequestTiming(nil), p.requests...)
+	sort.Slice(requests, func(i, j int) bool {
+		if requests[i].Duration == requests[j].Duration {
+			if requests[i].Stage == requests[j].Stage {
+				if requests[i].Plugin == requests[j].Plugin {
+					return requests[i].URL < requests[j].URL
+				}
+				return requests[i].Plugin < requests[j].Plugin
+			}
+			return requests[i].Stage < requests[j].Stage
+		}
+		return requests[i].Duration > requests[j].Duration
+	})
+
 	return Summary{
 		Total:     time.Since(p.start),
 		Resources: p.resources,
 		Hotspots:  hotspots,
+		Requests:  requests,
 		Stages:    stages,
 	}
 }
@@ -172,6 +204,18 @@ func SetActiveStage(stage string) {
 	}
 }
 
+// SetActivePlugin marks the currently running plugin hook for request attribution.
+func SetActivePlugin(plugin string) {
+	profile := activeProfile.Load()
+	if profile == nil {
+		return
+	}
+
+	profile.mu.Lock()
+	defer profile.mu.Unlock()
+	profile.plugin = plugin
+}
+
 // InstrumentHTTPClient wraps an HTTP client so active builds can estimate network wait time.
 func InstrumentHTTPClient(client *http.Client) *http.Client {
 	if client == nil {
@@ -195,11 +239,66 @@ type trackingTransport struct {
 
 func (t *trackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	profile := activeProfile.Load()
+	start := time.Now()
 	if profile != nil {
 		profile.networkOps.Add(1)
 		defer profile.networkOps.Add(-1)
 	}
-	return t.base.RoundTrip(req)
+	resp, err := t.base.RoundTrip(req)
+	if profile != nil {
+		profile.recordRequest(req, resp, err, time.Since(start))
+	}
+	return resp, err
+}
+
+func (p *Profile) recordRequest(req *http.Request, resp *http.Response, err error, duration time.Duration) {
+	if p == nil || req == nil {
+		return
+	}
+
+	request := RequestTiming{
+		Method:   requestMethod(req.Method),
+		URL:      sanitizeURL(req.URL),
+		Duration: duration,
+	}
+	if req.URL != nil {
+		request.Host = req.URL.Host
+	}
+	if resp != nil {
+		request.Status = resp.StatusCode
+	}
+	if err != nil {
+		request.Error = err.Error()
+	}
+
+	p.mu.Lock()
+	request.Stage = p.current
+	request.Plugin = p.plugin
+	p.requests = append(p.requests, request)
+	p.mu.Unlock()
+}
+
+func sanitizeURL(raw *url.URL) string {
+	if raw == nil {
+		return ""
+	}
+	clean := *raw
+	clean.User = nil
+	clean.RawQuery = ""
+	clean.ForceQuery = false
+	clean.Fragment = ""
+	if clean.Path == "" {
+		clean.Path = "/"
+	}
+	return clean.String()
+}
+
+func requestMethod(method string) string {
+	method = strings.TrimSpace(method)
+	if method == "" {
+		return http.MethodGet
+	}
+	return method
 }
 
 func (p *Profile) sampleLoop() {

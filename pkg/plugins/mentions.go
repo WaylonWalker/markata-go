@@ -13,10 +13,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -28,6 +31,8 @@ type MentionsPlugin struct {
 	// cssClass is the CSS class applied to mention links
 	cssClass string
 }
+
+const mentionsCacheVersion = "mentions:v1"
 
 // NewMentionsPlugin creates a new MentionsPlugin.
 func NewMentionsPlugin() *MentionsPlugin {
@@ -99,18 +104,123 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 	// Attach metadata to mention entries
 	p.attachMetadataToEntries(handleMap, domainMap)
 
+	cache := GetBuildCache(m)
+	cacheSignature := p.computeCacheSignature(handleMap)
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
 
 	log.Printf("[mentions] Processing %d posts", len(posts))
 
-	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+	var needProcessing []*models.Post
+	if cache != nil {
+		for _, post := range posts {
+			contentHash := p.computePostHash(post, cacheSignature)
+			if cachedContent, ok := cache.GetCachedMentionsContent(post.Path, contentHash); ok {
+				post.Content = cachedContent
+				continue
+			}
+			needProcessing = append(needProcessing, post)
+		}
+	} else {
+		needProcessing = posts
+	}
+
+	if len(needProcessing) == 0 {
+		return nil
+	}
+
+	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+		contentHash := p.computePostHash(post, cacheSignature)
 		content := p.processChatAdmonitionTitles(post, handleMap)
 		content = p.processMentionsWithMetadata(content, handleMap)
 		post.Content = content
+		if cache != nil {
+			cache.CacheMentionsContent(post.Path, contentHash, content)
+		}
 		return nil
 	})
+}
+
+func (p *MentionsPlugin) computePostHash(post *models.Post, cacheSignature string) string {
+	authorName, authorAvatar := getPrimaryAuthorDisplay(post)
+	var b strings.Builder
+	b.WriteString(post.Content)
+	b.WriteByte('\x00')
+	b.WriteString(cacheSignature)
+	b.WriteByte('\x00')
+	b.WriteString(authorName)
+	b.WriteByte('\x00')
+	b.WriteString(authorAvatar)
+	return buildcache.ContentHash(b.String())
+}
+
+func (p *MentionsPlugin) computeCacheSignature(handleMap map[string]*mentionEntry) string {
+	type cacheMetadata struct {
+		Name   string `json:"name,omitempty"`
+		Bio    string `json:"bio,omitempty"`
+		Avatar string `json:"avatar,omitempty"`
+		URL    string `json:"url,omitempty"`
+		Error  string `json:"error,omitempty"`
+	}
+
+	type cacheEntry struct {
+		Key      string         `json:"key"`
+		Handle   string         `json:"handle"`
+		SiteURL  string         `json:"site_url"`
+		Title    string         `json:"title,omitempty"`
+		Internal bool           `json:"internal,omitempty"`
+		Metadata *cacheMetadata `json:"metadata,omitempty"`
+	}
+
+	keys := make([]string, 0, len(handleMap))
+	for key := range handleMap {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+
+	entries := make([]cacheEntry, 0, len(keys))
+	for _, key := range keys {
+		entry := handleMap[key]
+		if entry == nil {
+			continue
+		}
+
+		cachedEntry := cacheEntry{
+			Key:      key,
+			Handle:   entry.Handle,
+			SiteURL:  entry.SiteURL,
+			Title:    entry.Title,
+			Internal: entry.Internal,
+		}
+		if entry.Metadata != nil {
+			cachedEntry.Metadata = &cacheMetadata{
+				Name:   entry.Metadata.Name,
+				Bio:    entry.Metadata.Bio,
+				Avatar: entry.Metadata.Avatar,
+				URL:    entry.Metadata.URL,
+				Error:  entry.Metadata.Error,
+			}
+		}
+		entries = append(entries, cachedEntry)
+	}
+
+	payload := struct {
+		Version  string       `json:"version"`
+		CSSClass string       `json:"css_class"`
+		Entries  []cacheEntry `json:"entries"`
+	}{
+		Version:  mentionsCacheVersion,
+		CSSClass: p.cssClass,
+		Entries:  entries,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return mentionsCacheVersion
+	}
+
+	return buildcache.ContentHash(string(data))
 }
 
 // mentionEntry holds resolved information for a handle.
@@ -383,6 +493,7 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge, timeout 
 	client := &http.Client{
 		Timeout: timeout,
 	}
+	buildstats.InstrumentHTTPClient(client)
 
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
