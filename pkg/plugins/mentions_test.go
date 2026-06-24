@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -745,6 +746,132 @@ func TestMentionsPlugin_Transform_FromPosts(t *testing.T) {
 	want := `I recently collaborated with <a href="/contact/alice/" class="mention" data-name="Alice Smith" data-handle="@alice">@alice</a> on a project.`
 	if transformedPost.Content != want {
 		t.Errorf("Content = %q, want %q", transformedPost.Content, want)
+	}
+}
+
+func TestMentionsPlugin_Transform_CachesContent(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+	cache := buildcache.New(t.TempDir())
+	m.Cache().Set("build_cache", cache)
+
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"mentions": models.MentionsConfig{
+			CSSClass: "mention",
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter:      "'contact' in tags",
+					HandleField: "handle",
+				},
+			},
+		},
+	}
+
+	aliceTitle := "Alice Smith"
+	m.AddPost(&models.Post{
+		Path:      "pages/contact/alice.md",
+		Slug:      "contact/alice",
+		Href:      "/contact/alice/",
+		Title:     &aliceTitle,
+		Tags:      []string{"contact"},
+		Published: true,
+		Extra: map[string]interface{}{
+			"handle": "alice",
+		},
+	})
+
+	blogPost := &models.Post{
+		Path:      "posts/working-with-alice.md",
+		Slug:      "working-with-alice",
+		Href:      "/working-with-alice/",
+		Title:     &aliceTitle,
+		Tags:      []string{"blog"},
+		Published: true,
+		Content:   "I recently collaborated with @alice on a project.",
+	}
+	m.AddPost(blogPost)
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform() error = %v", err)
+	}
+
+	cachedPost, ok := cache.Posts[blogPost.Path]
+	if !ok {
+		t.Fatalf("expected cache entry for %s", blogPost.Path)
+	}
+	if cachedPost.MentionsHash == "" {
+		t.Fatal("expected mentions hash to be cached")
+	}
+	if cachedPost.MentionsContent != blogPost.Content {
+		t.Fatalf("cached mentions content = %q, want %q", cachedPost.MentionsContent, blogPost.Content)
+	}
+}
+
+func TestMentionsPlugin_Transform_InvalidatesCacheWhenMentionMetadataChanges(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+
+	newManager := func(contactName string) (*lifecycle.Manager, *models.Post) {
+		m := lifecycle.NewManager()
+		m.Cache().Set("build_cache", cache)
+
+		config := m.Config()
+		config.Extra = map[string]interface{}{
+			"mentions": models.MentionsConfig{
+				CSSClass: "mention",
+				FromPosts: []models.MentionPostSource{
+					{
+						Filter:      "'contact' in tags",
+						HandleField: "handle",
+					},
+				},
+			},
+		}
+
+		m.AddPost(&models.Post{
+			Path:      "pages/contact/alice.md",
+			Slug:      "contact/alice",
+			Href:      "/contact/alice/",
+			Title:     &contactName,
+			Tags:      []string{"contact"},
+			Published: true,
+			Extra: map[string]interface{}{
+				"handle": "alice",
+			},
+		})
+
+		blogTitle := "Working with Alice"
+		blogPost := &models.Post{
+			Path:      "posts/working-with-alice.md",
+			Slug:      "working-with-alice",
+			Href:      "/working-with-alice/",
+			Title:     &blogTitle,
+			Tags:      []string{"blog"},
+			Published: true,
+			Content:   "I recently collaborated with @alice on a project.",
+		}
+		m.AddPost(blogPost)
+
+		return m, blogPost
+	}
+
+	plugin := NewMentionsPlugin()
+	firstManager, _ := newManager("Alice Smith")
+	if err := plugin.Transform(firstManager); err != nil {
+		t.Fatalf("first Transform() error = %v", err)
+	}
+
+	plugin = NewMentionsPlugin()
+	secondManager, secondBlogPost := newManager("Alice Johnson")
+	if err := plugin.Transform(secondManager); err != nil {
+		t.Fatalf("second Transform() error = %v", err)
+	}
+
+	if !strings.Contains(secondBlogPost.Content, `data-name="Alice Johnson"`) {
+		t.Fatalf("expected rebuilt content to include updated metadata, got %q", secondBlogPost.Content)
+	}
+	if strings.Contains(secondBlogPost.Content, `data-name="Alice Smith"`) {
+		t.Fatalf("expected cache invalidation to drop stale metadata, got %q", secondBlogPost.Content)
 	}
 }
 

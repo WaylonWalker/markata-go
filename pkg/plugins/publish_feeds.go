@@ -344,10 +344,6 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 	return p.computeFeedHashWithConfigAndCache(fc, nil, nil)
 }
 
-func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, config *lifecycle.Config) string {
-	return p.computeFeedHashWithConfigAndCache(fc, config, nil)
-}
-
 func (p *PublishFeedsPlugin) computeFeedHashWithConfigAndCache(fc *models.FeedConfig, config *lifecycle.Config, cache *buildcache.Cache) string {
 	h := sha256.New()
 	syndication := getSyndicationConfig(config)
@@ -695,9 +691,9 @@ func (p *PublishFeedsPlugin) determineFeedDir(outputDir, slug string) string {
 	return filepath.Join(outputDir, slug)
 }
 
-// safeWriteFile writes content to a file, removing any existing directory at that path.
+// prepareWriteFile removes any existing directory at a file path.
 // This handles the case where a previous build created a directory where a file should be.
-func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
+func (p *PublishFeedsPlugin) prepareWriteFile(path string) error {
 	// Check if path exists as a directory
 	info, err := os.Stat(path)
 	if err == nil && info.IsDir() {
@@ -706,9 +702,28 @@ func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
 			return fmt.Errorf("removing directory at file path %s: %w", path, err)
 		}
 	}
+	return nil
+}
+
+// safeWriteFile writes content to a file, removing any existing directory at that path.
+// If the file already exists with identical content, it is left untouched.
+func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
+	if err := p.prepareWriteFile(path); err != nil {
+		return err
+	}
 
 	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, content) {
 		return nil
+	}
+
+	return p.writeFile(path, content)
+}
+
+// writeFile writes content directly without a read-before-write check.
+// Use this only when the caller already knows the output is dirty.
+func (p *PublishFeedsPlugin) writeFile(path string, content []byte) error {
+	if err := p.prepareWriteFile(path); err != nil {
+		return err
 	}
 
 	//nolint:gosec // G306: Output files need 0644 for web serving
@@ -769,7 +784,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 			return fmt.Errorf("generating page %d: %w", page.Number, err)
 		}
 
-		if err := p.safeWriteFile(pagePath, []byte(html)); err != nil {
+		if err := p.writeFile(pagePath, []byte(html)); err != nil {
 			return fmt.Errorf("writing page %d: %w", page.Number, err)
 		}
 	}
@@ -820,7 +835,7 @@ func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, confi
 			return fmt.Errorf("generating simple page %d: %w", adjustedPage.Number, err)
 		}
 
-		if err := p.safeWriteFile(pagePath, []byte(htmlContent)); err != nil {
+		if err := p.writeFile(pagePath, []byte(htmlContent)); err != nil {
 			return fmt.Errorf("writing simple page %d: %w", adjustedPage.Number, err)
 		}
 	}
@@ -1165,7 +1180,7 @@ func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle
 	}
 
 	rssPath := filepath.Join(feedDir, "rss.xml")
-	return p.safeWriteFile(rssPath, []byte(rss))
+	return p.writeFile(rssPath, []byte(rss))
 }
 
 // publishAtom generates and writes an Atom feed.
@@ -1177,7 +1192,7 @@ func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycl
 	}
 
 	atomPath := filepath.Join(feedDir, "atom.xml")
-	return p.safeWriteFile(atomPath, []byte(atom))
+	return p.writeFile(atomPath, []byte(atom))
 }
 
 // publishJSON generates and writes a JSON feed.
@@ -1189,7 +1204,7 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 	}
 
 	jsonPath := filepath.Join(feedDir, "feed.json")
-	return p.safeWriteFile(jsonPath, []byte(jsonFeed))
+	return p.writeFile(jsonPath, []byte(jsonFeed))
 }
 
 func (p *PublishFeedsPlugin) syndicationFeedConfig(fc *models.FeedConfig, config *lifecycle.Config, archive bool) *models.FeedConfig {
@@ -1250,7 +1265,7 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, output
 	} else {
 		mdPath = filepath.Join(outputDir, slug+".md")
 	}
-	return p.safeWriteFile(mdPath, []byte(sb.String()))
+	return p.writeFile(mdPath, []byte(sb.String()))
 }
 
 // publishText generates and writes a plain text feed listing.
@@ -1296,7 +1311,7 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir 
 	} else {
 		txtPath = filepath.Join(outputDir, slug+".txt")
 	}
-	return p.safeWriteFile(txtPath, []byte(sb.String()))
+	return p.writeFile(txtPath, []byte(sb.String()))
 }
 
 // publishSitemap generates and writes a sitemap XML file for feed posts.
@@ -1363,7 +1378,7 @@ func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifec
 
 	// Write sitemap.xml
 	sitemapPath := filepath.Join(feedDir, "sitemap.xml")
-	return p.safeWriteFile(sitemapPath, []byte(xmlContent))
+	return p.writeFile(sitemapPath, []byte(xmlContent))
 }
 
 // writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.
@@ -1400,7 +1415,7 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 	// Write index.html inside the directory
 	// This allows /slug.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
+	if err := p.writeFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 
@@ -1441,7 +1456,7 @@ func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir stri
 	// Write index.html inside the directory
 	// This allows /slug/index.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
+	if err := p.writeFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 

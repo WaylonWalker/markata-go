@@ -188,6 +188,9 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	// Blogroll settings
 	case "blogroll_enabled":
 		config.Blogroll.Enabled = parseBool(value)
+	case "blogroll_refresh_on_build":
+		refreshOnBuild := parseBool(value)
+		config.Blogroll.RefreshOnBuild = &refreshOnBuild
 	}
 }
 

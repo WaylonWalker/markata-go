@@ -196,6 +196,21 @@ A post with `slug: my-project` registers `@my-project`.
    - If not found: leave as-is
 4. Restore code blocks
 
+### Warm-Build Caching
+
+Implementations MAY restore previously transformed post content from the build cache
+when the raw post content and the effective mention-resolution state are unchanged.
+The cache key MUST include any data that affects emitted HTML, including:
+
+- the raw post content
+- the configured mention CSS class
+- resolved handle targets and aliases
+- mention metadata used for hovercard attributes
+- post author display data used for chat-reply title enrichment
+
+Metadata cache timestamps alone MUST NOT invalidate transformed post content unless
+the rendered mention attributes themselves change.
+
 ### Email Protection
 
 Email addresses are not transformed. The regex matches `@` only when:

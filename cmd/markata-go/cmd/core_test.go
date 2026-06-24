@@ -73,6 +73,9 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 				{Stage: "collect", Plugin: "blogroll", Duration: 3 * time.Second},
 				{Stage: "render", Plugin: "link_avatars", Duration: 2 * time.Second},
 			},
+			Requests: []buildstats.RequestTiming{
+				{Stage: "collect", Plugin: "blogroll", Method: "GET", URL: "https://example.com/feed.xml", Duration: 4 * time.Second, Status: 200},
+			},
 		},
 	})
 
@@ -90,6 +93,8 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 		"Hotspots:",
 		"collect/blogroll",
 		"render/link_avatars",
+		"Slowest requests:",
+		"GET https://example.com/feed.xml",
 		"Duration: 9.87s",
 	} {
 		if !strings.Contains(output, want) {

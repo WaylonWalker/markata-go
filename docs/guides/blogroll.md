@@ -582,16 +582,18 @@ The blogroll plugin caches fetched feeds to avoid hitting external servers on ev
 [markata-go.blogroll]
 cache_dir = "cache/blogroll"    # Cache directory
 cache_duration = "24h"          # How long to cache feeds
+refresh_on_build = false         # Reuse cache during builds; refresh with `reader update`
 ```
 
 ### Cache Behavior
 
-1. On first build, all feeds are fetched and cached
-2. On subsequent builds, cached feeds are used until `cache_duration` expires
-3. Expiration is based on the cached feed's recorded fetch time, not file mtimes
-4. If a refresh fails, the stale cached feed is reused instead of failing open
-5. Explicit config overrides like `title`, `description`, `site_url`, `image_url`, `handle`, aliases, category, and tags are reapplied even when cached feed data is reused
-6. Delete `cache/blogroll/` to force a fresh fetch
+1. `markata-go reader update` is the explicit cache refresh command for blogroll and reader feeds
+2. When `refresh_on_build = false`, normal builds reuse cached feed data and do not make remote refresh requests
+3. When `refresh_on_build = true`, builds use cached feeds until `cache_duration` expires, then refresh as needed
+4. Expiration is based on the cached feed's recorded fetch time, not file mtimes
+5. If a refresh fails, the stale cached feed is reused instead of failing open
+6. Explicit config overrides like `title`, `description`, `site_url`, `image_url`, `handle`, aliases, category, and tags are reapplied even when cached feed data is reused
+7. Delete `cache/blogroll/` to force a fresh fetch
 
 ### Cache Duration Examples
 
@@ -834,6 +836,7 @@ max_entries = 50              # Override global max_entries_per_feed
 | `enabled` | bool | `false` | Enable blogroll plugin |
 | `cache_dir` | string | `"cache/blogroll"` | Cache directory |
 | `cache_duration` | string | `"24h"` | Cache TTL (Go duration) |
+| `refresh_on_build` | bool | `false` | Allow builds to refresh remote blogroll feeds |
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel fetches |
 | `max_entries_per_feed` | int | `50` | Global max entries per feed |
@@ -849,9 +852,32 @@ max_entries = 50              # Override global max_entries_per_feed
 
 ## Fast Builds During Development
 
-When working on large sites with many blogroll feeds, fetching external feeds on every build can significantly slow down development. You can use environment variables to temporarily disable the blogroll for faster builds:
+When working on large sites with many blogroll feeds, the best default is usually to keep blogroll pages enabled while separating refresh from normal builds.
 
-### Disable Blogroll via Environment Variable
+### Keep Blogroll Pages, Skip Refresh During Builds
+
+```toml
+[markata-go.blogroll]
+enabled = true
+refresh_on_build = false
+```
+
+Then refresh on demand:
+
+```bash
+markata-go reader update
+markata-go build
+```
+
+For one-off runs, you can also set:
+
+```bash
+MARKATA_GO_BLOGROLL_REFRESH_ON_BUILD=false markata-go build
+```
+
+If you want the smallest possible loop, you can still disable the plugin entirely:
+
+### Disable Blogroll Via Environment Variable
 
 ```bash
 # Build without fetching blogroll feeds

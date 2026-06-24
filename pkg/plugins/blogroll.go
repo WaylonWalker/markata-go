@@ -23,6 +23,7 @@ import (
 	"unicode"
 
 	"github.com/WaylonWalker/markata-go/pkg/blogroll"
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -621,6 +622,7 @@ type BlogrollPlugin struct {
 
 type blogrollFetchOptions struct {
 	forceRefresh   bool
+	refreshOnBuild bool
 	onFeedComplete func(BlogrollCacheRefreshProgress)
 }
 
@@ -808,7 +810,7 @@ func (p *BlogrollPlugin) Write(m *lifecycle.Manager) error {
 
 // fetchFeeds fetches all configured feeds concurrently.
 func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.ExternalFeed, []*models.ExternalEntry, error) {
-	feeds, entries, _, err := p.fetchFeedsWithOptions(config, blogrollFetchOptions{})
+	feeds, entries, _, err := p.fetchFeedsWithOptions(config, blogrollFetchOptions{refreshOnBuild: config.GetRefreshOnBuild()})
 	return feeds, entries, err
 }
 
@@ -843,6 +845,11 @@ func (p *BlogrollPlugin) fetchFeedsWithOptions(config models.BlogrollConfig, opt
 		configHash := p.aggregateConfigHash(activeFeeds)
 		if cached := p.loadAggregateCache(config.CacheDir, cacheDuration, configHash); cached != nil {
 			return cached.Feeds, cached.Entries, blogrollRefreshSummary{}, nil
+		}
+		if !options.refreshOnBuild {
+			if cached := p.loadAggregateCacheAny(config.CacheDir, configHash); cached != nil {
+				return cached.Feeds, cached.Entries, blogrollRefreshSummary{stale: len(cached.Feeds)}, nil
+			}
 		}
 	}
 
@@ -927,11 +934,22 @@ func (p *BlogrollPlugin) aggregateConfigHash(feeds []models.ExternalFeedConfig) 
 }
 
 func (p *BlogrollPlugin) loadAggregateCache(cacheDir string, maxAge time.Duration, configHash string) *blogrollAggregateCache {
+	cached := p.loadAggregateCacheAny(cacheDir, configHash)
+	if cached == nil {
+		return nil
+	}
+
 	cacheFile := filepath.Join(cacheDir, aggregateCacheFile)
 	info, err := os.Stat(cacheFile)
 	if err != nil || time.Since(info.ModTime()) > maxAge {
 		return nil
 	}
+
+	return cached
+}
+
+func (p *BlogrollPlugin) loadAggregateCacheAny(cacheDir, configHash string) *blogrollAggregateCache {
+	cacheFile := filepath.Join(cacheDir, aggregateCacheFile)
 	data, err := os.ReadFile(cacheFile)
 	if err != nil {
 		return nil
@@ -1063,6 +1081,17 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 			}
 		}
 		staleCached = p.loadFromCacheAny(config.URL, cacheDir)
+		if staleCached != nil && !options.forceRefresh && !options.refreshOnBuild {
+			cachedFeed := mergeCachedFeed(staleCached, config)
+			p.emitFetchProgress(options, config, cachedFeed, "stale", "")
+			return cachedFeed, blogrollRefreshSummary{stale: 1}
+		}
+	}
+
+	if !options.forceRefresh && !options.refreshOnBuild {
+		feed.Error = "blogroll refresh disabled and no cached feed available"
+		p.emitFetchProgress(options, config, feed, "missing_cache", feed.Error)
+		return feed, blogrollRefreshSummary{failed: 1}
 	}
 
 	// Fetch the feed
@@ -1083,6 +1112,7 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
 	}
+	buildstats.InstrumentHTTPClient(client)
 
 	resp, err := client.Do(req)
 	if err != nil {
