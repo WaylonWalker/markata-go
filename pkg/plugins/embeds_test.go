@@ -368,6 +368,49 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	}
 }
 
+func TestEmbedsPlugin_ExternalEmbed_ReusesFetchedHTMLForDiscoveryAndOG(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Test Page</title>
+	<meta property="og:title" content="OG Test Title">
+	<meta property="og:description" content="OG Test Description">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	p.config.OEmbedEnabled = true
+	p.config.OEmbedAutoDiscover = true
+	p.config.OEmbedProvidersURL = ""
+
+	m := lifecycle.NewManager()
+	sourcePost := &models.Post{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an external embed: ![embed](" + server.URL + ")",
+	}
+	m.SetPosts([]*models.Post{sourcePost})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	if requests != 1 {
+		t.Fatalf("requests = %d, want 1", requests)
+	}
+	if !containsString(sourcePost.Content, "embed-card-external") {
+		t.Fatalf("expected external embed card class, got: %s", sourcePost.Content)
+	}
+}
+
 func TestEmbedsPlugin_ExternalEmbed_HackerNewsDiscussionURL(t *testing.T) {
 	articleServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
