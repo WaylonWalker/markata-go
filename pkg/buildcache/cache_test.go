@@ -89,6 +89,18 @@ func TestCache_ShouldRebuildWithSlug_NoDependencyChange(t *testing.T) {
 	}
 }
 
+func TestCache_SetDependencies_UnchangedDoesNotMarkDirty(t *testing.T) {
+	cache := New("")
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+	cache.dirty = false
+
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b", "post-b"})
+
+	if cache.dirty {
+		t.Fatal("dirty = true, want false for unchanged dependencies")
+	}
+}
+
 func TestCache_GetChangedSlugs(t *testing.T) {
 	cache := New("")
 
