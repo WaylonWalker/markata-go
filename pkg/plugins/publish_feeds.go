@@ -516,29 +516,30 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)
 	paths := make([]string, 0, len(fc.Pages)*2+8)
+	htmlPages := fc.Pages
+	if fc.Formats.HTML || fc.Formats.SimpleHTML {
+		htmlPages = feedConfigWithRenderablePosts(fc).Pages
+	}
 	add := func(path string) {
 		if path != "" {
 			paths = append(paths, path)
 		}
 	}
 
-	if fc.Formats.HTML {
-		for i := range fc.Pages {
-			if fc.Pages[i].Number == 1 {
-				add(filepath.Join(feedDir, "index.html"))
-			} else {
-				add(filepath.Join(feedDir, "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
-			}
+	if fc.Formats.HTML && len(htmlPages) > 0 {
+		add(filepath.Join(feedDir, "index.html"))
+		if lastPage := htmlPages[len(htmlPages)-1].Number; lastPage > 1 {
+			// The feed hash already covers page count and pagination structure, so
+			// checking the first and last HTML pages is enough to catch missing
+			// outputs without repeating every paginated page stat on warm builds.
+			add(filepath.Join(feedDir, "page", fmt.Sprintf("%d", lastPage), "index.html"))
 		}
 	}
 
-	if fc.Formats.SimpleHTML {
-		for i := range fc.Pages {
-			if fc.Pages[i].Number == 1 {
-				add(filepath.Join(feedDir, "simple", "index.html"))
-			} else {
-				add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
-			}
+	if fc.Formats.SimpleHTML && len(htmlPages) > 0 {
+		add(filepath.Join(feedDir, "simple", "index.html"))
+		if lastPage := htmlPages[len(htmlPages)-1].Number; lastPage > 1 {
+			add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", lastPage), "index.html"))
 		}
 	}
 
