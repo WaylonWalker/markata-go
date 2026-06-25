@@ -84,6 +84,7 @@ type oembedResolver struct {
 	jsonProvidersMu sync.RWMutex
 	jsonFetchedAt   time.Time
 	markdown        goldmark.Markdown
+	htmlFetcher     func(rawURL string) (string, error)
 }
 
 const jsonProvidersCacheDuration = 24 * time.Hour
@@ -111,6 +112,10 @@ func (r *oembedResolver) updateConfig(config models.EmbedsConfig) {
 
 func (r *oembedResolver) setMarkdownRenderer(md goldmark.Markdown) {
 	r.markdown = md
+}
+
+func (r *oembedResolver) setHTMLFetcher(fetcher func(rawURL string) (string, error)) {
+	r.htmlFetcher = fetcher
 }
 
 func newEmbedMarkdownRenderer(extra map[string]interface{}) goldmark.Markdown {
@@ -521,32 +526,12 @@ func (r *oembedResolver) discoverEndpoint(rawURL string) (string, error) {
 		return "", errOEmbedDiscoveryDisabled
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	htmlContent, err := r.fetchPageHTML(rawURL)
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("oembed discovery failed: %s", resp.Status)
-	}
-
-	const maxBody = 512 * 1024
-	limited := io.LimitReader(resp.Body, maxBody)
-	body, err := io.ReadAll(limited)
-	if err != nil {
-		return "", err
-	}
-
-	endpoint := findOEmbedLink(string(body))
+	endpoint := findOEmbedLink(htmlContent)
 	if endpoint == "" {
 		return "", fmt.Errorf("oembed discovery: endpoint not found")
 	}
@@ -564,6 +549,36 @@ func (r *oembedResolver) discoverEndpoint(rawURL string) (string, error) {
 	}
 
 	return endpoint, nil
+}
+
+func (r *oembedResolver) fetchPageHTML(rawURL string) (string, error) {
+	if r.htmlFetcher != nil {
+		return r.htmlFetcher(rawURL)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("oembed discovery failed: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
 }
 
 func findOEmbedLink(html string) string {
