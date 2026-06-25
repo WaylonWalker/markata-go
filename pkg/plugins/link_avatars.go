@@ -82,6 +82,7 @@ const (
 	linkAvatarModeHosted = "hosted"
 
 	linkAvatarIconExtICO = ".ico"
+	linkAvatarMissExt    = ".missing"
 )
 
 // defaultLinkAvatarsConfig returns the default configuration.
@@ -972,6 +973,9 @@ func (p *LinkAvatarsPlugin) ensureIconForHost(assetsDir, host, origin string) (s
 	if cached, ok := findCachedIcon(assetsDir, safeHost); ok {
 		return cached, nil
 	}
+	if hasCachedIconMiss(assetsDir, safeHost) {
+		return "", fmt.Errorf("favicon request previously failed")
+	}
 
 	faviconURL, err := p.faviconURL(host, origin)
 	if err != nil {
@@ -989,6 +993,9 @@ func (p *LinkAvatarsPlugin) ensureIconForHost(assetsDir, host, origin string) (s
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode >= http.StatusBadRequest && resp.StatusCode < http.StatusInternalServerError {
+			cacheIconMiss(assetsDir, safeHost)
+		}
 		return "", fmt.Errorf("favicon request failed: %s", resp.Status)
 	}
 
@@ -1039,6 +1046,16 @@ func findCachedIcon(assetsDir, safeHost string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func hasCachedIconMiss(assetsDir, safeHost string) bool {
+	_, err := os.Stat(filepath.Join(assetsDir, safeHost+linkAvatarMissExt))
+	return err == nil
+}
+
+func cacheIconMiss(assetsDir, safeHost string) {
+	//nolint:errcheck,gosec // negative cache is best-effort and static output is intentionally readable
+	_ = os.WriteFile(filepath.Join(assetsDir, safeHost+linkAvatarMissExt), []byte("missing\n"), 0o644)
 }
 
 func iconExtension(contentType, faviconURL string) string {
