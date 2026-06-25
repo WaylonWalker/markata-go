@@ -64,6 +64,64 @@ func TestLinkAvatars_Render_LocalModeInjectsAndCaches(t *testing.T) {
 	}
 }
 
+func TestLinkAvatars_Render_LocalModeCachesHTTP404Misses(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		http.NotFound(w, nil)
+	}))
+	defer server.Close()
+
+	outputDir := t.TempDir()
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{URL: "https://mysite.test"},
+			"link_avatars": map[string]any{
+				"enabled":  true,
+				"mode":     "local",
+				"service":  "custom",
+				"template": server.URL + "/favicon/{host}.png",
+				"size":     16,
+			},
+		},
+	}
+
+	plugin := NewLinkAvatarsPlugin()
+
+	newManager := func() *lifecycle.Manager {
+		m := lifecycle.NewManager()
+		m.SetConfig(config)
+		m.SetPosts([]*models.Post{{Path: "post.md", ArticleHTML: `<p><a href="https://example.com/path">Example</a></p>`}})
+		return m
+	}
+
+	m1 := newManager()
+	if err := plugin.Configure(m1); err != nil {
+		t.Fatalf("configure error: %v", err)
+	}
+	if err := plugin.Render(m1); err != nil {
+		t.Fatalf("first render error: %v", err)
+	}
+
+	m2 := newManager()
+	if err := plugin.Configure(m2); err != nil {
+		t.Fatalf("configure error: %v", err)
+	}
+	if err := plugin.Render(m2); err != nil {
+		t.Fatalf("second render error: %v", err)
+	}
+
+	if requests != 1 {
+		t.Fatalf("requests = %d, want 1", requests)
+	}
+
+	missPath := filepath.Join(outputDir, "assets", "markata", "link-avatars", "example.com.missing")
+	if _, err := os.Stat(missPath); err != nil {
+		t.Fatalf("expected cached miss marker at %s: %v", missPath, err)
+	}
+}
+
 func TestLinkAvatars_ConfigureHostedRequiresBaseURL(t *testing.T) {
 	config := &lifecycle.Config{
 		Extra: map[string]interface{}{
