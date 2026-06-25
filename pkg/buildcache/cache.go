@@ -78,6 +78,9 @@ type Cache struct {
 	// GardenHash caches the garden view output state
 	GardenHash string `json:"garden_hash,omitempty"`
 
+	// FeedsListingHash caches the /feeds listing output state.
+	FeedsListingHash string `json:"feeds_listing_hash,omitempty"`
+
 	// TailwindManifestHash caches the generated Tailwind token manifest state.
 	TailwindManifestHash string `json:"tailwind_manifest_hash,omitempty"`
 
@@ -598,6 +601,24 @@ func (c *Cache) GetGardenHash() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.GardenHash
+}
+
+// SetFeedsListingHash stores the feeds listing hash in the cache.
+func (c *Cache) SetFeedsListingHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.FeedsListingHash == hash {
+		return
+	}
+	c.FeedsListingHash = hash
+	c.dirty = true
+}
+
+// GetFeedsListingHash returns the cached feeds listing hash.
+func (c *Cache) GetFeedsListingHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.FeedsListingHash
 }
 
 // MarkSkipped records that a post was skipped (already up to date).
@@ -1123,8 +1144,9 @@ func ComputePostInputHash(content, frontmatter, template string) string {
 func (c *Cache) SetDependencies(sourcePath, sourceSlug string, targets []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.Graph.SetDependencies(sourcePath, sourceSlug, targets)
-	c.dirty = true
+	if c.Graph.SetDependencies(sourcePath, sourceSlug, targets) {
+		c.dirty = true
+	}
 }
 
 // GetAffectedPosts returns all posts that need rebuilding when the given

@@ -113,6 +113,17 @@ func TestSetDependencies_Empty(t *testing.T) {
 	}
 }
 
+func TestSetDependencies_UnchangedReturnsFalse(t *testing.T) {
+	g := NewDependencyGraph()
+
+	if !g.SetDependencies("pages/post-a.md", "post-a", []string{"post-b", "post-c"}) {
+		t.Fatal("first SetDependencies() = false, want true")
+	}
+	if g.SetDependencies("pages/post-a.md", "post-a", []string{"post-c", "post-b", "post-b"}) {
+		t.Fatal("unchanged SetDependencies() = true, want false")
+	}
+}
+
 func TestGetAffectedPosts_Direct(t *testing.T) {
 	g := NewDependencyGraph()
 
