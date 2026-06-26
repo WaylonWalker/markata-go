@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -154,28 +155,15 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 		return p.loadSequential(m, files, baseDir, cache)
 	}
 
-	posts := make([]*models.Post, 0, len(files))
-	var firstErr error
 	affected := lifecycle.GetServeAffectedPaths(m)
 	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
-
-	for _, file := range files {
+	posts, err := p.loadFilesConcurrent(m, files, func(file string) (*models.Post, error) {
 		if useFastCache {
 			if len(affected) > 0 && affected[file] {
-				post, err := p.loadFile(file, baseDir, cache)
-				if err != nil {
-					if firstErr == nil {
-						firstErr = err
-					}
-					continue
-				}
-				posts = append(posts, post)
-				continue
+				return p.loadFile(file, baseDir, cache)
 			}
-			cachedData := cache.GetCachedPostDataLatest(file)
-			if cachedData != nil {
-				posts = append(posts, p.restorePostFromCache(cachedData, cache))
-				continue
+			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
+				return p.restorePostFromCache(cachedData, cache), nil
 			}
 		}
 
@@ -185,32 +173,83 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 		}
 		stat, err := os.Stat(fullPath)
 		if err != nil {
-			if firstErr == nil {
-				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
-			}
-			continue
+			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 		}
-		cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano())
-		if cachedData != nil {
-			posts = append(posts, p.restorePostFromCache(cachedData, cache))
-			continue
+		if cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano()); cachedData != nil {
+			return p.restorePostFromCache(cachedData, cache), nil
 		}
-		post, err := p.loadFile(file, baseDir, cache)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		posts = append(posts, post)
-	}
-	if firstErr != nil {
-		return firstErr
+		return p.loadFile(file, baseDir, cache)
+	})
+	if err != nil {
+		return err
 	}
 	for _, post := range posts {
 		m.AddPost(post)
 	}
 	return nil
+}
+
+func (p *LoadPlugin) loadFilesConcurrent(m *lifecycle.Manager, files []string, fn func(string) (*models.Post, error)) ([]*models.Post, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	type result struct {
+		index int
+		post  *models.Post
+		err   error
+	}
+
+	workers := m.Concurrency()
+	if workers > len(files) {
+		workers = len(files)
+	}
+	jobs := make(chan int, len(files))
+	results := make(chan result, len(files))
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				post, err := fn(files[idx])
+				results <- result{index: idx, post: post, err: err}
+			}
+		}()
+	}
+
+	for i := range files {
+		jobs <- i
+	}
+	close(jobs)
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	ordered := make([]*models.Post, len(files))
+	var firstErr error
+	for res := range results {
+		if res.err != nil {
+			if firstErr == nil {
+				firstErr = res.err
+			}
+			continue
+		}
+		ordered[res.index] = res.post
+	}
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	posts := make([]*models.Post, 0, len(ordered))
+	for _, post := range ordered {
+		if post != nil {
+			posts = append(posts, post)
+		}
+	}
+	return posts, nil
 }
 
 func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
