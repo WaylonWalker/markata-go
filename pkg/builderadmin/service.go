@@ -707,7 +707,7 @@ func (s *Service) prepareBuild(log io.Writer) error {
 	current := filepath.Join(s.cfg.SiteDir, "current")
 	if _, err := os.Stat(current); err == nil {
 		_, _ = fmt.Fprintln(log, "seeding build work from current release")
-		return s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-al", filepath.Join(current, "."), buildWork+string(os.PathSeparator))
+		return s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-al", current+"/.", buildWork+string(os.PathSeparator))
 	}
 	return nil
 }
@@ -719,13 +719,12 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 	}
 	cleanup := func() {}
 	if s.cfg.MermaidMode != "" {
-		overridePath := filepath.Join(s.overrideDir, id+".toml")
+		overridePath := filepath.Join(s.overrideDir, "builder-admin.toml")
 		contents := fmt.Sprintf("[markata-go.mermaid]\nmode = %q\n", s.cfg.MermaidMode)
 		if err := os.WriteFile(overridePath, []byte(contents), 0o644); err != nil {
 			return nil, cleanup, err
 		}
 		args = append(args, "-m", overridePath)
-		cleanup = func() { _ = os.Remove(overridePath) }
 	}
 	args = append(args, "build")
 	if s.cfg.Fast {
