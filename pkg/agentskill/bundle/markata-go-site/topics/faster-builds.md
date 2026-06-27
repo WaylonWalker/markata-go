@@ -54,6 +54,8 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - If output is network-bound, inspect plugins that fetch remote content.
 - If output is read-heavy, inspect globbing, cache loads, and broad content scans.
 - If output is write-heavy, inspect cache saves, feed publishing, Pagefind output, and static output.
+- If warm builds still spend time in `configure/build_cache`, check whether template or config files actually changed before assuming the cache is stale; the build cache now fingerprints the template tree before it does a full rehash.
+- If `/tags` or `/garden` writes are hot, prefer cached per-post semantic hashes so the listing hashes don't need to re-derive the same per-post summaries every build.
 - Prefer targeted fixes over broad cache-busting changes.
 - For sites that use `[markata-go.mermaid] mode = "chromium"` or `"cli"`, unchanged
   diagrams should reuse cached SVG output on warm builds; if Mermaid remains a hotspot,
