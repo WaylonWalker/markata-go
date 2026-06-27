@@ -264,6 +264,50 @@ markata-go build -c production.toml
 markata-go build --clean -v -o dist
 ```
 
+### builder-admin
+
+Run the long-lived builder admin HTTP service for Kubernetes and authoring workflows.
+
+#### Usage
+
+```bash
+markata-go builder-admin [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--host` | Host to bind to | `127.0.0.1` |
+| `--port` | Port to listen on | `8080` |
+| `--source-dir` | Mounted source directory to watch and build from | `.` |
+| `--site-dir` | Mounted site root that contains `releases/` and `current` | `public` |
+| `--watch` | Enable recursive file watching and queued rebuilds | `true` |
+| `--watch-debounce` | Debounce window for coalescing file changes | `2s` |
+| `--fast` | Use `markata-go build --fast` for queued builds | `false` |
+| `--mermaid-mode` | Override `[markata-go.mermaid].mode` for queued builds | `""` |
+| `--cache-mount` | Optional dedicated cache mount used for `.markata` and `.markata-cache` symlinks | `""` |
+| `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
+| `--releases-keep` | Number of rendered releases to keep on disk | `10` |
+| `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
+
+#### Examples
+
+```bash
+# Run locally against mounted source and site paths
+markata-go builder-admin \
+  --config /data/source/markata-go.toml \
+  --source-dir /data/source \
+  --site-dir /data/site \
+  --cache-mount /data/cache \
+  --fast \
+  --watch
+
+# Add a scheduled reader refresh that enqueues a build when complete
+markata-go builder-admin \
+  --refresh-task 'reader-update|30m|true|markata-go|--config|/data/source/markata-go.toml|reader|update'
+```
+
 #### Exit Codes
 
 | Code | Description |
