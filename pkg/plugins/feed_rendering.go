@@ -2,8 +2,12 @@ package plugins
 
 import "github.com/WaylonWalker/markata-go/pkg/models"
 
-func filterFeedPagePosts(posts []*models.Post, includePrivate bool) []*models.Post {
-	visible := make([]*models.Post, 0, len(posts))
+// splitFeedRenderablePosts partitions posts into:
+// 1) pagePosts: posts visible on feed HTML pages
+// 2) outputPosts: posts with content suitable for RSS/Atom/JSON/MD/TXT output
+func splitFeedRenderablePosts(posts []*models.Post, includePrivate bool) (pagePosts, outputPosts []*models.Post) {
+	pagePosts = make([]*models.Post, 0, len(posts))
+	outputPosts = make([]*models.Post, 0, len(posts))
 	for _, post := range posts {
 		if post == nil || post.Skip || post.Draft {
 			continue
@@ -11,18 +15,23 @@ func filterFeedPagePosts(posts []*models.Post, includePrivate bool) []*models.Po
 		if post.Private && !includePrivate {
 			continue
 		}
-		visible = append(visible, post)
+
+		pagePosts = append(pagePosts, post)
+		if post.Content == "" && post.ArticleHTML == "" {
+			continue
+		}
+		outputPosts = append(outputPosts, post)
 	}
+
+	return pagePosts, outputPosts
+}
+
+func filterFeedPagePosts(posts []*models.Post, includePrivate bool) []*models.Post {
+	visible, _ := splitFeedRenderablePosts(posts, includePrivate)
 	return visible
 }
 
 func filterFeedOutputPosts(posts []*models.Post, includePrivate bool) []*models.Post {
-	renderable := make([]*models.Post, 0, len(posts))
-	for _, post := range filterFeedPagePosts(posts, includePrivate) {
-		if post.Content == "" && post.ArticleHTML == "" {
-			continue
-		}
-		renderable = append(renderable, post)
-	}
+	_, renderable := splitFeedRenderablePosts(posts, includePrivate)
 	return renderable
 }
