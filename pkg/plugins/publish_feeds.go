@@ -614,11 +614,30 @@ type feedRenderContext struct {
 // publishFeed publishes a single feed in all configured formats.
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
-	modelsConfig := ToModelsConfig(config)
 	syndication := getSyndicationConfig(config)
-	htmlFC := feedConfigWithRenderablePosts(fc)
-	syndicationFC := feedConfigWithOutputPosts(fc)
-	renderCtx := buildFeedRenderContext(htmlFC)
+	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludePrivate)
+	needsHTML := fc.Formats.HTML || fc.Formats.SimpleHTML
+	needsOutputPosts := fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text || fc.Formats.Sitemap
+
+	var modelsConfig *models.Config
+	var htmlFC *models.FeedConfig
+	var syndicationFC *models.FeedConfig
+	var renderCtx *feedRenderContext
+
+	if needsHTML {
+		modelsConfig = ToModelsConfig(config)
+		htmlFC = cloneFeedConfigWithPosts(fc, pagePosts)
+		baseURL := "/" + htmlFC.Slug
+		if htmlFC.Slug == "" {
+			baseURL = "/"
+		}
+		htmlFC.Paginate(baseURL)
+		renderCtx = buildFeedRenderContext(htmlFC)
+	}
+
+	if needsOutputPosts {
+		syndicationFC = cloneFeedConfigWithPosts(fc, outputPosts)
+	}
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
