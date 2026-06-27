@@ -152,7 +152,7 @@ func (p *GardenViewPlugin) Write(m *lifecycle.Manager) error {
 		if !cache.GardenDirty() {
 			return nil
 		}
-		gardenHash := computeGardenHash(m.Posts(), &gardenConfig)
+		gardenHash := computeGardenHash(m.Posts(), &gardenConfig, cache)
 		if cached := cache.GetGardenHash(); cached != "" && cached == gardenHash {
 			return nil
 		}
@@ -233,12 +233,18 @@ func (p *GardenViewPlugin) filterPosts(posts []*models.Post, config *models.Gard
 	return filtered
 }
 
-func computeGardenHash(posts []*models.Post, config *models.GardenConfig) string {
+func computeGardenHash(posts []*models.Post, config *models.GardenConfig, cache *buildcache.Cache) string {
 	if config == nil {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString(config.GetPath())
+	b.WriteByte('\x00')
+	b.WriteString(config.Title)
+	b.WriteByte('\x00')
+	b.WriteString(config.Description)
+	b.WriteByte('\x00')
+	b.WriteString(config.GetTemplate())
 	b.WriteByte('\x00')
 	b.WriteString(fmt.Sprintf("%t", config.IsEnabled()))
 	b.WriteByte('\x00')
@@ -246,14 +252,30 @@ func computeGardenHash(posts []*models.Post, config *models.GardenConfig) string
 	b.WriteByte('\x00')
 	b.WriteString(fmt.Sprintf("%t", config.IsRenderPage()))
 	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", config.IsIncludeTags()))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", config.IsIncludePosts()))
+	b.WriteByte('\x00')
 	b.WriteString(fmt.Sprintf("%d", config.GetMaxNodes()))
 	b.WriteByte('\x00')
+	excludeTags := append([]string(nil), config.ExcludeTags...)
+	sort.Strings(excludeTags)
+	for _, tag := range excludeTags {
+		b.WriteString("exclude:")
+		b.WriteString(tag)
+		b.WriteByte('\x00')
+	}
 	for _, post := range posts {
 		if post.Skip || post.Draft || !post.Published || post.Private {
 			continue
 		}
-		b.WriteString(post.Slug)
-		b.WriteByte('\x00')
+		if cache != nil {
+			if _, _, gardenHash := cache.GetPostSemanticHashes(post.Path); gardenHash != "" {
+				b.WriteString(gardenHash)
+				b.WriteByte('\x00')
+				continue
+			}
+		}
 		b.WriteString(computePostGardenHash(post))
 		b.WriteByte('\x00')
 	}

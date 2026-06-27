@@ -98,10 +98,18 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
 		templatesDir = extra
 	}
-	if hash, err := buildcache.HashDirectory(templatesDir, []string{".html", ".txt", ".md"}); err == nil && hash != "" {
-		if cache.SetTemplatesHash(hash) {
-			// Templates changed - cache was invalidated
-			buildCacheLog.Phase("configure").Printf("Templates changed, full rebuild required")
+	if fingerprint, err := buildcache.HashDirectoryState(templatesDir, []string{".html", ".txt", ".md"}); err == nil && fingerprint != "" {
+		if cache.GetTemplatesFingerprint() == fingerprint && cache.GetTemplatesHash() != "" {
+			// Template tree unchanged - reuse the existing content hash.
+		} else if hash, err := buildcache.HashDirectory(templatesDir, []string{".html", ".txt", ".md"}); err == nil && hash != "" {
+			changed := cache.SetTemplatesFingerprint(fingerprint)
+			if cache.SetTemplatesHash(hash) {
+				changed = true
+			}
+			if changed {
+				// Templates changed - cache was invalidated.
+				buildCacheLog.Phase("configure").Printf("Templates changed, full rebuild required")
+			}
 		}
 	}
 

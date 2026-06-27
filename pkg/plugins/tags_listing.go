@@ -106,7 +106,7 @@ func (p *TagsListingPlugin) Write(m *lifecycle.Manager) error {
 		if !cache.TagsDirty() {
 			return nil
 		}
-		tagsHash := computeTagsListingHash(m.Posts(), &tagsConfig)
+		tagsHash := computeTagsListingHash(m.Posts(), &tagsConfig, cache)
 		if cached := cache.GetTagsListingHash(); cached != "" && cached == tagsHash {
 			return nil
 		}
@@ -173,7 +173,7 @@ func (p *TagsListingPlugin) collectTags(posts []*models.Post, tagsConfig *models
 	return tagInfos
 }
 
-func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig) string {
+func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig, cache *buildcache.Cache) string {
 	if tagsConfig == nil {
 		return ""
 	}
@@ -186,6 +186,20 @@ func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig)
 	b.WriteByte('\x00')
 	b.WriteString(tagsConfig.Template)
 	b.WriteByte('\x00')
+	blacklist := append([]string(nil), tagsConfig.Blacklist...)
+	sort.Strings(blacklist)
+	for _, tag := range blacklist {
+		b.WriteString("blacklist:")
+		b.WriteString(tag)
+		b.WriteByte('\x00')
+	}
+	privateTags := append([]string(nil), tagsConfig.Private...)
+	sort.Strings(privateTags)
+	for _, tag := range privateTags {
+		b.WriteString("private:")
+		b.WriteString(tag)
+		b.WriteByte('\x00')
+	}
 	b.WriteString(fmt.Sprintf("%t", tagsConfig.IsEnabled()))
 	b.WriteByte('\x00')
 
@@ -193,19 +207,14 @@ func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig)
 		if post.Skip || post.Draft || !post.Published || post.Private {
 			continue
 		}
-		b.WriteString(post.Slug)
-		b.WriteByte('\x00')
-		if len(post.Tags) > 0 {
-			tags := append([]string(nil), post.Tags...)
-			sort.Strings(tags)
-			for _, tag := range tags {
-				if tagsConfig.IsBlacklisted(tag) || tagsConfig.IsPrivate(tag) {
-					continue
-				}
-				b.WriteString(tag)
-				b.WriteByte('\x01')
+		if cache != nil {
+			if _, tagHash, _ := cache.GetPostSemanticHashes(post.Path); tagHash != "" {
+				b.WriteString(tagHash)
+				b.WriteByte('\x00')
+				continue
 			}
 		}
+		b.WriteString(computePostTagIndexHash(post))
 		b.WriteByte('\x00')
 	}
 
