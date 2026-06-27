@@ -96,6 +96,8 @@ Use this summary to decide what tool to reach for next:
 - mostly `Network wait` -> inspect `Slowest requests` first, then the owning plugins that fetch remote content or external metadata
 - mostly `Disk read` -> inspect globbing, cache loads, index reads, and wide content scans
 - mostly `Disk write` -> inspect publishing, cache saves, index generation, and emitted static output
+- if `configure/build_cache` is hot on warm builds, check whether the template or config tree actually changed; unchanged template trees now reuse a cheap fingerprint before falling back to a full content hash
+- if `/tags` or `/garden` hashing is hot, prefer cached per-post semantic hashes over re-deriving the same per-post summaries inside the listing hashers
 - mostly `Idle` -> look for subprocess waits, scheduler gaps, or work that is happening outside the Go process
 
 ### Concrete Flow For Real Site Builds

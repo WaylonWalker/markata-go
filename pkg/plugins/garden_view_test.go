@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -867,5 +868,35 @@ func TestGardenConfig_IsTagExcluded(t *testing.T) {
 	}
 	if config.IsTagExcluded("go") {
 		t.Error("'go' should not be excluded")
+	}
+}
+
+func TestComputeGardenHash_UsesCachedSemanticHashes(t *testing.T) {
+	posts := newTestPosts()
+	cache := buildcache.New("")
+	for _, post := range posts {
+		cache.UpdatePostSemanticHashes(post.Path, "feed-"+post.Slug, computePostTagIndexHash(post), computePostGardenHash(post))
+	}
+
+	config := newTestGardenConfig()
+	want := computeGardenHash(posts, &config, nil)
+	got := computeGardenHash(posts, &config, cache)
+	if got != want {
+		t.Fatalf("computeGardenHash with cache = %q, want %q", got, want)
+	}
+}
+
+func TestComputeGardenHash_ChangesWhenConfigChanges(t *testing.T) {
+	posts := newTestPosts()
+	base := newTestGardenConfig()
+	baseHash := computeGardenHash(posts, &base, nil)
+
+	modified := newTestGardenConfig()
+	modified.Title = "Custom Garden"
+	modified.ExcludeTags = []string{"go"}
+	modifiedHash := computeGardenHash(posts, &modified, nil)
+
+	if baseHash == modifiedHash {
+		t.Fatal("computeGardenHash did not change after config update")
 	}
 }
