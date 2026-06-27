@@ -1,11 +1,48 @@
 package plugins
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+func TestResolveFileModTime_UsesGlobCachedModTime(t *testing.T) {
+	m := lifecycle.NewManager()
+	m.Cache().Set(cacheKeyGlobFileModTimes, map[string]int64{"post.md": 12345})
+
+	got, err := resolveFileModTime(m, "post.md", "/does/not/exist")
+	if err != nil {
+		t.Fatalf("resolveFileModTime() error = %v", err)
+	}
+	if got != 12345 {
+		t.Fatalf("resolveFileModTime() = %d, want 12345", got)
+	}
+}
+
+func TestResolveFileModTime_FallsBackToStat(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "post.md")
+	if err := os.WriteFile(path, []byte("# post"), 0o600); err != nil {
+		t.Fatalf("WriteFile(post.md) error = %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat(post.md) error = %v", err)
+	}
+
+	got, err := resolveFileModTime(nil, "post.md", tmpDir)
+	if err != nil {
+		t.Fatalf("resolveFileModTime() error = %v", err)
+	}
+	if got != info.ModTime().UnixNano() {
+		t.Fatalf("resolveFileModTime() = %d, want %d", got, info.ModTime().UnixNano())
+	}
+}
 
 func TestParseDateString(t *testing.T) {
 	tests := []struct {
