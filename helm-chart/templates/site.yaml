@@ -52,13 +52,13 @@ spec:
               port: 80
             timeoutSeconds: 1
             failureThreshold: 30
-            periodSeconds: 10
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: 80
             timeoutSeconds: 1
-            periodSeconds: 10
+            periodSeconds: 5
             failureThreshold: 12
       volumes:
         - name: site

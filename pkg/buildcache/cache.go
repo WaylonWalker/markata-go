@@ -32,9 +32,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -62,6 +64,10 @@ type Cache struct {
 
 	// TemplatesHash is the combined hash of all template files
 	TemplatesHash string `json:"templates_hash"`
+
+	// TemplatesFingerprint is a cheap filesystem fingerprint used to skip
+	// recomputing TemplatesHash when the template tree is unchanged.
+	TemplatesFingerprint string `json:"templates_fingerprint,omitempty"`
 
 	// AssetsHash is the combined hash of all static assets (JS/CSS)
 	AssetsHash string `json:"assets_hash,omitempty"`
@@ -307,7 +313,7 @@ func (c *Cache) Save() error {
 		return fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("marshaling cache: %w", err)
 	}
@@ -355,6 +361,35 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 	c.Feeds = make(map[string]*FeedCache)
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
+	c.dirty = true
+	return true
+}
+
+// GetTemplatesHash returns the cached template content hash.
+func (c *Cache) GetTemplatesHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TemplatesHash
+}
+
+// GetTemplatesFingerprint returns the cached template tree fingerprint.
+func (c *Cache) GetTemplatesFingerprint() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TemplatesFingerprint
+}
+
+// SetTemplatesFingerprint updates the template tree fingerprint and marks the
+// cache dirty only when the fingerprint actually changes.
+func (c *Cache) SetTemplatesFingerprint(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.TemplatesFingerprint == hash {
+		return false
+	}
+
+	c.TemplatesFingerprint = hash
 	c.dirty = true
 	return true
 }
@@ -1098,6 +1133,73 @@ func HashDirectory(dir string, extensions []string) (string, error) {
 			return "", err
 		}
 		h.Write(content)
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// HashDirectoryState computes a cheap fingerprint for a directory tree.
+// It includes each matching file's relative path, size, and modtime so callers
+// can skip a full content hash when the tree is unchanged.
+func HashDirectoryState(dir string, extensions []string) (string, error) {
+	extMap := make(map[string]bool)
+	for _, ext := range extensions {
+		extMap[ext] = true
+	}
+
+	type fileState struct {
+		path    string
+		size    int64
+		modTime int64
+	}
+
+	states := make([]fileState, 0, 64)
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(path)
+		if len(extMap) > 0 && !extMap[ext] {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			relPath = path
+		}
+
+		states = append(states, fileState{
+			path:    relPath,
+			size:    info.Size(),
+			modTime: info.ModTime().UnixNano(),
+		})
+		return nil
+	})
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	sort.Slice(states, func(i, j int) bool { return states[i].path < states[j].path })
+
+	h := sha256.New()
+	for _, state := range states {
+		h.Write([]byte(state.path))
+		h.Write([]byte{0})
+		h.Write([]byte(strconv.FormatInt(state.size, 10)))
+		h.Write([]byte{0})
+		h.Write([]byte(strconv.FormatInt(state.modTime, 10)))
+		h.Write([]byte{0})
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil

@@ -394,6 +394,58 @@ func TestCache_FeedMembershipHash_SaveLoad(t *testing.T) {
 	}
 }
 
+func TestCache_SetTemplatesFingerprint_UnchangedDoesNotMarkDirty(t *testing.T) {
+	cache := New("")
+	cache.TemplatesFingerprint = "fingerprint-123"
+	cache.dirty = false
+
+	if changed := cache.SetTemplatesFingerprint("fingerprint-123"); changed {
+		t.Fatal("SetTemplatesFingerprint returned true for unchanged fingerprint")
+	}
+	if cache.dirty {
+		t.Fatal("dirty = true, want false for unchanged fingerprint")
+	}
+}
+
+func TestHashDirectoryState_Deterministic(t *testing.T) {
+	dir := t.TempDir()
+	templatesDir := filepath.Join(dir, "templates")
+	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	filePath := filepath.Join(templatesDir, "base.html")
+	if err := os.WriteFile(filePath, []byte("<html>one</html>"), 0o600); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	hash1, err := HashDirectoryState(templatesDir, []string{".html"})
+	if err != nil {
+		t.Fatalf("HashDirectoryState first call failed: %v", err)
+	}
+	hash2, err := HashDirectoryState(templatesDir, []string{".html"})
+	if err != nil {
+		t.Fatalf("HashDirectoryState second call failed: %v", err)
+	}
+	if hash1 == "" {
+		t.Fatal("HashDirectoryState returned empty hash for non-empty directory")
+	}
+	if hash1 != hash2 {
+		t.Fatalf("HashDirectoryState = %q then %q, want deterministic output", hash1, hash2)
+	}
+
+	if err := os.WriteFile(filePath, []byte("<html>two and more</html>"), 0o600); err != nil {
+		t.Fatalf("WriteFile update failed: %v", err)
+	}
+	hash3, err := HashDirectoryState(templatesDir, []string{".html"})
+	if err != nil {
+		t.Fatalf("HashDirectoryState updated call failed: %v", err)
+	}
+	if hash1 == hash3 {
+		t.Fatalf("HashDirectoryState = %q after file change, want different hash", hash3)
+	}
+}
+
 func TestCache_CleanupMermaidSVG_RemovesUnusedFiles(t *testing.T) {
 	dir := t.TempDir()
 	cache := New(filepath.Join(dir, ".markata"))

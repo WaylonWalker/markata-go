@@ -50,7 +50,7 @@ build:
   lock:
     enabled: true
     dirName: ".markata-notes-build-lock"
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     staleAfterBufferSeconds: 600
   releases:
     keep: 3
@@ -104,11 +104,11 @@ search:
     pullPolicy: IfNotPresent
   mode: watch-content
   port: 3001
-  watchDebounce: 5s
+  watchDebounce: 2s
   waitForSource:
     enabled: true
     timeoutSeconds: 900
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     resources:
       requests:
         cpu: 10m
