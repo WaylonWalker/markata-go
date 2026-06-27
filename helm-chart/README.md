@@ -14,9 +14,11 @@ This chart deploys a reusable markata-go notes workload that:
 - Set `MARKATA_GO_SOURCE_ARCHIVE_ENCRYPT=true` when publishing if you want the uploaded archive encrypted with `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`.
 - The search pod runs `markata-go search-server --mode watch-content --host 0.0.0.0` so bleve stays in sync when the source PVC changes.
 - The search pod now waits for the source PVC to be populated before starting, which avoids booting against an empty archive mount and indexing `0 posts`.
+- Site and search probes now check every 5s instead of every 10s, which trims rollout and restart latency without making the health checks brittle.
 - Runtime pods use a dedicated ServiceAccount with `automountServiceAccountToken: false`, disable service links, and apply `RuntimeDefault` seccomp with stricter container security settings where they are low risk.
 - A NetworkPolicy now limits runtime pod egress to cluster DNS, so the site and search pods cannot freely call other cluster services by default.
 - The build CronJob uses a source PVC lock by default so overlapping manual jobs cannot update the shared source and site PVCs at the same time.
+- Default lock polling and search debounce values are intentionally short (`2s`) so the feedback loop feels tighter when a developer triggers back-to-back builds or restarts the search pod.
 - The build CronJob now overrides `[markata-go.mermaid].mode` to `client` by default, which avoids Chromium hangs seen in-cluster; set `build.mermaid.mode` back to `chromium` or `""` if you want to rely on the source repo config instead.
 - If your new namespace does not already have `aws-default`, enable `aws.sealedSecret` and provide sealed credentials in values.
 - By default the chart reuses a shared `markata-go-encryption` Secret name for `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`; override `markataEncryption.secretName` only if your established secret uses a different name.
@@ -133,6 +135,15 @@ storage:
 ```
 
 This mode is node-local. The chart does not add any scheduling guard, so make sure the workloads land on a node where those paths exist.
+
+For search-heavy dev loops, you can also point the search PVC at a node-local storage class and give it a new claim suffix so it rebuilds on local disk instead of Longhorn:
+
+```yaml
+storage:
+  search:
+    storageClassName: hostpath
+    pvcNameSuffix: "-local"
+```
 
 The search deployment defaults to `Recreate` strategy because the bundled search index PVC is typically `ReadWriteOnce`, which prevents safe rolling updates across old and new pods.
 
