@@ -1044,6 +1044,13 @@ func (s *Service) loadState() error {
 	if err := json.Unmarshal(data, &s.state); err != nil {
 		return fmt.Errorf("decode state: %w", err)
 	}
+	// Queue and running state are in-memory worker concerns. If the pod restarted,
+	// the old worker is gone, so clear transient state instead of showing ghosts.
+	s.state.Queue = nil
+	s.state.Running = nil
+	s.stateMu.Lock()
+	s.saveStateLocked()
+	s.stateMu.Unlock()
 	return nil
 }
 
