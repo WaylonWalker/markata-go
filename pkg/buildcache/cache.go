@@ -32,9 +32,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -63,6 +65,10 @@ type Cache struct {
 	// TemplatesHash is the combined hash of all template files
 	TemplatesHash string `json:"templates_hash"`
 
+	// TemplatesFingerprint is a cheap filesystem fingerprint used to skip
+	// recomputing TemplatesHash when the template tree is unchanged.
+	TemplatesFingerprint string `json:"templates_fingerprint,omitempty"`
+
 	// AssetsHash is the combined hash of all static assets (JS/CSS)
 	AssetsHash string `json:"assets_hash,omitempty"`
 
@@ -77,6 +83,9 @@ type Cache struct {
 
 	// GardenHash caches the garden view output state
 	GardenHash string `json:"garden_hash,omitempty"`
+
+	// FeedsListingHash caches the /feeds listing output state.
+	FeedsListingHash string `json:"feeds_listing_hash,omitempty"`
 
 	// TailwindManifestHash caches the generated Tailwind token manifest state.
 	TailwindManifestHash string `json:"tailwind_manifest_hash,omitempty"`
@@ -216,6 +225,13 @@ type PostCache struct {
 
 	// TailwindTokens stores the extracted Tailwind-relevant tokens for the post.
 	TailwindTokens string `json:"tailwind_tokens,omitempty"`
+
+	// MentionsHash is a hash of the Content input + mention resolution state.
+	// When either the raw content or resolved mention metadata changes, this hash changes.
+	MentionsHash string `json:"mentions_hash,omitempty"`
+
+	// MentionsContent is the cached Content output after mentions transform processing.
+	MentionsContent string `json:"mentions_content,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -297,7 +313,7 @@ func (c *Cache) Save() error {
 		return fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("marshaling cache: %w", err)
 	}
@@ -345,6 +361,35 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 	c.Feeds = make(map[string]*FeedCache)
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
+	c.dirty = true
+	return true
+}
+
+// GetTemplatesHash returns the cached template content hash.
+func (c *Cache) GetTemplatesHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TemplatesHash
+}
+
+// GetTemplatesFingerprint returns the cached template tree fingerprint.
+func (c *Cache) GetTemplatesFingerprint() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TemplatesFingerprint
+}
+
+// SetTemplatesFingerprint updates the template tree fingerprint and marks the
+// cache dirty only when the fingerprint actually changes.
+func (c *Cache) SetTemplatesFingerprint(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.TemplatesFingerprint == hash {
+		return false
+	}
+
+	c.TemplatesFingerprint = hash
 	c.dirty = true
 	return true
 }
@@ -593,6 +638,24 @@ func (c *Cache) GetGardenHash() string {
 	return c.GardenHash
 }
 
+// SetFeedsListingHash stores the feeds listing hash in the cache.
+func (c *Cache) SetFeedsListingHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.FeedsListingHash == hash {
+		return
+	}
+	c.FeedsListingHash = hash
+	c.dirty = true
+}
+
+// GetFeedsListingHash returns the cached feeds listing hash.
+func (c *Cache) GetFeedsListingHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.FeedsListingHash
+}
+
 // MarkSkipped records that a post was skipped (already up to date).
 // Uses atomic increment -- no mutex needed.
 func (c *Cache) MarkSkipped() {
@@ -796,6 +859,43 @@ func (c *Cache) CacheGlossaryHTML(sourcePath, combinedHash, html string) {
 	c.dirty = true
 }
 
+// GetCachedMentionsContent returns cached mentions transform output if the hash matches.
+// Returns the cached content and true if valid, empty string and false otherwise.
+func (c *Cache) GetCachedMentionsContent(sourcePath, contentHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.MentionsHash == "" || cached.MentionsHash != contentHash {
+		return "", false
+	}
+	return cached.MentionsContent, true
+}
+
+// CacheMentionsContent stores the mentions transform output keyed by content hash.
+func (c *Cache) CacheMentionsContent(sourcePath, contentHash, content string) {
+	if sourcePath == "" || contentHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.MentionsHash = contentHash
+		cached.MentionsContent = content
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			MentionsHash:    contentHash,
+			MentionsContent: content,
+		}
+	}
+	c.dirty = true
+}
+
 // GetCachedTailwindTokens returns cached Tailwind tokens if the HTML hash matches.
 func (c *Cache) GetCachedTailwindTokens(sourcePath, htmlHash string) (string, bool) {
 	c.mu.RLock()
@@ -806,6 +906,21 @@ func (c *Cache) GetCachedTailwindTokens(sourcePath, htmlHash string) (string, bo
 		return "", false
 	}
 	if cached.TailwindHTMLHash == "" || cached.TailwindHTMLHash != htmlHash {
+		return "", false
+	}
+	return cached.TailwindTokens, true
+}
+
+// GetStoredTailwindTokens returns cached Tailwind tokens without validating the
+// HTML hash. This is safe for unchanged posts whose final HTML is known to be
+// identical to the prior build even if the current build has not eagerly
+// restored the cached full-page HTML into memory.
+func (c *Cache) GetStoredTailwindTokens(sourcePath string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok || cached.TailwindTokens == "" {
 		return "", false
 	}
 	return cached.TailwindTokens, true
@@ -1023,6 +1138,73 @@ func HashDirectory(dir string, extensions []string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// HashDirectoryState computes a cheap fingerprint for a directory tree.
+// It includes each matching file's relative path, size, and modtime so callers
+// can skip a full content hash when the tree is unchanged.
+func HashDirectoryState(dir string, extensions []string) (string, error) {
+	extMap := make(map[string]bool)
+	for _, ext := range extensions {
+		extMap[ext] = true
+	}
+
+	type fileState struct {
+		path    string
+		size    int64
+		modTime int64
+	}
+
+	states := make([]fileState, 0, 64)
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(path)
+		if len(extMap) > 0 && !extMap[ext] {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			relPath = path
+		}
+
+		states = append(states, fileState{
+			path:    relPath,
+			size:    info.Size(),
+			modTime: info.ModTime().UnixNano(),
+		})
+		return nil
+	})
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	sort.Slice(states, func(i, j int) bool { return states[i].path < states[j].path })
+
+	h := sha256.New()
+	for _, state := range states {
+		h.Write([]byte(state.path))
+		h.Write([]byte{0})
+		h.Write([]byte(strconv.FormatInt(state.size, 10)))
+		h.Write([]byte{0})
+		h.Write([]byte(strconv.FormatInt(state.modTime, 10)))
+		h.Write([]byte{0})
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 // HashAssetMap computes a combined hash from a map of asset paths to content hashes.
 // This is used to detect when any JS/CSS file changes so we can invalidate cached HTML.
 func HashAssetMap(assetHashes map[string]string) string {
@@ -1064,8 +1246,9 @@ func ComputePostInputHash(content, frontmatter, template string) string {
 func (c *Cache) SetDependencies(sourcePath, sourceSlug string, targets []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.Graph.SetDependencies(sourcePath, sourceSlug, targets)
-	c.dirty = true
+	if c.Graph.SetDependencies(sourcePath, sourceSlug, targets) {
+		c.dirty = true
+	}
 }
 
 // GetAffectedPosts returns all posts that need rebuilding when the given

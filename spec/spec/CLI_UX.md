@@ -169,6 +169,9 @@ Unexpected diagnostic detail belongs in verbose/debug modes, not normal output.
 - `build` SHOULD include a concise benchmark summary in its final result output,
   including estimated wall-time spent on CPU work, network wait, disk read wait,
   disk write wait, and idle time, plus the slowest lifecycle hotspots.
+- When outbound HTTP requests occur during a build, the benchmark summary SHOULD
+  also include the slowest requests with enough context to identify the owning
+  stage/plugin and remote endpoint without exposing query-string secrets.
 - `build` SHOULD offer an explicit machine-readable benchmark mode such as
   `--benchmark-json` for scripting and regression analysis.
 - Detailed per-stage benchmark summaries SHOULD be opt-in via verbose mode or a

@@ -41,12 +41,16 @@ build:
   failedJobsHistoryLimit: 6
   ttlSecondsAfterFinished: 259200
   activeDeadlineSeconds: 1800
+  fast: false
+  notify:
+    enabled: false
+    url: ""
   mermaid:
     mode: client
   lock:
     enabled: true
     dirName: ".markata-notes-build-lock"
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     staleAfterBufferSeconds: 600
   releases:
     keep: 3
@@ -71,6 +75,35 @@ build:
     limits:
       memory: 2Gi
       ephemeral-storage: 4Gi
+
+builderAdmin:
+  enabled: false
+  host: 0.0.0.0
+  port: 8080
+  strategy:
+    type: Recreate
+  watch:
+    enabled: true
+    debounce: 2s
+  fast: false
+  mermaidMode: client
+  releases:
+    keep: 10
+  history:
+    successfulBuilds: 50
+    failedBuilds: 100
+    refreshRuns: 100
+  buildTimeoutSeconds: 7200
+  historyDir: /data/site/.builder-admin
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 500Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+  refreshTasks: []
 
 site:
   replicaCount: 1
@@ -100,11 +133,11 @@ search:
     pullPolicy: IfNotPresent
   mode: watch-content
   port: 3001
-  watchDebounce: 5s
+  watchDebounce: 2s
   waitForSource:
     enabled: true
     timeoutSeconds: 900
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     resources:
       requests:
         cpu: 10m
@@ -168,6 +201,18 @@ storage:
     accessModes:
       - ReadWriteOnce
     pvcNameSuffix: ""
+  cache:
+    enabled: false
+    mode: pvc
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+    pvcNameSuffix: ""
+    mountPath: /data/cache
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
 
 ingress:
   enabled: true

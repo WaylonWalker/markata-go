@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -75,7 +76,7 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 		return p.loadAllFiles(m, files, baseDir, cache)
 	}
 
-	restored, _, err := p.restoreFromCacheOrLoadChanged(files, baseDir, cache, affected)
+	restored, _, err := p.restoreFromCacheOrLoadChanged(m, files, baseDir, cache, affected)
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,7 @@ func (p *LoadPlugin) loadFromCachedPosts(
 	affected := lifecycle.GetServeAffectedPaths(m)
 	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
 	for _, file := range files {
-		post, err := p.loadCachedPost(file, baseDir, cachedPosts, cache, useFastCache, affected)
+		post, err := p.loadCachedPost(m, file, baseDir, cachedPosts, cache, useFastCache, affected)
 		if err != nil {
 			return err
 		}
@@ -108,6 +109,7 @@ func (p *LoadPlugin) loadFromCachedPosts(
 }
 
 func (p *LoadPlugin) loadCachedPost(
+	m *lifecycle.Manager,
 	file string,
 	baseDir string,
 	cachedPosts map[string]*models.Post,
@@ -116,11 +118,7 @@ func (p *LoadPlugin) loadCachedPost(
 	affected map[string]bool,
 ) (*models.Post, error) {
 	if existing, ok := cachedPosts[file]; ok && !useFastCache {
-		fullPath := file
-		if !filepath.IsAbs(file) {
-			fullPath = filepath.Join(baseDir, file)
-		}
-		stat, err := os.Stat(fullPath)
+		modTime, err := resolveFileModTime(m, file, baseDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil, nil
@@ -128,7 +126,7 @@ func (p *LoadPlugin) loadCachedPost(
 			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 		}
 		if cache != nil {
-			if cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano()); cachedData != nil {
+			if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
 				return p.restorePostFromCache(cachedData, cache), nil
 			}
 		}
@@ -137,7 +135,7 @@ func (p *LoadPlugin) loadCachedPost(
 
 	if useFastCache {
 		if len(affected) > 0 && affected[file] {
-			return p.loadFile(file, baseDir, cache)
+			return p.loadFile(m, file, baseDir, cache)
 		}
 		if cache != nil {
 			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
@@ -146,7 +144,7 @@ func (p *LoadPlugin) loadCachedPost(
 		}
 	}
 
-	return p.loadFile(file, baseDir, cache)
+	return p.loadFile(m, file, baseDir, cache)
 }
 
 func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
@@ -154,58 +152,29 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 		return p.loadSequential(m, files, baseDir, cache)
 	}
 
-	posts := make([]*models.Post, 0, len(files))
-	var firstErr error
 	affected := lifecycle.GetServeAffectedPaths(m)
 	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
-
-	for _, file := range files {
+	posts, err := p.loadFilesConcurrent(m, files, func(file string) (*models.Post, error) {
 		if useFastCache {
 			if len(affected) > 0 && affected[file] {
-				post, err := p.loadFile(file, baseDir, cache)
-				if err != nil {
-					if firstErr == nil {
-						firstErr = err
-					}
-					continue
-				}
-				posts = append(posts, post)
-				continue
+				return p.loadFile(m, file, baseDir, cache)
 			}
-			cachedData := cache.GetCachedPostDataLatest(file)
-			if cachedData != nil {
-				posts = append(posts, p.restorePostFromCache(cachedData, cache))
-				continue
+			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
+				return p.restorePostFromCache(cachedData, cache), nil
 			}
 		}
 
-		fullPath := file
-		if !filepath.IsAbs(file) {
-			fullPath = filepath.Join(baseDir, file)
-		}
-		stat, err := os.Stat(fullPath)
+		modTime, err := resolveFileModTime(m, file, baseDir)
 		if err != nil {
-			if firstErr == nil {
-				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
-			}
-			continue
+			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 		}
-		cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano())
-		if cachedData != nil {
-			posts = append(posts, p.restorePostFromCache(cachedData, cache))
-			continue
+		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
+			return p.restorePostFromCache(cachedData, cache), nil
 		}
-		post, err := p.loadFile(file, baseDir, cache)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		posts = append(posts, post)
-	}
-	if firstErr != nil {
-		return firstErr
+		return p.loadFile(m, file, baseDir, cache)
+	})
+	if err != nil {
+		return err
 	}
 	for _, post := range posts {
 		m.AddPost(post)
@@ -213,7 +182,71 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 	return nil
 }
 
+func (p *LoadPlugin) loadFilesConcurrent(m *lifecycle.Manager, files []string, fn func(string) (*models.Post, error)) ([]*models.Post, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	type result struct {
+		index int
+		post  *models.Post
+		err   error
+	}
+
+	workers := m.Concurrency()
+	if workers > len(files) {
+		workers = len(files)
+	}
+	jobs := make(chan int, len(files))
+	results := make(chan result, len(files))
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				post, err := fn(files[idx])
+				results <- result{index: idx, post: post, err: err}
+			}
+		}()
+	}
+
+	for i := range files {
+		jobs <- i
+	}
+	close(jobs)
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	ordered := make([]*models.Post, len(files))
+	var firstErr error
+	for res := range results {
+		if res.err != nil {
+			if firstErr == nil {
+				firstErr = res.err
+			}
+			continue
+		}
+		ordered[res.index] = res.post
+	}
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	posts := make([]*models.Post, 0, len(ordered))
+	for _, post := range ordered {
+		if post != nil {
+			posts = append(posts, post)
+		}
+	}
+	return posts, nil
+}
+
 func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
+	m *lifecycle.Manager,
 	files []string,
 	baseDir string,
 	cache *buildcache.Cache,
@@ -228,7 +261,7 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 
 	for _, file := range files {
 		if affected[file] {
-			post, err := p.loadFile(file, baseDir, cache)
+			post, err := p.loadFile(m, file, baseDir, cache)
 			if err != nil {
 				if firstErr == nil {
 					firstErr = err
@@ -240,21 +273,16 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 			continue
 		}
 
-		fullPath := file
-		if !filepath.IsAbs(file) {
-			fullPath = filepath.Join(baseDir, file)
-		}
-		stat, err := os.Stat(fullPath)
+		modTime, err := resolveFileModTime(m, file, baseDir)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
 			}
 			continue
 		}
-		modTime := stat.ModTime().UnixNano()
 		cachedData := cache.GetCachedPostData(file, modTime)
 		if cachedData == nil {
-			post, err := p.loadFile(file, baseDir, cache)
+			post, err := p.loadFile(m, file, baseDir, cache)
 			if err != nil {
 				if firstErr == nil {
 					firstErr = err
@@ -275,19 +303,13 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 }
 
 // loadFile loads a single file, using cache if ModTime is unchanged.
-func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*models.Post, error) {
-	// Construct full path
-	fullPath := file
-	if !filepath.IsAbs(file) {
-		fullPath = filepath.Join(baseDir, file)
-	}
+func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache *buildcache.Cache) (*models.Post, error) {
+	fullPath := fullContentPath(file, baseDir)
 
-	// Stat file for ModTime
-	stat, err := os.Stat(fullPath)
+	modTime, err := resolveFileModTime(m, file, baseDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 	}
-	modTime := stat.ModTime().UnixNano()
 
 	// Check cache for unchanged file
 	if cache != nil {
@@ -332,6 +354,33 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 	}
 
 	return post, nil
+}
+
+func fullContentPath(file, baseDir string) string {
+	if filepath.IsAbs(file) {
+		return file
+	}
+
+	return filepath.Join(baseDir, file)
+}
+
+func resolveFileModTime(m *lifecycle.Manager, file, baseDir string) (int64, error) {
+	if m != nil {
+		if cached, ok := m.Cache().Get(cacheKeyGlobFileModTimes); ok {
+			if modTimes, ok := cached.(map[string]int64); ok {
+				if modTime, ok := modTimes[file]; ok && modTime != 0 {
+					return modTime, nil
+				}
+			}
+		}
+	}
+
+	stat, err := os.Stat(fullContentPath(file, baseDir))
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.ModTime().UnixNano(), nil
 }
 
 // restorePostFromCache creates a Post from cached data.
@@ -525,7 +574,7 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 // loadSequential loads files one at a time (used for small file counts).
 func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
 	for _, file := range files {
-		post, err := p.loadFile(file, baseDir, cache)
+		post, err := p.loadFile(m, file, baseDir, cache)
 		if err != nil {
 			return err
 		}

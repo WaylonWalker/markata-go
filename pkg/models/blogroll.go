@@ -30,6 +30,11 @@ type BlogrollConfig struct {
 	// CacheDuration is how long to cache fetched feeds (default: "24h")
 	CacheDuration string `json:"cache_duration" yaml:"cache_duration" toml:"cache_duration"`
 
+	// RefreshOnBuild controls whether normal builds may refresh blogroll feeds over the network.
+	// When nil or false, builds reuse cached feed data and `markata-go reader update` remains
+	// the explicit refresh path.
+	RefreshOnBuild *bool `json:"refresh_on_build,omitempty" yaml:"refresh_on_build,omitempty" toml:"refresh_on_build,omitempty"`
+
 	// Timeout is the HTTP request timeout in seconds (default: 30)
 	Timeout int `json:"timeout" yaml:"timeout" toml:"timeout"`
 
@@ -69,6 +74,7 @@ func NewBlogrollConfig() BlogrollConfig {
 		ReaderSlug:           "reader",
 		CacheDir:             "cache/blogroll",
 		CacheDuration:        "24h",
+		RefreshOnBuild:       nil,
 		Timeout:              30,
 		ConcurrentRequests:   5,
 		MaxEntriesPerFeed:    50,
@@ -82,6 +88,14 @@ func NewBlogrollConfig() BlogrollConfig {
 			Reader:   "reader.html",
 		},
 	}
+}
+
+// GetRefreshOnBuild returns whether normal builds may refresh remote blogroll feeds.
+func (b BlogrollConfig) GetRefreshOnBuild() bool {
+	if b.RefreshOnBuild == nil {
+		return false
+	}
+	return *b.RefreshOnBuild
 }
 
 // BlogrollTemplates specifies custom templates for blogroll pages.

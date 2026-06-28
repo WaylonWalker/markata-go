@@ -100,6 +100,8 @@ steps:
 - If previews and production use different domains, inject `MARKATA_GO_URL` per environment instead of hardcoding one value.
 - if the runtime build environment is offline, make sure `.markata/assets-cache` or another configured asset cache is already populated before relying on self-hosted CDN assets.
 - for Helm or ArgoCD source-archive deployments, prefer environment-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` instead of editing the repo just to change hostnames
+- for Helm or ArgoCD feedback loops, inspect the chart's lock and debounce knobs (`build.lock.pollIntervalSeconds`, `search.waitForSource.pollIntervalSeconds`, `search.watchDebounce`) before chasing deeper build bugs; shorter values make manual rebuilds and search restarts feel noticeably snappier
+- for Kubernetes hostPath authoring deployments, prefer the long-lived `builder-admin` service over one-shot build Jobs when the goal is fast interactive rebuilds, release history, rollback, and scheduled remote refreshes
 - for Kubernetes hostPath deployments, confirm the mounted source path and served site root are the real node paths, and remember the served site root may contain release directories plus a `current` symlink rather than a flat output tree
 - Validate that feed URLs, social URLs, and asset URLs use the expected domain after build.
 
