@@ -1392,6 +1392,33 @@ const indexHTML = `<!doctype html>
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .wide { overflow-x: auto; }
     .muted { color: var(--muted); }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tabs a {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 9px 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+    }
+    .tabs a.active {
+      color: var(--text);
+      background: var(--panel-strong);
+      border-color: var(--line);
+    }
+    .tab-panel { display: none; }
+    .tab-panel:target { display: block; }
+    .tab-panel.default-panel { display: block; }
+    .tab-shell .tab-panel:target ~ .default-panel { display: none; }
     @media (max-width: 1200px) {
       .hero, .section-grid, .grid { grid-template-columns: 1fr 1fr; }
     }
@@ -1497,72 +1524,76 @@ const indexHTML = `<!doctype html>
   </section>
   </div>
 
-  <section class="card wide">
-    <div class="panel-head"><h2>Builds</h2><span>trimmed summaries, full logs one click away</span></div>
-    <table>
-      <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
-      <tbody>
-      {{ range .State.Builds }}
-      <tr>
-        <td><code>{{ .ID }}</code></td>
-        <td>{{ .Status }}</td>
-        <td>{{ .TriggerType }}</td>
-        <td>{{ msToSeconds .TotalMS }}</td>
-        <td>{{ msToSeconds .BuildMS }}</td>
-        <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
-        <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-        <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="8">No builds yet.</td></tr>
-      {{ end }}
-      </tbody>
-    </table>
-  </section>
+  <section class="card wide tab-shell">
+    <div class="panel-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
+    <nav class="tabs">
+      <a href="#builds" class="active">Builds</a>
+      <a href="#refresh-runs">Refresh Runs</a>
+      <a href="#releases">Releases</a>
+    </nav>
 
-  <div class="section-grid">
-  <section class="card wide">
-    <div class="panel-head"><h2>Refresh Runs</h2><span>scheduled remote freshness</span></div>
-    <table>
-      <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
-      <tbody>
-      {{ range .State.Refresh }}
-      <tr>
-        <td><code>{{ .ID }}</code></td>
-        <td>{{ .TaskName }}</td>
-        <td>{{ .Status }}</td>
-        <td>{{ msToSeconds .TotalMS }}</td>
-        <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-        <td>{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
-        <td class="mono muted">{{ if .Command }}{{ index .Command 0 }} {{ end }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="7">No refresh runs yet.</td></tr>
-      {{ end }}
-      </tbody>
-    </table>
-  </section>
+    <section id="builds" class="tab-panel default-panel">
+      <table>
+        <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
+        <tbody>
+        {{ range .State.Builds }}
+        <tr>
+          <td><code>{{ .ID }}</code></td>
+          <td>{{ .Status }}</td>
+          <td>{{ .TriggerType }}</td>
+          <td>{{ msToSeconds .TotalMS }}</td>
+          <td>{{ msToSeconds .BuildMS }}</td>
+          <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
+          <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
+          <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
+        </tr>
+        {{ else }}
+        <tr><td colspan="8">No builds yet.</td></tr>
+        {{ end }}
+        </tbody>
+      </table>
+    </section>
 
-  <section class="card">
-    <div class="panel-head"><h2>Releases</h2><span>promote prior output</span></div>
-    <table>
-      <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
-      <tbody>
-      {{ range .Releases }}
-      <tr>
-        <td><code>{{ .ID }}</code></td>
-        <td>{{ if .Current }}live{{ end }}</td>
-        <td>{{ since .CreatedAt }}</td>
-        <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
-        <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="5">No releases found.</td></tr>
-      {{ end }}
-      </tbody>
-    </table>
+    <section id="refresh-runs" class="tab-panel">
+      <table>
+        <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
+        <tbody>
+        {{ range .State.Refresh }}
+        <tr>
+          <td><code>{{ .ID }}</code></td>
+          <td>{{ .TaskName }}</td>
+          <td>{{ .Status }}</td>
+          <td>{{ msToSeconds .TotalMS }}</td>
+          <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
+          <td>{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
+          <td class="mono muted">{{ if .Command }}{{ index .Command 0 }} {{ end }}</td>
+        </tr>
+        {{ else }}
+        <tr><td colspan="7">No refresh runs yet.</td></tr>
+        {{ end }}
+        </tbody>
+      </table>
+    </section>
+
+    <section id="releases" class="tab-panel">
+      <table>
+        <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
+        <tbody>
+        {{ range .Releases }}
+        <tr>
+          <td><code>{{ .ID }}</code></td>
+          <td>{{ if .Current }}live{{ end }}</td>
+          <td>{{ since .CreatedAt }}</td>
+          <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
+          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
+        </tr>
+        {{ else }}
+        <tr><td colspan="5">No releases found.</td></tr>
+        {{ end }}
+        </tbody>
+      </table>
+    </section>
   </section>
-  </div>
 </main>
 </body>
 </html>`
