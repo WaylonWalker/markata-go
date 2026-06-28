@@ -780,7 +780,11 @@ func (s *Service) runLoggedCommand(ctx context.Context, log io.Writer, cwd strin
 	cmdArgs := args[1:]
 	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
 	if strings.HasPrefix(cmdName, "-") || cmdName == "build" || strings.HasSuffix(cmdName, "markata-go") || filepath.Base(cmdName) == filepath.Base(s.executable) {
-		cmd = exec.CommandContext(ctx, s.executable, args...)
+		if strings.HasSuffix(cmdName, "markata-go") || filepath.Base(cmdName) == filepath.Base(s.executable) {
+			cmd = exec.CommandContext(ctx, s.executable, cmdArgs...)
+		} else {
+			cmd = exec.CommandContext(ctx, s.executable, args...)
+		}
 	}
 	cmd.Stdout = log
 	cmd.Stderr = log
