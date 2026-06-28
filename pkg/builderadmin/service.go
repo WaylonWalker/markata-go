@@ -374,6 +374,12 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 			}
 			return t.Format(time.RFC3339)
 		},
+		"summaryPreview": func(lines []string) []string {
+			if len(lines) <= 6 {
+				return lines
+			}
+			return lines[len(lines)-6:]
+		},
 	}).Parse(indexHTML))
 	state := s.snapshotState()
 	data := struct {
@@ -1208,36 +1214,224 @@ const indexHTML = `<!doctype html>
   <title>Builder Admin</title>
   <meta http-equiv="refresh" content="5">
   <style>
-    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; background: #0b1220; color: #e5e7eb; }
-    a { color: #93c5fd; }
-    main { max-width: 1200px; margin: 0 auto; padding: 24px; }
-    h1, h2 { margin: 0 0 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; }
-    .actions form { display: inline-block; margin-right: 8px; margin-bottom: 8px; }
-    button { background: #2563eb; color: white; border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
-    button.secondary { background: #374151; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 8px; border-top: 1px solid #1f2937; vertical-align: top; }
-    code, pre { background: #0f172a; border-radius: 8px; }
-    code { padding: 2px 6px; }
-    pre { padding: 12px; overflow: auto; white-space: pre-wrap; }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #1f2937; }
+    :root {
+      color-scheme: dark;
+      --bg: #09090b;
+      --panel: rgba(24, 24, 27, 0.9);
+      --panel-strong: rgba(9, 9, 11, 0.95);
+      --line: rgba(82, 82, 91, 0.75);
+      --line-soft: rgba(63, 63, 70, 0.55);
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --accent: #fafafa;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 35%),
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, auto, 11px 11px, 11px 11px, auto;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main {
+      width: 100%;
+      max-width: none;
+      padding: 20px 24px 48px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .titleblock h1 {
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      text-transform: uppercase;
+    }
+    .titleblock p {
+      margin-top: 10px;
+      color: var(--muted);
+      max-width: 72ch;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line-soft);
+      border-radius: 28px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .card strong, .muted-label {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .value {
+      font-size: 1.15rem;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-content: start;
+    }
+    .actions form { margin: 0; }
+    button {
+      background: var(--panel-strong);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.75rem;
+    }
+    button.secondary { background: transparent; }
+    button:hover { background: #18181b; }
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-head h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .panel-head span { color: var(--muted); font-size: 0.8rem; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-top: 1px solid var(--line-soft);
+      vertical-align: top;
+      font-size: 0.9rem;
+    }
+    th {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+    }
+    code {
+      display: inline-block;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 999px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fafafa;
+    }
+    pre {
+      margin: 0;
+      padding: 10px 12px;
+      overflow: auto;
+      white-space: pre-wrap;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
+      max-height: 11rem;
+      line-height: 1.45;
+      color: #e4e4e7;
+      font-size: 0.82rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.7rem;
+    }
+    .summary-cell { min-width: 0; }
+    .summary-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 6px; }
+    .summary-list { display: grid; gap: 6px; }
+    .summary-list div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e4e4e7; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .wide { overflow-x: auto; }
+    .muted { color: var(--muted); }
+    @media (max-width: 1200px) {
+      .hero, .section-grid, .grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 800px) {
+      main { padding: 14px; }
+      .topbar, .hero, .section-grid, .grid { grid-template-columns: 1fr; display: grid; }
+      .topbar { gap: 14px; }
+      table { min-width: 860px; }
+    }
   </style>
 </head>
 <body>
 <main>
-  <h1>Builder Admin</h1>
-  <div class="grid">
+  <div class="topbar">
+    <div class="titleblock">
+      <h1>Builder Admin</h1>
+      <p>Warm queue-driven builds, release promotion, raw logs, and refresh scheduling for the live go.waylonwalker.com authoring loop.</p>
+    </div>
+  </div>
+
+  <div class="hero">
     <section class="card">
-      <h2>Live</h2>
-      <p><strong>Current release:</strong> <code>{{ .CurrentID }}</code></p>
-      <p><strong>Current path:</strong> <code>{{ .CurrentPath }}</code></p>
-      {{ if .State.Running }}<p><strong>Running:</strong> {{ .State.Running.Kind }} {{ .State.Running.ID }} <span class="pill">{{ .State.Running.Phase }}</span></p>{{ else }}<p>No active work.</p>{{ end }}
-      <p><strong>Queued:</strong> {{ len .State.Queue }}</p>
+      <div class="panel-head"><h2>Live State</h2><span>desktop-first control surface</span></div>
+      <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0;">
+        <div>
+          <strong>Current release</strong>
+          <div class="value mono">{{ .CurrentID }}</div>
+        </div>
+        <div>
+          <strong>Current path</strong>
+          <div class="value mono">{{ .CurrentPath }}</div>
+        </div>
+        <div>
+          <strong>Active work</strong>
+          <div class="value">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill">{{ .State.Running.Phase }}</span>{{ else }}idle{{ end }}</div>
+        </div>
+      </div>
     </section>
     <section class="card actions">
-      <h2>Actions</h2>
+      <div class="panel-head"><h2>Actions</h2><span>manual triggers</span></div>
       <form method="post" action="/api/builds"><button type="submit">Enqueue Build</button></form>
       {{ range .RefreshTasks }}
       <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
@@ -1245,8 +1439,28 @@ const indexHTML = `<!doctype html>
     </section>
   </div>
 
-  <section class="card">
-    <h2>Queue</h2>
+  <div class="grid">
+    <section class="card">
+      <strong>Queue</strong>
+      <div class="value">{{ len .State.Queue }}</div>
+    </section>
+    <section class="card">
+      <strong>Build history</strong>
+      <div class="value">{{ len .State.Builds }}</div>
+    </section>
+    <section class="card">
+      <strong>Refresh history</strong>
+      <div class="value">{{ len .State.Refresh }}</div>
+    </section>
+    <section class="card">
+      <strong>Releases</strong>
+      <div class="value">{{ len .Releases }}</div>
+    </section>
+  </div>
+
+  <div class="section-grid">
+  <section class="card wide">
+    <div class="panel-head"><h2>Queue</h2><span>debounced watch + manual triggers</span></div>
     <table>
       <thead><tr><th>ID</th><th>Kind</th><th>Trigger</th><th>Detail</th><th>Changed</th><th>Queued</th></tr></thead>
       <tbody>
@@ -1267,7 +1481,24 @@ const indexHTML = `<!doctype html>
   </section>
 
   <section class="card">
-    <h2>Builds</h2>
+    <div class="panel-head"><h2>Running</h2><span>live worker</span></div>
+    <div class="stack">
+      {{ if .State.Running }}
+      <div><strong>ID</strong><div class="value mono">{{ .State.Running.ID }}</div></div>
+      <div><strong>Kind</strong><div class="value">{{ .State.Running.Kind }}</div></div>
+      <div><strong>Trigger</strong><div class="value">{{ .State.Running.TriggerType }}</div></div>
+      <div><strong>Detail</strong><div class="value">{{ .State.Running.Detail }}</div></div>
+      <div><strong>Started</strong><div class="value mono">{{ since .State.Running.StartedAt }}</div></div>
+      <div><strong>Phase</strong><div class="value"><span class="pill">{{ .State.Running.Phase }}</span></div></div>
+      {{ else }}
+      <div class="muted">No build or refresh is running right now.</div>
+      {{ end }}
+    </div>
+  </section>
+  </div>
+
+  <section class="card wide">
+    <div class="panel-head"><h2>Builds</h2><span>trimmed summaries, full logs one click away</span></div>
     <table>
       <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
       <tbody>
@@ -1280,8 +1511,7 @@ const indexHTML = `<!doctype html>
         <td>{{ msToSeconds .BuildMS }}</td>
         <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
         <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-        <td>{{ if .PerfSummary }}<pre>{{ range .PerfSummary }}{{ . }}
-{{ end }}</pre>{{ end }}</td>
+        <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
       </tr>
       {{ else }}
       <tr><td colspan="8">No builds yet.</td></tr>
@@ -1290,10 +1520,11 @@ const indexHTML = `<!doctype html>
     </table>
   </section>
 
-  <section class="card">
-    <h2>Refresh Runs</h2>
+  <div class="section-grid">
+  <section class="card wide">
+    <div class="panel-head"><h2>Refresh Runs</h2><span>scheduled remote freshness</span></div>
     <table>
-      <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th></tr></thead>
+      <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
       <tbody>
       {{ range .State.Refresh }}
       <tr>
@@ -1303,16 +1534,17 @@ const indexHTML = `<!doctype html>
         <td>{{ msToSeconds .TotalMS }}</td>
         <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
         <td>{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
+        <td class="mono muted">{{ if .Command }}{{ index .Command 0 }} {{ end }}</td>
       </tr>
       {{ else }}
-      <tr><td colspan="6">No refresh runs yet.</td></tr>
+      <tr><td colspan="7">No refresh runs yet.</td></tr>
       {{ end }}
       </tbody>
     </table>
   </section>
 
   <section class="card">
-    <h2>Releases</h2>
+    <div class="panel-head"><h2>Releases</h2><span>promote prior output</span></div>
     <table>
       <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
       <tbody>
@@ -1330,6 +1562,7 @@ const indexHTML = `<!doctype html>
       </tbody>
     </table>
   </section>
+  </div>
 </main>
 </body>
 </html>`
