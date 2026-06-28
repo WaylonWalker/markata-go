@@ -1212,7 +1212,6 @@ const indexHTML = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Builder Admin</title>
-  <meta http-equiv="refresh" content="5">
   <style>
     :root {
       color-scheme: dark;
@@ -1415,6 +1414,7 @@ const indexHTML = `<!doctype html>
       background: var(--panel-strong);
       border-color: var(--line);
     }
+    .sync-status { color: var(--muted); font-size: 0.78rem; }
     .tab-panel { display: none; }
     .tab-panel:target { display: block; }
     .tab-panel.default-panel { display: block; }
@@ -1437,6 +1437,7 @@ const indexHTML = `<!doctype html>
       <h1>Builder Admin</h1>
       <p>Warm queue-driven builds, release promotion, raw logs, and refresh scheduling for the live go.waylonwalker.com authoring loop.</p>
     </div>
+    <div class="sync-status" id="sync-status">Live polling every 2s</div>
   </div>
 
   <div class="hero">
@@ -1445,15 +1446,15 @@ const indexHTML = `<!doctype html>
       <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0;">
         <div>
           <strong>Current release</strong>
-          <div class="value mono">{{ .CurrentID }}</div>
+          <div class="value mono" id="current-release">{{ .CurrentID }}</div>
         </div>
         <div>
           <strong>Current path</strong>
-          <div class="value mono">{{ .CurrentPath }}</div>
+          <div class="value mono" id="current-path">{{ .CurrentPath }}</div>
         </div>
         <div>
           <strong>Active work</strong>
-          <div class="value">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill">{{ .State.Running.Phase }}</span>{{ else }}idle{{ end }}</div>
+          <div class="value" id="active-work">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill">{{ .State.Running.Phase }}</span>{{ else }}idle{{ end }}</div>
         </div>
       </div>
     </section>
@@ -1469,19 +1470,19 @@ const indexHTML = `<!doctype html>
   <div class="grid">
     <section class="card">
       <strong>Queue</strong>
-      <div class="value">{{ len .State.Queue }}</div>
+      <div class="value" id="queue-count">{{ len .State.Queue }}</div>
     </section>
     <section class="card">
       <strong>Build history</strong>
-      <div class="value">{{ len .State.Builds }}</div>
+      <div class="value" id="build-count">{{ len .State.Builds }}</div>
     </section>
     <section class="card">
       <strong>Refresh history</strong>
-      <div class="value">{{ len .State.Refresh }}</div>
+      <div class="value" id="refresh-count">{{ len .State.Refresh }}</div>
     </section>
     <section class="card">
       <strong>Releases</strong>
-      <div class="value">{{ len .Releases }}</div>
+      <div class="value" id="release-count">{{ len .Releases }}</div>
     </section>
   </div>
 
@@ -1490,7 +1491,7 @@ const indexHTML = `<!doctype html>
     <div class="panel-head"><h2>Queue</h2><span>debounced watch + manual triggers</span></div>
     <table>
       <thead><tr><th>ID</th><th>Kind</th><th>Trigger</th><th>Detail</th><th>Changed</th><th>Queued</th></tr></thead>
-      <tbody>
+      <tbody id="queue-body">
       {{ range .State.Queue }}
       <tr>
         <td><code>{{ .ID }}</code></td>
@@ -1509,7 +1510,7 @@ const indexHTML = `<!doctype html>
 
   <section class="card">
     <div class="panel-head"><h2>Running</h2><span>live worker</span></div>
-    <div class="stack">
+    <div class="stack" id="running-panel">
       {{ if .State.Running }}
       <div><strong>ID</strong><div class="value mono">{{ .State.Running.ID }}</div></div>
       <div><strong>Kind</strong><div class="value">{{ .State.Running.Kind }}</div></div>
@@ -1527,15 +1528,15 @@ const indexHTML = `<!doctype html>
   <section class="card wide tab-shell">
     <div class="panel-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
     <nav class="tabs">
-      <a href="#builds" class="active">Builds</a>
-      <a href="#refresh-runs">Refresh Runs</a>
-      <a href="#releases">Releases</a>
+      <a href="#builds" class="active" data-tab-link="builds">Builds</a>
+      <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
+      <a href="#releases" data-tab-link="releases">Releases</a>
     </nav>
 
     <section id="builds" class="tab-panel default-panel">
       <table>
         <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
-        <tbody>
+        <tbody id="builds-body">
         {{ range .State.Builds }}
         <tr>
           <td><code>{{ .ID }}</code></td>
@@ -1557,7 +1558,7 @@ const indexHTML = `<!doctype html>
     <section id="refresh-runs" class="tab-panel">
       <table>
         <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
-        <tbody>
+        <tbody id="refresh-body">
         {{ range .State.Refresh }}
         <tr>
           <td><code>{{ .ID }}</code></td>
@@ -1578,7 +1579,7 @@ const indexHTML = `<!doctype html>
     <section id="releases" class="tab-panel">
       <table>
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
-        <tbody>
+        <tbody id="releases-body">
         {{ range .Releases }}
         <tr>
           <td><code>{{ .ID }}</code></td>
@@ -1595,5 +1596,175 @@ const indexHTML = `<!doctype html>
     </section>
   </section>
 </main>
+<script>
+  const syncStatus = document.getElementById('sync-status');
+  const currentRelease = document.getElementById('current-release');
+  const currentPath = document.getElementById('current-path');
+  const activeWork = document.getElementById('active-work');
+  const queueCount = document.getElementById('queue-count');
+  const buildCount = document.getElementById('build-count');
+  const refreshCount = document.getElementById('refresh-count');
+  const releaseCount = document.getElementById('release-count');
+  const queueBody = document.getElementById('queue-body');
+  const runningPanel = document.getElementById('running-panel');
+  const buildsBody = document.getElementById('builds-body');
+  const refreshBody = document.getElementById('refresh-body');
+  const releasesBody = document.getElementById('releases-body');
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function fmtTime(value) {
+    if (!value) return '';
+    return value;
+  }
+
+  function fmtSeconds(ms) {
+    return ((ms || 0) / 1000).toFixed(2) + 's';
+  }
+
+  function summaryPreview(lines) {
+    if (!Array.isArray(lines)) return [];
+    return lines.slice(-6);
+  }
+
+  function activateTabs() {
+    const active = (location.hash || '#builds').slice(1);
+    document.querySelectorAll('[data-tab-link]').forEach((link) => {
+      link.classList.toggle('active', link.dataset.tabLink === active);
+    });
+  }
+
+  function renderQueue(items) {
+    if (!items || !items.length) {
+      queueBody.innerHTML = '<tr><td colspan="6">Queue is empty.</td></tr>';
+      return;
+    }
+    queueBody.innerHTML = items.map((item) => {
+      const changed = (item.changed || []).map((path) => '<div><code>' + escapeHtml(path) + '</code></div>').join('');
+      return '<tr>' +
+        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td>' + escapeHtml(item.kind) + '</td>' +
+        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
+        '<td>' + escapeHtml(item.detail) + '</td>' +
+        '<td>' + changed + '</td>' +
+        '<td>' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderRunning(running) {
+    if (!running) {
+      runningPanel.innerHTML = '<div class="muted">No build or refresh is running right now.</div>';
+      activeWork.innerHTML = 'idle';
+      return;
+    }
+    activeWork.innerHTML = escapeHtml(running.kind) + ' <span class="pill">' + escapeHtml(running.phase) + '</span>';
+    runningPanel.innerHTML = [
+      ['ID', '<div class="value mono">' + escapeHtml(running.id) + '</div>'],
+      ['Kind', '<div class="value">' + escapeHtml(running.kind) + '</div>'],
+      ['Trigger', '<div class="value">' + escapeHtml(running.trigger_type) + '</div>'],
+      ['Detail', '<div class="value">' + escapeHtml(running.detail) + '</div>'],
+      ['Started', '<div class="value mono">' + escapeHtml(fmtTime(running.started_at)) + '</div>'],
+      ['Phase', '<div class="value"><span class="pill">' + escapeHtml(running.phase) + '</span></div>']
+    ].map(([label, value]) => '<div><strong>' + label + '</strong>' + value + '</div>').join('');
+  }
+
+  function renderBuilds(items) {
+    if (!items || !items.length) {
+      buildsBody.innerHTML = '<tr><td colspan="8">No builds yet.</td></tr>';
+      return;
+    }
+    buildsBody.innerHTML = items.map((item) => {
+      const lines = summaryPreview(item.perf_summary || []).map((line) => '<div>' + escapeHtml(line) + '</div>').join('');
+      const summary = lines ? '<div class="summary-meta">' + (item.perf_summary || []).length + ' perf lines</div><div class="summary-list mono">' + lines + '</div>' : '';
+      return '<tr>' +
+        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td>' + escapeHtml(item.status) + '</td>' +
+        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
+        '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
+        '<td>' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
+        '<td>' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
+        '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
+        '<td class="summary-cell">' + summary + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderRefresh(items) {
+    if (!items || !items.length) {
+      refreshBody.innerHTML = '<tr><td colspan="7">No refresh runs yet.</td></tr>';
+      return;
+    }
+    refreshBody.innerHTML = items.map((item) => {
+      const command = Array.isArray(item.command) && item.command.length ? item.command.join(' ') : '';
+      return '<tr>' +
+        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td>' + escapeHtml(item.task_name) + '</td>' +
+        '<td>' + escapeHtml(item.status) + '</td>' +
+        '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
+        '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
+        '<td>' + (item.enqueued_build_id ? '<code>' + escapeHtml(item.enqueued_build_id) + '</code>' : '') + '</td>' +
+        '<td class="mono muted">' + escapeHtml(command) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderReleases(items) {
+    if (!items || !items.length) {
+      releasesBody.innerHTML = '<tr><td colspan="5">No releases found.</td></tr>';
+      return;
+    }
+    releasesBody.innerHTML = items.map((item) => {
+      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><button class="secondary" type="submit">Promote</button></form>';
+      return '<tr>' +
+        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td>' + (item.current ? 'live' : '') + '</td>' +
+        '<td>' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
+        '<td>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
+        '<td>' + action + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderState(payload) {
+    const state = payload.state || {};
+    currentRelease.textContent = payload.current_release_id || '';
+    currentPath.textContent = payload.current_release_path || '';
+    queueCount.textContent = (state.queue || []).length;
+    buildCount.textContent = (state.builds || []).length;
+    refreshCount.textContent = (state.refresh || []).length;
+    releaseCount.textContent = (payload.releases || []).length;
+    renderQueue(state.queue || []);
+    renderRunning(state.running || null);
+    renderBuilds(state.builds || []);
+    renderRefresh(state.refresh || []);
+    renderReleases(payload.releases || []);
+    syncStatus.textContent = 'Live polling every 2s';
+  }
+
+  async function pollState() {
+    try {
+      const response = await fetch('/api/state', { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      const payload = await response.json();
+      renderState(payload);
+    } catch (error) {
+      syncStatus.textContent = 'Sync stalled: ' + error.message;
+    }
+  }
+
+  window.addEventListener('hashchange', activateTabs);
+  activateTabs();
+  window.setInterval(pollState, 2000);
+</script>
 </body>
 </html>`
