@@ -372,7 +372,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Try to get cached HTML if content hasn't changed
-		if p.cache != nil {
+		if p.cache != nil && !isSourceEncryptedPost(post) {
 			contentHash := buildcache.ContentHash(post.Content)
 			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
 				post.ArticleHTML = cachedHTML
@@ -426,7 +426,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds
-	if p.cache != nil {
+	if p.cache != nil && !isSourceEncryptedPost(post) {
 		contentHash := buildcache.ContentHash(post.Content)
 		//nolint:errcheck // caching is best-effort, failures are non-fatal
 		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
