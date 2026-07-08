@@ -617,33 +617,16 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		sb.WriteString(html.EscapeString(href))
 		sb.WriteString(`" class="u-url">`)
 		sb.WriteString("\n")
-		if isVideo {
-			sb.WriteString(`    <video autoplay muted loop playsinline preload="metadata"`)
-			if posterURL != "" {
-				sb.WriteString(` poster="`)
-				sb.WriteString(html.EscapeString(posterURL))
-				sb.WriteString(`"`)
-			}
-			sb.WriteString(`>`)
-			sb.WriteString("\n")
-			sb.WriteString(`      <source src="`)
-			sb.WriteString(html.EscapeString(mediaSource))
-			if mimeType := templates.VideoMIMEType(mediaURL); mimeType != "" {
-				sb.WriteString(`" type="`)
-				sb.WriteString(html.EscapeString(mimeType))
-			}
-			sb.WriteString(`">`)
-			sb.WriteString("\n")
-			sb.WriteString(`    </video>`)
-			sb.WriteString("\n")
-		} else {
-			sb.WriteString(`    <img src="`)
-			sb.WriteString(html.EscapeString(mediaSource))
-			sb.WriteString(`" alt="`)
-			sb.WriteString(html.EscapeString(title))
-			sb.WriteString(`" width="1200" loading="lazy">`)
-			sb.WriteString("\n")
-		}
+		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{
+			Indent:       "    ",
+			Source:       mediaSource,
+			URL:          mediaURL,
+			Poster:       posterURL,
+			Alt:          title,
+			Width:        "1200",
+			Video:        isVideo,
+			VideoPreload: "metadata",
+		})
 		sb.WriteString(`  </a>`)
 		sb.WriteString("\n")
 		sb.WriteString(`  <figcaption>`)
@@ -673,33 +656,17 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 			sb.WriteString(`    <div class="embed-card-image">`)
 		}
 		sb.WriteString("\n")
-		if isVideo {
-			sb.WriteString(`      <video class="embed-card-video" autoplay muted loop playsinline`)
-			if posterURL != "" {
-				sb.WriteString(` poster="`)
-				sb.WriteString(html.EscapeString(posterURL))
-				sb.WriteString(`"`)
-			}
-			sb.WriteString(`>`)
-			sb.WriteString("\n")
-			sb.WriteString(`        <source src="`)
-			sb.WriteString(html.EscapeString(mediaSource))
-			if mimeType := templates.VideoMIMEType(mediaURL); mimeType != "" {
-				sb.WriteString(`" type="`)
-				sb.WriteString(html.EscapeString(mimeType))
-			}
-			sb.WriteString(`">`)
-			sb.WriteString("\n")
-			sb.WriteString(`      </video>`)
-			sb.WriteString("\n")
-		} else {
-			sb.WriteString(`      <img src="`)
-			sb.WriteString(html.EscapeString(mediaSource))
-			sb.WriteString(`" alt="`)
-			sb.WriteString(html.EscapeString(title))
-			sb.WriteString(`" width="200" height="150" loading="lazy">`)
-			sb.WriteString("\n")
-		}
+		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{
+			Indent:     "      ",
+			Source:     mediaSource,
+			URL:        mediaURL,
+			Poster:     posterURL,
+			Alt:        title,
+			Width:      "200",
+			Height:     "150",
+			Video:      isVideo,
+			VideoClass: "embed-card-video",
+		})
 		if isPhotoCard {
 			caption := description
 			if caption == "" {
@@ -746,6 +713,76 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+type internalEmbedMediaOptions struct {
+	Indent       string
+	Source       string
+	URL          string
+	Poster       string
+	Alt          string
+	Width        string
+	Height       string
+	Video        bool
+	VideoClass   string
+	VideoPreload string
+}
+
+func writeInternalEmbedMedia(sb *strings.Builder, opts internalEmbedMediaOptions) {
+	if opts.Video {
+		sb.WriteString(opts.Indent)
+		sb.WriteString(`<video`)
+		if opts.VideoClass != "" {
+			sb.WriteString(` class="`)
+			sb.WriteString(html.EscapeString(opts.VideoClass))
+			sb.WriteString(`"`)
+		}
+		sb.WriteString(` autoplay muted loop playsinline`)
+		if opts.VideoPreload != "" {
+			sb.WriteString(` preload="`)
+			sb.WriteString(html.EscapeString(opts.VideoPreload))
+			sb.WriteString(`"`)
+		}
+		if opts.Poster != "" {
+			sb.WriteString(` poster="`)
+			sb.WriteString(html.EscapeString(opts.Poster))
+			sb.WriteString(`"`)
+		}
+		sb.WriteString(`>`)
+		sb.WriteString("\n")
+		sb.WriteString(opts.Indent)
+		sb.WriteString(`  <source src="`)
+		sb.WriteString(html.EscapeString(opts.Source))
+		if mimeType := templates.VideoMIMEType(opts.URL); mimeType != "" {
+			sb.WriteString(`" type="`)
+			sb.WriteString(html.EscapeString(mimeType))
+		}
+		sb.WriteString(`">`)
+		sb.WriteString("\n")
+		sb.WriteString(opts.Indent)
+		sb.WriteString(`</video>`)
+		sb.WriteString("\n")
+		return
+	}
+
+	sb.WriteString(opts.Indent)
+	sb.WriteString(`<img src="`)
+	sb.WriteString(html.EscapeString(opts.Source))
+	sb.WriteString(`" alt="`)
+	sb.WriteString(html.EscapeString(opts.Alt))
+	sb.WriteString(`"`)
+	if opts.Width != "" {
+		sb.WriteString(` width="`)
+		sb.WriteString(html.EscapeString(opts.Width))
+		sb.WriteString(`"`)
+	}
+	if opts.Height != "" {
+		sb.WriteString(` height="`)
+		sb.WriteString(html.EscapeString(opts.Height))
+		sb.WriteString(`"`)
+	}
+	sb.WriteString(` loading="lazy">`)
+	sb.WriteString("\n")
 }
 
 // buildPrivateEmbedCard creates a minimal HTML card for a private post embed.

@@ -22,6 +22,7 @@ const (
 	webAwesomeDefaultVersion = "3.5.0"
 	webAwesomeDefaultCDNBase = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist"
 	webAwesomeAssetName      = "webawesome"
+	webAwesomeSourceCDN      = "cdn"
 	webAwesomeSourceVendor   = "vendor"
 	webAwesomeComponentTag   = "tag"
 	webAwesomeDefaultSRI     = "sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==" // pragma: allowlist secret -- npm registry SRI hash
@@ -52,7 +53,7 @@ func defaultWebAwesomeConfig() webAwesomeConfig {
 	return webAwesomeConfig{
 		Enabled:   true,
 		Version:   webAwesomeDefaultVersion,
-		Source:    "vendor",
+		Source:    webAwesomeSourceVendor,
 		CDNBase:   webAwesomeDefaultCDNBase,
 		OutputDir: "assets/vendor/webawesome",
 		Theme:     "default",
@@ -91,7 +92,7 @@ func (p *WebAwesomePlugin) Configure(m *lifecycle.Manager) error {
 		}
 	}
 	if runtimeenv.OfflineEnabled() && !sourceExplicit && !hasExplicitSelfHostedAssetsConfig(config) {
-		p.config.Source = "cdn"
+		p.config.Source = webAwesomeSourceCDN
 	}
 	p.enableVendorAsset(config)
 
