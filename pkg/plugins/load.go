@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -28,15 +29,25 @@ var (
 	startSingleDigitHourRegex = regexp.MustCompile(`^\d:\d{2}`)
 )
 
+const sourceEncryptedPostKey = "_source_encrypted"
+
 // LoadPlugin parses markdown files into Post objects.
 type LoadPlugin struct {
-	slugMode  string
-	slugRules []models.SlugRule
+	slugMode          string
+	slugRules         []models.SlugRule
+	encryptionEnabled bool
+	encryptionDefault string
+	encryptionTags    map[string]string
+	encryptionKeys    map[string]string
 }
 
 // NewLoadPlugin creates a new LoadPlugin.
 func NewLoadPlugin() *LoadPlugin {
-	return &LoadPlugin{slugMode: models.SlugModeFlat}
+	return &LoadPlugin{
+		slugMode:       models.SlugModeFlat,
+		encryptionTags: make(map[string]string),
+		encryptionKeys: make(map[string]string),
+	}
 }
 
 // Name returns the plugin identifier.
@@ -46,7 +57,48 @@ func (p *LoadPlugin) Name() string {
 
 func (p *LoadPlugin) Configure(m *lifecycle.Manager) error {
 	p.slugMode, p.slugRules = configuredSlugSettings(m.Config())
+	p.configureSourceEncryption(m.Config())
 	return nil
+}
+
+func (p *LoadPlugin) configureSourceEncryption(cfg *lifecycle.Config) {
+	p.encryptionEnabled = false
+	p.encryptionDefault = ""
+	p.encryptionTags = make(map[string]string)
+	p.encryptionKeys = make(map[string]string)
+
+	if modelsConfig, ok := getModelsConfig(cfg); ok && modelsConfig != nil {
+		p.encryptionEnabled = modelsConfig.Encryption.Enabled
+		p.encryptionDefault = modelsConfig.Encryption.DefaultKey
+		for tag, key := range modelsConfig.Encryption.PrivateTags {
+			p.encryptionTags[strings.ToLower(tag)] = key
+		}
+	}
+
+	if cfg != nil && cfg.Extra != nil {
+		if enabled, ok := cfg.Extra["encryption_enabled"].(bool); ok {
+			p.encryptionEnabled = enabled
+		}
+		if defaultKey, ok := cfg.Extra["encryption_default_key"].(string); ok {
+			p.encryptionDefault = defaultKey
+		}
+	}
+
+	if !p.encryptionEnabled {
+		return
+	}
+
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, EncryptionEnvPrefix) {
+			continue
+		}
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 || parts[1] == "" {
+			continue
+		}
+		keyName := strings.ToLower(strings.TrimPrefix(parts[0], EncryptionEnvPrefix))
+		p.encryptionKeys[keyName] = parts[1]
+	}
 }
 
 // Load reads and parses all discovered files into Post objects.
@@ -289,19 +341,20 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 	}
 	modTime := stat.ModTime().UnixNano()
 
-	// Check cache for unchanged file
-	if cache != nil {
-		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
-			// Restore Post from cached data
-			post := p.restorePostFromCache(cachedData, cache)
-			return post, nil
-		}
-	}
-
 	// Read file content
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", file, err)
+	}
+	sourceEncrypted := encryption.IsSourceEncrypted(sourceBodyForContent(string(content)))
+
+	// Check cache for unchanged plaintext files. Source-encrypted files are
+	// parsed every time so decrypted Markdown is never restored from disk cache.
+	if cache != nil && !sourceEncrypted {
+		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
+			post := p.restorePostFromCache(cachedData, cache)
+			return post, nil
+		}
 	}
 
 	// Parse the file
@@ -310,8 +363,9 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 		return nil, fmt.Errorf("failed to parse %s: %w", file, err)
 	}
 
-	// Cache the parsed post
-	if cache != nil {
+	// Cache the parsed post. Source-encrypted files intentionally skip parsed
+	// post and article caches because those would contain decrypted content.
+	if cache != nil && !isSourceEncryptedPost(post) {
 		postData := p.postToCachedData(post)
 		//nolint:errcheck // caching is best-effort
 		cache.CachePostData(file, modTime, postData)
@@ -547,6 +601,23 @@ func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*
 	if cfg != nil {
 		loader.slugMode = models.NormalizeSlugMode(cfg.GlobConfig.SlugMode)
 		loader.slugRules = append([]models.SlugRule{}, cfg.GlobConfig.SlugRules...)
+		loader.encryptionEnabled = cfg.Encryption.Enabled
+		loader.encryptionDefault = cfg.Encryption.DefaultKey
+		loader.encryptionTags = make(map[string]string, len(cfg.Encryption.PrivateTags))
+		for tag, key := range cfg.Encryption.PrivateTags {
+			loader.encryptionTags[strings.ToLower(tag)] = key
+		}
+		if loader.encryptionEnabled {
+			for _, env := range os.Environ() {
+				if !strings.HasPrefix(env, EncryptionEnvPrefix) {
+					continue
+				}
+				parts := strings.SplitN(env, "=", 2)
+				if len(parts) == 2 && parts[1] != "" {
+					loader.encryptionKeys[strings.ToLower(strings.TrimPrefix(parts[0], EncryptionEnvPrefix))] = parts[1]
+				}
+			}
+		}
 	}
 	return loader.parseFile(path, content)
 }
@@ -569,6 +640,15 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 		return nil, err
 	}
 
+	decryptedBody, err := p.decryptSourceBody(post, body)
+	if err != nil {
+		return nil, err
+	}
+	if decryptedBody != body {
+		body = decryptedBody
+		post.Content = decryptedBody
+	}
+
 	// Generate slug if not explicitly set in frontmatter
 	// If slug was explicitly set (even to empty string), respect it
 	if !post.Has("_slug_explicit") && post.Slug == "" {
@@ -583,6 +663,94 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	post.InputHash = buildcache.ComputePostInputHash(body, rawFrontmatter, post.Template)
 
 	return post, nil
+}
+
+func sourceBodyForContent(content string) string {
+	_, body, err := ExtractFrontmatter(content)
+	if err != nil {
+		return content
+	}
+	return body
+}
+
+func isSourceEncryptedPost(post *models.Post) bool {
+	value, ok := post.Get(sourceEncryptedPostKey).(bool)
+	return ok && value
+}
+
+func (p *LoadPlugin) decryptSourceBody(post *models.Post, body string) (string, error) {
+	envelope, encrypted, err := encryption.ParseSourceEnvelope(body)
+	if err != nil {
+		return "", err
+	}
+	if !encrypted {
+		return body, nil
+	}
+
+	post.Set(sourceEncryptedPostKey, true)
+	if !p.encryptionEnabled {
+		return body, nil
+	}
+
+	p.applySourcePrivateTags(post)
+	keyName := strings.TrimSpace(envelope.KeyName)
+	if keyName != "" {
+		post.SecretKey = keyName // pragma: allowlist secret
+		post.Private = true
+	} else {
+		keyName = p.resolveSourceKeyName(post)
+	}
+	if keyName == "" {
+		return "", fmt.Errorf("encrypted source body for %s has no key; set secret_key or encryption.default_key", post.Path)
+	}
+
+	password, ok := p.encryptionKeys[strings.ToLower(keyName)]
+	if !ok || password == "" {
+		return "", fmt.Errorf("encrypted source body for %s requires %s%s", post.Path, EncryptionEnvPrefix, strings.ToUpper(keyName))
+	}
+
+	decrypted, _, err := encryption.DecryptSourceMarkdown(body, password)
+	if err != nil {
+		return "", fmt.Errorf("decrypt encrypted source body for %s with key %q: %w", post.Path, keyName, err)
+	}
+
+	post.SecretKey = keyName // pragma: allowlist secret
+	post.Private = true
+	return decrypted, nil
+}
+
+func (p *LoadPlugin) resolveSourceKeyName(post *models.Post) string {
+	if post.SecretKey != "" {
+		return post.SecretKey
+	}
+	if p.encryptionDefault != "" {
+		return p.encryptionDefault
+	}
+	return ""
+}
+
+func (p *LoadPlugin) applySourcePrivateTags(post *models.Post) {
+	if len(p.encryptionTags) == 0 || post == nil || post.Skip || post.Draft {
+		return
+	}
+	for _, tag := range post.Tags {
+		if keyName, ok := p.encryptionTags[strings.ToLower(tag)]; ok {
+			post.Private = true
+			if post.SecretKey == "" {
+				post.SecretKey = keyName // pragma: allowlist secret
+			}
+			return
+		}
+	}
+	if post.Template == "" {
+		return
+	}
+	if keyName, ok := p.encryptionTags[strings.ToLower(post.Template)]; ok {
+		post.Private = true
+		if post.SecretKey == "" {
+			post.SecretKey = keyName // pragma: allowlist secret
+		}
+	}
 }
 
 func configuredSlugSettings(cfg *lifecycle.Config) (string, []models.SlugRule) {

@@ -19,6 +19,23 @@ This is by design:
 
 Plugins that generate output from post data follow this boundary: they may use frontmatter fields freely but must not expose body content. The `scrubPrivateMetadata` function enforces this by clearing `Content` and content-derived fields (inlinks/outlinks text) while preserving frontmatter-provided fields.
 
+## Source-Encrypted Markdown
+
+Markata-go supports encrypting the Markdown body on disk so private posts can be safely stored in a git repository. Source encryption protects only the Markdown body; YAML frontmatter remains cleartext for routing, feeds, dates, titles, tags, and key selection.
+
+Source-encrypted bodies are self-identifying. They do not require an `encrypted_source` frontmatter key. The body starts with this marker:
+
+```markdown
+<!-- markata-encrypted-source:v1 key=personal -->
+BASE64_AES_GCM_CIPHERTEXT
+```
+
+The optional `key` attribute records the key name used to encrypt the source body. If it is present, the loader uses that key name for source decryption and for the post's `SecretKey`. If the marker omits `key`, the loader falls back to frontmatter `secret_key` / `private_key` / `encryption_key`, then `encryption.default_key`.
+
+During the Load stage, encrypted source bodies are decrypted in memory before normal Markdown rendering. The decrypted Markdown body MUST NOT be written back to the source file, build output, or parsed-post cache. The final Render-stage encryption still encrypts private post HTML for browser delivery.
+
+When encryption is disabled with `encryption.enabled = false`, source-body decryption is skipped and the encrypted marker remains ordinary Markdown content.
+
 ## Configuration
 
 ### `[encryption]` Table
@@ -101,6 +118,12 @@ All encryption keys used by private posts must satisfy the configured strength p
 ### Two-Phase Lifecycle
 
 The encryption plugin participates in two lifecycle stages to ensure complete privacy protection:
+
+#### Load Stage Source Decryption
+
+Before Transform and Render plugins run, the loader detects source-encrypted Markdown bodies and decrypts them in memory using the configured key material from `MARKATA_GO_ENCRYPTION_KEY_{NAME}`. This allows all downstream plugins to operate on normal Markdown while keeping the on-disk file encrypted.
+
+If a source-encrypted body references a missing key or cannot be decrypted, loading that post fails with an actionable error that names the key source but never prints the password.
 
 #### Phase 1: Transform Stage (PriorityFirst / -1000)
 
@@ -202,6 +225,34 @@ markata-go encryption check --key default
 - The command exits non-zero if a required key is missing or fails policy checks.
 - Output identifies key names and env var names only; plaintext passwords are never printed.
 
+### `encryption encrypt-post`
+
+Encrypt a single private Markdown source body. By default the command rewrites the file in place.
+
+```
+markata-go encryption encrypt-post path/to/post.md
+markata-go encryption encrypt-post path/to/post.md --stdout
+```
+
+- The post must already be private by frontmatter or `private_tags`.
+- Key selection follows the build rules: explicit frontmatter key, then matching `private_tags`, then `default_key`.
+- `--stdout` writes the transformed Markdown document to stdout and does not modify the file.
+- Already encrypted source bodies are skipped unless `--force` is passed.
+
+### `encryption encrypt-posts`
+
+Encrypt all private Markdown source bodies matched by the active content glob configuration.
+
+```
+markata-go encryption encrypt-posts
+markata-go encryption encrypt-posts --dry-run
+```
+
+- The command rewrites matching files in place by default.
+- `--dry-run` reports which files would be encrypted without modifying the filesystem.
+- Posts that are draft, skipped, public, or already source-encrypted are not rewritten.
+- Missing or weak keys cause the command to fail before writing changed files.
+
 ## Lint Integration
 
 The `markata-go lint` command MUST include an encryption policy rule when encryption is enabled:
@@ -220,3 +271,5 @@ When merging encryption configs (e.g., from multiple config files), the followin
 ## Cache Behavior
 
 The `SecretKey` field is persisted in the build cache (`CachedPostData.SecretKey`). This ensures posts restored from cache retain their encryption key assignment.
+
+Parsed-post cache entries MUST NOT be written for source-encrypted Markdown files because they would contain decrypted Markdown bodies. Source-encrypted files are parsed on each build.
