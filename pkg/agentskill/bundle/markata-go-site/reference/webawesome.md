@@ -65,6 +65,7 @@ Important rule:
 - any page containing rendered `<wa-*>` elements should trigger Web Awesome asset loading automatically
 - built-in template wiring imports `webawesome.loader.js`, sets the configured base path, and calls `startLoader()`; a passive module script alone does not initialize component discovery
 - markata-go loads the focused Web Awesome theme stylesheet, such as `/assets/vendor/webawesome/styles/themes/default.css`, rather than the global `styles/webawesome.css` bundle so Web Awesome native-element styles do not override the site's normal typography and link styling
+- `source = "vendor"` is the default; `markata-go assets download` prefetches the Web Awesome npm archive into the asset cache so offline builder images can serve `/assets/vendor/webawesome/` without runtime registry access
 
 ## Component Reference
 

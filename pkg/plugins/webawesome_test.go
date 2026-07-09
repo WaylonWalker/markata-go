@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/WaylonWalker/markata-go/pkg/assets"
+	assetsPkg "github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
@@ -325,7 +325,7 @@ func TestWebAwesomePlugin_ConfigureRegistersDefaultVendorAssetWithoutConfig(t *t
 	if ok {
 		t.Fatalf("cdn_assets_extra has unexpected type []interface{}: %#v", extraAssets)
 	}
-	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok {
 		t.Fatalf("cdn_assets_extra type = %T, want []assets.Asset", m.Config().Extra["cdn_assets_extra"])
 	}
@@ -335,7 +335,7 @@ func TestWebAwesomePlugin_ConfigureRegistersDefaultVendorAssetWithoutConfig(t *t
 	if assets[0].Name != webAwesomeAssetName {
 		t.Fatalf("asset name = %q, want %q", assets[0].Name, webAwesomeAssetName)
 	}
-	if assets[0].Integrity != webAwesomeDefaultSRI {
+	if assets[0].Integrity != assetsPkg.NewWebAwesomeAsset(webAwesomeDefaultVersion, "").Integrity {
 		t.Fatalf("integrity = %q, want default SRI", assets[0].Integrity)
 	}
 }
@@ -374,7 +374,7 @@ func TestWebAwesomePlugin_OfflineExplicitVendorStillRequiresVendorAsset(t *testi
 		t.Fatalf("Configure() error = %v", err)
 	}
 
-	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok || len(assets) != 1 {
 		t.Fatalf("cdn_assets_extra = %#v, want one vendor asset", m.Config().Extra["cdn_assets_extra"])
 	}
@@ -398,7 +398,7 @@ func TestWebAwesomePlugin_OfflineExplicitSelfHostedAssetsStillRequiresVendorAsse
 		t.Fatalf("Configure() error = %v", err)
 	}
 
-	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok || len(assets) != 1 {
 		t.Fatalf("cdn_assets_extra = %#v, want one vendor asset", m.Config().Extra["cdn_assets_extra"])
 	}
@@ -420,7 +420,7 @@ func TestWebAwesomePlugin_ConfigureOmitsIntegrityForVersionOverride(t *testing.T
 		t.Fatalf("Configure() error = %v", err)
 	}
 
-	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assets.Asset)
+	assets, ok := m.Config().Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok || len(assets) != 1 {
 		t.Fatalf("cdn_assets_extra = %#v, want one asset", m.Config().Extra["cdn_assets_extra"])
 	}
@@ -796,9 +796,9 @@ func buildWebAwesomeArchive(t *testing.T, files map[string]string) []byte {
 	return buf.Bytes()
 }
 
-func setRequestedAssetURL(t *testing.T, config *lifecycle.Config, url string) assets.Asset {
+func setRequestedAssetURL(t *testing.T, config *lifecycle.Config, url string) assetsPkg.Asset {
 	t.Helper()
-	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
+	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok || len(requestedAssets) != 1 {
 		t.Fatalf("cdn_assets_extra = %#v, want one requested asset", config.Extra["cdn_assets_extra"])
 	}
@@ -810,9 +810,9 @@ func setRequestedAssetURL(t *testing.T, config *lifecycle.Config, url string) as
 	return requestedAssets[0]
 }
 
-func setRequestedAsset(t *testing.T, config *lifecycle.Config, asset assets.Asset) {
+func setRequestedAsset(t *testing.T, config *lifecycle.Config, asset assetsPkg.Asset) {
 	t.Helper()
-	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assets.Asset)
+	requestedAssets, ok := config.Extra["cdn_assets_extra"].([]assetsPkg.Asset)
 	if !ok || len(requestedAssets) != 1 {
 		t.Fatalf("cdn_assets_extra = %#v, want one requested asset", config.Extra["cdn_assets_extra"])
 	}
