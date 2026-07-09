@@ -99,7 +99,7 @@ func parseRefreshTasks(specs []string) ([]builderadmin.RefreshTaskConfig, error)
 	for _, spec := range specs {
 		parts := strings.Split(spec, "|")
 		if len(parts) < 4 {
-			return nil, fmt.Errorf("invalid --refresh-task %q: expected name|every|enqueue|arg1|arg2...", spec)
+			return nil, fmt.Errorf("invalid --refresh-task %q: expected name|every|enqueue|arg1|arg2", spec)
 		}
 		enqueue := strings.EqualFold(parts[2], "true") || parts[2] == "1" || strings.EqualFold(parts[2], "yes")
 		tasks = append(tasks, builderadmin.RefreshTaskConfig{
