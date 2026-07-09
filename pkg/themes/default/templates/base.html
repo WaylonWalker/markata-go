@@ -206,10 +206,13 @@
       margin-top: 2.5rem;
     }
     wa-carousel::part(base) {
-      padding: 0.75rem;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 0;
     }
     wa-carousel::part(scroll-container) {
-      background: var(--color-background, var(--wa-color-surface-default));
+      background: transparent;
     }
     wa-carousel::part(navigation-button) {
       backdrop-filter: blur(6px);
@@ -253,9 +256,14 @@
       width: 100%;
     }
     wa-carousel .markata-wa-carousel-figure img {
+      border-radius: var(--radius-lg);
       flex: 1 1 auto;
       min-height: 0;
       width: 100%;
+    }
+    wa-carousel > img,
+    wa-carousel wa-carousel-item > img {
+      border-radius: var(--radius-lg);
     }
     wa-carousel .markata-wa-carousel-figure figcaption {
       color: var(--color-text-muted, var(--wa-color-text-quiet));
