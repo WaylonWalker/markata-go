@@ -20,7 +20,7 @@ import (
 
 const (
 	webAwesomeDefaultVersion = "3.5.0"
-	webAwesomeDefaultCDNBase = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist"
+	webAwesomeDefaultCDNBase = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn"
 	webAwesomeAssetName      = "webawesome"
 	webAwesomeSourceCDN      = "cdn"
 	webAwesomeSourceVendor   = "vendor"
@@ -106,7 +106,7 @@ func (p *WebAwesomePlugin) parseConfigMap(cfgMap map[string]interface{}) bool {
 	}
 	if version, ok := cfgMap["version"].(string); ok && version != "" {
 		p.config.Version = version
-		p.config.CDNBase = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@" + version + "/dist"
+		p.config.CDNBase = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@" + version + "/dist-cdn"
 	}
 	if source, ok := cfgMap["source"].(string); ok && source != "" {
 		p.config.Source = source
@@ -157,9 +157,8 @@ func (p *WebAwesomePlugin) Render(m *lifecycle.Manager) error {
 		if post.Skip || post.ArticleHTML == "" {
 			return false
 		}
-		return strings.Contains(post.ArticleHTML, `class="webawesome`) ||
-			strings.Contains(post.ArticleHTML, "wa-comparison") ||
-			strings.Contains(post.ArticleHTML, "<wa-")
+		return webAwesomeContainerOpenRegex.MatchString(post.ArticleHTML) ||
+			webAwesomeElementRegex.MatchString(post.ArticleHTML)
 	})
 
 	if err := m.ProcessPostsSliceConcurrently(posts, p.processPost); err != nil {
@@ -189,6 +188,7 @@ var webAwesomeNestedTabOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(
 var webAwesomeContainerOpenRegex = regexp.MustCompile(`<div([^>]*)class="([^"]*(?:\bwebawesome\b|\bwa-[a-z0-9-]+\b)[^"]*)"([^>]*)>`)
 var webAwesomeTabMarkerRegex = regexp.MustCompile(`(?s)(?:<hr>\s*<p>tab\s+&quot;([^&]+)&quot;</p>|<p>&mdash; tab &ldquo;([^&]+)&rdquo;</p>)\s*`)
 var webAwesomeFirstParagraphRegex = regexp.MustCompile(`(?s)^\s*<p>(.*?)</p>\s*`)
+var webAwesomeFigcaptionRegex = regexp.MustCompile(`(?s)<figcaption[^>]*>(.*?)</figcaption>`)
 var webAwesomeImageRegex = regexp.MustCompile(`(?s)<img\s+[^>]*>`)
 var webAwesomeCodeTextRegex = regexp.MustCompile(`(?s)<code[^>]*>(.*?)</code>`)
 var webAwesomeTagRegex = regexp.MustCompile(`<[^>]+>`)
@@ -669,21 +669,93 @@ func nextWebAwesomeTooltipOrdinal() int64 {
 }
 
 func renderWebAwesomeCarousel(attrs map[string]string, body string) string {
-	images := webAwesomeImageRegex.FindAllString(body, -1)
-	if len(images) == 0 {
+	imageMatches := webAwesomeImageRegex.FindAllStringIndex(body, -1)
+	if len(imageMatches) == 0 {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString(`<wa-carousel`)
 	writeAllowedAttrs(&b, attrs)
 	b.WriteString(`>`)
-	for _, image := range images {
+	for i, imageMatch := range imageMatches {
+		image := body[imageMatch[0]:imageMatch[1]]
+		captionEnd := len(body)
+		if i+1 < len(imageMatches) {
+			captionEnd = imageMatches[i+1][0]
+		}
+		caption := webAwesomeCarouselCaption(body[imageMatch[1]:captionEnd])
+
 		b.WriteString(`<wa-carousel-item>`)
-		b.WriteString(image)
+		if caption != "" {
+			b.WriteString(`<figure class="markata-wa-carousel-figure">`)
+			b.WriteString(renderWebAwesomeCarouselImage(image))
+			b.WriteString(`<figcaption>`)
+			b.WriteString(html.EscapeString(caption))
+			b.WriteString(`</figcaption></figure>`)
+		} else {
+			b.WriteString(renderWebAwesomeCarouselImage(image))
+		}
 		b.WriteString(`</wa-carousel-item>`)
 	}
 	b.WriteString(`</wa-carousel>`)
 	return b.String()
+}
+
+func webAwesomeCarouselCaption(segment string) string {
+	if match := webAwesomeFigcaptionRegex.FindStringSubmatch(segment); len(match) == 2 {
+		return normalizeWebAwesomeCaption(match[1])
+	}
+	return normalizeWebAwesomeCaption(segment)
+}
+
+func normalizeWebAwesomeCaption(caption string) string {
+	caption = webAwesomeTagRegex.ReplaceAllString(caption, " ")
+	caption = html.UnescapeString(caption)
+	return strings.Join(strings.Fields(caption), " ")
+}
+
+func renderWebAwesomeCarouselImage(image string) string {
+	attrs := parseHTMLAttrs(image)
+	if attrs["src"] == "" {
+		return image
+	}
+
+	var b strings.Builder
+	b.WriteString(`<img`)
+	writeImageAttr(&b, "src", attrs["src"])
+	writeImageAttr(&b, "alt", attrs["alt"])
+	writeImageAttr(&b, "title", attrs["title"])
+	writeImageAttr(&b, "loading", defaultString(attrs["loading"], "lazy"))
+	writeImageAttr(&b, "decoding", defaultString(attrs["decoding"], "async"))
+	writeImageAttr(&b, "style", mergeCarouselImageStyle(attrs["style"]))
+	b.WriteString(`>`)
+	return b.String()
+}
+
+func writeImageAttr(b *strings.Builder, name, value string) {
+	if value == "" {
+		return
+	}
+	b.WriteByte(' ')
+	b.WriteString(name)
+	b.WriteString(`="`)
+	b.WriteString(html.EscapeString(value))
+	b.WriteByte('"')
+}
+
+func defaultString(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
+
+func mergeCarouselImageStyle(style string) string {
+	fitStyle := "object-fit: contain !important;"
+	if strings.TrimSpace(style) == "" {
+		return fitStyle
+	}
+	return strings.TrimSpace(style) + " " + fitStyle
 }
 
 func renderWebAwesomeAnimatedImage(attrs map[string]string, body string) string {

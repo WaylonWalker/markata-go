@@ -550,6 +550,50 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_Render_StartsWebAwesomeLoader(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.Extra["templates_dir"] = "/nonexistent"
+	config.Extra["webawesome_css_url"] = "https://cdn.example.test/webawesome/styles/themes/default.css"
+	config.Extra["webawesome_loader_url"] = "https://cdn.example.test/webawesome/webawesome.loader.js"
+	config.Extra["webawesome_base_path"] = "https://cdn.example.test/webawesome"
+
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	title := "Web Awesome Post"
+	post := &models.Post{
+		Title:       &title,
+		Template:    "post.html",
+		ArticleHTML: `<wa-carousel><wa-carousel-item>Slide</wa-carousel-item></wa-carousel>`,
+		Extra: map[string]interface{}{
+			"needs_webawesome": true,
+		},
+	}
+	m.AddPost(post)
+
+	if err := p.Render(m); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	want := []string{
+		`import { setBasePath, startLoader } from "https://cdn.example.test/webawesome/webawesome.loader.js";`,
+		`setBasePath("https://cdn.example.test/webawesome");`,
+		`startLoader();`,
+		`width: min(72rem, calc(100vw - 2rem));`,
+	}
+	for _, expected := range want {
+		if !strings.Contains(post.HTML, expected) {
+			t.Fatalf("rendered HTML missing %q\nGot: %s", expected, post.HTML)
+		}
+	}
+	if strings.Contains(post.HTML, `type="module" src="https://cdn.example.test/webawesome/webawesome.loader.js"`) {
+		t.Fatalf("rendered HTML should start the loader explicitly, got passive module script: %s", post.HTML)
+	}
+}
+
 func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T) {
 	tests := []struct {
 		name            string
