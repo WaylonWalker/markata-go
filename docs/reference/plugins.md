@@ -4055,11 +4055,13 @@ When `source = "vendor"`, the plugin downloads Web Awesome through the shared `[
 
 **Markdown syntax:**
 ```markdown
-::: webawesome comparison {position=42 caption="Before and after"}
+::: wa-comparison {position=42 caption="Before and after"}
 ![Before](/images/before.webp)
 ![After](/images/after.webp)
 :::
 ```
+
+The longer `::: webawesome comparison` alias is also supported. Web Awesome classes can be combined with other container classes; detection treats `wa-*` or `webawesome <component>` as class tokens rather than requiring them to appear first.
 
 See the [[webawesome-components|Web Awesome Components]] guide for demos and self-hosting details.
 
