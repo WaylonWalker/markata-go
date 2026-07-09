@@ -25,6 +25,12 @@ markata-go can render [Web Awesome](https://webawesome.com/) components from Mar
 
 Web Awesome components inherit markata-go theme variables for text, surfaces, borders, radii, shadows, and semantic colors. This keeps component chrome aligned with the active palette instead of falling back to Web Awesome defaults.
 
+## Asset Loading
+
+Web Awesome uses vendored assets by default (`source = "vendor"`). In that mode, markata-go downloads the Web Awesome npm archive, extracts the browser-ready `dist-cdn` subtree, and serves it from `/assets/vendor/webawesome/`.
+
+`markata-go assets download` includes this archive in the default asset cache, so builder images can pre-seed Web Awesome and run with `MARKATA_GO_OFFLINE=true` without reaching the npm registry during a site build.
+
 ## Markdown
 
 ### Comparison

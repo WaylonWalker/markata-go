@@ -1,5 +1,7 @@
 package assets
 
+import "strings"
+
 // Asset represents an external CDN asset that can be self-hosted.
 type Asset struct {
 	// Name is a unique identifier for the asset (e.g., "glightbox-js")
@@ -208,6 +210,8 @@ var assetRegistry = []Asset{
 		Version:   "5",
 		Type:      "js",
 	},
+
+	NewWebAwesomeAsset("3.5.0", "assets/vendor/webawesome"),
 }
 
 // Registry returns a copy of all registered assets.
@@ -238,6 +242,36 @@ func GetAssetsByType(assetType string) []Asset {
 		}
 	}
 	return result
+}
+
+// NewWebAwesomeAsset returns the archive asset for the browser-ready Web
+// Awesome dist-cdn subtree from the npm tarball.
+func NewWebAwesomeAsset(version, outputDir string) Asset {
+	if version == "" {
+		version = "3.5.0"
+	}
+	if outputDir == "" {
+		outputDir = "assets/vendor/webawesome"
+	}
+
+	asset := Asset{
+		Name:        "webawesome",
+		URL:         "https://registry.npmjs.org/@awesome.me/webawesome/-/webawesome-" + version + ".tgz",
+		LocalPath:   "webawesome",
+		OutputPath:  trimVendorOutputPath(outputDir),
+		Version:     version,
+		Type:        "archive",
+		ExtractPath: "package/dist-cdn",
+	}
+	if version == "3.5.0" {
+		asset.Integrity = "sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==" // pragma: allowlist secret -- npm registry SRI hash
+	}
+	return asset
+}
+
+func trimVendorOutputPath(outputDir string) string {
+	outputDir = strings.Trim(outputDir, "/")
+	return strings.TrimPrefix(outputDir, "assets/vendor/")
 }
 
 // AssetGroups returns assets grouped by their library name.

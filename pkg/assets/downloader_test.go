@@ -28,6 +28,22 @@ func TestNewDownloader(t *testing.T) {
 	}
 }
 
+func TestRegistry_IncludesWebAwesomeArchive(t *testing.T) {
+	asset := GetAsset("webawesome")
+	if asset == nil {
+		t.Fatal("expected webawesome asset in default registry")
+	}
+	if asset.Type != "archive" {
+		t.Fatalf("webawesome type = %q, want archive", asset.Type)
+	}
+	if asset.ExtractPath != "package/dist-cdn" {
+		t.Fatalf("webawesome ExtractPath = %q, want package/dist-cdn", asset.ExtractPath)
+	}
+	if asset.OutputPath != "webawesome" {
+		t.Fatalf("webawesome OutputPath = %q, want webawesome", asset.OutputPath)
+	}
+}
+
 func TestDownloader_Download(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -25,7 +25,6 @@ const (
 	webAwesomeSourceCDN      = "cdn"
 	webAwesomeSourceVendor   = "vendor"
 	webAwesomeComponentTag   = "tag"
-	webAwesomeDefaultSRI     = "sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==" // pragma: allowlist secret -- npm registry SRI hash
 )
 
 // WebAwesomePlugin converts ergonomic markdown containers into Web Awesome components.
@@ -898,20 +897,7 @@ func (p *WebAwesomePlugin) enableVendorAsset(config *lifecycle.Config) {
 		config.Extra = make(map[string]interface{})
 	}
 
-	asset := assets.Asset{
-		Name:        webAwesomeAssetName,
-		URL:         fmt.Sprintf("https://registry.npmjs.org/@awesome.me/webawesome/-/webawesome-%s.tgz", p.config.Version),
-		LocalPath:   "webawesome",
-		OutputPath:  strings.TrimPrefix(strings.Trim(p.config.OutputDir, "/"), "assets/vendor/"),
-		Version:     p.config.Version,
-		Type:        "archive",
-		ExtractPath: "package/dist-cdn",
-	}
-	if p.config.Version == webAwesomeDefaultVersion {
-		asset.Integrity = webAwesomeDefaultSRI // pragma: allowlist secret -- npm registry SRI hash
-	}
-
-	appendExtraAsset(config, asset)
+	appendExtraAsset(config, assets.NewWebAwesomeAsset(p.config.Version, p.config.OutputDir))
 }
 
 func (p *WebAwesomePlugin) componentModules(htmlContent string) []string {
