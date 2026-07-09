@@ -146,8 +146,65 @@ func TestWebAwesomePlugin_ProcessUsefulContentContainers(t *testing.T) {
 		`>SSG</span><wa-tooltip for="`,
 		`>Static Site Generator</wa-tooltip>`,
 		`<wa-carousel navigation="true">`,
-		`<wa-carousel-item><img src="/one.webp" alt="One"></wa-carousel-item>`,
+		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
 		`<wa-animated-image src="/demo.webp" alt="Animation demo"></wa-animated-image>`,
+	}
+	for _, expected := range want {
+		if !strings.Contains(post.ArticleHTML, expected) {
+			t.Fatalf("ArticleHTML missing %q\nGot: %s", expected, post.ArticleHTML)
+		}
+	}
+}
+
+func TestWebAwesomePlugin_RenderProcessesWaCarouselContainerWithLeadingClass(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	plugin.config.Source = "cdn"
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{Extra: map[string]interface{}{}})
+	m.SetPosts([]*models.Post{{ArticleHTML: `<div class="not-prose wa-carousel" navigation="true" pagination="true">
+<figure><img src="/one.webp" alt="One"><img src="/two.webp" alt="Two"></figure>
+</div>`}})
+
+	if err := plugin.Render(m); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	got := m.Posts()[0].ArticleHTML
+	want := []string{
+		`<wa-carousel navigation="true" pagination="true">`,
+		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
+		`<wa-carousel-item><img src="/two.webp" alt="Two" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
+	}
+	for _, expected := range want {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("ArticleHTML missing %q\nGot: %s", expected, got)
+		}
+	}
+	if enabled, ok := m.Config().Extra["webawesome_enabled"].(bool); !ok || !enabled {
+		t.Fatalf("webawesome_enabled = %v, want true", m.Config().Extra["webawesome_enabled"])
+	}
+}
+
+func TestWebAwesomePlugin_ProcessCarouselCaptions(t *testing.T) {
+	plugin := NewWebAwesomePlugin()
+	post := &models.Post{ArticleHTML: `<div class="wa-carousel" navigation="true" pagination="true">
+<p><img src="/family.webp" alt="Family">
+family
+<img src="/ayla.webp" alt="Ayla">
+<figcaption>Ayla 11</figcaption>
+<img src="/wyatt.webp" alt="Wyatt">
+Wyatt 13</p>
+</div>`}
+
+	if err := plugin.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	want := []string{
+		`<wa-carousel navigation="true" pagination="true">`,
+		`<figure class="markata-wa-carousel-figure"><img src="/family.webp" alt="Family" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>family</figcaption></figure>`,
+		`<figure class="markata-wa-carousel-figure"><img src="/ayla.webp" alt="Ayla" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>Ayla 11</figcaption></figure>`,
+		`<figure class="markata-wa-carousel-figure"><img src="/wyatt.webp" alt="Wyatt" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>Wyatt 13</figcaption></figure>`,
 	}
 	for _, expected := range want {
 		if !strings.Contains(post.ArticleHTML, expected) {
