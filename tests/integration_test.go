@@ -455,6 +455,10 @@ This post is long enough to trigger the reading progress indicator.
 }
 
 func TestTailwindManagedConfig_DisablesPreflightByDefault(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	site := newTestSite(t)
 	site.addPost("tailwind.md", `---
 title: Tailwind Defaults
