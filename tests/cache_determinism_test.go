@@ -31,6 +31,10 @@ type cacheSite struct {
 // newCacheSite creates a new test site with cache support.
 func newCacheSite(t *testing.T) *cacheSite {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping cache determinism integration test in short mode")
+	}
+
 	site := newTestSite(t)
 	cacheDir := filepath.Join(site.dir, ".markata")
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
