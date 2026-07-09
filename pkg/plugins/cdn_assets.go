@@ -49,10 +49,7 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	downloader := assets.NewDownloader(cacheDir, verifyIntegrity)
 	assetsToDownload := requestedAssets
 	if assetsConfig.IsSelfHosted() {
-		assetsToDownload = assets.Registry()
-		if len(requestedAssets) > 0 {
-			assetsToDownload = append(assetsToDownload, requestedAssets...)
-		}
+		assetsToDownload = mergeRequestedAssets(assets.Registry(), requestedAssets)
 	}
 
 	// Download all assets
@@ -117,10 +114,7 @@ func (p *CDNAssetsPlugin) Write(m *lifecycle.Manager) error {
 	vendorOutputDir := filepath.Join(config.OutputDir, assetsConfig.GetOutputDir())
 	assetsToCopy := requestedAssets
 	if assetsConfig.IsSelfHosted() {
-		assetsToCopy = assets.Registry()
-		if len(requestedAssets) > 0 {
-			assetsToCopy = append(assetsToCopy, requestedAssets...)
-		}
+		assetsToCopy = mergeRequestedAssets(assets.Registry(), requestedAssets)
 	}
 
 	// Copy all cached assets to output
@@ -177,6 +171,32 @@ func (p *CDNAssetsPlugin) requestedAssets(config *lifecycle.Config) []assets.Ass
 	assetsCopy := make([]assets.Asset, len(extraAssets))
 	copy(assetsCopy, extraAssets)
 	return assetsCopy
+}
+
+func mergeRequestedAssets(baseAssets, requestedAssets []assets.Asset) []assets.Asset {
+	if len(requestedAssets) == 0 {
+		result := make([]assets.Asset, len(baseAssets))
+		copy(result, baseAssets)
+		return result
+	}
+
+	result := make([]assets.Asset, 0, len(baseAssets)+len(requestedAssets))
+	indices := make(map[string]int, len(baseAssets)+len(requestedAssets))
+	for i := range baseAssets {
+		asset := baseAssets[i]
+		indices[asset.Name] = len(result)
+		result = append(result, asset)
+	}
+	for i := range requestedAssets {
+		asset := requestedAssets[i]
+		if idx, ok := indices[asset.Name]; ok {
+			result[idx] = asset
+			continue
+		}
+		indices[asset.Name] = len(result)
+		result = append(result, asset)
+	}
+	return result
 }
 
 // Priority returns the plugin priority for each stage.

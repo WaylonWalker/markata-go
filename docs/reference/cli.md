@@ -214,6 +214,42 @@ When `-g` is used, `--agent` is required and `site-path` is not accepted.
 
 The `agent` command group is intentionally generic so future subcommands can add export or MCP-oriented integrations without changing the bundled skill format.
 
+### assets
+
+Manage external CDN assets used by self-hosted/vendor asset mode.
+
+#### Usage
+
+```bash
+markata-go assets <subcommand>
+```
+
+#### Subcommands
+
+##### download
+
+Download all registered external assets into the configured asset cache, defaulting to `.markata/assets-cache`. This includes the Web Awesome npm archive so builder images can pre-seed the cache for offline site builds.
+
+```bash
+markata-go assets download
+```
+
+##### list
+
+List registered assets and whether each one is available in the asset cache.
+
+```bash
+markata-go assets list
+```
+
+##### clean
+
+Remove the asset cache so assets are fetched again on the next download/build.
+
+```bash
+markata-go assets clean
+```
+
 ### build
 
 Build the static site by processing all content files through the plugin lifecycle.
