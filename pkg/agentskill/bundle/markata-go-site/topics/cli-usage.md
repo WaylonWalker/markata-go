@@ -59,6 +59,13 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go lint --fix` (auto-fix fixable issues)
 - `markata-go lint --dry-run` (show files without linting)
 
+### Encryption
+
+- `markata-go encryption generate-password` (generate a policy-compliant password)
+- `markata-go encryption check` (verify configured encryption keys)
+- `markata-go encryption encrypt-posts --dry-run` (preview source encryption for private posts)
+- `markata-go encryption encrypt-posts` (encrypt private Markdown bodies in place)
+
 ### Theme And Palette
 
 - `markata-go palette list`
@@ -137,6 +144,7 @@ markata-go build -o dist
 markata-go new "My Post" --no-input
 markata-go build -v
 markata-go lint --fix
+markata-go encryption encrypt-posts --dry-run
 ```
 
 ## What To Use When
@@ -147,6 +155,7 @@ markata-go lint --fix
 - inspect resolved configuration: `markata-go config show`
 - create new content: `markata-go new`
 - lint content before committing: `markata-go lint`
+- source-encrypt private Markdown before committing: `markata-go encryption encrypt-posts --dry-run`, then `markata-go encryption encrypt-posts`
 - validate config before deploy: `markata-go config validate`
 - validate palette contrast: `markata-go palette check <name>`
 - interactive local editing: `markata-go serve --fast`
@@ -165,6 +174,7 @@ markata-go lint --fix
 - use `--no-input` for automation or when the agent must avoid prompts
 - use `-v` when debugging plugin order, missing outputs, or config resolution issues
 - use `--dry-run` on build or lint to preview behavior without side effects
+- use `encryption encrypt-posts --dry-run` before rewriting private source files; make sure required `MARKATA_GO_ENCRYPTION_KEY_*` environment variables are set first
 
 ## Guidance
 
