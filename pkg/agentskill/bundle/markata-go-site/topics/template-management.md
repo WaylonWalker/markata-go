@@ -218,7 +218,7 @@ For sites using the `webawesome` hook, prefer authoring content with markdown co
 Useful guidance:
 
 - raw `<wa-*>` elements are also supported and trigger asset loading automatically
-- do not hardcode Web Awesome `<script>` or `<link>` tags if the site already relies on the built-in plugin wiring
+- do not hardcode Web Awesome `<script>` or `<link>` tags if the site already relies on the built-in plugin wiring; if you must customize the template wiring, import `webawesome.loader.js`, set the configured base path, and call `startLoader()`
 - if a template needs to guard extra markup or classes around Web Awesome usage, inspect existing checks first; per-page detection is usually driven by the presence of rendered `wa-*` elements in the page body
 - if vendor assets are enabled, the resolved URLs come from config-driven asset mappings rather than fixed `/assets/vendor/webawesome/` assumptions
 

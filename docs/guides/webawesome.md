@@ -168,7 +168,9 @@ Use carousels for screenshot galleries or visual changelogs.
 ```markdown
 ::: wa-carousel {navigation="true" pagination="true"}
 ![First screenshot](/images/one.webp)
+First screenshot caption
 ![Second screenshot](/images/two.webp)
+Second screenshot caption
 :::
 ```
 
@@ -186,7 +188,7 @@ Use animated images to give readers play and pause controls for GIF or animated 
 :::
 ```
 
-The longer `::: webawesome comparison` form remains supported as an alias, but `wa-*` is the recommended authoring style.
+The longer `::: webawesome comparison` form remains supported as an alias, but `wa-*` is the recommended authoring style. You can combine Web Awesome container classes with layout or utility classes; for example, a rendered container with `class="not-prose wa-carousel"` is still detected and converted.
 
 ```markdown
 ::: webawesome comparison {position=65}
@@ -221,7 +223,7 @@ If you prefer to load assets from a CDN instead of self-hosting, set `source = "
 [markata-go.webawesome]
 source = "cdn"
 version = "3.5.0"
-# cdn_base_url defaults to https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@<version>/dist
+# cdn_base_url defaults to https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@<version>/dist-cdn
 ```
 
 Self-hosting (the default) is recommended when your site must build without external CDN dependencies, when your privacy policy avoids third-party asset requests, or when you want stable, immutable component versions tied to your repo. You can prefetch the shared asset cache with `markata-go assets download`.
@@ -238,6 +240,6 @@ Raw Web Awesome HTML works too. Any page containing a `<wa-*>` element automatic
 
 ## Component Loading
 
-Pages that use any `wa-*` element automatically get the Web Awesome stylesheet and the Web Awesome autoloader. The autoloader watches the document for `<wa-*>` tags and lazy-imports the matching component modules on demand, so each page only downloads what it actually uses. Pages without `wa-*` elements do not load Web Awesome CSS or JavaScript.
+Pages that use any `wa-*` element automatically get the Web Awesome stylesheet and initialized Web Awesome autoloader. The built-in template imports `webawesome.loader.js`, sets the configured base path, and calls `startLoader()` so the autoloader watches the document for `<wa-*>` tags and lazy-imports the matching component modules on demand. Each page only downloads what it actually uses. Pages without `wa-*` elements do not load Web Awesome CSS or JavaScript.
 
-When `source = "vendor"`, the theme stylesheet and autoloader are served from your site under `output_dir` (for example `/assets/vendor/webawesome/styles/themes/default.css` and `/assets/vendor/webawesome/webawesome.loader.js`). The focused theme stylesheet avoids Web Awesome's global native-element styles so normal site typography and link styling stay unchanged. These files come from the npm tarball downloaded through the shared `[markata-go.assets]` cache/output pipeline. When `source = "cdn"`, they are served from `https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@VERSION/dist/`.
+When `source = "vendor"`, the theme stylesheet and autoloader are served from your site under `output_dir` (for example `/assets/vendor/webawesome/styles/themes/default.css` and `/assets/vendor/webawesome/webawesome.loader.js`). The focused theme stylesheet avoids Web Awesome's global native-element styles so normal site typography and link styling stay unchanged. These files come from the npm tarball downloaded through the shared `[markata-go.assets]` cache/output pipeline. When `source = "cdn"`, they are served from the browser-ready `https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@VERSION/dist-cdn/` subtree.

@@ -19,7 +19,7 @@ hooks = ["default", "webawesome"]
 enabled = true
 version = "3.5.0"
 source = "vendor" # "vendor" (default) or "cdn"
-cdn_base_url = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist"
+cdn_base_url = "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn"
 output_dir = "assets/vendor/webawesome"
 theme = "default"
 palette = "default"
@@ -28,7 +28,7 @@ brand = "blue"
 
 ## Markdown Syntax
 
-All shortcuts use container syntax. The recommended form is `::: wa-<component>`. The longer `::: webawesome <component>` form remains supported as an alias.
+All shortcuts use container syntax. The recommended form is `::: wa-<component>`. The longer `::: webawesome <component>` form remains supported as an alias. Additional classes may be combined with the Web Awesome class; the `wa-*` class or `webawesome <component>` class pair may appear anywhere in the generated `class` attribute.
 
 ### Image Comparison
 
@@ -173,11 +173,13 @@ default slot is the popup itself):
 ```markdown
 ::: wa-carousel {navigation="true" pagination="true"}
 ![First](/images/one.webp)
+First image caption
 ![Second](/images/two.webp)
+Second image caption
 :::
 ```
 
-Generated HTML includes `wa-carousel` and one `wa-carousel-item` per image.
+Generated HTML includes `wa-carousel` and one `wa-carousel-item` per image. Optional plain text or `<figcaption>` content immediately after an image becomes that slide's caption.
 
 ### Animated Image
 
@@ -211,18 +213,26 @@ When `source = "vendor"`, the plugin registers a shared archive asset for the We
 
 ```html
 <link rel="stylesheet" href="/assets/vendor/webawesome/styles/themes/default.css">
-<script type="module" src="/assets/vendor/webawesome/webawesome.loader.js"></script>
+<script type="module">
+  import { setBasePath, startLoader } from "/assets/vendor/webawesome/webawesome.loader.js";
+  setBasePath("/assets/vendor/webawesome");
+  startLoader();
+</script>
 ```
 
 The vendored payload MUST be the browser-ready Web Awesome `dist-cdn` subtree from the npm tarball so the autoloader and components can resolve their modules and dependent assets without a bundler.
 
 `markata-go assets download` SHOULD prefetch the Web Awesome tarball whenever the `webawesome` plugin is enabled with `source = "vendor"`.
 
-When `source = "cdn"`, the plugin loads the same files from the configured CDN base URL (default: `https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@<version>/dist`):
+When `source = "cdn"`, the plugin loads the same browser-ready files from the configured CDN base URL (default: `https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@<version>/dist-cdn`):
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/styles/themes/default.css">
-<script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist/webawesome.loader.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn/styles/themes/default.css">
+<script type="module">
+  import { setBasePath, startLoader } from "https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn/webawesome.loader.js";
+  setBasePath("https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.5.0/dist-cdn");
+  startLoader();
+</script>
 ```
 
 The autoloader uses a MutationObserver to discover `<wa-*>` tags in the document and lazy-imports the matching component module on demand. Pages without any `<wa-*>` tags do not load Web Awesome CSS or JavaScript.

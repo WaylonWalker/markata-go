@@ -50,6 +50,7 @@ General rule:
 
 - `::: wa-<component>` is the preferred authoring form
 - `::: webawesome <component>` remains supported as an alias
+- Web Awesome classes can be combined with other container classes; `wa-*` or the `webawesome <component>` class pair may appear anywhere in the rendered `class` attribute.
 
 ## Raw HTML Support
 
@@ -62,6 +63,7 @@ Raw Web Awesome custom elements are also supported:
 Important rule:
 
 - any page containing rendered `<wa-*>` elements should trigger Web Awesome asset loading automatically
+- built-in template wiring imports `webawesome.loader.js`, sets the configured base path, and calls `startLoader()`; a passive module script alone does not initialize component discovery
 - markata-go loads the focused Web Awesome theme stylesheet, such as `/assets/vendor/webawesome/styles/themes/default.css`, rather than the global `styles/webawesome.css` bundle so Web Awesome native-element styles do not override the site's normal typography and link styling
 
 ## Component Reference
@@ -291,7 +293,9 @@ Rendered shape:
 ```markdown
 ::: wa-carousel {navigation="true" pagination="true"}
 ![First screenshot](/images/one.webp)
+First screenshot caption
 ![Second screenshot](/images/two.webp)
+Second screenshot caption
 :::
 ```
 
@@ -299,6 +303,7 @@ Rules:
 
 - the body should contain one or more images
 - each image becomes a `wa-carousel-item`
+- optional plain text or `<figcaption>` content immediately after an image becomes that slide's caption
 - common attrs include `navigation` and `pagination`
 
 ### Animated Image
@@ -377,6 +382,7 @@ CDN mode:
 
 - `source = "cdn"`
 - serves Web Awesome assets from `cdn_base_url`
+- the default `cdn_base_url` uses Web Awesome's browser-ready `dist-cdn` subtree; avoid the package `dist` subtree unless the site also provides the import map/bundling needed for bare module specifiers
 
 Important rules:
 
