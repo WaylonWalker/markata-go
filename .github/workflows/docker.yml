@@ -91,8 +91,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=markata-go-minimal
+          cache-to: type=gha,mode=max,scope=markata-go-minimal
           build-args: |
             VERSION=${{ github.ref_name }}
             COMMIT=${{ github.sha }}
@@ -188,8 +188,8 @@ jobs:
           push: true
           tags: ${{ steps.meta_builder.outputs.tags }}
           labels: ${{ steps.meta_builder.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=markata-go-builder
+          cache-to: type=gha,mode=max,scope=markata-go-builder
           build-args: |
             VERSION=${{ github.ref_name }}
             COMMIT=${{ github.sha }}
@@ -218,9 +218,9 @@ jobs:
           sarif_file: "trivy-results-builder.sarif"
           category: trivy-builder
 
-  # Separate job for PR builds - build only, don't push
-  build-pr:
-    name: Build (PR)
+  # Separate jobs for PR builds - build only, don't push
+  build-pr-minimal:
+    name: Build (PR minimal)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
@@ -238,24 +238,8 @@ jobs:
           platforms: linux/amd64
           push: false
           tags: markata-go:pr-${{ github.event.number }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VERSION=pr-${{ github.event.number }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ github.event.pull_request.updated_at }}
-          load: true
-
-      - name: Build image (builder)
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          target: builder-runtime
-          platforms: linux/amd64
-          push: false
-          tags: markata-go-builder:pr-${{ github.event.number }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=markata-go-minimal
+          cache-to: type=gha,mode=max,scope=markata-go-minimal
           build-args: |
             VERSION=pr-${{ github.event.number }}
             COMMIT=${{ github.sha }}
@@ -283,11 +267,6 @@ jobs:
             exit 1
           fi
 
-      - name: Test image (builder)
-        run: |
-          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "markata-go --help"
-          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "rsync --version"
-
       - name: Run Trivy vulnerability scanner (PR)
         uses: aquasecurity/trivy-action@master
         with:
@@ -295,3 +274,36 @@ jobs:
           format: "table"
           exit-code: "1"
           severity: "CRITICAL"
+
+  build-pr-builder:
+    name: Build (PR builder)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image (builder)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: builder-runtime
+          platforms: linux/amd64
+          push: false
+          tags: markata-go-builder:pr-${{ github.event.number }}
+          cache-from: type=gha,scope=markata-go-builder
+          cache-to: type=gha,mode=max,scope=markata-go-builder
+          build-args: |
+            VERSION=pr-${{ github.event.number }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at }}
+          load: true
+
+      - name: Test image (builder)
+        run: |
+          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "markata-go --help"
+          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "rsync --version"
