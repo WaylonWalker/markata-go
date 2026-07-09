@@ -1901,6 +1901,30 @@ markata-go encryption check [--key <name>]
 By default this command checks all keys referenced by `encryption.default_key` and `encryption.private_tags`.
 It fails with a non-zero exit code if any key is missing from environment variables or too weak for the configured policy.
 
+##### encrypt-posts
+
+Encrypt all private Markdown source bodies matched by the active content glob configuration.
+
+```
+markata-go encryption encrypt-posts [--dry-run]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--dry-run` | | Report files that would be encrypted without modifying them | `false` |
+
+The command rewrites matching private posts in place by default. It skips draft, skipped, public, and already source-encrypted posts. Missing or weak keys fail before any files are written.
+
+#### Examples
+
+```
+# Preview source encryption changes
+markata-go encryption encrypt-posts --dry-run
+
+# Encrypt private post source bodies in place
+markata-go encryption encrypt-posts
+```
+
 ---
 
 ## See Also

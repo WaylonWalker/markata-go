@@ -144,11 +144,36 @@ markata-go encryption generate-password
 markata-go encryption generate-password --length 20
 markata-go encryption check
 markata-go encryption check --key default
+markata-go encryption encrypt-posts --dry-run
+markata-go encryption encrypt-posts
 ```
 
 The command prints only the password to stdout, making it easy to pipe into your `.env` file or a password manager. The optional `--length` flag requests a longer password (it must be at least the configured `min_password_length`). The generated password already meets the default crack-time and length thresholds.
 
 `encryption check` validates configured keys against your active policy and exits non-zero when a key is missing or weak. By default it checks every key referenced by `default_key` and `private_tags`.
+
+### Source-Encrypt Private Posts
+
+Use `encrypt-posts` to rewrite private Markdown files so the body is encrypted at rest in your source repository:
+
+```
+markata-go encryption encrypt-posts --dry-run
+markata-go encryption encrypt-posts
+```
+
+The command scans files matched by your active `glob.patterns`, then encrypts posts marked `private: true` or matched by `encryption.private_tags`. It skips draft, skipped, public, and already source-encrypted posts. `--dry-run` reports what would be encrypted without modifying files.
+
+Missing or weak keys fail before any files are written. The encrypted source keeps frontmatter readable and replaces only the Markdown body with a marker and ciphertext:
+
+```markdown
+---
+title: My Secret Post
+private: true
+---
+
+<!-- markata-encrypted-source:v1 key=default -->
+BASE64_AES_GCM_CIPHERTEXT
+```
 
 ## Lint Rule
 
