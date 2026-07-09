@@ -309,6 +309,7 @@ func printBuildBenchmarkSummary(summary buildstats.Summary) {
 
 	hotspots := topHotspots(summary.Hotspots, 5)
 	if len(hotspots) == 0 {
+		printNetworkRequestSummary(summary.Requests)
 		return
 	}
 
@@ -316,6 +317,8 @@ func printBuildBenchmarkSummary(summary buildstats.Summary) {
 	for _, hotspot := range hotspots {
 		outlnf("    %s %s", hotspotKey(hotspot.Stage, hotspot.Plugin), formatDuration(hotspot.Duration))
 	}
+
+	printNetworkRequestSummary(summary.Requests)
 }
 
 func printResourceLine(label string, duration, total time.Duration) {
@@ -363,6 +366,16 @@ func topHotspots(hotspots []buildstats.Hotspot, limit int) []buildstats.Hotspot 
 	return hotspots[:limit]
 }
 
+func topRequests(requests []buildstats.RequestTiming, limit int) []buildstats.RequestTiming {
+	if len(requests) == 0 || limit <= 0 {
+		return nil
+	}
+	if len(requests) < limit {
+		limit = len(requests)
+	}
+	return requests[:limit]
+}
+
 func formatDuration(duration time.Duration) string {
 	text := duration.Round(10 * time.Millisecond).String()
 	if text != "0s" && strings.HasSuffix(text, "0s") {
@@ -380,6 +393,36 @@ func percent(duration, total time.Duration) float64 {
 
 func hotspotKey(stage, plugin string) string {
 	return colorizeOutput(stage+"/"+plugin, stageThemeColor(stage))
+}
+
+func printNetworkRequestSummary(requests []buildstats.RequestTiming) {
+	requests = topRequests(requests, 10)
+	if len(requests) == 0 {
+		return
+	}
+
+	outlnf("  %s", buildLabel("Slowest requests:"))
+	for _, request := range requests {
+		outlnf("    %s %s %s", requestKey(request), formatDuration(request.Duration), requestStatus(request))
+	}
+}
+
+func requestKey(request buildstats.RequestTiming) string {
+	plugin := hotspotKey(request.Stage, request.Plugin)
+	if request.Plugin == "" {
+		plugin = colorizeOutput(request.Stage, stageThemeColor(request.Stage))
+	}
+	return plugin + " " + request.Method + " " + request.URL
+}
+
+func requestStatus(request buildstats.RequestTiming) string {
+	if request.Error != "" {
+		return "(" + request.Error + ")"
+	}
+	if request.Status > 0 {
+		return fmt.Sprintf("(HTTP %d)", request.Status)
+	}
+	return ""
 }
 
 func buildLabel(name string) string {

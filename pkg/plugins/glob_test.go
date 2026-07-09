@@ -61,3 +61,37 @@ func TestGlobPlugin_FastBuildRescansMovedFiles(t *testing.T) {
 		t.Fatalf("stale glob cache reused after move: %v", got)
 	}
 }
+
+func TestGlobPlugin_StoresFileModTimes(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "post.md")
+	if err := os.WriteFile(path, []byte("# post"), 0o600); err != nil {
+		t.Fatalf("WriteFile(post.md) error = %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = tmpDir
+	m.Config().GlobPatterns = []string{"**/*.md"}
+
+	plugin := NewGlobPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	if err := plugin.Glob(m); err != nil {
+		t.Fatalf("Glob() error = %v", err)
+	}
+
+	cached, ok := m.Cache().Get(cacheKeyGlobFileModTimes)
+	if !ok {
+		t.Fatal("expected glob file modtimes in manager cache")
+	}
+
+	modTimes, ok := cached.(map[string]int64)
+	if !ok {
+		t.Fatalf("cached modtimes type = %T, want map[string]int64", cached)
+	}
+
+	if modTimes["post.md"] == 0 {
+		t.Fatalf("expected non-zero modtime for post.md, got %d", modTimes["post.md"])
+	}
+}

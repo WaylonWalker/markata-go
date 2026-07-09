@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -115,6 +116,7 @@ func (p *WebMentionsPlugin) Configure(m *lifecycle.Manager) error {
 			return nil
 		},
 	}
+	buildstats.InstrumentHTTPClient(p.httpClient)
 
 	// Load sent cache from disk
 	if p.config.CacheDir != "" {

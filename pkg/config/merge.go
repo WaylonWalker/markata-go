@@ -1069,6 +1069,9 @@ func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollCo
 	if override.CacheDuration != "" {
 		result.CacheDuration = override.CacheDuration
 	}
+	if override.RefreshOnBuild != nil {
+		result.RefreshOnBuild = override.RefreshOnBuild
+	}
 	if override.FallbackImageService != "" {
 		result.FallbackImageService = override.FallbackImageService
 	}
