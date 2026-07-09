@@ -751,7 +751,7 @@ func defaultString(value, fallback string) string {
 }
 
 func mergeCarouselImageStyle(style string) string {
-	fitStyle := "object-fit: contain !important;"
+	fitStyle := "display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"
 	if strings.TrimSpace(style) == "" {
 		return fitStyle
 	}

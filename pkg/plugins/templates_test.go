@@ -583,6 +583,9 @@ func TestTemplatesPlugin_Render_StartsWebAwesomeLoader(t *testing.T) {
 		`setBasePath("https://cdn.example.test/webawesome");`,
 		`startLoader();`,
 		`width: min(72rem, calc(100vw - 2rem));`,
+		`wa-carousel::part(base)`,
+		`box-shadow: none;`,
+		`border-radius: var(--radius-lg);`,
 	}
 	for _, expected := range want {
 		if !strings.Contains(post.HTML, expected) {

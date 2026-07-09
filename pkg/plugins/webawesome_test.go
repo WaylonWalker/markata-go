@@ -146,7 +146,7 @@ func TestWebAwesomePlugin_ProcessUsefulContentContainers(t *testing.T) {
 		`>SSG</span><wa-tooltip for="`,
 		`>Static Site Generator</wa-tooltip>`,
 		`<wa-carousel navigation="true">`,
-		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="object-fit: contain !important;"></wa-carousel-item>`,
+		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
 		`<wa-animated-image src="/demo.webp" alt="Animation demo"></wa-animated-image>`,
 	}
 	for _, expected := range want {
@@ -172,8 +172,8 @@ func TestWebAwesomePlugin_RenderProcessesWaCarouselContainerWithLeadingClass(t *
 	got := m.Posts()[0].ArticleHTML
 	want := []string{
 		`<wa-carousel navigation="true" pagination="true">`,
-		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="object-fit: contain !important;"></wa-carousel-item>`,
-		`<wa-carousel-item><img src="/two.webp" alt="Two" loading="lazy" decoding="async" style="object-fit: contain !important;"></wa-carousel-item>`,
+		`<wa-carousel-item><img src="/one.webp" alt="One" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
+		`<wa-carousel-item><img src="/two.webp" alt="Two" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"></wa-carousel-item>`,
 	}
 	for _, expected := range want {
 		if !strings.Contains(got, expected) {
@@ -202,9 +202,9 @@ Wyatt 13</p>
 
 	want := []string{
 		`<wa-carousel navigation="true" pagination="true">`,
-		`<figure class="markata-wa-carousel-figure"><img src="/family.webp" alt="Family" loading="lazy" decoding="async" style="object-fit: contain !important;"><figcaption>family</figcaption></figure>`,
-		`<figure class="markata-wa-carousel-figure"><img src="/ayla.webp" alt="Ayla" loading="lazy" decoding="async" style="object-fit: contain !important;"><figcaption>Ayla 11</figcaption></figure>`,
-		`<figure class="markata-wa-carousel-figure"><img src="/wyatt.webp" alt="Wyatt" loading="lazy" decoding="async" style="object-fit: contain !important;"><figcaption>Wyatt 13</figcaption></figure>`,
+		`<figure class="markata-wa-carousel-figure"><img src="/family.webp" alt="Family" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>family</figcaption></figure>`,
+		`<figure class="markata-wa-carousel-figure"><img src="/ayla.webp" alt="Ayla" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>Ayla 11</figcaption></figure>`,
+		`<figure class="markata-wa-carousel-figure"><img src="/wyatt.webp" alt="Wyatt" loading="lazy" decoding="async" style="display: block; max-width: 100%; max-height: 100%; width: auto !important; height: auto !important; object-fit: contain !important; border-radius: var(--radius-lg);"><figcaption>Wyatt 13</figcaption></figure>`,
 	}
 	for _, expected := range want {
 		if !strings.Contains(post.ArticleHTML, expected) {
