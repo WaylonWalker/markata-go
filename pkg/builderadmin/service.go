@@ -143,6 +143,7 @@ type ReleaseView struct {
 	CreatedAt    time.Time `json:"created_at"`
 	Current      bool      `json:"current"`
 	BuildID      string    `json:"build_id,omitempty"`
+	BuildStatus  string    `json:"build_status,omitempty"`
 	RollbackOnly bool      `json:"rollback_only"`
 }
 
@@ -1288,10 +1289,19 @@ func (s *Service) discoverReleases() []ReleaseView {
 		return nil
 	}
 	current := s.currentReleaseID()
-	buildByRelease := make(map[string]string)
-	for _, record := range s.snapshotState().Builds {
-		if record.ReleaseID != "" && buildByRelease[record.ReleaseID] == "" {
-			buildByRelease[record.ReleaseID] = record.ID
+	type releaseBuildMeta struct {
+		id       string
+		status   string
+		finished time.Time
+	}
+	buildByRelease := make(map[string]releaseBuildMeta)
+	for _, record := range s.viewState().Builds {
+		if record.ReleaseID != "" && buildByRelease[record.ReleaseID].id == "" {
+			buildByRelease[record.ReleaseID] = releaseBuildMeta{
+				id:       record.ID,
+				status:   record.Status,
+				finished: record.FinishedAt,
+			}
 		}
 	}
 	views := make([]ReleaseView, 0, len(entries))
@@ -1303,17 +1313,31 @@ func (s *Service) discoverReleases() []ReleaseView {
 		if err != nil {
 			continue
 		}
+		meta := buildByRelease[entry.Name()]
+		createdAt := info.ModTime().UTC()
+		if !meta.finished.IsZero() {
+			createdAt = meta.finished.UTC()
+		} else if parsed, ok := releaseTimestampFromID(entry.Name()); ok {
+			createdAt = parsed
+		}
 		views = append(views, ReleaseView{
 			ID:           entry.Name(),
 			Path:         filepath.Join(releasesDir, entry.Name()),
-			CreatedAt:    info.ModTime().UTC(),
+			CreatedAt:    createdAt,
 			Current:      entry.Name() == current,
-			BuildID:      buildByRelease[entry.Name()],
+			BuildID:      meta.id,
+			BuildStatus:  meta.status,
 			RollbackOnly: true,
 		})
 	}
 	sort.Slice(views, func(i, j int) bool {
-		return views[i].CreatedAt.After(views[j].CreatedAt)
+		if views[i].Current != views[j].Current {
+			return views[i].Current
+		}
+		if !views[i].CreatedAt.Equal(views[j].CreatedAt) {
+			return views[i].CreatedAt.After(views[j].CreatedAt)
+		}
+		return views[i].ID > views[j].ID
 	})
 	return views
 }
@@ -1452,6 +1476,27 @@ func uiStatusClass(value string) string {
 	}
 }
 
+func releaseTimestampFromID(id string) (time.Time, bool) {
+	formats := []struct {
+		layout string
+		length int
+	}{
+		{layout: "20060102T150405Z", length: len("20060102T150405Z")},
+		{layout: "20060102150405", length: len("20060102150405")},
+	}
+	for _, format := range formats {
+		if len(id) < format.length {
+			continue
+		}
+		candidate := id[:format.length]
+		ts, err := time.Parse(format.layout, candidate)
+		if err == nil {
+			return ts.UTC(), true
+		}
+	}
+	return time.Time{}, false
+}
+
 const indexHTML = `<!doctype html>
 <html lang="en">
 <head>
@@ -1498,8 +1543,10 @@ const indexHTML = `<!doctype html>
       display: flex;
       justify-content: space-between;
       gap: 20px;
-      align-items: flex-start;
+      align-items: flex-end;
       margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line-soft);
     }
     .titleblock h1 {
       font-size: clamp(2rem, 4vw, 3.6rem);
@@ -1512,15 +1559,31 @@ const indexHTML = `<!doctype html>
       color: var(--muted);
       max-width: 72ch;
     }
+    .title-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .meta-chip {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .meta-chip strong {
+      margin: 0;
+      color: var(--text);
+      letter-spacing: 0;
+      font-size: 0.78rem;
+    }
     .hero {
       display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 18px;
       margin-bottom: 20px;
     }
@@ -1531,12 +1594,12 @@ const indexHTML = `<!doctype html>
       margin-bottom: 20px;
     }
     .card {
-      background: var(--panel);
+      background: transparent;
       border: 1px solid var(--line-soft);
-      border-radius: 28px;
-      padding: 18px 20px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: none;
+      backdrop-filter: none;
     }
     .card strong, .muted-label {
       display: block;
@@ -1555,7 +1618,8 @@ const indexHTML = `<!doctype html>
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      align-content: start;
+      align-content: center;
+      justify-content: flex-end;
     }
     .actions form { margin: 0; }
     button {
@@ -1581,6 +1645,9 @@ const indexHTML = `<!doctype html>
     }
     .panel-head h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
     .panel-head span { color: var(--muted); font-size: 0.8rem; }
+    .workspace-head {
+      margin-bottom: 10px;
+    }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td {
       text-align: left;
@@ -1671,11 +1738,11 @@ const indexHTML = `<!doctype html>
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
     @media (max-width: 1200px) {
-      .hero, .section-grid, .grid { grid-template-columns: 1fr 1fr; }
+      .hero, .section-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 800px) {
       main { padding: 14px; }
-      .topbar, .hero, .section-grid, .grid { grid-template-columns: 1fr; display: grid; }
+      .topbar, .hero, .section-grid { grid-template-columns: 1fr; display: grid; }
       .topbar { gap: 14px; }
       table { min-width: 860px; }
     }
@@ -1686,18 +1753,25 @@ const indexHTML = `<!doctype html>
   <div class="topbar">
     <div class="titleblock">
       <h1>Builder Admin</h1>
-      <p>Warm queue-driven builds, release promotion, raw logs, and refresh scheduling for the live go.waylonwalker.com authoring loop.</p>
+      <p>Queue-driven builds, release promotion, refresh scheduling, and search/build runtime controls for the live go.waylonwalker.com authoring loop.</p>
+      <div class="title-meta">
+        <div class="meta-chip">Current <strong id="current-release">{{ .CurrentID }}</strong></div>
+        <div class="meta-chip">Queue <strong id="queue-count">{{ len .State.Queue }}</strong></div>
+        <div class="meta-chip">Builds <strong id="build-count">{{ len .State.Builds }}</strong></div>
+        <div class="meta-chip">Refreshes <strong id="refresh-count">{{ len .State.Refresh }}</strong></div>
+        <div class="meta-chip">Releases <strong id="release-count">{{ len .Releases }}</strong></div>
+      </div>
     </div>
     <div class="sync-status" id="sync-status">Live polling every 2s</div>
   </div>
 
   <div class="hero">
     <section class="card">
-      <div class="panel-head"><h2>Live State</h2><span>desktop-first control surface</span></div>
-      <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0;">
+      <div class="panel-head"><h2>Live State</h2><span>current release and active worker</span></div>
+      <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
         <div>
-          <strong>Current release</strong>
-          <div class="value mono" id="current-release">{{ .CurrentID }}</div>
+          <strong>Live release</strong>
+          <div class="value mono">{{ .CurrentID }}</div>
         </div>
         <div>
           <strong>Current path</strong>
@@ -1715,25 +1789,6 @@ const indexHTML = `<!doctype html>
       {{ range .RefreshTasks }}
       <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
       {{ end }}
-    </section>
-  </div>
-
-  <div class="grid">
-    <section class="card">
-      <strong>Queue</strong>
-      <div class="value" id="queue-count">{{ len .State.Queue }}</div>
-    </section>
-    <section class="card">
-      <strong>Build history</strong>
-      <div class="value" id="build-count">{{ len .State.Builds }}</div>
-    </section>
-    <section class="card">
-      <strong>Refresh history</strong>
-      <div class="value" id="refresh-count">{{ len .State.Refresh }}</div>
-    </section>
-    <section class="card">
-      <strong>Releases</strong>
-      <div class="value" id="release-count">{{ len .Releases }}</div>
     </section>
   </div>
 
@@ -1777,7 +1832,7 @@ const indexHTML = `<!doctype html>
   </div>
 
   <section class="card wide tab-shell">
-    <div class="panel-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
+    <div class="panel-head workspace-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
     <nav class="tabs">
       <a href="#builds" data-tab-link="builds">Builds</a>
       <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
@@ -1830,7 +1885,7 @@ const indexHTML = `<!doctype html>
 
     <section id="releases" class="tab-panel" data-tab-panel="releases">
       <table>
-        <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
+        <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="releases-body">
         {{ range .Releases }}
         <tr>
@@ -1838,10 +1893,11 @@ const indexHTML = `<!doctype html>
           <td>{{ if .Current }}<span class="pill {{ statusClass "live" }}">live</span>{{ end }}</td>
           <td class="time-stamp">{{ since .CreatedAt }}</td>
           <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
+          <td>{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
           <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
         {{ else }}
-        <tr><td colspan="5">No releases found.</td></tr>
+        <tr><td colspan="6">No releases found.</td></tr>
         {{ end }}
         </tbody>
       </table>
@@ -2072,6 +2128,7 @@ const indexHTML = `<!doctype html>
         '<td>' + (item.current ? statusPill('live') : '') + '</td>' +
         '<td class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
         '<td>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
+        '<td>' + (item.build_status ? statusPill(item.build_status) : '') + '</td>' +
         '<td>' + action + '</td>' +
       '</tr>';
     }).join('');
