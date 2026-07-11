@@ -9,6 +9,8 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +28,8 @@ const (
 	defaultLogDirName   = "logs"
 	defaultStateName    = "state.json"
 	defaultOverrideName = "overrides"
+	defaultLeaderName   = "leader.json"
+	defaultLockName     = "leader.lock"
 	defaultListenHost   = "127.0.0.1"
 	defaultListenPort   = 8080
 	defaultReleaseKeep  = 10
@@ -148,13 +152,26 @@ type Service struct {
 	statePath    string
 	logDir       string
 	overrideDir  string
+	leaderPath   string
 	queueCh      chan queueRequest
 	watchMu      sync.Mutex
 	watchChanged map[string]struct{}
 	watchTimer   *time.Timer
 	stateMu      sync.Mutex
 	state        State
+	leaderMu     sync.RWMutex
+	leader       bool
+	leaderCancel context.CancelFunc
+	leaderLock   *os.File
+	instanceID   string
+	instanceAddr string
 	server       *http.Server
+}
+
+type leaderRecord struct {
+	InstanceID string    `json:"instance_id"`
+	Addr       string    `json:"addr"`
+	AcquiredAt time.Time `json:"acquired_at"`
 }
 
 type queueRequest struct {
@@ -219,29 +236,39 @@ func New(cfg Config) (*Service, error) {
 		statePath:    filepath.Join(cfg.HistoryDir, defaultStateName),
 		logDir:       filepath.Join(cfg.HistoryDir, defaultLogDirName),
 		overrideDir:  filepath.Join(cfg.HistoryDir, defaultOverrideName),
+		leaderPath:   filepath.Join(cfg.HistoryDir, defaultLeaderName),
 		queueCh:      make(chan queueRequest, 128),
 		watchChanged: make(map[string]struct{}),
+		instanceID:   os.Getenv("POD_NAME"),
 	}
+	if s.instanceID == "" {
+		s.instanceID = hostSuffix()
+	}
+	instanceHost := os.Getenv("POD_IP")
+	if instanceHost == "" {
+		instanceHost = cfg.Host
+	}
+	s.instanceAddr = fmt.Sprintf("%s:%d", instanceHost, cfg.Port)
 	if err := os.MkdirAll(s.logDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create log dir: %w", err)
 	}
 	if err := os.MkdirAll(s.overrideDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create override dir: %w", err)
 	}
+	lockPath := filepath.Join(cfg.HistoryDir, defaultLockName)
+	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("open leader lock: %w", err)
+	}
+	s.leaderLock = lockFile
 	if err := s.loadState(); err != nil {
+		_ = lockFile.Close()
 		return nil, err
 	}
 	return s, nil
 }
 
 func (s *Service) Start(ctx context.Context) error {
-	go s.worker(ctx)
-	for i := range s.cfg.RefreshTasks {
-		go s.runRefreshScheduler(ctx, s.cfg.RefreshTasks[i])
-	}
-	if s.cfg.WatchEnabled {
-		go s.watchSource(ctx)
-	}
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 	s.server = &http.Server{
@@ -249,17 +276,151 @@ func (s *Service) Start(ctx context.Context) error {
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	go s.runLeadershipLoop(ctx)
 	go func() {
 		<-ctx.Done()
+		s.releaseLeadership()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = s.server.Shutdown(shutdownCtx)
 	}()
 	err := s.server.ListenAndServe()
+	if s.leaderLock != nil {
+		_ = s.leaderLock.Close()
+	}
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
+}
+
+func (s *Service) runLeadershipLoop(ctx context.Context) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		s.tryBecomeLeader(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+func (s *Service) tryBecomeLeader(ctx context.Context) {
+	if s.isLeader() || s.leaderLock == nil {
+		return
+	}
+	if err := syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return
+	}
+	if err := s.writeLeaderRecord(); err != nil {
+		_ = syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_UN)
+		return
+	}
+	leaderCtx, cancel := context.WithCancel(ctx)
+	s.leaderMu.Lock()
+	s.leader = true
+	s.leaderCancel = cancel
+	s.leaderMu.Unlock()
+	s.resumeLeaderSession()
+	go s.worker(leaderCtx)
+	for i := range s.cfg.RefreshTasks {
+		go s.runRefreshScheduler(leaderCtx, s.cfg.RefreshTasks[i])
+	}
+	if s.cfg.WatchEnabled {
+		go s.watchSource(leaderCtx)
+	}
+}
+
+func (s *Service) releaseLeadership() {
+	s.leaderMu.Lock()
+	if !s.leader {
+		s.leaderMu.Unlock()
+		return
+	}
+	cancel := s.leaderCancel
+	s.leader = false
+	s.leaderCancel = nil
+	s.leaderMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	if s.leaderLock != nil {
+		_ = syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_UN)
+	}
+}
+
+func (s *Service) isLeader() bool {
+	s.leaderMu.RLock()
+	defer s.leaderMu.RUnlock()
+	return s.leader
+}
+
+func (s *Service) writeLeaderRecord() error {
+	record := leaderRecord{
+		InstanceID: s.instanceID,
+		Addr:       s.instanceAddr,
+		AcquiredAt: time.Now().UTC(),
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := s.leaderPath + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.leaderPath)
+}
+
+func (s *Service) readLeaderRecord() (leaderRecord, error) {
+	data, err := os.ReadFile(s.leaderPath)
+	if err != nil {
+		return leaderRecord{}, err
+	}
+	var record leaderRecord
+	if err := json.Unmarshal(data, &record); err != nil {
+		return leaderRecord{}, err
+	}
+	return record, nil
+}
+
+func (s *Service) resumeLeaderSession() {
+	queued := s.recoverQueuedState()
+	for _, item := range queued {
+		if req, ok := s.queueRequestFromQueued(item); ok {
+			s.queueCh <- req
+		}
+	}
+}
+
+func (s *Service) recoverQueuedState() []QueuedOperation {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	queued := append([]QueuedOperation(nil), s.state.Queue...)
+	if s.state.Running != nil {
+		s.state.Running = nil
+		s.saveStateLocked()
+	}
+	return queued
+}
+
+func (s *Service) queueRequestFromQueued(queued QueuedOperation) (queueRequest, bool) {
+	req := queueRequest{QueuedOperation: queued}
+	switch queued.Kind {
+	case "build", "rollback":
+		return req, true
+	case "refresh":
+		task, ok := s.findRefreshTask(queued.TaskName)
+		if !ok {
+			return queueRequest{}, false
+		}
+		req.commandArgs = append([]string(nil), task.Args...)
+		return req, true
+	default:
+		return queueRequest{}, false
+	}
 }
 
 func (s *Service) registerRoutes(mux *http.ServeMux) {
@@ -274,15 +435,17 @@ func (s *Service) registerRoutes(mux *http.ServeMux) {
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	state := s.viewState()
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok",
-		"queue":  len(s.snapshotState().Queue),
+		"queue":  len(state.Queue),
+		"leader": s.isLeader(),
 	})
 }
 
 func (s *Service) handleState(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	state := s.snapshotState()
+	state := s.viewState()
 	_ = json.NewEncoder(w).Encode(struct {
 		State        State         `json:"state"`
 		Releases     []ReleaseView `json:"releases"`
@@ -302,6 +465,9 @@ func (s *Service) handleState(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Service) handleBuilds(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		if s.handleStandbyMutation(w, r) {
+			return
+		}
 		if err := s.enqueueBuild("manual-ui", "Manual build from admin UI", nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -315,6 +481,9 @@ func (s *Service) handleBuilds(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleRefreshRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.handleStandbyMutation(w, r) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/refresh/")
@@ -332,6 +501,9 @@ func (s *Service) handleRefreshRun(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleReleaseAction(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.handleStandbyMutation(w, r) {
 		return
 	}
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/releases/")
@@ -369,10 +541,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 			return fmt.Sprintf("%.2fs", float64(ms)/1000)
 		},
 		"since": func(t time.Time) string {
-			if t.IsZero() {
-				return ""
-			}
-			return t.Format(time.RFC3339)
+			return formatUITimestamp(t, time.Now().UTC())
 		},
 		"summaryPreview": func(lines []string) []string {
 			if len(lines) <= 6 {
@@ -380,8 +549,9 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 			}
 			return lines[len(lines)-6:]
 		},
+		"statusClass": uiStatusClass,
 	}).Parse(indexHTML))
-	state := s.snapshotState()
+	state := s.viewState()
 	data := struct {
 		State        State
 		Releases     []ReleaseView
@@ -815,6 +985,28 @@ func (s *Service) runLoggedCommand(ctx context.Context, log io.Writer, cwd strin
 	return err
 }
 
+func (s *Service) handleStandbyMutation(w http.ResponseWriter, r *http.Request) bool {
+	if s.isLeader() {
+		return false
+	}
+	record, err := s.readLeaderRecord()
+	if err != nil || record.Addr == "" || record.InstanceID == s.instanceID {
+		http.Error(w, "builder-admin standby is waiting for the active leader", http.StatusServiceUnavailable)
+		return true
+	}
+	target, err := url.Parse("http://" + record.Addr)
+	if err != nil {
+		http.Error(w, "builder-admin leader address is unavailable", http.StatusServiceUnavailable)
+		return true
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ErrorHandler = func(rw http.ResponseWriter, _ *http.Request, proxyErr error) {
+		http.Error(rw, fmt.Sprintf("builder-admin leader proxy failed: %v", proxyErr), http.StatusBadGateway)
+	}
+	proxy.ServeHTTP(w, r)
+	return true
+}
+
 func (s *Service) runRefreshScheduler(ctx context.Context, task RefreshTaskConfig) {
 	ticker := time.NewTicker(task.interval)
 	defer ticker.Stop()
@@ -934,6 +1126,32 @@ func (s *Service) snapshotState() State {
 	return clone
 }
 
+func (s *Service) readPersistedState() (State, error) {
+	data, err := os.ReadFile(s.statePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return State{}, nil
+		}
+		return State{}, err
+	}
+	var state State
+	if err := json.Unmarshal(data, &state); err != nil {
+		return State{}, err
+	}
+	return state, nil
+}
+
+func (s *Service) viewState() State {
+	if s.isLeader() {
+		return s.snapshotState()
+	}
+	state, err := s.readPersistedState()
+	if err == nil {
+		return state
+	}
+	return s.snapshotState()
+}
+
 func (s *Service) pushQueued(queued QueuedOperation) {
 	s.stateMu.Lock()
 	s.state.Queue = append(s.state.Queue, queued)
@@ -1043,24 +1261,11 @@ func (s *Service) pruneRefreshHistoryLocked() {
 }
 
 func (s *Service) loadState() error {
-	data, err := os.ReadFile(s.statePath)
+	state, err := s.readPersistedState()
 	if err != nil {
-		if os.IsNotExist(err) {
-			s.state = State{}
-			return nil
-		}
 		return fmt.Errorf("read state: %w", err)
 	}
-	if err := json.Unmarshal(data, &s.state); err != nil {
-		return fmt.Errorf("decode state: %w", err)
-	}
-	// Queue and running state are in-memory worker concerns. If the pod restarted,
-	// the old worker is gone, so clear transient state instead of showing ghosts.
-	s.state.Queue = nil
-	s.state.Running = nil
-	s.stateMu.Lock()
-	s.saveStateLocked()
-	s.stateMu.Unlock()
+	s.state = state
 	return nil
 }
 
@@ -1204,6 +1409,47 @@ func hostSuffix() string {
 		return "host"
 	}
 	return host
+}
+
+func formatUITimestamp(ts, now time.Time) string {
+	if ts.IsZero() {
+		return ""
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	return fmt.Sprintf("%s (%s ago)", ts.UTC().Format(time.RFC3339), humanizeAge(now.Sub(ts)))
+}
+
+func humanizeAge(d time.Duration) string {
+	if d < 0 {
+		d = -d
+	}
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d.Round(time.Second)/time.Second))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Round(time.Minute)/time.Minute))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh", int(d.Round(time.Hour)/time.Hour))
+	default:
+		return fmt.Sprintf("%dd", int(d.Round(24*time.Hour)/(24*time.Hour)))
+	}
+}
+
+func uiStatusClass(value string) string {
+	switch value {
+	case "success", "live", "ready", "idle":
+		return "status-success"
+	case "running", "build", "refresh", "promote", "prepare", "prune":
+		return "status-running"
+	case "queued", "pending", "starting":
+		return "status-queued"
+	case "failed", "error", "cancelled":
+		return "status-failed"
+	default:
+		return "status-neutral"
+	}
 }
 
 const indexHTML = `<!doctype html>
@@ -1385,6 +1631,11 @@ const indexHTML = `<!doctype html>
       letter-spacing: 0.08em;
       font-size: 0.7rem;
     }
+    .status-success { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.14); color: #bbf7d0; }
+    .status-running { border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.14); color: #bfdbfe; }
+    .status-queued { border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.14); color: #fde68a; }
+    .status-failed { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.16); color: #fecaca; }
+    .status-neutral { border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--text); }
     .summary-cell { min-width: 0; }
     .summary-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 6px; }
     .summary-list { display: grid; gap: 6px; }
@@ -1392,6 +1643,7 @@ const indexHTML = `<!doctype html>
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .wide { overflow-x: auto; }
     .muted { color: var(--muted); }
+    .time-stamp { white-space: nowrap; }
     .tabs {
       display: flex;
       flex-wrap: wrap;
@@ -1417,9 +1669,7 @@ const indexHTML = `<!doctype html>
     }
     .sync-status { color: var(--muted); font-size: 0.78rem; }
     .tab-panel { display: none; }
-    .tab-panel:target { display: block; }
-    .tab-panel.default-panel { display: block; }
-    .tab-shell .tab-panel:target ~ .default-panel { display: none; }
+    .tab-panel.is-active { display: block; }
     @media (max-width: 1200px) {
       .hero, .section-grid, .grid { grid-template-columns: 1fr 1fr; }
     }
@@ -1455,7 +1705,7 @@ const indexHTML = `<!doctype html>
         </div>
         <div>
           <strong>Active work</strong>
-          <div class="value" id="active-work">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill">{{ .State.Running.Phase }}</span>{{ else }}idle{{ end }}</div>
+          <div class="value" id="active-work">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span>{{ else }}<span class="pill {{ statusClass "idle" }}">idle</span>{{ end }}</div>
         </div>
       </div>
     </section>
@@ -1500,7 +1750,7 @@ const indexHTML = `<!doctype html>
         <td>{{ .TriggerType }}</td>
         <td>{{ .Detail }}</td>
         <td>{{ range .Changed }}<div><code>{{ . }}</code></div>{{ end }}</td>
-        <td>{{ since .EnqueuedAt }}</td>
+          <td class="time-stamp">{{ since .EnqueuedAt }}</td>
       </tr>
       {{ else }}
       <tr><td colspan="6">Queue is empty.</td></tr>
@@ -1517,8 +1767,8 @@ const indexHTML = `<!doctype html>
       <div><strong>Kind</strong><div class="value">{{ .State.Running.Kind }}</div></div>
       <div><strong>Trigger</strong><div class="value">{{ .State.Running.TriggerType }}</div></div>
       <div><strong>Detail</strong><div class="value">{{ .State.Running.Detail }}</div></div>
-      <div><strong>Started</strong><div class="value mono">{{ since .State.Running.StartedAt }}</div></div>
-      <div><strong>Phase</strong><div class="value"><span class="pill">{{ .State.Running.Phase }}</span></div></div>
+      <div><strong>Started</strong><div class="value mono time-stamp">{{ since .State.Running.StartedAt }}</div></div>
+      <div><strong>Phase</strong><div class="value"><span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span></div></div>
       {{ else }}
       <div class="muted">No build or refresh is running right now.</div>
       {{ end }}
@@ -1529,20 +1779,21 @@ const indexHTML = `<!doctype html>
   <section class="card wide tab-shell">
     <div class="panel-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
     <nav class="tabs">
-      <a href="#builds" class="active" data-tab-link="builds">Builds</a>
+      <a href="#builds" data-tab-link="builds">Builds</a>
       <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
       <a href="#releases" data-tab-link="releases">Releases</a>
     </nav>
 
-    <section id="builds" class="tab-panel default-panel">
+    <section id="builds" class="tab-panel" data-tab-panel="builds">
       <table>
-        <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
+        <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Finished</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
         <tbody id="builds-body">
         {{ range .State.Builds }}
         <tr>
           <td><code>{{ .ID }}</code></td>
-          <td>{{ .Status }}</td>
+          <td><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
           <td>{{ .TriggerType }}</td>
+          <td class="time-stamp">{{ since .FinishedAt }}</td>
           <td>{{ msToSeconds .TotalMS }}</td>
           <td>{{ msToSeconds .BuildMS }}</td>
           <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
@@ -1550,13 +1801,13 @@ const indexHTML = `<!doctype html>
           <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
         </tr>
         {{ else }}
-        <tr><td colspan="8">No builds yet.</td></tr>
+        <tr><td colspan="9">No builds yet.</td></tr>
         {{ end }}
         </tbody>
       </table>
     </section>
 
-    <section id="refresh-runs" class="tab-panel">
+    <section id="refresh-runs" class="tab-panel" data-tab-panel="refresh-runs">
       <table>
         <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
         <tbody id="refresh-body">
@@ -1564,7 +1815,7 @@ const indexHTML = `<!doctype html>
         <tr>
           <td><code>{{ .ID }}</code></td>
           <td>{{ .TaskName }}</td>
-          <td>{{ .Status }}</td>
+          <td><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
           <td>{{ msToSeconds .TotalMS }}</td>
           <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
           <td>{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
@@ -1577,15 +1828,15 @@ const indexHTML = `<!doctype html>
       </table>
     </section>
 
-    <section id="releases" class="tab-panel">
+    <section id="releases" class="tab-panel" data-tab-panel="releases">
       <table>
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Action</th></tr></thead>
         <tbody id="releases-body">
         {{ range .Releases }}
         <tr>
           <td><code>{{ .ID }}</code></td>
-          <td>{{ if .Current }}live{{ end }}</td>
-          <td>{{ since .CreatedAt }}</td>
+          <td>{{ if .Current }}<span class="pill {{ statusClass "live" }}">live</span>{{ end }}</td>
+          <td class="time-stamp">{{ since .CreatedAt }}</td>
           <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
           <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
@@ -1624,11 +1875,55 @@ const indexHTML = `<!doctype html>
 
   function fmtTime(value) {
     if (!value) return '';
-    return value;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toISOString().replace('.000', '') + ' (' + timeAgo(date) + ' ago)';
   }
 
   function fmtSeconds(ms) {
     return ((ms || 0) / 1000).toFixed(2) + 's';
+  }
+
+  function timeAgo(date) {
+    const delta = Math.max(0, Date.now() - date.getTime());
+    const seconds = Math.round(delta / 1000);
+    if (seconds < 60) return seconds + 's';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return minutes + 'm';
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return hours + 'h';
+    return Math.round(hours / 24) + 'd';
+  }
+
+  function statusClass(value) {
+    switch (value) {
+      case 'success':
+      case 'live':
+      case 'ready':
+      case 'idle':
+        return 'status-success';
+      case 'running':
+      case 'build':
+      case 'refresh':
+      case 'promote':
+      case 'prepare':
+      case 'prune':
+        return 'status-running';
+      case 'queued':
+      case 'pending':
+      case 'starting':
+        return 'status-queued';
+      case 'failed':
+      case 'error':
+      case 'cancelled':
+        return 'status-failed';
+      default:
+        return 'status-neutral';
+    }
+  }
+
+  function statusPill(value) {
+    return '<span class="pill ' + statusClass(value) + '">' + escapeHtml(value) + '</span>';
   }
 
   function faviconDataURL(svg) {
@@ -1684,6 +1979,9 @@ const indexHTML = `<!doctype html>
     document.querySelectorAll('[data-tab-link]').forEach((link) => {
       link.classList.toggle('active', link.dataset.tabLink === active);
     });
+    document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+      panel.classList.toggle('is-active', panel.dataset.tabPanel === active);
+    });
   }
 
   function renderQueue(items) {
@@ -1699,7 +1997,7 @@ const indexHTML = `<!doctype html>
         '<td>' + escapeHtml(item.trigger_type) + '</td>' +
         '<td>' + escapeHtml(item.detail) + '</td>' +
         '<td>' + changed + '</td>' +
-        '<td>' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
+        '<td class="time-stamp">' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
       '</tr>';
     }).join('');
   }
@@ -1707,23 +2005,23 @@ const indexHTML = `<!doctype html>
   function renderRunning(running) {
     if (!running) {
       runningPanel.innerHTML = '<div class="muted">No build or refresh is running right now.</div>';
-      activeWork.innerHTML = 'idle';
+      activeWork.innerHTML = statusPill('idle');
       return;
     }
-    activeWork.innerHTML = escapeHtml(running.kind) + ' <span class="pill">' + escapeHtml(running.phase) + '</span>';
+    activeWork.innerHTML = escapeHtml(running.kind) + ' ' + statusPill(running.phase);
     runningPanel.innerHTML = [
       ['ID', '<div class="value mono">' + escapeHtml(running.id) + '</div>'],
       ['Kind', '<div class="value">' + escapeHtml(running.kind) + '</div>'],
       ['Trigger', '<div class="value">' + escapeHtml(running.trigger_type) + '</div>'],
       ['Detail', '<div class="value">' + escapeHtml(running.detail) + '</div>'],
-      ['Started', '<div class="value mono">' + escapeHtml(fmtTime(running.started_at)) + '</div>'],
-      ['Phase', '<div class="value"><span class="pill">' + escapeHtml(running.phase) + '</span></div>']
+      ['Started', '<div class="value mono time-stamp">' + escapeHtml(fmtTime(running.started_at)) + '</div>'],
+      ['Phase', '<div class="value">' + statusPill(running.phase) + '</div>']
     ].map(([label, value]) => '<div><strong>' + label + '</strong>' + value + '</div>').join('');
   }
 
   function renderBuilds(items) {
     if (!items || !items.length) {
-      buildsBody.innerHTML = '<tr><td colspan="8">No builds yet.</td></tr>';
+      buildsBody.innerHTML = '<tr><td colspan="9">No builds yet.</td></tr>';
       return;
     }
     buildsBody.innerHTML = items.map((item) => {
@@ -1731,8 +2029,9 @@ const indexHTML = `<!doctype html>
       const summary = lines ? '<div class="summary-meta">' + (item.perf_summary || []).length + ' perf lines</div><div class="summary-list mono">' + lines + '</div>' : '';
       return '<tr>' +
         '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + escapeHtml(item.status) + '</td>' +
+        '<td>' + statusPill(item.status) + '</td>' +
         '<td>' + escapeHtml(item.trigger_type) + '</td>' +
+        '<td class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
         '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
         '<td>' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
         '<td>' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
@@ -1752,7 +2051,7 @@ const indexHTML = `<!doctype html>
       return '<tr>' +
         '<td><code>' + escapeHtml(item.id) + '</code></td>' +
         '<td>' + escapeHtml(item.task_name) + '</td>' +
-        '<td>' + escapeHtml(item.status) + '</td>' +
+        '<td>' + statusPill(item.status) + '</td>' +
         '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
         '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
         '<td>' + (item.enqueued_build_id ? '<code>' + escapeHtml(item.enqueued_build_id) + '</code>' : '') + '</td>' +
@@ -1770,8 +2069,8 @@ const indexHTML = `<!doctype html>
       const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><button class="secondary" type="submit">Promote</button></form>';
       return '<tr>' +
         '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + (item.current ? 'live' : '') + '</td>' +
-        '<td>' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
+        '<td>' + (item.current ? statusPill('live') : '') + '</td>' +
+        '<td class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
         '<td>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
         '<td>' + action + '</td>' +
       '</tr>';

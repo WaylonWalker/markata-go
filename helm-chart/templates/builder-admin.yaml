@@ -11,6 +11,12 @@ spec:
   replicas: 1
   strategy:
     type: {{ .Values.builderAdmin.strategy.type | quote }}
+    {{- if eq .Values.builderAdmin.strategy.type "RollingUpdate" }}
+    {{- with .Values.builderAdmin.strategy.rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
   selector:
     matchLabels:
       service: "{{ .Values.project_identifier }}-notes-builder-admin"
@@ -114,6 +120,14 @@ spec:
                 name: {{ .Values.markataEncryption.secretName | quote }}
           {{- end }}
           env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: HTTP_PROXY
               value: {{ .Values.build.proxy.http | quote }}
             - name: HTTPS_PROXY

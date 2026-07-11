@@ -41,6 +41,7 @@ build:
   failedJobsHistoryLimit: 6
   ttlSecondsAfterFinished: 259200
   activeDeadlineSeconds: 1800
+  # Keep public scheduled builds accurate by default. Enable only for preview-style loops.
   fast: false
   notify:
     enabled: false
@@ -81,10 +82,15 @@ builderAdmin:
   host: 0.0.0.0
   port: 8080
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   watch:
     enabled: true
     debounce: 2s
+  # Queued builder-admin builds default to full builds so blogroll, mentions, and other
+  # user-facing outputs stay live unless an environment explicitly opts into faster previews.
   fast: false
   mermaidMode: client
   releases:
@@ -125,13 +131,18 @@ search:
   enabled: true
   replicaCount: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   configPath: /data/source/markata-go.toml
   image:
     name: ghcr.io/waylonwalker/markata-go-builder
     tag: "latest"
     pullPolicy: IfNotPresent
   mode: watch-content
+  writableIndexStorage:
+    mode: emptyDir
   port: 3001
   watchDebounce: 2s
   waitForSource:
