@@ -38,6 +38,7 @@ Use builder admin when:
 builderAdmin:
   enabled: true
   port: 8080
+  fast: false
   watch:
     enabled: true
     debounce: 2s
@@ -58,6 +59,12 @@ builderAdmin:
         - reader
         - update
 ```
+
+Keep `builderAdmin.fast` at `false` when queued builds publish the live site. In this repo,
+`--fast` is an authoring optimization, not a production-equivalent build mode: it skips
+blogroll, mentions, and other expensive work that can affect user-facing output. Enable it
+only when the admin service is being used as a preview loop and a separate full build path
+still exists for public releases.
 
 ## Accessing The UI
 
@@ -86,6 +93,14 @@ The UI shows:
 - current live release
 - old releases that can be promoted back to live
 - refresh task history
+
+The browser tab favicon also reflects live admin state so you can spot activity without keeping the tab focused:
+
+- idle when nothing is running
+- queued when work is waiting
+- build when a build or rollback is running
+- refresh when a refresh task is running
+- error when UI polling fails
 
 ## Build Triggers
 

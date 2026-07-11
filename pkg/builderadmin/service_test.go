@@ -1,6 +1,9 @@
 package builderadmin
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestIgnoreWatchPath(t *testing.T) {
 	t.Parallel()
@@ -27,5 +30,20 @@ func TestExtractPerfSummaryFromFileMissing(t *testing.T) {
 	t.Parallel()
 	if got := extractPerfSummaryFromFile("/does/not/exist"); got != nil {
 		t.Fatalf("extractPerfSummaryFromFile() = %#v, want nil", got)
+	}
+}
+
+func TestIndexHTMLIncludesDynamicFavicon(t *testing.T) {
+	t.Parallel()
+	checks := []string{
+		`id="app-favicon"`,
+		`function updateFavicon(stateName)`,
+		`function faviconState(state)`,
+		`updateFavicon('error');`,
+	}
+	for _, check := range checks {
+		if !strings.Contains(indexHTML, check) {
+			t.Fatalf("indexHTML missing %q", check)
+		}
 	}
 }
