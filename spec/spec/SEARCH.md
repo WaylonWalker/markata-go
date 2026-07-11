@@ -554,6 +554,7 @@ This is the live-reload server mode for long-running processes.
 - The server ignores generated and cache directories such as `output/`, `.markata/`, `.markata-cache/`, `cache/`, `public/`, and `markout/`
 - On change, the server reloads posts, updates its in-memory view, and rebuilds or refreshes its local index
 - Rebuilds MUST be debounced and serialized to prevent rebuild storms
+- The server SHOULD eagerly warm the rebuilt index before marking the refreshed state ready for queries so the next user request does not pay the rebuild/open cost
 
 #### 3. `read-only-index`
 
@@ -563,6 +564,7 @@ This is the production scale-out mode.
 - The server MUST NOT write the bleve index directory or adjacent hash files in this mode
 - The server SHOULD fail fast on startup when the index is missing, unreadable, or version-incompatible
 - The server SHOULD be safe to run behind a load balancer across multiple pods when all replicas mount the same read-only artifact
+- The server SHOULD open and validate the configured index before readiness succeeds so the first search request is not the readiness probe for index health
 
 ### Result Hydration Requirements
 
@@ -678,8 +680,9 @@ The implementation and docs MUST support three recommended deployment patterns.
 #### Pattern B: Multiple search pods with per-pod writable cache
 
 - each pod mounts the same content/config artifact
-- each pod builds and owns its own local index
+- each pod builds and owns its own pod-local writable index
 - pods are safe to load balance because they do not share a writable index path
+- this is the preferred rolling-update architecture for `watch-content` deployments because old pods may keep serving while new pods pull images, build indexes, and warm their local search state
 
 #### Pattern C: Builder/indexer plus read-only search pods
 
@@ -687,6 +690,14 @@ The implementation and docs MUST support three recommended deployment patterns.
 - search pods mount that artifact read-only
 - search pods run in `read-only-index` mode
 - this is the preferred production scale-out architecture
+
+### Readiness And Warmup Requirements
+
+The standalone search server MUST expose health behavior that distinguishes process liveness from query readiness.
+
+- Startup readiness SHOULD fail until the active index has been opened or built successfully for the configured mode.
+- In `watch-content` mode, content-change rebuilds SHOULD warm the replacement in-memory/search index before subsequent requests observe the new state.
+- The first real search request after startup SHOULD NOT be responsible for paying one-time index-open or index-build latency when the deployment already reported ready.
 
 Recommended Kubernetes deployment ergonomics:
 

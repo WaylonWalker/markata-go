@@ -38,6 +38,10 @@ The service MUST process queued work one item at a time for a given site.
 
 Triggers MUST enqueue work rather than executing builds directly.
 
+Kubernetes rollouts MUST support clean cutover without dropping the currently active builder-admin pod before the replacement pod is ready.
+
+To support that requirement, the service MUST tolerate an active/standby deployment shape where multiple pods may be live briefly but only one pod is allowed to perform mutating work.
+
 Required trigger sources:
 
 - manual UI action
@@ -45,6 +49,28 @@ Required trigger sources:
 - file watch
 - scheduled refresh completion when configured to enqueue a build
 - rollback action
+
+## Leadership And Handoff
+
+When more than one builder-admin pod is running for the same site, exactly one pod MUST hold leadership for mutating work.
+
+The leader is responsible for:
+
+- draining the serialized work queue
+- running file watching
+- running scheduled refresh tasks
+- executing builds and rollbacks
+- persisting queue/running/history state
+
+Standby pods MUST:
+
+- serve the read-only HTTP UI and API state
+- remain ready so rolling updates can keep the old leader serving while the new pod starts
+- refuse or forward mutating requests unless they become leader
+
+If a standby pod receives a mutating HTTP request while another pod is leader, it SHOULD forward that request to the active leader so operator actions do not fail during rollout handoff.
+
+On leadership acquisition after a restart or rollout, persisted queued work MUST be replayed. A previously running in-flight operation MAY be marked interrupted instead of resumed.
 
 ## Build Workflow
 
@@ -100,6 +126,12 @@ Each build record MUST include:
 - whether the result became live
 
 The UI MUST show current queue state, running build state, and the current live release.
+
+The workspace view MUST display one primary panel at a time when switching between builds, refresh runs, and releases. Tabs MUST NOT leave multiple primary panels visually stacked on top of each other.
+
+Build, refresh, running, and release state labels SHOULD use distinct visual status treatment so success, failure, queued, running, and live states are scannable without reading raw text.
+
+Build and release timestamps shown in the UI SHOULD pair an absolute timestamp with a relative age label such as `(5m ago)`.
 
 The UI MUST expose an at-a-glance browser-tab indicator by updating the favicon to reflect the current admin state:
 
@@ -189,6 +221,7 @@ Required chart configuration includes:
 - release retention
 - build history retention
 - refresh task definitions
+- rollout strategy settings for clean active/standby cutover
 - optional ingress/auth settings for future protected access
 
 The first deployment target SHOULD work via `kubectl port-forward` even when no ingress is enabled.

@@ -66,6 +66,10 @@ blogroll, mentions, and other expensive work that can affect user-facing output.
 only when the admin service is being used as a preview loop and a separate full build path
 still exists for public releases.
 
+Current chart defaults also prefer clean rolling cutover instead of stop-then-start replacement.
+Builder-admin keeps one active leader for queue draining, file watching, refresh scheduling, and
+ release promotion while standby pods stay ready during rollout handoff.
+
 ## Accessing The UI
 
 The first version is designed to work well with `kubectl port-forward`.
@@ -101,6 +105,10 @@ The browser tab favicon also reflects live admin state so you can spot activity 
 - build when a build or rollback is running
 - refresh when a refresh task is running
 - error when UI polling fails
+
+The workspace tabs show one primary view at a time so build history, refresh runs, and releases do
+not visually stack on top of each other during tab switches. Build and release timestamps also pair
+the absolute RFC3339 value with a relative age label such as `(5m ago)`.
 
 ## Build Triggers
 
