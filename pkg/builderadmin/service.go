@@ -1212,6 +1212,7 @@ const indexHTML = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Builder Admin</title>
+  <link id="app-favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23525562'/%3E%3Ccircle cx='32' cy='32' r='13' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-dasharray='0.01 82'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: dark;
@@ -1597,6 +1598,7 @@ const indexHTML = `<!doctype html>
   </section>
 </main>
 <script>
+  const favicon = document.getElementById('app-favicon');
   const syncStatus = document.getElementById('sync-status');
   const currentRelease = document.getElementById('current-release');
   const currentPath = document.getElementById('current-path');
@@ -1627,6 +1629,49 @@ const indexHTML = `<!doctype html>
 
   function fmtSeconds(ms) {
     return ((ms || 0) / 1000).toFixed(2) + 's';
+  }
+
+  function faviconDataURL(svg) {
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
+  function buildFaviconSVG(stateName) {
+    const base = {
+      idle: '#525562',
+      queued: '#d97706',
+      build: '#16a34a',
+      refresh: '#2563eb',
+      error: '#dc2626'
+    }[stateName] || '#7c3aed';
+    const icon = {
+      idle: '<path d="M18 33l9 9 19-20" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>',
+      queued: '<circle cx="22" cy="32" r="4" fill="white"/><circle cx="32" cy="32" r="4" fill="white" opacity="0.85"/><circle cx="42" cy="32" r="4" fill="white" opacity="0.7"/>',
+      build: '<circle cx="32" cy="32" r="12" fill="none" stroke="white" stroke-width="6"/><path d="M32 12v9M32 43v9M12 32h9M43 32h9M18 18l6 6M40 40l6 6M46 18l-6 6M18 46l6-6" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>',
+      refresh: '<path d="M18 28a14 14 0 0 1 24-8" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/><path d="M43 13v12H31" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M46 36a14 14 0 0 1-24 8" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/><path d="M21 51V39h12" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>',
+      error: '<path d="M32 18v18" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="44" r="3.5" fill="white"/>'
+    }[stateName] || '<path d="M20 20l24 24M44 20L20 44" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+      '<rect width="64" height="64" rx="16" fill="' + base + '" />' +
+      icon +
+      '</svg>';
+    return svg;
+  }
+
+  function updateFavicon(stateName) {
+    if (!favicon) {
+      return;
+    }
+    favicon.href = faviconDataURL(buildFaviconSVG(stateName));
+  }
+
+  function faviconState(state) {
+    if (state && state.running) {
+      return state.running.kind === 'refresh' ? 'refresh' : 'build';
+    }
+    if (state && Array.isArray(state.queue) && state.queue.length > 0) {
+      return 'queued';
+    }
+    return 'idle';
   }
 
   function summaryPreview(lines) {
@@ -1747,6 +1792,7 @@ const indexHTML = `<!doctype html>
     renderRefresh(state.refresh || []);
     renderReleases(payload.releases || []);
     syncStatus.textContent = 'Live polling every 2s';
+    updateFavicon(faviconState(state));
   }
 
   async function pollState() {
@@ -1759,11 +1805,14 @@ const indexHTML = `<!doctype html>
       renderState(payload);
     } catch (error) {
       syncStatus.textContent = 'Sync stalled: ' + error.message;
+      updateFavicon('error');
     }
   }
 
   window.addEventListener('hashchange', activateTabs);
   activateTabs();
+  updateFavicon('idle');
+  pollState();
   window.setInterval(pollState, 2000);
 </script>
 </body>

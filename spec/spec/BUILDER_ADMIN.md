@@ -101,6 +101,14 @@ Each build record MUST include:
 
 The UI MUST show current queue state, running build state, and the current live release.
 
+The UI MUST expose an at-a-glance browser-tab indicator by updating the favicon to reflect the current admin state:
+
+- idle when nothing is running and the queue is empty
+- queued when work is waiting but not yet running
+- build when a build or rollback is running
+- refresh when a refresh task is running
+- error when live polling fails
+
 ## Releases And Rollback
 
 The service MUST discover releases from the site root `releases/` directory and the `current` symlink.
@@ -166,6 +174,8 @@ Required actions:
 - promote a prior release to live
 
 The service SHOULD also expose JSON endpoints for the same core operations.
+
+The browser UI SHOULD derive favicon state from the same `/api/state` polling payload used to update the dashboard so the tab indicator stays consistent with the visible live state.
 
 ## Helm Integration
 
