@@ -133,6 +133,10 @@ Build, refresh, running, and release state labels SHOULD use distinct visual sta
 
 Build and release timestamps shown in the UI SHOULD pair an absolute timestamp with a relative age label such as `(5m ago)`.
 
+The build-history view MUST prioritize scanning runs over exposing every diagnostic field. Each run entry MUST show its result, trigger, completion time, duration, and produced release when applicable. Raw logs, performance summaries, identifiers, changed paths, errors, and phase timings MUST be available from an explicit per-run details disclosure rather than repeated in every history row.
+
+The UI SHOULD use a compact, GitHub Actions-inspired run-list treatment: a restrained status indicator, a clear primary run label, muted secondary metadata, and one visible primary action per run.
+
 The UI MUST expose an at-a-glance browser-tab indicator by updating the favicon to reflect the current admin state:
 
 - idle when nothing is running and the queue is empty
@@ -225,3 +229,5 @@ Required chart configuration includes:
 - optional ingress/auth settings for future protected access
 
 The first deployment target SHOULD work via `kubectl port-forward` even when no ingress is enabled.
+
+The default rendered-release retention MUST keep at least 25 releases, including the current live release, so operators have more than ten rollback targets by default.

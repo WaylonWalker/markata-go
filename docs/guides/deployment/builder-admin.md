@@ -43,7 +43,7 @@ builderAdmin:
     enabled: true
     debounce: 2s
   releases:
-    keep: 10
+    keep: 25
   history:
     successfulBuilds: 50
     failedBuilds: 100
@@ -109,6 +109,11 @@ The browser tab favicon also reflects live admin state so you can spot activity 
 The workspace tabs show one primary view at a time so build history, refresh runs, and releases do
 not visually stack on top of each other during tab switches. Build and release timestamps also pair
 the absolute RFC3339 value with a relative age label such as `(5m ago)`.
+
+The build history follows the compact run-list pattern used by GitHub Actions: each entry shows the
+result, trigger, finish time, duration, release, and a log link. Open **Details** only when you need
+IDs, changed paths, performance lines, phase timings, or an error. The chart keeps 25 rendered
+releases by default, giving you 24 previous rollback candidates when the current release is included.
 
 ## Build Triggers
 

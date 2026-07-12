@@ -32,7 +32,7 @@ const (
 	defaultLockName     = "leader.lock"
 	defaultListenHost   = "127.0.0.1"
 	defaultListenPort   = 8080
-	defaultReleaseKeep  = 10
+	defaultReleaseKeep  = 25
 )
 
 type Config struct {
@@ -1734,6 +1734,35 @@ const indexHTML = `<!doctype html>
       background: var(--panel-strong);
       border-color: var(--line);
     }
+    .run-list { display: grid; gap: 8px; }
+    .run {
+      display: grid;
+      grid-template-columns: auto minmax(15rem, 1fr) auto auto auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+    .run:hover { border-color: var(--line); background: rgba(255,255,255,0.04); }
+    .run-status { width: 10px; height: 10px; border-radius: 50%; background: #71717a; }
+    .run-status.status-success { background: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,0.12); }
+    .run-status.status-running { background: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,0.12); }
+    .run-status.status-queued { background: #d29922; box-shadow: 0 0 0 3px rgba(210,153,34,0.12); }
+    .run-status.status-failed { background: #f85149; box-shadow: 0 0 0 3px rgba(248,81,73,0.12); }
+    .run-title { min-width: 0; font-weight: 650; }
+    .run-title span { color: var(--muted); font-weight: 400; }
+    .run-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+    .run-action { font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+    details.run-details { grid-column: 2 / -1; color: var(--muted); font-size: 0.82rem; }
+    details.run-details summary { cursor: pointer; width: fit-content; color: var(--muted); }
+    details.run-details summary:hover { color: var(--text); }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+    .detail-grid div { min-width: 0; }
+    .detail-grid strong { margin-bottom: 3px; }
+    .detail-error { color: #fecaca; }
+    .detail-perf { max-height: 14rem; margin-top: 10px; }
     .sync-status { color: var(--muted); font-size: 0.78rem; }
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
@@ -1745,6 +1774,11 @@ const indexHTML = `<!doctype html>
       .topbar, .hero, .section-grid { grid-template-columns: 1fr; display: grid; }
       .topbar { gap: 14px; }
       table { min-width: 860px; }
+      .run { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; }
+      .run-meta { grid-column: 2; white-space: normal; }
+      .run-action { grid-column: 3; grid-row: 1 / span 2; }
+      details.run-details { grid-column: 2 / -1; }
+      .detail-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1840,26 +1874,36 @@ const indexHTML = `<!doctype html>
     </nav>
 
     <section id="builds" class="tab-panel" data-tab-panel="builds">
-      <table>
-        <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Finished</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
-        <tbody id="builds-body">
+      <div class="run-list" id="builds-body">
         {{ range .State.Builds }}
-        <tr>
-          <td><code>{{ .ID }}</code></td>
-          <td><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
-          <td>{{ .TriggerType }}</td>
-          <td class="time-stamp">{{ since .FinishedAt }}</td>
-          <td>{{ msToSeconds .TotalMS }}</td>
-          <td>{{ msToSeconds .BuildMS }}</td>
-          <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
-          <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-          <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
-        </tr>
+        <article class="run">
+          <span class="run-status {{ statusClass .Status }}" aria-label="{{ .Status }}"></span>
+          <div class="run-title">{{ .Status }} <span>via {{ .TriggerType }}</span></div>
+          <div class="run-meta">{{ since .FinishedAt }} · {{ msToSeconds .TotalMS }}</div>
+          <div class="run-meta">{{ if .ReleaseID }}release {{ .ReleaseID }}{{ else }}no release{{ end }}</div>
+          <div class="run-action">{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">View log</a>{{ end }}</div>
+          <details class="run-details">
+            <summary>Details</summary>
+            <div class="detail-grid">
+              <div><strong>Build ID</strong><code>{{ .ID }}</code></div>
+              <div><strong>Total</strong><span>{{ msToSeconds .TotalMS }}</span></div>
+              <div><strong>Release</strong>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ else }}<span>Not published</span>{{ end }}</div>
+              <div><strong>Queue wait</strong><span>{{ msToSeconds .QueueWaitMS }}</span></div>
+              <div><strong>Prepare</strong><span>{{ msToSeconds .PrepareMS }}</span></div>
+              <div><strong>Build</strong><span>{{ msToSeconds .BuildMS }}</span></div>
+              <div><strong>Promote</strong><span>{{ msToSeconds .PromoteMS }}</span></div>
+              <div><strong>Prune</strong><span>{{ msToSeconds .PruneMS }}</span></div>
+            </div>
+            {{ if .ChangedPaths }}<div><strong>Changed paths</strong>{{ range .ChangedPaths }}<code>{{ . }}</code> {{ end }}</div>{{ end }}
+            {{ if .Error }}<div class="detail-error"><strong>Error</strong>{{ .Error }}</div>{{ end }}
+            {{ if .PerfSummary }}<pre class="detail-perf">{{ range .PerfSummary }}{{ . }}
+{{ end }}</pre>{{ end }}
+          </details>
+        </article>
         {{ else }}
-        <tr><td colspan="9">No builds yet.</td></tr>
+        <div class="muted">No builds yet.</div>
         {{ end }}
-        </tbody>
-      </table>
+      </div>
     </section>
 
     <section id="refresh-runs" class="tab-panel" data-tab-panel="refresh-runs">
@@ -2077,23 +2121,36 @@ const indexHTML = `<!doctype html>
 
   function renderBuilds(items) {
     if (!items || !items.length) {
-      buildsBody.innerHTML = '<tr><td colspan="9">No builds yet.</td></tr>';
+      buildsBody.innerHTML = '<div class="muted">No builds yet.</div>';
       return;
     }
     buildsBody.innerHTML = items.map((item) => {
-      const lines = summaryPreview(item.perf_summary || []).map((line) => '<div>' + escapeHtml(line) + '</div>').join('');
-      const summary = lines ? '<div class="summary-meta">' + (item.perf_summary || []).length + ' perf lines</div><div class="summary-list mono">' + lines + '</div>' : '';
-      return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + statusPill(item.status) + '</td>' +
-        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
-        '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
-        '<td>' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
-        '<td>' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
-        '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
-        '<td class="summary-cell">' + summary + '</td>' +
-      '</tr>';
+      const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
+      const error = item.error ? '<div class="detail-error"><strong>Error</strong>' + escapeHtml(item.error) + '</div>' : '';
+      const perf = Array.isArray(item.perf_summary) && item.perf_summary.length ? '<pre class="detail-perf">' + escapeHtml(item.perf_summary.join('\n')) + '</pre>' : '';
+      const release = item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '<span>Not published</span>';
+      const releaseMeta = item.release_id ? 'release ' + escapeHtml(item.release_id) : 'no release';
+      const phaseTiming = (label, value) => '<div><strong>' + label + '</strong><span>' + escapeHtml(fmtSeconds(value)) + '</span></div>';
+      return '<article class="run">' +
+        '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
+        '<div class="run-title">' + escapeHtml(item.status) + ' <span>via ' + escapeHtml(item.trigger_type) + '</span></div>' +
+        '<div class="run-meta">' + escapeHtml(fmtTime(item.finished_at)) + ' · ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
+        '<div class="run-meta">' + releaseMeta + '</div>' +
+        '<div class="run-action">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">View log</a>' : '') + '</div>' +
+        '<details class="run-details"><summary>Details</summary>' +
+          '<div class="detail-grid">' +
+            '<div><strong>Build ID</strong><code>' + escapeHtml(item.id) + '</code></div>' +
+            '<div><strong>Release</strong>' + release + '</div>' +
+            phaseTiming('Total', item.total_ms) +
+            phaseTiming('Queue wait', item.queue_wait_ms) +
+            phaseTiming('Prepare', item.prepare_ms) +
+            phaseTiming('Build', item.build_ms) +
+            phaseTiming('Promote', item.promote_ms) +
+            phaseTiming('Prune', item.prune_ms) +
+          '</div>' +
+          (changed ? '<div><strong>Changed paths</strong>' + changed + '</div>' : '') + error + perf +
+        '</details>' +
+      '</article>';
     }).join('');
   }
 

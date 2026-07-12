@@ -24,7 +24,7 @@ Before making changes:
 2. Inspect content with `markata-go list posts`, `markata-go list feeds`, and `markata-go list tags`.
 3. Search for content by keyword with `markata-go search <query>`.
 4. Use `markata-go explain <topic>` for built-in CLI context.
-5. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
+5. Use `markata-go serve --fast` or `markata-go build --fast` while iterating, then run a full `markata-go build` before treating output as publish-ready.
 6. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
 
 ## Topic Files

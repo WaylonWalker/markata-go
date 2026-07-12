@@ -288,7 +288,7 @@ markata-go builder-admin [flags]
 | `--mermaid-mode` | Override `[markata-go.mermaid].mode` for queued builds | `""` |
 | `--cache-mount` | Optional dedicated cache mount used for `.markata` and `.markata-cache` symlinks | `""` |
 | `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
-| `--releases-keep` | Number of rendered releases to keep on disk | `10` |
+| `--releases-keep` | Number of rendered releases to keep on disk | `25` |
 | `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
 
 #### Examples
@@ -300,12 +300,20 @@ markata-go builder-admin \
   --source-dir /data/source \
   --site-dir /data/site \
   --cache-mount /data/cache \
-  --fast \
   --watch
 
 # Add a scheduled reader refresh that enqueues a build when complete
 markata-go builder-admin \
   --refresh-task 'reader-update|30m|true|markata-go|--config|/data/source/markata-go.toml|reader|update'
+
+# Use --fast only for preview-only authoring loops
+markata-go builder-admin \
+  --config /data/source/markata-go.toml \
+  --source-dir /data/source \
+  --site-dir /data/site \
+  --cache-mount /data/cache \
+  --fast \
+  --watch
 ```
 
 #### Exit Codes
@@ -332,7 +340,8 @@ The build command executes the full 9-stage lifecycle:
 
 When `--verbose` is enabled, build output includes per-stage timing to highlight slow stages.
 `--fast` keeps the same HTML output path but skips minification, CSS purge, Tailwind rebuilds,
-and Pagefind indexing for a tighter dev loop.
+and Pagefind indexing for a tighter dev loop. In builder-admin deployments, prefer full builds
+for anything that becomes the live release; use `--fast` only for preview/iteration paths.
 
 Successful builds also print a compact benchmark summary with:
 

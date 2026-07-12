@@ -1,6 +1,8 @@
 package builderadmin
 
 import (
+	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +24,7 @@ func TestIgnoreWatchPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+			t.Parallel()
 			if got := ignoreWatchPath(root, tt.path); got != tt.want {
 				t.Fatalf("ignoreWatchPath(%q) = %v, want %v", tt.path, got, tt.want)
 			}
@@ -51,6 +54,57 @@ func TestIndexHTMLIncludesDynamicFavicon(t *testing.T) {
 	}
 }
 
+func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
+	t.Parallel()
+	checks := []string{
+		`class="run-list" id="builds-body"`,
+		`class="run-details"`,
+		`<summary>Details</summary>`,
+		`function renderBuilds(items)`,
+		`View log`,
+		`phaseTiming('Queue wait', item.queue_wait_ms)`,
+		`phaseTiming('Prune', item.prune_ms)`,
+	}
+	for _, check := range checks {
+		if !strings.Contains(indexHTML, check) {
+			t.Fatalf("indexHTML missing %q", check)
+		}
+	}
+}
+
+func TestHandleIndex_BuildDetailsIncludeAllPhaseTimings(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if svc.leaderLock != nil {
+			_ = svc.leaderLock.Close()
+		}
+	})
+	svc.leader = true
+	svc.state.Builds = []BuildRecord{{
+		ID:          "build-details",
+		Status:      "success",
+		TriggerType: "manual-ui",
+		TotalMS:     600,
+		QueueWaitMS: 100,
+		PrepareMS:   200,
+		BuildMS:     300,
+		PromoteMS:   400,
+		PruneMS:     500,
+	}}
+	recorder := httptest.NewRecorder()
+	svc.handleIndex(recorder, httptest.NewRequest("GET", "/", nil))
+	body := recorder.Body.String()
+	for _, want := range []string{"Queue wait", "Prepare", "Build", "Promote", "Prune", "0.10s", "0.50s"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rendered index missing %q", want)
+		}
+	}
+}
+
 func TestReleaseTimestampFromID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -65,6 +119,7 @@ func TestReleaseTimestampFromID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, ok := releaseTimestampFromID(tt.id)
 			if ok != tt.ok {
 				t.Fatalf("releaseTimestampFromID(%q) ok=%v want %v", tt.id, ok, tt.ok)
@@ -123,5 +178,59 @@ func TestDiscoverReleasesPrefersBuildFinishedAtAndCurrentFirst(t *testing.T) {
 	}
 	if got := views[0].CreatedAt.Format(time.RFC3339); got != "2026-07-11T20:34:04Z" {
 		t.Fatalf("views[0].CreatedAt=%s want 2026-07-11T20:34:04Z", got)
+	}
+}
+func TestNew_DefaultReleaseRetentionKeepsTwentyFive(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if svc.leaderLock != nil {
+			_ = svc.leaderLock.Close()
+		}
+	})
+	if svc.cfg.ReleasesKeep != 25 {
+		t.Fatalf("ReleasesKeep=%d, want 25", svc.cfg.ReleasesKeep)
+	}
+}
+
+func TestPruneReleases_KeepsCurrentAndTwentyFourRollbackTargets(t *testing.T) {
+	t.Parallel()
+	siteDir := t.TempDir()
+	releasesDir := filepath.Join(siteDir, "releases")
+	if err := os.MkdirAll(releasesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 30 {
+		if err := os.Mkdir(filepath.Join(releasesDir, fmt.Sprintf("release-%02d", i)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(filepath.Join("releases", "release-00"), filepath.Join(siteDir, "current")); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(Config{SiteDir: siteDir, HistoryDir: filepath.Join(siteDir, ".builder-admin")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if svc.leaderLock != nil {
+			_ = svc.leaderLock.Close()
+		}
+	})
+	if err := svc.pruneReleases(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(releasesDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 25 {
+		t.Fatalf("release count=%d, want 25", len(entries))
+	}
+	if _, err := os.Stat(filepath.Join(releasesDir, "release-00")); err != nil {
+		t.Fatalf("current release was pruned: %v", err)
 	}
 }

@@ -54,7 +54,7 @@ func init() {
 	builderAdminCmd.Flags().DurationVar(&builderAdminWatchDebounce, "watch-debounce", 2*time.Second, "debounce window for file-watch rebuilds")
 	builderAdminCmd.Flags().BoolVar(&builderAdminFast, "fast", false, "run queued builds with --fast")
 	builderAdminCmd.Flags().StringVar(&builderAdminMermaidMode, "mermaid-mode", "", "override [markata-go.mermaid].mode for queued builds")
-	builderAdminCmd.Flags().IntVar(&builderAdminReleasesKeep, "releases-keep", 10, "number of rendered releases to keep")
+	builderAdminCmd.Flags().IntVar(&builderAdminReleasesKeep, "releases-keep", 25, "number of rendered releases to keep")
 	builderAdminCmd.Flags().IntVar(&builderAdminSuccessfulBuildsKeep, "successful-builds-keep", 50, "number of successful build records to keep")
 	builderAdminCmd.Flags().IntVar(&builderAdminFailedBuildsKeep, "failed-builds-keep", 100, "number of failed build records to keep")
 	builderAdminCmd.Flags().IntVar(&builderAdminRefreshRunsKeep, "refresh-runs-keep", 100, "number of refresh run records to keep")
