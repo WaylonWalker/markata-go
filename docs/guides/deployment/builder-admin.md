@@ -120,6 +120,10 @@ such as reader feeds; a build renders and promotes a live release. Successful co
 can queue a build, and the detailed refresh history records that linked build. Opening build
 **Details** remains open while the live status refreshes every two seconds.
 
+The compact control panel combines the live release with manual actions. Queued and running work
+appears at the top of the **Builds** list, ahead of completed builds, so you can follow active work
+without scanning separate queue and worker panels.
+
 ## Build Triggers
 
 Builder admin can enqueue builds from:

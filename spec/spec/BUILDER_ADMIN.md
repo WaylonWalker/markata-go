@@ -127,6 +127,8 @@ Each build record MUST include:
 
 The UI MUST show current queue state, running build state, and the current live release.
 
+The UI SHOULD present the live release and manual actions in one compact control panel. Queued and running operations MUST appear at the top of the primary build activity list with distinct status treatment rather than requiring separate queue or running panels.
+
 The workspace view MUST display one primary panel at a time when switching between builds, refresh runs, and releases. Tabs MUST NOT leave multiple primary panels visually stacked on top of each other.
 
 Build, refresh, running, and release state labels SHOULD use distinct visual status treatment so success, failure, queued, running, and live states are scannable without reading raw text.

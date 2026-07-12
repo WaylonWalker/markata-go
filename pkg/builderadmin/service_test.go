@@ -68,6 +68,9 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`const openDetails = new Set`,
 		`Every {{ .Every }}`,
 		`queues a build`,
+		`class="card control-panel actions"`,
+		`live_label: 'Running'`,
+		`live_label: 'Queued'`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(indexHTML, check) {
@@ -96,6 +99,8 @@ func TestHandleIndex_BuildDetailsIncludeAllPhaseTimings(t *testing.T) {
 		}
 	})
 	svc.leader = true
+	svc.state.Running = &RunningOperation{Kind: "build", TriggerType: "manual-ui", Detail: "Manual build from admin UI", Phase: "build"}
+	svc.state.Queue = []QueuedOperation{{Kind: "refresh", TriggerType: "scheduled-refresh", Detail: "Scheduled reader update"}}
 	svc.state.Builds = []BuildRecord{{
 		ID:          "build-details",
 		Status:      "success",
@@ -110,7 +115,7 @@ func TestHandleIndex_BuildDetailsIncludeAllPhaseTimings(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	svc.handleIndex(recorder, httptest.NewRequest("GET", "/", nil))
 	body := recorder.Body.String()
-	for _, want := range []string{"Queue wait", "Prepare", "Build", "Promote", "Prune", "0.10s", "0.50s", "reader-update", "Every 30m", "queues a build"} {
+	for _, want := range []string{"Running build", "Queued refresh", "Queue wait", "Prepare", "Build", "Promote", "Prune", "0.10s", "0.50s", "reader-update", "Every 30m", "queues a build"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("rendered index missing %q", want)
 		}

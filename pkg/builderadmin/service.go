@@ -1619,6 +1619,15 @@ const indexHTML = `<!doctype html>
       justify-content: flex-end;
     }
     .actions form { margin: 0; }
+    .control-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .control-panel .panel-head { margin: 0 auto 0 0; }
+    .control-panel .refresh-schedules { flex-basis: 100%; margin-top: 4px; }
     button {
       background: var(--panel-strong);
       color: var(--text);
@@ -1809,84 +1818,26 @@ const indexHTML = `<!doctype html>
     <div class="sync-status" id="sync-status">Live polling every 2s</div>
   </div>
 
-  <div class="hero">
-    <section class="card">
-      <div class="panel-head"><h2>Live State</h2><span>current release and active worker</span></div>
-      <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
-        <div>
-          <strong>Live release</strong>
-          <div class="value mono">{{ .CurrentID }}</div>
-        </div>
-        <div>
-          <strong>Current path</strong>
-          <div class="value mono" id="current-path">{{ .CurrentPath }}</div>
-        </div>
-        <div>
-          <strong>Active work</strong>
-          <div class="value" id="active-work">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span>{{ else }}<span class="pill {{ statusClass "idle" }}">idle</span>{{ end }}</div>
-        </div>
-      </div>
-    </section>
-    <section class="card actions">
-      <div class="panel-head"><h2>Actions</h2><span>manual triggers</span></div>
-      <form method="post" action="/api/builds"><button type="submit">Enqueue Build</button></form>
+  <section class="card control-panel actions">
+    <div class="panel-head"><h2>Live release</h2><span class="mono">{{ .CurrentID }}</span></div>
+    <form method="post" action="/api/builds"><button type="submit">Enqueue Build</button></form>
+    {{ range .RefreshTasks }}
+    <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
+    {{ end }}
+    {{ if .RefreshTasks }}
+    <div class="refresh-schedules" aria-label="Scheduled refreshes">
       {{ range .RefreshTasks }}
-      <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
-      {{ end }}
-      {{ if .RefreshTasks }}
-      <div class="refresh-schedules" aria-label="Scheduled refreshes">
-        {{ range .RefreshTasks }}
-        <div class="refresh-schedule">
-          <strong>{{ .Name }}</strong>
-          <span>Every {{ .Every }}{{ if .EnqueueBuildOnSuccess }} · queues a build{{ end }}</span>
-        </div>
-        {{ end }}
+      <div class="refresh-schedule">
+        <strong>{{ .Name }}</strong>
+        <span>Every {{ .Every }}{{ if .EnqueueBuildOnSuccess }} · queues a build{{ end }}</span>
       </div>
-      {{ end }}
-    </section>
-  </div>
-
-  <div class="section-grid">
-  <section class="card wide">
-    <div class="panel-head"><h2>Queue</h2><span>debounced watch + manual triggers</span></div>
-    <table>
-      <thead><tr><th>ID</th><th>Kind</th><th>Trigger</th><th>Detail</th><th>Changed</th><th>Queued</th></tr></thead>
-      <tbody id="queue-body">
-      {{ range .State.Queue }}
-      <tr>
-        <td><code>{{ .ID }}</code></td>
-        <td>{{ .Kind }}</td>
-        <td>{{ .TriggerType }}</td>
-        <td>{{ .Detail }}</td>
-        <td>{{ range .Changed }}<div><code>{{ . }}</code></div>{{ end }}</td>
-          <td class="time-stamp">{{ since .EnqueuedAt }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="6">Queue is empty.</td></tr>
-      {{ end }}
-      </tbody>
-    </table>
-  </section>
-
-  <section class="card">
-    <div class="panel-head"><h2>Running</h2><span>live worker</span></div>
-    <div class="stack" id="running-panel">
-      {{ if .State.Running }}
-      <div><strong>ID</strong><div class="value mono">{{ .State.Running.ID }}</div></div>
-      <div><strong>Kind</strong><div class="value">{{ .State.Running.Kind }}</div></div>
-      <div><strong>Trigger</strong><div class="value">{{ .State.Running.TriggerType }}</div></div>
-      <div><strong>Detail</strong><div class="value">{{ .State.Running.Detail }}</div></div>
-      <div><strong>Started</strong><div class="value mono time-stamp">{{ since .State.Running.StartedAt }}</div></div>
-      <div><strong>Phase</strong><div class="value"><span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span></div></div>
-      {{ else }}
-      <div class="muted">No build or refresh is running right now.</div>
       {{ end }}
     </div>
+    {{ end }}
   </section>
-  </div>
 
   <section class="card wide tab-shell">
-    <div class="panel-head workspace-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
+    <div class="panel-head workspace-head"><h2>Activity</h2><span>live work, builds, refreshes, and releases</span></div>
     <nav class="tabs">
       <a href="#builds" data-tab-link="builds">Builds</a>
       <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
@@ -1895,6 +1846,22 @@ const indexHTML = `<!doctype html>
 
     <section id="builds" class="tab-panel" data-tab-panel="builds">
       <div class="run-list" id="builds-body">
+        {{ if .State.Running }}
+        <article class="run">
+          <span class="run-status {{ statusClass .State.Running.Phase }}" aria-label="running"></span>
+          <div class="run-title">Running {{ .State.Running.Kind }} <span>via {{ .State.Running.TriggerType }}</span></div>
+          <div class="run-meta">started {{ since .State.Running.StartedAt }}</div>
+          <div class="run-meta">{{ .State.Running.Detail }}</div>
+        </article>
+        {{ end }}
+        {{ range .State.Queue }}
+        <article class="run">
+          <span class="run-status status-queued" aria-label="queued"></span>
+          <div class="run-title">Queued {{ .Kind }} <span>via {{ .TriggerType }}</span></div>
+          <div class="run-meta">queued {{ since .EnqueuedAt }}</div>
+          <div class="run-meta">{{ .Detail }}</div>
+        </article>
+        {{ end }}
         {{ range .State.Builds }}
         <article class="run">
           <span class="run-status {{ statusClass .Status }}" aria-label="{{ .Status }}"></span>
@@ -1972,14 +1939,10 @@ const indexHTML = `<!doctype html>
   const favicon = document.getElementById('app-favicon');
   const syncStatus = document.getElementById('sync-status');
   const currentRelease = document.getElementById('current-release');
-  const currentPath = document.getElementById('current-path');
-  const activeWork = document.getElementById('active-work');
   const queueCount = document.getElementById('queue-count');
   const buildCount = document.getElementById('build-count');
   const refreshCount = document.getElementById('refresh-count');
   const releaseCount = document.getElementById('release-count');
-  const queueBody = document.getElementById('queue-body');
-  const runningPanel = document.getElementById('running-panel');
   const buildsBody = document.getElementById('builds-body');
   const refreshBody = document.getElementById('refresh-body');
   const releasesBody = document.getElementById('releases-body');
@@ -2104,41 +2067,6 @@ const indexHTML = `<!doctype html>
     });
   }
 
-  function renderQueue(items) {
-    if (!items || !items.length) {
-      queueBody.innerHTML = '<tr><td colspan="6">Queue is empty.</td></tr>';
-      return;
-    }
-    queueBody.innerHTML = items.map((item) => {
-      const changed = (item.changed || []).map((path) => '<div><code>' + escapeHtml(path) + '</code></div>').join('');
-      return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + escapeHtml(item.kind) + '</td>' +
-        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
-        '<td>' + escapeHtml(item.detail) + '</td>' +
-        '<td>' + changed + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
-      '</tr>';
-    }).join('');
-  }
-
-  function renderRunning(running) {
-    if (!running) {
-      runningPanel.innerHTML = '<div class="muted">No build or refresh is running right now.</div>';
-      activeWork.innerHTML = statusPill('idle');
-      return;
-    }
-    activeWork.innerHTML = escapeHtml(running.kind) + ' ' + statusPill(running.phase);
-    runningPanel.innerHTML = [
-      ['ID', '<div class="value mono">' + escapeHtml(running.id) + '</div>'],
-      ['Kind', '<div class="value">' + escapeHtml(running.kind) + '</div>'],
-      ['Trigger', '<div class="value">' + escapeHtml(running.trigger_type) + '</div>'],
-      ['Detail', '<div class="value">' + escapeHtml(running.detail) + '</div>'],
-      ['Started', '<div class="value mono time-stamp">' + escapeHtml(fmtTime(running.started_at)) + '</div>'],
-      ['Phase', '<div class="value">' + statusPill(running.phase) + '</div>']
-    ].map(([label, value]) => '<div><strong>' + label + '</strong>' + value + '</div>').join('');
-  }
-
   function renderBuilds(items) {
     const openDetails = new Set(Array.from(buildsBody.querySelectorAll('details[open][data-build-id]'), (details) => details.dataset.buildId));
     if (!items || !items.length) {
@@ -2146,6 +2074,16 @@ const indexHTML = `<!doctype html>
       return;
     }
     buildsBody.innerHTML = items.map((item) => {
+      if (item.live_label) {
+        const timestamp = item.live_label === 'Running' ? item.started_at : item.enqueued_at;
+        const timestampLabel = item.live_label === 'Running' ? 'started ' : 'queued ';
+        return '<article class="run">' +
+          '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
+          '<div class="run-title">' + escapeHtml(item.live_label + ' ' + (item.kind || 'build')) + ' <span>via ' + escapeHtml(item.trigger_type) + '</span></div>' +
+          '<div class="run-meta">' + timestampLabel + escapeHtml(fmtTime(timestamp)) + '</div>' +
+          '<div class="run-meta">' + escapeHtml(item.detail || '') + '</div>' +
+        '</article>';
+      }
       const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
       const error = item.error ? '<div class="detail-error"><strong>Error</strong>' + escapeHtml(item.error) + '</div>' : '';
       const perf = Array.isArray(item.perf_summary) && item.perf_summary.length ? '<pre class="detail-perf">' + escapeHtml(item.perf_summary.join('\n')) + '</pre>' : '';
@@ -2216,14 +2154,16 @@ const indexHTML = `<!doctype html>
   function renderState(payload) {
     const state = payload.state || {};
     currentRelease.textContent = payload.current_release_id || '';
-    currentPath.textContent = payload.current_release_path || '';
     queueCount.textContent = (state.queue || []).length;
     buildCount.textContent = (state.builds || []).length;
     refreshCount.textContent = (state.refresh || []).length;
     releaseCount.textContent = (payload.releases || []).length;
-    renderQueue(state.queue || []);
-    renderRunning(state.running || null);
-    renderBuilds(state.builds || []);
+    const liveItems = [];
+    if (state.running) {
+      liveItems.push({ ...state.running, live_label: 'Running', status: state.running.phase || 'running' });
+    }
+    (state.queue || []).forEach((item) => liveItems.push({ ...item, live_label: 'Queued', status: 'queued' }));
+    renderBuilds(liveItems.concat(state.builds || []));
     renderRefresh(state.refresh || []);
     renderReleases(payload.releases || []);
     syncStatus.textContent = 'Live polling every 2s';
