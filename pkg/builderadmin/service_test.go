@@ -64,6 +64,10 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`View log`,
 		`phaseTiming('Queue wait', item.queue_wait_ms)`,
 		`phaseTiming('Prune', item.prune_ms)`,
+		`data-build-id`,
+		`const openDetails = new Set`,
+		`Every {{ .Every }}`,
+		`queues a build`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(indexHTML, check) {
@@ -74,7 +78,15 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 
 func TestHandleIndex_BuildDetailsIncludeAllPhaseTimings(t *testing.T) {
 	t.Parallel()
-	svc, err := New(Config{SiteDir: t.TempDir()})
+	svc, err := New(Config{
+		SiteDir: t.TempDir(),
+		RefreshTasks: []RefreshTaskConfig{{
+			Name:                  "reader-update",
+			Every:                 "30m",
+			EnqueueBuildOnSuccess: true,
+			Args:                  []string{"reader", "update"},
+		}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +110,7 @@ func TestHandleIndex_BuildDetailsIncludeAllPhaseTimings(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	svc.handleIndex(recorder, httptest.NewRequest("GET", "/", nil))
 	body := recorder.Body.String()
-	for _, want := range []string{"Queue wait", "Prepare", "Build", "Promote", "Prune", "0.10s", "0.50s"} {
+	for _, want := range []string{"Queue wait", "Prepare", "Build", "Promote", "Prune", "0.10s", "0.50s", "reader-update", "Every 30m", "queues a build"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("rendered index missing %q", want)
 		}

@@ -137,6 +137,8 @@ The build-history view MUST prioritize scanning runs over exposing every diagnos
 
 The UI SHOULD use a compact, GitHub Actions-inspired run-list treatment: a restrained status indicator, a clear primary run label, muted secondary metadata, and one visible primary action per run.
 
+Live polling MUST preserve any build-detail disclosures opened by the operator. Polling MUST NOT collapse details solely because new state was received.
+
 The UI MUST expose an at-a-glance browser-tab indicator by updating the favicon to reflect the current admin state:
 
 - idle when nothing is running and the queue is empty
@@ -169,6 +171,8 @@ Each refresh task MUST define:
 - whether a successful run enqueues a build
 
 The first version MAY use fixed interval durations instead of cron expressions.
+
+The UI MUST show each configured refresh task's interval and whether successful runs queue a build. Refresh runs MAY have a separate detailed history, but builds remain the primary release-history view.
 
 Refresh runs MUST have their own history with:
 

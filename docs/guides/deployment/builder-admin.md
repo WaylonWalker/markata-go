@@ -115,6 +115,11 @@ result, trigger, finish time, duration, release, and a log link. Open **Details*
 IDs, changed paths, performance lines, phase timings, or an error. The chart keeps 25 rendered
 releases by default, giving you 24 previous rollback candidates when the current release is included.
 
+The **Actions** panel lists every scheduled refresh and its interval. A refresh updates input data
+such as reader feeds; a build renders and promotes a live release. Successful configured refreshes
+can queue a build, and the detailed refresh history records that linked build. Opening build
+**Details** remains open while the live status refreshes every two seconds.
+
 ## Build Triggers
 
 Builder admin can enqueue builds from:

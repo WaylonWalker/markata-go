@@ -1526,10 +1526,7 @@ const indexHTML = `<!doctype html>
       background:
         radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 30%),
         radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 35%),
-        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
         var(--bg);
-      background-size: auto, auto, 11px 11px, 11px 11px, auto;
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -1763,6 +1760,19 @@ const indexHTML = `<!doctype html>
     .detail-grid strong { margin-bottom: 3px; }
     .detail-error { color: #fecaca; }
     .detail-perf { max-height: 14rem; margin-top: 10px; }
+    .refresh-schedules { display: grid; gap: 8px; margin-top: 14px; width: 100%; }
+    .refresh-schedule {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .refresh-schedule strong { color: var(--text); }
     .sync-status { color: var(--muted); font-size: 0.78rem; }
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
@@ -1823,6 +1833,16 @@ const indexHTML = `<!doctype html>
       {{ range .RefreshTasks }}
       <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
       {{ end }}
+      {{ if .RefreshTasks }}
+      <div class="refresh-schedules" aria-label="Scheduled refreshes">
+        {{ range .RefreshTasks }}
+        <div class="refresh-schedule">
+          <strong>{{ .Name }}</strong>
+          <span>Every {{ .Every }}{{ if .EnqueueBuildOnSuccess }} · queues a build{{ end }}</span>
+        </div>
+        {{ end }}
+      </div>
+      {{ end }}
     </section>
   </div>
 
@@ -1882,7 +1902,7 @@ const indexHTML = `<!doctype html>
           <div class="run-meta">{{ since .FinishedAt }} · {{ msToSeconds .TotalMS }}</div>
           <div class="run-meta">{{ if .ReleaseID }}release {{ .ReleaseID }}{{ else }}no release{{ end }}</div>
           <div class="run-action">{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">View log</a>{{ end }}</div>
-          <details class="run-details">
+          <details class="run-details" data-build-id="{{ .ID }}">
             <summary>Details</summary>
             <div class="detail-grid">
               <div><strong>Build ID</strong><code>{{ .ID }}</code></div>
@@ -2120,6 +2140,7 @@ const indexHTML = `<!doctype html>
   }
 
   function renderBuilds(items) {
+    const openDetails = new Set(Array.from(buildsBody.querySelectorAll('details[open][data-build-id]'), (details) => details.dataset.buildId));
     if (!items || !items.length) {
       buildsBody.innerHTML = '<div class="muted">No builds yet.</div>';
       return;
@@ -2131,13 +2152,14 @@ const indexHTML = `<!doctype html>
       const release = item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '<span>Not published</span>';
       const releaseMeta = item.release_id ? 'release ' + escapeHtml(item.release_id) : 'no release';
       const phaseTiming = (label, value) => '<div><strong>' + label + '</strong><span>' + escapeHtml(fmtSeconds(value)) + '</span></div>';
+      const open = openDetails.has(item.id) ? ' open' : '';
       return '<article class="run">' +
         '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
         '<div class="run-title">' + escapeHtml(item.status) + ' <span>via ' + escapeHtml(item.trigger_type) + '</span></div>' +
         '<div class="run-meta">' + escapeHtml(fmtTime(item.finished_at)) + ' · ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
         '<div class="run-meta">' + releaseMeta + '</div>' +
         '<div class="run-action">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">View log</a>' : '') + '</div>' +
-        '<details class="run-details"><summary>Details</summary>' +
+        '<details class="run-details" data-build-id="' + escapeHtml(item.id) + '"' + open + '><summary>Details</summary>' +
           '<div class="detail-grid">' +
             '<div><strong>Build ID</strong><code>' + escapeHtml(item.id) + '</code></div>' +
             '<div><strong>Release</strong>' + release + '</div>' +
