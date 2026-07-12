@@ -74,6 +74,10 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`recentBuilds`,
 		`Show all {{ len .State.Builds }} builds`,
 		`let showAllBuilds = false`,
+		`function timeHTML(value)`,
+		`window.scrollTo({ top: pageScrollY })`,
+		`details.open = !details.open`,
+		`/promote`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(indexHTML, check) {
@@ -284,5 +288,39 @@ func TestPromoteBuild_ManualReleaseControlStagesBuild(t *testing.T) {
 	}
 	if got := svc.currentReleaseID(); got != currentID {
 		t.Fatalf("current release=%q, want %q", got, currentID)
+	}
+}
+
+func TestHandleReleaseAction_PromoteMovesLiveMarkerWithoutHistoryRecord(t *testing.T) {
+	t.Parallel()
+	siteDir := t.TempDir()
+	for _, id := range []string{"old", "target"} {
+		if err := os.MkdirAll(filepath.Join(siteDir, "releases", id), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(filepath.Join("releases", "old"), filepath.Join(siteDir, "current")); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(Config{SiteDir: siteDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.leader = true
+	svc.state.Builds = []BuildRecord{{ID: "existing"}}
+	recorder := httptest.NewRecorder()
+	svc.handleReleaseAction(recorder, httptest.NewRequest("POST", "/api/releases/target/promote", nil))
+	if recorder.Code != 303 {
+		t.Fatalf("status=%d, want 303", recorder.Code)
+	}
+	if got := svc.currentReleaseID(); got != "target" {
+		t.Fatalf("current=%q, want target", got)
+	}
+	if len(svc.state.Builds) != 1 || svc.state.Builds[0].ID != "existing" {
+		t.Fatalf("promotion changed build history: %#v", svc.state.Builds)
+	}
+	if svc.state.ReleaseControl.PreferredRelease != "target" {
+		t.Fatalf("preferred=%q, want target", svc.state.ReleaseControl.PreferredRelease)
 	}
 }

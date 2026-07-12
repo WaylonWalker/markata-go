@@ -535,15 +535,36 @@ func (s *Service) handleReleaseAction(w http.ResponseWriter, r *http.Request) {
 	}
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/releases/")
 	parts := strings.Split(strings.Trim(trimmed, "/"), "/")
-	if len(parts) != 2 || parts[1] != "rollback" {
+	if len(parts) != 2 || (parts[1] != "rollback" && parts[1] != "promote") {
 		http.Error(w, "unsupported release action", http.StatusBadRequest)
 		return
 	}
-	if err := s.enqueueRollback(parts[0], "manual-ui", "Rollback from admin UI"); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	releaseID := parts[0]
+	if !s.releaseExists(releaseID) {
+		http.Error(w, "release not found", http.StatusNotFound)
 		return
 	}
+	if err := s.switchCurrentRelease(releaseID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.stateMu.Lock()
+	s.state.ReleaseControl = ReleaseControl{Mode: "manual", PreferredRelease: releaseID, SetAt: time.Now().UTC()}
+	s.saveStateLocked()
+	s.stateMu.Unlock()
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *Service) releaseExists(releaseID string) bool {
+	if releaseID == "" || filepath.Base(releaseID) != releaseID || releaseID == "." {
+		return false
+	}
+	for _, release := range s.discoverReleases() {
+		if release.ID == releaseID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) handleLogs(w http.ResponseWriter, r *http.Request) {
@@ -1810,6 +1831,7 @@ const indexHTML = `<!doctype html>
       background: rgba(255,255,255,0.02);
     }
     .run:hover { border-color: var(--line); background: rgba(255,255,255,0.04); }
+    .run:has(.run-details) { cursor: pointer; }
     .run-status { width: 10px; height: 10px; border-radius: 50%; background: #71717a; }
     .run-status.status-success { background: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,0.12); }
     .run-status.status-running { background: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,0.12); }
@@ -1930,7 +1952,7 @@ const indexHTML = `<!doctype html>
           <span class="run-status {{ statusClass .Status }}" aria-label="{{ .Status }}"></span>
           <div class="run-title">{{ .Status }} <span>via {{ .TriggerType }}</span></div>
           <div class="run-meta">{{ since .FinishedAt }} · {{ msToSeconds .TotalMS }}</div>
-          <div class="run-meta">{{ if .ReleaseID }}release {{ .ReleaseID }}{{ else }}no release{{ end }}</div>
+          <div class="run-meta">{{ if .BecameLive }}live{{ else if .ReleaseID }}staged{{ end }}</div>
           <div class="run-action">{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">View log</a>{{ end }}</div>
           <details class="run-details" data-build-id="{{ .ID }}">
             <summary>Details</summary>
@@ -1989,7 +2011,7 @@ const indexHTML = `<!doctype html>
           <td class="time-stamp">{{ since .CreatedAt }}</td>
           <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
           <td>{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
-          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
+          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/promote"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
         {{ else }}
         <tr><td colspan="6">No releases found.</td></tr>
@@ -2025,7 +2047,20 @@ const indexHTML = `<!doctype html>
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toISOString().replace('.000', '') + ' (' + timeAgo(date) + ' ago)';
+    const now = new Date();
+    const today = date.toDateString() === now.toDateString();
+    const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const delta = Math.max(0, now.getTime() - date.getTime());
+    if (delta < 60 * 60 * 1000) return Math.max(1, Math.round(delta / 60000)) + ' minutes ago';
+    if (today) return 'Today at ' + time;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' at ' + time;
+  }
+
+  function timeHTML(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return escapeHtml(value);
+    return '<time datetime="' + escapeHtml(date.toISOString()) + '" title="' + escapeHtml(date.toLocaleString()) + '">' + escapeHtml(fmtTime(value)) + '</time>';
   }
 
   function fmtSeconds(ms) {
@@ -2134,6 +2169,8 @@ const indexHTML = `<!doctype html>
 
   function renderBuilds(liveItems, completedItems) {
     const openDetails = new Set(Array.from(buildsBody.querySelectorAll('details[open][data-build-id]'), (details) => details.dataset.buildId));
+    const pageScrollY = window.scrollY;
+    const detailScroll = new Map(Array.from(buildsBody.querySelectorAll('.run-details[data-build-id]'), (details) => [details.dataset.buildId, details.querySelector('.detail-perf')?.scrollTop || 0]));
     const items = liveItems.concat(showAllBuilds ? completedItems : completedItems.slice(0, 10));
     const moreButton = document.getElementById('builds-more');
     if (moreButton) {
@@ -2155,7 +2192,7 @@ const indexHTML = `<!doctype html>
         return '<article class="run">' +
           '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
           '<div class="run-title">' + escapeHtml(item.live_label + ' ' + (item.kind || 'build')) + ' <span>via ' + escapeHtml(item.trigger_type) + '</span></div>' +
-          '<div class="run-meta">' + timestampLabel + escapeHtml(fmtTime(timestamp)) + '</div>' +
+          '<div class="run-meta">' + timestampLabel + timeHTML(timestamp) + '</div>' +
           '<div class="run-meta">' + escapeHtml(item.detail || '') + '</div>' +
         '</article>';
       }
@@ -2169,8 +2206,8 @@ const indexHTML = `<!doctype html>
       return '<article class="run">' +
         '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
         '<div class="run-title">' + escapeHtml(item.status) + ' <span>via ' + escapeHtml(item.trigger_type) + '</span></div>' +
-        '<div class="run-meta">' + escapeHtml(fmtTime(item.finished_at)) + ' · ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
-        '<div class="run-meta">' + releaseMeta + '</div>' +
+        '<div class="run-meta">' + timeHTML(item.finished_at) + ' · ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
+        '<div class="run-meta">' + (item.became_live ? 'live' : (item.release_id ? 'staged' : '')) + '</div>' +
         '<div class="run-action">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">View log</a>' : '') + '</div>' +
         '<details class="run-details" data-build-id="' + escapeHtml(item.id) + '"' + open + '><summary>Details</summary>' +
           '<div class="detail-grid">' +
@@ -2187,6 +2224,11 @@ const indexHTML = `<!doctype html>
         '</details>' +
       '</article>';
     }).join('');
+    buildsBody.querySelectorAll('.run-details[data-build-id]').forEach((details) => {
+      const perf = details.querySelector('.detail-perf');
+      if (perf) perf.scrollTop = detailScroll.get(details.dataset.buildId) || 0;
+    });
+    requestAnimationFrame(() => window.scrollTo({ top: pageScrollY }));
   }
 
   function renderRefresh(items) {
@@ -2214,11 +2256,11 @@ const indexHTML = `<!doctype html>
       return;
     }
     releasesBody.innerHTML = items.map((item) => {
-      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><button class="secondary" type="submit">Promote</button></form>';
+      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/promote"><button class="secondary" type="submit">Promote</button></form>';
       return '<tr>' +
         '<td><code>' + escapeHtml(item.id) + '</code></td>' +
         '<td>' + (item.current ? statusPill('live') : '') + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
+        '<td class="time-stamp">' + timeHTML(item.created_at) + '</td>' +
         '<td>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
         '<td>' + (item.build_status ? statusPill(item.build_status) : '') + '</td>' +
         '<td>' + action + '</td>' +
@@ -2264,6 +2306,13 @@ const indexHTML = `<!doctype html>
     if (event.target.id === 'builds-more') {
       showAllBuilds = !showAllBuilds;
       pollState();
+      return;
+    }
+    if (!event.target.closest('a, button, input, summary, details')) {
+      const details = event.target.closest('.run')?.querySelector('.run-details');
+      if (details) {
+        details.open = !details.open;
+      }
     }
   });
   activateTabs();
