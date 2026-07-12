@@ -1902,6 +1902,9 @@ const indexHTML = `<!doctype html>
     .run-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
     .run-action { font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
     .load-more { margin-top: 10px; }
+    .release-manager { margin-top: 16px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+    .release-manager summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+    .release-manager table { margin-top: 12px; }
     details.run-details { grid-column: 2 / -1; color: var(--muted); font-size: 0.82rem; }
     details.run-details summary { cursor: pointer; width: fit-content; color: var(--muted); }
     details.run-details summary:hover { color: var(--text); }
@@ -2055,7 +2058,8 @@ const indexHTML = `<!doctype html>
       </table>
     </section>
 
-    <section id="releases" class="tab-panel" data-tab-panel="releases">
+    <details class="release-manager">
+      <summary>Manage releases and promote a staged release</summary>
       <table>
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="releases-body">
@@ -2073,7 +2077,7 @@ const indexHTML = `<!doctype html>
         {{ end }}
         </tbody>
       </table>
-    </section>
+    </details>
   </section>
 </main>
 <script>
