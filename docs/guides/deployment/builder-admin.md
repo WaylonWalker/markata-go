@@ -124,12 +124,19 @@ The compact control panel combines the live release with manual actions. Queued 
 appears at the top of the **Builds** list, ahead of completed builds, so you can follow active work
 without scanning separate queue and worker panels.
 
+The activity list combines refreshes and builds. Active work stays at the top; completed entries are
+ordered by completion time. A successful build is marked **live** or **staged** instead of repeating
+its long release ID. Use the release list only to select a staged or historical release to promote.
+
 ## Rollback and promotion control
 
 Rolling back selects a release and pauses automatic promotion. Scheduled refreshes and builds still
 run, but their releases stay staged until you explicitly promote one or resume automatic promotion.
 Resuming does not immediately publish an existing staged release; the next successful build follows
 the normal automatic-promotion policy.
+
+Promoting a release changes the live marker immediately. It does not create another build-history
+entry, so the activity list continues to represent actual work performed.
 
 ## Build Triggers
 

@@ -129,7 +129,9 @@ The UI MUST show current queue state, running build state, and the current live 
 
 The UI SHOULD present the live release and manual actions in one compact control panel. Queued and running operations MUST appear at the top of the primary build activity list with distinct status treatment rather than requiring separate queue or running panels.
 
-The workspace view MUST display one primary panel at a time when switching between builds, refresh runs, and releases. Tabs MUST NOT leave multiple primary panels visually stacked on top of each other.
+The primary activity list MUST combine refreshes and builds in reverse completion order, while queued and running operations appear before completed work. Release IDs belong in details or release management, not repeated in the main activity rows. Promoting an existing release MUST move the live marker directly and MUST NOT add a synthetic build or rollback entry.
+
+The workspace view MUST present one primary activity panel. Release promotion controls MAY remain in a secondary release-management section, but refresh and build history MUST NOT be split into competing primary panels.
 
 Build, refresh, running, and release state labels SHOULD use distinct visual status treatment so success, failure, queued, running, and live states are scannable without reading raw text.
 

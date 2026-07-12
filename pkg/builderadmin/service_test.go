@@ -72,7 +72,7 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`live_label: 'Running'`,
 		`live_label: 'Queued'`,
 		`recentBuilds`,
-		`Show all {{ len .State.Builds }} builds`,
+		`Show all activity`,
 		`let showAllBuilds = false`,
 		`function timeHTML(value)`,
 		`window.scrollTo({ top: pageScrollY })`,

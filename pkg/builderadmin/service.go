@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	markataconfig "github.com/WaylonWalker/markata-go/pkg/config"
+
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -53,6 +55,8 @@ type Config struct {
 	RefreshRunsKeep      int
 	RefreshTasks         []RefreshTaskConfig
 	BuildTimeout         time.Duration
+	SiteTitle            string
+	SiteURL              string
 }
 
 type RefreshTaskConfig struct {
@@ -191,6 +195,12 @@ type queueRequest struct {
 }
 
 func New(cfg Config) (*Service, error) {
+	if cfg.ConfigPath != "" {
+		if siteConfig, err := markataconfig.Load(cfg.ConfigPath); err == nil {
+			cfg.SiteTitle = siteConfig.Title
+			cfg.SiteURL = siteConfig.URL
+		}
+	}
 	if cfg.Host == "" {
 		cfg.Host = defaultListenHost
 	}
@@ -612,12 +622,14 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 		Releases     []ReleaseView
 		CurrentID    string
 		CurrentPath  string
+		Config       Config
 		RefreshTasks []RefreshTaskConfig
 	}{
 		State:        state,
 		Releases:     s.discoverReleases(),
 		CurrentID:    s.currentReleaseID(),
 		CurrentPath:  s.currentReleasePath(),
+		Config:       s.cfg,
 		RefreshTasks: s.cfg.RefreshTasks,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -1886,8 +1898,8 @@ const indexHTML = `<!doctype html>
 <main>
   <div class="topbar">
     <div class="titleblock">
-      <h1>Builder Admin</h1>
-      <p>Queue-driven builds, release promotion, refresh scheduling, and search/build runtime controls for the live go.waylonwalker.com authoring loop.</p>
+      <h1>{{ if .Config.SiteTitle }}{{ .Config.SiteTitle }}{{ else }}Site builds{{ end }}</h1>
+      <p>{{ if .Config.SiteURL }}{{ .Config.SiteURL }}{{ else }}Build, refresh, and release control{{ end }}</p>
       <div class="title-meta">
         <div class="meta-chip">Current <strong id="current-release">{{ .CurrentID }}</strong></div>
         <div class="meta-chip">Queue <strong id="queue-count">{{ len .State.Queue }}</strong></div>
@@ -1922,14 +1934,9 @@ const indexHTML = `<!doctype html>
   </section>
 
   <section class="card wide tab-shell">
-    <div class="panel-head workspace-head"><h2>Activity</h2><span>live work, builds, refreshes, and releases</span></div>
-    <nav class="tabs">
-      <a href="#builds" data-tab-link="builds">Builds</a>
-      <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
-      <a href="#releases" data-tab-link="releases">Releases</a>
-    </nav>
+    <div class="panel-head workspace-head"><h2>Activity</h2><span>live work, refreshes, builds, and release status</span></div>
 
-    <section id="builds" class="tab-panel" data-tab-panel="builds">
+    <section id="activity" class="tab-panel is-active" data-tab-panel="activity">
       <div class="run-list" id="builds-body">
         {{ if .State.Running }}
         <article class="run">
@@ -1976,7 +1983,7 @@ const indexHTML = `<!doctype html>
         <div class="muted">No builds yet.</div>
         {{ end }}
       </div>
-      <button class="secondary load-more" id="builds-more" type="button"{{ if le (len .State.Builds) 10 }} hidden{{ end }}>Show all {{ len .State.Builds }} builds</button>
+      <button class="secondary load-more" id="builds-more" type="button"{{ if le (len .State.Builds) 10 }} hidden{{ end }}>Show all activity</button>
     </section>
 
     <section id="refresh-runs" class="tab-panel" data-tab-panel="refresh-runs">
@@ -2031,8 +2038,6 @@ const indexHTML = `<!doctype html>
   const releaseCount = document.getElementById('release-count');
   const buildsBody = document.getElementById('builds-body');
   let showAllBuilds = false;
-  const refreshBody = document.getElementById('refresh-body');
-  const releasesBody = document.getElementById('releases-body');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -2157,16 +2162,6 @@ const indexHTML = `<!doctype html>
     return lines.slice(-6);
   }
 
-  function activateTabs() {
-    const active = (location.hash || '#builds').slice(1);
-    document.querySelectorAll('[data-tab-link]').forEach((link) => {
-      link.classList.toggle('active', link.dataset.tabLink === active);
-    });
-    document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
-      panel.classList.toggle('is-active', panel.dataset.tabPanel === active);
-    });
-  }
-
   function renderBuilds(liveItems, completedItems) {
     const openDetails = new Set(Array.from(buildsBody.querySelectorAll('details[open][data-build-id]'), (details) => details.dataset.buildId));
     const pageScrollY = window.scrollY;
@@ -2176,7 +2171,7 @@ const indexHTML = `<!doctype html>
     if (moreButton) {
       if (completedItems.length > 10) {
         moreButton.hidden = false;
-        moreButton.textContent = showAllBuilds ? 'Show newest 10 builds' : 'Show all ' + completedItems.length + ' builds';
+        moreButton.textContent = showAllBuilds ? 'Show newest 10 activity entries' : 'Show all ' + completedItems.length + ' activity entries';
       } else {
         moreButton.hidden = true;
       }
@@ -2195,6 +2190,19 @@ const indexHTML = `<!doctype html>
           '<div class="run-meta">' + timestampLabel + timeHTML(timestamp) + '</div>' +
           '<div class="run-meta">' + escapeHtml(item.detail || '') + '</div>' +
         '</article>';
+      }
+      if (item.kind === 'refresh') {
+        const open = openDetails.has(item.id) ? ' open' : '';
+        return '<article class="run">' +
+          '<span class="run-status ' + statusClass(item.status) + '" aria-label="' + escapeHtml(item.status) + '"></span>' +
+          '<div class="run-title">' + escapeHtml(item.status) + ' <span>refresh ' + escapeHtml(item.task_name || '') + '</span></div>' +
+          '<div class="run-meta">' + timeHTML(item.finished_at) + ' · ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
+          '<div class="run-meta">' + (item.enqueued_build_id ? 'queued a build' : '') + '</div>' +
+          '<div class="run-action">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">View log</a>' : '') + '</div>' +
+          '<details class="run-details" data-build-id="' + escapeHtml(item.id) + '"' + open + '><summary>Details</summary>' +
+            '<div class="detail-grid"><div><strong>Refresh ID</strong><code>' + escapeHtml(item.id) + '</code></div><div><strong>Task</strong><span>' + escapeHtml(item.task_name || '') + '</span></div><div><strong>Total</strong><span>' + escapeHtml(fmtSeconds(item.total_ms)) + '</span></div></div>' +
+            (item.error ? '<div class="detail-error"><strong>Error</strong>' + escapeHtml(item.error) + '</div>' : '') +
+          '</details></article>';
       }
       const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
       const error = item.error ? '<div class="detail-error"><strong>Error</strong>' + escapeHtml(item.error) + '</div>' : '';
@@ -2280,9 +2288,8 @@ const indexHTML = `<!doctype html>
       liveItems.push({ ...state.running, live_label: 'Running', status: state.running.phase || 'running' });
     }
     (state.queue || []).forEach((item) => liveItems.push({ ...item, live_label: 'Queued', status: 'queued' }));
-    renderBuilds(liveItems, state.builds || []);
-    renderRefresh(state.refresh || []);
-    renderReleases(payload.releases || []);
+    const completed = (state.builds || []).concat(state.refresh || []).sort((a, b) => new Date(b.finished_at || 0) - new Date(a.finished_at || 0));
+    renderBuilds(liveItems, completed);
     syncStatus.textContent = 'Live polling every 2s';
     updateFavicon(faviconState(state));
   }
@@ -2301,7 +2308,6 @@ const indexHTML = `<!doctype html>
     }
   }
 
-  window.addEventListener('hashchange', activateTabs);
   document.addEventListener('click', (event) => {
     if (event.target.id === 'builds-more') {
       showAllBuilds = !showAllBuilds;
@@ -2315,7 +2321,6 @@ const indexHTML = `<!doctype html>
       }
     }
   });
-  activateTabs();
   updateFavicon('idle');
   pollState();
   window.setInterval(pollState, 2000);
