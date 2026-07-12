@@ -324,3 +324,25 @@ func TestHandleReleaseAction_PromoteMovesLiveMarkerWithoutHistoryRecord(t *testi
 		t.Fatalf("preferred=%q, want target", svc.state.ReleaseControl.PreferredRelease)
 	}
 }
+
+func TestReadBuildMetrics(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "benchmark.json")
+	if err := os.WriteFile(path, []byte(`{"posts_processed":12,"feeds_generated":3}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := readBuildMetrics(path); got != (BuildMetrics{PostsProcessed: 12, FeedsGenerated: 3}) {
+		t.Fatalf("metrics=%+v", got)
+	}
+}
+
+func TestReadRefreshMetrics(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "reader.json")
+	if err := os.WriteFile(path, []byte(`{"feeds_refreshed":2,"feeds_stale":1,"feeds_failed":0,"entries_fetched":19}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := readRefreshMetrics(path); got != (RefreshMetrics{FeedsRefreshed: 2, FeedsStale: 1, EntriesFetched: 19}) {
+		t.Fatalf("metrics=%+v", got)
+	}
+}

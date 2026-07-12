@@ -108,47 +108,62 @@ type RunningOperation struct {
 }
 
 type BuildRecord struct {
-	ID              string    `json:"id"`
-	Kind            string    `json:"kind"`
-	Status          string    `json:"status"`
-	TriggerType     string    `json:"trigger_type"`
-	TriggerDetail   string    `json:"trigger_detail,omitempty"`
-	ChangedPaths    []string  `json:"changed_paths,omitempty"`
-	EnqueuedAt      time.Time `json:"enqueued_at"`
-	StartedAt       time.Time `json:"started_at"`
-	FinishedAt      time.Time `json:"finished_at"`
-	QueueWaitMS     int64     `json:"queue_wait_ms"`
-	PrepareMS       int64     `json:"prepare_ms"`
-	BuildMS         int64     `json:"build_ms"`
-	PromoteMS       int64     `json:"promote_ms"`
-	PruneMS         int64     `json:"prune_ms"`
-	TotalMS         int64     `json:"total_ms"`
-	ReleaseID       string    `json:"release_id,omitempty"`
-	ReleasePath     string    `json:"release_path,omitempty"`
-	BecameLive      bool      `json:"became_live"`
-	LogPath         string    `json:"log_path,omitempty"`
-	PerfSummary     []string  `json:"perf_summary,omitempty"`
-	Error           string    `json:"error,omitempty"`
-	RollbackRelease string    `json:"rollback_release,omitempty"`
+	ID              string       `json:"id"`
+	Kind            string       `json:"kind"`
+	Status          string       `json:"status"`
+	TriggerType     string       `json:"trigger_type"`
+	TriggerDetail   string       `json:"trigger_detail,omitempty"`
+	ChangedPaths    []string     `json:"changed_paths,omitempty"`
+	EnqueuedAt      time.Time    `json:"enqueued_at"`
+	StartedAt       time.Time    `json:"started_at"`
+	FinishedAt      time.Time    `json:"finished_at"`
+	QueueWaitMS     int64        `json:"queue_wait_ms"`
+	PrepareMS       int64        `json:"prepare_ms"`
+	BuildMS         int64        `json:"build_ms"`
+	PromoteMS       int64        `json:"promote_ms"`
+	PruneMS         int64        `json:"prune_ms"`
+	TotalMS         int64        `json:"total_ms"`
+	ReleaseID       string       `json:"release_id,omitempty"`
+	ReleasePath     string       `json:"release_path,omitempty"`
+	BecameLive      bool         `json:"became_live"`
+	LogPath         string       `json:"log_path,omitempty"`
+	PerfSummary     []string     `json:"perf_summary,omitempty"`
+	Error           string       `json:"error,omitempty"`
+	RollbackRelease string       `json:"rollback_release,omitempty"`
+	Metrics         BuildMetrics `json:"metrics,omitempty"`
+}
+
+// BuildMetrics is emitted by the build command's benchmark JSON artifact.
+type BuildMetrics struct {
+	PostsProcessed int `json:"posts_processed,omitempty"`
+	FeedsGenerated int `json:"feeds_generated,omitempty"`
 }
 
 type RefreshRecord struct {
-	ID                    string    `json:"id"`
-	TaskName              string    `json:"task_name"`
-	Status                string    `json:"status"`
-	TriggerType           string    `json:"trigger_type"`
-	TriggerDetail         string    `json:"trigger_detail,omitempty"`
-	EnqueuedAt            time.Time `json:"enqueued_at"`
-	StartedAt             time.Time `json:"started_at"`
-	FinishedAt            time.Time `json:"finished_at"`
-	QueueWaitMS           int64     `json:"queue_wait_ms"`
-	RunMS                 int64     `json:"run_ms"`
-	TotalMS               int64     `json:"total_ms"`
-	LogPath               string    `json:"log_path,omitempty"`
-	EnqueuedBuildID       string    `json:"enqueued_build_id,omitempty"`
-	EnqueueBuildOnSuccess bool      `json:"enqueue_build_on_success"`
-	Command               []string  `json:"command,omitempty"`
-	Error                 string    `json:"error,omitempty"`
+	ID                    string         `json:"id"`
+	TaskName              string         `json:"task_name"`
+	Status                string         `json:"status"`
+	TriggerType           string         `json:"trigger_type"`
+	TriggerDetail         string         `json:"trigger_detail,omitempty"`
+	EnqueuedAt            time.Time      `json:"enqueued_at"`
+	StartedAt             time.Time      `json:"started_at"`
+	FinishedAt            time.Time      `json:"finished_at"`
+	QueueWaitMS           int64          `json:"queue_wait_ms"`
+	RunMS                 int64          `json:"run_ms"`
+	TotalMS               int64          `json:"total_ms"`
+	LogPath               string         `json:"log_path,omitempty"`
+	EnqueuedBuildID       string         `json:"enqueued_build_id,omitempty"`
+	EnqueueBuildOnSuccess bool           `json:"enqueue_build_on_success"`
+	Command               []string       `json:"command,omitempty"`
+	Error                 string         `json:"error,omitempty"`
+	Metrics               RefreshMetrics `json:"metrics,omitempty"`
+}
+
+type RefreshMetrics struct {
+	FeedsRefreshed int `json:"feeds_refreshed,omitempty"`
+	FeedsStale     int `json:"feeds_stale,omitempty"`
+	FeedsFailed    int `json:"feeds_failed,omitempty"`
+	EntriesFetched int `json:"entries_fetched,omitempty"`
 }
 
 type ReleaseView struct {
@@ -757,7 +772,8 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
 	phaseStart = time.Now()
 	s.updateRunningPhase("build")
-	cmdArgs, cleanup, err := s.buildCommandArgs(req.ID, buildWork)
+	metricsPath := filepath.Join(s.overrideDir, req.ID+".benchmark.json")
+	cmdArgs, cleanup, err := s.buildCommandArgs(req.ID, buildWork, metricsPath)
 	if err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
@@ -780,6 +796,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 		return
 	}
 	record.BuildMS = time.Since(phaseStart).Milliseconds()
+	record.Metrics = readBuildMetrics(metricsPath)
 
 	phaseStart = time.Now()
 	s.updateRunningPhase("promote")
@@ -847,7 +864,14 @@ func (s *Service) runRefresh(ctx context.Context, req queueRequest) {
 	defer cancel()
 	s.updateRunningPhase("refresh")
 	runStart := time.Now()
-	if err := s.runLoggedCommand(ctx, logFile, s.cfg.SourceDir, nil, req.commandArgs...); err != nil {
+	commandArgs := append([]string(nil), req.commandArgs...)
+	metricsPath := ""
+	if len(commandArgs) >= 2 && commandArgs[0] == "reader" && commandArgs[1] == "update" {
+		metricsPath = filepath.Join(s.overrideDir, req.ID+".reader.json")
+		commandArgs = append(commandArgs, "--summary-json", metricsPath)
+		defer os.Remove(metricsPath)
+	}
+	if err := s.runLoggedCommand(ctx, logFile, s.cfg.SourceDir, nil, commandArgs...); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
 		record.RunMS = time.Since(runStart).Milliseconds()
@@ -857,6 +881,9 @@ func (s *Service) runRefresh(ctx context.Context, req queueRequest) {
 		return
 	}
 	record.RunMS = time.Since(runStart).Milliseconds()
+	if metricsPath != "" {
+		record.Metrics = readRefreshMetrics(metricsPath)
+	}
 	record.Status = "success"
 	if task.EnqueueBuildOnSuccess {
 		buildID := nextID("build")
@@ -967,12 +994,12 @@ func (s *Service) prepareBuild(log io.Writer) error {
 	return nil
 }
 
-func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), error) {
+func (s *Service) buildCommandArgs(id, buildWork, metricsPath string) ([]string, func(), error) {
 	args := make([]string, 0, 10)
 	if s.cfg.ConfigPath != "" {
 		args = append(args, "--config", s.cfg.ConfigPath)
 	}
-	cleanup := func() {}
+	cleanup := func() { _ = os.Remove(metricsPath) }
 	if s.cfg.MermaidMode != "" {
 		overridePath := filepath.Join(s.overrideDir, "builder-admin.toml")
 		contents := fmt.Sprintf("[markata-go.mermaid]\nmode = %q\n", s.cfg.MermaidMode)
@@ -986,7 +1013,28 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 		args = append(args, "--fast")
 	}
 	args = append(args, "--output", buildWork)
+	args = append(args, "--benchmark-json", metricsPath)
 	return args, cleanup, nil
+}
+
+func readBuildMetrics(path string) BuildMetrics {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return BuildMetrics{}
+	}
+	var metrics BuildMetrics
+	_ = json.Unmarshal(data, &metrics)
+	return metrics
+}
+
+func readRefreshMetrics(path string) RefreshMetrics {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return RefreshMetrics{}
+	}
+	var metrics RefreshMetrics
+	_ = json.Unmarshal(data, &metrics)
+	return metrics
 }
 
 func (s *Service) promoteBuild(buildWork string) (string, string, bool, error) {
@@ -2200,7 +2248,7 @@ const indexHTML = `<!doctype html>
           '<div class="run-meta">' + (item.enqueued_build_id ? 'queued a build' : '') + '</div>' +
           '<div class="run-action">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">View log</a>' : '') + '</div>' +
           '<details class="run-details" data-build-id="' + escapeHtml(item.id) + '"' + open + '><summary>Details</summary>' +
-            '<div class="detail-grid"><div><strong>Refresh ID</strong><code>' + escapeHtml(item.id) + '</code></div><div><strong>Task</strong><span>' + escapeHtml(item.task_name || '') + '</span></div><div><strong>Total</strong><span>' + escapeHtml(fmtSeconds(item.total_ms)) + '</span></div></div>' +
+            '<div class="detail-grid"><div><strong>Refresh ID</strong><code>' + escapeHtml(item.id) + '</code></div><div><strong>Task</strong><span>' + escapeHtml(item.task_name || '') + '</span></div><div><strong>Articles fetched</strong><span>' + escapeHtml(item.metrics?.entries_fetched || 0) + '</span></div><div><strong>Feeds refreshed</strong><span>' + escapeHtml(item.metrics?.feeds_refreshed || 0) + '</span></div><div><strong>Stale fallback</strong><span>' + escapeHtml(item.metrics?.feeds_stale || 0) + '</span></div><div><strong>Feeds failed</strong><span>' + escapeHtml(item.metrics?.feeds_failed || 0) + '</span></div></div>' +
             (item.error ? '<div class="detail-error"><strong>Error</strong>' + escapeHtml(item.error) + '</div>' : '') +
           '</details></article>';
       }
@@ -2227,6 +2275,8 @@ const indexHTML = `<!doctype html>
             phaseTiming('Build', item.build_ms) +
             phaseTiming('Promote', item.promote_ms) +
             phaseTiming('Prune', item.prune_ms) +
+            phaseTiming('Posts processed', item.metrics?.posts_processed) +
+            phaseTiming('Feeds generated', item.metrics?.feeds_generated) +
           '</div>' +
           (changed ? '<div><strong>Changed paths</strong>' + changed + '</div>' : '') + error + perf +
         '</details>' +

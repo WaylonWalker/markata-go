@@ -131,6 +131,8 @@ The UI SHOULD present the live release and manual actions in one compact control
 
 The primary activity list MUST combine refreshes and builds in reverse completion order, while queued and running operations appear before completed work. Release IDs belong in details or release management, not repeated in the main activity rows. Promoting an existing release MUST move the live marker directly and MUST NOT add a synthetic build or rollback entry.
 
+Build records MUST capture structured command metrics when available: posts processed and feeds generated. Reader refresh records MUST capture feeds refreshed, stale fallbacks, failed feeds, and fetched articles. These metrics MUST come from command-generated JSON artifacts, not parsed human log lines.
+
 The workspace view MUST present one primary activity panel. Release promotion controls MAY remain in a secondary release-management section, but refresh and build history MUST NOT be split into competing primary panels.
 
 Build, refresh, running, and release state labels SHOULD use distinct visual status treatment so success, failure, queued, running, and live states are scannable without reading raw text.

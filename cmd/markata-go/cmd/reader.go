@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -12,7 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var readerUpdateConcurrency int
+var (
+	readerUpdateConcurrency int
+	readerSummaryJSON       string
+)
 
 var readerCmd = &cobra.Command{
 	Use:   "reader",
@@ -43,6 +48,7 @@ func init() {
 	rootCmd.AddCommand(readerCmd)
 	readerCmd.AddCommand(readerUpdateCmd)
 	readerUpdateCmd.Flags().IntVar(&readerUpdateConcurrency, "concurrency", 0, "override feed refresh concurrency for this run (default: config value, else 5)")
+	readerUpdateCmd.Flags().StringVar(&readerSummaryJSON, "summary-json", "", "write reader refresh metrics as JSON")
 }
 
 func runReaderUpdateCommand(_ *cobra.Command, _ []string) error {
@@ -97,6 +103,20 @@ func runReaderUpdateCommand(_ *cobra.Command, _ []string) error {
 		result.EntriesFetched,
 	)
 	outlnf("Cache directory: %s", result.CacheDir)
+	if readerSummaryJSON != "" {
+		data, err := json.Marshal(struct {
+			FeedsRefreshed int `json:"feeds_refreshed"`
+			FeedsStale     int `json:"feeds_stale"`
+			FeedsFailed    int `json:"feeds_failed"`
+			EntriesFetched int `json:"entries_fetched"`
+		}{result.FeedsRefreshed, result.FeedsStale, result.FeedsFailed, result.EntriesFetched})
+		if err != nil {
+			return fmt.Errorf("marshal reader summary: %w", err)
+		}
+		if err := os.WriteFile(readerSummaryJSON, data, 0o644); err != nil {
+			return fmt.Errorf("write reader summary: %w", err)
+		}
+	}
 
 	return nil
 }
