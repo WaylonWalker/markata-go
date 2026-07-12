@@ -2058,8 +2058,8 @@ const indexHTML = `<!doctype html>
       </table>
     </section>
 
-    <details class="release-manager">
-      <summary>Manage releases and promote a staged release</summary>
+    <details class="release-manager" open>
+      <summary>Promote a release — 24 previous releases available</summary>
       <table>
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="releases-body">

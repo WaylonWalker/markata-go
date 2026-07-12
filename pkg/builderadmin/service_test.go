@@ -78,7 +78,7 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`window.scrollTo({ top: pageScrollY })`,
 		`details.open = !details.open`,
 		`/promote`,
-		`Manage releases and promote a staged release`,
+		`Promote a release — 24 previous releases available`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(indexHTML, check) {
