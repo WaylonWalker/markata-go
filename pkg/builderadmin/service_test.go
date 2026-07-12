@@ -254,3 +254,35 @@ func TestPruneReleases_KeepsCurrentAndTwentyFourRollbackTargets(t *testing.T) {
 		t.Fatalf("current release was pruned: %v", err)
 	}
 }
+
+func TestPromoteBuild_ManualReleaseControlStagesBuild(t *testing.T) {
+	t.Parallel()
+	siteDir := t.TempDir()
+	currentID := "current-release"
+	if err := os.MkdirAll(filepath.Join(siteDir, "releases", currentID), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("releases", currentID), filepath.Join(siteDir, "current")); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(Config{SiteDir: siteDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.state.ReleaseControl = ReleaseControl{Mode: "manual", PreferredRelease: currentID}
+	buildWork := filepath.Join(siteDir, ".build-work")
+	if err := os.Mkdir(buildWork, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, _, becameLive, err := svc.promoteBuild(buildWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if becameLive {
+		t.Fatal("manual release control promoted the staged build")
+	}
+	if got := svc.currentReleaseID(); got != currentID {
+		t.Fatalf("current release=%q, want %q", got, currentID)
+	}
+}

@@ -124,6 +124,13 @@ The compact control panel combines the live release with manual actions. Queued 
 appears at the top of the **Builds** list, ahead of completed builds, so you can follow active work
 without scanning separate queue and worker panels.
 
+## Rollback and promotion control
+
+Rolling back selects a release and pauses automatic promotion. Scheduled refreshes and builds still
+run, but their releases stay staged until you explicitly promote one or resume automatic promotion.
+Resuming does not immediately publish an existing staged release; the next successful build follows
+the normal automatic-promotion policy.
+
 ## Build Triggers
 
 Builder admin can enqueue builds from:

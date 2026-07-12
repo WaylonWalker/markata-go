@@ -159,6 +159,8 @@ Rollback in the first version is defined as:
 - atomically repointing `current` to that release
 - recording a rollback operation in history
 
+A successful rollback MUST enter persistent manual release control. Refreshes and builds continue to run, but builds completed in this mode MUST be retained as staged releases and MUST NOT replace the selected live release. Operators MUST explicitly resume automatic promotion; resuming MUST NOT promote an already-staged release by itself.
+
 The UI MUST clearly indicate that rollback promotes a prior rendered release rather than restoring the historical source tree.
 
 ## Refresh Tasks

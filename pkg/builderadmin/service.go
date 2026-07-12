@@ -65,10 +65,20 @@ type RefreshTaskConfig struct {
 }
 
 type State struct {
-	Queue   []QueuedOperation `json:"queue"`
-	Running *RunningOperation `json:"running,omitempty"`
-	Builds  []BuildRecord     `json:"builds"`
-	Refresh []RefreshRecord   `json:"refresh"`
+	Queue          []QueuedOperation `json:"queue"`
+	Running        *RunningOperation `json:"running,omitempty"`
+	Builds         []BuildRecord     `json:"builds"`
+	Refresh        []RefreshRecord   `json:"refresh"`
+	ReleaseControl ReleaseControl    `json:"release_control"`
+}
+
+// ReleaseControl preserves an operator's explicit release decision.
+// Manual mode stages new builds without replacing the selected live release.
+type ReleaseControl struct {
+	Mode             string    `json:"mode"`
+	PreferredRelease string    `json:"preferred_release,omitempty"`
+	SetByOperationID string    `json:"set_by_operation_id,omitempty"`
+	SetAt            time.Time `json:"set_at,omitempty"`
 }
 
 type QueuedOperation struct {
@@ -431,7 +441,23 @@ func (s *Service) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/builds", s.handleBuilds)
 	mux.HandleFunc("/api/refresh/", s.handleRefreshRun)
 	mux.HandleFunc("/api/releases/", s.handleReleaseAction)
+	mux.HandleFunc("/api/release-control/resume", s.handleResumeAutomaticPromotion)
 	mux.HandleFunc("/logs/", s.handleLogs)
+}
+
+func (s *Service) handleResumeAutomaticPromotion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.handleStandbyMutation(w, r) {
+		return
+	}
+	s.stateMu.Lock()
+	s.state.ReleaseControl = ReleaseControl{Mode: "automatic", SetAt: time.Now().UTC()}
+	s.saveStateLocked()
+	s.stateMu.Unlock()
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -724,7 +750,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 
 	phaseStart = time.Now()
 	s.updateRunningPhase("promote")
-	releaseID, releasePath, err := s.promoteBuild(buildWork)
+	releaseID, releasePath, becameLive, err := s.promoteBuild(buildWork)
 	if err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
@@ -738,7 +764,10 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	record.PromoteMS = time.Since(phaseStart).Milliseconds()
 	record.ReleaseID = releaseID
 	record.ReleasePath = releasePath
-	record.BecameLive = true
+	record.BecameLive = becameLive
+	if !becameLive {
+		record.TriggerDetail += "; staged because automatic promotion is paused"
+	}
 
 	phaseStart = time.Now()
 	s.updateRunningPhase("prune")
@@ -853,6 +882,15 @@ func (s *Service) runRollback(req queueRequest) {
 		record.ReleaseID = req.ReleaseID
 		record.ReleasePath = releasePath
 		record.BecameLive = true
+		s.stateMu.Lock()
+		s.state.ReleaseControl = ReleaseControl{
+			Mode:             "manual",
+			PreferredRelease: req.ReleaseID,
+			SetByOperationID: req.ID,
+			SetAt:            time.Now().UTC(),
+		}
+		s.saveStateLocked()
+		s.stateMu.Unlock()
 	}
 	record.FinishedAt = time.Now().UTC()
 	record.PromoteMS = record.FinishedAt.Sub(started).Milliseconds()
@@ -918,19 +956,28 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 	return args, cleanup, nil
 }
 
-func (s *Service) promoteBuild(buildWork string) (string, string, error) {
+func (s *Service) promoteBuild(buildWork string) (string, string, bool, error) {
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
 	releasePath := filepath.Join(s.cfg.SiteDir, "releases", releaseID)
 	if err := os.RemoveAll(releasePath); err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	if err := os.Rename(buildWork, releasePath); err != nil {
-		return "", "", err
+		return "", "", false, err
+	}
+	if !s.automaticPromotion() {
+		return releaseID, releasePath, false, nil
 	}
 	if err := s.switchCurrentRelease(releaseID); err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
-	return releaseID, releasePath, nil
+	return releaseID, releasePath, true, nil
+}
+
+func (s *Service) automaticPromotion() bool {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	return s.state.ReleaseControl.Mode != "manual"
 }
 
 func (s *Service) switchCurrentRelease(releaseID string) error {
@@ -1274,6 +1321,9 @@ func (s *Service) loadState() error {
 		return fmt.Errorf("read state: %w", err)
 	}
 	s.state = state
+	if s.state.ReleaseControl.Mode == "" {
+		s.state.ReleaseControl.Mode = "automatic"
+	}
 	return nil
 }
 
@@ -1635,6 +1685,7 @@ const indexHTML = `<!doctype html>
     }
     .control-panel .panel-head { margin: 0 auto 0 0; }
     .control-panel .refresh-schedules { flex-basis: 100%; margin-top: 4px; }
+    .promotion-hold { flex-basis: 100%; color: #fcd34d; font-size: 0.85rem; }
     button {
       background: var(--panel-strong);
       color: var(--text);
@@ -1841,6 +1892,10 @@ const indexHTML = `<!doctype html>
       </div>
       {{ end }}
     </div>
+    {{ end }}
+    {{ if eq .State.ReleaseControl.Mode "manual" }}
+    <div class="promotion-hold">Automatic promotion paused. New builds are staged until you resume it.</div>
+    <form method="post" action="/api/release-control/resume"><button class="secondary" type="submit">Resume automatic promotion</button></form>
     {{ end }}
   </section>
 
