@@ -550,6 +550,13 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 			}
 			return lines[len(lines)-6:]
 		},
+		"recentBuilds": func(builds []BuildRecord) []BuildRecord {
+			const initialBuilds = 10
+			if len(builds) <= initialBuilds {
+				return builds
+			}
+			return builds[:initialBuilds]
+		},
 		"statusClass": uiStatusClass,
 	}).Parse(indexHTML))
 	state := s.viewState()
@@ -1761,6 +1768,7 @@ const indexHTML = `<!doctype html>
     .run-title span { color: var(--muted); font-weight: 400; }
     .run-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
     .run-action { font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+    .load-more { margin-top: 10px; }
     details.run-details { grid-column: 2 / -1; color: var(--muted); font-size: 0.82rem; }
     details.run-details summary { cursor: pointer; width: fit-content; color: var(--muted); }
     details.run-details summary:hover { color: var(--text); }
@@ -1862,7 +1870,7 @@ const indexHTML = `<!doctype html>
           <div class="run-meta">{{ .Detail }}</div>
         </article>
         {{ end }}
-        {{ range .State.Builds }}
+        {{ range recentBuilds .State.Builds }}
         <article class="run">
           <span class="run-status {{ statusClass .Status }}" aria-label="{{ .Status }}"></span>
           <div class="run-title">{{ .Status }} <span>via {{ .TriggerType }}</span></div>
@@ -1891,6 +1899,7 @@ const indexHTML = `<!doctype html>
         <div class="muted">No builds yet.</div>
         {{ end }}
       </div>
+      <button class="secondary load-more" id="builds-more" type="button"{{ if le (len .State.Builds) 10 }} hidden{{ end }}>Show all {{ len .State.Builds }} builds</button>
     </section>
 
     <section id="refresh-runs" class="tab-panel" data-tab-panel="refresh-runs">
@@ -1944,6 +1953,7 @@ const indexHTML = `<!doctype html>
   const refreshCount = document.getElementById('refresh-count');
   const releaseCount = document.getElementById('release-count');
   const buildsBody = document.getElementById('builds-body');
+  let showAllBuilds = false;
   const refreshBody = document.getElementById('refresh-body');
   const releasesBody = document.getElementById('releases-body');
 
@@ -2067,8 +2077,18 @@ const indexHTML = `<!doctype html>
     });
   }
 
-  function renderBuilds(items) {
+  function renderBuilds(liveItems, completedItems) {
     const openDetails = new Set(Array.from(buildsBody.querySelectorAll('details[open][data-build-id]'), (details) => details.dataset.buildId));
+    const items = liveItems.concat(showAllBuilds ? completedItems : completedItems.slice(0, 10));
+    const moreButton = document.getElementById('builds-more');
+    if (moreButton) {
+      if (completedItems.length > 10) {
+        moreButton.hidden = false;
+        moreButton.textContent = showAllBuilds ? 'Show newest 10 builds' : 'Show all ' + completedItems.length + ' builds';
+      } else {
+        moreButton.hidden = true;
+      }
+    }
     if (!items || !items.length) {
       buildsBody.innerHTML = '<div class="muted">No builds yet.</div>';
       return;
@@ -2163,7 +2183,7 @@ const indexHTML = `<!doctype html>
       liveItems.push({ ...state.running, live_label: 'Running', status: state.running.phase || 'running' });
     }
     (state.queue || []).forEach((item) => liveItems.push({ ...item, live_label: 'Queued', status: 'queued' }));
-    renderBuilds(liveItems.concat(state.builds || []));
+    renderBuilds(liveItems, state.builds || []);
     renderRefresh(state.refresh || []);
     renderReleases(payload.releases || []);
     syncStatus.textContent = 'Live polling every 2s';
@@ -2185,6 +2205,12 @@ const indexHTML = `<!doctype html>
   }
 
   window.addEventListener('hashchange', activateTabs);
+  document.addEventListener('click', (event) => {
+    if (event.target.id === 'builds-more') {
+      showAllBuilds = !showAllBuilds;
+      pollState();
+    }
+  });
   activateTabs();
   updateFavicon('idle');
   pollState();

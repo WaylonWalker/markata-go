@@ -60,7 +60,7 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`class="run-list" id="builds-body"`,
 		`class="run-details"`,
 		`<summary>Details</summary>`,
-		`function renderBuilds(items)`,
+		`function renderBuilds(liveItems, completedItems)`,
 		`View log`,
 		`phaseTiming('Queue wait', item.queue_wait_ms)`,
 		`phaseTiming('Prune', item.prune_ms)`,
@@ -71,6 +71,9 @@ func TestIndexHTMLUsesCompactBuildRunDetails(t *testing.T) {
 		`class="card control-panel actions"`,
 		`live_label: 'Running'`,
 		`live_label: 'Queued'`,
+		`recentBuilds`,
+		`Show all {{ len .State.Builds }} builds`,
+		`let showAllBuilds = false`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(indexHTML, check) {
