@@ -1,0 +1,51 @@
+{{- if and .Values.builderAdmin.enabled .Values.builderAdmin.ingress.enabled .Values.builderAdmin.ingress.auth.enabled }}
+{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin auth is enabled" .Values.builderAdmin.ingress.auth.internalUrl }}
+{{- if not (hasPrefix "https://" $authInternalURL) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// when builder-admin auth is enabled" }}{{ end }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-hlab"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+spec:
+  headers:
+    customRequestHeaders:
+      X-Hlab-User-Id: ""
+      X-Hlab-Username: ""
+      X-Hlab-Display-Name: ""
+      X-Hlab-Email: ""
+      X-Hlab-Groups: ""
+      X-Hlab-Roles: ""
+      X-Hlab-Scopes: ""
+      X-Markata-Builder-Admin-Forwarded: ""
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-forward-auth"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+spec:
+  forwardAuth:
+    address: "{{ $authInternalURL | trimSuffix "/" }}/api/v1/forward-auth"
+    trustForwardHeader: false
+    addAuthCookiesToResponse:
+      - __Host-hlab-app-session
+    authResponseHeaders:
+      - X-Hlab-User-Id
+      - X-Hlab-Username
+      - X-Hlab-Display-Name
+      - X-Hlab-Email
+      - X-Hlab-Groups
+      - X-Hlab-Roles
+      - X-Hlab-Scopes
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-auth"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+spec:
+  chain:
+    middlewares:
+      - name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-hlab"
+      - name: "{{ .Values.project_identifier }}-notes-builder-admin-forward-auth"
+{{- end }}

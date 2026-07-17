@@ -191,6 +191,44 @@ The first version MAY use a JSON state file plus log files instead of a relation
 
 The service MUST expose an HTTP admin interface.
 
+### Operator Authentication
+
+Every builder-admin UI, API, and log route except the Kubernetes `/health` probe MUST require a
+trusted `hlab-auth` identity. The supported v1 integration is a Traefik `ForwardAuth` chain using
+the hlab-auth `/api/v1/forward-auth` endpoint. The chain MUST first remove client-supplied stable
+`X-Hlab-*` headers, forward the authentication decision and stable identity assertions, and copy
+the `__Host-hlab-app-session` response cookie with `addAuthCookiesToResponse`. The cookie copy is
+required for the cross-origin login handoff. The service MUST reject a request unless its remote
+address belongs to an explicitly configured trusted-proxy CIDR and it includes exactly one
+non-empty `X-Hlab-User-Id` header. Universal, loopback, and link-local trusted-proxy CIDRs MUST
+be rejected. The leader-forwarding marker MUST never substitute for source provenance: it is valid
+only from a configured trusted CIDR.
+
+The operator UI MUST use `X-Hlab-User-Id` only as the durable identity key. Username, display
+name, email, groups, roles, and scopes are display-only assertions; they MUST NOT grant or widen
+privileges. The UI MAY show only the stable fields present in the header contract. It MAY show the
+operator's own profile picture only when an explicit HTTPS public auth-origin configuration is
+set; it MUST construct the escaped URL from that origin and the stable user ID as
+`/users/{user_id}/picture`, with a useful no-image fallback. It MUST NOT use an identity-picture
+header, forward credentials server-side, or change hlab-auth's public origin, cookie, session, or
+WebAuthn configuration.
+
+Direct Service access and `kubectl port-forward` cannot establish proxy provenance and MUST fail
+closed. They are not supported operator-access paths for authenticated deployments.
+
+### Browser Mutation Protection
+
+An authenticated `GET /` MUST mint a cryptographically random double-submit CSRF token. It MUST
+set the token in a host-only `__Host-` cookie with `Secure`, `HttpOnly`, `SameSite=Strict`, and
+`Path=/`, and embed the same token in every browser mutation form. Every mutation MUST execute
+only after the active leader validates a cookie token against either the submitted form token or
+`X-CSRF-Token` using a constant-time comparison. It MUST also require an exact `Origin` match to
+the configured HTTPS public origin and reject a present `Sec-Fetch-Site` other than `same-origin`.
+Standbys MUST forward mutations before CSRF validation so that the active leader performs the
+validation and active/standby handoff remains correct. The forwarding marker MUST be stripped at
+the public ingress and accepted only from a configured trusted CIDR for builder-admin peer traffic
+protected by the required ingress NetworkPolicy.
+
 Required UI views:
 
 - dashboard summary
@@ -222,6 +260,14 @@ Required chart configuration includes:
 - build history retention
 - refresh task definitions
 - rollout strategy settings for clean active/standby cutover
-- optional ingress/auth settings for future protected access
+- protected builder-admin ingress using `/api/v1/forward-auth`, its cross-origin handoff-cookie
+  forwarding, optional public auth origin for self profile pictures, and trusted-proxy CIDRs
+- an exact public origin derived as `https://<builder-admin ingress host>` and passed to the
+  service for CSRF origin validation, never inferred from request headers
+- an enabled ingress NetworkPolicy that allows the configured builder-admin port only from the
+  configured Traefik namespace/pod selectors and builder-admin peers
 
-The first deployment target SHOULD work via `kubectl port-forward` even when no ingress is enabled.
+The first protected deployment target MUST use the dedicated authenticated ingress; `kubectl
+port-forward` is intentionally not an operator-access path because it bypasses proxy provenance.
+
+The default rendered-release retention MUST keep at least 25 releases, including the current live release, so operators have more than ten rollback targets by default.
