@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/exec"
@@ -53,6 +54,9 @@ type Config struct {
 	RefreshRunsKeep      int
 	RefreshTasks         []RefreshTaskConfig
 	BuildTimeout         time.Duration
+	TrustedProxyCIDRs    []string
+	PublicAuthOrigin     string
+	PublicOrigin         string
 }
 
 type RefreshTaskConfig struct {
@@ -148,25 +152,26 @@ type ReleaseView struct {
 }
 
 type Service struct {
-	cfg          Config
-	executable   string
-	statePath    string
-	logDir       string
-	overrideDir  string
-	leaderPath   string
-	queueCh      chan queueRequest
-	watchMu      sync.Mutex
-	watchChanged map[string]struct{}
-	watchTimer   *time.Timer
-	stateMu      sync.Mutex
-	state        State
-	leaderMu     sync.RWMutex
-	leader       bool
-	leaderCancel context.CancelFunc
-	leaderLock   *os.File
-	instanceID   string
-	instanceAddr string
-	server       *http.Server
+	cfg                  Config
+	executable           string
+	statePath            string
+	logDir               string
+	overrideDir          string
+	leaderPath           string
+	queueCh              chan queueRequest
+	watchMu              sync.Mutex
+	watchChanged         map[string]struct{}
+	watchTimer           *time.Timer
+	stateMu              sync.Mutex
+	state                State
+	leaderMu             sync.RWMutex
+	leader               bool
+	leaderCancel         context.CancelFunc
+	leaderLock           *os.File
+	instanceID           string
+	instanceAddr         string
+	server               *http.Server
+	trustedProxyPrefixes []netip.Prefix
 }
 
 type leaderRecord struct {
@@ -181,6 +186,20 @@ type queueRequest struct {
 }
 
 func New(cfg Config) (*Service, error) {
+	trustedProxyPrefixes, err := parseTrustedProxyPrefixes(cfg.TrustedProxyCIDRs)
+	if err != nil {
+		return nil, err
+	}
+	publicOrigin, err := normalizePublicAuthOrigin(cfg.PublicOrigin)
+	if err != nil {
+		return nil, fmt.Errorf("public origin: %w", err)
+	}
+	cfg.PublicOrigin = publicOrigin
+	publicAuthOrigin, err := normalizePublicAuthOrigin(cfg.PublicAuthOrigin)
+	if err != nil {
+		return nil, err
+	}
+	cfg.PublicAuthOrigin = publicAuthOrigin
 	if cfg.Host == "" {
 		cfg.Host = defaultListenHost
 	}
@@ -232,15 +251,16 @@ func New(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("resolve executable: %w", err)
 	}
 	s := &Service{
-		cfg:          cfg,
-		executable:   execPath,
-		statePath:    filepath.Join(cfg.HistoryDir, defaultStateName),
-		logDir:       filepath.Join(cfg.HistoryDir, defaultLogDirName),
-		overrideDir:  filepath.Join(cfg.HistoryDir, defaultOverrideName),
-		leaderPath:   filepath.Join(cfg.HistoryDir, defaultLeaderName),
-		queueCh:      make(chan queueRequest, 128),
-		watchChanged: make(map[string]struct{}),
-		instanceID:   os.Getenv("POD_NAME"),
+		cfg:                  cfg,
+		executable:           execPath,
+		statePath:            filepath.Join(cfg.HistoryDir, defaultStateName),
+		logDir:               filepath.Join(cfg.HistoryDir, defaultLogDirName),
+		overrideDir:          filepath.Join(cfg.HistoryDir, defaultOverrideName),
+		leaderPath:           filepath.Join(cfg.HistoryDir, defaultLeaderName),
+		queueCh:              make(chan queueRequest, 128),
+		watchChanged:         make(map[string]struct{}),
+		instanceID:           os.Getenv("POD_NAME"),
+		trustedProxyPrefixes: trustedProxyPrefixes,
 	}
 	if s.instanceID == "" {
 		s.instanceID = hostSuffix()
@@ -425,13 +445,15 @@ func (s *Service) queueRequestFromQueued(queued QueuedOperation) (queueRequest, 
 }
 
 func (s *Service) registerRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/api/state", s.handleState)
-	mux.HandleFunc("/api/builds", s.handleBuilds)
-	mux.HandleFunc("/api/refresh/", s.handleRefreshRun)
-	mux.HandleFunc("/api/releases/", s.handleReleaseAction)
-	mux.HandleFunc("/logs/", s.handleLogs)
+	protected := http.NewServeMux()
+	protected.HandleFunc("/", s.handleIndex)
+	protected.HandleFunc("/api/state", s.handleState)
+	protected.HandleFunc("/api/builds", s.handleBuilds)
+	protected.HandleFunc("/api/refresh/", s.handleRefreshRun)
+	protected.HandleFunc("/api/releases/", s.handleReleaseAction)
+	protected.HandleFunc("/logs/", s.handleLogs)
+	mux.Handle("/", s.requireTrustedOperator(protected))
 }
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -469,6 +491,9 @@ func (s *Service) handleBuilds(w http.ResponseWriter, r *http.Request) {
 		if s.handleStandbyMutation(w, r) {
 			return
 		}
+		if !s.validateCSRF(w, r) {
+			return
+		}
 		if err := s.enqueueBuild("manual-ui", "Manual build from admin UI", nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -485,6 +510,9 @@ func (s *Service) handleRefreshRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.handleStandbyMutation(w, r) {
+		return
+	}
+	if !s.validateCSRF(w, r) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/refresh/")
@@ -505,6 +533,9 @@ func (s *Service) handleReleaseAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.handleStandbyMutation(w, r) {
+		return
+	}
+	if !s.validateCSRF(w, r) {
 		return
 	}
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/releases/")
@@ -536,7 +567,7 @@ func (s *Service) handleLogs(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
+func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.New("builder-admin").Funcs(template.FuncMap{
 		"msToSeconds": func(ms int64) string {
 			return fmt.Sprintf("%.2fs", float64(ms)/1000)
@@ -552,22 +583,40 @@ func (s *Service) handleIndex(w http.ResponseWriter, _ *http.Request) {
 		},
 		"statusClass": uiStatusClass,
 	}).Parse(indexHTML))
+	csrfToken, err := newCSRFToken()
+	if err != nil {
+		http.Error(w, "create CSRF token", http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, csrfCookie(csrfToken))
 	state := s.viewState()
+	operator := mustOperatorProfile(r.Header)
 	data := struct {
 		State        State
 		Releases     []ReleaseView
 		CurrentID    string
 		CurrentPath  string
+		CSRFToken    string
+		Operator     OperatorProfile
+		PictureURL   string
 		RefreshTasks []RefreshTaskConfig
 	}{
 		State:        state,
 		Releases:     s.discoverReleases(),
 		CurrentID:    s.currentReleaseID(),
 		CurrentPath:  s.currentReleasePath(),
+		CSRFToken:    csrfToken,
+		Operator:     operator,
+		PictureURL:   profilePictureURL(s.cfg.PublicAuthOrigin, operator.UserID),
 		RefreshTasks: s.cfg.RefreshTasks,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
+}
+
+func mustOperatorProfile(headers http.Header) OperatorProfile {
+	profile, _ := operatorProfileFromHeaders(headers)
+	return profile
 }
 
 func (s *Service) worker(ctx context.Context) {
@@ -1001,6 +1050,12 @@ func (s *Service) handleStandbyMutation(w http.ResponseWriter, r *http.Request) 
 		return true
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.Director = func(req *http.Request) {
+		req.URL.Scheme = target.Scheme
+		req.URL.Host = target.Host
+		req.Host = target.Host
+		req.Header.Set(forwardedLeaderHeader, "1")
+	}
 	proxy.ErrorHandler = func(rw http.ResponseWriter, _ *http.Request, proxyErr error) {
 		http.Error(rw, fmt.Sprintf("builder-admin leader proxy failed: %v", proxyErr), http.StatusBadGateway)
 	}
@@ -1735,6 +1790,12 @@ const indexHTML = `<!doctype html>
       border-color: var(--line);
     }
     .sync-status { color: var(--muted); font-size: 0.78rem; }
+    .operator-profile { text-align: right; max-width: 28rem; }
+    .operator-profile strong, .operator-profile code { display: block; }
+    .operator-profile span { color: var(--muted); font-size: 0.78rem; }
+    .operator-identity { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+    .operator-avatar { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; }
+    .operator-avatar-fallback { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font-size: 0.7rem; font-weight: 700; }
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
     @media (max-width: 1200px) {
@@ -1762,6 +1823,17 @@ const indexHTML = `<!doctype html>
         <div class="meta-chip">Releases <strong id="release-count">{{ len .Releases }}</strong></div>
       </div>
     </div>
+    <div class="operator-identity" aria-label="Authenticated operator">
+      {{ if .PictureURL }}<img class="operator-avatar" src="{{ .PictureURL }}" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="operator-avatar-fallback" hidden aria-label="No profile picture">No image</span>{{ else }}<span class="operator-avatar-fallback" aria-label="No profile picture">No image</span>{{ end }}
+      <div class="operator-profile">
+        {{ if .Operator.DisplayName }}<strong>{{ .Operator.DisplayName }}</strong>{{ else if .Operator.Username }}<strong>{{ .Operator.Username }}</strong>{{ else }}<strong>Authenticated operator</strong>{{ end }}
+        <code>{{ .Operator.UserID }}</code>
+        {{ if .Operator.Email }}<span>{{ .Operator.Email }}</span>{{ end }}
+        {{ if .Operator.Groups }}<span>Groups: {{ .Operator.Groups }}</span>{{ end }}
+        {{ if .Operator.Roles }}<span>Roles: {{ .Operator.Roles }}</span>{{ end }}
+        {{ if .Operator.Scopes }}<span>Scopes: {{ .Operator.Scopes }}</span>{{ end }}
+      </div>
+    </div>
     <div class="sync-status" id="sync-status">Live polling every 2s</div>
   </div>
 
@@ -1785,9 +1857,9 @@ const indexHTML = `<!doctype html>
     </section>
     <section class="card actions">
       <div class="panel-head"><h2>Actions</h2><span>manual triggers</span></div>
-      <form method="post" action="/api/builds"><button type="submit">Enqueue Build</button></form>
+      <form method="post" action="/api/builds"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><button type="submit">Enqueue Build</button></form>
       {{ range .RefreshTasks }}
-      <form method="post" action="/api/refresh/{{ .Name }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
+      <form method="post" action="/api/refresh/{{ .Name }}"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
       {{ end }}
     </section>
   </div>
@@ -1894,7 +1966,7 @@ const indexHTML = `<!doctype html>
           <td class="time-stamp">{{ since .CreatedAt }}</td>
           <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
           <td>{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
-          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
+          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
         {{ else }}
         <tr><td colspan="6">No releases found.</td></tr>
@@ -1905,6 +1977,7 @@ const indexHTML = `<!doctype html>
   </section>
 </main>
 <script>
+  const csrfToken = {{ printf "%q" .CSRFToken }};
   const favicon = document.getElementById('app-favicon');
   const syncStatus = document.getElementById('sync-status');
   const currentRelease = document.getElementById('current-release');
@@ -2122,7 +2195,7 @@ const indexHTML = `<!doctype html>
       return;
     }
     releasesBody.innerHTML = items.map((item) => {
-      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><button class="secondary" type="submit">Promote</button></form>';
+      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><input type="hidden" name="csrf_token" value="' + csrfToken + '"><button class="secondary" type="submit">Promote</button></form>';
       return '<tr>' +
         '<td><code>' + escapeHtml(item.id) + '</code></td>' +
         '<td>' + (item.current ? statusPill('live') : '') + '</td>' +

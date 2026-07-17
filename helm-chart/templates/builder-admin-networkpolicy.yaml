@@ -1,0 +1,29 @@
+{{- if .Values.builderAdmin.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-ingress"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      service: "{{ .Values.project_identifier }}-notes-builder-admin"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.builderAdmin.networkPolicy.traefikNamespaceSelector | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.builderAdmin.networkPolicy.traefikPodSelector | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              service: "{{ .Values.project_identifier }}-notes-builder-admin"
+      ports:
+        - protocol: TCP
+          port: {{ .Values.builderAdmin.port }}
+{{- end }}

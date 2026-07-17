@@ -1,12 +1,111 @@
 package builderadmin
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestBuilderAdminAuthentication_RejectsUntrustedOrMissingIdentity(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir(), TrustedProxyCIDRs: []string{"10.42.0.0/24"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	mux := http.NewServeMux()
+	svc.registerRoutes(mux)
+
+	for _, tt := range []struct {
+		name       string
+		remoteAddr string
+		identity   string
+	}{
+		{name: "missing identity", remoteAddr: "10.42.0.10:443"},
+		{name: "untrusted source", remoteAddr: "192.0.2.10:443", identity: "operator"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = tt.remoteAddr
+			if tt.identity != "" {
+				req.Header.Set(hlabUserIDHeader, tt.identity)
+			}
+			recorder := httptest.NewRecorder()
+			mux.ServeHTTP(recorder, req)
+			if recorder.Code != http.StatusUnauthorized {
+				t.Fatalf("status=%d, want %d", recorder.Code, http.StatusUnauthorized)
+			}
+		})
+	}
+}
+
+func TestBuilderAdminAuthentication_TrustedIdentityAndCSRF(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{
+		SiteDir:           t.TempDir(),
+		TrustedProxyCIDRs: []string{"10.42.0.0/24"},
+		PublicOrigin:      "https://builder.example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.leader = true
+	mux := http.NewServeMux()
+	svc.registerRoutes(mux)
+
+	indexRequest := httptest.NewRequest(http.MethodGet, "/", nil)
+	indexRequest.RemoteAddr = "10.42.0.10:443"
+	indexRequest.Header.Set(hlabUserIDHeader, "operator")
+	indexRecorder := httptest.NewRecorder()
+	mux.ServeHTTP(indexRecorder, indexRequest)
+	if indexRecorder.Code != http.StatusOK {
+		t.Fatalf("index status=%d, want %d", indexRecorder.Code, http.StatusOK)
+	}
+	cookies := indexRecorder.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != csrfCookieName || !cookies[0].Secure || !cookies[0].HttpOnly {
+		t.Fatalf("csrf cookie=%+v", cookies)
+	}
+
+	values := url.Values{"csrf_token": {cookies[0].Value}}
+	buildRequest := httptest.NewRequest(http.MethodPost, "/api/builds", strings.NewReader(values.Encode()))
+	buildRequest.RemoteAddr = "10.42.0.10:443"
+	buildRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	buildRequest.Header.Set("Origin", "https://builder.example.com")
+	buildRequest.Header.Set(hlabUserIDHeader, "operator")
+	buildRequest.AddCookie(cookies[0])
+	buildRecorder := httptest.NewRecorder()
+	mux.ServeHTTP(buildRecorder, buildRequest)
+	if buildRecorder.Code != http.StatusSeeOther {
+		t.Fatalf("build status=%d, want %d", buildRecorder.Code, http.StatusSeeOther)
+	}
+}
+
+func TestNew_RejectsUnsafeTrustedProxyCIDRs(t *testing.T) {
+	t.Parallel()
+	for _, cidr := range []string{
+		"0.0.0.0/0", "::/0", "127.0.0.0/8", "127.0.0.1/32", "::1/128",
+		"169.254.0.0/16", "fe80::/10", "126.0.0.0/7", "fe00::/8",
+	} {
+		t.Run(cidr, func(t *testing.T) {
+			_, err := New(Config{SiteDir: t.TempDir(), TrustedProxyCIDRs: []string{cidr}})
+			if err == nil {
+				t.Fatalf("New() with trusted proxy CIDR %q succeeded, want error", cidr)
+			}
+		})
+	}
+
+	service, err := New(Config{SiteDir: t.TempDir(), TrustedProxyCIDRs: []string{"10.42.0.0/16"}})
+	if err != nil {
+		t.Fatalf("New() with pod CIDR failed: %v", err)
+	}
+	t.Cleanup(func() { _ = service.leaderLock.Close() })
+}
 
 func TestIgnoreWatchPath(t *testing.T) {
 	t.Parallel()

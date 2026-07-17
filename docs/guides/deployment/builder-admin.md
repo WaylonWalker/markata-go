@@ -70,19 +70,77 @@ Current chart defaults also prefer clean rolling cutover instead of stop-then-st
 Builder-admin keeps one active leader for queue draining, file watching, refresh scheduling, and
  release promotion while standby pods stay ready during rollout handoff.
 
-## Accessing The UI
+## Secure Access with hlab-auth
 
-The first version is designed to work well with `kubectl port-forward`.
+Builder admin is an operator control plane. Expose it only through its protected Traefik ingress;
+direct Service access and `kubectl port-forward` fail closed because they cannot prove that the
+request came through the trusted proxy.
 
-```bash
-kubectl port-forward svc/go-waylonwalker-com-notes-builder-admin 8080:8080 -n go-waylonwalker-com-notes
+```yaml
+builderAdmin:
+  enabled: true
+  auth:
+    # CIDR used by the Traefik instances and builder-admin peers that forward this
+    # Ingress. 0.0.0.0/0 and ::/0 are rejected.
+    trustedProxyCIDRs:
+      - 10.42.0.0/24
+  ingress:
+    enabled: true
+    host: builder.example.com
+    ingressClassName: traefik
+    tls:
+      enabled: true
+      secretName: builder-example-com-tls
+    auth:
+      enabled: true
+      internalUrl: https://hlab-auth.example.svc.cluster.local
+      # Optional: browser-reachable auth origin for the operator's own picture.
+      # This does not alter hlab-auth login, session, or WebAuthn configuration.
+      publicAuthOrigin: https://auth.wayl.one
+  networkPolicy:
+    enabled: true
+    # Verify these against the live Traefik installation before applying.
+    traefikNamespace: kube-system
+    traefikNamespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    traefikPodSelector:
+      app.kubernetes.io/name: traefik
+      app.kubernetes.io/instance: traefik-kube-system
 ```
 
-Then open:
+The chart strips all client-provided stable `X-Hlab-*` headers before calling hlab-auth. On a
+successful decision, Traefik forwards only the stable hlab-auth headers to builder admin. The
+ForwardAuth `internalUrl` must be an `https://` cluster-reachable URL; Helm rejects HTTP URLs.
+Set `trustedProxyCIDRs` to only the actual Traefik source CIDRs seen by the pod. A shared Pod CIDR
+is permitted only when it is needed for builder-admin peer forwarding and the required selector
+NetworkPolicy restricts that CIDR to the configured Traefik pods and builder-admin peers. Do not
+use universal, loopback, or link-local CIDRs; the service rejects them.
 
-```text
-http://localhost:8080
-```
+The chart calls hlab-auth's supported `/api/v1/forward-auth` endpoint and configures Traefik to
+copy `__Host-hlab-app-session` back to the browser. This is required for cross-origin auth
+handoff. Before installing, configure an hlab-auth route for this hostname/path and grant the
+selected users/groups the route's required scopes in hlab-auth. Builder admin makes no authorization decision from a
+username, display name, group, role, or scope; hlab-auth is the access decision point.
+
+The operator panel shows the trusted durable user ID and any supplied username, display name,
+email, groups, roles, and scopes. These are display-only. Set `publicAuthOrigin` only when the
+browser can reach hlab-auth at that HTTPS origin and you want the panel to request the signed-in
+operator's own picture. The URL is derived from the authenticated stable user ID; a `No image`
+fallback remains visible when it is unset, unavailable, or cannot load. Do not use this setting to
+change hlab-auth's primary public auth origin, cookies/sessions, or primary WebAuthn RP.
+
+When `builderAdmin.enabled` is true, Helm fails unless the protected ingress, TLS secret, ingress
+host/class, ForwardAuth URL, trusted proxy CIDRs, and builder-admin ingress NetworkPolicy are all
+configured. The service receives its CSRF public origin as exactly `https://<ingress host>` from
+the chart. Do not supply that value from request headers or alter hlab-auth's primary RP/origin.
+The NetworkPolicy permits the configured `builderAdmin.port` only from the configured Traefik
+namespace/pod selectors and other builder-admin pods; confirm the default labels match the
+installed controller. The peer-forwarding marker is accepted only from a configured trusted CIDR;
+it cannot authenticate a direct request by itself.
+
+Authenticated `GET /` responses set a host-only, secure, HttpOnly, strict-SameSite CSRF cookie
+and include its token in each mutation form. Browser mutations must present the matching token and
+the exact configured Origin; programmatic clients may use `X-CSRF-Token` instead of a form field.
 
 ## What You Can See
 
