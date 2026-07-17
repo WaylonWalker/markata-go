@@ -1,4 +1,20 @@
 {{- if .Values.builderAdmin.enabled }}
+{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin is enabled" .Values.builderAdmin.ingress.auth.internalUrl }}
+{{- if not .Values.builderAdmin.ingress.enabled }}{{ fail "builderAdmin.ingress.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.ingress.auth.enabled }}{{ fail "builderAdmin.ingress.auth.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.ingress.tls.enabled }}{{ fail "builderAdmin.ingress.tls.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.networkPolicy.enabled }}{{ fail "builderAdmin.networkPolicy.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- $_ := required "builderAdmin.ingress.host is required when builder-admin is enabled" .Values.builderAdmin.ingress.host }}
+{{- $_ := required "builderAdmin.ingress.tls.secretName is required when builder-admin is enabled" .Values.builderAdmin.ingress.tls.secretName }}
+{{- if not (hasPrefix "https://" $authInternalURL) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// when builder-admin is enabled" }}{{ end }}
+{{- $_ := required "builderAdmin.auth.trustedProxyCIDRs must be non-empty when builder-admin is enabled" (first .Values.builderAdmin.auth.trustedProxyCIDRs) }}
+{{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
+{{- $trustedCIDR := trim . }}
+{{- if or (eq $trustedCIDR "0.0.0.0/0") (eq $trustedCIDR "::/0") }}{{ fail "builderAdmin.auth.trustedProxyCIDRs must not include a universal CIDR" }}{{ end }}
+{{- end }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikNamespace is required when builder-admin is enabled" .Values.builderAdmin.networkPolicy.traefikNamespace }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikNamespaceSelector must be non-empty when builder-admin is enabled" (first (keys .Values.builderAdmin.networkPolicy.traefikNamespaceSelector)) }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikPodSelector must be non-empty when builder-admin is enabled" (first (keys .Values.builderAdmin.networkPolicy.traefikPodSelector)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -95,6 +111,16 @@ spec:
             - {{ .Values.builderAdmin.history.refreshRuns | quote }}
             - --build-timeout
             - {{ printf "%ds" (int .Values.builderAdmin.buildTimeoutSeconds) | quote }}
+            - --public-origin
+            - {{ printf "https://%s" .Values.builderAdmin.ingress.host | quote }}
+            {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
+            - --trusted-proxy-cidr
+            - {{ . | quote }}
+            {{- end }}
+            {{- if .Values.builderAdmin.ingress.auth.publicAuthOrigin }}
+            - --public-auth-origin
+            - {{ .Values.builderAdmin.ingress.auth.publicAuthOrigin | quote }}
+            {{- end }}
             {{- if .Values.builderAdmin.fast }}
             - --fast
             {{- end }}

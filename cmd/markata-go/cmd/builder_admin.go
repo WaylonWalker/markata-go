@@ -30,6 +30,9 @@ var (
 	builderAdminRefreshRunsKeep      int
 	builderAdminBuildTimeout         time.Duration
 	builderAdminRefreshTaskSpecs     []string
+	builderAdminTrustedProxyCIDRs    []string
+	builderAdminPublicAuthOrigin     string
+	builderAdminPublicOrigin         string
 )
 
 var builderAdminCmd = &cobra.Command{
@@ -60,6 +63,9 @@ func init() {
 	builderAdminCmd.Flags().IntVar(&builderAdminRefreshRunsKeep, "refresh-runs-keep", 100, "number of refresh run records to keep")
 	builderAdminCmd.Flags().DurationVar(&builderAdminBuildTimeout, "build-timeout", 2*time.Hour, "maximum runtime for a queued build or refresh task")
 	builderAdminCmd.Flags().StringArrayVar(&builderAdminRefreshTaskSpecs, "refresh-task", nil, "repeatable task spec: name|every|enqueue|arg1|arg2...")
+	builderAdminCmd.Flags().StringArrayVar(&builderAdminTrustedProxyCIDRs, "trusted-proxy-cidr", nil, "repeatable CIDR permitted to supply hlab-auth headers")
+	builderAdminCmd.Flags().StringVar(&builderAdminPublicAuthOrigin, "public-auth-origin", "", "optional HTTPS hlab-auth origin used for the signed-in operator profile picture")
+	builderAdminCmd.Flags().StringVar(&builderAdminPublicOrigin, "public-origin", "", "exact HTTPS public origin used to validate browser mutations")
 }
 
 func runBuilderAdmin(_ *cobra.Command, _ []string) error {
@@ -85,6 +91,9 @@ func runBuilderAdmin(_ *cobra.Command, _ []string) error {
 		RefreshRunsKeep:      builderAdminRefreshRunsKeep,
 		RefreshTasks:         refreshTasks,
 		BuildTimeout:         builderAdminBuildTimeout,
+		TrustedProxyCIDRs:    builderAdminTrustedProxyCIDRs,
+		PublicAuthOrigin:     builderAdminPublicAuthOrigin,
+		PublicOrigin:         builderAdminPublicOrigin,
 	})
 	if err != nil {
 		return err
