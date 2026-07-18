@@ -52,12 +52,35 @@ func NewDependencyGraph() *DependencyGraph {
 // This replaces any existing dependencies for the source.
 // The sourceSlug is the slug of the source post (for reverse lookups).
 // The targets are slugs of linked posts.
-func (g *DependencyGraph) SetDependencies(sourcePath, sourceSlug string, targets []string) {
+// It returns true when the dependency graph changed.
+func (g *DependencyGraph) SetDependencies(sourcePath, sourceSlug string, targets []string) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	var unique []string
+	if len(targets) > 0 {
+		seen := make(map[string]bool, len(targets))
+		unique = make([]string, 0, len(targets))
+		for _, t := range targets {
+			if !seen[t] {
+				seen[t] = true
+				unique = append(unique, t)
+			}
+		}
+		sort.Strings(unique)
+	}
+
+	oldTargets, hadTargets := g.Dependencies[sourcePath]
+	oldSlug := g.PathToSlug[sourcePath]
+	sameSlug := sourceSlug == "" || oldSlug == sourceSlug
+	if sameSlug && slicesEqual(oldTargets, unique) {
+		if len(unique) > 0 || !hadTargets {
+			return false
+		}
+	}
+
 	// Remove old dependencies from reverse index
-	if oldTargets, ok := g.Dependencies[sourcePath]; ok {
+	if hadTargets {
 		for _, target := range oldTargets {
 			g.removeDependent(target, sourcePath)
 		}
@@ -69,19 +92,9 @@ func (g *DependencyGraph) SetDependencies(sourcePath, sourceSlug string, targets
 	}
 
 	// Store new dependencies
-	if len(targets) == 0 {
+	if len(unique) == 0 {
 		delete(g.Dependencies, sourcePath)
 	} else {
-		// Deduplicate and sort for deterministic output
-		seen := make(map[string]bool, len(targets))
-		unique := make([]string, 0, len(targets))
-		for _, t := range targets {
-			if !seen[t] {
-				seen[t] = true
-				unique = append(unique, t)
-			}
-		}
-		sort.Strings(unique)
 		g.Dependencies[sourcePath] = unique
 
 		// Update reverse index
@@ -89,6 +102,20 @@ func (g *DependencyGraph) SetDependencies(sourcePath, sourceSlug string, targets
 			g.addDependent(target, sourcePath)
 		}
 	}
+
+	return true
+}
+
+func slicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // GetDependencies returns the targets that a source post links to.

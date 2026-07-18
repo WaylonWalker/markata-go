@@ -48,3 +48,20 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.search.size | quote }}
+{{- if .Values.storage.cache.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ include "markata-notes.cachePvcName" . }}"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.cache.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.storage.cache.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.cache.size | quote }}
+{{- end }}

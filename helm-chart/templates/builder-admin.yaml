@@ -1,0 +1,247 @@
+{{- if .Values.builderAdmin.enabled }}
+{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin is enabled" .Values.builderAdmin.ingress.auth.internalUrl }}
+{{- if not .Values.builderAdmin.ingress.enabled }}{{ fail "builderAdmin.ingress.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.ingress.auth.enabled }}{{ fail "builderAdmin.ingress.auth.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.ingress.tls.enabled }}{{ fail "builderAdmin.ingress.tls.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- if not .Values.builderAdmin.networkPolicy.enabled }}{{ fail "builderAdmin.networkPolicy.enabled must be true when builder-admin is enabled" }}{{ end }}
+{{- $_ := required "builderAdmin.ingress.host is required when builder-admin is enabled" .Values.builderAdmin.ingress.host }}
+{{- $_ := required "builderAdmin.ingress.tls.secretName is required when builder-admin is enabled" .Values.builderAdmin.ingress.tls.secretName }}
+{{- if not (hasPrefix "https://" $authInternalURL) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// when builder-admin is enabled" }}{{ end }}
+{{- $_ := required "builderAdmin.auth.trustedProxyCIDRs must be non-empty when builder-admin is enabled" (first .Values.builderAdmin.auth.trustedProxyCIDRs) }}
+{{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
+{{- $trustedCIDR := trim . }}
+{{- if or (eq $trustedCIDR "0.0.0.0/0") (eq $trustedCIDR "::/0") }}{{ fail "builderAdmin.auth.trustedProxyCIDRs must not include a universal CIDR" }}{{ end }}
+{{- end }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikNamespace is required when builder-admin is enabled" .Values.builderAdmin.networkPolicy.traefikNamespace }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikNamespaceSelector must be non-empty when builder-admin is enabled" (first (keys .Values.builderAdmin.networkPolicy.traefikNamespaceSelector)) }}
+{{- $_ := required "builderAdmin.networkPolicy.traefikPodSelector must be non-empty when builder-admin is enabled" (first (keys .Values.builderAdmin.networkPolicy.traefikPodSelector)) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-builder-admin"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: {{ .Values.builderAdmin.strategy.type | quote }}
+    {{- if eq .Values.builderAdmin.strategy.type "RollingUpdate" }}
+    {{- with .Values.builderAdmin.strategy.rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
+  selector:
+    matchLabels:
+      service: "{{ .Values.project_identifier }}-notes-builder-admin"
+  template:
+    metadata:
+      labels:
+        service: "{{ .Values.project_identifier }}-notes-builder-admin"
+        {{- include "markata-notes.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: "{{ include "markata-notes.serviceAccountName" . }}"
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      enableServiceLinks: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.build.enabled (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled }}
+      initContainers:
+        - name: wait-for-source
+          image: "{{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}"
+          imagePullPolicy: {{ .Values.build.builderImage.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ceu
+          args:
+            - |
+              deadline=$(($(date +%s) + {{ .Values.search.waitForSource.timeoutSeconds }}))
+              until [ -f /data/source/.markata-notes-source-ready ] || [ -f /data/source/markata-go.toml ] || [ -f /data/source/markata.toml ] || [ -d /data/source/pages ] || [ -d /data/source/content ]; do
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                  echo "timed out waiting for source content in /data/source" >&2
+                  ls -la /data/source >&2
+                  exit 1
+                fi
+                sleep {{ .Values.search.waitForSource.pollIntervalSeconds }}
+              done
+          resources:
+            {{- toYaml .Values.search.waitForSource.resources | nindent 12 }}
+          volumeMounts:
+            - name: source
+              mountPath: /data/source
+      {{- end }}
+      containers:
+        - name: "{{ .Values.project_identifier }}-notes-builder-admin"
+          image: "{{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}"
+          imagePullPolicy: {{ .Values.build.builderImage.pullPolicy }}
+          command:
+            - markata-go
+            - builder-admin
+          args:
+            - --host
+            - {{ .Values.builderAdmin.host | quote }}
+            - --port
+            - {{ .Values.builderAdmin.port | quote }}
+            - --source-dir
+            - /data/source
+            - --site-dir
+            - /data/site
+            - --history-dir
+            - {{ .Values.builderAdmin.historyDir | quote }}
+            - --watch={{ ternary "true" "false" .Values.builderAdmin.watch.enabled }}
+            - --watch-debounce
+            - {{ .Values.builderAdmin.watch.debounce | quote }}
+            - --releases-keep
+            - {{ .Values.builderAdmin.releases.keep | quote }}
+            - --successful-builds-keep
+            - {{ .Values.builderAdmin.history.successfulBuilds | quote }}
+            - --failed-builds-keep
+            - {{ .Values.builderAdmin.history.failedBuilds | quote }}
+            - --refresh-runs-keep
+            - {{ .Values.builderAdmin.history.refreshRuns | quote }}
+            - --build-timeout
+            - {{ printf "%ds" (int .Values.builderAdmin.buildTimeoutSeconds) | quote }}
+            - --public-origin
+            - {{ printf "https://%s" .Values.builderAdmin.ingress.host | quote }}
+            {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
+            - --trusted-proxy-cidr
+            - {{ . | quote }}
+            {{- end }}
+            {{- if .Values.builderAdmin.ingress.auth.publicAuthOrigin }}
+            - --public-auth-origin
+            - {{ .Values.builderAdmin.ingress.auth.publicAuthOrigin | quote }}
+            {{- end }}
+            {{- if .Values.builderAdmin.fast }}
+            - --fast
+            {{- end }}
+            {{- if .Values.builderAdmin.mermaidMode }}
+            - --mermaid-mode
+            - {{ .Values.builderAdmin.mermaidMode | quote }}
+            {{- end }}
+            {{- if .Values.storage.cache.enabled }}
+            - --cache-mount
+            - {{ .Values.storage.cache.mountPath | quote }}
+            {{- end }}
+            {{- if .Values.search.configPath }}
+            - --config
+            - {{ .Values.search.configPath | quote }}
+            {{- end }}
+            {{- range .Values.builderAdmin.refreshTasks }}
+            - --refresh-task
+            - {{ printf "%s|%s|%t|%s" .name .every .enqueueBuildOnSuccess (join "|" .args) | quote }}
+            {{- end }}
+          {{- if .Values.markataEncryption.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.markataEncryption.secretName | quote }}
+          {{- end }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HTTP_PROXY
+              value: {{ .Values.build.proxy.http | quote }}
+            - name: HTTPS_PROXY
+              value: {{ .Values.build.proxy.https | quote }}
+            - name: MARKATA_GO_OFFLINE
+              value: {{ ternary "true" "false" .Values.offline.enabled | quote }}
+            - name: MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR
+              value: {{ .Values.offline.bundledAssetsCacheDir | quote }}
+            - name: MARKATA_GO_BUNDLED_MERMAID_DIR
+              value: {{ .Values.offline.bundledMermaidDir | quote }}
+            - name: XDG_CACHE_HOME
+              value: {{ .Values.build.cacheDir | quote }}
+            {{- with .Values.build.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.builderAdmin.port }}
+              name: http
+          resources:
+            {{- toYaml .Values.builderAdmin.resources | nindent 12 }}
+          volumeMounts:
+            - name: source
+              mountPath: /data/source
+            - name: site
+              mountPath: /data/site
+            {{- if .Values.storage.cache.enabled }}
+            - name: cache
+              mountPath: {{ .Values.storage.cache.mountPath | quote }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            timeoutSeconds: 1
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            timeoutSeconds: 1
+            periodSeconds: 5
+            failureThreshold: 12
+      volumes:
+        - name: source
+          {{- if eq (.Values.storage.source.mode | default "pvc") "hostPath" }}
+          hostPath:
+            path: {{ .Values.storage.source.hostPath.path | quote }}
+            type: {{ .Values.storage.source.hostPath.type | quote }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.sourcePvcName" . }}"
+          {{- end }}
+        - name: site
+          {{- if eq (.Values.storage.site.mode | default "pvc") "hostPath" }}
+          hostPath:
+            path: {{ .Values.storage.site.hostPath.path | quote }}
+            type: {{ .Values.storage.site.hostPath.type | quote }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.sitePvcName" . }}"
+          {{- end }}
+        {{- if .Values.storage.cache.enabled }}
+        - name: cache
+          {{- if eq (.Values.storage.cache.mode | default "pvc") "hostPath" }}
+          hostPath:
+            path: {{ .Values.storage.cache.hostPath.path | quote }}
+            type: {{ .Values.storage.cache.hostPath.type | quote }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: "{{ include "markata-notes.cachePvcName" . }}"
+          {{- end }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  labels:
+    service: "{{ .Values.project_identifier }}-notes-builder-admin"
+    {{- include "markata-notes.labels" . | nindent 4 }}
+spec:
+  selector:
+    service: "{{ .Values.project_identifier }}-notes-builder-admin"
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.builderAdmin.port }}
+      targetPort: http
+{{- end }}

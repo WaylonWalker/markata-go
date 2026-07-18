@@ -41,12 +41,17 @@ build:
   failedJobsHistoryLimit: 6
   ttlSecondsAfterFinished: 259200
   activeDeadlineSeconds: 1800
+  # Keep public scheduled builds accurate by default. Enable only for preview-style loops.
+  fast: false
+  notify:
+    enabled: false
+    url: ""
   mermaid:
     mode: client
   lock:
     enabled: true
     dirName: ".markata-notes-build-lock"
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     staleAfterBufferSeconds: 600
   releases:
     keep: 3
@@ -72,6 +77,70 @@ build:
       memory: 2Gi
       ephemeral-storage: 4Gi
 
+builderAdmin:
+  enabled: false
+  host: 0.0.0.0
+  port: 8080
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  watch:
+    enabled: true
+    debounce: 2s
+  # Queued builder-admin builds default to full builds so blogroll, mentions, and other
+  # user-facing outputs stay live unless an environment explicitly opts into faster previews.
+  fast: false
+  mermaidMode: client
+  releases:
+    keep: 25
+  history:
+    successfulBuilds: 50
+    failedBuilds: 100
+    refreshRuns: 100
+  buildTimeoutSeconds: 7200
+  historyDir: /data/site/.builder-admin
+  # Builder admin is fail-closed: only source addresses in this list may supply
+  # the identity headers injected by the protected Traefik route.
+  auth:
+    trustedProxyCIDRs: []
+  ingress:
+    enabled: false
+    host: ""
+    ingressClassName: ""
+    tls:
+      enabled: false
+      secretName: ""
+    auth:
+      enabled: false
+      # Use the cluster-reachable hlab-auth base URL. The chart appends the
+      # supported /api/v1/forward-auth endpoint.
+      internalUrl: ""
+      # Optional browser-reachable hlab-auth origin used only to display the
+      # signed-in operator's own profile picture. It does not affect login,
+      # session, or WebAuthn behavior.
+      publicAuthOrigin: ""
+  networkPolicy:
+    # Must be explicitly enabled with ingress; it limits builderAdmin.port to
+    # Traefik and builder-admin peers only.
+    enabled: false
+    traefikNamespace: kube-system
+    traefikNamespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    traefikPodSelector:
+      app.kubernetes.io/name: traefik
+      app.kubernetes.io/instance: traefik-kube-system
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 500Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+  refreshTasks: []
+
 site:
   replicaCount: 1
   image:
@@ -92,19 +161,24 @@ search:
   enabled: true
   replicaCount: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   configPath: /data/source/markata-go.toml
   image:
     name: ghcr.io/waylonwalker/markata-go-builder
     tag: "latest"
     pullPolicy: IfNotPresent
   mode: watch-content
+  writableIndexStorage:
+    mode: emptyDir
   port: 3001
-  watchDebounce: 5s
+  watchDebounce: 2s
   waitForSource:
     enabled: true
     timeoutSeconds: 900
-    pollIntervalSeconds: 5
+    pollIntervalSeconds: 2
     resources:
       requests:
         cpu: 10m
@@ -168,6 +242,18 @@ storage:
     accessModes:
       - ReadWriteOnce
     pvcNameSuffix: ""
+  cache:
+    enabled: false
+    mode: pvc
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+    pvcNameSuffix: ""
+    mountPath: /data/cache
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
 
 ingress:
   enabled: true

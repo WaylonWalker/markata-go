@@ -123,6 +123,9 @@ func runSearchServer(cmd *cobra.Command, _ []string) error {
 		handler = searchapi.NewReadOnlyHandler(searchServerIndexDir, apiCfg)
 	}
 	defer handler.Close()
+	if err := handler.Warm(); err != nil {
+		return fmt.Errorf("warm search index: %w", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle(handlerSearchPath, handler)
@@ -222,6 +225,9 @@ func watchSearchContent(ctx context.Context, watcher *fsnotify.Watcher, handler 
 					return
 				}
 				handler.UpdatePosts(app.Manager.Posts())
+				if err := handler.Warm(); err != nil {
+					errlnf("Search watcher warm failed: %v", err)
+				}
 			})
 		case err, ok := <-watcher.Errors:
 			if !ok {

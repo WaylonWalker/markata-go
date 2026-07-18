@@ -56,7 +56,7 @@ func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
 	}
 	page := &models.FeedPage{Posts: fc.Posts, TotalPages: 1}
 
-	html, err := p.generateFeedPageHTML(fc, page, config, nil)
+	html, err := p.generateFeedPageHTML(fc, page, config, nil, buildFeedRenderContext(fc))
 	if err != nil {
 		t.Fatalf("generateFeedPageHTML() error = %v", err)
 	}
@@ -786,5 +786,71 @@ func TestPublishFeedsPlugin_GeneratesArchiveVariants(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(tempDir, "blog", "archive", "feed.json")); err != nil {
 		t.Fatalf("archive json not written: %v", err)
+	}
+}
+
+func TestPublishFeedsPlugin_ShouldSkipFeed_UsesRenderableHTMLPagination(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishFeedsPlugin()
+	config := lifecycle.NewManager().Config()
+	config.OutputDir = tempDir
+	config.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Test Site",
+	}
+
+	titleA := "Published"
+	titleB := "Draft"
+	feed := &models.FeedConfig{
+		Slug:         "published",
+		Title:        "Published",
+		Description:  "Published posts",
+		ItemsPerPage: 1,
+		Formats: models.FeedFormats{
+			HTML: true,
+		},
+		Posts: []*models.Post{
+			{
+				Path:        "pages/published.md",
+				Slug:        "published",
+				Href:        "/published/",
+				Title:       &titleA,
+				Published:   true,
+				ArticleHTML: "<p>published</p>",
+			},
+			{
+				Path:        "pages/draft.md",
+				Slug:        "draft",
+				Href:        "/draft/",
+				Title:       &titleB,
+				Draft:       true,
+				Published:   false,
+				ArticleHTML: "<p>draft</p>",
+			},
+		},
+	}
+	feed.Pages = []models.FeedPage{
+		{Number: 1, Posts: []*models.Post{feed.Posts[0]}, TotalPages: 2, TotalItems: 2, ItemsPerPage: 1, PageURLs: []string{"/published/", "/published/page/2/"}, HasNext: true, NextURL: "/published/page/2/"},
+		{Number: 2, Posts: []*models.Post{feed.Posts[1]}, TotalPages: 2, TotalItems: 2, ItemsPerPage: 1, PageURLs: []string{"/published/", "/published/page/2/"}, HasPrev: true, PrevURL: "/published/"},
+	}
+
+	if err := plugin.publishFeed(feed, config, tempDir); err != nil {
+		t.Fatalf("publishFeed() error = %v", err)
+	}
+
+	cache := buildcache.New(t.TempDir())
+	hash := plugin.computeFeedHash(feed)
+	cache.SetFeedHash(feed.Slug, hash)
+
+	skip, gotHash := plugin.shouldSkipFeed(feed, cache, tempDir)
+	if !skip {
+		t.Fatalf("shouldSkipFeed() = false, want true")
+	}
+	if gotHash != hash {
+		t.Fatalf("shouldSkipFeed() hash = %q, want %q", gotHash, hash)
+	}
+
+	if _, err := os.Stat(filepath.Join(tempDir, "published", "page", "2", "index.html")); !os.IsNotExist(err) {
+		t.Fatalf("expected renderable pagination to omit page 2, stat err = %v", err)
 	}
 }

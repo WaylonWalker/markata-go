@@ -12,6 +12,8 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
+const cacheKeyGlobFileModTimes = "glob.file_mod_times"
+
 // GlobPlugin discovers content files using glob patterns.
 type GlobPlugin struct {
 	// patterns are the glob patterns to match files against.
@@ -163,10 +165,11 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	patternHash := buildcache.HashContent(strings.Join(p.patterns, "\n"))
 
 	if lifecycle.IsServeFullRebuild(m) {
-		files := p.scanFiles(absBaseDir)
+		files, modTimes := p.scanFiles(absBaseDir)
 		if cache != nil && len(files) > 0 {
 			cache.SetGlobCache(files, patternHash)
 		}
+		m.Cache().Set(cacheKeyGlobFileModTimes, modTimes)
 		m.SetFiles(files)
 		return nil
 	}
@@ -180,13 +183,14 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	}
 
 	// Full scan
-	files := p.scanFiles(absBaseDir)
+	files, modTimes := p.scanFiles(absBaseDir)
 
 	// Cache for next build
 	if cache != nil && len(files) > 0 {
 		cache.SetGlobCache(files, patternHash)
 	}
 
+	m.Cache().Set(cacheKeyGlobFileModTimes, modTimes)
 	m.SetFiles(files)
 	return nil
 }
@@ -201,9 +205,10 @@ func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
 		len(lifecycle.GetServeAffectedPaths(m)) > 0
 }
 
-// scanFiles performs full glob scan.
-func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
+// scanFiles performs full glob scan and records file modtimes for later stages.
+func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]int64) {
 	fileSet := make(map[string]struct{})
+	modTimes := make(map[string]int64)
 
 	for _, pattern := range p.patterns {
 		fullPattern := pattern
@@ -232,6 +237,7 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 			}
 
 			fileSet[relPath] = struct{}{}
+			modTimes[relPath] = info.ModTime().UnixNano()
 		}
 	}
 
@@ -240,7 +246,7 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 		files = append(files, file)
 	}
 	sort.Strings(files)
-	return files
+	return files, modTimes
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.
