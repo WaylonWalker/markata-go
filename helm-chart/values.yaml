@@ -94,7 +94,7 @@ builderAdmin:
   fast: false
   mermaidMode: client
   releases:
-    keep: 10
+    keep: 25
   history:
     successfulBuilds: 50
     failedBuilds: 100
