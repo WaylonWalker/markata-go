@@ -33,7 +33,7 @@ const (
 	defaultLockName     = "leader.lock"
 	defaultListenHost   = "127.0.0.1"
 	defaultListenPort   = 8080
-	defaultReleaseKeep  = 10
+	defaultReleaseKeep  = 25
 )
 
 type Config struct {

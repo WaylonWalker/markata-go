@@ -288,7 +288,7 @@ markata-go builder-admin [flags]
 | `--mermaid-mode` | Override `[markata-go.mermaid].mode` for queued builds | `""` |
 | `--cache-mount` | Optional dedicated cache mount used for `.markata` and `.markata-cache` symlinks | `""` |
 | `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
-| `--releases-keep` | Number of rendered releases to keep on disk | `10` |
+| `--releases-keep` | Number of rendered releases to keep on disk | `25` |
 | `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
 
 #### Examples
