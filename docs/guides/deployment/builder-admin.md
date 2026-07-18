@@ -43,7 +43,7 @@ builderAdmin:
     enabled: true
     debounce: 2s
   releases:
-    keep: 10
+    keep: 25
   history:
     successfulBuilds: 50
     failedBuilds: 100
