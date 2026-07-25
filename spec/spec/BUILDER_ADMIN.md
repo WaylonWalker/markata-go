@@ -262,6 +262,9 @@ Required chart configuration includes:
 - rollout strategy settings for clean active/standby cutover
 - protected builder-admin ingress using `/api/v1/forward-auth`, its cross-origin handoff-cookie
   forwarding, optional public auth origin for self profile pictures, and trusted-proxy CIDRs
+- a ForwardAuth internal URL that uses either HTTPS or the exact cluster-local hlab-auth Service
+  endpoint (`http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>`); the public auth origin remains
+  HTTPS for browser login and handoff
 - an exact public origin derived as `https://<builder-admin ingress host>` and passed to the
   service for CSRF origin validation, never inferred from request headers
 - an enabled ingress NetworkPolicy that allows the configured builder-admin port only from the

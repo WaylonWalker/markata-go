@@ -47,3 +47,10 @@ helm.sh/chart: "{{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }
 {{- printf "%s-notes-workload" .Values.project_identifier -}}
 {{- end -}}
 {{- end -}}
+
+{{- define "markata-notes.validateBuilderAdminAuthInternalURL" -}}
+{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin auth is enabled" .Values.builderAdmin.ingress.auth.internalUrl -}}
+{{- $isHTTPS := hasPrefix "https://" $authInternalURL -}}
+{{- $isClusterLocalHlabAuth := regexMatch "^http://hlab-auth\\.hlab-auth\\.svc\\.cluster\\.local:(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])/?$" $authInternalURL -}}
+{{- if not (or $isHTTPS $isClusterLocalHlabAuth) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// or http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535> when builder-admin auth is enabled" }}{{ end -}}
+{{- end -}}
