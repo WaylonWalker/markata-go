@@ -1795,7 +1795,9 @@ const indexHTML = `<!doctype html>
     .operator-profile span { color: var(--muted); font-size: 0.78rem; }
     .operator-identity { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
     .operator-avatar { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; }
-    .operator-avatar-fallback { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font-size: 0.7rem; font-weight: 700; }
+    .operator-avatar-fallback { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--panel-strong); }
+    .operator-avatar-fallback[hidden] { display: none; }
+    .operator-avatar-fallback svg { width: 18px; height: 18px; fill: currentColor; }
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
     @media (max-width: 1200px) {
@@ -1824,7 +1826,7 @@ const indexHTML = `<!doctype html>
       </div>
     </div>
     <div class="operator-identity" aria-label="Authenticated operator">
-      {{ if .PictureURL }}<img class="operator-avatar" src="{{ .PictureURL }}" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="operator-avatar-fallback" hidden aria-label="No profile picture">No image</span>{{ else }}<span class="operator-avatar-fallback" aria-label="No profile picture">No image</span>{{ end }}
+      {{ if .PictureURL }}<img class="operator-avatar" src="{{ .PictureURL }}" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="operator-avatar-fallback" hidden role="img" aria-label="Profile picture unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4.5 0-8.25 2.3-8.25 5.25V21h16.5v-1.75C20.25 16.3 16.5 14 12 14Z"/></svg></span>{{ else }}<span class="operator-avatar-fallback" role="img" aria-label="Profile picture unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4.5 0-8.25 2.3-8.25 5.25V21h16.5v-1.75C20.25 16.3 16.5 14 12 14Z"/></svg></span>{{ end }}
       <div class="operator-profile">
         {{ if .Operator.DisplayName }}<strong>{{ .Operator.DisplayName }}</strong>{{ else if .Operator.Username }}<strong>{{ .Operator.Username }}</strong>{{ else }}<strong>Authenticated operator</strong>{{ end }}
         <code>{{ .Operator.UserID }}</code>
