@@ -50,6 +50,7 @@ func TestBuilderAdminAuthentication_TrustedIdentityAndCSRF(t *testing.T) {
 		SiteDir:           t.TempDir(),
 		TrustedProxyCIDRs: []string{"10.42.0.0/24"},
 		PublicOrigin:      "https://builder.example.com",
+		PublicAuthOrigin:  "https://auth.example.com",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -66,6 +67,16 @@ func TestBuilderAdminAuthentication_TrustedIdentityAndCSRF(t *testing.T) {
 	mux.ServeHTTP(indexRecorder, indexRequest)
 	if indexRecorder.Code != http.StatusOK {
 		t.Fatalf("index status=%d, want %d", indexRecorder.Code, http.StatusOK)
+	}
+	indexBody := indexRecorder.Body.String()
+	if !strings.Contains(indexBody, `operator-avatar-fallback[hidden] { display: none; }`) {
+		t.Fatal("index is missing the hidden avatar fallback rule")
+	}
+	if !strings.Contains(indexBody, `src="https://auth.example.com/users/operator/picture"`) {
+		t.Fatal("index is missing the operator profile picture URL")
+	}
+	if !strings.Contains(indexBody, `onerror="this.hidden=true;this.nextElementSibling.hidden=false"`) || !strings.Contains(indexBody, `hidden role="img" aria-label="Profile picture unavailable"`) || !strings.Contains(indexBody, `<svg viewBox="0 0 24 24"`) {
+		t.Fatal("index is missing the accessible avatar fallback icon")
 	}
 	cookies := indexRecorder.Result().Cookies()
 	if len(cookies) != 1 || cookies[0].Name != csrfCookieName || !cookies[0].Secure || !cookies[0].HttpOnly {
