@@ -68,7 +68,12 @@ just push
 - Set `project_identifier`, `project_name`, `sourceArchive.bucket`, and `sourceArchive.location` for your site before installing.
 - Set `ingress.host` explicitly if you do not want the default `<project>.example.com` hostname.
 - Enable `ingress.tls.enabled` and set `ingress.tls.secretName` when your ingress should terminate HTTPS with a named secret.
-- Ingress auth is disabled by default. If you enable it, set `ingress.auth.url` and optionally `ingress.auth.internalUrl` for your auth provider.
+- Ingress auth is disabled by default. For builder-admin, set
+  `builderAdmin.ingress.auth.internalUrl` to either an HTTPS auth origin or the
+  cluster-local hlab-auth Service URL
+  (`http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>`). The chart appends
+  `/api/v1/forward-auth`; keep `publicAuthOrigin` on the browser-facing HTTPS
+  auth origin.
 - Use `build.extraEnv` for host-specific `MARKATA_GO_*` overrides such as `MARKATA_GO_URL` or `MARKATA_GO_SEARCH_ENDPOINT`.
 - `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
 - Use `nodeSelector` when hostPath-backed content exists only on a specific node.
