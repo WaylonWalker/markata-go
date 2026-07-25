@@ -1,6 +1,6 @@
 {{- if and .Values.builderAdmin.enabled .Values.builderAdmin.ingress.enabled .Values.builderAdmin.ingress.auth.enabled }}
-{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin auth is enabled" .Values.builderAdmin.ingress.auth.internalUrl }}
-{{- if not (hasPrefix "https://" $authInternalURL) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// when builder-admin auth is enabled" }}{{ end }}
+{{- include "markata-notes.validateBuilderAdminAuthInternalURL" . }}
+{{- $authInternalURL := .Values.builderAdmin.ingress.auth.internalUrl }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:

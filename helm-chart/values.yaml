@@ -114,8 +114,9 @@ builderAdmin:
       secretName: ""
     auth:
       enabled: false
-      # Use the cluster-reachable hlab-auth base URL. The chart appends the
-      # supported /api/v1/forward-auth endpoint.
+      # Use an HTTPS auth origin or the cluster-local hlab-auth base URL
+      # (http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>). The chart
+      # appends the supported /api/v1/forward-auth endpoint.
       internalUrl: ""
       # Optional browser-reachable hlab-auth origin used only to display the
       # signed-in operator's own profile picture. It does not affect login,

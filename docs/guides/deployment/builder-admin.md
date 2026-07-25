@@ -93,7 +93,9 @@ builderAdmin:
       secretName: builder-example-com-tls
     auth:
       enabled: true
-      internalUrl: https://hlab-auth.example.svc.cluster.local
+      # Traefik uses this direct Service URL for ForwardAuth. The chart appends
+      # /api/v1/forward-auth.
+      internalUrl: http://hlab-auth.hlab-auth.svc.cluster.local:8000
       # Optional: browser-reachable auth origin for the operator's own picture.
       # This does not alter hlab-auth login, session, or WebAuthn configuration.
       publicAuthOrigin: https://auth.wayl.one
@@ -110,7 +112,9 @@ builderAdmin:
 
 The chart strips all client-provided stable `X-Hlab-*` headers before calling hlab-auth. On a
 successful decision, Traefik forwards only the stable hlab-auth headers to builder admin. The
-ForwardAuth `internalUrl` must be an `https://` cluster-reachable URL; Helm rejects HTTP URLs.
+ForwardAuth `internalUrl` must use HTTPS or the exact cluster-local hlab-auth Service URL
+`http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>`; Helm rejects other HTTP URLs.
+Keep `publicAuthOrigin` on the browser-facing HTTPS auth origin.
 Set `trustedProxyCIDRs` to only the actual Traefik source CIDRs seen by the pod. A shared Pod CIDR
 is permitted only when it is needed for builder-admin peer forwarding and the required selector
 NetworkPolicy restricts that CIDR to the configured Traefik pods and builder-admin peers. Do not
