@@ -33,6 +33,7 @@ var (
 	builderAdminTrustedProxyCIDRs    []string
 	builderAdminPublicAuthOrigin     string
 	builderAdminPublicOrigin         string
+	builderAdminPreviewOrigin        string
 )
 
 var builderAdminCmd = &cobra.Command{
@@ -66,6 +67,7 @@ func init() {
 	builderAdminCmd.Flags().StringArrayVar(&builderAdminTrustedProxyCIDRs, "trusted-proxy-cidr", nil, "repeatable CIDR permitted to supply hlab-auth headers")
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicAuthOrigin, "public-auth-origin", "", "optional HTTPS hlab-auth origin used for the signed-in operator profile picture")
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicOrigin, "public-origin", "", "exact HTTPS public origin used to validate browser mutations")
+	builderAdminCmd.Flags().StringVar(&builderAdminPreviewOrigin, "preview-origin", "", "HTTPS site origin used for retained release previews")
 }
 
 func runBuilderAdmin(_ *cobra.Command, _ []string) error {
@@ -94,6 +96,7 @@ func runBuilderAdmin(_ *cobra.Command, _ []string) error {
 		TrustedProxyCIDRs:    builderAdminTrustedProxyCIDRs,
 		PublicAuthOrigin:     builderAdminPublicAuthOrigin,
 		PublicOrigin:         builderAdminPublicOrigin,
+		PreviewOrigin:        builderAdminPreviewOrigin,
 	})
 	if err != nil {
 		return err
