@@ -1,0 +1,23 @@
+{{- if and .Values.builderAdmin.enabled .Values.builderAdmin.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-preview"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  annotations:
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: "{{ include "markata-notes.namespace" . }}-{{ .Values.project_identifier }}-notes-builder-admin-auth@kubernetescrd"
+spec:
+  ingressClassName: {{ .Values.builderAdmin.ingress.ingressClassName | quote }}
+  rules:
+    - host: {{ .Values.builderAdmin.ingress.host | quote }}
+      http:
+        paths:
+          - path: /__preview/
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ .Values.project_identifier }}-notes-site"
+                port:
+                  number: 80
+{{- end }}
