@@ -185,6 +185,7 @@ type queueRequest struct {
 	commandArgs []string
 }
 
+//nolint:gocyclo // Configuration normalization is intentionally kept together at construction.
 func New(cfg Config) (*Service, error) {
 	trustedProxyPrefixes, err := parseTrustedProxyPrefixes(cfg.TrustedProxyCIDRs)
 	if err != nil {
@@ -582,6 +583,18 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 			return lines[len(lines)-6:]
 		},
 		"statusClass": uiStatusClass,
+		"queueWait": func(items []QueuedOperation) string {
+			if len(items) == 0 {
+				return "none"
+			}
+			oldest := items[0].EnqueuedAt
+			for _, item := range items[1:] {
+				if item.EnqueuedAt.Before(oldest) {
+					oldest = item.EnqueuedAt
+				}
+			}
+			return formatQueueWait(time.Since(oldest))
+		},
 	}).Parse(indexHTML))
 	csrfToken, err := newCSRFToken()
 	if err != nil {
@@ -1516,6 +1529,13 @@ func humanizeAge(d time.Duration) string {
 	}
 }
 
+func formatQueueWait(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	return humanizeAge(d)
+}
+
 func uiStatusClass(value string) string {
 	switch value {
 	case "success", "live", "ready", "idle":
@@ -1524,7 +1544,7 @@ func uiStatusClass(value string) string {
 		return "status-running"
 	case "queued", "pending", "starting":
 		return "status-queued"
-	case "failed", "error", "cancelled":
+	case "failed", "error", "cancelled": //nolint:misspell // Matches the persisted status contract.
 		return "status-failed"
 	default:
 		return "status-neutral"
@@ -1563,14 +1583,14 @@ const indexHTML = `<!doctype html>
     :root {
       color-scheme: dark;
       --bg: #09090b;
-      --panel: rgba(24, 24, 27, 0.9);
-      --panel-strong: rgba(9, 9, 11, 0.95);
-      --line: rgba(82, 82, 91, 0.75);
-      --line-soft: rgba(63, 63, 70, 0.55);
+      --panel: #18181b;
+      --panel-strong: #111113;
+      --line: #3f3f46;
+      --line-soft: #27272a;
       --text: #f4f4f5;
       --muted: #a1a1aa;
       --accent: #fafafa;
-      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      --focus: #93c5fd;
     }
     * { box-sizing: border-box; }
     html { background: var(--bg); }
@@ -1578,53 +1598,48 @@ const indexHTML = `<!doctype html>
       margin: 0;
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 35%),
-        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
-        var(--bg);
-      background-size: auto, auto, 11px 11px, 11px 11px, auto;
+      background: var(--bg);
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     main {
       width: 100%;
-      max-width: none;
-      padding: 20px 24px 48px;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 28px 56px;
     }
     h1, h2, h3, p { margin: 0; }
     .topbar {
       display: flex;
       justify-content: space-between;
       gap: 20px;
-      align-items: flex-end;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
       border-bottom: 1px solid var(--line-soft);
     }
     .titleblock h1 {
-      font-size: clamp(2rem, 4vw, 3.6rem);
-      line-height: 0.95;
-      letter-spacing: -0.06em;
-      text-transform: uppercase;
+      font-size: clamp(1.6rem, 3vw, 2.3rem);
+      line-height: 1;
+      letter-spacing: -0.035em;
+      text-transform: none;
     }
     .titleblock p {
       margin-top: 10px;
       color: var(--muted);
-      max-width: 72ch;
+      max-width: 62ch;
     }
     .title-meta {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 14px;
+      margin-top: 16px;
     }
     .meta-chip {
       display: inline-flex;
       gap: 8px;
       align-items: center;
-      padding: 6px 10px;
+      padding: 5px 9px;
       border: 1px solid var(--line-soft);
       border-radius: 999px;
       color: var(--muted);
@@ -1639,24 +1654,23 @@ const indexHTML = `<!doctype html>
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      margin-bottom: 20px;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0;
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+      margin-bottom: 28px;
     }
     .section-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
+      grid-template-columns: minmax(0, 1.3fr) minmax(18rem, .7fr);
+      gap: 28px;
+      margin-bottom: 32px;
     }
-    .card {
-      background: transparent;
-      border: 1px solid var(--line-soft);
-      border-radius: 16px;
-      padding: 16px 18px;
-      box-shadow: none;
-      backdrop-filter: none;
+    .support-panel {
+      min-width: 0;
     }
-    .card strong, .muted-label {
+    .hero strong, .support-panel strong, .muted-label {
       display: block;
       font-size: 0.72rem;
       letter-spacing: 0.14em;
@@ -1678,18 +1692,21 @@ const indexHTML = `<!doctype html>
     }
     .actions form { margin: 0; }
     button {
-      background: var(--panel-strong);
-      color: var(--text);
+      background: var(--text);
+      color: #18181b;
       border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 10px 16px;
+      border-radius: 8px;
+      padding: 11px 15px;
       cursor: pointer;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+      font-size: 0.82rem;
+      font-weight: 700;
     }
-    button.secondary { background: transparent; }
-    button:hover { background: #18181b; }
+    button.secondary { background: transparent; color: var(--text); }
+    button:hover { background: #d4d4d8; }
+    button.secondary:hover { background: var(--panel); }
+    button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
     .stack { display: flex; flex-direction: column; gap: 10px; }
     .panel-head {
       display: flex;
@@ -1698,30 +1715,29 @@ const indexHTML = `<!doctype html>
       gap: 12px;
       margin-bottom: 12px;
     }
-    .panel-head h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .panel-head h2 { font-size: 1rem; letter-spacing: -0.01em; }
     .panel-head span { color: var(--muted); font-size: 0.8rem; }
     .workspace-head {
       margin-bottom: 10px;
     }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table { width: 100%; border-collapse: collapse; }
     th, td {
       text-align: left;
-      padding: 10px 8px;
+      padding: 13px 10px;
       border-top: 1px solid var(--line-soft);
       vertical-align: top;
       font-size: 0.9rem;
     }
     th {
       color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.04em;
       font-size: 0.72rem;
     }
     code {
       display: inline-block;
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 999px;
+      border-radius: 6px;
       padding: 3px 8px;
       white-space: nowrap;
       max-width: 100%;
@@ -1736,7 +1752,7 @@ const indexHTML = `<!doctype html>
       white-space: pre-wrap;
       background: rgba(0,0,0,0.35);
       border: 1px solid var(--line-soft);
-      border-radius: 18px;
+      border-radius: 8px;
       max-height: 11rem;
       line-height: 1.45;
       color: #e4e4e7;
@@ -1758,7 +1774,11 @@ const indexHTML = `<!doctype html>
     .status-queued { border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.14); color: #fde68a; }
     .status-failed { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.16); color: #fecaca; }
     .status-neutral { border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--text); }
-    .summary-cell { min-width: 0; }
+    .build-details { min-width: 9rem; }
+    .build-details summary { cursor: pointer; color: var(--text); font-weight: 600; }
+    .build-details[open] summary { margin-bottom: 10px; }
+    .detail-list { display: grid; gap: 6px; color: var(--muted); font-size: 0.82rem; }
+    .detail-list strong { color: var(--text); }
     .summary-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 6px; }
     .summary-list { display: grid; gap: 6px; }
     .summary-list div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e4e4e7; }
@@ -1776,7 +1796,7 @@ const indexHTML = `<!doctype html>
       display: inline-flex;
       align-items: center;
       border: 1px solid var(--line-soft);
-      border-radius: 999px;
+      border-radius: 7px;
       padding: 9px 14px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -1798,16 +1818,28 @@ const indexHTML = `<!doctype html>
     .operator-avatar-fallback { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--panel-strong); }
     .operator-avatar-fallback[hidden] { display: none; }
     .operator-avatar-fallback svg { width: 18px; height: 18px; fill: currentColor; }
+    .tab-shell { border-top: 1px solid var(--line-soft); padding-top: 22px; }
     .tab-panel { display: none; }
     .tab-panel.is-active { display: block; }
     @media (max-width: 1200px) {
       .hero, .section-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 800px) {
-      main { padding: 14px; }
+      main { padding: 18px 14px 36px; }
       .topbar, .hero, .section-grid { grid-template-columns: 1fr; display: grid; }
       .topbar { gap: 14px; }
-      table { min-width: 860px; }
+      .operator-identity { justify-content: flex-start; text-align: left; }
+      .operator-profile { text-align: left; }
+      .actions { justify-content: flex-start; }
+      .wide { overflow-x: visible; }
+      .responsive-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+      .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; }
+      .responsive-table tr { padding: 12px 0; border-top: 1px solid var(--line-soft); }
+      .responsive-table td { border: 0; padding: 5px 0; display: grid; grid-template-columns: minmax(7rem, 35%) 1fr; gap: 12px; }
+      .responsive-table td::before { content: attr(data-label); color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }
+      .responsive-table td:empty { display: none; }
+      .responsive-table td:empty::before { content: none; }
+      .time-stamp { white-space: normal; }
     }
   </style>
 </head>
@@ -1815,14 +1847,12 @@ const indexHTML = `<!doctype html>
 <main>
   <div class="topbar">
     <div class="titleblock">
-      <h1>Builder Admin</h1>
-      <p>Queue-driven builds, release promotion, refresh scheduling, and search/build runtime controls for the live go.waylonwalker.com authoring loop.</p>
+      <h1>Builder admin</h1>
+      <p>Run and monitor site builds. Start with the active work and recent build results.</p>
       <div class="title-meta">
-        <div class="meta-chip">Current <strong id="current-release">{{ .CurrentID }}</strong></div>
-        <div class="meta-chip">Queue <strong id="queue-count">{{ len .State.Queue }}</strong></div>
-        <div class="meta-chip">Builds <strong id="build-count">{{ len .State.Builds }}</strong></div>
-        <div class="meta-chip">Refreshes <strong id="refresh-count">{{ len .State.Refresh }}</strong></div>
-        <div class="meta-chip">Releases <strong id="release-count">{{ len .Releases }}</strong></div>
+        <div class="meta-chip">Active release <strong id="current-release">{{ .CurrentID }}</strong></div>
+        <div class="meta-chip">Queued <strong id="queue-count">{{ len .State.Queue }}</strong></div>
+        <div class="meta-chip">Recent builds <strong id="build-count">{{ len .State.Builds }}</strong></div>
       </div>
     </div>
     <div class="operator-identity" aria-label="Authenticated operator">
@@ -1839,26 +1869,22 @@ const indexHTML = `<!doctype html>
     <div class="sync-status" id="sync-status">Live polling every 2s</div>
   </div>
 
-  <div class="hero">
-    <section class="card">
-      <div class="panel-head"><h2>Live State</h2><span>current release and active worker</span></div>
-      <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
+  <div class="hero" aria-labelledby="live-work-heading">
+    <section>
+      <div class="panel-head"><h2 id="live-work-heading">Active work</h2><span>one operation runs at a time</span></div>
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;">
         <div>
-          <strong>Live release</strong>
-          <div class="value mono">{{ .CurrentID }}</div>
+          <strong>Queued</strong>
+          <div class="value" id="queue-overview">{{ len .State.Queue }}</div>
         </div>
         <div>
-          <strong>Current path</strong>
-          <div class="value mono" id="current-path">{{ .CurrentPath }}</div>
-        </div>
-        <div>
-          <strong>Active work</strong>
+          <strong>Current work</strong>
           <div class="value" id="active-work">{{ if .State.Running }}{{ .State.Running.Kind }} <span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span>{{ else }}<span class="pill {{ statusClass "idle" }}">idle</span>{{ end }}</div>
+          <p class="muted" id="active-work-detail">{{ if .State.Running }}Started {{ since .State.Running.StartedAt }}{{ else }}No build or refresh is running.{{ end }}</p>
         </div>
       </div>
     </section>
-    <section class="card actions">
-      <div class="panel-head"><h2>Actions</h2><span>manual triggers</span></div>
+    <section class="actions" aria-label="Build actions">
       <form method="post" action="/api/builds"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><button type="submit">Enqueue Build</button></form>
       {{ range .RefreshTasks }}
       <form method="post" action="/api/refresh/{{ .Name }}"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
@@ -1867,46 +1893,36 @@ const indexHTML = `<!doctype html>
   </div>
 
   <div class="section-grid">
-  <section class="card wide">
-    <div class="panel-head"><h2>Queue</h2><span>debounced watch + manual triggers</span></div>
-    <table>
-      <thead><tr><th>ID</th><th>Kind</th><th>Trigger</th><th>Detail</th><th>Changed</th><th>Queued</th></tr></thead>
+  <section class="support-panel wide">
+    <div class="panel-head"><h2>Queue</h2><span id="queue-summary">{{ len .State.Queue }} waiting · oldest {{ queueWait .State.Queue }}</span></div>
+    <table class="responsive-table">
+      <thead><tr><th>Work</th><th>Source</th><th>Queued</th><th>Details</th></tr></thead>
       <tbody id="queue-body">
       {{ range .State.Queue }}
       <tr>
-        <td><code>{{ .ID }}</code></td>
-        <td>{{ .Kind }}</td>
-        <td>{{ .TriggerType }}</td>
-        <td>{{ .Detail }}</td>
-        <td>{{ range .Changed }}<div><code>{{ . }}</code></div>{{ end }}</td>
-          <td class="time-stamp">{{ since .EnqueuedAt }}</td>
+        <td data-label="Work"><code>{{ .ID }}</code> {{ .Label }}</td>
+        <td data-label="Source">{{ .TriggerType }}</td>
+        <td data-label="Queued" class="time-stamp">{{ since .EnqueuedAt }}</td>
+        <td data-label="Details">{{ .Detail }}</td>
       </tr>
       {{ else }}
-      <tr><td colspan="6">Queue is empty.</td></tr>
+      <tr><td colspan="4">Queue is empty.</td></tr>
       {{ end }}
       </tbody>
     </table>
   </section>
 
-  <section class="card">
-    <div class="panel-head"><h2>Running</h2><span>live worker</span></div>
+  <section class="support-panel">
+    <div class="panel-head"><h2>Live release</h2><span>currently served</span></div>
     <div class="stack" id="running-panel">
-      {{ if .State.Running }}
-      <div><strong>ID</strong><div class="value mono">{{ .State.Running.ID }}</div></div>
-      <div><strong>Kind</strong><div class="value">{{ .State.Running.Kind }}</div></div>
-      <div><strong>Trigger</strong><div class="value">{{ .State.Running.TriggerType }}</div></div>
-      <div><strong>Detail</strong><div class="value">{{ .State.Running.Detail }}</div></div>
-      <div><strong>Started</strong><div class="value mono time-stamp">{{ since .State.Running.StartedAt }}</div></div>
-      <div><strong>Phase</strong><div class="value"><span class="pill {{ statusClass .State.Running.Phase }}">{{ .State.Running.Phase }}</span></div></div>
-      {{ else }}
-      <div class="muted">No build or refresh is running right now.</div>
-      {{ end }}
+      <div><strong>Release</strong><div class="value mono" id="live-release-value">{{ .CurrentID }}</div></div>
+      <div><strong>Latest result</strong><div class="value" id="latest-build">{{ if .State.Builds }}<span class="pill {{ statusClass (index .State.Builds 0).Status }}">{{ (index .State.Builds 0).Status }}</span>{{ else }}<span class="muted">No builds yet.</span>{{ end }}</div></div>
     </div>
   </section>
   </div>
 
-  <section class="card wide tab-shell">
-    <div class="panel-head workspace-head"><h2>Workspace</h2><span>switch between builds, refreshes, and releases</span></div>
+  <section class="wide tab-shell">
+    <div class="panel-head workspace-head"><h2>Build history</h2><span>Open details for timings, changed paths, performance data, and logs.</span></div>
     <nav class="tabs">
       <a href="#builds" data-tab-link="builds">Builds</a>
       <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
@@ -1914,41 +1930,41 @@ const indexHTML = `<!doctype html>
     </nav>
 
     <section id="builds" class="tab-panel" data-tab-panel="builds">
-      <table>
-        <thead><tr><th>ID</th><th>Status</th><th>Trigger</th><th>Finished</th><th>Total</th><th>Build</th><th>Release</th><th>Logs</th><th>Summary</th></tr></thead>
+      <table class="responsive-table">
+        <thead><tr><th>Build</th><th>Status</th><th>Source</th><th>Completed</th><th>Queue wait</th><th>Build time</th><th>Release</th><th>Details</th></tr></thead>
         <tbody id="builds-body">
         {{ range .State.Builds }}
         <tr>
-          <td><code>{{ .ID }}</code></td>
-          <td><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
-          <td>{{ .TriggerType }}</td>
-          <td class="time-stamp">{{ since .FinishedAt }}</td>
-          <td>{{ msToSeconds .TotalMS }}</td>
-          <td>{{ msToSeconds .BuildMS }}</td>
-          <td>{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
-          <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-          <td class="summary-cell">{{ if .PerfSummary }}<div class="summary-meta">{{ len .PerfSummary }} perf lines</div><div class="summary-list mono">{{ range summaryPreview .PerfSummary }}<div>{{ . }}</div>{{ end }}</div>{{ end }}</td>
+          <td data-label="Build"><code>{{ .ID }}</code></td>
+          <td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
+          <td data-label="Source">{{ .TriggerType }}</td>
+          <td data-label="Completed" class="time-stamp">{{ since .FinishedAt }}</td>
+          <td data-label="Queue wait">{{ msToSeconds .QueueWaitMS }}</td>
+          <td data-label="Build time">{{ msToSeconds .BuildMS }}</td>
+          <td data-label="Release">{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
+          <td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Total:</strong> {{ msToSeconds .TotalMS }}</div><div><strong>Prepare:</strong> {{ msToSeconds .PrepareMS }} · <strong>Promote:</strong> {{ msToSeconds .PromoteMS }} · <strong>Prune:</strong> {{ msToSeconds .PruneMS }}</div>{{ if .TriggerDetail }}<div><strong>Reason:</strong> {{ .TriggerDetail }}</div>{{ end }}{{ if .ChangedPaths }}<div><strong>Changed:</strong> {{ range .ChangedPaths }}<code>{{ . }}</code> {{ end }}</div>{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}{{ if .PerfSummary }}<pre>{{ range summaryPreview .PerfSummary }}{{ . }}
+{{ end }}</pre>{{ end }}</div></details></td>
         </tr>
         {{ else }}
-        <tr><td colspan="9">No builds yet.</td></tr>
+        <tr><td colspan="8">No builds yet.</td></tr>
         {{ end }}
         </tbody>
       </table>
     </section>
 
     <section id="refresh-runs" class="tab-panel" data-tab-panel="refresh-runs">
-      <table>
+      <table class="responsive-table">
         <thead><tr><th>ID</th><th>Task</th><th>Status</th><th>Total</th><th>Logs</th><th>Build</th><th>Command</th></tr></thead>
         <tbody id="refresh-body">
         {{ range .State.Refresh }}
         <tr>
-          <td><code>{{ .ID }}</code></td>
-          <td>{{ .TaskName }}</td>
-          <td><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
-          <td>{{ msToSeconds .TotalMS }}</td>
-          <td>{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">log</a>{{ end }}</td>
-          <td>{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
-          <td class="mono muted">{{ if .Command }}{{ index .Command 0 }} {{ end }}</td>
+          <td data-label="Run"><code>{{ .ID }}</code></td>
+          <td data-label="Task">{{ .TaskName }}</td>
+          <td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
+          <td data-label="Duration">{{ msToSeconds .TotalMS }}</td>
+          <td data-label="Log">{{ if .LogPath }}<a href="/logs/{{ .LogPath }}">Open</a>{{ end }}</td>
+          <td data-label="Build">{{ if .EnqueuedBuildID }}<code>{{ .EnqueuedBuildID }}</code>{{ end }}</td>
+          <td data-label="Command" class="mono muted">{{ if .Command }}{{ index .Command 0 }} {{ end }}</td>
         </tr>
         {{ else }}
         <tr><td colspan="7">No refresh runs yet.</td></tr>
@@ -1958,17 +1974,17 @@ const indexHTML = `<!doctype html>
     </section>
 
     <section id="releases" class="tab-panel" data-tab-panel="releases">
-      <table>
+      <table class="responsive-table">
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="releases-body">
         {{ range .Releases }}
         <tr>
-          <td><code>{{ .ID }}</code></td>
-          <td>{{ if .Current }}<span class="pill {{ statusClass "live" }}">live</span>{{ end }}</td>
-          <td class="time-stamp">{{ since .CreatedAt }}</td>
-          <td>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
-          <td>{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
-          <td>{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
+          <td data-label="Release"><code>{{ .ID }}</code></td>
+          <td data-label="Current">{{ if .Current }}<span class="pill {{ statusClass "live" }}">live</span>{{ end }}</td>
+          <td data-label="Created" class="time-stamp">{{ since .CreatedAt }}</td>
+          <td data-label="Build">{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
+          <td data-label="Status">{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
+          <td data-label="Action">{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
         {{ else }}
         <tr><td colspan="6">No releases found.</td></tr>
@@ -1983,17 +1999,22 @@ const indexHTML = `<!doctype html>
   const favicon = document.getElementById('app-favicon');
   const syncStatus = document.getElementById('sync-status');
   const currentRelease = document.getElementById('current-release');
-  const currentPath = document.getElementById('current-path');
   const activeWork = document.getElementById('active-work');
+  const activeWorkDetail = document.getElementById('active-work-detail');
   const queueCount = document.getElementById('queue-count');
+  const queueOverview = document.getElementById('queue-overview');
+  const queueSummary = document.getElementById('queue-summary');
   const buildCount = document.getElementById('build-count');
-  const refreshCount = document.getElementById('refresh-count');
-  const releaseCount = document.getElementById('release-count');
+  const latestBuild = document.getElementById('latest-build');
+  const liveReleaseValue = document.getElementById('live-release-value');
   const queueBody = document.getElementById('queue-body');
-  const runningPanel = document.getElementById('running-panel');
   const buildsBody = document.getElementById('builds-body');
   const refreshBody = document.getElementById('refresh-body');
   const releasesBody = document.getElementById('releases-body');
+  let buildsFingerprint = '';
+  let refreshFingerprint = '';
+  let releasesFingerprint = '';
+  let pollInFlight = false;
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -2116,107 +2137,155 @@ const indexHTML = `<!doctype html>
   }
 
   function renderQueue(items) {
-    if (!items || !items.length) {
-      queueBody.innerHTML = '<tr><td colspan="6">Queue is empty.</td></tr>';
+    const queued = items || [];
+    const oldest = queued.reduce((oldestValue, item) => {
+      const timestamp = new Date(item.enqueued_at);
+      return !oldestValue || timestamp < oldestValue ? timestamp : oldestValue;
+    }, null);
+    queueSummary.textContent = queued.length + ' waiting · oldest ' + (oldest ? timeAgo(oldest) : 'none');
+    if (!queued.length) {
+      queueBody.innerHTML = '<tr><td colspan="4">Queue is empty.</td></tr>';
       return;
     }
-    queueBody.innerHTML = items.map((item) => {
-      const changed = (item.changed || []).map((path) => '<div><code>' + escapeHtml(path) + '</code></div>').join('');
+    queueBody.innerHTML = queued.map((item) => {
       return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + escapeHtml(item.kind) + '</td>' +
-        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
-        '<td>' + escapeHtml(item.detail) + '</td>' +
-        '<td>' + changed + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
+        '<td data-label="Work"><code>' + escapeHtml(item.id) + '</code> ' + escapeHtml(item.label) + '</td>' +
+        '<td data-label="Source">' + escapeHtml(item.trigger_type) + '</td>' +
+        '<td data-label="Queued" class="time-stamp">' + escapeHtml(fmtTime(item.enqueued_at)) + '</td>' +
+        '<td data-label="Details">' + escapeHtml(item.detail) + '</td>' +
       '</tr>';
     }).join('');
   }
 
   function renderRunning(running) {
     if (!running) {
-      runningPanel.innerHTML = '<div class="muted">No build or refresh is running right now.</div>';
       activeWork.innerHTML = statusPill('idle');
+      activeWorkDetail.textContent = 'No build or refresh is running.';
       return;
     }
     activeWork.innerHTML = escapeHtml(running.kind) + ' ' + statusPill(running.phase);
-    runningPanel.innerHTML = [
-      ['ID', '<div class="value mono">' + escapeHtml(running.id) + '</div>'],
-      ['Kind', '<div class="value">' + escapeHtml(running.kind) + '</div>'],
-      ['Trigger', '<div class="value">' + escapeHtml(running.trigger_type) + '</div>'],
-      ['Detail', '<div class="value">' + escapeHtml(running.detail) + '</div>'],
-      ['Started', '<div class="value mono time-stamp">' + escapeHtml(fmtTime(running.started_at)) + '</div>'],
-      ['Phase', '<div class="value">' + statusPill(running.phase) + '</div>']
-    ].map(([label, value]) => '<div><strong>' + label + '</strong>' + value + '</div>').join('');
+    activeWorkDetail.textContent = 'Started ' + fmtTime(running.started_at) + ' · ' + (running.detail || running.trigger_type || '');
   }
 
   function renderBuilds(items) {
+    const fingerprint = JSON.stringify(items || []);
+    if (fingerprint === buildsFingerprint) {
+      return;
+    }
+    const openBuilds = new Set(Array.from(buildsBody.querySelectorAll('details[open]')).map((details) => details.closest('tr')?.querySelector('td code')?.textContent));
+    const focusedElement = document.activeElement;
+    const focusedBuildID = focusedElement?.closest('tr')?.querySelector('td code')?.textContent;
+    const focusedTag = focusedElement?.tagName;
     if (!items || !items.length) {
-      buildsBody.innerHTML = '<tr><td colspan="9">No builds yet.</td></tr>';
+      buildsBody.innerHTML = '<tr><td colspan="8">No builds yet.</td></tr>';
+      buildsFingerprint = fingerprint;
       return;
     }
     buildsBody.innerHTML = items.map((item) => {
-      const lines = summaryPreview(item.perf_summary || []).map((line) => '<div>' + escapeHtml(line) + '</div>').join('');
-      const summary = lines ? '<div class="summary-meta">' + (item.perf_summary || []).length + ' perf lines</div><div class="summary-list mono">' + lines + '</div>' : '';
+      const timings = '<div><strong>Total:</strong> ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
+        '<div><strong>Prepare:</strong> ' + escapeHtml(fmtSeconds(item.prepare_ms)) + ' · <strong>Promote:</strong> ' + escapeHtml(fmtSeconds(item.promote_ms)) + ' · <strong>Prune:</strong> ' + escapeHtml(fmtSeconds(item.prune_ms)) + '</div>';
+      const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
+      const summary = summaryPreview(item.perf_summary || []).map(escapeHtml).join('\n');
+      const details = '<details class="build-details"><summary>View</summary><div class="detail-list">' + timings +
+        (item.trigger_detail ? '<div><strong>Reason:</strong> ' + escapeHtml(item.trigger_detail) + '</div>' : '') +
+        (changed ? '<div><strong>Changed:</strong> ' + changed + '</div>' : '') +
+        (item.log_path ? '<div><a href="/logs/' + encodeURIComponent(item.log_path) + '">Open raw log</a></div>' : '') +
+        (summary ? '<pre>' + summary + '</pre>' : '') + '</div></details>';
       return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + statusPill(item.status) + '</td>' +
-        '<td>' + escapeHtml(item.trigger_type) + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
-        '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
-        '<td>' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
-        '<td>' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
-        '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
-        '<td class="summary-cell">' + summary + '</td>' +
+        '<td data-label="Build"><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td data-label="Status">' + statusPill(item.status) + '</td>' +
+        '<td data-label="Source">' + escapeHtml(item.trigger_type) + '</td>' +
+        '<td data-label="Completed" class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
+        '<td data-label="Queue wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td>' +
+        '<td data-label="Build time">' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
+        '<td data-label="Release">' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
+        '<td data-label="Details">' + details + '</td>' +
       '</tr>';
     }).join('');
+    buildsFingerprint = fingerprint;
+    openBuilds.forEach((buildID) => {
+      const details = Array.from(buildsBody.querySelectorAll('details')).find((item) => item.closest('tr')?.querySelector('td code')?.textContent === buildID);
+      if (details) {
+        details.open = true;
+      }
+    });
+    if (focusedBuildID && focusedTag) {
+      const row = Array.from(buildsBody.querySelectorAll('tr')).find((item) => item.querySelector('td code')?.textContent === focusedBuildID);
+      row?.querySelector(focusedTag.toLowerCase())?.focus();
+    }
   }
 
   function renderRefresh(items) {
+    const fingerprint = JSON.stringify(items || []);
+    if (fingerprint === refreshFingerprint) {
+      return;
+    }
+    const focusedElement = document.activeElement;
+    const focusedRefreshID = focusedElement?.closest('tr')?.querySelector('td code')?.textContent;
+    const focusedTag = focusedElement?.tagName;
     if (!items || !items.length) {
       refreshBody.innerHTML = '<tr><td colspan="7">No refresh runs yet.</td></tr>';
+      refreshFingerprint = fingerprint;
       return;
     }
     refreshBody.innerHTML = items.map((item) => {
       const command = Array.isArray(item.command) && item.command.length ? item.command.join(' ') : '';
       return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + escapeHtml(item.task_name) + '</td>' +
-        '<td>' + statusPill(item.status) + '</td>' +
-        '<td>' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
-        '<td>' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">log</a>' : '') + '</td>' +
-        '<td>' + (item.enqueued_build_id ? '<code>' + escapeHtml(item.enqueued_build_id) + '</code>' : '') + '</td>' +
-        '<td class="mono muted">' + escapeHtml(command) + '</td>' +
+        '<td data-label="Run"><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td data-label="Task">' + escapeHtml(item.task_name) + '</td>' +
+        '<td data-label="Status">' + statusPill(item.status) + '</td>' +
+        '<td data-label="Duration">' + escapeHtml(fmtSeconds(item.total_ms)) + '</td>' +
+        '<td data-label="Log">' + (item.log_path ? '<a href="/logs/' + encodeURIComponent(item.log_path) + '">Open</a>' : '') + '</td>' +
+        '<td data-label="Build">' + (item.enqueued_build_id ? '<code>' + escapeHtml(item.enqueued_build_id) + '</code>' : '') + '</td>' +
+        '<td data-label="Command" class="mono muted">' + escapeHtml(command) + '</td>' +
       '</tr>';
     }).join('');
+    refreshFingerprint = fingerprint;
+    if (focusedRefreshID && focusedTag) {
+      const row = Array.from(refreshBody.querySelectorAll('tr')).find((item) => item.querySelector('td code')?.textContent === focusedRefreshID);
+      row?.querySelector(focusedTag.toLowerCase())?.focus();
+    }
   }
 
   function renderReleases(items) {
+    const fingerprint = JSON.stringify(items || []);
+    if (fingerprint === releasesFingerprint) {
+      return;
+    }
+    const focusedElement = document.activeElement;
+    const focusedReleaseID = focusedElement?.closest('tr')?.querySelector('td code')?.textContent;
+    const focusedTag = focusedElement?.tagName;
     if (!items || !items.length) {
-      releasesBody.innerHTML = '<tr><td colspan="5">No releases found.</td></tr>';
+      releasesBody.innerHTML = '<tr><td colspan="6">No releases found.</td></tr>';
+      releasesFingerprint = fingerprint;
       return;
     }
     releasesBody.innerHTML = items.map((item) => {
       const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><input type="hidden" name="csrf_token" value="' + csrfToken + '"><button class="secondary" type="submit">Promote</button></form>';
       return '<tr>' +
-        '<td><code>' + escapeHtml(item.id) + '</code></td>' +
-        '<td>' + (item.current ? statusPill('live') : '') + '</td>' +
-        '<td class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
-        '<td>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
-        '<td>' + (item.build_status ? statusPill(item.build_status) : '') + '</td>' +
-        '<td>' + action + '</td>' +
+        '<td data-label="Release"><code>' + escapeHtml(item.id) + '</code></td>' +
+        '<td data-label="Current">' + (item.current ? statusPill('live') : '') + '</td>' +
+        '<td data-label="Created" class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
+        '<td data-label="Build">' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
+        '<td data-label="Status">' + (item.build_status ? statusPill(item.build_status) : '') + '</td>' +
+        '<td data-label="Action">' + action + '</td>' +
       '</tr>';
     }).join('');
+    releasesFingerprint = fingerprint;
+    if (focusedReleaseID && focusedTag) {
+      const row = Array.from(releasesBody.querySelectorAll('tr')).find((item) => item.querySelector('td code')?.textContent === focusedReleaseID);
+      row?.querySelector(focusedTag.toLowerCase())?.focus();
+    }
   }
 
   function renderState(payload) {
     const state = payload.state || {};
     currentRelease.textContent = payload.current_release_id || '';
-    currentPath.textContent = payload.current_release_path || '';
+    liveReleaseValue.textContent = payload.current_release_id || '';
     queueCount.textContent = (state.queue || []).length;
+    queueOverview.textContent = (state.queue || []).length;
     buildCount.textContent = (state.builds || []).length;
-    refreshCount.textContent = (state.refresh || []).length;
-    releaseCount.textContent = (payload.releases || []).length;
+    latestBuild.innerHTML = state.builds && state.builds.length ? statusPill(state.builds[0].status) : '<span class="muted">No builds yet.</span>';
     renderQueue(state.queue || []);
     renderRunning(state.running || null);
     renderBuilds(state.builds || []);
@@ -2227,6 +2296,10 @@ const indexHTML = `<!doctype html>
   }
 
   async function pollState() {
+    if (pollInFlight) {
+      return;
+    }
+    pollInFlight = true;
     try {
       const response = await fetch('/api/state', { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
       if (!response.ok) {
@@ -2237,6 +2310,8 @@ const indexHTML = `<!doctype html>
     } catch (error) {
       syncStatus.textContent = 'Sync stalled: ' + error.message;
       updateFavicon('error');
+    } finally {
+      pollInFlight = false;
     }
   }
 
