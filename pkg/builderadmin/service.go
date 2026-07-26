@@ -151,6 +151,19 @@ type ReleaseView struct {
 	RollbackOnly bool      `json:"rollback_only"`
 }
 
+type completedJobView struct {
+	ID          string
+	Kind        string
+	Status      string
+	Trigger     string
+	FinishedAt  time.Time
+	QueueWaitMS int64
+	RunMS       int64
+	Release     string
+	LogPath     string
+	Build       *BuildRecord
+}
+
 type Service struct {
 	cfg                  Config
 	executable           string
@@ -605,26 +618,50 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 	state := s.viewState()
 	operator := mustOperatorProfile(r.Header)
 	data := struct {
-		State        State
-		Releases     []ReleaseView
-		CurrentID    string
-		CurrentPath  string
-		CSRFToken    string
-		Operator     OperatorProfile
-		PictureURL   string
-		RefreshTasks []RefreshTaskConfig
+		State         State
+		Releases      []ReleaseView
+		CurrentID     string
+		CurrentPath   string
+		CSRFToken     string
+		Operator      OperatorProfile
+		PictureURL    string
+		RefreshTasks  []RefreshTaskConfig
+		CompletedJobs []completedJobView
 	}{
-		State:        state,
-		Releases:     s.discoverReleases(),
-		CurrentID:    s.currentReleaseID(),
-		CurrentPath:  s.currentReleasePath(),
-		CSRFToken:    csrfToken,
-		Operator:     operator,
-		PictureURL:   profilePictureURL(s.cfg.PublicAuthOrigin, operator.UserID),
-		RefreshTasks: s.cfg.RefreshTasks,
+		State:         state,
+		Releases:      s.discoverReleases(),
+		CurrentID:     s.currentReleaseID(),
+		CurrentPath:   s.currentReleasePath(),
+		CSRFToken:     csrfToken,
+		Operator:      operator,
+		PictureURL:    profilePictureURL(s.cfg.PublicAuthOrigin, operator.UserID),
+		RefreshTasks:  s.cfg.RefreshTasks,
+		CompletedJobs: completedJobs(state),
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
+}
+
+func completedJobs(state State) []completedJobView {
+	jobs := make([]completedJobView, 0, len(state.Builds)+len(state.Refresh))
+	for i := range state.Builds {
+		build := &state.Builds[i]
+		kind := "Build"
+		if build.RollbackRelease != "" {
+			kind = "Promote release"
+		}
+		release := ""
+		if build.BecameLive {
+			release = "Live"
+		}
+		jobs = append(jobs, completedJobView{ID: build.ID, Kind: kind, Status: build.Status, Trigger: build.TriggerType, FinishedAt: build.FinishedAt, QueueWaitMS: build.QueueWaitMS, RunMS: build.BuildMS, Release: release, LogPath: build.LogPath, Build: build})
+	}
+	for i := range state.Refresh {
+		refresh := &state.Refresh[i]
+		jobs = append(jobs, completedJobView{ID: refresh.ID, Kind: "Refresh: " + refresh.TaskName, Status: refresh.Status, Trigger: refresh.TriggerType, FinishedAt: refresh.FinishedAt, QueueWaitMS: refresh.QueueWaitMS, RunMS: refresh.RunMS, LogPath: refresh.LogPath})
+	}
+	sort.SliceStable(jobs, func(i, j int) bool { return jobs[i].FinishedAt.After(jobs[j].FinishedAt) })
+	return jobs
 }
 
 func mustOperatorProfile(headers http.Header) OperatorProfile {
@@ -1850,7 +1887,7 @@ const indexHTML = `<!doctype html>
       <h1>Builder admin</h1>
       <p>Run and monitor site builds. Start with the active work and recent build results.</p>
       <div class="title-meta">
-        <div class="meta-chip">Active release <strong id="current-release">{{ .CurrentID }}</strong></div>
+        <div class="meta-chip">Site <strong id="current-release">Live</strong></div>
         <div class="meta-chip">Queued <strong id="queue-count">{{ len .State.Queue }}</strong></div>
         <div class="meta-chip">Recent builds <strong id="build-count">{{ len .State.Builds }}</strong></div>
       </div>
@@ -1858,12 +1895,7 @@ const indexHTML = `<!doctype html>
     <div class="operator-identity" aria-label="Authenticated operator">
       {{ if .PictureURL }}<img class="operator-avatar" src="{{ .PictureURL }}" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="operator-avatar-fallback" hidden role="img" aria-label="Profile picture unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4.5 0-8.25 2.3-8.25 5.25V21h16.5v-1.75C20.25 16.3 16.5 14 12 14Z"/></svg></span>{{ else }}<span class="operator-avatar-fallback" role="img" aria-label="Profile picture unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4.5 0-8.25 2.3-8.25 5.25V21h16.5v-1.75C20.25 16.3 16.5 14 12 14Z"/></svg></span>{{ end }}
       <div class="operator-profile">
-        {{ if .Operator.DisplayName }}<strong>{{ .Operator.DisplayName }}</strong>{{ else if .Operator.Username }}<strong>{{ .Operator.Username }}</strong>{{ else }}<strong>Authenticated operator</strong>{{ end }}
-        <code>{{ .Operator.UserID }}</code>
-        {{ if .Operator.Email }}<span>{{ .Operator.Email }}</span>{{ end }}
-        {{ if .Operator.Groups }}<span>Groups: {{ .Operator.Groups }}</span>{{ end }}
-        {{ if .Operator.Roles }}<span>Roles: {{ .Operator.Roles }}</span>{{ end }}
-        {{ if .Operator.Scopes }}<span>Scopes: {{ .Operator.Scopes }}</span>{{ end }}
+        {{ if .Operator.DisplayName }}<strong>{{ .Operator.DisplayName }}</strong>{{ else if .Operator.Username }}<strong>{{ .Operator.Username }}</strong>{{ else }}<strong>Signed in</strong>{{ end }}
       </div>
     </div>
     <div class="sync-status" id="sync-status">Live polling every 2s</div>
@@ -1892,61 +1924,25 @@ const indexHTML = `<!doctype html>
     </section>
   </div>
 
-  <div class="section-grid">
-  <section class="support-panel wide">
-    <div class="panel-head"><h2>Queue</h2><span id="queue-summary">{{ len .State.Queue }} waiting · oldest {{ queueWait .State.Queue }}</span></div>
-    <table class="responsive-table">
-      <thead><tr><th>Work</th><th>Source</th><th>Queued</th><th>Details</th></tr></thead>
-      <tbody id="queue-body">
-      {{ range .State.Queue }}
-      <tr>
-        <td data-label="Work"><code>{{ .ID }}</code> {{ .Label }}</td>
-        <td data-label="Source">{{ .TriggerType }}</td>
-        <td data-label="Queued" class="time-stamp">{{ since .EnqueuedAt }}</td>
-        <td data-label="Details">{{ .Detail }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="4">Queue is empty.</td></tr>
-      {{ end }}
-      </tbody>
-    </table>
-  </section>
-
-  <section class="support-panel">
-    <div class="panel-head"><h2>Live release</h2><span>currently served</span></div>
-    <div class="stack" id="running-panel">
-      <div><strong>Release</strong><div class="value mono" id="live-release-value">{{ .CurrentID }}</div></div>
-      <div><strong>Latest result</strong><div class="value" id="latest-build">{{ if .State.Builds }}<span class="pill {{ statusClass (index .State.Builds 0).Status }}">{{ (index .State.Builds 0).Status }}</span>{{ else }}<span class="muted">No builds yet.</span>{{ end }}</div></div>
-    </div>
-  </section>
-  </div>
-
   <section class="wide tab-shell">
-    <div class="panel-head workspace-head"><h2>Build history</h2><span>Open details for timings, changed paths, performance data, and logs.</span></div>
+    <div class="panel-head workspace-head"><h2>Jobs</h2><span>Running and queued work first; open details for timings and logs.</span></div>
     <nav class="tabs">
-      <a href="#builds" data-tab-link="builds">Builds</a>
-      <a href="#refresh-runs" data-tab-link="refresh-runs">Refresh Runs</a>
+      <a href="#jobs" data-tab-link="jobs">Jobs</a>
       <a href="#releases" data-tab-link="releases">Releases</a>
     </nav>
 
-    <section id="builds" class="tab-panel" data-tab-panel="builds">
+    <section id="jobs" class="tab-panel" data-tab-panel="jobs">
       <table class="responsive-table">
-        <thead><tr><th>Build</th><th>Status</th><th>Source</th><th>Completed</th><th>Queue wait</th><th>Build time</th><th>Release</th><th>Details</th></tr></thead>
+        <thead><tr><th>Status</th><th>Job</th><th>Source</th><th>When</th><th>Wait</th><th>Run</th><th>Release</th><th>Details</th></tr></thead>
         <tbody id="builds-body">
-        {{ range .State.Builds }}
-        <tr>
-          <td data-label="Build"><code>{{ .ID }}</code></td>
-          <td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td>
-          <td data-label="Source">{{ .TriggerType }}</td>
-          <td data-label="Completed" class="time-stamp">{{ since .FinishedAt }}</td>
-          <td data-label="Queue wait">{{ msToSeconds .QueueWaitMS }}</td>
-          <td data-label="Build time">{{ msToSeconds .BuildMS }}</td>
-          <td data-label="Release">{{ if .ReleaseID }}<code>{{ .ReleaseID }}</code>{{ end }}</td>
-          <td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Total:</strong> {{ msToSeconds .TotalMS }}</div><div><strong>Prepare:</strong> {{ msToSeconds .PrepareMS }} · <strong>Promote:</strong> {{ msToSeconds .PromoteMS }} · <strong>Prune:</strong> {{ msToSeconds .PruneMS }}</div>{{ if .TriggerDetail }}<div><strong>Reason:</strong> {{ .TriggerDetail }}</div>{{ end }}{{ if .ChangedPaths }}<div><strong>Changed:</strong> {{ range .ChangedPaths }}<code>{{ . }}</code> {{ end }}</div>{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}{{ if .PerfSummary }}<pre>{{ range summaryPreview .PerfSummary }}{{ . }}
-{{ end }}</pre>{{ end }}</div></details></td>
-        </tr>
-        {{ else }}
-        <tr><td colspan="8">No builds yet.</td></tr>
+        {{ if .State.Running }}
+        <tr><td data-label="Status"><span class="pill status-running">running</span></td><td data-label="Job">{{ .State.Running.Label }}</td><td data-label="Source">{{ .State.Running.TriggerType }}</td><td data-label="When">Started {{ since .State.Running.StartedAt }}</td><td data-label="Wait">—</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Phase:</strong> {{ .State.Running.Phase }}</div><div><strong>Job ID:</strong> <code>{{ .State.Running.ID }}</code></div></div></details></td></tr>
+        {{ end }}
+        {{ range .State.Queue }}
+        <tr><td data-label="Status"><span class="pill status-queued">queued</span></td><td data-label="Job">{{ .Label }}</td><td data-label="Source">{{ .TriggerType }}</td><td data-label="When">Waiting</td><td data-label="Wait">{{ since .EnqueuedAt }}</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Reason:</strong> {{ .Detail }}</div><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div></div></details></td></tr>
+        {{ end }}
+        {{ range .CompletedJobs }}
+        <tr data-finished="{{ .FinishedAt }}"><td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td><td data-label="Job">{{ .Kind }}</td><td data-label="Source">{{ .Trigger }}</td><td data-label="When">{{ since .FinishedAt }}</td><td data-label="Wait">{{ msToSeconds .QueueWaitMS }}</td><td data-label="Run">{{ msToSeconds .RunMS }}</td><td data-label="Release">{{ .Release }}</td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div>{{ if .Build }}<div><strong>Total:</strong> {{ msToSeconds .Build.TotalMS }}</div>{{ if .Build.TriggerDetail }}<div><strong>Reason:</strong> {{ .Build.TriggerDetail }}</div>{{ end }}{{ if .Build.ChangedPaths }}<div><strong>Changed:</strong> {{ range .Build.ChangedPaths }}<code>{{ . }}</code> {{ end }}</div>{{ end }}{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}</div></details></td></tr>
         {{ end }}
         </tbody>
       </table>
@@ -2127,7 +2123,11 @@ const indexHTML = `<!doctype html>
   }
 
   function activateTabs() {
-    const active = (location.hash || '#builds').slice(1);
+    const requested = (location.hash || '#jobs').slice(1);
+    const active = requested === 'builds' || requested === 'refresh-runs' || requested !== 'releases' && requested !== 'jobs' ? 'jobs' : requested;
+    if (requested !== active) {
+      history.replaceState(null, '', '#' + active);
+    }
     document.querySelectorAll('[data-tab-link]').forEach((link) => {
       link.classList.toggle('active', link.dataset.tabLink === active);
     });
@@ -2167,8 +2167,11 @@ const indexHTML = `<!doctype html>
     activeWorkDetail.textContent = 'Started ' + fmtTime(running.started_at) + ' · ' + (running.detail || running.trigger_type || '');
   }
 
-  function renderBuilds(items) {
-    const fingerprint = JSON.stringify(items || []);
+  function renderBuilds(state) {
+    const queued = state.queue || [];
+    const builds = state.builds || [];
+    const refreshes = state.refresh || [];
+    const fingerprint = JSON.stringify({ running: state.running, queued, builds, refreshes });
     if (fingerprint === buildsFingerprint) {
       return;
     }
@@ -2176,12 +2179,14 @@ const indexHTML = `<!doctype html>
     const focusedElement = document.activeElement;
     const focusedBuildID = focusedElement?.closest('tr')?.querySelector('td code')?.textContent;
     const focusedTag = focusedElement?.tagName;
-    if (!items || !items.length) {
-      buildsBody.innerHTML = '<tr><td colspan="8">No builds yet.</td></tr>';
+    if (!state.running && !queued.length && !builds.length && !refreshes.length) {
+      buildsBody.innerHTML = '<tr><td colspan="6">No jobs yet.</td></tr>';
       buildsFingerprint = fingerprint;
       return;
     }
-    buildsBody.innerHTML = items.map((item) => {
+    const runningRow = state.running ? '<tr><td data-label="Status">' + statusPill('running') + '</td><td data-label="Job">' + escapeHtml(state.running.label) + '</td><td data-label="Source">' + escapeHtml(state.running.trigger_type) + '</td><td data-label="When">Started ' + escapeHtml(fmtTime(state.running.started_at)) + '</td><td data-label="Wait">—</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Phase:</strong> ' + escapeHtml(state.running.phase) + '</div><div><strong>Job ID:</strong> <code>' + escapeHtml(state.running.id) + '</code></div></div></details></td></tr>' : '';
+    const queuedRows = queued.map((item) => '<tr><td data-label="Status">' + statusPill('queued') + '</td><td data-label="Job">' + escapeHtml(item.label) + '</td><td data-label="Source">' + escapeHtml(item.trigger_type) + '</td><td data-label="When">Waiting</td><td data-label="Wait">' + escapeHtml(timeAgo(new Date(item.enqueued_at))) + '</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Reason:</strong> ' + escapeHtml(item.detail) + '</div><div><strong>Job ID:</strong> <code>' + escapeHtml(item.id) + '</code></div></div></details></td></tr>').join('');
+    const buildRows = builds.map((item) => {
       const timings = '<div><strong>Total:</strong> ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
         '<div><strong>Prepare:</strong> ' + escapeHtml(fmtSeconds(item.prepare_ms)) + ' · <strong>Promote:</strong> ' + escapeHtml(fmtSeconds(item.promote_ms)) + ' · <strong>Prune:</strong> ' + escapeHtml(fmtSeconds(item.prune_ms)) + '</div>';
       const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
@@ -2191,17 +2196,20 @@ const indexHTML = `<!doctype html>
         (changed ? '<div><strong>Changed:</strong> ' + changed + '</div>' : '') +
         (item.log_path ? '<div><a href="/logs/' + encodeURIComponent(item.log_path) + '">Open raw log</a></div>' : '') +
         (summary ? '<pre>' + summary + '</pre>' : '') + '</div></details>';
-      return '<tr>' +
-        '<td data-label="Build"><code>' + escapeHtml(item.id) + '</code></td>' +
+      return '<tr data-finished="' + escapeHtml(item.finished_at) + '">' +
         '<td data-label="Status">' + statusPill(item.status) + '</td>' +
+        '<td data-label="Job">' + (item.rollback_release ? 'Promote release' : 'Build') + '</td>' +
         '<td data-label="Source">' + escapeHtml(item.trigger_type) + '</td>' +
-        '<td data-label="Completed" class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
-        '<td data-label="Queue wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td>' +
-        '<td data-label="Build time">' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
-        '<td data-label="Release">' + (item.release_id ? '<code>' + escapeHtml(item.release_id) + '</code>' : '') + '</td>' +
+        '<td data-label="When" class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
+        '<td data-label="Wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td>' +
+        '<td data-label="Run">' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
+        '<td data-label="Release">' + (item.became_live ? 'Live' : '') + '</td>' +
         '<td data-label="Details">' + details + '</td>' +
       '</tr>';
     }).join('');
+    const refreshRows = refreshes.map((item) => '<tr data-finished="' + escapeHtml(item.finished_at) + '"><td data-label="Status">' + statusPill(item.status) + '</td><td data-label="Job">Refresh: ' + escapeHtml(item.task_name) + '</td><td data-label="Source">' + escapeHtml(item.trigger_type) + '</td><td data-label="When">' + escapeHtml(fmtTime(item.finished_at)) + '</td><td data-label="Wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td><td data-label="Run">' + escapeHtml(fmtSeconds(item.run_ms)) + '</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>' + escapeHtml(item.id) + '</code></div>' + (item.log_path ? '<div><a href="/logs/' + encodeURIComponent(item.log_path) + '">Open raw log</a></div>' : '') + '</div></details></td></tr>').join('');
+    buildsBody.innerHTML = runningRow + queuedRows + buildRows + refreshRows;
+    Array.from(buildsBody.querySelectorAll('tr[data-finished]')).sort((a, b) => new Date(b.dataset.finished) - new Date(a.dataset.finished)).forEach((row) => buildsBody.append(row));
     buildsFingerprint = fingerprint;
     openBuilds.forEach((buildID) => {
       const details = Array.from(buildsBody.querySelectorAll('details')).find((item) => item.closest('tr')?.querySelector('td code')?.textContent === buildID);
@@ -2280,16 +2288,12 @@ const indexHTML = `<!doctype html>
 
   function renderState(payload) {
     const state = payload.state || {};
-    currentRelease.textContent = payload.current_release_id || '';
-    liveReleaseValue.textContent = payload.current_release_id || '';
+    currentRelease.textContent = payload.current_release_id ? 'Live' : 'Not published';
     queueCount.textContent = (state.queue || []).length;
     queueOverview.textContent = (state.queue || []).length;
     buildCount.textContent = (state.builds || []).length;
-    latestBuild.innerHTML = state.builds && state.builds.length ? statusPill(state.builds[0].status) : '<span class="muted">No builds yet.</span>';
-    renderQueue(state.queue || []);
     renderRunning(state.running || null);
-    renderBuilds(state.builds || []);
-    renderRefresh(state.refresh || []);
+    renderBuilds(state);
     renderReleases(payload.releases || []);
     syncStatus.textContent = 'Live polling every 2s';
     updateFavicon(faviconState(state));

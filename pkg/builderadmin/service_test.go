@@ -165,8 +165,10 @@ func TestIndexHTMLPrioritizesOperationalBuildData(t *testing.T) {
 	t.Parallel()
 	checks := []string{
 		`<h2 id="live-work-heading">Active work</h2>`,
-		`<th>Queue wait</th>`,
-		`<th>Build time</th>`,
+		`<h2>Jobs</h2>`,
+		`<th>Job</th>`,
+		`<th>Run</th>`,
+		`Running and queued work first`,
 		`class="build-details"`,
 		`Open raw log`,
 		`.responsive-table td::before`,
@@ -179,6 +181,11 @@ func TestIndexHTMLPrioritizesOperationalBuildData(t *testing.T) {
 	}
 	if strings.Contains(indexHTML, `background-size: auto, auto, 11px 11px`) {
 		t.Fatal("index retains the decorative grid background")
+	}
+	for _, unwanted := range []string{`.Operator.Email`, `.Operator.Groups`, `.Operator.Roles`, `.Operator.Scopes`, `.Operator.UserID`} {
+		if strings.Contains(indexHTML, unwanted) {
+			t.Fatalf("index exposes %q in the default identity view", unwanted)
+		}
 	}
 }
 
@@ -209,19 +216,32 @@ func TestHandleIndex_RendersOperationalSummary(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		`id="queue-summary">1 waiting`,
-		`oldest 2m`,
-		`id="live-release-value"`,
 		`id="active-work-detail"`,
 		`let buildsFingerprint = ''`,
 		`let refreshFingerprint = ''`,
 		`let releasesFingerprint = ''`,
 		`let pollInFlight = false`,
-		`liveReleaseValue.textContent = payload.current_release_id || ''`,
+		`renderBuilds(state)`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("index body missing %q", want)
 		}
+	}
+}
+
+func TestCompletedJobs_SortsBuildsAndRefreshesByCompletion(t *testing.T) {
+	t.Parallel()
+	older := time.Date(2026, 7, 25, 20, 0, 0, 0, time.UTC)
+	newer := older.Add(time.Minute)
+	jobs := completedJobs(State{
+		Builds:  []BuildRecord{{ID: "build", FinishedAt: older}},
+		Refresh: []RefreshRecord{{ID: "refresh", TaskName: "reader", FinishedAt: newer}},
+	})
+	if len(jobs) != 2 {
+		t.Fatalf("len(jobs)=%d, want 2", len(jobs))
+	}
+	if jobs[0].ID != "refresh" || jobs[1].ID != "build" {
+		t.Fatalf("jobs=%#v, want refresh before build", jobs)
 	}
 }
 

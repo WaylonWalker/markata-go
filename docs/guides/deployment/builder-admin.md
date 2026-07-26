@@ -162,13 +162,12 @@ The UI shows:
 
 ## Reading the Operator UI
 
-The default **Builds** workspace is the primary operational view. It puts the running operation,
-queue depth, queue wait, latest result, and live release ahead of low-level metadata. Use
-**Enqueue Build** for a manual build, then inspect its row for status, queue wait, build duration, trigger,
-and release.
+The default **Jobs** workspace is the primary operational view. It puts running work, queued
+work, and completed builds, refreshes, and rollbacks in one list. Use **Enqueue Build** for a
+manual build, then inspect its row for status, queue wait, build duration, trigger, and release.
 
 Select **Details** on a build to see phase timings, changed paths, parsed performance lines, and
-the raw log. Filesystem paths are detail data rather than dashboard metrics. On narrow screens,
+the raw log. Raw IDs and filesystem paths are detail data rather than dashboard metrics. On narrow screens,
 each build and release reflows into a labeled record so operators do not need to read a clipped
 desktop table.
 
