@@ -460,6 +460,7 @@ func (s *Service) queueRequestFromQueued(queued QueuedOperation) (queueRequest, 
 func (s *Service) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", s.handleHealth)
 	protected := http.NewServeMux()
+	protected.HandleFunc("/builds/", s.handleBuildDetail)
 	protected.HandleFunc("/", s.handleIndex)
 	protected.HandleFunc("/api/state", s.handleState)
 	protected.HandleFunc("/api/builds", s.handleBuilds)
@@ -639,6 +640,33 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
+}
+
+func (s *Service) handleBuildDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/builds/"), "/")
+	if id == "" || strings.Contains(id, "/") {
+		http.NotFound(w, r)
+		return
+	}
+	state := s.viewState()
+	for i := range state.Builds {
+		build := state.Builds[i]
+		if build.ID != id {
+			continue
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_ = template.Must(template.New("build-detail").Funcs(template.FuncMap{
+			"msToSeconds": func(ms int64) string { return fmt.Sprintf("%.2fs", float64(ms)/1000) },
+			"since":       func(t time.Time) string { return formatUITimestamp(t, time.Now().UTC()) },
+			"statusClass": uiStatusClass,
+		}).Parse(buildDetailHTML)).Execute(w, build)
+		return
+	}
+	http.NotFound(w, r)
 }
 
 func completedJobs(state State) []completedJobView {
@@ -1941,7 +1969,7 @@ const indexHTML = `<!doctype html>
         <tr><td data-label="Status"><span class="pill status-queued">queued</span></td><td data-label="Job">{{ .Label }}</td><td data-label="Source">{{ .TriggerType }}</td><td data-label="When">Waiting</td><td data-label="Wait">{{ since .EnqueuedAt }}</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Reason:</strong> {{ .Detail }}</div><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div></div></details></td></tr>
         {{ end }}
         {{ range .CompletedJobs }}
-        <tr data-finished="{{ .FinishedAt }}"><td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td><td data-label="Job">{{ .Kind }}</td><td data-label="Source">{{ .Trigger }}</td><td data-label="When">{{ since .FinishedAt }}</td><td data-label="Wait">{{ msToSeconds .QueueWaitMS }}</td><td data-label="Run">{{ msToSeconds .RunMS }}</td><td data-label="Release">{{ .Release }}</td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div>{{ if .Build }}<div><strong>Total:</strong> {{ msToSeconds .Build.TotalMS }}</div>{{ if .Build.TriggerDetail }}<div><strong>Reason:</strong> {{ .Build.TriggerDetail }}</div>{{ end }}{{ if .Build.ChangedPaths }}<div><strong>Changed:</strong> {{ range .Build.ChangedPaths }}<code>{{ . }}</code> {{ end }}</div>{{ end }}{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}</div></details></td></tr>
+        <tr data-finished="{{ .FinishedAt }}"><td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td><td data-label="Job">{{ if .Build }}<a href="/builds/{{ .ID }}">{{ .Kind }}</a>{{ else }}{{ .Kind }}{{ end }}</td><td data-label="Source">{{ .Trigger }}</td><td data-label="When">{{ since .FinishedAt }}</td><td data-label="Wait">{{ msToSeconds .QueueWaitMS }}</td><td data-label="Run">{{ msToSeconds .RunMS }}</td><td data-label="Release">{{ .Release }}</td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div>{{ if .Build }}<div><a href="/builds/{{ .ID }}">Open full build details</a></div>{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}</div></details></td></tr>
         {{ end }}
         </tbody>
       </table>
@@ -2197,7 +2225,7 @@ const indexHTML = `<!doctype html>
         (summary ? '<pre>' + summary + '</pre>' : '') + '</div></details>';
       return '<tr data-finished="' + escapeHtml(item.finished_at) + '">' +
         '<td data-label="Status">' + statusPill(item.status) + '</td>' +
-        '<td data-label="Job">' + (item.rollback_release ? 'Promote release' : 'Build') + '</td>' +
+        '<td data-label="Job"><a href="/builds/' + encodeURIComponent(item.id) + '">' + (item.rollback_release ? 'Promote release' : 'Build') + '</a></td>' +
         '<td data-label="Source">' + escapeHtml(item.trigger_type) + '</td>' +
         '<td data-label="When" class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
         '<td data-label="Wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td>' +
