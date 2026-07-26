@@ -83,6 +83,11 @@ Successful builds MUST preserve the existing atomic release publication model:
 5. atomically repoint `current` to the new release
 6. prune old releases according to retention policy
 
+Every retained successful release MUST be available through the protected preview path
+`/__preview/<release-id>/`. Preview routing MUST use the same ForwardAuth policy as builder-admin
+and MUST rewrite root-absolute HTML asset URLs to the selected release prefix so previews do not
+mix current-release assets with historical content.
+
 The service MUST record phase timings for at least:
 
 - queue wait

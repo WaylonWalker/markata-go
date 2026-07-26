@@ -41,6 +41,19 @@ data:
         server_name _;
         root /usr/share/nginx/html/current;
 
+        # Retained releases are private previews. The matching Ingress applies
+        # builder-admin's ForwardAuth middleware before requests reach nginx.
+        location ~ ^/__preview/(?<preview_release>[A-Za-z0-9._-]+)(?<preview_path>/.*)?$ {
+          if ($preview_path = "") { return 302 /__preview/$preview_release/; }
+          root /usr/share/nginx/html;
+          rewrite ^/__preview/[A-Za-z0-9._-]+/(.*)$ /releases/$preview_release/$1 break;
+          sub_filter_once off;
+          sub_filter_types text/html;
+          sub_filter 'href="/' 'href="/__preview/$preview_release/';
+          sub_filter 'src="/' 'src="/__preview/$preview_release/';
+          try_files $uri $uri/ $uri.html =404;
+        }
+
         {{- if .Values.site.use404Page }}
         error_page 404 /404.html;
 

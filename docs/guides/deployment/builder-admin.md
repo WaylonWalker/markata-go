@@ -171,6 +171,12 @@ the raw log. Raw IDs and filesystem paths are detail data rather than dashboard 
 each build and release reflows into a labeled record so operators do not need to read a clipped
 desktop table.
 
+## Protected Release Previews
+
+Each retained successful release is available at `https://<site-host>/__preview/<release-id>/`.
+The chart protects this path with the builder-admin ForwardAuth middleware, so unpromoted content
+is not public. Preview links expire when release retention prunes the underlying release.
+
 The browser tab favicon also reflects live admin state so you can spot activity without keeping the tab focused:
 
 - idle when nothing is running
