@@ -245,6 +245,27 @@ func TestCompletedJobs_SortsBuildsAndRefreshesByCompletion(t *testing.T) {
 	}
 }
 
+func TestBuildDetail_ReturnsBuildAndNotFound(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.leader = true
+	svc.state.Builds = []BuildRecord{{ID: "build-1", Status: "success", FinishedAt: time.Now()}}
+	for _, tt := range []struct {
+		path string
+		want int
+	}{{"/builds/build-1", http.StatusOK}, {"/builds/missing", http.StatusNotFound}} {
+		recorder := httptest.NewRecorder()
+		svc.handleBuildDetail(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+		if recorder.Code != tt.want {
+			t.Errorf("%s status=%d, want %d", tt.path, recorder.Code, tt.want)
+		}
+	}
+}
+
 func TestReleaseTimestampFromID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
