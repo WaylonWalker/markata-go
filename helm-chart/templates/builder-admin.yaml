@@ -116,6 +116,8 @@ spec:
             - {{ printf "%ds" (int .Values.builderAdmin.buildTimeoutSeconds) | quote }}
             - --public-origin
             - {{ printf "https://%s" .Values.builderAdmin.ingress.host | quote }}
+            - --preview-origin
+            - {{ printf "https://%s" (include "markata-notes.host" .) | quote }}
             {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
             - --trusted-proxy-cidr
             - {{ . | quote }}
