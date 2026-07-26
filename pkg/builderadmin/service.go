@@ -56,6 +56,7 @@ type Config struct {
 	TrustedProxyCIDRs    []string
 	PublicAuthOrigin     string
 	PublicOrigin         string
+	PreviewOrigin        string
 }
 
 type RefreshTaskConfig struct {
@@ -627,6 +628,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		PictureURL    string
 		RefreshTasks  []RefreshTaskConfig
 		CompletedJobs []completedJobView
+		PreviewOrigin string
 	}{
 		State:         state,
 		Releases:      s.discoverReleases(),
@@ -637,6 +639,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		PictureURL:    profilePictureURL(s.cfg.PublicAuthOrigin, operator.UserID),
 		RefreshTasks:  s.cfg.RefreshTasks,
 		CompletedJobs: completedJobs(state),
+		PreviewOrigin: s.cfg.PreviewOrigin,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
@@ -663,7 +666,10 @@ func (s *Service) handleBuildDetail(w http.ResponseWriter, r *http.Request) {
 			"msToSeconds": func(ms int64) string { return fmt.Sprintf("%.2fs", float64(ms)/1000) },
 			"since":       func(t time.Time) string { return formatUITimestamp(t, time.Now().UTC()) },
 			"statusClass": uiStatusClass,
-		}).Parse(buildDetailHTML)).Execute(w, build)
+		}).Parse(buildDetailHTML)).Execute(w, struct {
+			BuildRecord
+			PreviewURL string
+		}{BuildRecord: build, PreviewURL: strings.TrimSuffix(s.cfg.PreviewOrigin, "/") + "/__preview/" + build.ReleaseID + "/"})
 		return
 	}
 	http.NotFound(w, r)
