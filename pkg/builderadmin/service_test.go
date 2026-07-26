@@ -161,6 +161,70 @@ func TestIndexHTMLIncludesDynamicFavicon(t *testing.T) {
 	}
 }
 
+func TestIndexHTMLPrioritizesOperationalBuildData(t *testing.T) {
+	t.Parallel()
+	checks := []string{
+		`<h2 id="live-work-heading">Active work</h2>`,
+		`<th>Queue wait</th>`,
+		`<th>Build time</th>`,
+		`class="build-details"`,
+		`Open raw log`,
+		`.responsive-table td::before`,
+		`.responsive-table thead { position: absolute;`,
+	}
+	for _, check := range checks {
+		if !strings.Contains(indexHTML, check) {
+			t.Fatalf("indexHTML missing %q", check)
+		}
+	}
+	if strings.Contains(indexHTML, `background-size: auto, auto, 11px 11px`) {
+		t.Fatal("index retains the decorative grid background")
+	}
+}
+
+func TestHandleIndex_RendersOperationalSummary(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.leader = true
+	svc.state = State{
+		Queue: []QueuedOperation{{
+			ID:         "build-queued",
+			Label:      "Build",
+			EnqueuedAt: time.Now().Add(-2 * time.Minute),
+		}},
+		Builds: []BuildRecord{{
+			ID:         "build-success",
+			Status:     "success",
+			FinishedAt: time.Now(),
+		}},
+	}
+	recorder := httptest.NewRecorder()
+	svc.handleIndex(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d, want %d", recorder.Code, http.StatusOK)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`id="queue-summary">1 waiting`,
+		`oldest 2m`,
+		`id="live-release-value"`,
+		`id="active-work-detail"`,
+		`let buildsFingerprint = ''`,
+		`let refreshFingerprint = ''`,
+		`let releasesFingerprint = ''`,
+		`let pollInFlight = false`,
+		`liveReleaseValue.textContent = payload.current_release_id || ''`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("index body missing %q", want)
+		}
+	}
+}
+
 func TestReleaseTimestampFromID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

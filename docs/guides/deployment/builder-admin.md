@@ -160,6 +160,18 @@ The UI shows:
 - old releases that can be promoted back to live
 - refresh task history
 
+## Reading the Operator UI
+
+The default **Builds** workspace is the primary operational view. It puts the running operation,
+queue depth, queue wait, latest result, and live release ahead of low-level metadata. Use
+**Enqueue Build** for a manual build, then inspect its row for status, queue wait, build duration, trigger,
+and release.
+
+Select **Details** on a build to see phase timings, changed paths, parsed performance lines, and
+the raw log. Filesystem paths are detail data rather than dashboard metrics. On narrow screens,
+each build and release reflows into a labeled record so operators do not need to read a clipped
+desktop table.
+
 The browser tab favicon also reflects live admin state so you can spot activity without keeping the tab focused:
 
 - idle when nothing is running
