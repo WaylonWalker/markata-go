@@ -137,9 +137,12 @@ metadata. It MUST present, in this order:
 3. the latest build result and current live release; and
 4. the build history list.
 
-The default view MUST use one primary build-history workspace. Queue, running-operation, and
-release information MAY be presented as compact supporting regions, but MUST NOT require an
-operator to scan a grid of equally weighted cards to discover active work.
+The default view MUST use one primary **Jobs** workspace. It MUST combine queued, running, and
+completed builds, refreshes, and rollbacks in operational priority order: running work first,
+then queued work, then completed work ordered by completion time. A separate releases view MAY
+remain for promotion actions. Queue, running-operation, and release information MAY be presented
+as compact supporting regions, but MUST NOT require an operator to scan separate queue and
+history tables to understand all work.
 
 The build-history list MUST make status, trigger, queue wait, build duration, completion time,
 and resulting release scannable. Per-phase timings, changed paths, performance-summary lines,
@@ -148,6 +151,11 @@ detail view, rather than occupying the default table columns.
 
 Raw filesystem paths MUST NOT be a primary dashboard metric. If shown, they MUST be secondary
 detail information and use intentional wrapping or copyable overflow treatment.
+
+Raw operation IDs, release IDs, user IDs, email addresses, groups, roles, and scopes MUST NOT
+appear in the default operator view. The header MAY show the signed-in operator's display name
+and avatar. Diagnostic identity assertions and raw IDs MAY appear only in an explicitly opened
+detail or diagnostic disclosure.
 
 Decorative backgrounds MUST NOT reduce text contrast or run through operational data. The UI
 MUST retain readable, useful layouts at narrow viewport widths; repeated operational records
