@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -346,11 +345,11 @@ func (s *Service) tryBecomeLeader(ctx context.Context) {
 	if s.isLeader() || s.leaderLock == nil {
 		return
 	}
-	if err := syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := tryLockFile(s.leaderLock); err != nil {
 		return
 	}
 	if err := s.writeLeaderRecord(); err != nil {
-		_ = syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_UN)
+		_ = unlockFile(s.leaderLock)
 		return
 	}
 	leaderCtx, cancel := context.WithCancel(ctx)
@@ -382,7 +381,7 @@ func (s *Service) releaseLeadership() {
 		cancel()
 	}
 	if s.leaderLock != nil {
-		_ = syscall.Flock(int(s.leaderLock.Fd()), syscall.LOCK_UN)
+		_ = unlockFile(s.leaderLock)
 	}
 }
 
@@ -1078,8 +1077,8 @@ func (s *Service) runLoggedCommand(ctx context.Context, log io.Writer, cwd strin
 	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-			return fmt.Errorf("command failed with exit code %d", ws.ExitStatus())
+		if code, ok := processExitCode(exitErr); ok {
+			return fmt.Errorf("command failed with exit code %d", code)
 		}
 	}
 	return err
