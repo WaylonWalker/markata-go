@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -185,6 +186,61 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 	}
 	if !strings.Contains(string(generatedPage2BodyBytes), "Generated 25") {
 		t.Fatalf("generated feeds page 2 should include remaining generated feeds")
+	}
+}
+
+func TestFeedsListingPlugin_Write_SkipsWhenCachedAndOutputsExist(t *testing.T) {
+	plugin := NewFeedsListingPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.OutputDir = t.TempDir()
+	feedsPage := models.NewFeedsPageConfig()
+	defaults := models.NewFeedDefaults()
+	config.Extra = map[string]interface{}{
+		"title":         "Test Site",
+		"description":   "A test site",
+		"url":           "https://example.com",
+		"feeds_page":    feedsPage,
+		"feed_defaults": defaults,
+	}
+	m.Cache().Set("build_cache", buildcache.New(t.TempDir()))
+
+	now := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	title := "Post"
+	m.Cache().Set("feed_configs", []models.FeedConfig{{
+		Slug:        "blog",
+		Title:       "Blog",
+		Description: "All posts",
+		Formats:     models.FeedFormats{HTML: true, RSS: true},
+		Posts: []*models.Post{{
+			Slug:      "post",
+			Href:      "/post/",
+			Title:     &title,
+			Published: true,
+			Date:      &now,
+		}},
+	}})
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("first Write() error = %v", err)
+	}
+
+	outputPath := filepath.Join(config.OutputDir, "feeds", "index.html")
+	//nolint:gosec // test fixture simulates world-readable output file
+	if err := os.WriteFile(outputPath, []byte("sentinel"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", outputPath, err)
+	}
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+
+	content, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", outputPath, err)
+	}
+	if string(content) != "sentinel" {
+		t.Fatalf("expected cached write skip to preserve sentinel content, got %q", string(content))
 	}
 }
 

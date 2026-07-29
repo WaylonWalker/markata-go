@@ -63,6 +63,25 @@ func TestApplyEnvOverrides_IntFields(t *testing.T) {
 	}
 }
 
+func TestApplyEnvOverrides_BuilderAdminAuthHeaders(t *testing.T) {
+	cleanup := setEnvVars(t, map[string]string{
+		"MARKATA_GO_BUILDER_ADMIN_AUTH_HEADERS_USER_ID":      "X-Authentik-Uid",
+		"MARKATA_GO_BUILDER_ADMIN_AUTH_HEADERS_DISPLAY_NAME": "",
+	})
+	defer cleanup()
+
+	config := DefaultConfig()
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
+	if config.BuilderAdmin.Auth.Headers.UserID == nil || *config.BuilderAdmin.Auth.Headers.UserID != "X-Authentik-Uid" {
+		t.Fatalf("UserID = %v, want X-Authentik-Uid", config.BuilderAdmin.Auth.Headers.UserID)
+	}
+	if config.BuilderAdmin.Auth.Headers.DisplayName == nil || *config.BuilderAdmin.Auth.Headers.DisplayName != "" {
+		t.Fatalf("DisplayName = %v, want explicit empty string", config.BuilderAdmin.Auth.Headers.DisplayName)
+	}
+}
+
 func TestApplyEnvOverrides_BoolFields(t *testing.T) {
 	tests := []struct {
 		name  string

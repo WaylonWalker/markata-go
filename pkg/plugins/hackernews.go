@@ -12,11 +12,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 )
 
 var hackerNewsItemAPIBaseURL = "https://hacker-news.firebaseio.com/v0/item/%s.json"
 
-var hackerNewsHTTPClient = &http.Client{Timeout: 10 * time.Second}
+var hackerNewsHTTPClient = instrumentedHackerNewsHTTPClient()
+
+func instrumentedHackerNewsHTTPClient() *http.Client {
+	client := &http.Client{Timeout: 10 * time.Second}
+	buildstats.InstrumentHTTPClient(client)
+	return client
+}
 
 var hackerNewsURLCache sync.Map
 

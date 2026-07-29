@@ -28,6 +28,10 @@ helm.sh/chart: "{{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }
 {{- printf "%s-notes-search%s-pvc" .Values.project_identifier (.Values.storage.search.pvcNameSuffix | default "") -}}
 {{- end -}}
 
+{{- define "markata-notes.cachePvcName" -}}
+{{- printf "%s-notes-cache%s-pvc" .Values.project_identifier (.Values.storage.cache.pvcNameSuffix | default "") -}}
+{{- end -}}
+
 {{- define "markata-notes.host" -}}
 {{- default (printf "%s.example.com" .Values.project_identifier) .Values.ingress.host -}}
 {{- end -}}
@@ -42,4 +46,11 @@ helm.sh/chart: "{{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }
 {{- else -}}
 {{- printf "%s-notes-workload" .Values.project_identifier -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "markata-notes.validateBuilderAdminAuthInternalURL" -}}
+{{- $authInternalURL := required "builderAdmin.ingress.auth.internalUrl is required when builder-admin auth is enabled" .Values.builderAdmin.ingress.auth.internalUrl -}}
+{{- $isHTTPS := hasPrefix "https://" $authInternalURL -}}
+{{- $isClusterLocalService := regexMatch "^http://[a-z0-9]([-a-z0-9]*[a-z0-9])?\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?\\.svc\\.cluster\\.local:(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])/?$" $authInternalURL -}}
+{{- if not (or $isHTTPS $isClusterLocalService) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// or an http://<service>.<namespace>.svc.cluster.local:<port> URL when builder-admin auth is enabled" }}{{ end -}}
 {{- end -}}

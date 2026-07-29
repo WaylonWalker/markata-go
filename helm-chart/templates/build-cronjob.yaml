@@ -133,10 +133,73 @@ spec:
                 - |
                   {{- if .Values.build.lock.enabled }}
                   lock_dir=/data/source/{{ .Values.build.lock.dirName }}
+                  notified=0
+                  build_started=$(date +%s)
+                  notify_result() {
+                    status="$1"
+                    if [ "${notified}" -ne 0 ]; then
+                      return 0
+                    fi
+                    notified=1
+                    {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
+                    build_finished=$(date +%s)
+                    elapsed_seconds=$((build_finished - build_started))
+                    message=$(printf 'project={{ .Values.project_identifier }}\nstatus=%s\njob=%s\nelapsed_seconds=%s\nbuilder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}\ncache_dir={{ .Values.build.cacheDir }}\n' "${status}" "${HOSTNAME}" "${elapsed_seconds}")
+                    wget -qO- \
+                      --timeout=10 \
+                      --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
+                      --post-data="${message}" \
+                      {{ .Values.build.notify.url | quote }} >/dev/null 2>&1 || true
+                    {{- end }}
+                  }
                   cleanup_lock() {
+                    rc=$?
+                    if [ "${rc}" -eq 0 ]; then
+                      notify_result success
+                    else
+                      notify_result failed
+                    fi
                     rm -rf "${lock_dir}"
+                    exit "${rc}"
                   }
                   trap cleanup_lock EXIT INT TERM
+                  {{- end }}
+                  {{- if not .Values.build.lock.enabled }}
+                  notified=0
+                  build_started=$(date +%s)
+                  notify_result() {
+                    status="$1"
+                    if [ "${notified}" -ne 0 ]; then
+                      return 0
+                    fi
+                    notified=1
+                    {{- if and .Values.build.notify.enabled .Values.build.notify.url }}
+                    build_finished=$(date +%s)
+                    elapsed_seconds=$((build_finished - build_started))
+                    message=$(printf 'project={{ .Values.project_identifier }}\nstatus=%s\njob=%s\nelapsed_seconds=%s\nbuilder_image={{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}\ncache_dir={{ .Values.build.cacheDir }}\n' "${status}" "${HOSTNAME}" "${elapsed_seconds}")
+                    wget -qO- \
+                      --timeout=10 \
+                      --header="Title: {{ .Values.project_identifier }} notes build ${status}" \
+                      --post-data="${message}" \
+                      {{ .Values.build.notify.url | quote }} >/dev/null 2>&1 || true
+                    {{- end }}
+                  }
+                  cleanup_job() {
+                    rc=$?
+                    if [ "${rc}" -eq 0 ]; then
+                      notify_result success
+                    else
+                      notify_result failed
+                    fi
+                    exit "${rc}"
+                  }
+                  trap cleanup_job EXIT INT TERM
+                  {{- end }}
+                  {{- if .Values.storage.cache.enabled }}
+                  mkdir -p {{ .Values.storage.cache.mountPath | quote }}/build {{ .Values.storage.cache.mountPath | quote }}/plugin {{ .Values.storage.cache.mountPath | quote }}/xdg
+                  rm -rf /data/source/.markata /data/source/.markata-cache
+                  ln -sfn {{ printf "%s/build" .Values.storage.cache.mountPath | quote }} /data/source/.markata
+                  ln -sfn {{ printf "%s/plugin" .Values.storage.cache.mountPath | quote }} /data/source/.markata-cache
                   {{- end }}
                   build_work="/data/site/.build-work"
                   mkdir -p {{ .Values.build.cacheDir | quote }} /data/site/releases
@@ -151,7 +214,7 @@ spec:
                   [markata-go.mermaid]
                   mode = {{ .Values.build.mermaid.mode | squote }}
                   EOF
-                  markata-go build -m /tmp/markata-go-build-override.toml --output "${build_work}"
+                  markata-go build {{- if .Values.build.fast }} --fast{{- end }} -m /tmp/markata-go-build-override.toml --output "${build_work}"
                   {{- else }}
                   markata-go build --output "${build_work}"
                   {{- end }}
@@ -193,6 +256,10 @@ spec:
                   mountPath: /data/source
                 - name: site
                   mountPath: /data/site
+                {{- if .Values.storage.cache.enabled }}
+                - name: cache
+                  mountPath: {{ .Values.storage.cache.mountPath | quote }}
+                {{- end }}
           volumes:
             - name: source
               {{- if eq (.Values.storage.source.mode | default "pvc") "hostPath" }}
@@ -212,4 +279,15 @@ spec:
               persistentVolumeClaim:
                 claimName: "{{ include "markata-notes.sitePvcName" . }}"
               {{- end }}
+            {{- if .Values.storage.cache.enabled }}
+            - name: cache
+              {{- if eq (.Values.storage.cache.mode | default "pvc") "hostPath" }}
+              hostPath:
+                path: {{ .Values.storage.cache.hostPath.path | quote }}
+                type: {{ .Values.storage.cache.hostPath.type | quote }}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: "{{ include "markata-notes.cachePvcName" . }}"
+              {{- end }}
+            {{- end }}
 {{- end }}

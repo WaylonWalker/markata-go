@@ -112,6 +112,32 @@ func TestConfig_DefaultValues(t *testing.T) {
 	}
 }
 
+func TestLoadFromString_BuilderAdminAuthHeaders(t *testing.T) {
+	cfg, err := LoadFromString(`
+[markata-go.builder_admin.auth.headers]
+user_id = "X-Authentik-Uid"
+display_name = ""
+`, FormatTOML)
+	if err != nil {
+		t.Fatalf("LoadFromString() error = %v", err)
+	}
+	builderAdmin, ok := cfg.Extra["builder_admin"].(map[string]any)
+	if !ok {
+		t.Fatalf("builder_admin = %#v, want config map", cfg.Extra["builder_admin"])
+	}
+	auth, ok := builderAdmin["auth"].(map[string]any)
+	if !ok {
+		t.Fatalf("auth = %#v, want config map", builderAdmin["auth"])
+	}
+	headers, ok := auth["headers"].(map[string]any)
+	if !ok {
+		t.Fatalf("headers = %#v, want config map", auth["headers"])
+	}
+	if headers["user_id"] != "X-Authentik-Uid" || headers["display_name"] != "" {
+		t.Fatalf("headers = %#v", headers)
+	}
+}
+
 // =============================================================================
 // Environment Variable Override Tests
 // =============================================================================

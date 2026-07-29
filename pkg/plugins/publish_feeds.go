@@ -32,12 +32,17 @@ type PublishFeedsPlugin struct {
 	// engineCache caches template engines to avoid re-parsing templates for each feed
 	engineMu    sync.RWMutex
 	engineCache map[string]*templates.Engine
+
+	// postFeedHashCache memoizes per-post feed semantic hashes for the current build.
+	postFeedHashMu    sync.RWMutex
+	postFeedHashCache map[string]string
 }
 
 // NewPublishFeedsPlugin creates a new PublishFeedsPlugin.
 func NewPublishFeedsPlugin() *PublishFeedsPlugin {
 	return &PublishFeedsPlugin{
-		engineCache: make(map[string]*templates.Engine),
+		engineCache:       make(map[string]*templates.Engine),
+		postFeedHashCache: make(map[string]string),
 	}
 }
 
@@ -123,6 +128,8 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 // Feed generation is parallelized for better performance with many feeds.
 // Uses incremental build cache to skip feeds with unchanged content.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
+	p.resetPostFeedHashCache()
+
 	config := m.Config()
 	feedConfigs := getCachedFeedConfigs(m)
 	if len(feedConfigs) == 0 {
@@ -334,10 +341,10 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 // It includes post slugs (in feed order to detect sort changes), and all
 // configuration fields that affect feed output.
 func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
-	return p.computeFeedHashWithConfig(fc, nil)
+	return p.computeFeedHashWithConfigAndCache(fc, nil, nil)
 }
 
-func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, config *lifecycle.Config) string {
+func (p *PublishFeedsPlugin) computeFeedHashWithConfigAndCache(fc *models.FeedConfig, config *lifecycle.Config, cache *buildcache.Cache) string {
 	h := sha256.New()
 	syndication := getSyndicationConfig(config)
 	writeStringField := func(value string) {
@@ -358,7 +365,7 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, co
 	// This ensures sort order changes are detected.
 	for _, post := range fc.Posts {
 		writeStringField(post.Slug)
-		writeStringField(computePostFeedItemHash(post))
+		writeStringField(p.getPostFeedItemHash(post, cache))
 	}
 
 	for i := range fc.Pages {
@@ -423,6 +430,40 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfig(fc *models.FeedConfig, co
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+func (p *PublishFeedsPlugin) resetPostFeedHashCache() {
+	p.postFeedHashMu.Lock()
+	defer p.postFeedHashMu.Unlock()
+	p.postFeedHashCache = make(map[string]string)
+}
+
+func (p *PublishFeedsPlugin) getPostFeedItemHash(post *models.Post, cache *buildcache.Cache) string {
+	if post == nil {
+		return ""
+	}
+	if post.Path == "" || cache == nil {
+		return computePostFeedItemHash(post)
+	}
+
+	p.postFeedHashMu.RLock()
+	if cachedHash, ok := p.postFeedHashCache[post.Path]; ok {
+		p.postFeedHashMu.RUnlock()
+		return cachedHash
+	}
+	p.postFeedHashMu.RUnlock()
+
+	feedHash := ""
+	feedHash, _, _ = cache.GetPostSemanticHashes(post.Path)
+	if feedHash == "" {
+		return computePostFeedItemHash(post)
+	}
+
+	p.postFeedHashMu.Lock()
+	p.postFeedHashCache[post.Path] = feedHash
+	p.postFeedHashMu.Unlock()
+
+	return feedHash
+}
+
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
 // Returns (skip bool, hash string) - hash is returned so callers can reuse it
 // for caching without recomputing.
@@ -431,17 +472,17 @@ func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interfa
 }
 
 func (p *PublishFeedsPlugin) shouldSkipFeedWithConfig(fc *models.FeedConfig, cache interface{}, outputDir string, config *lifecycle.Config) (skip bool, hash string) {
-	// Always compute hash since we return it for caching
-	currentHash := p.computeFeedHashWithConfig(fc, config)
-
 	if cache == nil {
-		return false, currentHash
+		return false, p.computeFeedHashWithConfigAndCache(fc, config, nil)
 	}
 
 	bc, ok := cache.(*buildcache.Cache)
 	if !ok || bc == nil {
-		return false, currentHash
+		return false, p.computeFeedHashWithConfigAndCache(fc, config, nil)
 	}
+
+	// Always compute hash since we return it for caching.
+	currentHash := p.computeFeedHashWithConfigAndCache(fc, config, bc)
 
 	// Check if feed hash changed (membership, order, page structure, content)
 	cachedHash := bc.GetFeedHash(fc.Slug)
@@ -475,29 +516,30 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)
 	paths := make([]string, 0, len(fc.Pages)*2+8)
+	htmlPages := fc.Pages
+	if fc.Formats.HTML || fc.Formats.SimpleHTML {
+		htmlPages = feedConfigWithRenderablePosts(fc).Pages
+	}
 	add := func(path string) {
 		if path != "" {
 			paths = append(paths, path)
 		}
 	}
 
-	if fc.Formats.HTML {
-		for i := range fc.Pages {
-			if fc.Pages[i].Number == 1 {
-				add(filepath.Join(feedDir, "index.html"))
-			} else {
-				add(filepath.Join(feedDir, "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
-			}
+	if fc.Formats.HTML && len(htmlPages) > 0 {
+		add(filepath.Join(feedDir, "index.html"))
+		if lastPage := htmlPages[len(htmlPages)-1].Number; lastPage > 1 {
+			// The feed hash already covers page count and pagination structure, so
+			// checking the first and last HTML pages is enough to catch missing
+			// outputs without repeating every paginated page stat on warm builds.
+			add(filepath.Join(feedDir, "page", fmt.Sprintf("%d", lastPage), "index.html"))
 		}
 	}
 
-	if fc.Formats.SimpleHTML {
-		for i := range fc.Pages {
-			if fc.Pages[i].Number == 1 {
-				add(filepath.Join(feedDir, "simple", "index.html"))
-			} else {
-				add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
-			}
+	if fc.Formats.SimpleHTML && len(htmlPages) > 0 {
+		add(filepath.Join(feedDir, "simple", "index.html"))
+		if lastPage := htmlPages[len(htmlPages)-1].Number; lastPage > 1 {
+			add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", lastPage), "index.html"))
 		}
 	}
 
@@ -558,13 +600,44 @@ type feedFormatPublisher struct {
 	targetFile string // Target file name for redirect
 }
 
+type feedRenderContext struct {
+	totalPosts       int
+	latestPostDate   string
+	sparklinePoints  string
+	sparklineData    []SparklinePoint
+	sparklineTitle   string
+	sparklineSummary string
+	sparklineStart   string
+	sparklineEnd     string
+}
+
 // publishFeed publishes a single feed in all configured formats.
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
-	modelsConfig := ToModelsConfig(config)
 	syndication := getSyndicationConfig(config)
-	htmlFC := feedConfigWithRenderablePosts(fc)
-	syndicationFC := feedConfigWithOutputPosts(fc)
+	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludePrivate)
+	needsHTML := fc.Formats.HTML || fc.Formats.SimpleHTML
+	needsOutputPosts := fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text || fc.Formats.Sitemap
+
+	var modelsConfig *models.Config
+	var htmlFC *models.FeedConfig
+	var syndicationFC *models.FeedConfig
+	var renderCtx *feedRenderContext
+
+	if needsHTML {
+		modelsConfig = ToModelsConfig(config)
+		htmlFC = cloneFeedConfigWithPosts(fc, pagePosts)
+		baseURL := "/" + htmlFC.Slug
+		if htmlFC.Slug == "" {
+			baseURL = "/"
+		}
+		htmlFC.Paginate(baseURL)
+		renderCtx = buildFeedRenderContext(htmlFC)
+	}
+
+	if needsOutputPosts {
+		syndicationFC = cloneFeedConfigWithPosts(fc, outputPosts)
+	}
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
@@ -572,8 +645,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
-		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(htmlFC, config, modelsConfig, feedDir) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(htmlFC, config, modelsConfig, feedDir) }},
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(htmlFC, config, modelsConfig, feedDir, renderCtx) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(htmlFC, config, modelsConfig, feedDir, renderCtx) }},
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(syndicationFC, config, feedDir, false) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(syndicationFC, config, feedDir, false) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(syndicationFC, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
@@ -638,9 +711,9 @@ func (p *PublishFeedsPlugin) determineFeedDir(outputDir, slug string) string {
 	return filepath.Join(outputDir, slug)
 }
 
-// safeWriteFile writes content to a file, removing any existing directory at that path.
+// prepareWriteFile removes any existing directory at a file path.
 // This handles the case where a previous build created a directory where a file should be.
-func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
+func (p *PublishFeedsPlugin) prepareWriteFile(path string) error {
 	// Check if path exists as a directory
 	info, err := os.Stat(path)
 	if err == nil && info.IsDir() {
@@ -649,9 +722,28 @@ func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
 			return fmt.Errorf("removing directory at file path %s: %w", path, err)
 		}
 	}
+	return nil
+}
+
+// safeWriteFile writes content to a file, removing any existing directory at that path.
+// If the file already exists with identical content, it is left untouched.
+func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
+	if err := p.prepareWriteFile(path); err != nil {
+		return err
+	}
 
 	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, content) {
 		return nil
+	}
+
+	return p.writeFile(path, content)
+}
+
+// writeFile writes content directly without a read-before-write check.
+// Use this only when the caller already knows the output is dirty.
+func (p *PublishFeedsPlugin) writeFile(path string, content []byte) error {
+	if err := p.prepareWriteFile(path); err != nil {
+		return err
 	}
 
 	//nolint:gosec // G306: Output files need 0644 for web serving
@@ -687,7 +779,7 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 }
 
 // publishHTMLPages publishes HTML pages for a paginated feed.
-func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string, renderCtx *feedRenderContext) error {
 	if err := p.cleanupPaginatedFeedDirs(feedDir, "", fc.Pages); err != nil {
 		return fmt.Errorf("cleaning html pagination dirs: %w", err)
 	}
@@ -707,12 +799,12 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 		}
 
 		// Generate HTML content
-		html, err := p.generateFeedPageHTML(fc, page, config, modelsConfig)
+		html, err := p.generateFeedPageHTML(fc, page, config, modelsConfig, renderCtx)
 		if err != nil {
 			return fmt.Errorf("generating page %d: %w", page.Number, err)
 		}
 
-		if err := p.safeWriteFile(pagePath, []byte(html)); err != nil {
+		if err := p.writeFile(pagePath, []byte(html)); err != nil {
 			return fmt.Errorf("writing page %d: %w", page.Number, err)
 		}
 	}
@@ -722,7 +814,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 
 // publishSimpleHTMLPages publishes the simple (compact list) HTML pages for a feed.
 // Output is written to feedDir/simple/ with pagination at feedDir/simple/page/N/.
-func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string, renderCtx *feedRenderContext) error {
 	simpleDir := filepath.Join(feedDir, "simple")
 	if err := p.cleanupPaginatedFeedDirs(feedDir, "simple", fc.Pages); err != nil {
 		return fmt.Errorf("cleaning simple pagination dirs: %w", err)
@@ -758,12 +850,12 @@ func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, confi
 		}
 
 		// Generate HTML content using simple-feed.html template
-		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config, modelsConfig)
+		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config, modelsConfig, renderCtx)
 		if err != nil {
 			return fmt.Errorf("generating simple page %d: %w", adjustedPage.Number, err)
 		}
 
-		if err := p.safeWriteFile(pagePath, []byte(htmlContent)); err != nil {
+		if err := p.writeFile(pagePath, []byte(htmlContent)); err != nil {
 			return fmt.Errorf("writing simple page %d: %w", adjustedPage.Number, err)
 		}
 	}
@@ -842,7 +934,7 @@ func (p *PublishFeedsPlugin) adjustPageURLsForSimple(page *models.FeedPage, simp
 }
 
 // generateSimpleFeedPageHTML generates HTML for a simple feed page using the simple-feed.html template.
-func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config, renderCtx *feedRenderContext) (string, error) {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -880,7 +972,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 			modelsConfig = ToModelsConfig(config)
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
-		p.addFeedStatsContext(&ctx, fc)
+		p.addFeedStatsContext(&ctx, fc, renderCtx)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -898,7 +990,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 }
 
 // generateFeedPageHTML generates HTML for a feed page.
-func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config, renderCtx *feedRenderContext) (string, error) {
 	templateName := fc.Templates.HTML
 	if templateName == "" {
 		templateName = "feed.html"
@@ -943,7 +1035,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 		ctx.Set("feed_robots", fc.Robots)
-		p.addFeedStatsContext(&ctx, fc)
+		p.addFeedStatsContext(&ctx, fc, renderCtx)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -970,20 +1062,36 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	return p.generateFeedPageHTMLFallback(fc, page, config)
 }
 
-func (p *PublishFeedsPlugin) addFeedStatsContext(ctx *templates.Context, fc *models.FeedConfig) {
-	if ctx == nil || fc == nil {
-		return
+func buildFeedRenderContext(fc *models.FeedConfig) *feedRenderContext {
+	if fc == nil {
+		return nil
 	}
 	totalPosts, latestPostDate, _ := feedStats(fc.Posts, fc.IncludePrivate)
 	window := computeSparklineWindow(fc.Posts, fc.IncludePrivate)
-	ctx.Set("feed_stats_total_posts", totalPosts)
-	ctx.Set("feed_stats_latest_post", latestPostDate)
-	ctx.Set("feed_sparkline_points", buildFeedSparkline(fc.Posts, window, fc.IncludePrivate))
-	ctx.Set("feed_sparkline_data", buildFeedSparklineData(fc.Posts, window, fc.IncludePrivate))
-	ctx.Set("feed_sparkline_title", buildFeedSparklineTitle(fc.Posts, window, fc.IncludePrivate))
-	ctx.Set("feed_sparkline_summary", buildFeedSparklineSummary(fc.Posts, window, fc.IncludePrivate))
-	ctx.Set("feed_sparkline_start", buildFeedSparklineStart(window))
-	ctx.Set("feed_sparkline_end", buildFeedSparklineEnd(window))
+	return &feedRenderContext{
+		totalPosts:       totalPosts,
+		latestPostDate:   latestPostDate,
+		sparklinePoints:  buildFeedSparkline(fc.Posts, window, fc.IncludePrivate),
+		sparklineData:    buildFeedSparklineData(fc.Posts, window, fc.IncludePrivate),
+		sparklineTitle:   buildFeedSparklineTitle(fc.Posts, window, fc.IncludePrivate),
+		sparklineSummary: buildFeedSparklineSummary(fc.Posts, window, fc.IncludePrivate),
+		sparklineStart:   buildFeedSparklineStart(window),
+		sparklineEnd:     buildFeedSparklineEnd(window),
+	}
+}
+
+func (p *PublishFeedsPlugin) addFeedStatsContext(ctx *templates.Context, fc *models.FeedConfig, renderCtx *feedRenderContext) {
+	if ctx == nil || fc == nil || renderCtx == nil {
+		return
+	}
+	ctx.Set("feed_stats_total_posts", renderCtx.totalPosts)
+	ctx.Set("feed_stats_latest_post", renderCtx.latestPostDate)
+	ctx.Set("feed_sparkline_points", renderCtx.sparklinePoints)
+	ctx.Set("feed_sparkline_data", renderCtx.sparklineData)
+	ctx.Set("feed_sparkline_title", renderCtx.sparklineTitle)
+	ctx.Set("feed_sparkline_summary", renderCtx.sparklineSummary)
+	ctx.Set("feed_sparkline_start", renderCtx.sparklineStart)
+	ctx.Set("feed_sparkline_end", renderCtx.sparklineEnd)
 }
 
 // generateFeedPageHTMLFallback generates HTML using a built-in Go template.
@@ -1092,7 +1200,7 @@ func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle
 	}
 
 	rssPath := filepath.Join(feedDir, "rss.xml")
-	return p.safeWriteFile(rssPath, []byte(rss))
+	return p.writeFile(rssPath, []byte(rss))
 }
 
 // publishAtom generates and writes an Atom feed.
@@ -1104,7 +1212,7 @@ func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycl
 	}
 
 	atomPath := filepath.Join(feedDir, "atom.xml")
-	return p.safeWriteFile(atomPath, []byte(atom))
+	return p.writeFile(atomPath, []byte(atom))
 }
 
 // publishJSON generates and writes a JSON feed.
@@ -1116,7 +1224,7 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 	}
 
 	jsonPath := filepath.Join(feedDir, "feed.json")
-	return p.safeWriteFile(jsonPath, []byte(jsonFeed))
+	return p.writeFile(jsonPath, []byte(jsonFeed))
 }
 
 func (p *PublishFeedsPlugin) syndicationFeedConfig(fc *models.FeedConfig, config *lifecycle.Config, archive bool) *models.FeedConfig {
@@ -1177,7 +1285,7 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, output
 	} else {
 		mdPath = filepath.Join(outputDir, slug+".md")
 	}
-	return p.safeWriteFile(mdPath, []byte(sb.String()))
+	return p.writeFile(mdPath, []byte(sb.String()))
 }
 
 // publishText generates and writes a plain text feed listing.
@@ -1223,7 +1331,7 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir 
 	} else {
 		txtPath = filepath.Join(outputDir, slug+".txt")
 	}
-	return p.safeWriteFile(txtPath, []byte(sb.String()))
+	return p.writeFile(txtPath, []byte(sb.String()))
 }
 
 // publishSitemap generates and writes a sitemap XML file for feed posts.
@@ -1290,7 +1398,7 @@ func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifec
 
 	// Write sitemap.xml
 	sitemapPath := filepath.Join(feedDir, "sitemap.xml")
-	return p.safeWriteFile(sitemapPath, []byte(xmlContent))
+	return p.writeFile(sitemapPath, []byte(xmlContent))
 }
 
 // writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.
@@ -1327,7 +1435,7 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 	// Write index.html inside the directory
 	// This allows /slug.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
+	if err := p.writeFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 
@@ -1368,7 +1476,7 @@ func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir stri
 	// Write index.html inside the directory
 	// This allows /slug/index.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
+	if err := p.writeFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 

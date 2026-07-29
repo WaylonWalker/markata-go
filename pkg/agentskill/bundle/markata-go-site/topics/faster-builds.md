@@ -7,11 +7,13 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `markata-go build --fast` for faster development loops
 - use `markata-go serve --fast` for the normal live-edit loop
 - use `markata-go reader update` when you only need fresh `/reader/` feed data for the next build
+- prefer `[markata-go.blogroll] refresh_on_build = false` when you want to keep blogroll pages but move remote refresh work out of the normal build
 - use `markata-go reader update --concurrency <n>` when reader refresh latency is dominated by many remote feeds
 - use `-m fast.toml` or `--merge-config fast.toml` when you want a slimmer dev config without editing the main site config
 - compare warm builds, not just cold builds
 - use `markata-go build --benchmark-json benchmark.json` for structured timing
 - use `markata-go build -v --benchmark-detailed` when you need stage detail
+- read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
 
 ## What `--fast` Skips
 
@@ -52,6 +54,8 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - If output is network-bound, inspect plugins that fetch remote content.
 - If output is read-heavy, inspect globbing, cache loads, and broad content scans.
 - If output is write-heavy, inspect cache saves, feed publishing, Pagefind output, and static output.
+- If warm builds still spend time in `configure/build_cache`, check whether template or config files actually changed before assuming the cache is stale; the build cache now fingerprints the template tree before it does a full rehash.
+- If `/tags` or `/garden` writes are hot, prefer cached per-post semantic hashes so the listing hashes don't need to re-derive the same per-post summaries every build.
 - Prefer targeted fixes over broad cache-busting changes.
 - For sites that use `[markata-go.mermaid] mode = "chromium"` or `"cli"`, unchanged
   diagrams should reuse cached SVG output on warm builds; if Mermaid remains a hotspot,
@@ -99,9 +103,18 @@ Use merge configs for scope changes. Use `--fast` for expensive output-step skip
 3. if the build is slow, capture `--benchmark-json` or `--benchmark-detailed`
 4. compare warm builds before changing caching behavior
 
+## Concrete Profiling Flow
+
+1. run the build that matches the question you are asking
+2. read `Resource profile` to see whether the slowdown is mostly CPU, network, disk read, or disk write
+3. read `Hotspots` to find the slow plugin hook
+4. read `Slowest requests` to find the exact remote waits inside that plugin
+5. if the build is still CPU-heavy after network issues are understood, switch to `--cpuprofile`
+
 ## Common Culprits
 
 - remote metadata or embed fetching
+- blogroll and reader feed refreshes during normal builds when cache-only mode is not configured
 - pagefind, minification, and purge steps
 - feed-heavy sites with many aggregate pages
 - custom templates or plugins doing repeated expensive work

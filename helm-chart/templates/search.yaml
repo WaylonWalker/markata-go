@@ -11,6 +11,12 @@ spec:
   replicas: {{ .Values.search.replicaCount }}
   strategy:
     type: {{ .Values.search.strategy.type | quote }}
+    {{- if eq .Values.search.strategy.type "RollingUpdate" }}
+    {{- with .Values.search.strategy.rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
   selector:
     matchLabels:
       service: "{{ .Values.project_identifier }}-notes-search"
@@ -122,13 +128,13 @@ spec:
               port: http
             timeoutSeconds: 1
             failureThreshold: 30
-            periodSeconds: 10
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /health
               port: http
             timeoutSeconds: 1
-            periodSeconds: 10
+            periodSeconds: 5
             failureThreshold: 12
       volumes:
         {{- if ne .Values.search.mode "read-only-index" }}
@@ -143,8 +149,12 @@ spec:
           {{- end }}
         {{- end }}
         - name: search
+          {{- if and (ne .Values.search.mode "read-only-index") (eq .Values.search.writableIndexStorage.mode "emptyDir") }}
+          emptyDir: {}
+          {{- else }}
           persistentVolumeClaim:
             claimName: "{{ include "markata-notes.searchPvcName" . }}"
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

@@ -177,6 +177,81 @@ func TestBlogrollPlugin_AggregateCache_RoundTripAndHashCheck(t *testing.T) {
 	}
 }
 
+func TestBlogrollPlugin_LoadAggregateCacheAny_IgnoresAgeButChecksHash(t *testing.T) {
+	tmpDir := t.TempDir()
+	p := NewBlogrollPlugin()
+
+	feeds := []*models.ExternalFeed{{
+		FeedURL: "https://example.com/feed.xml",
+		Title:   "Example",
+	}}
+	entries := []*models.ExternalEntry{{
+		FeedURL: "https://example.com/feed.xml",
+		ID:      "entry-1",
+		Title:   "First Entry",
+	}}
+
+	p.saveAggregateCache(tmpDir, "hash-a", feeds, entries)
+	cachePath := filepath.Join(tmpDir, aggregateCacheFile)
+	oldTime := time.Now().Add(-7 * 24 * time.Hour)
+	if err := os.Chtimes(cachePath, oldTime, oldTime); err != nil {
+		t.Fatalf("Chtimes() error = %v", err)
+	}
+
+	cached := p.loadAggregateCacheAny(tmpDir, "hash-a")
+	if cached == nil {
+		t.Fatal("loadAggregateCacheAny() = nil, want cached snapshot")
+	}
+	if got := p.loadAggregateCacheAny(tmpDir, "hash-b"); got != nil {
+		t.Fatalf("loadAggregateCacheAny() with mismatched hash = %#v, want nil", got)
+	}
+}
+
+func TestBlogrollPlugin_FetchFeed_UsesStaleCacheWhenRefreshDisabled(t *testing.T) {
+	tmpDir := t.TempDir()
+	p := NewBlogrollPlugin()
+	oldTime := time.Now().Add(-48 * time.Hour)
+	feed := &models.ExternalFeed{
+		FeedURL:     "https://example.com/feed.xml",
+		Title:       "Cached",
+		LastFetched: &oldTime,
+	}
+	p.saveToCache(feed, tmpDir)
+
+	config := models.ExternalFeedConfig{URL: "https://example.com/feed.xml", Title: "Configured"}
+	got, summary := p.fetchFeed(config, tmpDir, time.Hour, 1, 10, blogrollFetchOptions{refreshOnBuild: false})
+
+	if got == nil {
+		t.Fatal("fetchFeed() = nil, want cached feed")
+	}
+	if got.Title != "Configured" {
+		t.Fatalf("fetchFeed().Title = %q, want config override", got.Title)
+	}
+	if summary.stale != 1 {
+		t.Fatalf("summary.stale = %d, want 1", summary.stale)
+	}
+	if summary.refreshed != 0 {
+		t.Fatalf("summary.refreshed = %d, want 0", summary.refreshed)
+	}
+}
+
+func TestBlogrollPlugin_FetchFeed_ReturnsPlaceholderWhenRefreshDisabledAndCacheMissing(t *testing.T) {
+	p := NewBlogrollPlugin()
+	config := models.ExternalFeedConfig{URL: "https://example.com/feed.xml", Title: "Configured"}
+
+	got, summary := p.fetchFeed(config, t.TempDir(), time.Hour, 1, 10, blogrollFetchOptions{refreshOnBuild: false})
+
+	if got == nil {
+		t.Fatal("fetchFeed() = nil, want placeholder feed")
+	}
+	if got.Error == "" {
+		t.Fatal("fetchFeed().Error = empty, want missing cache message")
+	}
+	if summary.failed != 1 {
+		t.Fatalf("summary.failed = %d, want 1", summary.failed)
+	}
+}
+
 func TestMergeCachedFeed_AppliesConfigOverrides(t *testing.T) {
 	cached := &models.ExternalFeed{
 		Config: models.ExternalFeedConfig{

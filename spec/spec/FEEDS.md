@@ -517,6 +517,11 @@ Behavior requirements:
 - the command MUST write primary results to `stdout`
 - the next `markata-go build` MUST reuse the refreshed cache data through the existing blogroll cache path
 
+When `markata-go.blogroll.refresh_on_build = false`, normal builds MUST reuse cached
+reader/blogroll data without making remote refresh requests. In that mode,
+`markata-go reader update` is the explicit refresh path and builds MAY use stale cached
+blogroll data when it is available.
+
 ---
 
 ## Manual Pagination

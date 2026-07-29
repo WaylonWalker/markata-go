@@ -1,0 +1,26 @@
+{{- if .Values.builderAdmin.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "{{ include "markata-notes.namespace" . }}-{{ .Values.project_identifier }}-notes-builder-admin-auth@kubernetescrd"
+spec:
+  ingressClassName: {{ required "builderAdmin.ingress.ingressClassName is required when builder-admin is enabled" .Values.builderAdmin.ingress.ingressClassName | quote }}
+  tls:
+    - secretName: {{ .Values.builderAdmin.ingress.tls.secretName | quote }}
+      hosts:
+        - {{ required "builderAdmin.ingress.host is required when builder-admin ingress is enabled" .Values.builderAdmin.ingress.host | quote }}
+  rules:
+    - host: {{ required "builderAdmin.ingress.host is required when builder-admin ingress is enabled" .Values.builderAdmin.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: "{{ .Values.project_identifier }}-notes-builder-admin"
+                port:
+                  number: {{ .Values.builderAdmin.port }}
+{{- end }}
