@@ -96,7 +96,7 @@ builderAdmin:
   releases:
     keep: 25
   history:
-    successfulBuilds: 50
+    successfulBuilds: 60
     failedBuilds: 100
     refreshRuns: 100
   buildTimeoutSeconds: 7200
