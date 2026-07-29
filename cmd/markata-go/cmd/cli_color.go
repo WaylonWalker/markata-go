@@ -6,17 +6,14 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
-const (
-	ansiBlueBold  = "\033[1;34m"
-	ansiCyan      = "\033[36m"
-	ansiGreenBold = "\033[1;32m"
-	ansiMagenta   = "\033[35m"
-	ansiReset     = "\033[0m"
-	ansiYellow    = "\033[33m"
-)
+const ansiReset = "\033[0m"
 
 func colorizeOutput(text, color string) string {
-	if !colorEnabledOnOutput() {
+	return colorize(text, color, colorEnabledOnOutput())
+}
+
+func colorize(text, color string, enabled bool) string {
+	if !enabled {
 		return text
 	}
 	if rgb := ansiTrueColor(color); rgb != "" {

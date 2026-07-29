@@ -93,6 +93,9 @@ func TestThemeFromPaletteUsesPaletteColors(t *testing.T) {
 	if theme.Component != "#112233" {
 		t.Fatalf("Component = %q, want %q", theme.Component, "#112233")
 	}
+	if theme.Success != "#778899" {
+		t.Fatalf("Success = %q, want %q", theme.Success, "#778899")
+	}
 	if theme.PhaseColor["transform"] != "#334455" {
 		t.Fatalf("transform color = %q, want %q", theme.PhaseColor["transform"], "#334455")
 	}

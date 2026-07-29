@@ -85,6 +85,12 @@ colored when `stdout` is piped.
 When color is enabled for an interactive stream, human-facing summaries SHOULD
 use color by default to improve scannability.
 
+When a site configuration and palette are available, human-facing CLI headings,
+statuses, setup snippets, and help text MUST use palette-derived semantic
+colors. Commands MUST fall back to the default CLI theme if configuration or
+palette resolution fails. Primary structured output such as JSON, YAML, TOML,
+and line-oriented data MUST remain uncolored.
+
 Commands MUST preserve readable plain output when color is disabled.
 
 ## Output Modes
@@ -140,6 +146,20 @@ Subcommand help SHOULD lead with the common workflow and examples before edge
 cases.
 
 Running `markata-go` with no arguments MUST display help.
+
+Interactive help MUST use the resolved CLI theme for headings and command
+names. Help rendering MAY load the nearest site configuration to resolve the
+palette, but MUST fall back cleanly when it cannot be loaded.
+Clear section labels in long-form help text (for example, `Examples:` and
+`Documentation:`) MUST render as themed Unicode section separators.
+
+## Section Separators
+
+Human-facing section separators MUST use Unicode box-drawing characters rather
+than ASCII `-` or `=` rules. A separator SHOULD be 80 columns when space allows
+and MUST not exceed the current terminal width. On terminals narrower than 32
+columns, commands MUST use a compact labeled separator instead of a padded
+rule. Redirected output retains the Unicode separator but has no ANSI color.
 
 ## Error Handling
 

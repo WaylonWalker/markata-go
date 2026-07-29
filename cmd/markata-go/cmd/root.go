@@ -79,7 +79,7 @@ Profiling:
   markata-go build --cpuprofile cpu.prof   # Write CPU profile
   markata-go build --memprofile mem.prof   # Write memory profile
 
-  # Analyze with:
+  Analyze with:
   go tool pprof cpu.prof
   go tool pprof -http=:8080 cpu.prof`,
 	SilenceUsage:  true,
@@ -146,6 +146,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
+		renderCommandHelp(cmd)
+	})
 	rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return newUsageError(err)
 	})
