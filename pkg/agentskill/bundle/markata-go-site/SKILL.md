@@ -24,8 +24,9 @@ Before making changes:
 2. Inspect content with `markata-go list posts`, `markata-go list feeds`, and `markata-go list tags`.
 3. Search for content by keyword with `markata-go search <query>`.
 4. Use `markata-go explain <topic>` for built-in CLI context.
-5. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
-6. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
+5. For Markdown wikilink IDE features, run `markata-go lsp doctor` (it can load editor startup/plugin code); use `--no-verify-editor` to skip that check. Use `markata-go lsp setup` to print snippets for installed editors, then inspect existing editor configuration before changing it.
+6. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
+7. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
 
 ## Topic Files
 
