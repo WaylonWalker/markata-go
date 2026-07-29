@@ -233,27 +233,39 @@ The service MUST expose an HTTP admin interface.
 ### Operator Authentication
 
 Every builder-admin UI, API, and log route except the Kubernetes `/health` probe MUST require a
-trusted `hlab-auth` identity. The supported v1 integration is a Traefik `ForwardAuth` chain using
-the hlab-auth `/api/v1/forward-auth` endpoint. The chain MUST first remove client-supplied stable
-`X-Hlab-*` headers, forward the authentication decision and stable identity assertions, and copy
-the `__Host-hlab-app-session` response cookie with `addAuthCookiesToResponse`. The cookie copy is
-required for the cross-origin login handoff. The service MUST reject a request unless its remote
-address belongs to an explicitly configured trusted-proxy CIDR and it includes exactly one
-non-empty `X-Hlab-User-Id` header. Universal, loopback, and link-local trusted-proxy CIDRs MUST
-be rejected. The leader-forwarding marker MUST never substitute for source provenance: it is valid
-only from a configured trusted CIDR.
+trusted ForwardAuth identity. The first deployment uses Traefik `ForwardAuth`, but the service
+MUST NOT require a specific SSO product. The chain MUST first remove client-supplied configured
+identity headers, then forward the authentication decision and configured identity assertions.
+Response cookies required by the selected SSO MAY be copied with `addAuthCookiesToResponse`.
+The service MUST reject a request unless its remote address belongs to an explicitly configured
+trusted-proxy CIDR and it includes exactly one non-empty configured durable-user-ID header.
+Universal, loopback, and link-local trusted-proxy CIDRs MUST be rejected. The leader-forwarding
+marker MUST never substitute for source provenance: it is valid only from a configured trusted CIDR.
 
-The operator UI MUST use `X-Hlab-User-Id` only as the durable identity key. Username, display
-name, email, groups, roles, and scopes are display-only assertions; they MUST NOT grant or widen
-privileges. The UI MAY show only the stable fields present in the header contract. It MAY show the
-operator's own profile picture only when an explicit HTTPS public auth-origin configuration is
+The operator UI MUST use only the configured durable-user-ID header as the identity key. Username,
+display name, email, groups, roles, and scopes are display-only assertions; they MUST NOT grant or
+widen privileges. The defaults MUST preserve hlab-auth's `X-Hlab-*` contract. CLI and Helm
+configuration MUST permit replacement header names, including empty optional headers. It MAY show
+the operator's own profile picture only when an explicit HTTPS public auth-origin configuration is
 set; it MUST construct the escaped URL from that origin and the stable user ID as
-`/users/{user_id}/picture`, with a useful no-image fallback. It MUST NOT use an identity-picture
-header, forward credentials server-side, or change hlab-auth's public origin, cookie, session, or
-WebAuthn configuration.
+`/users/{user_id}/picture`, with a useful no-image fallback.
+
+The identity-header mapping MUST be configurable in `[markata-go.builder_admin.auth.headers]` and
+through `MARKATA_GO_BUILDER_ADMIN_AUTH_HEADERS_*` environment variables. Environment values MUST
+override file configuration, and explicitly supplied CLI header flags MUST take precedence over
+both. The durable `user_id` mapping MUST remain non-empty after resolution; empty optional mappings
+disable their display-only assertions.
 
 Direct Service access and `kubectl port-forward` cannot establish proxy provenance and MUST fail
 closed. They are not supported operator-access paths for authenticated deployments.
+
+### Operator UI Theme
+
+The operator UI MUST derive its default color scheme from the site theme configured for the
+builder's source directory. It MUST select the configured fallback-mode palette, including
+explicit light or dark palette overrides, and map palette semantic and component colors to its
+background, text, border, action, code, and status UI colors. A missing or invalid site palette
+MUST fall back to the built-in builder-admin colors without preventing the service from starting.
 
 ### Browser Mutation Protection
 
@@ -299,11 +311,11 @@ Required chart configuration includes:
 - build history retention
 - refresh task definitions
 - rollout strategy settings for clean active/standby cutover
-- protected builder-admin ingress using `/api/v1/forward-auth`, its cross-origin handoff-cookie
-  forwarding, optional public auth origin for self profile pictures, and trusted-proxy CIDRs
-- a ForwardAuth internal URL that uses either HTTPS or the exact cluster-local hlab-auth Service
-  endpoint (`http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>`); the public auth origin remains
-  HTTPS for browser login and handoff
+- protected builder-admin ingress using a configurable ForwardAuth path, response cookies,
+  identity-header mapping, optional public auth origin for self profile pictures, and trusted-proxy CIDRs
+- a ForwardAuth internal URL that uses HTTPS or a cluster-local Service endpoint
+  (`http://<service>.<namespace>.svc.cluster.local:<port>`); the public auth origin remains HTTPS
+  when used for browser login or profile pictures
 - an exact public origin derived as `https://<builder-admin ingress host>` and passed to the
   service for CSRF origin validation, never inferred from request headers
 - an enabled ingress NetworkPolicy that allows the configured builder-admin port only from the

@@ -54,6 +54,7 @@ type Config struct {
 	RefreshTasks         []RefreshTaskConfig
 	BuildTimeout         time.Duration
 	TrustedProxyCIDRs    []string
+	AuthHeaders          AuthHeaders
 	PublicAuthOrigin     string
 	PublicOrigin         string
 	PreviewOrigin        string
@@ -185,6 +186,7 @@ type Service struct {
 	instanceAddr         string
 	server               *http.Server
 	trustedProxyPrefixes []netip.Prefix
+	theme                uiTheme
 }
 
 type leaderRecord struct {
@@ -204,6 +206,11 @@ func New(cfg Config) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	authHeaders, err := normalizeAuthHeaders(cfg.AuthHeaders)
+	if err != nil {
+		return nil, err
+	}
+	cfg.AuthHeaders = authHeaders
 	publicOrigin, err := normalizePublicAuthOrigin(cfg.PublicOrigin)
 	if err != nil {
 		return nil, fmt.Errorf("public origin: %w", err)
@@ -275,6 +282,7 @@ func New(cfg Config) (*Service, error) {
 		watchChanged:         make(map[string]struct{}),
 		instanceID:           os.Getenv("POD_NAME"),
 		trustedProxyPrefixes: trustedProxyPrefixes,
+		theme:                loadUITheme(cfg),
 	}
 	if s.instanceID == "" {
 		s.instanceID = hostSuffix()
@@ -617,7 +625,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, csrfCookie(csrfToken))
 	state := s.viewState()
-	operator := mustOperatorProfile(r.Header)
+	operator := s.mustOperatorProfile(r.Header)
 	data := struct {
 		State         State
 		Releases      []ReleaseView
@@ -629,6 +637,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		RefreshTasks  []RefreshTaskConfig
 		CompletedJobs []completedJobView
 		PreviewOrigin string
+		Theme         uiTheme
 	}{
 		State:         state,
 		Releases:      s.discoverReleases(),
@@ -640,6 +649,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		RefreshTasks:  s.cfg.RefreshTasks,
 		CompletedJobs: completedJobs(state),
 		PreviewOrigin: s.cfg.PreviewOrigin,
+		Theme:         s.theme,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
@@ -669,7 +679,8 @@ func (s *Service) handleBuildDetail(w http.ResponseWriter, r *http.Request) {
 		}).Parse(buildDetailHTML)).Execute(w, struct {
 			BuildRecord
 			PreviewURL string
-		}{BuildRecord: build, PreviewURL: strings.TrimSuffix(s.cfg.PreviewOrigin, "/") + "/__preview/" + build.ReleaseID + "/"})
+			Theme      uiTheme
+		}{BuildRecord: build, PreviewURL: strings.TrimSuffix(s.cfg.PreviewOrigin, "/") + "/__preview/" + build.ReleaseID + "/", Theme: s.theme})
 		return
 	}
 	http.NotFound(w, r)
@@ -697,8 +708,8 @@ func completedJobs(state State) []completedJobView {
 	return jobs
 }
 
-func mustOperatorProfile(headers http.Header) OperatorProfile {
-	profile, _ := operatorProfileFromHeaders(headers)
+func (s *Service) mustOperatorProfile(headers http.Header) OperatorProfile {
+	profile, _ := operatorProfileFromHeaders(headers, s.cfg.AuthHeaders)
 	return profile
 }
 
@@ -1651,16 +1662,25 @@ const indexHTML = `<!doctype html>
   <link id="app-favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23525562'/%3E%3Ccircle cx='32' cy='32' r='13' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-dasharray='0.01 82'/%3E%3C/svg%3E">
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #09090b;
-      --panel: #18181b;
-      --panel-strong: #111113;
-      --line: #3f3f46;
-      --line-soft: #27272a;
-      --text: #f4f4f5;
-      --muted: #a1a1aa;
-      --accent: #fafafa;
-      --focus: #93c5fd;
+	  color-scheme: {{ if .Theme.IsDark }}dark{{ else }}light{{ end }};
+	  --bg: {{ .Theme.Background }};
+	  --panel: {{ .Theme.Panel }};
+	  --panel-strong: {{ .Theme.Surface }};
+	  --line: {{ .Theme.Border }};
+	  --line-soft: {{ .Theme.Elevated }};
+	  --text: {{ .Theme.Text }};
+	  --muted: {{ .Theme.Muted }};
+	  --accent: {{ .Theme.Accent }};
+	  --link: {{ .Theme.Link }};
+	  --focus: {{ .Theme.Focus }};
+	  --success: {{ .Theme.Success }};
+	  --warning: {{ .Theme.Warning }};
+	  --error: {{ .Theme.Error }};
+	  --info: {{ .Theme.Info }};
+	  --code-bg: {{ .Theme.CodeBG }};
+	  --code-text: {{ .Theme.CodeText }};
+	  --button-bg: {{ .Theme.ButtonBG }};
+	  --button-text: {{ .Theme.ButtonText }};
     }
     * { box-sizing: border-box; }
     html { background: var(--bg); }
@@ -1670,7 +1690,7 @@ const indexHTML = `<!doctype html>
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
       background: var(--bg);
     }
-    a { color: var(--accent); text-decoration: none; }
+	 a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
     main {
       width: 100%;
@@ -1763,7 +1783,8 @@ const indexHTML = `<!doctype html>
     .actions form { margin: 0; }
     button {
       background: var(--text);
-      color: #18181b;
+	  color: var(--button-text);
+	  background: var(--button-bg);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 11px 15px;
@@ -1774,7 +1795,7 @@ const indexHTML = `<!doctype html>
       font-weight: 700;
     }
     button.secondary { background: transparent; color: var(--text); }
-    button:hover { background: #d4d4d8; }
+	button:hover { background: var(--accent); }
     button.secondary:hover { background: var(--panel); }
     button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
     .stack { display: flex; flex-direction: column; gap: 10px; }
@@ -1805,27 +1826,27 @@ const indexHTML = `<!doctype html>
     }
     code {
       display: inline-block;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.05);
+	  background: var(--code-bg);
+	  border: 1px solid var(--line-soft);
       border-radius: 6px;
       padding: 3px 8px;
       white-space: nowrap;
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: #fafafa;
+	  color: var(--code-text);
     }
     pre {
       margin: 0;
       padding: 10px 12px;
       overflow: auto;
       white-space: pre-wrap;
-      background: rgba(0,0,0,0.35);
+	  background: var(--code-bg);
       border: 1px solid var(--line-soft);
       border-radius: 8px;
       max-height: 11rem;
       line-height: 1.45;
-      color: #e4e4e7;
+	  color: var(--code-text);
       font-size: 0.82rem;
     }
     .pill {
@@ -1833,17 +1854,17 @@ const indexHTML = `<!doctype html>
       padding: 4px 10px;
       border-radius: 999px;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
+	background: var(--panel-strong);
       color: var(--text);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       font-size: 0.7rem;
     }
-    .status-success { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.14); color: #bbf7d0; }
-    .status-running { border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.14); color: #bfdbfe; }
-    .status-queued { border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.14); color: #fde68a; }
-    .status-failed { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.16); color: #fecaca; }
-    .status-neutral { border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--text); }
+	.status-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 18%, var(--bg)); color: var(--success); }
+	.status-running { border-color: var(--info); background: color-mix(in srgb, var(--info) 18%, var(--bg)); color: var(--info); }
+	.status-queued { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 18%, var(--bg)); color: var(--warning); }
+	.status-failed { border-color: var(--error); background: color-mix(in srgb, var(--error) 18%, var(--bg)); color: var(--error); }
+	.status-neutral { border-color: var(--line); background: var(--panel-strong); color: var(--text); }
     .build-details { min-width: 9rem; }
     .build-details summary { cursor: pointer; color: var(--text); font-weight: 600; }
     .build-details[open] summary { margin-bottom: 10px; }
@@ -1851,7 +1872,7 @@ const indexHTML = `<!doctype html>
     .detail-list strong { color: var(--text); }
     .summary-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 6px; }
     .summary-list { display: grid; gap: 6px; }
-    .summary-list div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e4e4e7; }
+	.summary-list div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--code-text); }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .wide { overflow-x: auto; }
     .muted { color: var(--muted); }
@@ -1872,7 +1893,7 @@ const indexHTML = `<!doctype html>
       letter-spacing: 0.08em;
       font-size: 0.72rem;
       color: var(--muted);
-      background: rgba(255,255,255,0.03);
+	  background: var(--panel);
     }
     .tabs a.active {
       color: var(--text);

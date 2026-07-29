@@ -191,6 +191,20 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	case "blogroll_refresh_on_build":
 		refreshOnBuild := parseBool(value)
 		config.Blogroll.RefreshOnBuild = &refreshOnBuild
+	case "builder_admin_auth_headers_user_id":
+		config.BuilderAdmin.Auth.Headers.UserID = &value
+	case "builder_admin_auth_headers_username":
+		config.BuilderAdmin.Auth.Headers.Username = &value
+	case "builder_admin_auth_headers_display_name":
+		config.BuilderAdmin.Auth.Headers.DisplayName = &value
+	case "builder_admin_auth_headers_email":
+		config.BuilderAdmin.Auth.Headers.Email = &value
+	case "builder_admin_auth_headers_groups":
+		config.BuilderAdmin.Auth.Headers.Groups = &value
+	case "builder_admin_auth_headers_roles":
+		config.BuilderAdmin.Auth.Headers.Roles = &value
+	case "builder_admin_auth_headers_scopes":
+		config.BuilderAdmin.Auth.Headers.Scopes = &value
 	}
 }
 

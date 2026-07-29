@@ -10,19 +10,13 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
 const (
 	csrfCookieName        = "__Host-markata-builder-admin-csrf"
 	forwardedLeaderHeader = "X-Markata-Builder-Admin-Forwarded"
-	hlabUserIDHeader      = "X-Hlab-User-Id"
-	hlabUsernameHeader    = "X-Hlab-Username"
-	hlabDisplayNameHeader = "X-Hlab-Display-Name"
-	hlabEmailHeader       = "X-Hlab-Email"
-	hlabGroupsHeader      = "X-Hlab-Groups"
-	hlabRolesHeader       = "X-Hlab-Roles"
-	hlabScopesHeader      = "X-Hlab-Scopes"
 )
 
 var forbiddenTrustedProxyPrefixes = []netip.Prefix{
@@ -83,6 +77,69 @@ type OperatorProfile struct {
 	Scopes      string
 }
 
+// AuthHeaders maps identity assertions supplied by a trusted ForwardAuth proxy.
+// Empty optional header names disable that assertion. The default preserves the
+// stable hlab-auth header contract.
+type AuthHeaders struct {
+	UserID      string
+	Username    string
+	DisplayName string
+	Email       string
+	Groups      string
+	Roles       string
+	Scopes      string
+}
+
+// DefaultAuthHeaders returns the header contract used by hlab-auth.
+func DefaultAuthHeaders() AuthHeaders {
+	return AuthHeaders{
+		UserID:      "X-Hlab-User-Id",
+		Username:    "X-Hlab-Username",
+		DisplayName: "X-Hlab-Display-Name",
+		Email:       "X-Hlab-Email",
+		Groups:      "X-Hlab-Groups",
+		Roles:       "X-Hlab-Roles",
+		Scopes:      "X-Hlab-Scopes",
+	}
+}
+
+func normalizeAuthHeaders(headers AuthHeaders) (AuthHeaders, error) {
+	if headers == (AuthHeaders{}) {
+		headers = DefaultAuthHeaders()
+	} else if headers.UserID == "" {
+		return AuthHeaders{}, fmt.Errorf("auth user ID header is required")
+	}
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"user ID", headers.UserID},
+		{"username", headers.Username},
+		{"display name", headers.DisplayName},
+		{"email", headers.Email},
+		{"groups", headers.Groups},
+		{"roles", headers.Roles},
+		{"scopes", headers.Scopes},
+	} {
+		if field.value != "" && !validHTTPHeaderName(field.value) {
+			return AuthHeaders{}, fmt.Errorf("invalid auth %s header %q", field.name, field.value)
+		}
+	}
+	return headers, nil
+}
+
+func validHTTPHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r > unicode.MaxASCII || (!unicode.IsLetter(r) && !unicode.IsDigit(r) && !strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
+			return false
+		}
+	}
+	return true
+}
+
 func parseTrustedProxyPrefixes(cidrs []string) ([]netip.Prefix, error) {
 	prefixes := make([]netip.Prefix, 0, len(cidrs))
 	for _, cidr := range cidrs {
@@ -134,7 +191,7 @@ func (s *Service) requireTrustedOperator(next http.Handler) http.Handler {
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
-		if _, err := operatorProfileFromHeaders(r.Header); err != nil {
+		if _, err := operatorProfileFromHeaders(r.Header, s.cfg.AuthHeaders); err != nil {
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -159,8 +216,8 @@ func (s *Service) isTrustedProxyRequest(r *http.Request) bool {
 	return false
 }
 
-func operatorProfileFromHeaders(headers http.Header) (OperatorProfile, error) {
-	userID, err := singleTrustedHeader(headers, hlabUserIDHeader, true)
+func operatorProfileFromHeaders(headers http.Header, authHeaders AuthHeaders) (OperatorProfile, error) {
+	userID, err := singleTrustedHeader(headers, authHeaders.UserID, true)
 	if err != nil {
 		return OperatorProfile{}, err
 	}
@@ -169,13 +226,16 @@ func operatorProfileFromHeaders(headers http.Header) (OperatorProfile, error) {
 		header string
 		target *string
 	}{
-		{hlabUsernameHeader, &profile.Username},
-		{hlabDisplayNameHeader, &profile.DisplayName},
-		{hlabEmailHeader, &profile.Email},
-		{hlabGroupsHeader, &profile.Groups},
-		{hlabRolesHeader, &profile.Roles},
-		{hlabScopesHeader, &profile.Scopes},
+		{authHeaders.Username, &profile.Username},
+		{authHeaders.DisplayName, &profile.DisplayName},
+		{authHeaders.Email, &profile.Email},
+		{authHeaders.Groups, &profile.Groups},
+		{authHeaders.Roles, &profile.Roles},
+		{authHeaders.Scopes, &profile.Scopes},
 	} {
+		if field.header == "" {
+			continue
+		}
 		*field.target, err = singleTrustedHeader(headers, field.header, false)
 		if err != nil {
 			return OperatorProfile{}, err
