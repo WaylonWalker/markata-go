@@ -259,8 +259,7 @@ func backupConfig(path string) error {
 // addFeatureTheme prompts for theme/palette configuration.
 func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
 	outln()
-	outln("Theme/Palette Configuration")
-	outln("----------------------------")
+	cliSection("Theme/Palette Configuration")
 
 	// List some available palettes
 	loader := palettes.NewLoader()
@@ -291,8 +290,7 @@ func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
 // addFeatureSEO prompts for SEO configuration.
 func addFeatureSEO(reader *bufio.Reader, cfg *models.Config) error {
 	outln()
-	outln("SEO Configuration")
-	outln("-----------------")
+	cliSection("SEO Configuration")
 
 	handle := prompt(reader, "Twitter/X handle (without @)", cfg.SEO.TwitterHandle)
 	if handle != "" {
@@ -313,8 +311,7 @@ func addFeatureSEO(reader *bufio.Reader, cfg *models.Config) error {
 // addFeaturePostFormats prompts for post format configuration.
 func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
 	outln()
-	outln("Post Output Formats")
-	outln("-------------------")
+	cliSection("Post Output Formats")
 
 	htmlEnabled := promptRadioBool(reader, "HTML output", cfg.PostFormats.IsHTMLEnabled())
 	cfg.PostFormats.HTML = &htmlEnabled
@@ -329,8 +326,7 @@ func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
 // addFeatureAdvancedFeeds prompts for advanced feed configuration.
 func addFeatureAdvancedFeeds(reader *bufio.Reader, cfg *models.Config) error {
 	outln()
-	outln("Advanced Feed Formats")
-	outln("---------------------")
+	cliSection("Advanced Feed Formats")
 
 	cfg.FeedDefaults.Formats.HTML = promptRadioBool(reader, "HTML feed output", cfg.FeedDefaults.Formats.HTML)
 	cfg.FeedDefaults.Formats.RSS = promptRadioBool(reader, "RSS feed output", cfg.FeedDefaults.Formats.RSS)
@@ -359,8 +355,7 @@ func addFeature(reader *bufio.Reader, feature string, cfg *models.Config) error 
 // displayCurrentConfig shows the current configuration.
 func displayCurrentConfig(cfg *models.Config) {
 	outln()
-	outln("Current Configuration")
-	outln("=====================")
+	cliSection("Current Configuration")
 	outln()
 	outln("Site Information:")
 	outlnf("  Title:       %s", cfg.Title)

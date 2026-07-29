@@ -18,6 +18,7 @@ const (
 	ansiBlue   = "\033[34m"
 	ansiCyan   = "\033[36m"
 	ansiDim    = "\033[2m"
+	ansiGreen  = "\033[32m"
 	ansiRed    = "\033[31m"
 	ansiReset  = "\033[0m"
 	ansiYellow = "\033[33m"
@@ -37,6 +38,7 @@ const (
 type Theme struct {
 	Timestamp  string
 	Component  string
+	Success    string
 	Warning    string
 	Error      string
 	PhaseColor map[string]string
@@ -129,6 +131,7 @@ func DefaultTheme() Theme {
 	return Theme{
 		Timestamp: ansiDim,
 		Component: ansiCyan,
+		Success:   ansiGreen,
 		Warning:   ansiYellow,
 		Error:     ansiRed,
 		PhaseColor: map[string]string{
@@ -165,6 +168,9 @@ func ThemeFromPalette(palette *palettes.Palette) Theme {
 	}
 	if value := resolve("primary", "info", "text-primary", "text"); value != "" {
 		theme.Component = value
+	}
+	if value := resolve("success", "primary", "secondary"); value != "" {
+		theme.Success = value
 	}
 	if value := resolve("warning", "secondary", "primary"); value != "" {
 		theme.Warning = value
