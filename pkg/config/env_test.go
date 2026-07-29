@@ -82,6 +82,19 @@ func TestApplyEnvOverrides_BuilderAdminAuthHeaders(t *testing.T) {
 	}
 }
 
+func TestApplyEnvOverrides_BuilderAdminWebhook(t *testing.T) {
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_ENABLED", "true")
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_BRANCH", "qa")
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET", "test-secret")
+	config := models.NewConfig()
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatal(err)
+	}
+	if config.BuilderAdmin.Webhook.Enabled == nil || !*config.BuilderAdmin.Webhook.Enabled || config.BuilderAdmin.Webhook.Branch == nil || *config.BuilderAdmin.Webhook.Branch != "qa" || config.BuilderAdmin.Webhook.Secret == nil || *config.BuilderAdmin.Webhook.Secret != "test-secret" {
+		t.Fatalf("webhook = %#v", config.BuilderAdmin.Webhook)
+	}
+}
+
 func TestApplyEnvOverrides_BoolFields(t *testing.T) {
 	tests := []struct {
 		name  string

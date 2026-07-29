@@ -76,3 +76,43 @@ func TestResolveBuilderAdminConfigPath(t *testing.T) {
 		t.Fatalf("relative config path = %q", got)
 	}
 }
+
+func TestResolveBuilderAdminWebhook_ConfigFile(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(`
+[markata-go.builder_admin.webhook]
+enabled = true
+branch = "dev"
+secret = "test-secret"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	webhook, err := resolveBuilderAdminWebhook(builderAdminCmd, configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !webhook.Enabled || webhook.Branch != "dev" || webhook.Secret != "test-secret" {
+		t.Fatalf("webhook = %#v", webhook)
+	}
+}
+
+func TestResolveBuilderAdminWebhook_EnvironmentOverridesConfigFile(t *testing.T) {
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_BRANCH", "qa")
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET", "environment-secret")
+	configPath := filepath.Join(t.TempDir(), "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(`
+[markata-go.builder_admin.webhook]
+enabled = true
+branch = "dev"
+secret = "file-secret"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	webhook, err := resolveBuilderAdminWebhook(builderAdminCmd, configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !webhook.Enabled || webhook.Branch != "qa" || webhook.Secret != "environment-secret" {
+		t.Fatalf("webhook = %#v", webhook)
+	}
+}

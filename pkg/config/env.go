@@ -205,6 +205,13 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.BuilderAdmin.Auth.Headers.Roles = &value
 	case "builder_admin_auth_headers_scopes":
 		config.BuilderAdmin.Auth.Headers.Scopes = &value
+	case "builder_admin_webhook_enabled":
+		enabled := parseBool(value)
+		config.BuilderAdmin.Webhook.Enabled = &enabled
+	case "builder_admin_webhook_branch":
+		config.BuilderAdmin.Webhook.Branch = &value
+	case "builder_admin_webhook_secret":
+		config.BuilderAdmin.Webhook.Secret = &value
 	}
 }
 

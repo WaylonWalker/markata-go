@@ -8,6 +8,7 @@
 {{- include "markata-notes.validateBuilderAdminAuthInternalURL" . }}
 {{- $_ := required "builderAdmin.auth.trustedProxyCIDRs must be non-empty when builder-admin is enabled" (first .Values.builderAdmin.auth.trustedProxyCIDRs) }}
 {{- $_ := required "builderAdmin.auth.headers.userID is required when builder-admin is enabled" .Values.builderAdmin.auth.headers.userID }}
+{{- if .Values.builderAdmin.webhook.enabled }}{{- $_ := required "builderAdmin.webhook.existingSecretName is required when builderAdmin.webhook.enabled" .Values.builderAdmin.webhook.existingSecretName }}{{- $_ := required "builderAdmin.webhook.existingSecretKey is required when builderAdmin.webhook.enabled" .Values.builderAdmin.webhook.existingSecretKey }}{{- end }}
 {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
 {{- $trustedCIDR := trim . }}
 {{- if or (eq $trustedCIDR "0.0.0.0/0") (eq $trustedCIDR "::/0") }}{{ fail "builderAdmin.auth.trustedProxyCIDRs must not include a universal CIDR" }}{{ end }}
@@ -101,6 +102,9 @@ spec:
             - --watch={{ ternary "true" "false" .Values.builderAdmin.watch.enabled }}
             - --watch-debounce
             - {{ .Values.builderAdmin.watch.debounce | quote }}
+            - --webhook-enabled={{ ternary "true" "false" .Values.builderAdmin.webhook.enabled }}
+            - --webhook-branch
+            - {{ .Values.builderAdmin.webhook.branch | quote }}
             - --releases-keep
             - {{ .Values.builderAdmin.releases.keep | quote }}
             - --successful-builds-keep
@@ -182,6 +186,13 @@ spec:
               value: {{ .Values.offline.bundledMermaidDir | quote }}
             - name: XDG_CACHE_HOME
               value: {{ .Values.build.cacheDir | quote }}
+            {{- if .Values.builderAdmin.webhook.enabled }}
+            - name: MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.builderAdmin.webhook.existingSecretName | quote }}
+                  key: {{ .Values.builderAdmin.webhook.existingSecretKey | quote }}
+            {{- end }}
             {{- with .Values.build.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

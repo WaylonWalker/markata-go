@@ -138,6 +138,29 @@ display_name = ""
 	}
 }
 
+func TestLoadFromString_BuilderAdminWebhook(t *testing.T) {
+	cfg, err := LoadFromString(`
+[markata-go.builder_admin.webhook]
+enabled = true
+branch = "qa"
+secret = "test-secret"
+`, FormatTOML)
+	if err != nil {
+		t.Fatalf("LoadFromString() error = %v", err)
+	}
+	builderAdmin, ok := cfg.Extra["builder_admin"].(map[string]any)
+	if !ok {
+		t.Fatalf("builder_admin = %#v, want config map", cfg.Extra["builder_admin"])
+	}
+	webhook, ok := builderAdmin["webhook"].(map[string]any)
+	if !ok {
+		t.Fatalf("webhook = %#v, want config map", builderAdmin["webhook"])
+	}
+	if webhook["enabled"] != true || webhook["branch"] != "qa" || webhook["secret"] != "test-secret" {
+		t.Fatalf("webhook = %#v", webhook)
+	}
+}
+
 // =============================================================================
 // Environment Variable Override Tests
 // =============================================================================
