@@ -66,6 +66,8 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go encryption check` (verify configured encryption keys)
 - `markata-go encryption encrypt-posts --dry-run` (preview source encryption for private posts)
 - `markata-go encryption encrypt-posts` (encrypt private Markdown bodies in place)
+- `markata-go encryption decrypt-posts --dry-run` (preview decrypting source-encrypted posts)
+- `markata-go encryption decrypt-posts [path...]` (decrypt source-encrypted Markdown bodies in place)
 
 ### Theme And Palette
 
@@ -157,6 +159,7 @@ markata-go encryption encrypt-posts --dry-run
 - create new content: `markata-go new`
 - lint content before committing: `markata-go lint`
 - source-encrypt private Markdown before committing: `markata-go encryption encrypt-posts --dry-run`, then `markata-go encryption encrypt-posts`
+- edit an already source-encrypted post: `markata-go encryption decrypt-posts <path>`, edit, then `markata-go encryption encrypt-posts`
 - validate config before deploy: `markata-go config validate`
 - validate palette contrast: `markata-go palette check <name>`
 - interactive local editing: `markata-go serve --fast`
@@ -176,6 +179,7 @@ markata-go encryption encrypt-posts --dry-run
 - use `-v` when debugging plugin order, missing outputs, or config resolution issues
 - use `--dry-run` on build or lint to preview behavior without side effects
 - use `encryption encrypt-posts --dry-run` before rewriting private source files; make sure required `MARKATA_GO_ENCRYPTION_KEY_*` environment variables are set first
+- use `encryption decrypt-posts --dry-run` before decrypting; it is the inverse of `encrypt-posts` and needs the same `MARKATA_GO_ENCRYPTION_KEY_*` variables
 
 ## Guidance
 

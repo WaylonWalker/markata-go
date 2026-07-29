@@ -2011,6 +2011,25 @@ markata-go encryption encrypt-posts [--dry-run]
 
 The command rewrites matching private posts in place by default. It skips draft, skipped, public, and already source-encrypted posts. Missing or weak keys fail before any files are written.
 
+##### decrypt-posts
+
+Decrypt source-encrypted Markdown bodies back to plaintext. This is the inverse of `encrypt-posts`.
+
+```
+markata-go encryption decrypt-posts [path...] [--dry-run]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--dry-run` | | Report files that would be decrypted without modifying them | `false` |
+
+With no path arguments the command scans the active content glob configuration. Explicit paths may be files or
+directories (directories are scanned recursively for `.md` files).
+
+The key name is read from the `<!-- markata-encrypted-source:v1 key=... -->` marker, falling back to
+`encryption.default_key`. The password is read from `MARKATA_GO_ENCRYPTION_KEY_<KEY>`. Files that are not
+source-encrypted are skipped, and frontmatter is preserved exactly as written.
+
 #### Examples
 
 ```
@@ -2019,6 +2038,13 @@ markata-go encryption encrypt-posts --dry-run
 
 # Encrypt private post source bodies in place
 markata-go encryption encrypt-posts
+
+# Decrypt a single file so you can edit it
+export MARKATA_GO_ENCRYPTION_KEY_DEFAULT='your-password'
+markata-go encryption decrypt-posts pages/ar-calibration.md
+
+# Preview decrypting every encrypted post
+markata-go encryption decrypt-posts --dry-run
 ```
 
 ---
