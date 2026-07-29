@@ -5,35 +5,45 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/builderadmin"
+	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
 )
 
 var (
-	builderAdminHost                 string
-	builderAdminPort                 int
-	builderAdminSourceDir            string
-	builderAdminSiteDir              string
-	builderAdminCacheMount           string
-	builderAdminHistoryDir           string
-	builderAdminWatch                bool
-	builderAdminWatchDebounce        time.Duration
-	builderAdminFast                 bool
-	builderAdminMermaidMode          string
-	builderAdminReleasesKeep         int
-	builderAdminSuccessfulBuildsKeep int
-	builderAdminFailedBuildsKeep     int
-	builderAdminRefreshRunsKeep      int
-	builderAdminBuildTimeout         time.Duration
-	builderAdminRefreshTaskSpecs     []string
-	builderAdminTrustedProxyCIDRs    []string
-	builderAdminPublicAuthOrigin     string
-	builderAdminPublicOrigin         string
-	builderAdminPreviewOrigin        string
+	builderAdminHost                  string
+	builderAdminPort                  int
+	builderAdminSourceDir             string
+	builderAdminSiteDir               string
+	builderAdminCacheMount            string
+	builderAdminHistoryDir            string
+	builderAdminWatch                 bool
+	builderAdminWatchDebounce         time.Duration
+	builderAdminFast                  bool
+	builderAdminMermaidMode           string
+	builderAdminReleasesKeep          int
+	builderAdminSuccessfulBuildsKeep  int
+	builderAdminFailedBuildsKeep      int
+	builderAdminRefreshRunsKeep       int
+	builderAdminBuildTimeout          time.Duration
+	builderAdminRefreshTaskSpecs      []string
+	builderAdminTrustedProxyCIDRs     []string
+	builderAdminAuthUserIDHeader      string
+	builderAdminAuthUsernameHeader    string
+	builderAdminAuthDisplayNameHeader string
+	builderAdminAuthEmailHeader       string
+	builderAdminAuthGroupsHeader      string
+	builderAdminAuthRolesHeader       string
+	builderAdminAuthScopesHeader      string
+	builderAdminPublicAuthOrigin      string
+	builderAdminPublicOrigin          string
+	builderAdminPreviewOrigin         string
 )
 
 var builderAdminCmd = &cobra.Command{
@@ -64,14 +74,26 @@ func init() {
 	builderAdminCmd.Flags().IntVar(&builderAdminRefreshRunsKeep, "refresh-runs-keep", 100, "number of refresh run records to keep")
 	builderAdminCmd.Flags().DurationVar(&builderAdminBuildTimeout, "build-timeout", 2*time.Hour, "maximum runtime for a queued build or refresh task")
 	builderAdminCmd.Flags().StringArrayVar(&builderAdminRefreshTaskSpecs, "refresh-task", nil, "repeatable task spec: name|every|enqueue|arg1|arg2...")
-	builderAdminCmd.Flags().StringArrayVar(&builderAdminTrustedProxyCIDRs, "trusted-proxy-cidr", nil, "repeatable CIDR permitted to supply hlab-auth headers")
+	builderAdminCmd.Flags().StringArrayVar(&builderAdminTrustedProxyCIDRs, "trusted-proxy-cidr", nil, "repeatable CIDR permitted to supply trusted proxy identity headers")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthUserIDHeader, "auth-user-id-header", "X-Hlab-User-Id", "trusted proxy header containing the durable operator ID")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthUsernameHeader, "auth-username-header", "X-Hlab-Username", "trusted proxy header containing the operator username")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthDisplayNameHeader, "auth-display-name-header", "X-Hlab-Display-Name", "trusted proxy header containing the operator display name")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthEmailHeader, "auth-email-header", "X-Hlab-Email", "trusted proxy header containing the operator email")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthGroupsHeader, "auth-groups-header", "X-Hlab-Groups", "trusted proxy header containing operator groups")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthRolesHeader, "auth-roles-header", "X-Hlab-Roles", "trusted proxy header containing operator roles")
+	builderAdminCmd.Flags().StringVar(&builderAdminAuthScopesHeader, "auth-scopes-header", "X-Hlab-Scopes", "trusted proxy header containing operator scopes")
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicAuthOrigin, "public-auth-origin", "", "optional HTTPS hlab-auth origin used for the signed-in operator profile picture")
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicOrigin, "public-origin", "", "exact HTTPS public origin used to validate browser mutations")
 	builderAdminCmd.Flags().StringVar(&builderAdminPreviewOrigin, "preview-origin", "", "HTTPS site origin used for retained release previews")
 }
 
-func runBuilderAdmin(_ *cobra.Command, _ []string) error {
+func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	refreshTasks, err := parseRefreshTasks(builderAdminRefreshTaskSpecs)
+	if err != nil {
+		return err
+	}
+	configPath := resolveBuilderAdminConfigPath(cfgFile, builderAdminSourceDir)
+	authHeaders, err := resolveBuilderAdminAuthHeaders(cmd, configPath)
 	if err != nil {
 		return err
 	}
@@ -80,7 +102,7 @@ func runBuilderAdmin(_ *cobra.Command, _ []string) error {
 		Port:                 builderAdminPort,
 		SourceDir:            builderAdminSourceDir,
 		SiteDir:              builderAdminSiteDir,
-		ConfigPath:           cfgFile,
+		ConfigPath:           configPath,
 		CacheMount:           builderAdminCacheMount,
 		HistoryDir:           builderAdminHistoryDir,
 		WatchEnabled:         builderAdminWatch,
@@ -94,6 +116,7 @@ func runBuilderAdmin(_ *cobra.Command, _ []string) error {
 		RefreshTasks:         refreshTasks,
 		BuildTimeout:         builderAdminBuildTimeout,
 		TrustedProxyCIDRs:    builderAdminTrustedProxyCIDRs,
+		AuthHeaders:          authHeaders,
 		PublicAuthOrigin:     builderAdminPublicAuthOrigin,
 		PublicOrigin:         builderAdminPublicOrigin,
 		PreviewOrigin:        builderAdminPreviewOrigin,
@@ -104,6 +127,107 @@ func runBuilderAdmin(_ *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	return svc.Start(ctx)
+}
+
+func resolveBuilderAdminConfigPath(configPath, sourceDir string) string {
+	if configPath != "" {
+		if filepath.IsAbs(configPath) {
+			return configPath
+		}
+		return filepath.Join(sourceDir, configPath)
+	}
+	for _, name := range []string{"markata-go.toml", "markata-go.yaml", "markata-go.yml", "markata-go.json"} {
+		path := filepath.Join(sourceDir, name)
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			return path
+		}
+	}
+	return ""
+}
+
+// resolveBuilderAdminAuthHeaders applies site configuration and MARKATA_GO_ overrides,
+// then applies explicitly supplied CLI flags as the highest-precedence source.
+func resolveBuilderAdminAuthHeaders(cmd *cobra.Command, configPath string) (builderadmin.AuthHeaders, error) {
+	siteConfig, err := config.Load(configPath)
+	if err != nil {
+		return builderadmin.AuthHeaders{}, fmt.Errorf("load builder-admin configuration: %w", err)
+	}
+	headers := builderadmin.DefaultAuthHeaders()
+	applyBuilderAdminExtraHeaders(&headers, siteConfig.Extra)
+	applyBuilderAdminConfigHeaders(&headers, siteConfig.BuilderAdmin.Auth.Headers)
+	for _, flag := range []struct {
+		name   string
+		value  string
+		target *string
+	}{
+		{"auth-user-id-header", builderAdminAuthUserIDHeader, &headers.UserID},
+		{"auth-username-header", builderAdminAuthUsernameHeader, &headers.Username},
+		{"auth-display-name-header", builderAdminAuthDisplayNameHeader, &headers.DisplayName},
+		{"auth-email-header", builderAdminAuthEmailHeader, &headers.Email},
+		{"auth-groups-header", builderAdminAuthGroupsHeader, &headers.Groups},
+		{"auth-roles-header", builderAdminAuthRolesHeader, &headers.Roles},
+		{"auth-scopes-header", builderAdminAuthScopesHeader, &headers.Scopes},
+	} {
+		if cmd.Flags().Changed(flag.name) {
+			*flag.target = flag.value
+		}
+	}
+	return headers, nil
+}
+
+func applyBuilderAdminExtraHeaders(headers *builderadmin.AuthHeaders, extra map[string]any) {
+	builderAdmin, ok := stringMap(extra["builder_admin"])
+	if !ok {
+		return
+	}
+	auth, ok := stringMap(builderAdmin["auth"])
+	if !ok {
+		return
+	}
+	configured, ok := stringMap(auth["headers"])
+	if !ok {
+		return
+	}
+	for _, field := range []struct {
+		key    string
+		target *string
+	}{
+		{"user_id", &headers.UserID},
+		{"username", &headers.Username},
+		{"display_name", &headers.DisplayName},
+		{"email", &headers.Email},
+		{"groups", &headers.Groups},
+		{"roles", &headers.Roles},
+		{"scopes", &headers.Scopes},
+	} {
+		if value, ok := configured[field.key].(string); ok {
+			*field.target = value
+		}
+	}
+}
+
+func stringMap(value any) (map[string]any, bool) {
+	result, ok := value.(map[string]any)
+	return result, ok
+}
+
+func applyBuilderAdminConfigHeaders(headers *builderadmin.AuthHeaders, configured models.BuilderAdminAuthHeadersConfig) {
+	for _, field := range []struct {
+		source *string
+		target *string
+	}{
+		{configured.UserID, &headers.UserID},
+		{configured.Username, &headers.Username},
+		{configured.DisplayName, &headers.DisplayName},
+		{configured.Email, &headers.Email},
+		{configured.Groups, &headers.Groups},
+		{configured.Roles, &headers.Roles},
+		{configured.Scopes, &headers.Scopes},
+	} {
+		if field.source != nil {
+			*field.target = *field.source
+		}
+	}
 }
 
 func parseRefreshTasks(specs []string) ([]builderadmin.RefreshTaskConfig, error) {

@@ -70,7 +70,23 @@ Current chart defaults also prefer clean rolling cutover instead of stop-then-st
 Builder-admin keeps one active leader for queue draining, file watching, refresh scheduling, and
  release promotion while standby pods stay ready during rollout handoff.
 
-## Secure Access with hlab-auth
+## Match the Site Theme
+
+Builder admin reads the site's configured palette from the source directory and uses its fallback
+mode for the operator UI. For example, this site configuration gives the admin UI the Everforest
+Dark colors:
+
+```toml
+[markata-go.theme]
+palette = "everforest-dark"
+```
+
+When your site config uses `palette_light`, `palette_dark`, or `fallback_mode`, builder admin uses
+the same fallback palette. Keep the site config and any custom palette files under the mounted
+source directory. If the palette cannot be loaded, builder admin remains available with its
+default colors.
+
+## Secure Access with ForwardAuth
 
 Builder admin is an operator control plane. Expose it only through its protected Traefik ingress;
 direct Service access and `kubectl port-forward` fail closed because they cannot prove that the
@@ -110,28 +126,74 @@ builderAdmin:
       app.kubernetes.io/instance: traefik-kube-system
 ```
 
-The chart strips all client-provided stable `X-Hlab-*` headers before calling hlab-auth. On a
-successful decision, Traefik forwards only the stable hlab-auth headers to builder admin. The
-ForwardAuth `internalUrl` must use HTTPS or the exact cluster-local hlab-auth Service URL
-`http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>`; Helm rejects other HTTP URLs.
-Keep `publicAuthOrigin` on the browser-facing HTTPS auth origin.
+The chart strips every configured identity header before calling the ForwardAuth service. On a
+successful decision, Traefik forwards only configured response headers to builder admin. The
+ForwardAuth `internalUrl` must use HTTPS or a cluster-local Service URL in the form
+`http://<service>.<namespace>.svc.cluster.local:<port>`; Helm rejects other HTTP URLs. Keep
+`publicAuthOrigin` on the browser-facing HTTPS auth origin when you use profile pictures.
 Set `trustedProxyCIDRs` to only the actual Traefik source CIDRs seen by the pod. A shared Pod CIDR
 is permitted only when it is needed for builder-admin peer forwarding and the required selector
 NetworkPolicy restricts that CIDR to the configured Traefik pods and builder-admin peers. Do not
 use universal, loopback, or link-local CIDRs; the service rejects them.
 
-The chart calls hlab-auth's supported `/api/v1/forward-auth` endpoint and configures Traefik to
-copy `__Host-hlab-app-session` back to the browser. This is required for cross-origin auth
-handoff. Before installing, configure an hlab-auth route for this hostname/path and grant the
-selected users/groups the route's required scopes in hlab-auth. Builder admin makes no authorization decision from a
-username, display name, group, role, or scope; hlab-auth is the access decision point.
+The default values use hlab-auth's `/api/v1/forward-auth` endpoint, `X-Hlab-*` headers, and the
+`__Host-hlab-app-session` cookie. Builder admin itself has no hlab-auth API dependency: any SSO
+that supports Traefik ForwardAuth can be used by setting the endpoint path, response cookies, and
+identity-header mapping. Builder admin makes no authorization decision from a username, display
+name, group, role, or scope; the ForwardAuth service is the access decision point.
 
-The operator panel shows the trusted durable user ID and any supplied username, display name,
-email, groups, roles, and scopes. These are display-only. Set `publicAuthOrigin` only when the
-browser can reach hlab-auth at that HTTPS origin and you want the panel to request the signed-in
-operator's own picture. The URL is derived from the authenticated stable user ID; a `No image`
-fallback remains visible when it is unset, unavailable, or cannot load. Do not use this setting to
-change hlab-auth's primary public auth origin, cookies/sessions, or primary WebAuthn RP.
+### Authentik example
+
+Authentik's proxy outpost supplies durable `X-Authentik-Uid` values. Configure its Traefik
+ForwardAuth endpoint, then map those headers in the chart:
+
+```yaml
+builderAdmin:
+  auth:
+    headers:
+      userID: X-Authentik-Uid
+      username: X-Authentik-Username
+      displayName: X-Authentik-Name
+      email: X-Authentik-Email
+      groups: X-Authentik-Groups
+      roles: ""
+      scopes: ""
+  ingress:
+    auth:
+      internalUrl: http://ak-outpost.authentik.svc.cluster.local:9000
+      forwardAuthPath: /outpost.goauthentik.io/auth/traefik
+      responseCookies: []
+```
+
+For a non-Helm deployment, use the same names with `builder-admin` flags such as
+`--auth-user-id-header=X-Authentik-Uid`. Configure Traefik to strip every configured identity
+header before ForwardAuth and forward the same headers from its successful response. Do not map a
+mutable username to `userID`; use the SSO's stable subject or UID header.
+
+You can keep this mapping in the site configuration instead of repeating CLI flags:
+
+```toml
+[markata-go.builder_admin.auth.headers]
+user_id = "X-Authentik-Uid"
+username = "X-Authentik-Username"
+display_name = "X-Authentik-Name"
+email = "X-Authentik-Email"
+groups = "X-Authentik-Groups"
+roles = ""
+scopes = ""
+```
+
+Environment variables override this file, for example
+`MARKATA_GO_BUILDER_ADMIN_AUTH_HEADERS_USER_ID=X-Authentik-Uid`. Explicit CLI flags have the
+highest precedence. Empty optional header values disable those display-only assertions; the durable
+`user_id` header is always required.
+
+The operator panel uses the trusted durable user ID and any supplied profile headers only for
+identity display; they never grant access. Set `publicAuthOrigin` only when the browser can reach
+hlab-auth at that HTTPS origin and you want the panel to request the signed-in operator's own
+picture. The URL is derived from the authenticated stable user ID; a `No image` fallback remains
+visible when it is unset, unavailable, or cannot load. Do not use this setting to change hlab-auth's
+primary public auth origin, cookies/sessions, or primary WebAuthn RP.
 
 When `builderAdmin.enabled` is true, Helm fails unless the protected ingress, TLS secret, ingress
 host/class, ForwardAuth URL, trusted proxy CIDRs, and builder-admin ingress NetworkPolicy are all
