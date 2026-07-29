@@ -75,6 +75,59 @@ Issues: https://github.com/WaylonWalker/markata-go/issues
 
 ## Commands
 
+### lsp
+
+Start the Markdown language server, check its local prerequisites, or print
+editor setup guidance.
+
+```bash
+markata-go lsp
+markata-go lsp doctor
+markata-go lsp doctor --no-verify-editor
+markata-go lsp setup
+markata-go lsp setup --editor neovim
+```
+
+`markata-go lsp` communicates using LSP over standard input and output. It
+provides wikilink completion, broken-wikilink diagnostics, hover information,
+and go-to-definition for Markdown files.
+
+| Subcommand | Description |
+| --- | --- |
+| `doctor` | Read-only check of the LSP binary, active project configuration, and installed editors |
+| `setup --editor <name>` | Print a copy-paste editor configuration snippet without editing files |
+
+`setup` supports `generic`, `neovim`, `helix`, `emacs`, `zed`, and `vscode`.
+Use `generic` for another client. Editor recipes are guidance for documented
+client configuration surfaces, not a guarantee that every editor version can be
+configured automatically. See [[editor-integration|Editor Integration]] for
+full instructions.
+
+By default, `doctor` performs headless validation for installed Neovim, Helix,
+and Emacs configurations. This can load user startup/plugin code. Pass
+`--no-verify-editor` to only detect installed editors. VS Code, Cursor, and
+Zed detection is advisory because their LSP clients do not expose stable
+headless verification APIs.
+
+When verification is skipped and a deeper check is available, `doctor` prints
+the default follow-up command to stderr.
+
+On an interactive terminal, the doctor report derives its status colors from
+the configured site palette while retaining text labels for each status.
+
+Interactive help and human-facing setup headings also use the configured site
+palette. If a site palette cannot be resolved, Markata falls back to its default
+CLI theme; structured command output remains uncolored for scripting.
+
+When `--editor` is omitted, `setup` prints snippets for each supported editor
+installed on `PATH`; it prints the generic integration contract if none are
+found. Multiple snippets have editor headings and are syntax highlighted on an
+interactive terminal; redirected output remains plain text.
+
+The LSP server reads TOML and `.yaml` configuration for mention indexing. If
+your valid site configuration is `.yml` or `.json`, `doctor` warns that those
+LSP-specific mentions are unavailable.
+
 ### agent
 
 Install bundled agent integrations for markata-go site repositories.

@@ -21,7 +21,7 @@ Use this topic for everyday site work and safe project inspection.
 ### Config And Inspection
 
 - `markata-go config show`
-- `markata-go config show --annotate`
+- `markata-go config show` (annotated YAML by default; use `--no-annotate` for plain YAML)
 - `markata-go config show --diff`
 - `markata-go config get <key>`
 - `markata-go config validate`
@@ -58,6 +58,9 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go lint` (lint markdown files for common issues)
 - `markata-go lint --fix` (auto-fix fixable issues)
 - `markata-go lint --dry-run` (show files without linting)
+- `markata-go lsp doctor` (check local LSP command and project configuration)
+- `markata-go lsp doctor --no-verify-editor` (detect installed editors without loading their configuration)
+- `markata-go lsp setup` (print setup guidance for each installed supported editor; use `--editor <editor>` for `generic`, `neovim`, `helix`, `emacs`, `zed`, or `vscode`)
 
 ### Encryption
 
@@ -155,6 +158,7 @@ markata-go encryption encrypt-posts --dry-run
 - inspect resolved configuration: `markata-go config show`
 - create new content: `markata-go new`
 - lint content before committing: `markata-go lint`
+- set up Markdown wikilink IDE support: `markata-go lsp doctor`, then `markata-go lsp setup --editor <editor>`; inspect existing editor configuration before applying the printed values
 - source-encrypt private Markdown before committing: `markata-go encryption encrypt-posts --dry-run`, then `markata-go encryption encrypt-posts`
 - validate config before deploy: `markata-go config validate`
 - validate palette contrast: `markata-go palette check <name>`

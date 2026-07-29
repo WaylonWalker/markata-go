@@ -47,6 +47,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [SPEC.md](./spec/SPEC.md) | Core architecture, CLI, concurrency |
 | [CLI_LIST.md](./spec/CLI_LIST.md) | CLI list command and output formats |
 | [CLI_UX.md](./spec/CLI_UX.md) | Shared CLI UX rules for streams, color, and prompts |
+| [LSP.md](./spec/LSP.md) | Language Server Protocol integration and setup guidance |
 | [CONTAINERS.md](./spec/CONTAINERS.md) | Container images and runtime environments |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
 | [AGENTS.md](./spec/AGENTS.md) | Agent skill packaging, install targets, and CLI |
