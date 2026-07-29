@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
 
@@ -108,12 +109,15 @@ var tailwindPlatformMapping = map[string]map[string]string{
 
 // NewTailwindInstaller creates a new TailwindInstaller with default settings.
 func NewTailwindInstaller() *TailwindInstaller {
+	client := &http.Client{
+		Timeout: tailwindHTTPTimeout,
+	}
+	buildstats.InstrumentHTTPClient(client)
+
 	return &TailwindInstaller{
 		CacheDir: "",
 		Version:  Latest,
-		client: &http.Client{
-			Timeout: tailwindHTTPTimeout,
-		},
+		client:   client,
 	}
 }
 

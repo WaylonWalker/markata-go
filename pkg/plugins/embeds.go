@@ -35,6 +35,7 @@ type EmbedsPlugin struct {
 	config     models.EmbedsConfig
 	httpClient *http.Client
 	oembed     *oembedResolver
+	pageHTML   sync.Map
 }
 
 // NewEmbedsPlugin creates a new EmbedsPlugin with default settings.
@@ -44,11 +45,13 @@ func NewEmbedsPlugin() *EmbedsPlugin {
 		Timeout: time.Duration(config.Timeout) * time.Second,
 	}
 	buildstats.InstrumentHTTPClient(client)
-	return &EmbedsPlugin{
+	plugin := &EmbedsPlugin{
 		config:     config,
 		httpClient: client,
-		oembed:     newOEmbedResolver(config, client),
 	}
+	plugin.oembed = newOEmbedResolver(config, client)
+	plugin.oembed.setHTMLFetcher(plugin.fetchPageHTML)
+	return plugin
 }
 
 // Name returns the unique name of the plugin.
@@ -192,6 +195,7 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	if !p.config.Enabled {
 		return nil
 	}
+	p.pageHTML = sync.Map{}
 
 	// Use the shared PostIndex from the lifecycle manager
 	idx := m.PostIndex()
@@ -1347,32 +1351,12 @@ func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
 	metadata := &OGMetadata{
 		Title: p.config.FallbackTitle,
 	}
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", rawURL, http.NoBody)
+	body, err := p.fetchPageHTML(rawURL)
 	if err != nil {
 		return metadata
 	}
 
-	// Set a reasonable user agent
-	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
-
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return metadata
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return metadata
-	}
-
-	// Read limited body to avoid memory issues
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024)) // 1MB limit
-	if err != nil {
-		return metadata
-	}
-
-	htmlContent := string(body)
+	htmlContent := body
 
 	// Extract OG metadata using simple regex
 	metadata.Source = "og"
@@ -1395,6 +1379,40 @@ func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
 	normalizeOGMetadata(metadata)
 
 	return metadata
+}
+
+func (p *EmbedsPlugin) fetchPageHTML(rawURL string) (string, error) {
+	if cached, ok := p.pageHTML.Load(rawURL); ok {
+		if content, ok := cached.(string); ok {
+			return content, nil
+		}
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("page fetch failed: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return "", err
+	}
+
+	htmlContent := string(body)
+	p.pageHTML.Store(rawURL, htmlContent)
+	return htmlContent, nil
 }
 
 // extractMetaContent extracts content from a meta tag.

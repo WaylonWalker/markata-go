@@ -125,6 +125,15 @@ The standalone bleve server currently supports three modes:
 - `watch-content` watches content/config roots and refreshes the local index when source files change
 - `read-only-index` serves a prebuilt index artifact without loading site content at runtime
 
+Operational guidance:
+
+- `watch-content` is the best fit when each pod owns its own writable local index directory
+- for Kubernetes rolling updates, prefer pod-local writable storage for `watch-content` so old pods can
+  keep serving while new pods pull images, build indexes, and warm search state
+- `read-only-index` remains the right fit when a separate builder/indexer publishes a shared artifact
+- readiness should only succeed after the configured index has been opened or built so the first real
+  query does not pay a one-time cold-start penalty
+
 Examples:
 
 ```bash

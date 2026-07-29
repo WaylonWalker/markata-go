@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -312,7 +311,8 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 }
 
 // Phase 1a: Quick single-threaded pass to classify posts (no disk I/O)
-// Phase 1b: Concurrent batch read of cached HTML files for unchanged posts
+// Phase 1b: No-op for unchanged posts; cached full-page HTML is restored lazily
+// only when a later stage truly needs it.
 // Phase 2: Concurrent rendering only for posts that need it
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
@@ -337,9 +337,8 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	feedMembershipHashes := precomputeFeedMembershipHashes(config, m)
 
 	// Phase 1a: Classify posts into "cacheable" vs "needs rendering" without disk I/O.
-	// For cacheable posts, we collect the source path so we can batch-read HTML later.
 	t0 := time.Now()
-	var cacheablePosts []cacheablePost
+	cacheableCount := 0
 	var postsNeedingRender []*models.Post
 
 	for _, post := range m.Posts() {
@@ -350,20 +349,16 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
 		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) {
-			cacheablePosts = append(cacheablePosts, cacheablePost{post: post, path: post.Path})
+			cacheableCount++
 		} else {
 			postsNeedingRender = append(postsNeedingRender, post)
 		}
 	}
 	t1 := time.Now()
-	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", len(cacheablePosts), len(postsNeedingRender), t1.Sub(t0))
+	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", cacheableCount, len(postsNeedingRender), t1.Sub(t0))
 
-	// Phase 1b: Batch-read all cached HTML files concurrently.
-	// This converts ~2900 sequential os.ReadFile calls into a parallel batch,
-	// significantly reducing wall-clock time for the cache restore phase.
-	if len(cacheablePosts) > 0 && cache != nil {
-		p.batchRestoreCachedHTML(cacheablePosts, cache, &postsNeedingRender, m.Concurrency())
-	}
+	// Phase 1b: Intentionally skip eager full-page HTML restore for unchanged posts.
+	// Later stages can use cached derivatives or restore lazily when truly needed.
 	t2 := time.Now()
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
@@ -391,73 +386,6 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	t3 := time.Now()
 	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
 	return err
-}
-
-// cacheablePost pairs a post with its source path for batch cache operations.
-type cacheablePost struct {
-	post *models.Post
-	path string // source path for cache lookup
-}
-
-// batchRestoreCachedHTML reads cached HTML files concurrently and assigns them to posts.
-// Posts whose cache files are missing or unreadable are moved to postsNeedingRender.
-func (p *TemplatesPlugin) batchRestoreCachedHTML(
-	posts []cacheablePost,
-	cache *buildcache.Cache,
-	postsNeedingRender *[]*models.Post,
-	concurrency int,
-) {
-	type result struct {
-		idx  int
-		html string
-	}
-
-	results := make([]result, 0, len(posts))
-	resultCh := make(chan result, len(posts))
-
-	// Use a worker pool with bounded concurrency for parallel file reads
-	numWorkers := concurrency
-	if numWorkers > len(posts) {
-		numWorkers = len(posts)
-	}
-	jobs := make(chan int, len(posts))
-	var wg sync.WaitGroup
-
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for idx := range jobs {
-				html := cache.GetCachedFullHTML(posts[idx].path)
-				resultCh <- result{idx: idx, html: html}
-			}
-		}()
-	}
-
-	// Send all jobs
-	for i := range posts {
-		jobs <- i
-	}
-	close(jobs)
-
-	// Collect results in background
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	for r := range resultCh {
-		results = append(results, r)
-	}
-
-	// Assign HTML to posts, moving cache misses to postsNeedingRender
-	for _, r := range results {
-		if r.html != "" {
-			posts[r.idx].post.HTML = r.html
-		} else {
-			*postsNeedingRender = append(*postsNeedingRender, posts[r.idx].post)
-		}
-	}
 }
 
 // canUseCachedHTML checks if a post can use cached HTML without doing any disk I/O.

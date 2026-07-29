@@ -134,6 +134,12 @@ func (h *Handler) UpdatePosts(posts []*models.Post) {
 	}
 }
 
+// Warm ensures the current index is opened or built before the handler starts serving queries.
+func (h *Handler) Warm() error {
+	_, _, err := h.getOrBuildIndex()
+	return err
+}
+
 // Close releases the underlying search index.
 func (h *Handler) Close() {
 	h.mu.Lock()

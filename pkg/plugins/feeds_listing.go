@@ -2,6 +2,8 @@
 package plugins
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -130,6 +133,15 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 	feedDefaults := getFeedDefaults(config)
+	cache := GetBuildCache(m)
+	listingHash := computeFeedsListingHash(feedConfigs, config, &feedsPage, feedDefaults, cache)
+	if cache != nil {
+		if cached := cache.GetFeedsListingHash(); cached != "" && cached == listingHash {
+			if feedsListingOutputsExist(config, &feedsPage, feedConfigs, feedDefaults) {
+				return nil
+			}
+		}
+	}
 	sparklineRange := computeSparklineWindow(m.Posts(), false)
 
 	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults, sparklineRange)
@@ -171,7 +183,167 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
+	if cache != nil {
+		cache.SetFeedsListingHash(listingHash)
+	}
+
 	return nil
+}
+
+func computeFeedsListingHash(
+	feedConfigs []models.FeedConfig,
+	config *lifecycle.Config,
+	feedsPage *models.FeedsPageConfig,
+	feedDefaults models.FeedDefaults,
+	cache *buildcache.Cache,
+) string {
+	h := sha256.New()
+	writeString := func(value string) {
+		fmt.Fprintf(h, "%d:", len(value))
+		h.Write([]byte(value))
+		h.Write([]byte{0})
+	}
+	writeBool := func(value bool) {
+		fmt.Fprintf(h, "%t", value)
+		h.Write([]byte{0})
+	}
+	writeInt := func(value int) {
+		fmt.Fprintf(h, "%d", value)
+		h.Write([]byte{0})
+	}
+
+	writeBool(feedsPage != nil && feedsPage.IsEnabled())
+	if feedsPage != nil {
+		writeString(feedsPage.Title)
+		writeString(feedsPage.Description)
+		writeString(feedsPage.Template)
+		writeString(feedsPage.SlugPrefix)
+		writeString(feedsPage.Robots)
+		for _, slug := range feedsPage.ShowPrivateFeeds {
+			writeString(slug)
+		}
+	}
+
+	writeInt(feedDefaults.ItemsPerPage)
+	writeInt(feedDefaults.OrphanThreshold)
+
+	configuredSlugs := configuredFeedSlugs(config)
+	configuredOrder := make([]string, 0, len(configuredSlugs))
+	for slug := range configuredSlugs {
+		configuredOrder = append(configuredOrder, slug)
+	}
+	sort.Slice(configuredOrder, func(i, j int) bool {
+		return configuredSlugs[configuredOrder[i]] < configuredSlugs[configuredOrder[j]]
+	})
+	for _, slug := range configuredOrder {
+		writeString(slug)
+	}
+
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+		writeString(fc.Slug)
+		if cache != nil {
+			if feedHash := cache.GetFeedHash(fc.Slug); feedHash != "" {
+				writeString(feedHash)
+				continue
+			}
+		}
+		writeString(fc.Title)
+		writeString(fc.Description)
+		writeBool(fc.IncludePrivate)
+		writeBool(fc.Formats.HTML)
+		writeBool(fc.Formats.SimpleHTML)
+		writeBool(fc.Formats.RSS)
+		writeBool(fc.Formats.Atom)
+		writeBool(fc.Formats.JSON)
+		writeBool(fc.Formats.Markdown)
+		writeBool(fc.Formats.Text)
+		writeBool(fc.Formats.Sitemap)
+		for _, post := range fc.Posts {
+			if post == nil {
+				continue
+			}
+			writeString(post.Slug)
+			if post.Date != nil {
+				writeString(post.Date.UTC().Format(time.RFC3339Nano))
+			}
+			writeBool(post.Published)
+			writeBool(post.Draft)
+			writeBool(post.Private)
+			writeBool(post.Skip)
+		}
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func feedsListingOutputsExist(config *lifecycle.Config, feedsPage *models.FeedsPageConfig, feedConfigs []models.FeedConfig, feedDefaults models.FeedDefaults) bool {
+	for _, outputPath := range expectedFeedsListingOutputPaths(config, feedsPage, feedConfigs, feedDefaults) {
+		if _, err := os.Stat(outputPath); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func expectedFeedsListingOutputPaths(config *lifecycle.Config, feedsPage *models.FeedsPageConfig, feedConfigs []models.FeedConfig, feedDefaults models.FeedDefaults) []string {
+	if config == nil || feedsPage == nil {
+		return nil
+	}
+
+	paths := []string{filepath.Join(config.OutputDir, filepath.FromSlash(feedsPage.SlugPrefix), "index.html")}
+	generatedCount := 0
+	configuredSlugs := configuredFeedSlugs(config)
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+		if fc.IncludePrivate && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
+			continue
+		}
+		if _, isConfigured := configuredSlugs[fc.Slug]; !isConfigured {
+			generatedCount++
+		}
+	}
+
+	generatedPages := feedListingPageCount(generatedCount, feedDefaults)
+	for pageNum := 1; pageNum <= generatedPages; pageNum++ {
+		if pageNum == 1 {
+			paths = append(paths, filepath.Join(config.OutputDir, filepath.FromSlash(feedsPage.SlugPrefix), "generated", "index.html"))
+			continue
+		}
+		paths = append(paths, filepath.Join(config.OutputDir, filepath.FromSlash(feedsPage.SlugPrefix), "generated", "page", fmt.Sprintf("%d", pageNum), "index.html"))
+	}
+
+	return paths
+}
+
+func feedListingPageCount(total int, defaults models.FeedDefaults) int {
+	if total <= 0 {
+		return 0
+	}
+	itemsPerPage := defaults.ItemsPerPage
+	if itemsPerPage <= 0 {
+		itemsPerPage = 10
+	}
+	orphanThreshold := defaults.OrphanThreshold
+	if orphanThreshold <= 0 {
+		orphanThreshold = 3
+	}
+	pages := 0
+	for i := 0; i < total; i += itemsPerPage {
+		end := i + itemsPerPage
+		if end > total {
+			end = total
+		}
+		remaining := total - end
+		if remaining > 0 && remaining < orphanThreshold {
+			end = total
+		}
+		pages++
+		if end >= total {
+			break
+		}
+	}
+	return pages
 }
 
 func (p *FeedsListingPlugin) collectFeedSections(
