@@ -326,6 +326,19 @@ markata-go builder-admin [flags]
 | `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
 | `--releases-keep` | Number of rendered releases to keep on disk | `25` |
 | `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
+| `--trusted-proxy-cidr` | Repeatable CIDR allowed to supply trusted identity headers | none |
+| `--auth-user-id-header` | Trusted header containing the durable operator ID | `X-Hlab-User-Id` |
+| `--auth-username-header` | Trusted header containing the operator username | `X-Hlab-Username` |
+| `--auth-display-name-header` | Trusted header containing the operator display name | `X-Hlab-Display-Name` |
+| `--auth-email-header` | Trusted header containing the operator email | `X-Hlab-Email` |
+| `--auth-groups-header` | Trusted header containing operator groups | `X-Hlab-Groups` |
+| `--auth-roles-header` | Trusted header containing operator roles | `X-Hlab-Roles` |
+| `--auth-scopes-header` | Trusted header containing operator scopes | `X-Hlab-Scopes` |
+
+Header mappings may also be set in `[markata-go.builder_admin.auth.headers]` or with
+`MARKATA_GO_BUILDER_ADMIN_AUTH_HEADERS_*` environment variables. Explicit CLI flags override
+environment and file configuration. See [Builder Admin](../guides/deployment/builder-admin.md)
+for a complete ForwardAuth and Authentik example.
 
 #### Examples
 

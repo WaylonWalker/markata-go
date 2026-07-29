@@ -33,7 +33,7 @@ func TestBuilderAdminAuthentication_RejectsUntrustedOrMissingIdentity(t *testing
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
 			if tt.identity != "" {
-				req.Header.Set(hlabUserIDHeader, tt.identity)
+				req.Header.Set(DefaultAuthHeaders().UserID, tt.identity)
 			}
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, req)
@@ -62,7 +62,7 @@ func TestBuilderAdminAuthentication_TrustedIdentityAndCSRF(t *testing.T) {
 
 	indexRequest := httptest.NewRequest(http.MethodGet, "/", nil)
 	indexRequest.RemoteAddr = "10.42.0.10:443"
-	indexRequest.Header.Set(hlabUserIDHeader, "operator")
+	indexRequest.Header.Set(DefaultAuthHeaders().UserID, "operator")
 	indexRecorder := httptest.NewRecorder()
 	mux.ServeHTTP(indexRecorder, indexRequest)
 	if indexRecorder.Code != http.StatusOK {
@@ -88,12 +88,52 @@ func TestBuilderAdminAuthentication_TrustedIdentityAndCSRF(t *testing.T) {
 	buildRequest.RemoteAddr = "10.42.0.10:443"
 	buildRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	buildRequest.Header.Set("Origin", "https://builder.example.com")
-	buildRequest.Header.Set(hlabUserIDHeader, "operator")
+	buildRequest.Header.Set(DefaultAuthHeaders().UserID, "operator")
 	buildRequest.AddCookie(cookies[0])
 	buildRecorder := httptest.NewRecorder()
 	mux.ServeHTTP(buildRecorder, buildRequest)
 	if buildRecorder.Code != http.StatusSeeOther {
 		t.Fatalf("build status=%d, want %d", buildRecorder.Code, http.StatusSeeOther)
+	}
+}
+
+func TestBuilderAdminAuthentication_AuthentikHeaders(t *testing.T) {
+	t.Parallel()
+	authHeaders := AuthHeaders{
+		UserID:      "X-Authentik-Uid",
+		Username:    "X-Authentik-Username",
+		DisplayName: "X-Authentik-Name",
+		Email:       "X-Authentik-Email",
+		Groups:      "X-Authentik-Groups",
+	}
+	svc, err := New(Config{
+		SiteDir:           t.TempDir(),
+		TrustedProxyCIDRs: []string{"10.42.0.0/24"},
+		AuthHeaders:       authHeaders,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	mux := http.NewServeMux()
+	svc.registerRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.42.0.10:443"
+	req.Header.Set("X-Authentik-Uid", "3c8d0ec5-023e-4a7f-ae09-f6985cebd4dc")
+	req.Header.Set("X-Authentik-Username", "operator")
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d, want %d", recorder.Code, http.StatusOK)
+	}
+}
+
+func TestNew_RejectsInvalidAuthHeaderName(t *testing.T) {
+	t.Parallel()
+	_, err := New(Config{SiteDir: t.TempDir(), AuthHeaders: AuthHeaders{UserID: "X-Auth\nUser"}})
+	if err == nil {
+		t.Fatal("New() accepted an invalid auth header name")
 	}
 }
 
@@ -116,6 +156,17 @@ func TestNew_RejectsUnsafeTrustedProxyCIDRs(t *testing.T) {
 		t.Fatalf("New() with pod CIDR failed: %v", err)
 	}
 	t.Cleanup(func() { _ = service.leaderLock.Close() })
+}
+
+func TestNew_RejectsEmptyConfiguredUserIDHeader(t *testing.T) {
+	t.Parallel()
+	_, err := New(Config{
+		SiteDir:     t.TempDir(),
+		AuthHeaders: AuthHeaders{Username: "X-Authenticated-Username"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "user ID header") {
+		t.Fatalf("New() error = %v, want required user ID header error", err)
+	}
 }
 
 func TestIgnoreWatchPath(t *testing.T) {

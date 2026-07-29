@@ -6,11 +6,8 @@
 {{- $_ := required "builderAdmin.ingress.host is required when builder-admin is enabled" .Values.builderAdmin.ingress.host }}
 {{- $_ := required "builderAdmin.ingress.tls.secretName is required when builder-admin is enabled" .Values.builderAdmin.ingress.tls.secretName }}
 {{- include "markata-notes.validateBuilderAdminAuthInternalURL" . }}
-{{- $authInternalURL := .Values.builderAdmin.ingress.auth.internalUrl }}
-{{- $isHTTPS := hasPrefix "https://" $authInternalURL }}
-{{- $isClusterLocalHlabAuth := regexMatch "^http://hlab-auth\\.hlab-auth\\.svc\\.cluster\\.local:[0-9]{1,5}/?$" $authInternalURL }}
-{{- if not (or $isHTTPS $isClusterLocalHlabAuth) }}{{ fail "builderAdmin.ingress.auth.internalUrl must use https:// or the cluster-local hlab-auth Service URL when builder-admin is enabled" }}{{ end }}
 {{- $_ := required "builderAdmin.auth.trustedProxyCIDRs must be non-empty when builder-admin is enabled" (first .Values.builderAdmin.auth.trustedProxyCIDRs) }}
+{{- $_ := required "builderAdmin.auth.headers.userID is required when builder-admin is enabled" .Values.builderAdmin.auth.headers.userID }}
 {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
 {{- $trustedCIDR := trim . }}
 {{- if or (eq $trustedCIDR "0.0.0.0/0") (eq $trustedCIDR "::/0") }}{{ fail "builderAdmin.auth.trustedProxyCIDRs must not include a universal CIDR" }}{{ end }}
@@ -122,6 +119,20 @@ spec:
             - --trusted-proxy-cidr
             - {{ . | quote }}
             {{- end }}
+            - --auth-user-id-header
+            - {{ .Values.builderAdmin.auth.headers.userID | quote }}
+            - --auth-username-header
+            - {{ .Values.builderAdmin.auth.headers.username | quote }}
+            - --auth-display-name-header
+            - {{ .Values.builderAdmin.auth.headers.displayName | quote }}
+            - --auth-email-header
+            - {{ .Values.builderAdmin.auth.headers.email | quote }}
+            - --auth-groups-header
+            - {{ .Values.builderAdmin.auth.headers.groups | quote }}
+            - --auth-roles-header
+            - {{ .Values.builderAdmin.auth.headers.roles | quote }}
+            - --auth-scopes-header
+            - {{ .Values.builderAdmin.auth.headers.scopes | quote }}
             {{- if .Values.builderAdmin.ingress.auth.publicAuthOrigin }}
             - --public-auth-origin
             - {{ .Values.builderAdmin.ingress.auth.publicAuthOrigin | quote }}

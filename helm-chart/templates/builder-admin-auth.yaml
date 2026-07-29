@@ -1,21 +1,20 @@
 {{- if and .Values.builderAdmin.enabled .Values.builderAdmin.ingress.enabled .Values.builderAdmin.ingress.auth.enabled }}
 {{- include "markata-notes.validateBuilderAdminAuthInternalURL" . }}
 {{- $authInternalURL := .Values.builderAdmin.ingress.auth.internalUrl }}
+{{- $authHeaders := list .Values.builderAdmin.auth.headers.userID .Values.builderAdmin.auth.headers.username .Values.builderAdmin.auth.headers.displayName .Values.builderAdmin.auth.headers.email .Values.builderAdmin.auth.headers.groups .Values.builderAdmin.auth.headers.roles .Values.builderAdmin.auth.headers.scopes }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-hlab"
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-identity"
   namespace: "{{ include "markata-notes.namespace" . }}"
 spec:
   headers:
     customRequestHeaders:
-      X-Hlab-User-Id: ""
-      X-Hlab-Username: ""
-      X-Hlab-Display-Name: ""
-      X-Hlab-Email: ""
-      X-Hlab-Groups: ""
-      X-Hlab-Roles: ""
-      X-Hlab-Scopes: ""
+      {{- range $header := $authHeaders }}
+      {{- if $header }}
+      {{ $header | quote }}: ""
+      {{- end }}
+      {{- end }}
       X-Markata-Builder-Admin-Forwarded: ""
 ---
 apiVersion: traefik.io/v1alpha1
@@ -25,18 +24,18 @@ metadata:
   namespace: "{{ include "markata-notes.namespace" . }}"
 spec:
   forwardAuth:
-    address: "{{ $authInternalURL | trimSuffix "/" }}/api/v1/forward-auth"
+    address: "{{ $authInternalURL | trimSuffix "/" }}{{ required "builderAdmin.ingress.auth.forwardAuthPath is required when builder-admin auth is enabled" .Values.builderAdmin.ingress.auth.forwardAuthPath }}"
     trustForwardHeader: false
     addAuthCookiesToResponse:
-      - __Host-hlab-app-session
+      {{- range .Values.builderAdmin.ingress.auth.responseCookies }}
+      - {{ . | quote }}
+      {{- end }}
     authResponseHeaders:
-      - X-Hlab-User-Id
-      - X-Hlab-Username
-      - X-Hlab-Display-Name
-      - X-Hlab-Email
-      - X-Hlab-Groups
-      - X-Hlab-Roles
-      - X-Hlab-Scopes
+      {{- range $header := $authHeaders }}
+      {{- if $header }}
+      - {{ $header | quote }}
+      {{- end }}
+      {{- end }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -46,6 +45,6 @@ metadata:
 spec:
   chain:
     middlewares:
-      - name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-hlab"
+      - name: "{{ .Values.project_identifier }}-notes-builder-admin-strip-identity"
       - name: "{{ .Values.project_identifier }}-notes-builder-admin-forward-auth"
 {{- end }}

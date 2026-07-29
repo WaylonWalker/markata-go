@@ -644,9 +644,34 @@ type Config struct {
 	// Authors configures multi-author support for the site
 	Authors AuthorsConfig `json:"authors" yaml:"authors" toml:"authors"`
 
+	// BuilderAdmin configures the long-lived builder-admin service.
+	BuilderAdmin BuilderAdminConfig `json:"builder_admin" yaml:"builder_admin" toml:"builder_admin"`
+
 	// Extra holds arbitrary plugin configurations that aren't part of the core config.
 	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
 	Extra map[string]any `json:"-" yaml:"-" toml:"-"`
+}
+
+// BuilderAdminConfig configures builder-admin settings shared by CLI, environment, and site config.
+type BuilderAdminConfig struct {
+	Auth BuilderAdminAuthConfig `json:"auth" yaml:"auth" toml:"auth"`
+}
+
+// BuilderAdminAuthConfig configures identity assertions from a trusted ForwardAuth proxy.
+type BuilderAdminAuthConfig struct {
+	Headers BuilderAdminAuthHeadersConfig `json:"headers" yaml:"headers" toml:"headers"`
+}
+
+// BuilderAdminAuthHeadersConfig maps trusted proxy headers. Pointers preserve an explicitly
+// configured empty optional header, which disables that display-only assertion.
+type BuilderAdminAuthHeadersConfig struct {
+	UserID      *string `json:"user_id" yaml:"user_id" toml:"user_id"`
+	Username    *string `json:"username" yaml:"username" toml:"username"`
+	DisplayName *string `json:"display_name" yaml:"display_name" toml:"display_name"`
+	Email       *string `json:"email" yaml:"email" toml:"email"`
+	Groups      *string `json:"groups" yaml:"groups" toml:"groups"`
+	Roles       *string `json:"roles" yaml:"roles" toml:"roles"`
+	Scopes      *string `json:"scopes" yaml:"scopes" toml:"scopes"`
 }
 
 // DefaultTrustedMediaDomains is the default allowlist for media helpers.
