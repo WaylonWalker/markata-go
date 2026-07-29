@@ -14,9 +14,11 @@ This chart deploys a reusable markata-go notes workload that:
 - Set `MARKATA_GO_SOURCE_ARCHIVE_ENCRYPT=true` when publishing if you want the uploaded archive encrypted with `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`.
 - The search pod runs `markata-go search-server --mode watch-content --host 0.0.0.0` so bleve stays in sync when the source PVC changes.
 - The search pod now waits for the source PVC to be populated before starting, which avoids booting against an empty archive mount and indexing `0 posts`.
+- Site and search probes now check every 5s instead of every 10s, which trims rollout and restart latency without making the health checks brittle.
 - Runtime pods use a dedicated ServiceAccount with `automountServiceAccountToken: false`, disable service links, and apply `RuntimeDefault` seccomp with stricter container security settings where they are low risk.
 - A NetworkPolicy now limits runtime pod egress to cluster DNS, so the site and search pods cannot freely call other cluster services by default.
 - The build CronJob uses a source PVC lock by default so overlapping manual jobs cannot update the shared source and site PVCs at the same time.
+- Default lock polling and search debounce values are intentionally short (`2s`) so the feedback loop feels tighter when a developer triggers back-to-back builds or restarts the search pod.
 - The build CronJob now overrides `[markata-go.mermaid].mode` to `client` by default, which avoids Chromium hangs seen in-cluster; set `build.mermaid.mode` back to `chromium` or `""` if you want to rely on the source repo config instead.
 - If your new namespace does not already have `aws-default`, enable `aws.sealedSecret` and provide sealed credentials in values.
 - By default the chart reuses a shared `markata-go-encryption` Secret name for `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`; override `markataEncryption.secretName` only if your established secret uses a different name.
@@ -71,6 +73,7 @@ just push
 - `storage.source.mode` and `storage.site.mode` default to `pvc` and can be set to `hostPath` for node-local content.
 - Use `nodeSelector` when hostPath-backed content exists only on a specific node.
 - `build.cacheDir` defaults to `/data/site/.cache/xdg` so tool caches survive between builds on the site volume.
+- Enable `storage.cache` when you want a dedicated PVC for build caches. The build CronJob recreates `.markata` and `.markata-cache` in the source tree as symlinks into that cache volume, which keeps incremental state out of source sync paths.
 
 ## Offline builds
 
@@ -133,11 +136,48 @@ storage:
 
 This mode is node-local. The chart does not add any scheduling guard, so make sure the workloads land on a node where those paths exist.
 
+For search-heavy dev loops, you can also point the search PVC at a node-local storage class and give it a new claim suffix so it rebuilds on local disk instead of Longhorn:
+
+```yaml
+storage:
+  search:
+    storageClassName: hostpath
+    pvcNameSuffix: "-local"
+```
+
 The search deployment defaults to `Recreate` strategy because the bundled search index PVC is typically `ReadWriteOnce`, which prevents safe rolling updates across old and new pods.
 
 In `watch-content` mode the search server runs with `/data/search` as its working directory and uses `search.configPath` to load the site config from the mounted source tree. This keeps `.markata/cache` and the Bleve index on writable storage instead of trying to write cache files into the source hostPath.
 
 To preserve build-time tool caches between runs, keep `build.cacheDir` on persistent storage. The default points at the site volume so cached helper binaries and assets survive CronJob restarts instead of being lost with the pod `emptyDir`.
+
+For deployments that sync the source tree with `rsync --delete` or otherwise treat `/data/source` as disposable, prefer a dedicated cache volume:
+
+```yaml
+storage:
+  cache:
+    enabled: true
+    storageClassName: longhorn
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+
+build:
+  cacheDir: /data/cache/xdg
+```
+
+That keeps XDG caches plus markata's `.markata` and `.markata-cache` incremental state outside the synced source tree while still letting the build recreate source-root symlinks on each run.
+
+You can also enable a best-effort build notification hook:
+
+```yaml
+build:
+  notify:
+    enabled: true
+    url: https://ntfy.example.com/topic
+```
+
+When enabled, the build CronJob posts a small result summary on success or failure. Notification failures do not fail the build.
 
 For large sites using hardlinked releases, the build job now seeds a stable work directory at `/data/site/.build-work` from `current` before running `markata-go build`. That gives incremental write stages a real on-disk baseline for unchanged files while still publishing via an atomic `current` symlink swap at the end.
 

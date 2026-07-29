@@ -300,6 +300,50 @@ markata-go build -c production.toml
 markata-go build --clean -v -o dist
 ```
 
+### builder-admin
+
+Run the long-lived builder admin HTTP service for Kubernetes and authoring workflows.
+
+#### Usage
+
+```bash
+markata-go builder-admin [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--host` | Host to bind to | `127.0.0.1` |
+| `--port` | Port to listen on | `8080` |
+| `--source-dir` | Mounted source directory to watch and build from | `.` |
+| `--site-dir` | Mounted site root that contains `releases/` and `current` | `public` |
+| `--watch` | Enable recursive file watching and queued rebuilds | `true` |
+| `--watch-debounce` | Debounce window for coalescing file changes | `2s` |
+| `--fast` | Use `markata-go build --fast` for queued builds | `false` |
+| `--mermaid-mode` | Override `[markata-go.mermaid].mode` for queued builds | `""` |
+| `--cache-mount` | Optional dedicated cache mount used for `.markata` and `.markata-cache` symlinks | `""` |
+| `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
+| `--releases-keep` | Number of rendered releases to keep on disk | `10` |
+| `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
+
+#### Examples
+
+```bash
+# Run locally against mounted source and site paths
+markata-go builder-admin \
+  --config /data/source/markata-go.toml \
+  --source-dir /data/source \
+  --site-dir /data/site \
+  --cache-mount /data/cache \
+  --fast \
+  --watch
+
+# Add a scheduled reader refresh that enqueues a build when complete
+markata-go builder-admin \
+  --refresh-task 'reader-update|30m|true|markata-go|--config|/data/source/markata-go.toml|reader|update'
+```
+
 #### Exit Codes
 
 | Code | Description |
@@ -330,12 +374,15 @@ Successful builds also print a compact benchmark summary with:
 
 - estimated wall-time spent on CPU work, network wait, disk read wait, disk write wait, and idle time
 - the slowest lifecycle hotspots so you can spot expensive plugins quickly
+- the slowest outbound HTTP requests so network-bound plugins stop hiding in aggregate wait time
 
 For deeper analysis:
 
 - `markata-go build --benchmark-json benchmark.json` writes machine-readable benchmark data to a file
 - `markata-go build --benchmark-json -` writes only the benchmark JSON to stdout
 - `markata-go build -v --benchmark-detailed` adds per-stage resource summaries to the build footer
+
+When requests are present, the footer prints the 10 slowest network waits with stage, plugin, method, sanitized URL, duration, and either HTTP status or the request error.
 
 The resource profile is approximate. It is intended for local hotspot hunting, not precise system profiling.
 

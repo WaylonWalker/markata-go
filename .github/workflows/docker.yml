@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - main
+      - "markata/**"
+      - "perf/**"
+      - "dev/**"
     tags:
       - "v*"
   pull_request:

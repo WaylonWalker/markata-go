@@ -1,6 +1,9 @@
 package buildstats
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -101,5 +104,46 @@ func TestClassifyInterval_Idle(t *testing.T) {
 	}
 	if got.Idle != 90*time.Millisecond {
 		t.Fatalf("Idle = %v, want %v", got.Idle, 90*time.Millisecond)
+	}
+}
+
+func TestRecordRequest_SanitizesURLAndCapturesContext(t *testing.T) {
+	profile := &Profile{current: "collect", plugin: "blogroll"}
+	requestURL, err := url.Parse("https://user:secret@example.com/feed.xml?token=123#frag")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	profile.recordRequest(&http.Request{Method: http.MethodGet, URL: requestURL}, &http.Response{StatusCode: http.StatusOK}, nil, 2*time.Second)
+
+	if len(profile.requests) != 1 {
+		t.Fatalf("len(requests) = %d, want 1", len(profile.requests))
+	}
+	got := profile.requests[0]
+	if got.Stage != "collect" || got.Plugin != "blogroll" {
+		t.Fatalf("request context = %+v, want stage/plugin collect/blogroll", got)
+	}
+	if got.URL != "https://example.com/feed.xml" {
+		t.Fatalf("URL = %q, want %q", got.URL, "https://example.com/feed.xml")
+	}
+	if got.Status != http.StatusOK {
+		t.Fatalf("Status = %d, want %d", got.Status, http.StatusOK)
+	}
+}
+
+func TestRecordRequest_CapturesError(t *testing.T) {
+	profile := &Profile{}
+	requestURL, err := url.Parse("https://example.com/")
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	profile.recordRequest(&http.Request{URL: requestURL}, nil, errors.New("timeout"), 500*time.Millisecond)
+
+	if len(profile.requests) != 1 {
+		t.Fatalf("len(requests) = %d, want 1", len(profile.requests))
+	}
+	if profile.requests[0].Error != "timeout" {
+		t.Fatalf("Error = %q, want %q", profile.requests[0].Error, "timeout")
 	}
 }

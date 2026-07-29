@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
 
@@ -137,12 +138,15 @@ var platformMapping = map[string]map[string]string{
 
 // NewPagefindInstaller creates a new PagefindInstaller with default settings.
 func NewPagefindInstaller() *PagefindInstaller {
+	client := &http.Client{
+		Timeout: defaultHTTPTimeout,
+	}
+	buildstats.InstrumentHTTPClient(client)
+
 	return &PagefindInstaller{
 		CacheDir: "",
 		Version:  Latest,
-		client: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		client:   client,
 	}
 }
 
