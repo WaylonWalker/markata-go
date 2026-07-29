@@ -45,7 +45,7 @@ builderAdmin:
   releases:
     keep: 25
   history:
-    successfulBuilds: 50
+    successfulBuilds: 60
     failedBuilds: 100
     refreshRuns: 100
   refreshTasks:
@@ -85,6 +85,17 @@ When your site config uses `palette_light`, `palette_dark`, or `fallback_mode`, 
 the same fallback palette. Keep the site config and any custom palette files under the mounted
 source directory. If the palette cannot be loaded, builder admin remains available with its
 default colors.
+
+## Read Build History Quickly
+
+Jobs and releases are expandable: select a row to see full IDs, timings, logs, and the build
+record link without losing your place in the list. Release rows use their creation time as the
+primary label; full IDs remain available in the expanded view.
+
+For successful builds, the duration bar compares each build with up to 60 builds completed in the
+last 30 days. It marks the mean and recorded maximum. Builder admin needs at least eight matching
+builds before it flags unusually fast or slow work, using a median/MAD baseline so a single slow
+build does not distort the result.
 
 ## Secure Access with ForwardAuth
 

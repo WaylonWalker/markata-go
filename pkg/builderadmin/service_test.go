@@ -273,6 +273,11 @@ func TestHandleIndex_RendersOperationalSummary(t *testing.T) {
 		`let releasesFingerprint = ''`,
 		`let pollInFlight = false`,
 		`renderBuilds(state)`,
+		`function buildTimeBaseline(builds)`,
+		`slice(0, 60)`,
+		`30 * 24 * 60 * 60 * 1000`,
+		`data-expandable`,
+		`View build record →`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("index body missing %q", want)

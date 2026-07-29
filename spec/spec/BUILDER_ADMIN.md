@@ -267,6 +267,18 @@ explicit light or dark palette overrides, and map palette semantic and component
 background, text, border, action, code, and status UI colors. A missing or invalid site palette
 MUST fall back to the built-in builder-admin colors without preventing the service from starting.
 
+### Build Workspace
+
+Job and release rows MUST disclose their full operational details when activated anywhere on the
+row and MUST remain keyboard accessible. Release summaries MUST use a human-readable creation
+time and keep full release and build identifiers in the expanded detail area. Build records MUST
+provide a prominent link to their full detail page.
+
+For completed successful builds, the workspace MUST compare build duration with up to 60 builds
+finished in the preceding 30 days. It MUST not classify a duration when fewer than eight samples
+are available. The visual comparison MUST show mean and recorded maximum markers and use a robust
+median/MAD band to apply restrained fast, slow, and extreme-slow emphasis.
+
 ### Browser Mutation Protection
 
 An authenticated `GET /` MUST mint a cryptographically random double-submit CSRF token. It MUST

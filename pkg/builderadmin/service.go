@@ -243,7 +243,7 @@ func New(cfg Config) (*Service, error) {
 		cfg.ReleasesKeep = defaultReleaseKeep
 	}
 	if cfg.SuccessfulBuildsKeep <= 0 {
-		cfg.SuccessfulBuildsKeep = 50
+		cfg.SuccessfulBuildsKeep = 60
 	}
 	if cfg.FailedBuildsKeep <= 0 {
 		cfg.FailedBuildsKeep = 100
@@ -597,6 +597,12 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		},
 		"since": func(t time.Time) string {
 			return formatUITimestamp(t, time.Now().UTC())
+		},
+		"releaseLabel": func(createdAt time.Time) string {
+			if createdAt.IsZero() {
+				return "Release"
+			}
+			return createdAt.UTC().Format("02 Jan · 15:04 UTC")
 		},
 		"summaryPreview": func(lines []string) []string {
 			if len(lines) <= 6 {
@@ -1619,8 +1625,10 @@ func formatQueueWait(d time.Duration) string {
 
 func uiStatusClass(value string) string {
 	switch value {
-	case "success", "live", "ready", "idle":
+	case "success", "live", "ready":
 		return "status-success"
+	case "idle":
+		return "status-neutral"
 	case "running", "build", "refresh", "promote", "prepare", "prune":
 		return "status-running"
 	case "queued", "pending", "starting":
@@ -1694,7 +1702,7 @@ const indexHTML = `<!doctype html>
     a:hover { text-decoration: underline; }
     main {
       width: 100%;
-      max-width: 1440px;
+      max-width: 1800px;
       margin: 0 auto;
       padding: 24px 28px 56px;
     }
@@ -1849,22 +1857,37 @@ const indexHTML = `<!doctype html>
 	  color: var(--code-text);
       font-size: 0.82rem;
     }
-    .pill {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-	background: var(--panel-strong);
-      color: var(--text);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.7rem;
-    }
-	.status-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 18%, var(--bg)); color: var(--success); }
-	.status-running { border-color: var(--info); background: color-mix(in srgb, var(--info) 18%, var(--bg)); color: var(--info); }
-	.status-queued { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 18%, var(--bg)); color: var(--warning); }
-	.status-failed { border-color: var(--error); background: color-mix(in srgb, var(--error) 18%, var(--bg)); color: var(--error); }
-	.status-neutral { border-color: var(--line); background: var(--panel-strong); color: var(--text); }
+    .pill { --status-ink: var(--muted); display: inline-flex; align-items: center; min-height: 1.7rem; padding: 3px 8px 3px 10px; border: 0; border-left: 2px solid var(--status-ink); border-radius: 3px; background: color-mix(in srgb, var(--status-ink) 7%, var(--panel)); color: var(--text); font-size: 0.72rem; font-weight: 650; letter-spacing: 0.01em; text-transform: none; }
+	.status-success { --status-ink: var(--success); }
+	.status-running { --status-ink: var(--info); }
+	.status-queued { --status-ink: var(--warning); }
+	.status-failed { --status-ink: var(--error); }
+	.status-neutral { --status-ink: var(--muted); }
+    .work-row { cursor: pointer; }
+    .work-row:hover > td { background: color-mix(in srgb, var(--panel-strong) 55%, transparent); }
+    .work-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .work-row > td:first-child { padding-left: 14px; }
+    .detail-row { display: none; }
+    .work-row.is-expanded + .detail-row { display: table-row; }
+    .detail-row td { padding: 0 14px 16px; border-top: 0; }
+    .row-detail { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 14px 16px; background: var(--panel-strong); border-left: 2px solid var(--line); }
+    .row-detail-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: .82rem; }
+    .row-detail-meta code { max-width: min(42rem, 100%); }
+    .record-link { display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 11px; border: 1px solid var(--line); border-radius: 5px; color: var(--text); font-weight: 700; white-space: nowrap; background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+    .record-link:hover { text-decoration: none; background: color-mix(in srgb, var(--accent) 16%, var(--panel)); }
+    .release-name { display: block; font-weight: 650; white-space: nowrap; }
+    .release-ref { display: block; margin-top: 3px; color: var(--muted); font-size: .76rem; }
+    .build-time { min-width: 9rem; }
+    .build-time-label { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; font-size: .82rem; }
+    .build-time-label span { color: var(--muted); font-size: .72rem; }
+    .build-time-bar { position: relative; height: 4px; margin-top: 7px; overflow: visible; border-radius: 999px; background: var(--line-soft); }
+    .build-time-fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: var(--accent); }
+    .build-time-fill.is-slow { background: var(--warning); }
+    .build-time-fill.is-extreme { background: var(--error); }
+    .build-time-fill.is-fast { background: var(--info); }
+    .build-time-marker { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .8; }
+    .build-time-marker.max { opacity: .35; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .build-details { min-width: 9rem; }
     .build-details summary { cursor: pointer; color: var(--text); font-weight: 600; }
     .build-details[open] summary { margin-bottom: 10px; }
@@ -1931,6 +1954,10 @@ const indexHTML = `<!doctype html>
       .responsive-table td:empty { display: none; }
       .responsive-table td:empty::before { content: none; }
       .time-stamp { white-space: normal; }
+      .work-row.is-expanded + .detail-row { display: block; padding: 0; }
+      .detail-row td { display: block; padding: 0 0 14px; }
+      .detail-row td::before { content: none; }
+      .row-detail { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1996,7 +2023,7 @@ const indexHTML = `<!doctype html>
         <tr><td data-label="Status"><span class="pill status-queued">queued</span></td><td data-label="Job">{{ .Label }}</td><td data-label="Source">{{ .TriggerType }}</td><td data-label="When">Waiting</td><td data-label="Wait">{{ since .EnqueuedAt }}</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Reason:</strong> {{ .Detail }}</div><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div></div></details></td></tr>
         {{ end }}
         {{ range .CompletedJobs }}
-        <tr data-finished="{{ .FinishedAt }}"><td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td><td data-label="Job">{{ if .Build }}<a href="/builds/{{ .ID }}">{{ .Kind }}</a>{{ else }}{{ .Kind }}{{ end }}</td><td data-label="Source">{{ .Trigger }}</td><td data-label="When">{{ since .FinishedAt }}</td><td data-label="Wait">{{ msToSeconds .QueueWaitMS }}</td><td data-label="Run">{{ msToSeconds .RunMS }}</td><td data-label="Release">{{ .Release }}</td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div>{{ if .Build }}<div><a href="/builds/{{ .ID }}">Open full build details</a></div>{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}</div></details></td></tr>
+        <tr data-finished="{{ .FinishedAt }}"><td data-label="Status"><span class="pill {{ statusClass .Status }}">{{ .Status }}</span></td><td data-label="Job">{{ if .Build }}<a class="record-link" href="/builds/{{ .ID }}">View build record →</a>{{ else }}{{ .Kind }}{{ end }}</td><td data-label="Source">{{ .Trigger }}</td><td data-label="When">{{ since .FinishedAt }}</td><td data-label="Wait">{{ msToSeconds .QueueWaitMS }}</td><td data-label="Run">{{ msToSeconds .RunMS }}</td><td data-label="Release">{{ .Release }}</td><td data-label="Details"><details class="build-details"><summary>More</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>{{ .ID }}</code></div>{{ if .Build }}<div><a class="record-link" href="/builds/{{ .ID }}">Open full build details →</a></div>{{ end }}{{ if .LogPath }}<div><a href="/logs/{{ .LogPath }}">Open raw log</a></div>{{ end }}</div></details></td></tr>
         {{ end }}
         </tbody>
       </table>
@@ -2028,14 +2055,15 @@ const indexHTML = `<!doctype html>
         <thead><tr><th>ID</th><th>Current</th><th>Created</th><th>Build</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="releases-body">
         {{ range .Releases }}
-        <tr>
-          <td data-label="Release"><code>{{ .ID }}</code></td>
+        <tr class="work-row" data-expandable tabindex="0" aria-expanded="false">
+          <td data-label="Release"><span class="release-name">{{ releaseLabel .CreatedAt }}</span><span class="release-ref">release record</span></td>
           <td data-label="Current">{{ if .Current }}<span class="pill {{ statusClass "live" }}">live</span>{{ end }}</td>
           <td data-label="Created" class="time-stamp">{{ since .CreatedAt }}</td>
-          <td data-label="Build">{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</td>
+          <td data-label="Build">{{ if .BuildID }}<a class="record-link" href="/builds/{{ .BuildID }}">View build record →</a>{{ end }}</td>
           <td data-label="Status">{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
           <td data-label="Action">{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
+        <tr class="detail-row"><td colspan="6"><div class="row-detail"><div class="row-detail-meta"><span>Created {{ .CreatedAt.UTC.Format "02 Jan 2006 15:04:05 UTC" }}</span><code>{{ .ID }}</code>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</div>{{ if .BuildID }}<a class="record-link" href="/builds/{{ .BuildID }}">Open full build details →</a>{{ end }}</div></td></tr>
         {{ else }}
         <tr><td colspan="6">No releases found.</td></tr>
         {{ end }}
@@ -2099,10 +2127,11 @@ const indexHTML = `<!doctype html>
 
   function statusClass(value) {
     switch (value) {
+      case 'idle':
+		return 'status-neutral';
       case 'success':
       case 'live':
       case 'ready':
-      case 'idle':
         return 'status-success';
       case 'running':
       case 'build':
@@ -2127,6 +2156,69 @@ const indexHTML = `<!doctype html>
   function statusPill(value) {
     return '<span class="pill ' + statusClass(value) + '">' + escapeHtml(value) + '</span>';
   }
+
+  function median(values) {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  function buildTimeBaseline(builds) {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const values = (builds || []).filter((build) => build.status === 'success' && Number(build.build_ms) > 0 && new Date(build.finished_at).getTime() >= cutoff).slice(0, 60).map((build) => Number(build.build_ms));
+    if (values.length < 8) return null;
+    const center = median(values);
+    const mad = median(values.map((value) => Math.abs(value - center)));
+    const spread = Math.max(mad * 1.4826, center * 0.03);
+    return { mean: values.reduce((sum, value) => sum + value, 0) / values.length, max: Math.max(...values), low: Math.max(0, center - 3 * spread), high: center + 3 * spread };
+  }
+
+  function buildTimeCell(value, baseline) {
+    const duration = Number(value) || 0;
+    if (!baseline) return '<span>' + escapeHtml(fmtSeconds(duration)) + '</span>';
+    const scale = Math.max(baseline.max, baseline.high, duration, 1);
+    const ratio = Math.min(100, duration / scale * 100);
+    const mean = Math.min(100, baseline.mean / scale * 100);
+    const max = Math.min(100, baseline.max / scale * 100);
+    const state = duration > baseline.high * 1.5 ? ' is-extreme' : duration > baseline.high ? ' is-slow' : duration < baseline.low ? ' is-fast' : '';
+    const classification = state === ' is-extreme' ? 'extreme slow outlier' : state === ' is-slow' ? 'slow outlier' : state === ' is-fast' ? 'faster than the normal range' : 'within the normal range';
+    return '<div class="build-time" title="Mean ' + escapeHtml(fmtSeconds(baseline.mean)) + ' · recorded max ' + escapeHtml(fmtSeconds(baseline.max)) + '"><div class="build-time-label"><strong>' + escapeHtml(fmtSeconds(duration)) + '</strong><span>mean ' + escapeHtml(fmtSeconds(baseline.mean)) + '</span></div><div class="build-time-bar"><i class="build-time-fill' + state + '" style="width:' + ratio.toFixed(2) + '%"></i><i class="build-time-marker" style="left:' + mean.toFixed(2) + '%"></i><i class="build-time-marker max" style="left:' + max.toFixed(2) + '%"></i></div><span class="sr-only">Mean ' + escapeHtml(fmtSeconds(baseline.mean)) + ', recorded maximum ' + escapeHtml(fmtSeconds(baseline.max)) + ', ' + classification + '.</span></div>';
+  }
+
+  function makeExpandableRows(scope) {
+    scope.querySelectorAll('details.build-details').forEach((details) => {
+      const row = details.closest('tr');
+      if (!row) return;
+      row.classList.add('work-row');
+      row.dataset.expandable = '';
+      row.tabIndex = 0;
+      row.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    const row = event.target.closest('tr[data-expandable]');
+    if (!row || event.target.closest('a, button, input, form, summary')) return;
+    const details = row.querySelector('details');
+    if (details) {
+      details.open = !details.open;
+    } else {
+      row.classList.toggle('is-expanded');
+    }
+    row.setAttribute('aria-expanded', row.classList.contains('is-expanded') || details?.open ? 'true' : 'false');
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('tr[data-expandable]');
+    if (!row || event.target.closest('a, button, input, form, summary')) return;
+    event.preventDefault();
+    row.click();
+  });
+  document.addEventListener('toggle', (event) => {
+    if (event.target.matches('details.build-details')) {
+      event.target.closest('tr')?.setAttribute('aria-expanded', event.target.open ? 'true' : 'false');
+    }
+  }, true);
 
   function faviconDataURL(svg) {
     return 'data:image/svg+xml,' + encodeURIComponent(svg);
@@ -2240,29 +2332,31 @@ const indexHTML = `<!doctype html>
     }
     const runningRow = state.running ? '<tr><td data-label="Status">' + statusPill('running') + '</td><td data-label="Job">' + escapeHtml(state.running.label) + '</td><td data-label="Source">' + escapeHtml(state.running.trigger_type) + '</td><td data-label="When">Started ' + escapeHtml(fmtTime(state.running.started_at)) + '</td><td data-label="Wait">—</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Phase:</strong> ' + escapeHtml(state.running.phase) + '</div><div><strong>Job ID:</strong> <code>' + escapeHtml(state.running.id) + '</code></div></div></details></td></tr>' : '';
     const queuedRows = queued.map((item) => '<tr><td data-label="Status">' + statusPill('queued') + '</td><td data-label="Job">' + escapeHtml(item.label) + '</td><td data-label="Source">' + escapeHtml(item.trigger_type) + '</td><td data-label="When">Waiting</td><td data-label="Wait">' + escapeHtml(timeAgo(new Date(item.enqueued_at))) + '</td><td data-label="Run">—</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Reason:</strong> ' + escapeHtml(item.detail) + '</div><div><strong>Job ID:</strong> <code>' + escapeHtml(item.id) + '</code></div></div></details></td></tr>').join('');
+    const baseline = buildTimeBaseline(builds);
     const buildRows = builds.map((item) => {
       const timings = '<div><strong>Total:</strong> ' + escapeHtml(fmtSeconds(item.total_ms)) + '</div>' +
         '<div><strong>Prepare:</strong> ' + escapeHtml(fmtSeconds(item.prepare_ms)) + ' · <strong>Promote:</strong> ' + escapeHtml(fmtSeconds(item.promote_ms)) + ' · <strong>Prune:</strong> ' + escapeHtml(fmtSeconds(item.prune_ms)) + '</div>';
       const changed = (item.changed_paths || []).map((path) => '<code>' + escapeHtml(path) + '</code>').join(' ');
       const summary = summaryPreview(item.perf_summary || []).map(escapeHtml).join('\n');
-      const details = '<details class="build-details"><summary>View</summary><div class="detail-list">' + timings +
+      const details = '<details class="build-details"><summary>More</summary><div class="detail-list"><div><strong>Build ID:</strong> <code>' + escapeHtml(item.id) + '</code></div>' + timings +
         (item.trigger_detail ? '<div><strong>Reason:</strong> ' + escapeHtml(item.trigger_detail) + '</div>' : '') +
         (changed ? '<div><strong>Changed:</strong> ' + changed + '</div>' : '') +
         (item.log_path ? '<div><a href="/logs/' + encodeURIComponent(item.log_path) + '">Open raw log</a></div>' : '') +
         (summary ? '<pre>' + summary + '</pre>' : '') + '</div></details>';
-      return '<tr data-finished="' + escapeHtml(item.finished_at) + '">' +
+      return '<tr class="work-row" data-expandable tabindex="0" aria-expanded="false" data-finished="' + escapeHtml(item.finished_at) + '">' +
         '<td data-label="Status">' + statusPill(item.status) + '</td>' +
-        '<td data-label="Job"><a href="/builds/' + encodeURIComponent(item.id) + '">' + (item.rollback_release ? 'Promote release' : 'Build') + '</a></td>' +
+        '<td data-label="Job"><a class="record-link" href="/builds/' + encodeURIComponent(item.id) + '">' + (item.rollback_release ? 'View promotion record →' : 'View build record →') + '</a></td>' +
         '<td data-label="Source">' + escapeHtml(item.trigger_type) + '</td>' +
         '<td data-label="When" class="time-stamp">' + escapeHtml(fmtTime(item.finished_at)) + '</td>' +
         '<td data-label="Wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td>' +
-        '<td data-label="Run">' + escapeHtml(fmtSeconds(item.build_ms)) + '</td>' +
+        '<td data-label="Run">' + (item.status === 'success' ? buildTimeCell(item.build_ms, baseline) : escapeHtml(fmtSeconds(item.build_ms))) + '</td>' +
         '<td data-label="Release">' + (item.became_live ? 'Live' : '') + '</td>' +
         '<td data-label="Details">' + details + '</td>' +
       '</tr>';
     }).join('');
     const refreshRows = refreshes.map((item) => '<tr data-finished="' + escapeHtml(item.finished_at) + '"><td data-label="Status">' + statusPill(item.status) + '</td><td data-label="Job">Refresh: ' + escapeHtml(item.task_name) + '</td><td data-label="Source">' + escapeHtml(item.trigger_type) + '</td><td data-label="When">' + escapeHtml(fmtTime(item.finished_at)) + '</td><td data-label="Wait">' + escapeHtml(fmtSeconds(item.queue_wait_ms)) + '</td><td data-label="Run">' + escapeHtml(fmtSeconds(item.run_ms)) + '</td><td data-label="Release"></td><td data-label="Details"><details class="build-details"><summary>View</summary><div class="detail-list"><div><strong>Job ID:</strong> <code>' + escapeHtml(item.id) + '</code></div>' + (item.log_path ? '<div><a href="/logs/' + encodeURIComponent(item.log_path) + '">Open raw log</a></div>' : '') + '</div></details></td></tr>').join('');
     buildsBody.innerHTML = runningRow + queuedRows + buildRows + refreshRows;
+    makeExpandableRows(buildsBody);
     Array.from(buildsBody.querySelectorAll('tr[data-finished]')).sort((a, b) => new Date(b.dataset.finished) - new Date(a.dataset.finished)).forEach((row) => buildsBody.append(row));
     buildsFingerprint = fingerprint;
     openBuilds.forEach((buildID) => {
@@ -2324,14 +2418,17 @@ const indexHTML = `<!doctype html>
     }
     releasesBody.innerHTML = items.map((item) => {
       const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><input type="hidden" name="csrf_token" value="' + csrfToken + '"><button class="secondary" type="submit">Promote</button></form>';
-      return '<tr>' +
-        '<td data-label="Release"><code>' + escapeHtml(item.id) + '</code></td>' +
+      const created = new Date(item.created_at);
+      const label = Number.isNaN(created.getTime()) ? 'Release' : created.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const detail = '<tr class="detail-row"><td colspan="6"><div class="row-detail"><div class="row-detail-meta"><span>Created ' + escapeHtml(fmtTime(item.created_at)) + '</span><code>' + escapeHtml(item.id) + '</code>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</div>' + (item.build_id ? '<a class="record-link" href="/builds/' + encodeURIComponent(item.build_id) + '">Open full build details →</a>' : '') + '</div></td></tr>';
+      return '<tr class="work-row" data-expandable tabindex="0" aria-expanded="false">' +
+        '<td data-label="Release"><span class="release-name">' + escapeHtml(label) + '</span><span class="release-ref">release record</span></td>' +
         '<td data-label="Current">' + (item.current ? statusPill('live') : '') + '</td>' +
         '<td data-label="Created" class="time-stamp">' + escapeHtml(fmtTime(item.created_at)) + '</td>' +
-        '<td data-label="Build">' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</td>' +
+        '<td data-label="Build">' + (item.build_id ? '<a class="record-link" href="/builds/' + encodeURIComponent(item.build_id) + '">View build record →</a>' : '') + '</td>' +
         '<td data-label="Status">' + (item.build_status ? statusPill(item.build_status) : '') + '</td>' +
         '<td data-label="Action">' + action + '</td>' +
-      '</tr>';
+      '</tr>' + detail;
     }).join('');
     releasesFingerprint = fingerprint;
     if (focusedReleaseID && focusedTag) {
@@ -2374,6 +2471,7 @@ const indexHTML = `<!doctype html>
   }
 
   window.addEventListener('hashchange', activateTabs);
+  makeExpandableRows(document);
   activateTabs();
   updateFavicon('idle');
   pollState();
