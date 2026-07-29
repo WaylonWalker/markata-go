@@ -164,7 +164,7 @@ func lspDoctorLine(theme logging.Theme, status, message string) {
 }
 
 func lspDoctorVerificationHint(theme logging.Theme) {
-	errln(colorize(text, theme.Warning, colorEnabledFor(errorOutputIsTerminal())))
+	errln(colorize("Editor verification was skipped. Run the default doctor command to verify detected editors:", theme.Warning, colorEnabledFor(errorOutputIsTerminal())))
 	errln("  markata-go lsp doctor")
 	errln("  This may load editor startup and plugin code.")
 }
