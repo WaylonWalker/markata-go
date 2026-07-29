@@ -131,3 +131,12 @@ Good preview strategy:
 - output path settings in config
 - asset or CDN self-hosting settings when debugging missing static files
 - any `static/CNAME`, `static/_headers`, or `static/_redirects` files
+# Git Push Rebuilds
+
+For deployments using builder-admin, GitHub and Forgejo push webhooks can pull and rebuild a
+single configured branch. Read the site's `[markata-go.builder_admin.webhook]` configuration before
+changing deployment behavior. Each production, development, QA, or preview environment should use
+an independent builder-admin deployment, source checkout, release root, ingress host, and webhook
+secret. The webhook endpoint is `/webhook`; configure its secret through
+`MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET` or a Kubernetes Secret, never commit it to the site
+repository. See the Builder Admin deployment guide for Git-provider and Helm setup.

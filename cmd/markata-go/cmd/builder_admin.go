@@ -44,6 +44,9 @@ var (
 	builderAdminPublicAuthOrigin      string
 	builderAdminPublicOrigin          string
 	builderAdminPreviewOrigin         string
+	builderAdminWebhookEnabled        bool
+	builderAdminWebhookBranch         string
+	builderAdminWebhookSecret         string
 )
 
 var builderAdminCmd = &cobra.Command{
@@ -85,6 +88,9 @@ func init() {
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicAuthOrigin, "public-auth-origin", "", "optional HTTPS hlab-auth origin used for the signed-in operator profile picture")
 	builderAdminCmd.Flags().StringVar(&builderAdminPublicOrigin, "public-origin", "", "exact HTTPS public origin used to validate browser mutations")
 	builderAdminCmd.Flags().StringVar(&builderAdminPreviewOrigin, "preview-origin", "", "HTTPS site origin used for retained release previews")
+	builderAdminCmd.Flags().BoolVar(&builderAdminWebhookEnabled, "webhook-enabled", false, "enable signed GitHub and Forgejo push webhooks")
+	builderAdminCmd.Flags().StringVar(&builderAdminWebhookBranch, "webhook-branch", "main", "Git branch accepted by the webhook")
+	builderAdminCmd.Flags().StringVar(&builderAdminWebhookSecret, "webhook-secret", "", "HMAC-SHA256 secret for GitHub and Forgejo webhooks")
 }
 
 func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
@@ -94,6 +100,10 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	}
 	configPath := resolveBuilderAdminConfigPath(cfgFile, builderAdminSourceDir)
 	authHeaders, err := resolveBuilderAdminAuthHeaders(cmd, configPath)
+	if err != nil {
+		return err
+	}
+	webhook, err := resolveBuilderAdminWebhook(cmd, configPath)
 	if err != nil {
 		return err
 	}
@@ -120,6 +130,7 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 		PublicAuthOrigin:     builderAdminPublicAuthOrigin,
 		PublicOrigin:         builderAdminPublicOrigin,
 		PreviewOrigin:        builderAdminPreviewOrigin,
+		Webhook:              webhook,
 	})
 	if err != nil {
 		return err
@@ -127,6 +138,65 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	return svc.Start(ctx)
+}
+
+// resolveBuilderAdminWebhook applies site configuration and MARKATA_GO_ overrides,
+// then applies explicitly supplied CLI flags as the highest-precedence source.
+func resolveBuilderAdminWebhook(cmd *cobra.Command, configPath string) (builderadmin.WebhookConfig, error) {
+	siteConfig, err := config.Load(configPath)
+	if err != nil {
+		return builderadmin.WebhookConfig{}, fmt.Errorf("load builder-admin configuration: %w", err)
+	}
+	configured := siteConfig.BuilderAdmin.Webhook
+	webhook := builderadmin.WebhookConfig{
+		Branch: "main",
+	}
+	applyBuilderAdminExtraWebhook(&webhook, siteConfig.Extra)
+	if configured.Enabled != nil {
+		webhook.Enabled = *configured.Enabled
+	}
+	if configured.Branch != nil {
+		webhook.Branch = *configured.Branch
+	}
+	if configured.Secret != nil {
+		webhook.Secret = *configured.Secret
+	}
+	if webhook.Branch == "" {
+		webhook.Branch = "main"
+	}
+	for _, flag := range []struct {
+		name string
+		set  func()
+	}{
+		{"webhook-enabled", func() { webhook.Enabled = builderAdminWebhookEnabled }},
+		{"webhook-branch", func() { webhook.Branch = builderAdminWebhookBranch }},
+		{"webhook-secret", func() { webhook.Secret = builderAdminWebhookSecret }},
+	} {
+		if cmd.Flags().Changed(flag.name) {
+			flag.set()
+		}
+	}
+	return webhook, nil
+}
+
+func applyBuilderAdminExtraWebhook(webhook *builderadmin.WebhookConfig, extra map[string]any) {
+	builderAdmin, ok := stringMap(extra["builder_admin"])
+	if !ok {
+		return
+	}
+	configured, ok := stringMap(builderAdmin["webhook"])
+	if !ok {
+		return
+	}
+	if enabled, ok := configured["enabled"].(bool); ok {
+		webhook.Enabled = enabled
+	}
+	if branch, ok := configured["branch"].(string); ok {
+		webhook.Branch = branch
+	}
+	if secret, ok := configured["secret"].(string); ok {
+		webhook.Secret = secret
+	}
 }
 
 func resolveBuilderAdminConfigPath(configPath, sourceDir string) string {

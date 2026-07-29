@@ -654,7 +654,15 @@ type Config struct {
 
 // BuilderAdminConfig configures builder-admin settings shared by CLI, environment, and site config.
 type BuilderAdminConfig struct {
-	Auth BuilderAdminAuthConfig `json:"auth" yaml:"auth" toml:"auth"`
+	Auth    BuilderAdminAuthConfig    `json:"auth" yaml:"auth" toml:"auth"`
+	Webhook BuilderAdminWebhookConfig `json:"webhook" yaml:"webhook" toml:"webhook"`
+}
+
+// BuilderAdminWebhookConfig configures signed GitHub and Forgejo push webhooks.
+type BuilderAdminWebhookConfig struct {
+	Enabled *bool   `json:"enabled" yaml:"enabled" toml:"enabled"`
+	Branch  *string `json:"branch" yaml:"branch" toml:"branch"`
+	Secret  *string `json:"-" yaml:"secret" toml:"secret"`
 }
 
 // BuilderAdminAuthConfig configures identity assertions from a trusted ForwardAuth proxy.

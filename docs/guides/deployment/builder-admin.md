@@ -22,6 +22,7 @@ Instead of starting a new Kubernetes Job for every authoring build, it keeps one
 - release history and current live release
 - rollback by promoting an older rendered release
 - scheduled refresh tasks for reader, blogroll, or other remote-content commands
+- signed GitHub and Forgejo push webhooks that pull and build matching branches
 
 ## What It Is Good For
 
@@ -270,6 +271,61 @@ Builder admin can enqueue builds from:
 - HTTP API calls
 - debounced file-watch events
 - successful refresh task runs when configured to enqueue a build
+- GitHub or Forgejo push webhooks
+
+## Build on Git Push
+
+Enable one builder-admin service for each environment. Each service owns one checked-out branch,
+source directory, site directory, and webhook secret. The branch defaults to `main`.
+
+```toml
+# markata-go.toml
+[markata-go.builder_admin.webhook]
+enabled = true
+branch = "main"
+```
+
+Set the HMAC secret outside version control. Environment variables override the config file, and
+explicit flags override both:
+
+```bash
+export MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET='replace-with-a-random-secret'
+markata-go builder-admin --webhook-enabled --webhook-branch main
+```
+
+The endpoint is `https://<builder-admin-host>/webhook`. In GitHub, create a repository webhook
+with that payload URL, set the same secret, select JSON payloads, and subscribe to **Push** events.
+Forgejo uses the same URL and secret; select its push event. Builder admin accepts GitHub's
+`X-Hub-Signature-256` and Forgejo's `X-Gitea-Signature` headers. Invalid signatures, events other
+than push, and pushes to another branch are ignored or rejected without running a build.
+
+For an accepted matching push, builder admin runs `git -C <source-dir> pull --ff-only`. It queues
+a build only when that changes the checkout. Ensure the deployed source directory is a clean clone
+with an authenticated `origin` remote and that its checked-out branch tracks the configured branch.
+
+### Helm setup
+
+The chart exposes `/webhook` without the operator ForwardAuth middleware; HMAC validation protects
+that endpoint. Create a Kubernetes Secret, then reference it in the environment's Helm values:
+
+```yaml
+builderAdmin:
+  webhook:
+    enabled: true
+    branch: main
+    existingSecretName: builder-webhook
+    existingSecretKey: webhook-secret
+```
+
+Create separate releases for `main`, `dev`, and `qa` when they publish different domains. Give each
+release a distinct source checkout, site storage, builder-admin ingress host, and webhook secret.
+Point each repository webhook at its matching builder-admin host. Do not share a production webhook
+secret with preview environments.
+
+If GitHub or Forgejo reports a successful delivery but no build appears, verify the delivery branch,
+the service's configured branch, the HMAC secret, and that `git -C <source-dir> pull --ff-only`
+succeeds in the builder container. A delivery for an unchanged commit intentionally does not queue
+a build.
 
 ## Rollback
 

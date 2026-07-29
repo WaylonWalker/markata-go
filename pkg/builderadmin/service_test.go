@@ -1,15 +1,135 @@
 package builderadmin
 
 import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestBuilderAdminWebhook_RejectsInvalidSignatureAndIgnoresOtherBranches(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{
+		SiteDir: t.TempDir(),
+		Webhook: WebhookConfig{Enabled: true, Branch: "main", Secret: "test-secret"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.leader = true
+	mux := http.NewServeMux()
+	svc.registerRoutes(mux)
+	body := []byte(`{"ref":"refs/heads/dev","after":"abcdef"}`)
+
+	invalid := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(string(body)))
+	invalid.Header.Set("X-GitHub-Event", "push")
+	invalid.Header.Set("X-Hub-Signature-256", "sha256=invalid")
+	invalidRecorder := httptest.NewRecorder()
+	mux.ServeHTTP(invalidRecorder, invalid)
+	if invalidRecorder.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid signature status=%d, want %d", invalidRecorder.Code, http.StatusUnauthorized)
+	}
+
+	branchMismatch := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(string(body)))
+	branchMismatch.Header.Set("X-GitHub-Event", "push")
+	branchMismatch.Header.Set("X-Hub-Signature-256", webhookSignature(body, "test-secret"))
+	branchMismatchRecorder := httptest.NewRecorder()
+	mux.ServeHTTP(branchMismatchRecorder, branchMismatch)
+	if branchMismatchRecorder.Code != http.StatusNoContent {
+		t.Fatalf("branch mismatch status=%d, want %d", branchMismatchRecorder.Code, http.StatusNoContent)
+	}
+	if len(svc.snapshotState().Queue) != 0 {
+		t.Fatal("branch mismatch queued a build")
+	}
+}
+
+func TestNew_RejectsEnabledWebhookWithoutSecret(t *testing.T) {
+	t.Parallel()
+	_, err := New(Config{SiteDir: t.TempDir(), Webhook: WebhookConfig{Enabled: true}})
+	if err == nil {
+		t.Fatal("New() accepted an enabled webhook without a secret")
+	}
+}
+
+func TestBuilderAdminPullSource_ReportsChangedCommit(t *testing.T) {
+	t.Parallel()
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	runGit(t, "init", "--bare", remote)
+	source := filepath.Join(t.TempDir(), "source")
+	runGit(t, "clone", remote, source)
+	runGitAt(t, source, "config", "user.email", "builder@example.com")
+	runGitAt(t, source, "config", "user.name", "Builder")
+	runGitAt(t, source, "checkout", "-b", "main")
+	if err := os.WriteFile(filepath.Join(source, "post.md"), []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGitAt(t, source, "add", "post.md")
+	runGitAt(t, source, "commit", "-m", "initial")
+	runGitAt(t, source, "push", "-u", "origin", "main")
+
+	updater := filepath.Join(t.TempDir(), "updater")
+	runGit(t, "clone", "--branch", "main", remote, updater)
+	runGitAt(t, updater, "config", "user.email", "updater@example.com")
+	runGitAt(t, updater, "config", "user.name", "Updater")
+	if err := os.WriteFile(filepath.Join(updater, "post.md"), []byte("second"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGitAt(t, updater, "add", "post.md")
+	runGitAt(t, updater, "commit", "-m", "update")
+	runGitAt(t, updater, "push")
+
+	svc, err := New(Config{SourceDir: source, SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	changed, err := svc.pullSource(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("pullSource() = unchanged, want changed")
+	}
+	changed, err = svc.pullSource(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Fatal("pullSource() = changed after synchronization")
+	}
+}
+
+func runGit(t *testing.T, args ...string) {
+	t.Helper()
+	if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	}
+}
+
+func runGitAt(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git -C %s %s: %v\n%s", dir, strings.Join(args, " "), err, output)
+	}
+}
+
+func webhookSignature(body []byte, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(body)
+	return fmt.Sprintf("sha256=%x", mac.Sum(nil))
+}
 
 func TestBuilderAdminAuthentication_RejectsUntrustedOrMissingIdentity(t *testing.T) {
 	t.Parallel()

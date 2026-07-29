@@ -2,7 +2,10 @@ package builderadmin
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +36,7 @@ const (
 	defaultListenHost   = "127.0.0.1"
 	defaultListenPort   = 8080
 	defaultReleaseKeep  = 25
+	maxWebhookBodyBytes = 1 << 20
 )
 
 type Config struct {
@@ -58,6 +62,15 @@ type Config struct {
 	PublicAuthOrigin     string
 	PublicOrigin         string
 	PreviewOrigin        string
+	Webhook              WebhookConfig
+}
+
+// WebhookConfig configures a signed GitHub or Forgejo push webhook.
+// Secret is deliberately excluded from JSON responses served by the admin API.
+type WebhookConfig struct {
+	Enabled bool   `json:"enabled"`
+	Branch  string `json:"branch"`
+	Secret  string `json:"-"`
 }
 
 type RefreshTaskConfig struct {
@@ -86,6 +99,7 @@ type QueuedOperation struct {
 	EnqueuedAt  time.Time `json:"enqueued_at"`
 	ReleaseID   string    `json:"release_id,omitempty"`
 	TaskName    string    `json:"task_name,omitempty"`
+	SyncSource  bool      `json:"sync_source,omitempty"`
 }
 
 type RunningOperation struct {
@@ -178,6 +192,7 @@ type Service struct {
 	watchMu              sync.Mutex
 	watchChanged         map[string]struct{}
 	watchTimer           *time.Timer
+	watchSuppressUntil   time.Time
 	stateMu              sync.Mutex
 	state                State
 	leaderMu             sync.RWMutex
@@ -255,6 +270,12 @@ func New(cfg Config) (*Service, error) {
 	}
 	if cfg.BuildTimeout <= 0 {
 		cfg.BuildTimeout = 2 * time.Hour
+	}
+	if cfg.Webhook.Enabled && strings.TrimSpace(cfg.Webhook.Secret) == "" {
+		return nil, fmt.Errorf("webhook secret is required when webhooks are enabled")
+	}
+	if cfg.Webhook.Branch == "" {
+		cfg.Webhook.Branch = "main"
 	}
 	for i := range cfg.RefreshTasks {
 		if cfg.RefreshTasks[i].Name == "" {
@@ -368,8 +389,8 @@ func (s *Service) tryBecomeLeader(ctx context.Context) {
 	s.leader = true
 	s.leaderCancel = cancel
 	s.leaderMu.Unlock()
-	s.resumeLeaderSession()
 	go s.worker(leaderCtx)
+	s.resumeLeaderSession()
 	for i := range s.cfg.RefreshTasks {
 		go s.runRefreshScheduler(leaderCtx, s.cfg.RefreshTasks[i])
 	}
@@ -470,6 +491,7 @@ func (s *Service) queueRequestFromQueued(queued QueuedOperation) (queueRequest, 
 
 func (s *Service) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/webhook", s.handleWebhook)
 	protected := http.NewServeMux()
 	protected.HandleFunc("/builds/", s.handleBuildDetail)
 	protected.HandleFunc("/", s.handleIndex)
@@ -479,6 +501,160 @@ func (s *Service) registerRoutes(mux *http.ServeMux) {
 	protected.HandleFunc("/api/releases/", s.handleReleaseAction)
 	protected.HandleFunc("/logs/", s.handleLogs)
 	mux.Handle("/", s.requireTrustedOperator(protected))
+}
+
+type pushWebhookPayload struct {
+	Ref        string `json:"ref"`
+	After      string `json:"after"`
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+}
+
+func (s *Service) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	if !s.cfg.Webhook.Enabled {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes))
+	if err != nil {
+		http.Error(w, "invalid webhook body", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if !validWebhookSignature(r, body, s.cfg.Webhook.Secret) {
+		http.Error(w, "invalid webhook signature", http.StatusUnauthorized)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if s.handleStandbyMutation(w, r) {
+		return
+	}
+	if webhookEvent(r) != "push" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	var payload pushWebhookPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		http.Error(w, "invalid push webhook payload", http.StatusBadRequest)
+		return
+	}
+	branch := strings.TrimPrefix(payload.Ref, "refs/heads/")
+	if branch != s.cfg.Webhook.Branch {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	deliveryID := r.Header.Get("X-GitHub-Delivery")
+	if deliveryID == "" {
+		deliveryID = r.Header.Get("X-Gitea-Delivery")
+	}
+	detail := fmt.Sprintf("%s push %s on %s", webhookProvider(r), payload.After, branch)
+	if payload.Repository.FullName != "" {
+		detail += " from " + payload.Repository.FullName
+	}
+	if deliveryID != "" {
+		detail += " (delivery " + deliveryID + ")"
+	}
+	if err := s.enqueueWebhookBuild(detail); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func validWebhookSignature(r *http.Request, body []byte, secret string) bool {
+	signature := r.Header.Get("X-Hub-Signature-256")
+	if signature == "" {
+		signature = r.Header.Get("X-Gitea-Signature")
+	}
+	signature = strings.TrimPrefix(signature, "sha256=")
+	if signature == "" {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(body)
+	expected := fmt.Sprintf("%x", mac.Sum(nil))
+	return hmac.Equal([]byte(signature), []byte(expected))
+}
+
+func webhookEvent(r *http.Request) string {
+	event := r.Header.Get("X-GitHub-Event")
+	if event == "" {
+		event = r.Header.Get("X-Gitea-Event")
+	}
+	return strings.ToLower(event)
+}
+
+func webhookProvider(r *http.Request) string {
+	if r.Header.Get("X-GitHub-Event") != "" {
+		return "GitHub"
+	}
+	return "Forgejo"
+}
+
+func (s *Service) pullSource(ctx context.Context) (bool, error) {
+	branch, err := gitBranch(s.cfg.SourceDir)
+	if err != nil {
+		return false, err
+	}
+	if branch != s.cfg.Webhook.Branch {
+		return false, fmt.Errorf("checked-out branch %q does not match webhook branch %q", branch, s.cfg.Webhook.Branch)
+	}
+	before, err := gitHead(s.cfg.SourceDir)
+	if err != nil {
+		return false, err
+	}
+	cmd := exec.CommandContext(ctx, "git", "-C", s.cfg.SourceDir, "pull", "--ff-only")
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return false, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
+	}
+	after, err := gitHead(s.cfg.SourceDir)
+	if err != nil {
+		return false, err
+	}
+	return before != after, nil
+}
+
+func gitBranch(sourceDir string) (string, error) {
+	output, err := exec.Command("git", "-C", sourceDir, "branch", "--show-current").Output()
+	if err != nil {
+		return "", fmt.Errorf("read checked-out git branch: %w", err)
+	}
+	branch := strings.TrimSpace(string(output))
+	if branch == "" {
+		return "", fmt.Errorf("source directory has a detached HEAD")
+	}
+	return branch, nil
+}
+
+func gitHead(sourceDir string) (string, error) {
+	output, err := exec.Command("git", "-C", sourceDir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return "", fmt.Errorf("read git HEAD: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func (s *Service) beginSourceSync() {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	s.watchSuppressUntil = time.Now().Add(s.cfg.BuildTimeout)
+	clear(s.watchChanged)
+	if s.watchTimer != nil {
+		s.watchTimer.Stop()
+		s.watchTimer = nil
+	}
+}
+
+func (s *Service) endSourceSync() {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	s.watchSuppressUntil = time.Now().Add(2 * s.cfg.WatchDebounce)
 }
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -738,6 +914,21 @@ func (s *Service) process(ctx context.Context, req queueRequest) {
 	s.removeQueued(req.ID)
 	switch req.Kind {
 	case "build":
+		if req.SyncSource {
+			s.updateRunningPhase("sync source")
+			s.beginSourceSync()
+			syncCtx, cancel := context.WithTimeout(ctx, s.cfg.BuildTimeout)
+			changed, err := s.pullSource(syncCtx)
+			cancel()
+			s.endSourceSync()
+			if err != nil {
+				s.finishWebhookSyncFailure(req, err)
+				return
+			}
+			if !changed {
+				return
+			}
+		}
 		s.runBuild(ctx, req)
 	case "refresh":
 		s.runRefresh(ctx, req)
@@ -759,6 +950,37 @@ func (s *Service) enqueueBuild(triggerType, detail string, changed []string) err
 	s.pushQueued(queued)
 	s.queueCh <- queueRequest{QueuedOperation: queued}
 	return nil
+}
+
+func (s *Service) enqueueWebhookBuild(detail string) error {
+	queued := QueuedOperation{
+		ID:          nextID("build"),
+		Kind:        "build",
+		Label:       "Build",
+		TriggerType: "webhook",
+		Detail:      detail,
+		EnqueuedAt:  time.Now().UTC(),
+		SyncSource:  true,
+	}
+	s.pushQueued(queued)
+	s.queueCh <- queueRequest{QueuedOperation: queued}
+	return nil
+}
+
+func (s *Service) finishWebhookSyncFailure(req queueRequest, err error) {
+	finished := time.Now().UTC()
+	s.finishBuild(BuildRecord{
+		ID:            req.ID,
+		Kind:          req.Kind,
+		Status:        "failed",
+		TriggerType:   req.TriggerType,
+		TriggerDetail: req.Detail,
+		EnqueuedAt:    req.EnqueuedAt,
+		StartedAt:     req.EnqueuedAt,
+		FinishedAt:    finished,
+		TotalMS:       finished.Sub(req.EnqueuedAt).Milliseconds(),
+		Error:         fmt.Sprintf("git pull failed: %v", err),
+	})
 }
 
 func (s *Service) enqueueRefresh(name, triggerType, detail string) error {
@@ -1200,6 +1422,9 @@ func (s *Service) watchSource(ctx context.Context) {
 			if event.Op&fsnotify.Create != 0 {
 				_ = addDirRecursiveIfDir(watcher, event.Name)
 			}
+			if s.watchEventsSuppressed() {
+				continue
+			}
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
 				continue
 			}
@@ -1231,6 +1456,12 @@ func (s *Service) recordWatchPath(path string) {
 	s.watchTimer = time.AfterFunc(s.cfg.WatchDebounce, func() {
 		s.flushWatchBuild()
 	})
+}
+
+func (s *Service) watchEventsSuppressed() bool {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	return time.Now().Before(s.watchSuppressUntil)
 }
 
 func (s *Service) flushWatchBuild() {

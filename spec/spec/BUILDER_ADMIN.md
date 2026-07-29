@@ -49,6 +49,7 @@ Required trigger sources:
 - file watch
 - scheduled refresh completion when configured to enqueue a build
 - rollback action
+- signed GitHub or Forgejo push webhook after a successful source update
 
 ## Leadership And Handoff
 
@@ -111,6 +112,28 @@ The recorded build trigger MUST include:
 - the set of changed paths captured during the debounce window
 
 The watcher SHOULD ignore internal cache and admin-state paths.
+
+## Git Push Webhooks
+
+Builder-admin MAY expose `POST /webhook` when webhook support is enabled. The endpoint MUST
+accept GitHub and Forgejo push deliveries, validate their HMAC-SHA256 signature in constant time,
+and reject deliveries with missing or invalid signatures. It MUST not require the operator
+ForwardAuth identity because Git providers cannot supply it.
+
+Each builder-admin instance MUST have one configured branch, defaulting to `main`. It MUST ignore
+push deliveries for every other branch. Deployments for production, development, QA, or previews
+MUST use separate builder-admin instances with independent source checkouts, site roots, webhook
+secrets, and branch configuration.
+
+For an accepted matching push, the active leader MUST run `git -C <source-dir> pull --ff-only`.
+It MUST enqueue a build only when the checked-out commit changes. Pull failures and non-fast-forward
+updates MUST not enqueue a build. The corresponding build record MUST use trigger type `webhook`
+and retain provider, repository, branch, commit, and delivery metadata when supplied.
+
+Webhook configuration MUST be available in `[markata-go.builder_admin.webhook]`, through
+`MARKATA_GO_BUILDER_ADMIN_WEBHOOK_*` environment variables, and through builder-admin flags.
+Environment values MUST override file configuration; explicitly supplied flags MUST override both.
+An enabled webhook MUST have a non-empty secret.
 
 ## Build History
 
@@ -335,5 +358,9 @@ Required chart configuration includes:
 
 The first protected deployment target MUST use the dedicated authenticated ingress; `kubectl
 port-forward` is intentionally not an operator-access path because it bypasses proxy provenance.
+
+When webhook support is enabled, the chart MUST render a separate exact `/webhook` ingress path
+without the operator ForwardAuth middleware. Its HMAC secret MUST be supplied from a Kubernetes
+Secret rather than a command-line argument.
 
 The default rendered-release retention MUST keep at least 25 releases, including the current live release, so operators have more than ten rollback targets by default.
