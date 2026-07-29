@@ -12,10 +12,6 @@ func colorizeOutput(text, color string) string {
 	return colorize(text, color, colorEnabledOnOutput())
 }
 
-func colorizeError(text, color string) string {
-	return colorize(text, color, colorEnabledFor(errorOutputIsTerminal()))
-}
-
 func colorize(text, color string, enabled bool) string {
 	if !enabled {
 		return text
