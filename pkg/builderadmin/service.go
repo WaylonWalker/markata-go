@@ -96,6 +96,7 @@ type RunningOperation struct {
 	Detail      string    `json:"detail,omitempty"`
 	StartedAt   time.Time `json:"started_at"`
 	Phase       string    `json:"phase"`
+	Impact      string    `json:"impact,omitempty"`
 }
 
 type BuildRecord struct {
@@ -105,6 +106,7 @@ type BuildRecord struct {
 	TriggerType     string    `json:"trigger_type"`
 	TriggerDetail   string    `json:"trigger_detail,omitempty"`
 	ChangedPaths    []string  `json:"changed_paths,omitempty"`
+	Impact          string    `json:"impact,omitempty"`
 	EnqueuedAt      time.Time `json:"enqueued_at"`
 	StartedAt       time.Time `json:"started_at"`
 	FinishedAt      time.Time `json:"finished_at"`
@@ -805,6 +807,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 		TriggerType:   req.TriggerType,
 		TriggerDetail: req.Detail,
 		ChangedPaths:  append([]string(nil), req.Changed...),
+		Impact:        classifyBuildImpact(req.Changed),
 		EnqueuedAt:    req.EnqueuedAt,
 		StartedAt:     started,
 		QueueWaitMS:   started.Sub(req.EnqueuedAt).Milliseconds(),
@@ -1338,9 +1341,27 @@ func (s *Service) setRunning(req queueRequest) {
 		Detail:      req.Detail,
 		StartedAt:   time.Now().UTC(),
 		Phase:       "starting",
+		Impact:      classifyBuildImpact(req.Changed),
 	}
 	s.saveStateLocked()
 	s.stateMu.Unlock()
+}
+
+func classifyBuildImpact(paths []string) string {
+	if len(paths) == 0 {
+		return "unknown"
+	}
+	impact := "content"
+	for _, path := range paths {
+		path = strings.ToLower(filepath.ToSlash(path))
+		switch {
+		case strings.Contains(path, "markata-go.") || strings.HasPrefix(path, "pkg/") || strings.HasPrefix(path, "plugins/"):
+			return "config or plugin"
+		case strings.HasPrefix(path, "templates/") || strings.HasPrefix(path, "themes/") || strings.HasPrefix(path, "palettes/") || strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js"):
+			impact = "template or asset"
+		}
+	}
+	return impact
 }
 
 func (s *Service) updateRunningPhase(phase string) {
@@ -1887,6 +1908,9 @@ const indexHTML = `<!doctype html>
     .build-time-fill.is-fast { background: var(--info); }
     .build-time-marker { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .8; }
     .build-time-marker.max { opacity: .35; }
+    .impact-label { margin-left: 8px; color: var(--muted); font-size: .78rem; }
+    .eta-bar { height: 4px; max-width: 22rem; margin: 8px 0 4px; background: var(--line-soft); }
+    .eta-bar i { display: block; height: 100%; background: var(--info); }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .build-details { min-width: 9rem; }
     .build-details summary { cursor: pointer; color: var(--text); font-weight: 600; }
@@ -2309,7 +2333,12 @@ const indexHTML = `<!doctype html>
       activeWorkDetail.textContent = 'No build or refresh is running.';
       return;
     }
-    activeWork.innerHTML = escapeHtml(running.kind) + ' ' + statusPill(running.phase);
+    const baseline = buildTimeBaseline(state.builds || []);
+    const elapsed = Math.max(0, Date.now() - new Date(running.started_at).getTime());
+    const expected = baseline ? baseline.mean : 0;
+    const progress = expected ? Math.min(100, elapsed / expected * 100) : 0;
+    const eta = expected ? Math.max(0, expected - elapsed) : 0;
+    activeWork.innerHTML = '<div class="active-build"><div>' + escapeHtml(running.kind) + ' ' + statusPill(running.phase) + '<span class="impact-label">' + escapeHtml(running.impact || 'unknown') + '</span></div>' + (expected ? '<div class="eta-bar"><i style="width:' + progress.toFixed(1) + '%"></i></div><small>Estimated ' + escapeHtml(fmtSeconds(expected)) + ' · about ' + escapeHtml(fmtSeconds(eta)) + ' remaining</small>' : '<small>Learning from recent completed builds</small>') + '</div>';
     activeWorkDetail.textContent = 'Started ' + fmtTime(running.started_at) + ' · ' + (running.detail || running.trigger_type || '');
   }
 
