@@ -70,6 +70,20 @@ markata-go searches for configuration files in the following order (first found 
 
 If no configuration file is found, markata-go uses default values with any environment variable overrides applied.
 
+## Select A Site From Another Directory
+
+Use `--site-dir` when the site is not your current directory. This is useful
+for aliases, scripts, and agents that manage more than one site.
+
+```bash
+markata-go --site-dir ~/sites/blog config show
+MARKATA_GO_SITE_DIR=~/notes/work markata-go list posts
+```
+
+`--site-dir` overrides `MARKATA_GO_SITE_DIR`; otherwise markata-go uses the
+current directory. The selected site becomes the base for configuration
+discovery, relative config flags, templates, content files, and caches.
+
 ## Supported Formats
 
 | Extension | Format | Notes |

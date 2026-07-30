@@ -64,7 +64,7 @@ func init() {
 	builderAdminCmd.Flags().StringVar(&builderAdminHost, "host", "127.0.0.1", "host to bind to")
 	builderAdminCmd.Flags().IntVar(&builderAdminPort, "port", 8080, "port to listen on")
 	builderAdminCmd.Flags().StringVar(&builderAdminSourceDir, "source-dir", ".", "source directory to watch and build from")
-	builderAdminCmd.Flags().StringVar(&builderAdminSiteDir, "site-dir", "public", "site root that contains releases/ and current")
+	builderAdminCmd.Flags().StringVar(&builderAdminSiteDir, "release-dir", "public", "release root that contains releases/ and current")
 	builderAdminCmd.Flags().StringVar(&builderAdminCacheMount, "cache-mount", "", "optional dedicated cache mount for .markata symlinks")
 	builderAdminCmd.Flags().StringVar(&builderAdminHistoryDir, "history-dir", "", "directory for persisted builder-admin state and logs")
 	builderAdminCmd.Flags().BoolVar(&builderAdminWatch, "watch", true, "enable recursive file watching")

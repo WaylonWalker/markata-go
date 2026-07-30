@@ -23,6 +23,7 @@ Topics:
   build      The build command and build process
   serve      The development server
   new        Creating new content
+  content    Finding, creating, and editing site content
   init       Initializing projects
   config     Configuration system
   agents     Agent skill installation and usage
@@ -35,7 +36,8 @@ Example:
   markata-go explain              # General overview
   markata-go explain build        # Explain build command
   markata-go explain plugins      # Explain plugin system
-  markata-go explain agents       # Explain agent integrations`,
+  markata-go explain agents       # Explain agent integrations
+  markata-go explain content      # Explain the agent content workflow`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: explainValidArgs,
 	RunE:              runExplain,
@@ -51,6 +53,7 @@ func explainValidArgs(_ *cobra.Command, _ []string, _ string) ([]string, cobra.S
 		"build\tThe build command and process",
 		"serve\tThe development server",
 		"new\tCreating new content",
+		"content\tFinding, creating, and editing site content",
 		"init\tInitializing projects",
 		"config\tConfiguration system",
 		"agents\tAgent integrations and skills",
@@ -78,6 +81,8 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		content = explainServe
 	case "new":
 		content = explainNew
+	case "content":
+		content = explainContent
 	case "init":
 		content = explainInit
 	case "config":
@@ -446,6 +451,61 @@ Examples:
 2. **Date format errors**
    - Use YYYY-MM-DD format
    - Don't include time unless needed`
+
+const explainContent = `# markata-go Content Workflow
+
+Use this workflow to inspect, find, create, and update content. It is designed
+for coding agents and works from any directory when you select a site.
+
+## Select A Site
+
+Use --site-dir for a one-off command, or set MARKATA_GO_SITE_DIR for a shell
+alias or wrapper. The flag takes precedence over the environment variable.
+
+    markata-go --site-dir ~/sites/blog list posts
+    MARKATA_GO_SITE_DIR=~/notes/work markata-go search "meeting notes"
+
+When a site directory is explicitly selected, source paths returned by list and
+search are absolute and can be edited directly.
+
+## Inspect And Find Content
+
+    # Inspect the resolved configuration and content inventory
+    markata-go --site-dir ~/sites/blog config show
+    markata-go --site-dir ~/sites/blog list posts --format json
+
+    # Find Markdown source files by content, title, description, or tag
+    markata-go --site-dir ~/sites/blog search "release process" --format path
+    markata-go --site-dir ~/sites/blog list posts --filter "'go' in tags" --format path
+
+Edit a returned Markdown path directly. Markata-go does not provide a separate
+non-interactive edit command. Human users can also run markata-go tui and press
+e to open the selected post in $EDITOR.
+
+## Create Content
+
+    # Inspect site-provided and built-in content templates
+    markata-go --site-dir ~/sites/blog new --list
+
+    # Create content without prompts, suitable for automation
+    markata-go --site-dir ~/sites/blog new "Release notes" --template post --tags "release,go" --no-input
+
+New content uses the selected site's configuration and content templates. With
+an explicit site directory, the created path is printed as an absolute path.
+
+## Validate Changes
+
+    markata-go --site-dir ~/sites/blog lint
+    markata-go --site-dir ~/sites/blog build --fast
+
+Run a full build before publishing or deployment.
+
+## Install Agent Guidance Globally
+
+If agents often begin outside a site repository, install the bundled skill in
+their global skill directory so they can discover this workflow:
+
+    markata-go agent install --agent opencode --global`
 
 const explainInit = `# markata-go init
 

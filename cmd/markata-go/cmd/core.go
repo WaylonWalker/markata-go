@@ -30,6 +30,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	if baseDir != "" {
 		contentDir = baseDir
 	}
+	setSourcePathBaseDir(contentDir)
 	cfg.OutputDir = resolveConfigRelativePath(baseDir, cfg.OutputDir)
 	cfg.AssetsDir = resolveConfigRelativePath(baseDir, cfg.AssetsDir)
 	cfg.TemplatesDir = resolveConfigRelativePath(baseDir, cfg.TemplatesDir)

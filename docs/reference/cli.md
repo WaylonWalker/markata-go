@@ -29,6 +29,7 @@ These flags are available for all commands:
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--config` | `-c` | Path to configuration file | Auto-discovered |
+| `--site-dir` | | Site directory for all site operations | `MARKATA_GO_SITE_DIR` or current directory |
 | `--merge-config` | `-m` | Additional config file(s) to merge (can be used multiple times) | None |
 | `--output` | `-o` | Output directory (overrides config) | `public` |
 | `--quiet` | `-q` | Suppress non-essential progress and status output | `false` |
@@ -50,6 +51,27 @@ When `--config` is not specified, markata-go searches for configuration files in
 6. `.markata-go.json`
 
 See [[configuration-guide|Configuration]] for details on configuration options.
+
+### Site Directory
+
+Use `--site-dir` to run a command against a site from any directory. Set
+`MARKATA_GO_SITE_DIR` to use the same site in a shell alias or wrapper. The flag
+takes precedence over the environment variable, which takes precedence over the
+current directory.
+
+```bash
+alias blog='markata-go --site-dir "$HOME/sites/blog"'
+alias work-notes='markata-go --site-dir "$HOME/notes/work"'
+
+blog search "release process" --format path
+work-notes new "Weekly review" --template note --no-input
+```
+
+The selected directory must exist. Configuration discovery, relative
+`--config` and `--merge-config` paths, content templates, linting, and caches
+all resolve from that directory. `list` and `search` print absolute Markdown
+source paths when a site directory is explicit, so their results can be edited
+directly.
 
 ### CLI UX Conventions
 
@@ -370,13 +392,13 @@ markata-go builder-admin [flags]
 | `--host` | Host to bind to | `127.0.0.1` |
 | `--port` | Port to listen on | `8080` |
 | `--source-dir` | Mounted source directory to watch and build from | `.` |
-| `--site-dir` | Mounted site root that contains `releases/` and `current` | `public` |
+| `--release-dir` | Mounted release root that contains `releases/` and `current` | `public` |
 | `--watch` | Enable recursive file watching and queued rebuilds | `true` |
 | `--watch-debounce` | Debounce window for coalescing file changes | `2s` |
 | `--fast` | Use `markata-go build --fast` for queued builds | `false` |
 | `--mermaid-mode` | Override `[markata-go.mermaid].mode` for queued builds | `""` |
 | `--cache-mount` | Optional dedicated cache mount used for `.markata` and `.markata-cache` symlinks | `""` |
-| `--history-dir` | Directory for persisted admin state and logs | `<site-dir>/.builder-admin` |
+| `--history-dir` | Directory for persisted admin state and logs | `<release-dir>/.builder-admin` |
 | `--releases-keep` | Number of rendered releases to keep on disk | `25` |
 | `--refresh-task` | Repeatable task spec in the form `name|every|enqueue|arg1|arg2...` | none |
 | `--trusted-proxy-cidr` | Repeatable CIDR allowed to supply trusted identity headers | none |
@@ -400,7 +422,7 @@ for a complete ForwardAuth and Authentik example.
 markata-go builder-admin \
   --config /data/source/markata-go.toml \
   --source-dir /data/source \
-  --site-dir /data/site \
+  --release-dir /data/site \
   --cache-mount /data/cache \
   --fast \
   --watch
@@ -1092,6 +1114,9 @@ markata-go new "Ready to Publish"
 # Create with tags
 markata-go new "Go Tutorial" --tags "go,tutorial,programming"
 # Creates: pages/post/go-tutorial.md with tags: ["go", "tutorial", "programming"]
+
+# Create content in another site from any directory
+markata-go --site-dir ~/sites/blog new "Release notes" --no-input
 
 # Interactive mode (no arguments) - launches TUI wizard
 markata-go new
@@ -1963,6 +1988,7 @@ markata-go explain [topic]
 | `build` | The build command and build process |
 | `serve` | The development server |
 | `new` | Creating new content |
+| `content` | Finding, creating, and editing site content |
 | `init` | Initializing projects |
 | `config` | Configuration system |
 | `agents` | Agent skill installation and usage |
@@ -1986,6 +2012,9 @@ markata-go explain plugins
 # Learn about the bundled agent skill
 markata-go explain agents
 
+# Follow the agent-oriented content workflow
+markata-go explain content
+
 # Understand the build lifecycle
 markata-go explain lifecycle
 
@@ -1998,6 +2027,7 @@ markata-go explain feeds
 The `explain` command is particularly useful for:
 
 - **AI coding agents**: Provides comprehensive context about markata-go's architecture and commands
+- **Content work from any directory**: `explain content` documents how to select a site, search, edit returned source paths, create content, and validate changes
 - **Site maintainers installing the bundled skill**: Shows how `markata-go agent install` fits into agent workflows
 - **New developers**: Quick reference for understanding how different parts work together
 - **Debugging**: Understanding the build process and configuration options

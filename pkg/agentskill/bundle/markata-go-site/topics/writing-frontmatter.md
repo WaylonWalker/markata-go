@@ -7,6 +7,7 @@ Use this topic when creating or editing posts, pages, docs, or frontmatter field
 - `markata-go new`
 - `markata-go new --list`
 - `markata-go list posts`
+- `markata-go explain content`
 
 ## Frontmatter Format
 
@@ -248,6 +249,7 @@ template: "landing.html"
 ## Guidance
 
 - Prefer `markata-go new` when creating content so the site's defaults stay consistent.
+- To edit existing content, use `markata-go search <query> --format path` or `markata-go list posts --format path`, then edit the returned Markdown file. With `--site-dir`, those paths are absolute.
 - Keep frontmatter YAML valid and minimal.
 - Use existing frontmatter conventions from nearby content before introducing new fields.
 - Do not duplicate the title with an extra H1 in the body unless the repo already does that intentionally.
