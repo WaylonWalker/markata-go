@@ -19,14 +19,14 @@ var (
 	encryptionPasswordLength int
 	encryptionCheckKey       string
 	encryptionDryRun         bool
+	decryptionDryRun         bool
 )
 
 var encryptionCmd = &cobra.Command{
 	Use:   "encryption",
 	Short: "Utilities for encryption keys and passwords",
 	Long: `Encryption utilities help you manage passwords and source-encrypted private posts.
-`,
-}
+`}
 
 var generatePasswordCmd = &cobra.Command{
 	Use:     "generate-password",
@@ -65,11 +65,30 @@ changes without modifying files.
 	RunE: runEncryptPostsCommand,
 }
 
+var decryptPostsCmd = &cobra.Command{
+	Use:   "decrypt-posts [path...]",
+	Short: "Decrypt source-encrypted Markdown bodies back to plaintext",
+	Long: `Decrypt source-encrypted Markdown bodies back to plaintext.
+
+This is the inverse of ` + "`encryption encrypt-posts`" + `. With no arguments it scans the
+active content glob configuration; with explicit paths it only processes those files.
+
+Files are decrypted in place by default. Files that are not source-encrypted are
+reported but not rewritten. Use --dry-run to preview changes without modifying files.
+
+The key name is read from the encrypted source marker, falling back to
+encryption.default_key. The password is read from MARKATA_GO_ENCRYPTION_KEY_<KEY>.
+`,
+	Args: cobra.ArbitraryArgs,
+	RunE: runDecryptPostsCommand,
+}
+
 func init() {
-	encryptionCmd.AddCommand(generatePasswordCmd, checkPasswordCmd, encryptPostsCmd)
+	encryptionCmd.AddCommand(generatePasswordCmd, checkPasswordCmd, encryptPostsCmd, decryptPostsCmd)
 	generatePasswordCmd.Flags().IntVar(&encryptionPasswordLength, "length", encryption.DefaultMinPasswordLength, "password length (must be at least the configured minimum)")
 	checkPasswordCmd.Flags().StringVar(&encryptionCheckKey, "key", "", "specific key name to check (default: all required keys)")
 	encryptPostsCmd.Flags().BoolVar(&encryptionDryRun, "dry-run", false, "report files that would be encrypted without modifying them")
+	decryptPostsCmd.Flags().BoolVar(&decryptionDryRun, "dry-run", false, "report files that would be decrypted without modifying them")
 	rootCmd.AddCommand(encryptionCmd)
 }
 
@@ -180,6 +199,177 @@ func runEncryptPostsCommand(cmd *cobra.Command, _ []string) error {
 		action, stats.Encrypted, stats.AlreadyEncrypted, stats.Public, stats.DraftOrSkip)
 
 	return nil
+}
+
+func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	files, err := decryptionTargetFiles(cfg, args)
+	if err != nil {
+		return err
+	}
+
+	stats := decryptPostsStats{}
+	candidates := make([]decryptPostResult, 0)
+	for _, file := range files {
+		result, err := decryptPostSourceFile(file, cfg, true)
+		if err != nil {
+			return err
+		}
+		stats.add(result)
+		if result.Action == decryptPostActionDecrypted {
+			candidates = append(candidates, result)
+			if decryptionDryRun {
+				fmt.Fprintf(cmd.OutOrStdout(), "WOULD DECRYPT %s key=%s\n", result.Path, result.KeyName)
+			}
+		}
+	}
+
+	if !decryptionDryRun {
+		for _, candidate := range candidates {
+			result, err := decryptPostSourceFile(candidate.Path, cfg, false)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "DECRYPTED %s key=%s\n", result.Path, result.KeyName)
+		}
+	}
+
+	action := "Decrypted"
+	if decryptionDryRun {
+		action = "Would decrypt"
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "%s %d post(s); skipped %d not encrypted.\n",
+		action, stats.Decrypted, stats.NotEncrypted)
+
+	return nil
+}
+
+// decryptionTargetFiles resolves explicit path arguments, falling back to the
+// active content glob configuration when no paths are supplied.
+func decryptionTargetFiles(cfg *models.Config, args []string) ([]string, error) {
+	if len(args) == 0 {
+		return encryptionContentFiles(cfg)
+	}
+
+	paths := make([]string, 0, len(args))
+	for _, arg := range args {
+		abs, err := filepath.Abs(arg)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s: %w", arg, err)
+		}
+		info, err := os.Stat(abs)
+		if err != nil {
+			return nil, fmt.Errorf("stat %s: %w", arg, err)
+		}
+		if !info.IsDir() {
+			paths = append(paths, abs)
+			continue
+		}
+		err = filepath.WalkDir(abs, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !strings.EqualFold(filepath.Ext(path), ".md") {
+				return nil
+			}
+			paths = append(paths, path)
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("scan %s: %w", arg, err)
+		}
+	}
+	return paths, nil
+}
+
+type decryptPostAction string
+
+const (
+	decryptPostActionDecrypted    decryptPostAction = "decrypted"
+	decryptPostActionNotEncrypted decryptPostAction = "not-encrypted"
+)
+
+type decryptPostResult struct {
+	Path    string
+	KeyName string
+	Action  decryptPostAction
+}
+
+type decryptPostsStats struct {
+	Decrypted    int
+	NotEncrypted int
+}
+
+func (s *decryptPostsStats) add(result decryptPostResult) {
+	switch result.Action {
+	case decryptPostActionDecrypted:
+		s.Decrypted++
+	case decryptPostActionNotEncrypted:
+		s.NotEncrypted++
+	}
+}
+
+func decryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (decryptPostResult, error) {
+	contentBytes, err := os.ReadFile(path)
+	if err != nil {
+		return decryptPostResult{}, fmt.Errorf("read %s: %w", path, err)
+	}
+	content := string(contentBytes)
+
+	_, body, rawFrontmatter, err := plugins.ParseFrontmatterWithRaw(content)
+	if err != nil {
+		return decryptPostResult{}, fmt.Errorf("parse frontmatter %s: %w", path, err)
+	}
+	if !encryption.IsSourceEncrypted(body) {
+		return decryptPostResult{Path: path, Action: decryptPostActionNotEncrypted}, nil
+	}
+
+	envelope, _, err := encryption.ParseSourceEnvelope(body)
+	if err != nil {
+		return decryptPostResult{}, fmt.Errorf("parse encrypted source %s: %w", path, err)
+	}
+
+	keyName := strings.TrimSpace(envelope.KeyName)
+	if keyName == "" {
+		keyName = strings.TrimSpace(cfg.Encryption.DefaultKey)
+	}
+	if keyName == "" {
+		return decryptPostResult{}, fmt.Errorf("encrypted post %s has no key name; set encryption.default_key", path)
+	}
+	envName := plugins.EncryptionEnvPrefix + strings.ToUpper(keyName)
+	password := os.Getenv(envName)
+	if password == "" {
+		return decryptPostResult{}, fmt.Errorf("encrypted post %s requires %s", path, envName)
+	}
+
+	plaintext, _, err := encryption.DecryptSourceMarkdown(body, password)
+	if err != nil {
+		return decryptPostResult{}, fmt.Errorf("decrypt source body for %s: %w", path, err)
+	}
+	if dryRun {
+		return decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted}, nil
+	}
+
+	nextContent := decryptedSourceDocument(rawFrontmatter, plaintext)
+	mode := os.FileMode(0o600)
+	if stat, err := os.Stat(path); err == nil {
+		mode = stat.Mode().Perm()
+	}
+	if err := os.WriteFile(path, []byte(nextContent), mode); err != nil {
+		return decryptPostResult{}, fmt.Errorf("write decrypted source %s: %w", path, err)
+	}
+	return decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted}, nil
+}
+
+func decryptedSourceDocument(rawFrontmatter, body string) string {
+	if rawFrontmatter == "" {
+		return body
+	}
+	return "---\n" + rawFrontmatter + "\n---\n" + body
 }
 
 func failOnEncryptionKeyPolicyFailures(results []encryptionKeyPolicyResult, minDuration time.Duration, minLength int) error {

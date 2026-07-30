@@ -175,6 +175,33 @@ private: true
 BASE64_AES_GCM_CIPHERTEXT
 ```
 
+### Decrypt Posts Back To Plaintext
+
+Use `decrypt-posts` when you need to edit a source-encrypted post. It is the inverse of `encrypt-posts`:
+
+```
+export MARKATA_GO_ENCRYPTION_KEY_DEFAULT='your-password'
+
+# preview every encrypted post that would be decrypted
+markata-go encryption decrypt-posts --dry-run
+
+# decrypt one file
+markata-go encryption decrypt-posts pages/my-secret-post.md
+
+# decrypt a whole directory tree
+markata-go encryption decrypt-posts pages/private/
+
+# decrypt everything matched by glob.patterns
+markata-go encryption decrypt-posts
+```
+
+The key name comes from the `key=` value in the encrypted marker, falling back to `encryption.default_key`. The
+password is read from `MARKATA_GO_ENCRYPTION_KEY_<KEY>` (uppercased). Files that are not source-encrypted are
+skipped, frontmatter is preserved exactly, and a missing env var or wrong password fails before anything is
+written.
+
+A typical edit cycle is `decrypt-posts <file>`, edit the Markdown, then `encrypt-posts` before committing.
+
 ## Lint Rule
 
 `markata-go lint` now includes an encryption policy check. When encryption is enabled, lint reports an error if configured keys are missing or fail strength thresholds.
