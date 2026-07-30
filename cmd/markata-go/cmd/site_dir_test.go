@@ -32,10 +32,19 @@ func resetSiteDirState(t *testing.T) {
 	})
 }
 
+func canonicalPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("resolve path %q: %v", path, err)
+	}
+	return resolved
+}
+
 func TestActivateSiteDir_FlagTakesPrecedenceAndChangesDirectory(t *testing.T) {
-	resetSiteDirState(t)
 	flagSite := t.TempDir()
 	envSite := t.TempDir()
+	resetSiteDirState(t)
 	t.Setenv(siteDirEnv, envSite)
 	siteDir = flagSite
 
@@ -46,8 +55,8 @@ func TestActivateSiteDir_FlagTakesPrecedenceAndChangesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != flagSite {
-		t.Fatalf("working directory = %q, want %q", gotWD, flagSite)
+	if gotWD != canonicalPath(t, flagSite) {
+		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, flagSite))
 	}
 	if activeSiteDir != flagSite || !siteDirSelected {
 		t.Fatalf("active site = %q, selected = %t", activeSiteDir, siteDirSelected)
@@ -55,8 +64,8 @@ func TestActivateSiteDir_FlagTakesPrecedenceAndChangesDirectory(t *testing.T) {
 }
 
 func TestActivateSiteDir_UsesEnvironment(t *testing.T) {
-	resetSiteDirState(t)
 	site := t.TempDir()
+	resetSiteDirState(t)
 	t.Setenv(siteDirEnv, site)
 
 	if err := activateSiteDir(); err != nil {
@@ -66,14 +75,14 @@ func TestActivateSiteDir_UsesEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != site {
-		t.Fatalf("working directory = %q, want %q", gotWD, site)
+	if gotWD != canonicalPath(t, site) {
+		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, site))
 	}
 }
 
 func TestActivateSiteDir_RejectsNonDirectory(t *testing.T) {
-	resetSiteDirState(t)
 	path := filepath.Join(t.TempDir(), "not-a-directory")
+	resetSiteDirState(t)
 	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
@@ -86,9 +95,10 @@ func TestActivateSiteDir_RejectsNonDirectory(t *testing.T) {
 }
 
 func TestSourcePathForOutput_ExplicitSiteIsAbsolute(t *testing.T) {
+	site := t.TempDir()
 	resetSiteDirState(t)
 	siteDirSelected = true
-	activeSiteDir = t.TempDir()
+	activeSiteDir = site
 
 	got := sourcePathForOutput(filepath.Join("posts", "hello.md"))
 	want := filepath.Join(activeSiteDir, "posts", "hello.md")
@@ -98,8 +108,8 @@ func TestSourcePathForOutput_ExplicitSiteIsAbsolute(t *testing.T) {
 }
 
 func TestCreateManager_SourcePathsUseConfigDirectory(t *testing.T) {
-	resetSiteDirState(t)
 	site := t.TempDir()
+	resetSiteDirState(t)
 	configDir := filepath.Join(site, "config")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("create config directory: %v", err)
@@ -120,15 +130,15 @@ func TestCreateManager_SourcePathsUseConfigDirectory(t *testing.T) {
 		t.Fatalf("createManager() error = %v", err)
 	}
 
-	want := filepath.Join(configDir, "posts", "hello.md")
+	want := filepath.Join(canonicalPath(t, configDir), "posts", "hello.md")
 	if got := sourcePathForOutput(filepath.Join("posts", "hello.md")); got != want {
 		t.Fatalf("sourcePathForOutput() = %q, want %q", got, want)
 	}
 }
 
 func TestSteamPersistentPreRun_ActivatesSelectedSite(t *testing.T) {
-	resetSiteDirState(t)
 	site := t.TempDir()
+	resetSiteDirState(t)
 	siteDir = site
 
 	if err := steamCmd.PersistentPreRunE(steamCmd, nil); err != nil {
@@ -138,8 +148,8 @@ func TestSteamPersistentPreRun_ActivatesSelectedSite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != site {
-		t.Fatalf("working directory = %q, want %q", gotWD, site)
+	if gotWD != canonicalPath(t, site) {
+		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, site))
 	}
 }
 
@@ -153,9 +163,9 @@ func TestBuilderAdmin_UsesReleaseDirFlag(t *testing.T) {
 }
 
 func TestRunNewCommand_UsesSelectedSiteAndRelativeConfig(t *testing.T) {
+	site := t.TempDir()
 	resetSiteDirState(t)
 	resetNewCommandFlags()
-	site := t.TempDir()
 	configDir := filepath.Join(site, "config")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("create config directory: %v", err)
@@ -201,9 +211,10 @@ func TestRunNewCommand_UsesSelectedSiteAndRelativeConfig(t *testing.T) {
 }
 
 func TestRenderPosts_UsesAbsolutePathsForSelectedSite(t *testing.T) {
+	site := t.TempDir()
 	resetSiteDirState(t)
 	siteDirSelected = true
-	activeSiteDir = t.TempDir()
+	activeSiteDir = site
 	want := filepath.Join(activeSiteDir, "posts", "hello.md")
 	post := &models.Post{Path: filepath.Join("posts", "hello.md")}
 
@@ -218,8 +229,13 @@ func TestRenderPosts_UsesAbsolutePathsForSelectedSite(t *testing.T) {
 			if err := renderPosts(format, []*models.Post{post}); err != nil {
 				t.Fatalf("renderPosts() error = %v", err)
 			}
-			if !strings.Contains(stdout.String(), want) {
-				t.Fatalf("rendered output missing %q:\n%s", want, stdout.String())
+			output := stdout.String()
+			expectedPath := want
+			if format == listFormatJSON {
+				expectedPath = strings.ReplaceAll(expectedPath, `\`, `\\`)
+			}
+			if !strings.Contains(output, expectedPath) {
+				t.Fatalf("rendered output missing %q:\n%s", expectedPath, output)
 			}
 		})
 	}
