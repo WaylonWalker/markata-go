@@ -31,11 +31,15 @@ These commands fetch data from the Steam Web API and create markdown posts
 for games and individual achievements. Requires Steam API key and Steam ID.
 
 Get your Steam Web API key from: https://steamcommunity.com/dev/apikey`,
-	PersistentPreRun: func(_ *cobra.Command, _ []string) {
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		if err := activateSiteDir(); err != nil {
+			return err
+		}
 		// Load environment variables from .env file if it exists
 		if err := loadEnvFile(); err != nil && steamVerbose {
 			fmt.Fprintf(os.Stderr, "Warning: failed to load .env file: %v\n", err)
 		}
+		return nil
 	},
 }
 

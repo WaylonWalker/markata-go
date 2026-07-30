@@ -222,6 +222,10 @@ markata-go new "My Post" --template page --tags "go,web" --dir custom-dir
 All options come from flags. No prompts are shown. The defaults apply for any
 unspecified flags.
 
+When `--site-dir` or `MARKATA_GO_SITE_DIR` selects a site, the command resolves
+templates and output directories from that site and prints the created file's
+absolute path.
+
 When `--no-input` is set and no title argument is provided, the command returns
 an error instead of prompting.
 

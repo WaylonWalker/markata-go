@@ -198,6 +198,9 @@ Unexpected diagnostic detail belongs in verbose/debug modes, not normal output.
   dedicated benchmark detail flag, rather than always-on in normal output.
 - `config`, `list`, `version`, and `explain` keep their primary output on
   `stdout`.
+- When an explicit site directory is selected, `list` and `search` MUST return
+  absolute source paths so automation can edit results without relying on its
+  current directory.
 - `new` and `init` support interactive prompts by default and honor
   `--no-input`.
 - `lint` MAY style severities, but the output MUST remain readable without

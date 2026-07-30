@@ -437,23 +437,53 @@ func parseTemplateFile(name, content string) ContentTemplate {
 
 // loadConfigSafe attempts to load the config without errors.
 func loadConfigSafe() *configWrapper {
-	// Try to find and parse config file
-	configPaths := []string{
-		"markata-go.toml",
-		"markata-go.yaml",
-		"markata-go.yml",
-		"markata-go.json",
+	var cfg *configWrapper
+	if cfgFile != "" {
+		parsed, err := parseConfigFile(cfgFile)
+		if err == nil {
+			cfg = parsed
+		}
 	}
 
-	for _, path := range configPaths {
-		if _, err := os.Stat(path); err == nil {
-			cfg, err := parseConfigFile(path)
+	if cfg == nil && cfgFile == "" {
+		configPaths := []string{"markata-go.toml", "markata-go.yaml", "markata-go.yml", "markata-go.json"}
+		for _, path := range configPaths {
+			parsed, err := parseConfigFile(path)
 			if err == nil {
-				return cfg
+				cfg = parsed
+				break
 			}
 		}
 	}
-	return nil
+
+	for _, path := range mergeConfigFiles {
+		parsed, err := parseConfigFile(path)
+		if err != nil {
+			continue
+		}
+		if cfg == nil {
+			cfg = &configWrapper{}
+		}
+		mergeTemplateConfig(cfg, parsed)
+	}
+	return cfg
+}
+
+func mergeTemplateConfig(base, override *configWrapper) {
+	if override.ContentTemplates.Directory != "" {
+		base.ContentTemplates.Directory = override.ContentTemplates.Directory
+	}
+	if len(override.ContentTemplates.Placement) > 0 {
+		if base.ContentTemplates.Placement == nil {
+			base.ContentTemplates.Placement = make(map[string]string)
+		}
+		for name, directory := range override.ContentTemplates.Placement {
+			base.ContentTemplates.Placement[name] = directory
+		}
+	}
+	if override.ContentTemplates.Templates != nil {
+		base.ContentTemplates.Templates = override.ContentTemplates.Templates
+	}
 }
 
 // configWrapper wraps the content templates config for safe loading.
@@ -670,6 +700,9 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	}
 	if outputDir == "" {
 		outputDir = template.Directory
+	}
+	if siteDirSelected && !filepath.IsAbs(outputDir) {
+		outputDir = filepath.Join(activeSiteDir, outputDir)
 	}
 
 	// Generate slug from title

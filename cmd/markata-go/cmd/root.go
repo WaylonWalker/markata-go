@@ -68,6 +68,7 @@ Example usage:
 Common help:
   markata-go help build      # Explain a subcommand
   markata-go list posts      # Inspect posts from the CLI
+  markata-go explain content # Agent workflow for site content
 
 Documentation:
   https://github.com/WaylonWalker/markata-go/tree/main/docs
@@ -87,6 +88,9 @@ Profiling:
 	Version:       Version,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
+		if err := activateSiteDir(); err != nil {
+			return err
+		}
 		if noColor && forceColor {
 			return fmt.Errorf("cannot use --color and --no-color together")
 		}
@@ -155,6 +159,7 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file path (default: auto-discover)")
+	rootCmd.PersistentFlags().StringVar(&siteDir, "site-dir", "", "site directory (overrides MARKATA_GO_SITE_DIR and current directory)")
 	rootCmd.PersistentFlags().StringSliceVarP(&mergeConfigFiles, "merge-config", "m", nil, "additional config file(s) to merge with base config (can be specified multiple times)")
 	rootCmd.PersistentFlags().StringVarP(&outputDir, "output", "o", "", "output directory (overrides config)")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress non-essential status output")

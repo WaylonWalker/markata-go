@@ -70,6 +70,14 @@ markata-go list posts --format path | xargs -n 1 $EDITOR
 markata-go list tags --format path > tags.txt
 ```
 
+When `--site-dir` or `MARKATA_GO_SITE_DIR` selects a site, post paths are
+absolute. This lets agents and scripts edit results from any directory:
+
+```bash
+markata-go --site-dir ~/sites/blog search "configuration" --format path
+# Edit the returned Markdown path directly.
+```
+
 ## Interactive Browsing
 
 For a full-screen view with filtering and sorting:

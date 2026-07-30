@@ -54,6 +54,23 @@ Bare `markata-go config` behaves like `markata-go config show`.
 - `markata-go init` (initialize a new project with TUI wizard)
 - `markata-go init --plain` (plain text prompts for non-TTY environments)
 
+### Content Workflow For Agents
+
+Use `markata-go explain content` for the complete inspect, find, edit, create,
+and validate workflow. From another directory, select the site explicitly:
+
+```bash
+markata-go --site-dir ~/sites/blog list posts --format json
+markata-go --site-dir ~/sites/blog search "release process" --format path
+markata-go --site-dir ~/sites/blog new "Release notes" --no-input
+markata-go --site-dir ~/sites/blog lint
+markata-go --site-dir ~/sites/blog build --fast
+```
+
+`list` and `search` return absolute Markdown source paths with `--site-dir`.
+Edit a returned path directly; there is no separate non-interactive edit command.
+Set `MARKATA_GO_SITE_DIR` in an alias or wrapper when repeatedly using one site.
+
 ### Content Quality
 
 - `markata-go lint` (lint markdown files for common issues)
@@ -135,6 +152,7 @@ Use `--fix` to auto-fix fixable issues. Only error-severity issues cause a non-z
 ## Global Flags Agents Should Know
 
 - `-c`, `--config`: use a specific config file
+- `--site-dir`: select a site directory for commands run elsewhere; overrides `MARKATA_GO_SITE_DIR`
 - `-m`, `--merge-config`: merge override configs such as `fast.toml`
 - `-o`, `--output`: override the output directory without editing config
 - `-v`, `--verbose`: show detailed logs and plugin-stage hints
@@ -145,6 +163,7 @@ Examples:
 
 ```bash
 markata-go build -c markata-go.toml
+markata-go --site-dir ~/sites/blog search golang --format path
 markata-go serve -m fast.toml
 markata-go build -o dist
 markata-go new "My Post" --no-input
@@ -189,6 +208,7 @@ markata-go encryption encrypt-posts --dry-run
 
 - Prefer `list` commands when you need structured inspection.
 - Prefer `search` when you need to find posts by content or keyword.
+- Prefer `explain content` when an agent needs the complete content workflow, including direct editing of returned paths.
 - Prefer `explain` when you need command-specific or subsystem context.
 - Prefer `serve` for interactive local work and `build` for validation or CI-like runs.
 - Run `lint` before committing content changes.

@@ -95,7 +95,7 @@ spec:
             - {{ .Values.builderAdmin.port | quote }}
             - --source-dir
             - /data/source
-            - --site-dir
+            - --release-dir
             - /data/site
             - --history-dir
             - {{ .Values.builderAdmin.historyDir | quote }}

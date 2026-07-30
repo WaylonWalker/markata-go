@@ -57,6 +57,11 @@ This creates:
 ~/.config/opencode/skills/markata-go-site/
 ```
 
+Use a global installation when agents commonly start outside the site repository
+and select a site with `markata-go --site-dir <path> ...`. The bundled skill
+then directs agents to `markata-go explain content` for listing, searching,
+creating, editing, and validating content.
+
 `-g` / `--global` always requires an explicit `--agent` so markata-go can choose the right user directory.
 
 ## Preview Without Writing

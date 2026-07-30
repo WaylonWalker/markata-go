@@ -54,6 +54,12 @@
       "prompt": "On my markata-go site I want to add Web Awesome tabs and tooltips to my docs. Should I do this in config, markdown content, templates, or a plugin, and what should I inspect first before editing?",
       "expected_output": "Explains that the first checks are existing `hooks`, `webawesome` config, current `wa-*` usage, and template wiring; prefers enabling the built-in `webawesome` hook plus markdown containers or raw `wa-*` HTML before suggesting plugin work; mentions vendor versus CDN asset behavior and avoiding duplicate hardcoded includes.",
       "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "I am outside my work-notes repository. Find the note about incident review, update it, and create a follow-up note without changing my current directory.",
+      "expected_output": "Uses `--site-dir` or `MARKATA_GO_SITE_DIR`, searches with path output, explains that the returned absolute Markdown path can be edited directly, creates the follow-up with `new --no-input`, and validates with lint or a fast build.",
+      "files": []
     }
   ]
 }
