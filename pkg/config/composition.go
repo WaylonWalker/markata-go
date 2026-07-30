@@ -317,7 +317,7 @@ func populateExtra(config *models.Config, rawWrapper map[string]any) {
 		"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true,
 		"encryption": true, "authors": true, "garden": true, "feeds_page": true,
 		"assets": true, "resource_hints": true, "error_pages": true, "theme_calendar": true,
-		"include": true,
+		"builder_admin": true, "include": true,
 	}
 
 	if config.Extra == nil {
@@ -329,6 +329,8 @@ func populateExtra(config *models.Config, rawWrapper map[string]any) {
 			config.Extra[key] = value
 		}
 	}
+
+	populateBuilderAdminExtra(config, markataGoRaw)
 }
 
 func mergeRawMaps(path []string, base, override map[string]any) map[string]any {

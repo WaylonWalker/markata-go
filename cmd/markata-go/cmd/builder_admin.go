@@ -151,7 +151,6 @@ func resolveBuilderAdminWebhook(cmd *cobra.Command, configPath string) (buildera
 	webhook := builderadmin.WebhookConfig{
 		Branch: "main",
 	}
-	applyBuilderAdminExtraWebhook(&webhook, siteConfig.Extra)
 	if configured.Enabled != nil {
 		webhook.Enabled = *configured.Enabled
 	}
@@ -179,26 +178,6 @@ func resolveBuilderAdminWebhook(cmd *cobra.Command, configPath string) (buildera
 	return webhook, nil
 }
 
-func applyBuilderAdminExtraWebhook(webhook *builderadmin.WebhookConfig, extra map[string]any) {
-	builderAdmin, ok := stringMap(extra["builder_admin"])
-	if !ok {
-		return
-	}
-	configured, ok := stringMap(builderAdmin["webhook"])
-	if !ok {
-		return
-	}
-	if enabled, ok := configured["enabled"].(bool); ok {
-		webhook.Enabled = enabled
-	}
-	if branch, ok := configured["branch"].(string); ok {
-		webhook.Branch = branch
-	}
-	if secret, ok := configured["secret"].(string); ok {
-		webhook.Secret = secret
-	}
-}
-
 func resolveBuilderAdminConfigPath(configPath, sourceDir string) string {
 	if configPath != "" {
 		if filepath.IsAbs(configPath) {
@@ -223,7 +202,6 @@ func resolveBuilderAdminAuthHeaders(cmd *cobra.Command, configPath string) (buil
 		return builderadmin.AuthHeaders{}, fmt.Errorf("load builder-admin configuration: %w", err)
 	}
 	headers := builderadmin.DefaultAuthHeaders()
-	applyBuilderAdminExtraHeaders(&headers, siteConfig.Extra)
 	applyBuilderAdminConfigHeaders(&headers, siteConfig.BuilderAdmin.Auth.Headers)
 	for _, flag := range []struct {
 		name   string
@@ -243,42 +221,6 @@ func resolveBuilderAdminAuthHeaders(cmd *cobra.Command, configPath string) (buil
 		}
 	}
 	return headers, nil
-}
-
-func applyBuilderAdminExtraHeaders(headers *builderadmin.AuthHeaders, extra map[string]any) {
-	builderAdmin, ok := stringMap(extra["builder_admin"])
-	if !ok {
-		return
-	}
-	auth, ok := stringMap(builderAdmin["auth"])
-	if !ok {
-		return
-	}
-	configured, ok := stringMap(auth["headers"])
-	if !ok {
-		return
-	}
-	for _, field := range []struct {
-		key    string
-		target *string
-	}{
-		{"user_id", &headers.UserID},
-		{"username", &headers.Username},
-		{"display_name", &headers.DisplayName},
-		{"email", &headers.Email},
-		{"groups", &headers.Groups},
-		{"roles", &headers.Roles},
-		{"scopes", &headers.Scopes},
-	} {
-		if value, ok := configured[field.key].(string); ok {
-			*field.target = value
-		}
-	}
-}
-
-func stringMap(value any) (map[string]any, bool) {
-	result, ok := value.(map[string]any)
-	return result, ok
 }
 
 func applyBuilderAdminConfigHeaders(headers *builderadmin.AuthHeaders, configured models.BuilderAdminAuthHeadersConfig) {

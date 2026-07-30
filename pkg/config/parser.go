@@ -39,6 +39,7 @@ type configSource interface {
 	getAuthors() authorsConverter
 	getGarden() gardenConverter
 	getTemplates() templatesConverter
+	getBuilderAdmin() models.BuilderAdminConfig
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -293,6 +294,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Templates config
 	config.Templates = src.getTemplates().toTemplatesConfig()
 
+	// BuilderAdmin uses the shared model because it contains only scalar settings.
+	config.BuilderAdmin = src.getBuilderAdmin()
+
 	return config
 }
 
@@ -321,6 +325,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 		if globRaw, ok := markataGoRaw["glob"].(map[string]any); ok && len(config.GlobConfig.SlugRules) == 0 {
 			config.GlobConfig.SlugRules = extractSlugRules(globRaw["slug_rules"])
 		}
+		populateBuilderAdminExtra(config, markataGoRaw)
 
 		// Initialize Extra if needed
 		if config.Extra == nil {
@@ -342,7 +347,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
-			"authors": true, "garden": true, "include": true, "tailwind": false, "css_purge": false,
+			"authors": true, "garden": true, "builder_admin": true, "include": true, "tailwind": false, "css_purge": false,
 		}
 
 		// Copy unknown sections to Extra
@@ -354,6 +359,53 @@ func ParseTOML(data []byte) (*models.Config, error) {
 	}
 
 	return config, nil
+}
+
+// populateBuilderAdminExtra retains unrecognized builder_admin settings while
+// excluding recognized authentication and webhook fields, including the secret.
+func populateBuilderAdminExtra(config *models.Config, markataGoRaw map[string]any) {
+	builderAdmin, ok := markataGoRaw["builder_admin"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	extra := unknownMap(builderAdmin, map[string]bool{"auth": true, "webhook": true})
+	if auth, ok := builderAdmin["auth"].(map[string]any); ok {
+		if authExtra := unknownMap(auth, map[string]bool{"headers": true}); len(authExtra) > 0 {
+			extra["auth"] = authExtra
+		}
+		if headers, ok := auth["headers"].(map[string]any); ok {
+			if headersExtra := unknownMap(headers, map[string]bool{
+				"user_id": true, "username": true, "display_name": true, "email": true,
+				"groups": true, "roles": true, "scopes": true,
+			}); len(headersExtra) > 0 {
+				authExtra, _ := extra["auth"].(map[string]any)
+				if authExtra == nil {
+					authExtra = make(map[string]any)
+					extra["auth"] = authExtra
+				}
+				authExtra["headers"] = headersExtra
+			}
+		}
+	}
+	if webhook, ok := builderAdmin["webhook"].(map[string]any); ok {
+		if webhookExtra := unknownMap(webhook, map[string]bool{"enabled": true, "branch": true, "secret": true}); len(webhookExtra) > 0 {
+			extra["webhook"] = webhookExtra
+		}
+	}
+	if len(extra) > 0 {
+		config.BuilderAdmin.Extra = extra
+	}
+}
+
+func unknownMap(values map[string]any, known map[string]bool) map[string]any {
+	result := make(map[string]any)
+	for key, value := range values {
+		if !known[key] {
+			result[key] = value
+		}
+	}
+	return result
 }
 
 func extractSlugRules(raw any) []models.SlugRule {
@@ -462,6 +514,7 @@ type tomlConfig struct {
 	Authors         tomlAuthorsConfig         `toml:"authors"`
 	Garden          tomlGardenConfig          `toml:"garden"`
 	Templates       tomlTemplatesConfig       `toml:"templates"`
+	BuilderAdmin    models.BuilderAdminConfig `toml:"builder_admin"`
 	UnknownFields   map[string]any            `toml:"-"`
 }
 
@@ -1791,6 +1844,7 @@ func (c *tomlConfig) getViewTransitions() viewTransitionsConverter { return &c.V
 func (c *tomlConfig) getAuthors() authorsConverter                 { return &c.Authors }
 func (c *tomlConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *tomlConfig) getTemplates() templatesConverter             { return &c.Templates }
+func (c *tomlConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1996,6 +2050,7 @@ type yamlConfig struct {
 	Authors         yamlAuthorsConfig         `yaml:"authors"`
 	Garden          yamlGardenConfig          `yaml:"garden"`
 	Templates       yamlTemplatesConfig       `yaml:"templates"`
+	BuilderAdmin    models.BuilderAdminConfig `yaml:"builder_admin"`
 }
 
 type yamlNavItem struct {
@@ -3357,6 +3412,7 @@ func (c *yamlConfig) getViewTransitions() viewTransitionsConverter { return &c.V
 func (c *yamlConfig) getAuthors() authorsConverter                 { return &c.Authors }
 func (c *yamlConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *yamlConfig) getTemplates() templatesConverter             { return &c.Templates }
+func (c *yamlConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -3496,6 +3552,7 @@ type jsonConfig struct {
 	Authors         jsonAuthorsConfig         `json:"authors"`
 	Garden          jsonGardenConfig          `json:"garden"`
 	Templates       jsonTemplatesConfig       `json:"templates"`
+	BuilderAdmin    models.BuilderAdminConfig `json:"builder_admin"`
 }
 
 type jsonNavItem struct {
@@ -4881,6 +4938,7 @@ func (c *jsonConfig) getViewTransitions() viewTransitionsConverter { return &c.V
 func (c *jsonConfig) getAuthors() authorsConverter                 { return &c.Authors }
 func (c *jsonConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *jsonConfig) getTemplates() templatesConverter             { return &c.Templates }
+func (c *jsonConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)
