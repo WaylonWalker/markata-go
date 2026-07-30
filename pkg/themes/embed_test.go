@@ -2,6 +2,7 @@ package themes
 
 import (
 	"io/fs"
+	"strings"
 	"testing"
 )
 
@@ -192,6 +193,24 @@ func TestReadStatic_ExistingFile(t *testing.T) {
 				t.Errorf("ReadStatic(%q) returned empty content", tt.file)
 			}
 		})
+	}
+}
+
+func TestDefaultTheme_PhotoCardsAreIncludedInPagination(t *testing.T) {
+	template, err := fs.ReadFile(DefaultTheme(), "templates/partials/cards/photo-card.html")
+	if err != nil {
+		t.Fatalf("read photo-card template: %v", err)
+	}
+	if !strings.Contains(string(template), "data-card") {
+		t.Fatal("photo-card template must mark photo figures as cards")
+	}
+
+	pagination, err := ReadStatic("js/pagination.js")
+	if err != nil {
+		t.Fatalf("read pagination script: %v", err)
+	}
+	if !strings.Contains(string(pagination), "[data-card]") {
+		t.Fatal("pagination script must include data-card elements")
 	}
 }
 
