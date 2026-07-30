@@ -311,3 +311,143 @@ func TestFormatCrackDurationHuman(t *testing.T) {
 		})
 	}
 }
+
+func TestDecryptPostSourceFile_RoundTrip(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	original := `---
+title: Secret
+private: true
+---
+# Secret
+body
+`
+	path := writeMarkdownFile(t, original)
+
+	if _, err := encryptPostSourceFile(path, cfg, false); err != nil {
+		t.Fatalf("encryptPostSourceFile() error = %v", err)
+	}
+
+	result, err := decryptPostSourceFile(path, cfg, false)
+	if err != nil {
+		t.Fatalf("decryptPostSourceFile() error = %v", err)
+	}
+	if result.Action != decryptPostActionDecrypted {
+		t.Fatalf("action = %q, want %q", result.Action, decryptPostActionDecrypted)
+	}
+	if result.KeyName != "default" {
+		t.Fatalf("keyName = %q, want default", result.KeyName)
+	}
+	if got := readFileString(t, path); got != original {
+		t.Fatalf("round trip mismatch:\ngot  %q\nwant %q", got, original)
+	}
+}
+
+func TestDecryptPostSourceFile_SkipsPlaintext(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	original := `---
+title: Public
+---
+plain body
+`
+	path := writeMarkdownFile(t, original)
+
+	result, err := decryptPostSourceFile(path, cfg, false)
+	if err != nil {
+		t.Fatalf("decryptPostSourceFile() error = %v", err)
+	}
+	if result.Action != decryptPostActionNotEncrypted {
+		t.Fatalf("action = %q, want %q", result.Action, decryptPostActionNotEncrypted)
+	}
+	if got := readFileString(t, path); got != original {
+		t.Fatalf("plaintext file was modified: got %q", got)
+	}
+}
+
+func TestDecryptPostSourceFile_DryRunDoesNotWrite(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	path := writeMarkdownFile(t, `---
+title: Secret
+private: true
+---
+secret body
+`)
+	if _, err := encryptPostSourceFile(path, cfg, false); err != nil {
+		t.Fatalf("encryptPostSourceFile() error = %v", err)
+	}
+	encrypted := readFileString(t, path)
+
+	result, err := decryptPostSourceFile(path, cfg, true)
+	if err != nil {
+		t.Fatalf("decryptPostSourceFile() error = %v", err)
+	}
+	if result.Action != decryptPostActionDecrypted {
+		t.Fatalf("action = %q, want %q", result.Action, decryptPostActionDecrypted)
+	}
+	if got := readFileString(t, path); got != encrypted {
+		t.Fatalf("dry run modified file: got %q", got)
+	}
+}
+
+func TestDecryptPostSourceFile_MissingKeyEnvFails(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	path := writeMarkdownFile(t, `---
+title: Secret
+private: true
+---
+secret body
+`)
+	if _, err := encryptPostSourceFile(path, cfg, false); err != nil {
+		t.Fatalf("encryptPostSourceFile() error = %v", err)
+	}
+
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "")
+	if _, err := decryptPostSourceFile(path, cfg, true); err == nil {
+		t.Fatal("expected error when key env var is unset")
+	}
+}
+
+func TestDecryptPostSourceFile_WrongPasswordFails(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	path := writeMarkdownFile(t, `---
+title: Secret
+private: true
+---
+secret body
+`)
+	if _, err := encryptPostSourceFile(path, cfg, false); err != nil {
+		t.Fatalf("encryptPostSourceFile() error = %v", err)
+	}
+
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "wrong-password-value-1")
+	if _, err := decryptPostSourceFile(path, cfg, true); err == nil {
+		t.Fatal("expected error when password is wrong")
+	}
+}
+
+func TestDecryptionTargetFiles_ExplicitPathsAndDirs(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "nested")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	mdFile := filepath.Join(nested, "a.md")
+	txtFile := filepath.Join(nested, "b.txt")
+	for _, p := range []string{mdFile, txtFile} {
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
+	}
+
+	files, err := decryptionTargetFiles(cfg, []string{dir})
+	if err != nil {
+		t.Fatalf("decryptionTargetFiles() error = %v", err)
+	}
+	if len(files) != 1 || files[0] != mdFile {
+		t.Fatalf("files = %v, want [%s]", files, mdFile)
+	}
+}

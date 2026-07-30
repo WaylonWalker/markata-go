@@ -253,6 +253,26 @@ markata-go encryption encrypt-posts --dry-run
 - Posts that are draft, skipped, public, or already source-encrypted are not rewritten.
 - Missing or weak keys cause the command to fail before writing changed files.
 
+### `encryption decrypt-posts`
+
+Decrypt source-encrypted Markdown bodies back to plaintext. This is the inverse of `encryption encrypt-posts`.
+
+```
+markata-go encryption decrypt-posts
+markata-go encryption decrypt-posts --dry-run
+markata-go encryption decrypt-posts path/to/post.md
+markata-go encryption decrypt-posts content/private/
+```
+
+- With no path arguments the command scans the active content glob configuration.
+- Explicit path arguments MAY be files or directories; directories are scanned recursively for `.md` files.
+- The command rewrites matching files in place by default, replacing the encrypted body with plaintext and preserving the original frontmatter block verbatim.
+- `--dry-run` reports which files would be decrypted without modifying the filesystem.
+- Files whose bodies are not source-encrypted are counted as skipped and never rewritten.
+- The key name is read from the encrypted source marker (`key=...`), falling back to `encryption.default_key`.
+- The password is read from `MARKATA_GO_ENCRYPTION_KEY_<KEY>`. A missing env var or an incorrect password MUST fail before any file is written.
+- Key strength policy is NOT enforced for decryption; only the correct password matters.
+
 ## Lint Integration
 
 The `markata-go lint` command MUST include an encryption policy rule when encryption is enabled:
