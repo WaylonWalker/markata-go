@@ -615,7 +615,7 @@ func (s *Service) pullSource(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	cmd := exec.CommandContext(ctx, "git", "-C", s.cfg.SourceDir, "pull", "--ff-only")
+	cmd := s.gitCommand(ctx, "pull", "--ff-only", "origin", s.cfg.Webhook.Branch)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return false, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
@@ -628,7 +628,7 @@ func (s *Service) pullSource(ctx context.Context) (bool, error) {
 }
 
 func gitBranch(sourceDir string) (string, error) {
-	output, err := exec.Command("git", "-C", sourceDir, "branch", "--show-current").Output()
+	output, err := gitCommandForSource(context.Background(), sourceDir, "branch", "--show-current").Output()
 	if err != nil {
 		return "", fmt.Errorf("read checked-out git branch: %w", err)
 	}
@@ -640,11 +640,20 @@ func gitBranch(sourceDir string) (string, error) {
 }
 
 func gitHead(sourceDir string) (string, error) {
-	output, err := exec.Command("git", "-C", sourceDir, "rev-parse", "HEAD").Output()
+	output, err := gitCommandForSource(context.Background(), sourceDir, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return "", fmt.Errorf("read git HEAD: %w", err)
 	}
 	return strings.TrimSpace(string(output)), nil
+}
+
+func (s *Service) gitCommand(ctx context.Context, args ...string) *exec.Cmd {
+	return gitCommandForSource(ctx, s.cfg.SourceDir, args...)
+}
+
+func gitCommandForSource(ctx context.Context, sourceDir string, args ...string) *exec.Cmd {
+	gitArgs := append([]string{"-c", "safe.directory=" + sourceDir, "-C", sourceDir}, args...)
+	return exec.CommandContext(ctx, "git", gitArgs...)
 }
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
