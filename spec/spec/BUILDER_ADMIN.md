@@ -125,7 +125,7 @@ push deliveries for every other branch. Deployments for production, development,
 MUST use separate builder-admin instances with independent source checkouts, site roots, webhook
 secrets, and branch configuration.
 
-For an accepted matching push, the active leader MUST run `git -C <source-dir> pull --ff-only`.
+For an accepted matching push, the active leader MUST run `git -C <source-dir> pull --ff-only origin <branch>`.
 It MUST enqueue a build only when the checked-out commit changes. Pull failures and non-fast-forward
 updates MUST not enqueue a build. The corresponding build record MUST use trigger type `webhook`
 and retain provider, repository, branch, commit, and delivery metadata when supplied.
