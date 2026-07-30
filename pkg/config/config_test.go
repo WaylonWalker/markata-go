@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -112,29 +114,92 @@ func TestConfig_DefaultValues(t *testing.T) {
 	}
 }
 
-func TestLoadFromString_BuilderAdminAuthHeaders(t *testing.T) {
-	cfg, err := LoadFromString(`
+func TestLoadFromString_BuilderAdminTypedAndSecretSafe(t *testing.T) {
+	tests := []struct {
+		name   string
+		format Format
+		data   string
+	}{
+		{
+			name:   "toml",
+			format: FormatTOML,
+			data: `
+[markata-go]
+custom_plugin = { enabled = true }
+[markata-go.builder_admin]
+unrecognized_setting = "kept"
 [markata-go.builder_admin.auth.headers]
 user_id = "X-Authentik-Uid"
 display_name = ""
-`, FormatTOML)
-	if err != nil {
-		t.Fatalf("LoadFromString() error = %v", err)
+[markata-go.builder_admin.webhook]
+enabled = true
+branch = "qa"
+secret = "test-secret"
+endpoint = "/hooks/build"
+`,
+		},
+		{
+			name:   "yaml",
+			format: FormatYAML,
+			data: `
+markata-go:
+  custom_plugin:
+    enabled: true
+  builder_admin:
+    unrecognized_setting: kept
+    auth:
+      headers:
+        user_id: X-Authentik-Uid
+        display_name: ""
+    webhook:
+      enabled: true
+      branch: qa
+      secret: test-secret
+      endpoint: /hooks/build
+`,
+		},
+		{
+			name:   "json",
+			format: FormatJSON,
+			data:   `{"markata-go":{"custom_plugin":{"enabled":true},"builder_admin":{"unrecognized_setting":"kept","auth":{"headers":{"user_id":"X-Authentik-Uid","display_name":""}},"webhook":{"enabled":true,"branch":"qa","secret":"test-secret","endpoint":"/hooks/build"}}}}`,
+		},
 	}
-	builderAdmin, ok := cfg.Extra["builder_admin"].(map[string]any)
-	if !ok {
-		t.Fatalf("builder_admin = %#v, want config map", cfg.Extra["builder_admin"])
-	}
-	auth, ok := builderAdmin["auth"].(map[string]any)
-	if !ok {
-		t.Fatalf("auth = %#v, want config map", builderAdmin["auth"])
-	}
-	headers, ok := auth["headers"].(map[string]any)
-	if !ok {
-		t.Fatalf("headers = %#v, want config map", auth["headers"])
-	}
-	if headers["user_id"] != "X-Authentik-Uid" || headers["display_name"] != "" {
-		t.Fatalf("headers = %#v", headers)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("LoadFromString() error = %v", err)
+			}
+			headers := cfg.BuilderAdmin.Auth.Headers
+			webhook := cfg.BuilderAdmin.Webhook
+			if headers.UserID == nil || *headers.UserID != "X-Authentik-Uid" || headers.DisplayName == nil || *headers.DisplayName != "" {
+				t.Fatalf("headers = %#v", headers)
+			}
+			if webhook.Enabled == nil || !*webhook.Enabled || webhook.Branch == nil || *webhook.Branch != "qa" || webhook.Secret == nil || *webhook.Secret != "test-secret" {
+				t.Fatalf("webhook = %#v", webhook)
+			}
+			if _, ok := cfg.Extra["builder_admin"]; ok {
+				t.Fatalf("builder_admin must not be in Extra: %#v", cfg.Extra["builder_admin"])
+			}
+			if _, ok := cfg.Extra["custom_plugin"]; !ok {
+				t.Fatalf("unrelated top-level config missing from Extra: %#v", cfg.Extra)
+			}
+			if cfg.BuilderAdmin.Extra["unrecognized_setting"] != "kept" {
+				t.Fatalf("unrecognized builder_admin field missing: %#v", cfg.BuilderAdmin.Extra)
+			}
+			webhookExtra, ok := cfg.BuilderAdmin.Extra["webhook"].(map[string]any)
+			if !ok || webhookExtra["endpoint"] != "/hooks/build" {
+				t.Fatalf("unrecognized webhook field missing: %#v", cfg.BuilderAdmin.Extra)
+			}
+			encoded, err := json.Marshal(cfg)
+			if err != nil {
+				t.Fatalf("json.Marshal() error = %v", err)
+			}
+			if strings.Contains(string(encoded), "test-secret") {
+				t.Fatalf("serialized config exposed webhook secret: %s", encoded)
+			}
+		})
 	}
 }
 
