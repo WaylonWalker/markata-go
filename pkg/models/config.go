@@ -1,6 +1,9 @@
 package models
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // NavItem represents a navigation link.
 type NavItem struct {
@@ -656,13 +659,29 @@ type Config struct {
 type BuilderAdminConfig struct {
 	Auth    BuilderAdminAuthConfig    `json:"auth" yaml:"auth" toml:"auth"`
 	Webhook BuilderAdminWebhookConfig `json:"webhook" yaml:"webhook" toml:"webhook"`
+
+	// Extra preserves unrecognized builder_admin settings without exposing them
+	// through configuration serialization or template context.
+	Extra map[string]any `json:"-" yaml:"-" toml:"-"`
 }
 
 // BuilderAdminWebhookConfig configures signed GitHub and Forgejo push webhooks.
 type BuilderAdminWebhookConfig struct {
 	Enabled *bool   `json:"enabled" yaml:"enabled" toml:"enabled"`
 	Branch  *string `json:"branch" yaml:"branch" toml:"branch"`
-	Secret  *string `json:"-" yaml:"secret" toml:"secret"`
+	Secret  *string `json:"secret" yaml:"secret" toml:"secret"`
+}
+
+// MarshalJSON excludes the webhook secret from serialized configuration while
+// retaining JSON decoding support for configuration files.
+func (c BuilderAdminWebhookConfig) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Enabled *bool   `json:"enabled"`
+		Branch  *string `json:"branch"`
+	}{
+		Enabled: c.Enabled,
+		Branch:  c.Branch,
+	})
 }
 
 // BuilderAdminAuthConfig configures identity assertions from a trusted ForwardAuth proxy.

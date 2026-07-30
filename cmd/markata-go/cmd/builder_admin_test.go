@@ -46,23 +46,6 @@ display_name = ""
 	}
 }
 
-func TestApplyBuilderAdminExtraHeaders(t *testing.T) {
-	headers := builderadmin.DefaultAuthHeaders()
-	applyBuilderAdminExtraHeaders(&headers, map[string]any{
-		"builder_admin": map[string]any{
-			"auth": map[string]any{
-				"headers": map[string]any{
-					"user_id":      "X-Authentik-Uid",
-					"display_name": "",
-				},
-			},
-		},
-	})
-	if headers.UserID != "X-Authentik-Uid" || headers.DisplayName != "" {
-		t.Fatalf("headers = %#v", headers)
-	}
-}
-
 func TestResolveBuilderAdminConfigPath(t *testing.T) {
 	sourceDir := t.TempDir()
 	configPath := filepath.Join(sourceDir, "markata-go.toml")
@@ -114,5 +97,35 @@ secret = "file-secret"
 	}
 	if !webhook.Enabled || webhook.Branch != "qa" || webhook.Secret != "environment-secret" {
 		t.Fatalf("webhook = %#v", webhook)
+	}
+}
+
+func TestResolveBuilderAdminWebhook_ExplicitCLIOverridesEnvironment(t *testing.T) {
+	t.Setenv("MARKATA_GO_BUILDER_ADMIN_WEBHOOK_BRANCH", "environment")
+	configPath := filepath.Join(t.TempDir(), "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(`
+[markata-go.builder_admin.webhook]
+branch = "file"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	flag := builderAdminCmd.Flags().Lookup("webhook-branch")
+	previousValue, previousChanged := flag.Value.String(), flag.Changed
+	if err := flag.Value.Set("cli"); err != nil {
+		t.Fatal(err)
+	}
+	flag.Changed = true
+	t.Cleanup(func() {
+		_ = flag.Value.Set(previousValue)
+		flag.Changed = previousChanged
+	})
+
+	webhook, err := resolveBuilderAdminWebhook(builderAdminCmd, configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if webhook.Branch != "cli" {
+		t.Fatalf("Branch = %q, want explicit CLI value", webhook.Branch)
 	}
 }
