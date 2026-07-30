@@ -211,7 +211,7 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 		outln(string(data))
 
 	case formatTOML:
-		if err := toml.NewEncoder(outWriter()).Encode(cfg); err != nil {
+		if err := toml.NewEncoder(outWriter()).Encode(displayMap); err != nil {
 			return fmt.Errorf("failed to marshal TOML: %w", err)
 		}
 
@@ -284,6 +284,7 @@ func runConfigShowWithSources(merged *models.Config, configPaths []string) error
 	if err != nil {
 		return err
 	}
+	redactBuilderAdminWebhookSecret(userMap)
 
 	if configShowDiff {
 		// Show only values that differ from defaults
@@ -292,6 +293,24 @@ func runConfigShowWithSources(merged *models.Config, configPaths []string) error
 
 	// Show annotated config
 	return showAnnotatedConfig(mergedMap, userMap, configPaths)
+}
+
+// redactBuilderAdminWebhookSecret removes the credential from raw user config
+// before config show --diff or --annotate writes it to the terminal.
+func redactBuilderAdminWebhookSecret(config map[string]interface{}) {
+	markata, ok := config["markata-go"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	builderAdmin, ok := markata["builder_admin"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	webhook, ok := builderAdmin["webhook"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	delete(webhook, "secret")
 }
 
 // configToMap converts a Config struct to a map[string]interface{}.
