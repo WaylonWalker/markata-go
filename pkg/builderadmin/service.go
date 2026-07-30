@@ -39,6 +39,8 @@ const (
 	maxWebhookBodyBytes = 1 << 20
 )
 
+var ErrBuildQueueFull = errors.New("build queue is full")
+
 type Config struct {
 	Host                 string
 	Port                 int
@@ -341,6 +343,7 @@ func (s *Service) Start(ctx context.Context) error {
 		Addr:              fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port),
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
 	}
 	go s.runLeadershipLoop(ctx)
 	go func() {
@@ -560,6 +563,11 @@ func (s *Service) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		detail += " (delivery " + deliveryID + ")"
 	}
 	if err := s.enqueueWebhookBuild(detail); err != nil {
+		if errors.Is(err, ErrBuildQueueFull) {
+			w.Header().Set("Retry-After", "30")
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -948,8 +956,14 @@ func (s *Service) enqueueBuild(triggerType, detail string, changed []string) err
 		EnqueuedAt:  time.Now().UTC(),
 	}
 	s.pushQueued(queued)
-	s.queueCh <- queueRequest{QueuedOperation: queued}
-	return nil
+	request := queueRequest{QueuedOperation: queued}
+	select {
+	case s.queueCh <- request:
+		return nil
+	default:
+		s.removeQueued(queued.ID)
+		return ErrBuildQueueFull
+	}
 }
 
 func (s *Service) enqueueWebhookBuild(detail string) error {
@@ -963,8 +977,14 @@ func (s *Service) enqueueWebhookBuild(detail string) error {
 		SyncSource:  true,
 	}
 	s.pushQueued(queued)
-	s.queueCh <- queueRequest{QueuedOperation: queued}
-	return nil
+	request := queueRequest{QueuedOperation: queued}
+	select {
+	case s.queueCh <- request:
+		return nil
+	default:
+		s.removeQueued(queued.ID)
+		return ErrBuildQueueFull
+	}
 }
 
 func (s *Service) finishWebhookSyncFailure(req queueRequest, err error) {
