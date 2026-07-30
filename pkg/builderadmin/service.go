@@ -615,7 +615,7 @@ func (s *Service) pullSource(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	cmd := exec.CommandContext(ctx, "git", "-C", s.cfg.SourceDir, "pull", "--ff-only")
+	cmd := exec.CommandContext(ctx, "git", "-C", s.cfg.SourceDir, "pull", "--ff-only", "origin", s.cfg.Webhook.Branch)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return false, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
