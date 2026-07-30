@@ -23,7 +23,7 @@ Before making changes:
 1. Inspect the site config with `markata-go config show` and `markata-go config get <key>`.
 2. Inspect content with `markata-go list posts`, `markata-go list feeds`, and `markata-go list tags`.
 3. Search for content by keyword with `markata-go search <query>`.
-4. Use `markata-go explain <topic>` for built-in CLI context.
+4. Use `markata-go explain content` for the agent content workflow, or `markata-go explain <topic>` for other built-in CLI context.
 5. For Markdown wikilink IDE features, run `markata-go lsp doctor` (it can load editor startup/plugin code); use `--no-verify-editor` to skip that check. Use `markata-go lsp setup` to print snippets for installed editors, then inspect existing editor configuration before changing it.
 6. Use `markata-go build --fast` or `markata-go serve --fast` while iterating.
 7. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
@@ -96,6 +96,7 @@ If the repository is a very small or first-time site and does not yet have clear
 - Preserve the site's existing layout, content model, and template style unless the task explicitly changes them.
 - When something is ambiguous, inspect the actual repo files before changing behavior.
 - Prefer CLI inspection over hand-parsing when `markata-go` already exposes the needed data.
+- When working outside the site repository, select it with `markata-go --site-dir <path> ...`; list and search then return absolute Markdown paths that can be edited directly.
 - If the task is performance-related, compare warm builds before claiming a regression or improvement.
 - For analytics storytelling work, separate computed facts from human narrative: agents should gather metrics, scaffold charts, and suggest story angles, while leaving first-person timeline details for the author unless the user asks for full prose.
 - If the site has no existing conventions yet, use the patterns documented in this skill rather than making up a new structure.

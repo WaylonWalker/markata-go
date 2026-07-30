@@ -370,7 +370,7 @@ func postToRow(post *models.Post) postRow {
 		Words:       postWordCount(post),
 		ReadingTime: postReadingTime(post),
 		Tags:        post.Tags,
-		Path:        post.Path,
+		Path:        sourcePathForOutput(post.Path),
 	}
 }
 
