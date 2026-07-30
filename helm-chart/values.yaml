@@ -96,15 +96,32 @@ builderAdmin:
   releases:
     keep: 25
   history:
-    successfulBuilds: 50
+    successfulBuilds: 60
     failedBuilds: 100
     refreshRuns: 100
   buildTimeoutSeconds: 7200
   historyDir: /data/site/.builder-admin
+  webhook:
+    enabled: false
+    branch: main
+    # Required when webhook.enabled. The secret is injected as
+    # MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET and is never placed in args.
+    existingSecretName: ""
+    existingSecretKey: webhook-secret
   # Builder admin is fail-closed: only source addresses in this list may supply
   # the identity headers injected by the protected Traefik route.
   auth:
     trustedProxyCIDRs: []
+    # These must match the ForwardAuth response headers configured below. The
+    # defaults preserve hlab-auth; Authentik and other providers can override them.
+    headers:
+      userID: X-Hlab-User-Id
+      username: X-Hlab-Username
+      displayName: X-Hlab-Display-Name
+      email: X-Hlab-Email
+      groups: X-Hlab-Groups
+      roles: X-Hlab-Roles
+      scopes: X-Hlab-Scopes
   ingress:
     enabled: false
     host: ""
@@ -114,10 +131,12 @@ builderAdmin:
       secretName: ""
     auth:
       enabled: false
-      # Use an HTTPS auth origin or the cluster-local hlab-auth base URL
-      # (http://hlab-auth.hlab-auth.svc.cluster.local:<port 1-65535>). The chart
-      # appends the supported /api/v1/forward-auth endpoint.
+      # Use an HTTPS auth origin or a cluster-local service base URL. The chart
+      # appends forwardAuthPath.
       internalUrl: ""
+      forwardAuthPath: /api/v1/forward-auth
+      responseCookies:
+        - __Host-hlab-app-session
       # Optional browser-reachable hlab-auth origin used only to display the
       # signed-in operator's own profile picture. It does not affect login,
       # session, or WebAuthn behavior.
