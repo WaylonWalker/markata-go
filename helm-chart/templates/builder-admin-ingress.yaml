@@ -1,4 +1,30 @@
 {{- if .Values.builderAdmin.enabled }}
+{{- if .Values.builderAdmin.webhook.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.project_identifier }}-notes-builder-admin-webhook"
+  namespace: "{{ include "markata-notes.namespace" . }}"
+spec:
+  ingressClassName: {{ required "builderAdmin.ingress.ingressClassName is required when builder-admin ingress is enabled" .Values.builderAdmin.ingress.ingressClassName | quote }}
+  tls:
+    - secretName: {{ .Values.builderAdmin.ingress.tls.secretName | quote }}
+      hosts:
+        - {{ required "builderAdmin.ingress.host is required when builder-admin ingress is enabled" .Values.builderAdmin.ingress.host | quote }}
+  rules:
+    - host: {{ required "builderAdmin.ingress.host is required when builder-admin ingress is enabled" .Values.builderAdmin.ingress.host | quote }}
+      http:
+        paths:
+          # Webhook authentication is HMAC-SHA256 at the application layer.
+          - path: /webhook
+            pathType: Exact
+            backend:
+              service:
+                name: "{{ .Values.project_identifier }}-notes-builder-admin"
+                port:
+                  number: {{ .Values.builderAdmin.port }}
+---
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
