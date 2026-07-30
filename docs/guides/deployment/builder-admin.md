@@ -302,6 +302,8 @@ than push, and pushes to another branch are ignored or rejected without running 
 For an accepted matching push, builder admin runs `git -C <source-dir> pull --ff-only`. It queues
 a build only when that changes the checkout. Ensure the deployed source directory is a clean clone
 with an authenticated `origin` remote and that its checked-out branch tracks the configured branch.
+The normal source watcher remains active during the pull so a local author edit is never ignored.
+That safety measure can produce a follow-up file-watch build after a push.
 
 ### Helm setup
 

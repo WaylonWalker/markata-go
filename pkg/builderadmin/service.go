@@ -194,7 +194,6 @@ type Service struct {
 	watchMu              sync.Mutex
 	watchChanged         map[string]struct{}
 	watchTimer           *time.Timer
-	watchSuppressUntil   time.Time
 	stateMu              sync.Mutex
 	state                State
 	leaderMu             sync.RWMutex
@@ -648,23 +647,6 @@ func gitHead(sourceDir string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func (s *Service) beginSourceSync() {
-	s.watchMu.Lock()
-	defer s.watchMu.Unlock()
-	s.watchSuppressUntil = time.Now().Add(s.cfg.BuildTimeout)
-	clear(s.watchChanged)
-	if s.watchTimer != nil {
-		s.watchTimer.Stop()
-		s.watchTimer = nil
-	}
-}
-
-func (s *Service) endSourceSync() {
-	s.watchMu.Lock()
-	defer s.watchMu.Unlock()
-	s.watchSuppressUntil = time.Now().Add(2 * s.cfg.WatchDebounce)
-}
-
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	state := s.viewState()
@@ -924,11 +906,9 @@ func (s *Service) process(ctx context.Context, req queueRequest) {
 	case "build":
 		if req.SyncSource {
 			s.updateRunningPhase("sync source")
-			s.beginSourceSync()
 			syncCtx, cancel := context.WithTimeout(ctx, s.cfg.BuildTimeout)
 			changed, err := s.pullSource(syncCtx)
 			cancel()
-			s.endSourceSync()
 			if err != nil {
 				s.finishWebhookSyncFailure(req, err)
 				return
@@ -1442,9 +1422,6 @@ func (s *Service) watchSource(ctx context.Context) {
 			if event.Op&fsnotify.Create != 0 {
 				_ = addDirRecursiveIfDir(watcher, event.Name)
 			}
-			if s.watchEventsSuppressed() {
-				continue
-			}
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
 				continue
 			}
@@ -1476,12 +1453,6 @@ func (s *Service) recordWatchPath(path string) {
 	s.watchTimer = time.AfterFunc(s.cfg.WatchDebounce, func() {
 		s.flushWatchBuild()
 	})
-}
-
-func (s *Service) watchEventsSuppressed() bool {
-	s.watchMu.Lock()
-	defer s.watchMu.Unlock()
-	return time.Now().Before(s.watchSuppressUntil)
 }
 
 func (s *Service) flushWatchBuild() {

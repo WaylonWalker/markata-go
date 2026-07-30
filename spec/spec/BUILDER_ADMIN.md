@@ -130,6 +130,10 @@ It MUST enqueue a build only when the checked-out commit changes. Pull failures 
 updates MUST not enqueue a build. The corresponding build record MUST use trigger type `webhook`
 and retain provider, repository, branch, commit, and delivery metadata when supplied.
 
+Filesystem changes remain visible to the source watcher while a webhook pull runs. This prioritizes
+local author edits over deduplicating watcher events: a concurrent or delayed filesystem change MAY
+enqueue a follow-up file-watch build.
+
 Webhook configuration MUST be available in `[markata-go.builder_admin.webhook]`, through
 `MARKATA_GO_BUILDER_ADMIN_WEBHOOK_*` environment variables, and through builder-admin flags.
 Environment values MUST override file configuration; explicitly supplied flags MUST override both.
