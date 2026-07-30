@@ -25,6 +25,7 @@ const (
 	listFormatPath  = "path"
 	listSortDate    = "date"
 	listSortName    = "name"
+	listSortPosts   = "posts"
 	listSortCount   = "count"
 	listSortWords   = "words"
 	listSortReading = "reading_time"
@@ -324,7 +325,7 @@ func isValidTagSort(field string) bool {
 
 func isValidFeedSort(field string) bool {
 	switch strings.ToLower(field) {
-	case listSortName, "posts", listSortWords, listSortReading, "avg_reading_time":
+	case listSortName, listSortPosts, listSortWords, listSortReading, "avg_reading_time":
 		return true
 	default:
 		return false
@@ -576,7 +577,7 @@ func sortFeedRows(rows []feedRow, field string, order services.SortOrder) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		var cmp int
 		switch strings.ToLower(field) {
-		case "posts":
+		case listSortPosts:
 			cmp = compareInts(rows[i].Posts, rows[j].Posts)
 		case listSortWords:
 			cmp = compareInts(rows[i].Words, rows[j].Words)
@@ -642,7 +643,7 @@ func renderFeedsTable(rows []feedRow) error {
 
 func renderFeedsCSV(rows []feedRow) error {
 	w := csv.NewWriter(outWriter())
-	if err := w.Write([]string{"name", "posts", "words", "reading_time", "avg_reading_time", "output"}); err != nil {
+	if err := w.Write([]string{"name", listSortPosts, "words", "reading_time", "avg_reading_time", "output"}); err != nil {
 		return err
 	}
 	for _, row := range rows {
