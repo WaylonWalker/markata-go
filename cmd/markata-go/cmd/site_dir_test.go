@@ -32,13 +32,19 @@ func resetSiteDirState(t *testing.T) {
 	})
 }
 
-func canonicalPath(t *testing.T, path string) string {
+func assertSameDirectory(t *testing.T, got, want string) {
 	t.Helper()
-	resolved, err := filepath.EvalSymlinks(path)
+	gotInfo, err := os.Stat(got)
 	if err != nil {
-		t.Fatalf("resolve path %q: %v", path, err)
+		t.Fatalf("stat path %q: %v", got, err)
 	}
-	return resolved
+	wantInfo, err := os.Stat(want)
+	if err != nil {
+		t.Fatalf("stat path %q: %v", want, err)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("directory = %q, want %q", got, want)
+	}
 }
 
 func TestActivateSiteDir_FlagTakesPrecedenceAndChangesDirectory(t *testing.T) {
@@ -55,9 +61,7 @@ func TestActivateSiteDir_FlagTakesPrecedenceAndChangesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != canonicalPath(t, flagSite) {
-		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, flagSite))
-	}
+	assertSameDirectory(t, gotWD, flagSite)
 	if activeSiteDir != flagSite || !siteDirSelected {
 		t.Fatalf("active site = %q, selected = %t", activeSiteDir, siteDirSelected)
 	}
@@ -75,9 +79,7 @@ func TestActivateSiteDir_UsesEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != canonicalPath(t, site) {
-		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, site))
-	}
+	assertSameDirectory(t, gotWD, site)
 }
 
 func TestActivateSiteDir_RejectsNonDirectory(t *testing.T) {
@@ -130,10 +132,11 @@ func TestCreateManager_SourcePathsUseConfigDirectory(t *testing.T) {
 		t.Fatalf("createManager() error = %v", err)
 	}
 
-	want := filepath.Join(canonicalPath(t, configDir), "posts", "hello.md")
-	if got := sourcePathForOutput(filepath.Join("posts", "hello.md")); got != want {
-		t.Fatalf("sourcePathForOutput() = %q, want %q", got, want)
+	got := sourcePathForOutput(filepath.Join("posts", "hello.md"))
+	if filepath.Base(got) != "hello.md" || filepath.Base(filepath.Dir(got)) != "posts" {
+		t.Fatalf("sourcePathForOutput() = %q, want config/posts/hello.md", got)
 	}
+	assertSameDirectory(t, filepath.Dir(filepath.Dir(got)), configDir)
 }
 
 func TestSteamPersistentPreRun_ActivatesSelectedSite(t *testing.T) {
@@ -148,9 +151,7 @@ func TestSteamPersistentPreRun_ActivatesSelectedSite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get working directory: %v", err)
 	}
-	if gotWD != canonicalPath(t, site) {
-		t.Fatalf("working directory = %q, want %q", gotWD, canonicalPath(t, site))
-	}
+	assertSameDirectory(t, gotWD, site)
 }
 
 func TestBuilderAdmin_UsesReleaseDirFlag(t *testing.T) {
