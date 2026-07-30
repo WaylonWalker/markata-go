@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -58,6 +59,24 @@ func TestNew_RejectsEnabledWebhookWithoutSecret(t *testing.T) {
 	_, err := New(Config{SiteDir: t.TempDir(), Webhook: WebhookConfig{Enabled: true}})
 	if err == nil {
 		t.Fatal("New() accepted an enabled webhook without a secret")
+	}
+}
+
+func TestBuilderAdminWebhook_RejectsQueueWhenFull(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{SiteDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	for range cap(svc.queueCh) {
+		svc.queueCh <- queueRequest{}
+	}
+	if err := svc.enqueueWebhookBuild("GitHub push"); !errors.Is(err, ErrBuildQueueFull) {
+		t.Fatalf("enqueueWebhookBuild() error = %v, want ErrBuildQueueFull", err)
+	}
+	if len(svc.snapshotState().Queue) != 0 {
+		t.Fatal("full queue left a persisted webhook operation")
 	}
 }
 
