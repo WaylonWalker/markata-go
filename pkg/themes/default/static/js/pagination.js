@@ -30,7 +30,7 @@
     let currentPage = getPageFromHash() || 1;
 
     const postsList = document.querySelector('.posts-list');
-    const allPosts = postsList ? Array.from(postsList.querySelectorAll('.card')) : [];
+    const allPosts = postsList ? Array.from(postsList.querySelectorAll('.card, [data-card]')) : [];
 
     if (allPosts.length === 0) return;
 
