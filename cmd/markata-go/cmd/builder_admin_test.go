@@ -117,7 +117,9 @@ branch = "file"
 	}
 	flag.Changed = true
 	t.Cleanup(func() {
-		_ = flag.Value.Set(previousValue)
+		if err := flag.Value.Set(previousValue); err != nil {
+			t.Errorf("restore flag %s: %v", flag.Name, err)
+		}
 		flag.Changed = previousChanged
 	})
 

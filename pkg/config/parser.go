@@ -379,8 +379,8 @@ func populateBuilderAdminExtra(config *models.Config, markataGoRaw map[string]an
 				"user_id": true, "username": true, "display_name": true, "email": true,
 				"groups": true, "roles": true, "scopes": true,
 			}); len(headersExtra) > 0 {
-				authExtra, _ := extra["auth"].(map[string]any)
-				if authExtra == nil {
+				authExtra, ok := extra["auth"].(map[string]any)
+				if !ok {
 					authExtra = make(map[string]any)
 					extra["auth"] = authExtra
 				}
