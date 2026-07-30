@@ -420,7 +420,7 @@ output_dir = "dist"
 	currentCmd = command
 	defer func() { currentCmd = nil }()
 
-	err = runConfigShowWithSources(merged, configPaths)
+	err = runConfigShowWithSources(merged, configPaths, nil)
 
 	if err != nil {
 		t.Fatalf("runConfigShowWithSources() error = %v", err)

@@ -25,7 +25,7 @@ When `--config` is not passed, markata-go looks for config in this order:
 ## High-Value Commands
 
 - `markata-go config show`
-- `markata-go config show --annotate`
+- `markata-go config show` (annotated YAML by default; use `--no-annotate` for plain YAML)
 - `markata-go config show --diff`
 - `markata-go config get <key>`
 - `markata-go config validate`
