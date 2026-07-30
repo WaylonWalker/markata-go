@@ -504,6 +504,37 @@ patterns = ["**/*.md"]         # (default)
 use_gitignore = true           # ~/.config/my-ssg/config.toml
 ```
 
+### Source Diagnostics
+
+`config show --sources` MUST emit valid YAML with a source comment for every
+effective scalar and sequence item. Source comments MUST use this diagnostic
+format:
+
+```text
+# <kind> <location>:<line>:<column> — <change hint>
+```
+
+Examples:
+
+```yaml
+output_dir: public  # file /site/markata-go.toml:12:1 — edit it or run: markata-go config set output_dir <value>
+url: https://example.com  # environment MARKATA_GO_URL — export a new value
+concurrency: 4  # CLI --output — pass a different flag value
+use_gitignore: true  # default — run: markata-go config set glob.use_gitignore <value>
+```
+
+The resolver MUST record the winning source while applying configuration layers
+in precedence order: defaults, root and included files, `--merge-config` files,
+environment variables, then applicable CLI overrides. File sources MUST report
+an absolute cleaned path and 1-indexed line and column. Environment comments
+MUST include only variable names, never values.
+
+Default interactive YAML output SHOULD include source comments and syntax
+highlighting when stdout is a terminal. Piped output, `--no-color`, `NO_COLOR`,
+and `TERM=dumb` MUST remain valid uncolored YAML. JSON and TOML output MUST
+remain parseable and unannotated. `--sources` is the canonical explicit source
+flag; `--annotate` MAY remain as a compatibility alias.
+
 ### `config list`
 
 List all available configuration options:

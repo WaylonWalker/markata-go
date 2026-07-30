@@ -1433,7 +1433,6 @@ refresh attempts fail.
 | `enabled` | bool | `false` | Enable blogroll plugin |
 | `cache_dir` | string | `"cache/blogroll"` | Cache directory |
 | `cache_duration` | string | `"24h"` | Cache TTL (Go duration format) |
-| `refresh_on_build` | bool | `false` | Allow normal builds to refresh blogroll feeds over the network |
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel feed fetches |
 | `max_entries_per_feed` | int | `50` | Max entries per feed |
@@ -1444,7 +1443,6 @@ refresh attempts fail.
 enabled = true
 cache_dir = "cache/blogroll"
 cache_duration = "24h"
-refresh_on_build = false
 timeout = 30
 concurrent_requests = 5
 max_entries_per_feed = 50
@@ -1949,8 +1947,8 @@ Create a `fast-markata-go.toml` for quick development builds:
 glob_patterns = ["posts/draft-*.md"]
 
 [markata-go.blogroll]
-# Keep blogroll pages but refresh them separately
-refresh_on_build = false
+# Disable blogroll for faster builds
+enabled = false
 ```
 
 Use it with:
@@ -2031,6 +2029,16 @@ markata-go config show -m fast-markata-go.toml
 ```
 
 `config show` uses the same config resolution path as `build` and `serve`, including any `--merge-config` overrides.
+
+YAML output includes source comments by default. Comments identify whether an
+effective value came from a config file (with its path and line), an environment
+variable, a CLI override, or a default. Use `--no-annotate` for plain YAML;
+JSON and TOML output remain unannotated and parseable. In an interactive
+terminal, YAML is syntax highlighted using the configured palette.
+
+Default and file-backed comments include a copyable `markata-go config set
+<key> <value>` command so you can override a setting without locating its
+configuration file manually.
 
 Conflicting format requests such as `markata-go config show --json --toml` fail with usage exit code `2`.
 

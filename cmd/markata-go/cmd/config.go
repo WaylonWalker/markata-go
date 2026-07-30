@@ -58,7 +58,8 @@ Example usage:
   markata-go config show              # Show as YAML
   markata-go config show --json       # Show as JSON
   markata-go config show --toml       # Show as TOML
-  markata-go config show --annotate   # Show with source annotations
+  markata-go config show              # Show annotated effective YAML
+  markata-go config show --no-annotate # Show YAML without source annotations
   markata-go config show --diff       # Show only user-provided values`,
 	RunE: runConfigShowCommand,
 }
@@ -141,6 +142,12 @@ var (
 	// configShowAnnotate shows source of each config value.
 	configShowAnnotate bool
 
+	// configShowNoAnnotate disables source comments in YAML output.
+	configShowNoAnnotate bool
+
+	// configShowSources explicitly enables source comments in YAML output.
+	configShowSources bool
+
 	// configShowDiff shows only user-provided values that differ from defaults.
 	configShowDiff bool
 
@@ -166,7 +173,9 @@ func init() {
 	configShowCmd.Flags().StringVar(&configFormat, "format", "yaml", "output format (yaml, json, toml)")
 	configShowCmd.Flags().Bool("json", false, "output as JSON (shorthand for --format=json)")
 	configShowCmd.Flags().Bool("toml", false, "output as TOML (shorthand for --format=toml)")
-	configShowCmd.Flags().BoolVar(&configShowAnnotate, "annotate", false, "show source of each config value (default vs user config)")
+	configShowCmd.Flags().BoolVar(&configShowAnnotate, "annotate", true, "show source comments in YAML output")
+	configShowCmd.Flags().BoolVar(&configShowNoAnnotate, "no-annotate", false, "show YAML without source comments")
+	configShowCmd.Flags().BoolVar(&configShowSources, "sources", false, "show source comments in YAML output")
 	configShowCmd.Flags().BoolVar(&configShowDiff, "diff", false, "show only user-provided values that differ from defaults")
 
 	configInitCmd.Flags().BoolVar(&configInitForce, "force", false, "overwrite existing file")
@@ -190,10 +199,15 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+	cliSources := make(map[string]string)
+	if outputDir != "" {
+		cfg.OutputDir = outputDir
+		cliSources["output_dir"] = "CLI --output — pass a different flag value"
+	}
 
 	// Handle --annotate and --diff modes
-	if configShowAnnotate || configShowDiff {
-		return runConfigShowWithSources(cfg, configPaths)
+	if ((configShowAnnotate || configShowSources) && !configShowNoAnnotate && format == formatYAML) || configShowDiff {
+		return runConfigShowWithSources(cfg, configPaths, cliSources)
 	}
 
 	displayMap, err := configToMap(cfg)
@@ -274,13 +288,18 @@ func resolveConfigShowFormat(cmd *cobra.Command) (string, error) {
 
 // runConfigShowWithSources handles --annotate and --diff flags.
 // It compares user config with defaults to show value sources.
-func runConfigShowWithSources(merged *models.Config, configPaths []string) error {
+func runConfigShowWithSources(merged *models.Config, configPaths []string, cliSources map[string]string) error {
 	mergedMap, err := configToMap(merged)
 	if err != nil {
 		return fmt.Errorf("failed to convert config to map: %w", err)
 	}
 
-	userMap, err := loadUserConfigMap(configPaths)
+	sourcePaths, err := discoverConfigSourcePaths(configPaths)
+	if err != nil {
+		return fmt.Errorf("discover config sources: %w", err)
+	}
+
+	userMap, err := loadUserConfigMap(sourcePaths)
 	if err != nil {
 		return err
 	}
@@ -288,11 +307,15 @@ func runConfigShowWithSources(merged *models.Config, configPaths []string) error
 
 	if configShowDiff {
 		// Show only values that differ from defaults
-		return showDiffConfig(userMap, configPaths)
+		return showDiffConfig(userMap, sourcePaths)
+	}
+	fileSources, err := collectConfigFileSources(sourcePaths)
+	if err != nil {
+		return err
 	}
 
 	// Show annotated config
-	return showAnnotatedConfig(mergedMap, userMap, configPaths)
+	return showAnnotatedConfig(mergedMap, userMap, sourcePaths, fileSources, collectEnvironmentSources(), cliSources)
 }
 
 // redactBuilderAdminWebhookSecret removes the credential from raw user config
@@ -354,20 +377,23 @@ func showDiffConfig(userMap map[string]interface{}, configPaths []string) error 
 }
 
 // showAnnotatedConfig prints the merged config with source annotations.
-func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []string) error {
+//
+//nolint:gocyclo // YAML indentation and source annotations require line-aware handling.
+func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []string, fileSources map[string]configFileSource, envSources, cliSources map[string]string) error {
 	userSource := userSourceLabel(configPaths)
+	var output strings.Builder
 
 	// Print header
-	outln("# Configuration with source annotations")
+	fmt.Fprintln(&output, "# Configuration with source annotations")
 	if len(configPaths) > 0 {
-		outln("# User config files:")
+		fmt.Fprintln(&output, "# User config files:")
 		for _, path := range configPaths {
-			outlnf("#   - %s", path)
+			fmt.Fprintf(&output, "#   - %s\n", path)
 		}
 	} else {
-		outln("# User config: (none found, using defaults)")
+		fmt.Fprintln(&output, "# User config: (none found, using defaults)")
 	}
-	outln()
+	fmt.Fprintln(&output)
 
 	// Get YAML representation of merged config
 	data, err := yaml.Marshal(merged)
@@ -386,7 +412,7 @@ func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []stri
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		if line == "" {
-			outln()
+			fmt.Fprintln(&output)
 			continue
 		}
 
@@ -394,14 +420,14 @@ func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []stri
 		trimmed := strings.TrimLeft(line, " ")
 		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
 			// Array item or comment - just print
-			outln(line)
+			fmt.Fprintln(&output, line)
 			continue
 		}
 
 		// Try to extract key from "key: value" format
 		colonIdx := strings.Index(trimmed, ":")
 		if colonIdx == -1 {
-			outln(line)
+			fmt.Fprintln(&output, line)
 			continue
 		}
 
@@ -418,9 +444,17 @@ func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []stri
 		}
 		path = append(path, key)
 
-		// Determine source based on whether it's in user config
-		source := sourceDefault
-		if hasPath(user, path) {
+		// Determine source based on the effective file assignment. Preserve the
+		// coarse user label for container values that have no leaf assignment.
+		pathKey := strings.Join(path, ".")
+		source := sourceComment(path, fileSources)
+		if envSource, ok := envSources[pathKey]; ok {
+			source = envSource
+		}
+		if cliSource, ok := cliSources[pathKey]; ok {
+			source = cliSource
+		}
+		if strings.HasPrefix(source, "default —") && hasPath(user, path) {
 			source = userSource
 		}
 
@@ -434,16 +468,19 @@ func showAnnotatedConfig(merged, user map[string]interface{}, configPaths []stri
 		// Only annotate leaf values (lines with values after the colon)
 		valueAfterColon := strings.TrimSpace(trimmed[colonIdx+1:])
 		if valueAfterColon != "" && !strings.HasPrefix(valueAfterColon, "|") && !strings.HasPrefix(valueAfterColon, ">") {
-			outlnf("%s%s# %s", line, strings.Repeat(" ", padding), source)
+			fmt.Fprintf(&output, "%s%s# %s\n", line, strings.Repeat(" ", padding), source)
 		} else {
 			if hasPath(user, path) {
-				outlnf("%s%s# %s", line, strings.Repeat(" ", padding), source)
+				fmt.Fprintf(&output, "%s%s# %s\n", line, strings.Repeat(" ", padding), source)
 			} else {
-				outln(line)
+				fmt.Fprintln(&output, line)
 			}
 			stack = append(stack, yamlPathFrame{indent: indent, key: key})
 		}
 	}
+
+	_, chromaStyle := resolveLSPSetupRendering()
+	outText(highlightLSPSetupSnippet(output.String(), "yaml", chromaStyle))
 
 	return nil
 }
