@@ -299,7 +299,7 @@ Forgejo uses the same URL and secret; select its push event. Builder admin accep
 `X-Hub-Signature-256` and Forgejo's `X-Gitea-Signature` headers. Invalid signatures, events other
 than push, and pushes to another branch are ignored or rejected without running a build.
 
-For an accepted matching push, builder admin runs `git -C <source-dir> pull --ff-only`. It queues
+For an accepted matching push, builder admin runs `git -C <source-dir> pull --ff-only origin <branch>`. It queues
 a build only when that changes the checkout. Ensure the deployed source directory is a clean clone
 with an authenticated `origin` remote and that its checked-out branch tracks the configured branch.
 The normal source watcher remains active during the pull so a local author edit is never ignored.
@@ -325,7 +325,7 @@ Point each repository webhook at its matching builder-admin host. Do not share a
 secret with preview environments.
 
 If GitHub or Forgejo reports a successful delivery but no build appears, verify the delivery branch,
-the service's configured branch, the HMAC secret, and that `git -C <source-dir> pull --ff-only`
+the service's configured branch, the HMAC secret, and that `git -C <source-dir> pull --ff-only origin <branch>`
 succeeds in the builder container. A delivery for an unchanged commit intentionally does not queue
 a build.
 
