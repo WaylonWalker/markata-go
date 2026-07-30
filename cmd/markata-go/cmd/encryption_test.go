@@ -11,6 +11,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
+	"github.com/spf13/cobra"
 )
 
 func TestGeneratePasswordCommand_DefaultLength(t *testing.T) {
@@ -31,6 +32,51 @@ func TestGeneratePasswordCommand_DefaultLength(t *testing.T) {
 	}
 	if err := encryption.ValidatePassword(password, encryption.DefaultMinPasswordLength, encryption.DefaultMinEstimatedCrackDuration); err != nil {
 		t.Fatalf("generated password failed validation: %v", err)
+	}
+}
+
+func TestEncryptionShortcuts_HiddenAndConfigured(t *testing.T) {
+	for _, shortcut := range []*cobra.Command{encryptCmd, decryptCmd} {
+		if !shortcut.Hidden {
+			t.Errorf("%s shortcut must be hidden", shortcut.Name())
+		}
+		if shortcut.RunE == nil {
+			t.Errorf("%s shortcut must have a command handler", shortcut.Name())
+		}
+		if shortcut.Flags().Lookup("dry-run") == nil {
+			t.Errorf("%s shortcut is missing --dry-run", shortcut.Name())
+		}
+		if shortcut.Flags().Lookup("workers") == nil {
+			t.Errorf("%s shortcut is missing --workers", shortcut.Name())
+		}
+	}
+	if encryptCmd.RunE == nil || decryptCmd.RunE == nil {
+		t.Fatal("encryption shortcuts must delegate to the bulk command handlers")
+	}
+}
+
+func TestFormatEncryptionProgress_UsesColorWhenEnabled(t *testing.T) {
+	originalForceColor := forceColor
+	originalNoColor := noColor
+	defer func() {
+		forceColor = originalForceColor
+		noColor = originalNoColor
+	}()
+	forceColor = true
+	noColor = false
+
+	colored := formatEncryptionProgress("ENCRYPTED", currentLogTheme.Success, "post.md", "default")
+	if !strings.Contains(colored, "\033[") {
+		t.Fatalf("expected ANSI color output, got %q", colored)
+	}
+
+	noColor = true
+	plain := formatEncryptionProgress("ENCRYPTED", currentLogTheme.Success, "post.md", "default")
+	if strings.Contains(plain, "\033[") {
+		t.Fatalf("expected plain output with --no-color, got %q", plain)
+	}
+	if plain != "ENCRYPTED post.md key=default" {
+		t.Fatalf("plain output = %q", plain)
 	}
 }
 
@@ -425,6 +471,88 @@ secret body
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "wrong-password-value-1")
 	if _, err := decryptPostSourceFile(path, cfg, true); err == nil {
 		t.Fatal("expected error when password is wrong")
+	}
+}
+
+func TestPrepareEncryptPostSourceFiles_FailureDoesNotModifyAnyFile(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	dir := t.TempDir()
+	validPath := filepath.Join(dir, "valid.md")
+	invalidPath := filepath.Join(dir, "invalid.md")
+	valid := "---\ntitle: Valid\nprivate: true\n---\nprivate body\n"
+	invalid := "---\ntitle: Invalid\nprivate: true\nsecret_key: missing\n---\nprivate body\n"
+	for path, content := range map[string]string{validPath: valid, invalidPath: invalid} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+
+	_, err := prepareSourceFiles([]string{validPath, invalidPath}, 2, func(path string) (preparedEncryptPost, error) {
+		return prepareEncryptPostSourceFile(path, cfg)
+	})
+	if err == nil {
+		t.Fatal("expected preparation to fail for missing key")
+	}
+	if got := readFileString(t, validPath); got != valid {
+		t.Fatalf("valid file changed after another preparation failed: got %q, want %q", got, valid)
+	}
+	if got := readFileString(t, invalidPath); got != invalid {
+		t.Fatalf("invalid file changed after preparation failed: got %q, want %q", got, invalid)
+	}
+}
+
+func TestPrepareSourceFiles_PreservesInputOrder(t *testing.T) {
+	paths := []string{"first", "second", "third"}
+	results, err := prepareSourceFiles(paths, 2, func(path string) (string, error) {
+		return path + "-done", nil
+	})
+	if err != nil {
+		t.Fatalf("prepareSourceFiles() error = %v", err)
+	}
+	want := []string{"first-done", "second-done", "third-done"}
+	for i := range want {
+		if results[i] != want[i] {
+			t.Errorf("results[%d] = %q, want %q", i, results[i], want[i])
+		}
+	}
+}
+
+func TestPrepareSourceFiles_NegativeWorkersFails(t *testing.T) {
+	_, err := prepareSourceFiles([]string{"post.md"}, -1, func(path string) (string, error) {
+		return path, nil
+	})
+	if err == nil {
+		t.Fatal("expected negative workers to fail")
+	}
+}
+
+func TestWriteSourceDocuments_ChangedSourceLeavesBatchUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.md")
+	secondPath := filepath.Join(dir, "second.md")
+	for path, content := range map[string]string{firstPath: "first original", secondPath: "second original"} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+
+	// Simulate an edit after preparation, before the batch write begins.
+	if err := os.WriteFile(secondPath, []byte("second edited"), 0o600); err != nil {
+		t.Fatalf("edit %s: %v", secondPath, err)
+	}
+	err := writeSourceDocuments([]sourceDocument{
+		{path: firstPath, original: "first original", content: "first transformed", mode: 0o600},
+		{path: secondPath, original: "second original", content: "second transformed", mode: 0o600},
+	})
+	if err == nil {
+		t.Fatal("expected changed source to fail")
+	}
+	if got := readFileString(t, firstPath); got != "first original" {
+		t.Fatalf("first file changed after stale source detection: got %q", got)
+	}
+	if got := readFileString(t, secondPath); got != "second edited" {
+		t.Fatalf("edited file was overwritten: got %q", got)
 	}
 }
 
