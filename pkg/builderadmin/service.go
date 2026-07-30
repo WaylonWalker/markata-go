@@ -2549,13 +2549,13 @@ const indexHTML = `<!doctype html>
     }).join('');
   }
 
-  function renderRunning(running) {
+  function renderRunning(running, builds) {
     if (!running) {
       activeWork.innerHTML = statusPill('idle');
       activeWorkDetail.textContent = 'No build or refresh is running.';
       return;
     }
-    const baseline = buildTimeBaseline(state.builds || []);
+    const baseline = buildTimeBaseline(builds || []);
     const elapsed = Math.max(0, Date.now() - new Date(running.started_at).getTime());
     const expected = baseline ? baseline.mean : 0;
     const progress = expected ? Math.min(100, elapsed / expected * 100) : 0;
@@ -2694,7 +2694,7 @@ const indexHTML = `<!doctype html>
     queueCount.textContent = (state.queue || []).length;
     queueOverview.textContent = (state.queue || []).length;
     buildCount.textContent = (state.builds || []).length;
-    renderRunning(state.running || null);
+    renderRunning(state.running || null, state.builds || []);
     renderBuilds(state);
     renderReleases(payload.releases || []);
     syncStatus.textContent = 'Live polling every 2s';
