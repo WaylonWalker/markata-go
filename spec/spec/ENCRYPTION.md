@@ -198,6 +198,19 @@ Client-side decryption uses the Web Crypto API with matching parameters.
 
 ## CLI Utilities
 
+### Hidden Root Shortcuts
+
+The CLI provides hidden root-level shortcuts for the common source-encryption workflow:
+
+```
+markata-go encrypt [flags]
+markata-go decrypt [path...] [flags]
+```
+
+`encrypt` has the same behavior and flags as `encryption encrypt-posts`; `decrypt` has the same behavior and flags as `encryption decrypt-posts`. These shortcuts are intentionally omitted from standard help and user documentation, while remaining available for interactive use and automation.
+
+Bulk-command status labels, paths, and key names use the active CLI theme when output is a terminal. `--color` forces color, while `--no-color`, `--log-format plain`, `NO_COLOR`, and non-terminal output use plain text.
+
 ### `encryption generate-password`
 
 Generate a policy-compliant encryption password without invoking the full build. The command prints the generated password to stdout so it can be captured in scripts or piped into other tools.
@@ -245,11 +258,13 @@ Encrypt all private Markdown source bodies matched by the active content glob co
 
 ```
 markata-go encryption encrypt-posts
+markata-go encryption encrypt-posts --workers 4
 markata-go encryption encrypt-posts --dry-run
 ```
 
 - The command rewrites matching files in place by default.
 - `--dry-run` reports which files would be encrypted without modifying the filesystem.
+- `--workers` bounds concurrent source-body preparation. The default (`0`) uses `GOMAXPROCS`; set `--workers 1` to process serially.
 - Posts that are draft, skipped, public, or already source-encrypted are not rewritten.
 - Missing or weak keys cause the command to fail before writing changed files.
 
@@ -262,6 +277,7 @@ markata-go encryption decrypt-posts
 markata-go encryption decrypt-posts --dry-run
 markata-go encryption decrypt-posts path/to/post.md
 markata-go encryption decrypt-posts content/private/
+markata-go encryption decrypt-posts --workers 4
 ```
 
 - With no path arguments the command scans the active content glob configuration.
@@ -272,6 +288,11 @@ markata-go encryption decrypt-posts content/private/
 - The key name is read from the encrypted source marker (`key=...`), falling back to `encryption.default_key`.
 - The password is read from `MARKATA_GO_ENCRYPTION_KEY_<KEY>`. A missing env var or an incorrect password MUST fail before any file is written.
 - Key strength policy is NOT enforced for decryption; only the correct password matters.
+- `--workers` bounds concurrent source-body preparation. The default (`0`) uses `GOMAXPROCS`; set `--workers 1` to process serially.
+
+### Source Command Write Safety
+
+`encrypt-posts` and `decrypt-posts` prepare every candidate document concurrently, then perform writes only after all preparation succeeds. Before writing, the commands verify that each source still matches the content read during preparation. Each replacement uses an atomic rename; a write failure restores documents already written and reports any restoration failure. Consequently, a malformed post, missing key, invalid password, encryption/decryption failure, or detected concurrent edit leaves source files unchanged. Command output remains in the input-file order regardless of worker completion order.
 
 ## Lint Integration
 

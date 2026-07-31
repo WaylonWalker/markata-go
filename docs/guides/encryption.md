@@ -146,6 +146,7 @@ markata-go encryption check
 markata-go encryption check --key default
 markata-go encryption encrypt-posts --dry-run
 markata-go encryption encrypt-posts
+markata-go encryption encrypt-posts --workers 4
 ```
 
 The command prints only the password to stdout, making it easy to pipe into your `.env` file or a password manager. The optional `--length` flag requests a longer password (it must be at least the configured `min_password_length`). The generated password already meets the default crack-time and length thresholds.
@@ -193,6 +194,9 @@ markata-go encryption decrypt-posts pages/private/
 
 # decrypt everything matched by glob.patterns
 markata-go encryption decrypt-posts
+
+# use four concurrent workers (0, the default, uses available Go CPU parallelism)
+markata-go encryption decrypt-posts --workers 4
 ```
 
 The key name comes from the `key=` value in the encrypted marker, falling back to `encryption.default_key`. The
@@ -201,6 +205,10 @@ skipped, frontmatter is preserved exactly, and a missing env var or wrong passwo
 written.
 
 A typical edit cycle is `decrypt-posts <file>`, edit the Markdown, then `encrypt-posts` before committing.
+
+Both bulk commands prepare documents in parallel by default, then begin writing only after every candidate is successfully prepared. A missing key, invalid password, malformed source file, cryptographic error, or detected edit during preparation leaves the repository unchanged. Replacements use atomic file writes, and a write failure restores earlier files. Use `--workers 1` if you need serial processing; `--workers 0` is the default and uses `GOMAXPROCS` workers.
+
+When run in a terminal, encryption progress uses your active CLI color theme. Use `--color` to force colors or `--no-color` for plain output.
 
 ## Lint Rule
 
