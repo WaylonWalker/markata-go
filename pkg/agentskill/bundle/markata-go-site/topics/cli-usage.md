@@ -86,8 +86,10 @@ Set `MARKATA_GO_SITE_DIR` in an alias or wrapper when repeatedly using one site.
 - `markata-go encryption check` (verify configured encryption keys)
 - `markata-go encryption encrypt-posts --dry-run` (preview source encryption for private posts)
 - `markata-go encryption encrypt-posts` (encrypt private Markdown bodies in place)
+- `markata-go encryption encrypt-posts --workers 4` (bound concurrent preparation; default `0` uses `GOMAXPROCS`)
 - `markata-go encryption decrypt-posts --dry-run` (preview decrypting source-encrypted posts)
 - `markata-go encryption decrypt-posts [path...]` (decrypt source-encrypted Markdown bodies in place)
+- Bulk encryption and decryption prepare every file before writing, so a missing key or invalid ciphertext does not leave the repository partially transformed.
 
 ### Theme And Palette
 

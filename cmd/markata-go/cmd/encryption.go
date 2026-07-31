@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
@@ -20,6 +23,7 @@ var (
 	encryptionCheckKey       string
 	encryptionDryRun         bool
 	decryptionDryRun         bool
+	encryptionWorkers        int
 )
 
 var encryptionCmd = &cobra.Command{
@@ -59,7 +63,7 @@ var encryptPostsCmd = &cobra.Command{
 
 Posts are encrypted in place by default. Draft, skipped, public, and already
 source-encrypted posts are reported but not rewritten. Use --dry-run to preview
-changes without modifying files.
+changes without modifying files. Use --workers to bound concurrent preparation.
 `,
 	Args: cobra.NoArgs,
 	RunE: runEncryptPostsCommand,
@@ -78,9 +82,28 @@ reported but not rewritten. Use --dry-run to preview changes without modifying f
 
 The key name is read from the encrypted source marker, falling back to
 encryption.default_key. The password is read from MARKATA_GO_ENCRYPTION_KEY_<KEY>.
+Use --workers to bound concurrent preparation.
 `,
 	Args: cobra.ArbitraryArgs,
 	RunE: runDecryptPostsCommand,
+}
+
+// encryptCmd is a deliberately hidden shortcut for encrypt-posts.
+var encryptCmd = &cobra.Command{
+	Use:    "encrypt",
+	Short:  "Encrypt all private Markdown source bodies",
+	Hidden: true,
+	Args:   cobra.NoArgs,
+	RunE:   runEncryptPostsCommand,
+}
+
+// decryptCmd is a deliberately hidden shortcut for decrypt-posts.
+var decryptCmd = &cobra.Command{
+	Use:    "decrypt [path...]",
+	Short:  "Decrypt source-encrypted Markdown bodies back to plaintext",
+	Hidden: true,
+	Args:   cobra.ArbitraryArgs,
+	RunE:   runDecryptPostsCommand,
 }
 
 func init() {
@@ -88,8 +111,14 @@ func init() {
 	generatePasswordCmd.Flags().IntVar(&encryptionPasswordLength, "length", encryption.DefaultMinPasswordLength, "password length (must be at least the configured minimum)")
 	checkPasswordCmd.Flags().StringVar(&encryptionCheckKey, "key", "", "specific key name to check (default: all required keys)")
 	encryptPostsCmd.Flags().BoolVar(&encryptionDryRun, "dry-run", false, "report files that would be encrypted without modifying them")
+	encryptPostsCmd.Flags().IntVar(&encryptionWorkers, "workers", 0, "number of concurrent workers (0 uses GOMAXPROCS)")
 	decryptPostsCmd.Flags().BoolVar(&decryptionDryRun, "dry-run", false, "report files that would be decrypted without modifying them")
-	rootCmd.AddCommand(encryptionCmd)
+	decryptPostsCmd.Flags().IntVar(&encryptionWorkers, "workers", 0, "number of concurrent workers (0 uses GOMAXPROCS)")
+	encryptCmd.Flags().BoolVar(&encryptionDryRun, "dry-run", false, "report files that would be encrypted without modifying them")
+	encryptCmd.Flags().IntVar(&encryptionWorkers, "workers", 0, "number of concurrent workers (0 uses GOMAXPROCS)")
+	decryptCmd.Flags().BoolVar(&decryptionDryRun, "dry-run", false, "report files that would be decrypted without modifying them")
+	decryptCmd.Flags().IntVar(&encryptionWorkers, "workers", 0, "number of concurrent workers (0 uses GOMAXPROCS)")
+	rootCmd.AddCommand(encryptionCmd, encryptCmd, decryptCmd)
 }
 
 func runGeneratePasswordCommand(cmd *cobra.Command, _ []string) error {
@@ -165,29 +194,38 @@ func runEncryptPostsCommand(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	prepared, err := prepareSourceFiles(files, encryptionWorkers, func(file string) (preparedEncryptPost, error) {
+		return prepareEncryptPostSourceFile(file, cfg)
+	})
+	if err != nil {
+		return err
+	}
+
 	stats := encryptPostsStats{}
-	candidates := make([]encryptPostResult, 0)
-	for _, file := range files {
-		result, err := encryptPostSourceFile(file, cfg, true)
-		if err != nil {
-			return err
-		}
+	for _, candidate := range prepared {
+		result := candidate.result
 		stats.add(result)
 		if result.Action == encryptPostActionEncrypted {
-			candidates = append(candidates, result)
 			if encryptionDryRun {
-				fmt.Fprintf(cmd.OutOrStdout(), "WOULD ENCRYPT %s key=%s\n", result.Path, result.KeyName)
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("WOULD ENCRYPT", currentLogTheme.Warning, result.Path, result.KeyName))
 			}
 		}
 	}
 
 	if !encryptionDryRun {
-		for _, candidate := range candidates {
-			result, err := encryptPostSourceFile(candidate.Path, cfg, false)
-			if err != nil {
-				return err
+		documents := make([]sourceDocument, 0, stats.Encrypted)
+		for _, candidate := range prepared {
+			if candidate.result.Action == encryptPostActionEncrypted {
+				documents = append(documents, candidate.document)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "ENCRYPTED %s key=%s\n", result.Path, result.KeyName)
+		}
+		if err := writeSourceDocuments(documents); err != nil {
+			return err
+		}
+		for _, candidate := range prepared {
+			if candidate.result.Action == encryptPostActionEncrypted {
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("ENCRYPTED", currentLogTheme.Success, candidate.result.Path, candidate.result.KeyName))
+			}
 		}
 	}
 
@@ -195,8 +233,8 @@ func runEncryptPostsCommand(cmd *cobra.Command, _ []string) error {
 	if encryptionDryRun {
 		action = "Would encrypt"
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%s %d private post(s); skipped %d already encrypted, %d public, %d draft/skip.\n",
-		action, stats.Encrypted, stats.AlreadyEncrypted, stats.Public, stats.DraftOrSkip)
+	fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionSummary(action, currentLogTheme.Success, fmt.Sprintf("%d private post(s); skipped %d already encrypted, %d public, %d draft/skip.",
+		stats.Encrypted, stats.AlreadyEncrypted, stats.Public, stats.DraftOrSkip)))
 
 	return nil
 }
@@ -212,29 +250,38 @@ func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	prepared, err := prepareSourceFiles(files, encryptionWorkers, func(file string) (preparedDecryptPost, error) {
+		return prepareDecryptPostSourceFile(file, cfg)
+	})
+	if err != nil {
+		return err
+	}
+
 	stats := decryptPostsStats{}
-	candidates := make([]decryptPostResult, 0)
-	for _, file := range files {
-		result, err := decryptPostSourceFile(file, cfg, true)
-		if err != nil {
-			return err
-		}
+	for _, candidate := range prepared {
+		result := candidate.result
 		stats.add(result)
 		if result.Action == decryptPostActionDecrypted {
-			candidates = append(candidates, result)
 			if decryptionDryRun {
-				fmt.Fprintf(cmd.OutOrStdout(), "WOULD DECRYPT %s key=%s\n", result.Path, result.KeyName)
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("WOULD DECRYPT", currentLogTheme.Warning, result.Path, result.KeyName))
 			}
 		}
 	}
 
 	if !decryptionDryRun {
-		for _, candidate := range candidates {
-			result, err := decryptPostSourceFile(candidate.Path, cfg, false)
-			if err != nil {
-				return err
+		documents := make([]sourceDocument, 0, stats.Decrypted)
+		for _, candidate := range prepared {
+			if candidate.result.Action == decryptPostActionDecrypted {
+				documents = append(documents, candidate.document)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "DECRYPTED %s key=%s\n", result.Path, result.KeyName)
+		}
+		if err := writeSourceDocuments(documents); err != nil {
+			return err
+		}
+		for _, candidate := range prepared {
+			if candidate.result.Action == decryptPostActionDecrypted {
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("DECRYPTED", currentLogTheme.Success, candidate.result.Path, candidate.result.KeyName))
+			}
 		}
 	}
 
@@ -242,8 +289,8 @@ func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
 	if decryptionDryRun {
 		action = "Would decrypt"
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%s %d post(s); skipped %d not encrypted.\n",
-		action, stats.Decrypted, stats.NotEncrypted)
+	fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionSummary(action, currentLogTheme.Success,
+		fmt.Sprintf("%d post(s); skipped %d not encrypted.", stats.Decrypted, stats.NotEncrypted)))
 
 	return nil
 }
@@ -313,24 +360,43 @@ func (s *decryptPostsStats) add(result decryptPostResult) {
 	}
 }
 
+type preparedDecryptPost struct {
+	result   decryptPostResult
+	document sourceDocument
+}
+
 func decryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (decryptPostResult, error) {
+	prepared, err := prepareDecryptPostSourceFile(path, cfg)
+	if err != nil {
+		return decryptPostResult{}, err
+	}
+	if dryRun || prepared.result.Action != decryptPostActionDecrypted {
+		return prepared.result, nil
+	}
+	if err := writeSourceDocuments([]sourceDocument{prepared.document}); err != nil {
+		return decryptPostResult{}, err
+	}
+	return prepared.result, nil
+}
+
+func prepareDecryptPostSourceFile(path string, cfg *models.Config) (preparedDecryptPost, error) {
 	contentBytes, err := os.ReadFile(path)
 	if err != nil {
-		return decryptPostResult{}, fmt.Errorf("read %s: %w", path, err)
+		return preparedDecryptPost{}, fmt.Errorf("read %s: %w", path, err)
 	}
 	content := string(contentBytes)
 
 	_, body, rawFrontmatter, err := plugins.ParseFrontmatterWithRaw(content)
 	if err != nil {
-		return decryptPostResult{}, fmt.Errorf("parse frontmatter %s: %w", path, err)
+		return preparedDecryptPost{}, fmt.Errorf("parse frontmatter %s: %w", path, err)
 	}
 	if !encryption.IsSourceEncrypted(body) {
-		return decryptPostResult{Path: path, Action: decryptPostActionNotEncrypted}, nil
+		return preparedDecryptPost{result: decryptPostResult{Path: path, Action: decryptPostActionNotEncrypted}}, nil
 	}
 
 	envelope, _, err := encryption.ParseSourceEnvelope(body)
 	if err != nil {
-		return decryptPostResult{}, fmt.Errorf("parse encrypted source %s: %w", path, err)
+		return preparedDecryptPost{}, fmt.Errorf("parse encrypted source %s: %w", path, err)
 	}
 
 	keyName := strings.TrimSpace(envelope.KeyName)
@@ -338,31 +404,27 @@ func decryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (decryp
 		keyName = strings.TrimSpace(cfg.Encryption.DefaultKey)
 	}
 	if keyName == "" {
-		return decryptPostResult{}, fmt.Errorf("encrypted post %s has no key name; set encryption.default_key", path)
+		return preparedDecryptPost{}, fmt.Errorf("encrypted post %s has no key name; set encryption.default_key", path)
 	}
 	envName := plugins.EncryptionEnvPrefix + strings.ToUpper(keyName)
 	password := os.Getenv(envName)
 	if password == "" {
-		return decryptPostResult{}, fmt.Errorf("encrypted post %s requires %s", path, envName)
+		return preparedDecryptPost{}, fmt.Errorf("encrypted post %s requires %s", path, envName)
 	}
 
 	plaintext, _, err := encryption.DecryptSourceMarkdown(body, password)
 	if err != nil {
-		return decryptPostResult{}, fmt.Errorf("decrypt source body for %s: %w", path, err)
+		return preparedDecryptPost{}, fmt.Errorf("decrypt source body for %s: %w", path, err)
 	}
-	if dryRun {
-		return decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted}, nil
-	}
-
-	nextContent := decryptedSourceDocument(rawFrontmatter, plaintext)
-	mode := os.FileMode(0o600)
-	if stat, err := os.Stat(path); err == nil {
-		mode = stat.Mode().Perm()
-	}
-	if err := os.WriteFile(path, []byte(nextContent), mode); err != nil {
-		return decryptPostResult{}, fmt.Errorf("write decrypted source %s: %w", path, err)
-	}
-	return decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted}, nil
+	return preparedDecryptPost{
+		result: decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted},
+		document: sourceDocument{
+			path:     path,
+			original: content,
+			content:  decryptedSourceDocument(rawFrontmatter, plaintext),
+			mode:     sourceFileMode(path),
+		},
+	}, nil
 }
 
 func decryptedSourceDocument(rawFrontmatter, body string) string {
@@ -438,6 +500,11 @@ type encryptPostsStats struct {
 	DraftOrSkip      int
 }
 
+type preparedEncryptPost struct {
+	result   encryptPostResult
+	document sourceDocument
+}
+
 func (s *encryptPostsStats) add(result encryptPostResult) {
 	switch result.Action {
 	case encryptPostActionEncrypted:
@@ -452,30 +519,44 @@ func (s *encryptPostsStats) add(result encryptPostResult) {
 }
 
 func encryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (encryptPostResult, error) {
+	prepared, err := prepareEncryptPostSourceFile(path, cfg)
+	if err != nil {
+		return encryptPostResult{}, err
+	}
+	if dryRun || prepared.result.Action != encryptPostActionEncrypted {
+		return prepared.result, nil
+	}
+	if err := writeSourceDocuments([]sourceDocument{prepared.document}); err != nil {
+		return encryptPostResult{}, err
+	}
+	return prepared.result, nil
+}
+
+func prepareEncryptPostSourceFile(path string, cfg *models.Config) (preparedEncryptPost, error) {
 	contentBytes, err := os.ReadFile(path)
 	if err != nil {
-		return encryptPostResult{}, fmt.Errorf("read %s: %w", path, err)
+		return preparedEncryptPost{}, fmt.Errorf("read %s: %w", path, err)
 	}
 	content := string(contentBytes)
 
 	_, body, rawFrontmatter, err := plugins.ParseFrontmatterWithRaw(content)
 	if err != nil {
-		return encryptPostResult{}, fmt.Errorf("parse frontmatter %s: %w", path, err)
+		return preparedEncryptPost{}, fmt.Errorf("parse frontmatter %s: %w", path, err)
 	}
 	if encryption.IsSourceEncrypted(body) {
-		return encryptPostResult{Path: path, Action: encryptPostActionAlreadyEncrypted}, nil
+		return preparedEncryptPost{result: encryptPostResult{Path: path, Action: encryptPostActionAlreadyEncrypted}}, nil
 	}
 
 	post, err := plugins.ParsePostFromContentWithConfig(path, content, cfg)
 	if err != nil {
-		return encryptPostResult{}, fmt.Errorf("parse %s: %w", path, err)
+		return preparedEncryptPost{}, fmt.Errorf("parse %s: %w", path, err)
 	}
 	applyEncryptPostsPrivateTags(post, cfg)
 	if post.Draft || post.Skip {
-		return encryptPostResult{Path: path, Action: encryptPostActionDraftOrSkip}, nil
+		return preparedEncryptPost{result: encryptPostResult{Path: path, Action: encryptPostActionDraftOrSkip}}, nil
 	}
 	if !post.Private {
-		return encryptPostResult{Path: path, Action: encryptPostActionPublic}, nil
+		return preparedEncryptPost{result: encryptPostResult{Path: path, Action: encryptPostActionPublic}}, nil
 	}
 
 	keyName := strings.TrimSpace(post.SecretKey)
@@ -483,33 +564,183 @@ func encryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (encryp
 		keyName = strings.TrimSpace(cfg.Encryption.DefaultKey)
 	}
 	if keyName == "" {
-		return encryptPostResult{}, fmt.Errorf("private post %s has no encryption key; set secret_key or encryption.default_key", path)
+		return preparedEncryptPost{}, fmt.Errorf("private post %s has no encryption key; set secret_key or encryption.default_key", path)
 	}
 	password := os.Getenv(plugins.EncryptionEnvPrefix + strings.ToUpper(keyName))
 	if password == "" {
-		return encryptPostResult{}, fmt.Errorf("private post %s requires %s%s", path, plugins.EncryptionEnvPrefix, strings.ToUpper(keyName))
+		return preparedEncryptPost{}, fmt.Errorf("private post %s requires %s%s", path, plugins.EncryptionEnvPrefix, strings.ToUpper(keyName))
 	}
 	if err := validateEncryptPostsPassword(password, cfg); err != nil {
-		return encryptPostResult{}, fmt.Errorf("private post %s key %q failed policy: %w", path, keyName, err)
+		return preparedEncryptPost{}, fmt.Errorf("private post %s key %q failed policy: %w", path, keyName, err)
 	}
 
 	encryptedBody, err := encryption.EncryptSourceMarkdown(body, keyName, password)
 	if err != nil {
-		return encryptPostResult{}, fmt.Errorf("encrypt source body for %s: %w", path, err)
+		return preparedEncryptPost{}, fmt.Errorf("encrypt source body for %s: %w", path, err)
 	}
-	if dryRun {
-		return encryptPostResult{Path: path, KeyName: keyName, Action: encryptPostActionEncrypted}, nil
+	return preparedEncryptPost{
+		result: encryptPostResult{Path: path, KeyName: keyName, Action: encryptPostActionEncrypted},
+		document: sourceDocument{
+			path:     path,
+			original: content,
+			content:  encryptedSourceDocument(rawFrontmatter, encryptedBody),
+			mode:     sourceFileMode(path),
+		},
+	}, nil
+}
+
+func sourceFileMode(path string) os.FileMode {
+	if stat, err := os.Stat(path); err == nil {
+		return stat.Mode().Perm()
+	}
+	return 0o600
+}
+
+type sourceDocument struct {
+	path     string
+	original string
+	content  string
+	mode     os.FileMode
+}
+
+// writeSourceDocuments writes a prepared batch only when every source still
+// matches the content used during preparation. Each replacement is atomic; if
+// a later write fails, previously written documents are restored.
+func writeSourceDocuments(documents []sourceDocument) error {
+	for _, document := range documents {
+		if err := ensureSourceUnchanged(document); err != nil {
+			return err
+		}
 	}
 
-	nextContent := encryptedSourceDocument(rawFrontmatter, encryptedBody)
-	mode := os.FileMode(0o600)
-	if stat, err := os.Stat(path); err == nil {
-		mode = stat.Mode().Perm()
+	written := make([]sourceDocument, 0, len(documents))
+	for _, document := range documents {
+		if err := ensureSourceUnchanged(document); err != nil {
+			rollbackErr := restoreSourceDocuments(written)
+			if rollbackErr != nil {
+				return fmt.Errorf("source changed; rollback failed: %w", errors.Join(err, rollbackErr))
+			}
+			return err
+		}
+		if err := writeSourceDocumentAtomically(document.path, document.content, document.mode); err != nil {
+			rollbackErr := restoreSourceDocuments(written)
+			if rollbackErr != nil {
+				return fmt.Errorf("write source %s; rollback failed: %w", document.path, errors.Join(err, rollbackErr))
+			}
+			return fmt.Errorf("write source %s: %w", document.path, err)
+		}
+		written = append(written, document)
 	}
-	if err := os.WriteFile(path, []byte(nextContent), mode); err != nil {
-		return encryptPostResult{}, fmt.Errorf("write encrypted source %s: %w", path, err)
+	return nil
+}
+
+func restoreSourceDocuments(documents []sourceDocument) error {
+	for i := len(documents) - 1; i >= 0; i-- {
+		document := documents[i]
+		current, err := os.ReadFile(document.path)
+		if err != nil {
+			return fmt.Errorf("read source before restore %s: %w", document.path, err)
+		}
+		if string(current) != document.content {
+			return fmt.Errorf("source changed before restore: %s", document.path)
+		}
+		if err := writeSourceDocumentAtomically(document.path, document.original, document.mode); err != nil {
+			return fmt.Errorf("restore source %s: %w", document.path, err)
+		}
 	}
-	return encryptPostResult{Path: path, KeyName: keyName, Action: encryptPostActionEncrypted}, nil
+	return nil
+}
+
+func ensureSourceUnchanged(document sourceDocument) error {
+	current, err := os.ReadFile(document.path)
+	if err != nil {
+		return fmt.Errorf("read source before write %s: %w", document.path, err)
+	}
+	if string(current) != document.original {
+		return fmt.Errorf("source changed during encryption preparation: %s", document.path)
+	}
+	return nil
+}
+
+func writeSourceDocumentAtomically(path, content string, mode os.FileMode) error {
+	temporary, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".markata-*")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+
+	if err := temporary.Chmod(mode); err != nil {
+		temporary.Close()
+		return err
+	}
+	if _, err := temporary.WriteString(content); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Sync(); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temporaryPath, path)
+}
+
+func formatEncryptionProgress(action, actionColor, path, keyName string) string {
+	return fmt.Sprintf("%s %s key=%s",
+		colorizeOutput(action, actionColor),
+		colorizeOutput(path, currentLogTheme.Component),
+		colorizeOutput(keyName, currentLogTheme.Warning))
+}
+
+func formatEncryptionSummary(action, actionColor, summary string) string {
+	return fmt.Sprintf("%s %s", colorizeOutput(action, actionColor), summary)
+}
+
+// prepareSourceFiles runs CPU-bound source transformations concurrently while
+// retaining input order. Callers must complete this phase before writing files
+// so a preparation error never leaves a partially transformed repository.
+func prepareSourceFiles[T any](paths []string, workers int, prepare func(string) (T, error)) ([]T, error) {
+	results := make([]T, len(paths))
+	errs := make([]error, len(paths))
+	if len(paths) == 0 {
+		return results, nil
+	}
+	if workers < 0 {
+		return nil, fmt.Errorf("workers must be zero or greater")
+	}
+	if workers == 0 {
+		workers = runtime.GOMAXPROCS(0)
+	}
+	if workers > len(paths) {
+		workers = len(paths)
+	}
+
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for index := range jobs {
+				results[index], errs[index] = prepare(paths[index])
+			}
+		}()
+	}
+	for index := range paths {
+		jobs <- index
+	}
+	close(jobs)
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return results, nil
 }
 
 func validateEncryptPostsPassword(password string, cfg *models.Config) error {
