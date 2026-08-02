@@ -279,7 +279,7 @@ func saveCache(path string, cache Cache) error {
 	return nil
 }
 
-func discoverFiles(m *lifecycle.Manager) (files []string, modTimes map[string]plugins.GlobFileInfo, err error) {
+func discoverFiles(m *lifecycle.Manager) ([]string, map[string]plugins.GlobFileInfo, error) {
 	glob := plugins.NewGlobPlugin()
 	if err := glob.Configure(m); err != nil {
 		return nil, nil, err

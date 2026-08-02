@@ -602,7 +602,7 @@ func TestRenderPostsTable_PreservesHeaders(t *testing.T) {
 	m := Model{
 		theme:      theme,
 		sortBy:     "date",
-		postsTable: createPostsTableWithTheme(120, theme),
+		postsTable: createPostsTableWithTheme(120, theme, "date"),
 		posts:      []*models.Post{{Title: &title}},
 	}
 	m.postsTable.SetRows(m.postsToRows())
