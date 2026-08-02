@@ -13,6 +13,34 @@ import (
 )
 
 const cacheKeyGlobFileModTimes = "glob.file_mod_times"
+const cacheKeyGlobFileInfo = "glob.file_info"
+
+// GlobFileInfo describes filesystem metadata collected during a glob scan.
+type GlobFileInfo struct {
+	ModTime int64
+	Size    int64
+}
+
+// GlobFileInfoMap returns metadata collected during the most recent glob
+// scan so later stages do not need to stat every matched file again.
+func GlobFileInfoMap(m *lifecycle.Manager) map[string]GlobFileInfo {
+	if m == nil {
+		return nil
+	}
+	value, ok := m.Cache().Get(cacheKeyGlobFileInfo)
+	if !ok {
+		return nil
+	}
+	modTimes, ok := value.(map[string]GlobFileInfo)
+	if !ok {
+		return nil
+	}
+	result := make(map[string]GlobFileInfo, len(modTimes))
+	for path, info := range modTimes {
+		result[path] = info
+	}
+	return result
+}
 
 // GlobPlugin discovers content files using glob patterns.
 type GlobPlugin struct {
@@ -169,7 +197,7 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 		if cache != nil && len(files) > 0 {
 			cache.SetGlobCache(files, patternHash)
 		}
-		m.Cache().Set(cacheKeyGlobFileModTimes, modTimes)
+		setGlobMetadata(m, modTimes)
 		m.SetFiles(files)
 		return nil
 	}
@@ -190,9 +218,18 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 		cache.SetGlobCache(files, patternHash)
 	}
 
-	m.Cache().Set(cacheKeyGlobFileModTimes, modTimes)
+	setGlobMetadata(m, modTimes)
 	m.SetFiles(files)
 	return nil
+}
+
+func setGlobMetadata(m *lifecycle.Manager, info map[string]GlobFileInfo) {
+	modTimes := make(map[string]int64, len(info))
+	for path, fileInfo := range info {
+		modTimes[path] = fileInfo.ModTime
+	}
+	m.Cache().Set(cacheKeyGlobFileModTimes, modTimes)
+	m.Cache().Set(cacheKeyGlobFileInfo, info)
 }
 
 func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
@@ -206,9 +243,9 @@ func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
 }
 
 // scanFiles performs full glob scan and records file modtimes for later stages.
-func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]int64) {
+func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFileInfo) {
 	fileSet := make(map[string]struct{})
-	modTimes := make(map[string]int64)
+	modTimes := make(map[string]GlobFileInfo)
 
 	for _, pattern := range p.patterns {
 		fullPattern := pattern
@@ -237,7 +274,7 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]int64) {
 			}
 
 			fileSet[relPath] = struct{}{}
-			modTimes[relPath] = info.ModTime().UnixNano()
+			modTimes[relPath] = GlobFileInfo{ModTime: info.ModTime().UnixNano(), Size: info.Size()}
 		}
 	}
 

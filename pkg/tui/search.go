@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/search"
 	"github.com/WaylonWalker/markata-go/pkg/services"
@@ -317,6 +318,41 @@ func matchesPostSubstring(p *models.Post, q string) bool {
 		}
 	}
 	return false
+}
+
+// filterVisiblePosts narrows an already loaded list for the TUI slash filter.
+// Keeping this local makes the filter predictable and prevents it from
+// unexpectedly searching posts that are not in the current drill-down view.
+func filterVisiblePosts(posts []*models.Post, query string) []*models.Post {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" {
+		return posts
+	}
+
+	filtered := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if matchesPostSubstring(post, query) || strings.Contains(strings.ToLower(post.Path), query) {
+			filtered = append(filtered, post)
+		}
+	}
+	return filtered
+}
+
+func filterVisibleFeeds(feeds []*lifecycle.Feed, query string) []*lifecycle.Feed {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" {
+		return feeds
+	}
+
+	filtered := make([]*lifecycle.Feed, 0, len(feeds))
+	for _, feed := range feeds {
+		if strings.Contains(strings.ToLower(feed.Name), query) ||
+			strings.Contains(strings.ToLower(feed.Title), query) ||
+			strings.Contains(strings.ToLower(feed.Path), query) {
+			filtered = append(filtered, feed)
+		}
+	}
+	return filtered
 }
 
 // handleSearchResults processes search results arriving from executeSearch.

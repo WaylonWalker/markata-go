@@ -110,10 +110,12 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 		// Create lifecycle.Feed for each page
 		feed := &lifecycle.Feed{
-			Name:  fc.Slug,
-			Title: fc.Title,
-			Posts: filteredPosts,
-			Path:  fc.Slug,
+			Name:           fc.Slug,
+			Title:          fc.Title,
+			Posts:          filteredPosts,
+			Path:           fc.Slug,
+			IncludePrivate: fc.IncludePrivate || fc.Private,
+			Hidden:         fc.Sidebar != nil && !*fc.Sidebar,
 		}
 
 		feeds = append(feeds, feed)
