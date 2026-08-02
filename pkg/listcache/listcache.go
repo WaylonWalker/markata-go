@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	CacheVersion    = 3
+	CacheVersion    = 5
 	DefaultCacheDir = ".markata/cache"
 	CacheFileName   = "list.json"
 )
@@ -68,10 +68,13 @@ type CachedPost struct {
 }
 
 type CachedFeed struct {
-	Name      string   `json:"name"`
-	Title     string   `json:"title"`
-	Path      string   `json:"path"`
-	PostPaths []string `json:"post_paths"`
+	Name           string   `json:"name"`
+	Title          string   `json:"title"`
+	Path           string   `json:"path"`
+	PostPaths      []string `json:"post_paths"`
+	IncludePrivate bool     `json:"include_private,omitempty"`
+	Hidden         bool     `json:"hidden,omitempty"`
+	Automated      bool     `json:"automated,omitempty"`
 }
 
 func SetOptions(m *lifecycle.Manager, opts Options) {
@@ -99,16 +102,17 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 	}
 
 	contentDir := contentDirFromConfig(m.Config())
-	files, err := discoverFiles(m)
+	files, modTimes, err := discoverFiles(m)
 	if err != nil {
 		return err
 	}
 
-	if cache.Version != CacheVersion || cache.ConfigHash != opts.ConfigHash {
+	cacheReusable := cache.Version == CacheVersion && cache.ConfigHash == opts.ConfigHash
+	if !cacheReusable {
 		cache = newCache(opts.ConfigHash, contentDir, m.Config().GlobPatterns)
 	}
 
-	currentFiles, changedFiles, err := diffFiles(files, contentDir, cache.Files)
+	currentFiles, changedFiles, err := diffFiles(files, modTimes, contentDir, cache.Files)
 	if err != nil {
 		return err
 	}
@@ -126,6 +130,13 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 		return err
 	}
 
+	// A warm TUI launch still needs to restore posts and feeds, but rewriting the
+	// complete, indented cache (including every post body) is unnecessary when
+	// none of the source files changed. Avoiding this write noticeably reduces
+	// startup latency on large sites and reduces cache SSD churn.
+	if cacheReusable && len(changedFiles) == 0 && len(cache.Feeds) > 0 {
+		return nil
+	}
 	refreshCache(&cache, currentFiles, posts, m.Feeds(), contentDir, m.Config().GlobPatterns)
 	return saveCache(cachePath, cache)
 }
@@ -268,29 +279,32 @@ func saveCache(path string, cache Cache) error {
 	return nil
 }
 
-func discoverFiles(m *lifecycle.Manager) ([]string, error) {
+func discoverFiles(m *lifecycle.Manager) (files []string, modTimes map[string]plugins.GlobFileInfo, err error) {
 	glob := plugins.NewGlobPlugin()
 	if err := glob.Configure(m); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := glob.Glob(m); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return m.Files(), nil
+	return m.Files(), plugins.GlobFileInfoMap(m), nil
 }
 
-func diffFiles(files []string, contentDir string, cached map[string]FileInfo) (current map[string]FileInfo, changed map[string]bool, err error) {
+func diffFiles(files []string, modTimes map[string]plugins.GlobFileInfo, contentDir string, cached map[string]FileInfo) (current map[string]FileInfo, changed map[string]bool, err error) {
 	current = make(map[string]FileInfo, len(files))
 	changed = make(map[string]bool)
 
 	for _, file := range files {
 		fullPath := filepath.Join(contentDir, file)
-		stat, statErr := os.Stat(fullPath)
-		if statErr != nil {
-			return nil, nil, fmt.Errorf("stat %s: %w", file, statErr)
+		globInfo, ok := modTimes[file]
+		if !ok {
+			stat, statErr := os.Stat(fullPath)
+			if statErr != nil {
+				return nil, nil, fmt.Errorf("stat %s: %w", file, statErr)
+			}
+			globInfo = plugins.GlobFileInfo{ModTime: stat.ModTime().UnixNano(), Size: stat.Size()}
 		}
-
-		info := FileInfo{ModTime: stat.ModTime().UnixNano(), Size: stat.Size()}
+		info := FileInfo{ModTime: globInfo.ModTime, Size: globInfo.Size}
 		current[file] = info
 		if cachedInfo, ok := cached[file]; !ok || cachedInfo.ModTime != info.ModTime || cachedInfo.Size != info.Size {
 			changed[file] = true
@@ -398,10 +412,10 @@ func rebuildFeeds(m *lifecycle.Manager) error {
 	if err := plugins.NewSeriesPlugin().Collect(m); err != nil {
 		return err
 	}
-	if err := plugins.NewAutoFeedsPlugin().Collect(m); err != nil {
+	if err := plugins.NewFeedsPlugin().Collect(m); err != nil {
 		return err
 	}
-	return plugins.NewFeedsPlugin().Collect(m)
+	return plugins.NewAutoFeedsPlugin().Collect(m)
 }
 
 func baseFeedConfigs(m *lifecycle.Manager) []models.FeedConfig {
@@ -488,10 +502,13 @@ func modelToCachedFeeds(feeds []*lifecycle.Feed) []CachedFeed {
 			paths = append(paths, post.Path)
 		}
 		result = append(result, CachedFeed{
-			Name:      feed.Name,
-			Title:     feed.Title,
-			Path:      feed.Path,
-			PostPaths: paths,
+			Name:           feed.Name,
+			Title:          feed.Title,
+			Path:           feed.Path,
+			PostPaths:      paths,
+			IncludePrivate: feed.IncludePrivate,
+			Hidden:         feed.Hidden,
+			Automated:      feed.Automated,
 		})
 	}
 	return result
@@ -507,10 +524,13 @@ func cachedFeedsToModel(feeds []CachedFeed, postsByPath map[string]*models.Post)
 			}
 		}
 		result = append(result, &lifecycle.Feed{
-			Name:  feed.Name,
-			Title: feed.Title,
-			Posts: posts,
-			Path:  feed.Path,
+			Name:           feed.Name,
+			Title:          feed.Title,
+			Posts:          posts,
+			Path:           feed.Path,
+			IncludePrivate: feed.IncludePrivate,
+			Hidden:         feed.Hidden,
+			Automated:      feed.Automated,
 		})
 	}
 	return result

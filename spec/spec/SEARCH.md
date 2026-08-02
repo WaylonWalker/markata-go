@@ -8,6 +8,14 @@ Pagefind is the default static search implementation. Bleve-backed search is als
 
 Search is **enabled by default** for all markata-go sites. The implementation uses [Pagefind](https://pagefind.app/), a static site search library that generates an optimized search index during the build process.
 
+### TUI list filtering
+
+The terminal UI uses `/` as a lightweight filter for the currently visible post
+or feed list. It filters as the user types and never searches outside the
+current list. Posts match title, path, description, tags, and content; feeds
+match name, title, and path. `Esc` cancels the filter and restores the visible
+list; `Enter` keeps the matching list selected.
+
 Fast mode (`build --fast`, `serve --fast`) skips Pagefind indexing.
 
 ## Architecture

@@ -554,3 +554,90 @@ func TestHandleEnter_EmptyFeeds(t *testing.T) {
 		t.Error("expected nil command when no feeds")
 	}
 }
+
+func TestFilterVisiblePosts_SearchesOnlyCurrentList(t *testing.T) {
+	title := "Go tooling"
+	description := "A guide to terminal workflows"
+	posts := []*models.Post{
+		{Path: "posts/go.md", Title: &title},
+		{Path: "notes/terminal.md", Description: &description},
+		{Path: "posts/rust.md"},
+	}
+
+	for _, tt := range []struct {
+		query string
+		want  int
+	}{
+		{"go", 1},
+		{"terminal", 1},
+		{"rust", 1},
+		{"missing", 0},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			got := filterVisiblePosts(posts, tt.query)
+			if len(got) != tt.want {
+				t.Fatalf("filterVisiblePosts(%q) returned %d posts, want %d", tt.query, len(got), tt.want)
+			}
+		})
+	}
+}
+
+func TestFeedToRow_LabelsSpecialFeeds(t *testing.T) {
+	model := Model{theme: DefaultTheme()}
+	row := model.feedToRow(&lifecycle.Feed{
+		Name:           "secret",
+		IncludePrivate: true,
+		Hidden:         true,
+		Automated:      true,
+	})
+
+	if !contains(row[0], "secret [private,hidden,auto]") {
+		t.Fatalf("feed title = %q, missing status labels", row[0])
+	}
+}
+
+func TestRenderPostsTable_PreservesHeaders(t *testing.T) {
+	theme := DefaultTheme()
+	title := "Example"
+	m := Model{
+		theme:      theme,
+		sortBy:     "date",
+		postsTable: createPostsTableWithTheme(120, theme),
+		posts:      []*models.Post{{Title: &title}},
+	}
+	m.postsTable.SetRows(m.postsToRows())
+
+	view := m.renderPostsTable()
+	for _, header := range []string{"TITLE", "DATE", "WORDS", "READ", "TAGS", "PATH"} {
+		if !contains(view, header) {
+			t.Errorf("posts table is missing %q header: %s", header, view)
+		}
+	}
+	if contains(view, "GAGS") {
+		t.Error("posts table must not replace the TAGS header with its shortcut")
+	}
+}
+
+func TestFilterVisibleFeeds_MatchesNameTitleAndPath(t *testing.T) {
+	feeds := []*lifecycle.Feed{
+		{Name: "daily", Title: "Daily Notes", Path: "feeds/daily"},
+		{Name: "tags/go", Title: "Posts tagged: Go", Path: "feeds/tags/go"},
+		{Name: "archive", Title: "Archive", Path: "feeds/archive"},
+	}
+
+	for _, tt := range []struct {
+		query string
+		want  int
+	}{
+		{"daily", 1},
+		{"posts tagged", 1},
+		{"tags/go", 1},
+		{"missing", 0},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			if got := filterVisibleFeeds(feeds, tt.query); len(got) != tt.want {
+				t.Fatalf("filterVisibleFeeds(%q) returned %d feeds, want %d", tt.query, len(got), tt.want)
+			}
+		})
+	}
+}

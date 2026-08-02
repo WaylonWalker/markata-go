@@ -377,10 +377,12 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 		// Create lifecycle.Feed
 		feed := &lifecycle.Feed{
-			Name:  fc.Slug,
-			Title: fc.Title,
-			Posts: filteredPosts,
-			Path:  fc.Slug,
+			Name:           fc.Slug,
+			Title:          fc.Title,
+			Posts:          filteredPosts,
+			Path:           fc.Slug,
+			IncludePrivate: fc.IncludePrivate,
+			Automated:      true,
 		}
 
 		feeds = append(feeds, feed)
