@@ -29,6 +29,11 @@ type Colors struct {
 	TableCell     lipgloss.Color
 	TableSelected lipgloss.Color
 
+	// Feed status colors
+	FeedPrivate   lipgloss.Color
+	FeedHidden    lipgloss.Color
+	FeedAutomated lipgloss.Color
+
 	// Menu colors
 	MenuFg lipgloss.Color
 	MenuBg lipgloss.Color
@@ -48,6 +53,9 @@ func DefaultColors() *Colors {
 		TableHeader:   lipgloss.Color("99"),  // Purple
 		TableCell:     lipgloss.Color("252"), // Light gray
 		TableSelected: lipgloss.Color("229"), // Light yellow
+		FeedPrivate:   lipgloss.Color("203"), // Red/pink
+		FeedHidden:    lipgloss.Color("214"), // Orange
+		FeedAutomated: lipgloss.Color("81"),  // Cyan
 		MenuFg:        lipgloss.Color("252"), // Light gray
 		MenuBg:        lipgloss.Color("236"), // Dark gray
 	}
@@ -90,6 +98,15 @@ func colorsFromPalette(p *palettes.Palette) *Colors {
 	if hex := p.Resolve("link"); hex != "" {
 		colors.Selected = lipgloss.Color(hex)
 		colors.TableSelected = lipgloss.Color(hex)
+	}
+	if hex := p.Resolve("error"); hex != "" {
+		colors.FeedPrivate = lipgloss.Color(hex)
+	}
+	if hex := p.Resolve("warning"); hex != "" {
+		colors.FeedHidden = lipgloss.Color(hex)
+	}
+	if hex := p.Resolve("info"); hex != "" {
+		colors.FeedAutomated = lipgloss.Color(hex)
 	}
 
 	// Use accent-hover for selection background

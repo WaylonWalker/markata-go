@@ -94,6 +94,11 @@ type FeedConfig struct {
 	// IncludePrivate allows including private posts in this feed (default: false)
 	IncludePrivate bool `json:"include_private,omitempty" yaml:"include_private,omitempty" toml:"include_private,omitempty"`
 
+	// Private marks this feed as private. It is retained as a compatibility
+	// alias for site configurations that use `private = true`; private feeds
+	// also include private posts.
+	Private bool `json:"private,omitempty" yaml:"private,omitempty" toml:"private,omitempty"`
+
 	// ArchiveDisabled disables the generated archive syndication endpoints for this feed.
 	ArchiveDisabled bool `json:"archive_disabled,omitempty" yaml:"archive_disabled,omitempty" toml:"archive_disabled,omitempty"`
 

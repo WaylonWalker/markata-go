@@ -71,26 +71,29 @@ type footerButton struct {
 
 // Model is the main Bubble Tea model
 type Model struct {
-	app          *services.App
-	posts        []*models.Post
-	tags         []services.TagInfo
-	feeds        []*lifecycle.Feed
-	postsTable   table.Model
-	tagsTable    table.Model
-	feedsTable   table.Model
-	cursor       int
-	view         View
-	previousView View // Track previous view for returning from detail
-	mode         Mode
-	filter       string
-	filterInput  textinput.Model
-	cmdInput     textinput.Model
-	width        int
-	height       int
-	err          error
-	selectedPost *models.Post   // The post being viewed in detail
-	postViewport viewport.Model // Viewport for scrolling post detail content
-	helpViewport viewport.Model // Viewport for scrolling help content
+	app               *services.App
+	posts             []*models.Post
+	visiblePosts      []*models.Post    // Unfiltered posts in the current list; used by / filtering.
+	visibleFeeds      []*lifecycle.Feed // Unfiltered feeds in the current list; used by / filtering.
+	tags              []services.TagInfo
+	feeds             []*lifecycle.Feed
+	postsTable        table.Model
+	tagsTable         table.Model
+	feedsTable        table.Model
+	cursor            int
+	view              View
+	previousView      View // Track previous view for returning from detail
+	mode              Mode
+	filter            string
+	filterBeforeInput string
+	filterInput       textinput.Model
+	cmdInput          textinput.Model
+	width             int
+	height            int
+	err               error
+	selectedPost      *models.Post   // The post being viewed in detail
+	postViewport      viewport.Model // Viewport for scrolling post detail content
+	helpViewport      viewport.Model // Viewport for scrolling help content
 
 	// Sort state
 	sortBy       string             // "date", "title", "words", "path"
@@ -215,7 +218,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	}
 
 	filterInput := textinput.New()
-	filterInput.Placeholder = "e.g., published == True, 'python' in tags"
+	filterInput.Placeholder = "Filter visible posts..."
 	filterInput.CharLimit = 100
 
 	cmdInput := textinput.New()
@@ -227,7 +230,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	helpSearchInput.CharLimit = 100
 
 	// Initialize posts table with columns and theme
-	postsTable := createPostsTableWithTheme(80, theme) // Default width, will be updated on resize
+	postsTable := createPostsTableWithTheme(80, theme, "date") // Default width, updated on resize
 
 	// Initialize tags table with columns and theme
 	tagsTable := createTagsTableWithTheme(80, theme) // Default width, will be updated on resize
@@ -303,9 +306,9 @@ func createTagsTableWithTheme(width int, theme *Theme) table.Model {
 
 // createFeedsTableWithTheme creates and configures the feeds table with theme colors.
 func createFeedsTableWithTheme(width int, theme *Theme) table.Model {
-	// Column widths: NAME(20) + POSTS(8) + WORDS(10) + TOT TIME(10) + AVG TIME(10) + OUTPUT(remaining)
+	// Column widths: NAME(32) + POSTS(8) + WORDS(10) + TOT TIME(10) + AVG TIME(10) + OUTPUT(remaining)
 	// Account for padding/borders (approximately 12 chars)
-	outputWidth := width - 20 - 8 - 10 - 10 - 10 - 12
+	outputWidth := width - 32 - 8 - 10 - 10 - 10 - 12
 	if outputWidth < 15 {
 		outputWidth = 15
 	}
@@ -323,7 +326,11 @@ func createFeedsTableWithTheme(width int, theme *Theme) table.Model {
 }
 
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
-func createPostsTableWithTheme(width int, theme *Theme) table.Model {
+func createPostsTableWithTheme(width int, theme *Theme, sortBy string) table.Model {
+	return createTableWithTheme(postsTableColumns(width, theme, sortBy), theme)
+}
+
+func postsTableColumns(width int, theme *Theme, sortBy string) []table.Column {
 	// Column widths: TITLE(35) + DATE(12) + WORDS(8) + READ(8) + TAGS(18) + PATH(remaining)
 	// Account for padding/borders (approximately 10 chars)
 	pathWidth := width - 35 - 12 - 8 - 8 - 18 - 10
@@ -331,7 +338,7 @@ func createPostsTableWithTheme(width int, theme *Theme) table.Model {
 		pathWidth = 10
 	}
 
-	columns := []table.Column{
+	return []table.Column{
 		{Title: "TITLE", Width: 35},
 		{Title: "DATE", Width: 12},
 		{Title: "WORDS", Width: 8},
@@ -339,8 +346,6 @@ func createPostsTableWithTheme(width int, theme *Theme) table.Model {
 		{Title: "TAGS", Width: 18},
 		{Title: "PATH", Width: pathWidth},
 	}
-
-	return createTableWithTheme(columns, theme)
 }
 
 // Init initializes the model
@@ -354,7 +359,7 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.height = msg.Height
 
 	// Update table dimensions with theme
-	m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
+	m.postsTable = createPostsTableWithTheme(msg.Width, m.theme, m.sortBy)
 	m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
 	m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
 	m.tagsTable.SetHeight(msg.Height - 10)
@@ -428,7 +433,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleMouse(msg)
 
 	case postsLoadedMsg:
-		m.posts = msg.posts
+		m.visiblePosts = msg.posts
+		m.posts = filterVisiblePosts(msg.posts, m.filter)
 		m.postsTable.SetRows(m.postsToRows())
 		return m, nil
 
@@ -438,7 +444,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case feedsLoadedMsg:
-		m.feeds = msg.feeds
+		m.visibleFeeds = msg.feeds
+		m.feeds = filterVisibleFeeds(msg.feeds, m.filter)
 		m.feedsTable.SetRows(m.feedsToRows())
 		return m, nil
 
@@ -461,11 +468,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshCompletedMsg:
 		m.refreshing = false
 		m.lastRefresh = time.Now()
-		m.posts = msg.posts
+		m.visiblePosts = msg.posts
+		m.posts = filterVisiblePosts(msg.posts, m.filter)
 		m.tags = msg.tags
-		m.feeds = msg.feeds
+		m.visibleFeeds = msg.feeds
+		m.feeds = filterVisibleFeeds(msg.feeds, m.filter)
 		m.postsTable.SetRows(m.postsToRows())
 		m.tagsTable.SetRows(m.tagsToRows())
+		m.feedsTable.SetRows(m.feedsToRows())
 		return m, nil
 
 	case searchResultsMsg:
@@ -501,7 +511,7 @@ func (m Model) tagsToRows() []table.Row {
 func (m Model) feedsToRows() []table.Row {
 	rows := make([]table.Row, len(m.feeds))
 	for i, f := range m.feeds {
-		rows[i] = feedToRow(f)
+		rows[i] = m.feedToRow(f)
 	}
 	return rows
 }
@@ -554,12 +564,27 @@ func (m Model) tagToRow(t services.TagInfo) table.Row {
 }
 
 // feedToRow converts a single feed to a table row
-func feedToRow(f *lifecycle.Feed) table.Row {
-	// Name (truncate to 18 chars to leave room for selection indicator)
+func (m Model) feedToRow(f *lifecycle.Feed) table.Row {
+	// Name comes first so the feed remains recognizable even when status labels
+	// are present. The table clips the complete cell to its column width.
 	name := f.Name
+	labels := make([]string, 0, 3)
+	if f.IncludePrivate {
+		labels = append(labels, "private")
+	}
+	if f.Hidden {
+		labels = append(labels, "hidden")
+	}
+	if f.Automated {
+		labels = append(labels, "auto")
+	}
 	if len(name) > 18 {
 		name = name[:15] + "..."
 	}
+	if len(labels) > 0 {
+		name += " [" + strings.Join(labels, ",") + "]"
+	}
+	name = m.styleFeedTitle(f, name)
 
 	// Posts count
 	postsCount := fmt.Sprintf("%d", len(f.Posts))
@@ -580,6 +605,24 @@ func feedToRow(f *lifecycle.Feed) table.Row {
 	output := f.Path
 
 	return table.Row{name, postsCount, wordsStr, totTimeStr, avgTimeStr, output}
+}
+
+// styleFeedTitle gives each non-standard feed state a distinct visual signal.
+// The textual labels remain present so the distinction survives monochrome
+// terminals and color-disabled output.
+func (m Model) styleFeedTitle(feed *lifecycle.Feed, title string) string {
+	style := lipgloss.NewStyle()
+	switch {
+	case feed.IncludePrivate:
+		style = style.Foreground(m.getTheme().Colors.FeedPrivate)
+	case feed.Hidden:
+		style = style.Foreground(m.getTheme().Colors.FeedHidden)
+	case feed.Automated:
+		style = style.Foreground(m.getTheme().Colors.FeedAutomated)
+	default:
+		return title
+	}
+	return style.Bold(true).Render(title)
 }
 
 // postToRow converts a single post to a table row
@@ -814,7 +857,11 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNavigation(msg)
 
 	case key.Matches(msg, keyMap.Filter):
+		if m.view != ViewPosts && m.view != ViewFeeds {
+			return m, nil
+		}
 		m.mode = ModeFilter
+		m.filterBeforeInput = m.filter
 		m.filterInput.Focus()
 		return m, textinput.Blink
 
@@ -839,6 +886,8 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Feeds):
 		m.view = ViewFeeds
+		m.filter = ""
+		m.filterInput.SetValue("")
 		m.cursor = 0
 		m.feedsTable.SetCursor(0)
 		return m, m.loadFeeds()
@@ -895,6 +944,8 @@ func (m Model) handlePostsKey() (tea.Model, tea.Cmd) {
 	m.cursor = 0
 	m.postsTable.SetCursor(0)
 	m.activeFilter = nil // Clear any active filter when explicitly navigating to posts
+	m.filter = ""
+	m.filterInput.SetValue("")
 	return m, m.loadPosts()
 }
 
@@ -949,6 +1000,7 @@ func (m Model) handleSortHotkey(field string) (tea.Model, tea.Cmd) {
 		m.sortBy = field
 		m.sortOrder = services.SortDesc
 	}
+	m.postsTable.SetColumns(postsTableColumns(m.width, m.theme, m.sortBy))
 
 	// Reset cursor and reload posts
 	m.cursor = 0
@@ -990,10 +1042,19 @@ func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleFilterMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.view == ViewPosts && m.visiblePosts == nil {
+		m.visiblePosts = m.posts
+	}
+	if m.view == ViewFeeds && m.visibleFeeds == nil {
+		m.visibleFeeds = m.feeds
+	}
 	switch msg.Type {
 	case tea.KeyEscape:
 		m.mode = ModeNormal
 		m.filterInput.Blur()
+		m.filter = m.filterBeforeInput
+		m.filterInput.SetValue(m.filter)
+		m.applyLocalFilter()
 		return m, nil
 
 	case tea.KeyEnter:
@@ -1002,7 +1063,8 @@ func (m Model) handleFilterMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filterInput.Blur()
 		m.cursor = 0
 		m.postsTable.SetCursor(0)
-		return m, m.loadPosts()
+		m.applyLocalFilter()
+		return m, nil
 
 	default:
 		// Handle other keys through the text input
@@ -1010,7 +1072,24 @@ func (m Model) handleFilterMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.filterInput, cmd = m.filterInput.Update(msg)
+	// Slash is a quick local filter, not the structured expression language.
+	m.filter = m.filterInput.Value()
+	m.applyLocalFilter()
 	return m, cmd
+}
+
+func (m *Model) applyLocalFilter() {
+	if m.view == ViewFeeds {
+		m.feeds = filterVisibleFeeds(m.visibleFeeds, m.filter)
+		m.feedsTable.SetCursor(0)
+		m.feedsTable.SetRows(m.feedsToRows())
+		m.cursor = m.feedsTable.Cursor()
+		return
+	}
+	m.posts = filterVisiblePosts(m.visiblePosts, m.filter)
+	m.cursor = 0
+	m.postsTable.SetCursor(0)
+	m.postsTable.SetRows(m.postsToRows())
 }
 
 func (m Model) handleCommandMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1112,6 +1191,8 @@ func (m Model) handleEnterTagsList() (tea.Model, tea.Cmd) {
 		Type: "tag",
 		Name: selectedTag.Name,
 	}
+	m.filter = ""
+	m.filterInput.SetValue("")
 	m.view = ViewPosts
 	m.cursor = 0
 	m.postsTable.SetCursor(0)
@@ -1129,6 +1210,8 @@ func (m Model) handleEnterFeedsList() (tea.Model, tea.Cmd) {
 		Type: "feed",
 		Name: selectedFeed.Name,
 	}
+	m.filter = ""
+	m.filterInput.SetValue("")
 	m.view = ViewPosts
 	m.cursor = 0
 	m.postsTable.SetCursor(0)
@@ -1287,8 +1370,22 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 			m.postsTable.SetCursor(0)
 			return m, m.loadPosts()
 		}
-	case ViewTags, ViewFeeds:
-		// Escape does nothing in tag/feed list views
+		if m.filter != "" {
+			m.filter = ""
+			m.filterInput.SetValue("")
+			m.posts = m.visiblePosts
+			m.cursor = 0
+			m.postsTable.SetCursor(0)
+			m.postsTable.SetRows(m.postsToRows())
+		}
+	case ViewTags:
+		// Escape does nothing in the tag list view.
+	case ViewFeeds:
+		if m.filter != "" {
+			m.filter = ""
+			m.filterInput.SetValue("")
+			m.applyLocalFilter()
+		}
 	case ViewConfig:
 		// Return to posts view
 		m.view = ViewPosts
@@ -1474,25 +1571,12 @@ Actions:
   s          Sort menu (Date, Title, Word Count, Path)
 
 Modes:
-  /          Filter mode (filter posts with expressions)
+  /          Filter visible posts as you type
   :          Command mode
 
-Filter Syntax:
-  Press / to enter filter mode. Filter expressions support:
-
-  Comparison:    published == True, date >= '2024-01-01'
-  Membership:    'python' in tags, 'draft' not in tags
-  Boolean:       published == True and featured == True
-                 published == False or 'wip' in tags
-  Strings:       title == 'My Post', slug != 'about'
-
-  Fields: title, slug, date, published, tags, description
-
-  Examples:
-    published == True
-    'python' in tags
-    date >= '2024-01-01' and published == True
-    'tutorial' in tags and published == True
+Filter:
+   Press / in the posts view and type to narrow the posts already visible.
+   Matches title, path, description, tags, and content. Esc cancels; Enter keeps.
 
 Sort Menu:
   j/k/↑/↓    Navigate sort options
@@ -1649,6 +1733,7 @@ func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.sortBy = sortOptions[m.sortMenuIdx].value
 		m.showSortMenu = false
+		m.postsTable.SetColumns(postsTableColumns(m.width, m.theme, m.sortBy))
 		m.cursor = 0
 		m.postsTable.SetCursor(0)
 		return m, m.loadPosts()
@@ -1664,7 +1749,8 @@ func (m Model) loadPosts() tea.Cmd {
 		opts := services.ListOptions{
 			SortBy:    m.sortBy,
 			SortOrder: m.sortOrder,
-			Filter:    m.filter,
+			// m.filter is the local slash filter and is applied after loading.
+			Filter: "",
 		}
 		posts, err := m.app.Posts.List(context.Background(), opts)
 		if err != nil {
@@ -2053,9 +2139,62 @@ func (m Model) renderPosts() string {
 	header := fmt.Sprintf("Posts (%d)", len(m.posts))
 	sb.WriteString(m.theme.HeaderStyle.Render(header))
 	sb.WriteString("\n\n")
-	sb.WriteString(m.postsTable.View())
+	sb.WriteString(m.renderPostsTable())
 
 	return sb.String()
+}
+
+// renderPostsTable colors each Shift-letter shortcut after Bubble Table
+// has laid out its plain headers. Coloring column titles before the table
+// renders them makes its width calculation count ANSI escape bytes as text,
+// which can hide or misalign headers.
+func (m Model) renderPostsTable() string {
+	view := m.postsTable.View()
+	lines := strings.Split(view, "\n")
+	shortcuts := []struct {
+		title    string
+		shortcut string
+		field    string
+	}{
+		{title: "TITLE", shortcut: "T", field: "title"},
+		{title: "DATE", shortcut: "D", field: "date"},
+		{title: "WORDS", shortcut: "W", field: "words"},
+		{title: "READ", shortcut: "R", field: "reading_time"},
+		{title: "TAGS", shortcut: "G", field: "tags"},
+		{title: "PATH", shortcut: "P", field: "path"},
+	}
+
+	for i, line := range lines {
+		if !strings.Contains(line, "TITLE") {
+			continue
+		}
+		for _, key := range shortcuts {
+			searchTitle := key.title
+			if key.title == "TAGS" {
+				// G is the shortcut for tags, but it is not part of the word
+				// TAGS. Reuse two padded cell spaces for a visible G prefix.
+				searchTitle += "  "
+			}
+			index := strings.Index(line, searchTitle)
+			if index < 0 {
+				continue
+			}
+			color := m.theme.Colors.FeedAutomated
+			if key.field == m.sortBy {
+				color = m.theme.Colors.Selected
+			}
+			style := lipgloss.NewStyle().Bold(true).Foreground(color)
+			colored := style.Render(key.shortcut)
+			if key.title == "TAGS" {
+				line = line[:index] + colored + " " + key.title + line[index+len(searchTitle):]
+			} else {
+				line = line[:index] + colored + line[index+1:]
+			}
+		}
+		lines[i] = line
+		break
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) renderTags() string {
@@ -2084,6 +2223,8 @@ func (m Model) renderFeeds() string {
 	// Render the table with header showing count
 	header := fmt.Sprintf("Feeds (%d)", len(m.feeds))
 	sb.WriteString(m.theme.HeaderStyle.Render(header))
+	sb.WriteString("\n")
+	sb.WriteString(m.theme.SubtleStyle.Render("[private] private posts  [hidden] sidebar-hidden  [auto] generated"))
 	sb.WriteString("\n\n")
 	sb.WriteString(m.feedsTable.View())
 
