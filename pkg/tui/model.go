@@ -230,7 +230,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	helpSearchInput.CharLimit = 100
 
 	// Initialize posts table with columns and theme
-	postsTable := createPostsTableWithTheme(80, theme) // Default width, updated on resize
+	postsTable := createPostsTableWithTheme(80, theme, "date") // Default width, updated on resize
 
 	// Initialize tags table with columns and theme
 	tagsTable := createTagsTableWithTheme(80, theme) // Default width, will be updated on resize
@@ -326,11 +326,11 @@ func createFeedsTableWithTheme(width int, theme *Theme) table.Model {
 }
 
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
-func createPostsTableWithTheme(width int, theme *Theme) table.Model {
-	return createTableWithTheme(postsTableColumns(width), theme)
+func createPostsTableWithTheme(width int, theme *Theme, sortBy string) table.Model {
+	return createTableWithTheme(postsTableColumns(width, theme, sortBy), theme)
 }
 
-func postsTableColumns(width int) []table.Column {
+func postsTableColumns(width int, theme *Theme, sortBy string) []table.Column {
 	// Column widths: TITLE(35) + DATE(12) + WORDS(8) + READ(8) + TAGS(18) + PATH(remaining)
 	// Account for padding/borders (approximately 10 chars)
 	pathWidth := width - 35 - 12 - 8 - 8 - 18 - 10
@@ -359,7 +359,7 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.height = msg.Height
 
 	// Update table dimensions with theme
-	m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
+	m.postsTable = createPostsTableWithTheme(msg.Width, m.theme, m.sortBy)
 	m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
 	m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
 	m.tagsTable.SetHeight(msg.Height - 10)
@@ -1000,7 +1000,7 @@ func (m Model) handleSortHotkey(field string) (tea.Model, tea.Cmd) {
 		m.sortBy = field
 		m.sortOrder = services.SortDesc
 	}
-	m.postsTable.SetColumns(postsTableColumns(m.width))
+	m.postsTable.SetColumns(postsTableColumns(m.width, m.theme, m.sortBy))
 
 	// Reset cursor and reload posts
 	m.cursor = 0
@@ -1733,7 +1733,7 @@ func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.sortBy = sortOptions[m.sortMenuIdx].value
 		m.showSortMenu = false
-		m.postsTable.SetColumns(postsTableColumns(m.width))
+		m.postsTable.SetColumns(postsTableColumns(m.width, m.theme, m.sortBy))
 		m.cursor = 0
 		m.postsTable.SetCursor(0)
 		return m, m.loadPosts()
