@@ -330,7 +330,7 @@ func createPostsTableWithTheme(width int, theme *Theme, sortBy string) table.Mod
 	return createTableWithTheme(postsTableColumns(width, theme, sortBy), theme)
 }
 
-func postsTableColumns(width int, theme *Theme, sortBy string) []table.Column {
+func postsTableColumns(width int, _ *Theme, _ string) []table.Column {
 	// Column widths: TITLE(35) + DATE(12) + WORDS(8) + READ(8) + TAGS(18) + PATH(remaining)
 	// Account for padding/borders (approximately 10 chars)
 	pathWidth := width - 35 - 12 - 8 - 8 - 18 - 10

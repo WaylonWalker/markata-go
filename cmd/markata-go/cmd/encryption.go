@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -194,16 +195,20 @@ func runEncryptPostsCommand(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	sourceCache, cacheErr := buildcache.LoadSourceEncryptionCache(buildcache.DefaultCacheDir)
+	if cacheErr != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "Warning: %v; unchanged files may receive new ciphertext.\n", cacheErr)
+	}
 	prepared, err := prepareSourceFiles(files, encryptionWorkers, func(file string) (preparedEncryptPost, error) {
-		return prepareEncryptPostSourceFile(file, cfg)
+		return prepareEncryptPostSourceFileWithCache(file, cfg, sourceCache)
 	})
 	if err != nil {
 		return err
 	}
 
 	stats := encryptPostsStats{}
-	for _, candidate := range prepared {
-		result := candidate.result
+	for index := range prepared {
+		result := prepared[index].result
 		stats.add(result)
 		if result.Action == encryptPostActionEncrypted {
 			if encryptionDryRun {
@@ -214,17 +219,21 @@ func runEncryptPostsCommand(cmd *cobra.Command, _ []string) error {
 
 	if !encryptionDryRun {
 		documents := make([]sourceDocument, 0, stats.Encrypted)
-		for _, candidate := range prepared {
-			if candidate.result.Action == encryptPostActionEncrypted {
-				documents = append(documents, candidate.document)
+		for index := range prepared {
+			if prepared[index].result.Action == encryptPostActionEncrypted {
+				documents = append(documents, prepared[index].document)
 			}
+		}
+		cacheSourceEncryptionDocuments(sourceCache, documents)
+		if err := sourceCache.Save(); err != nil {
+			fmt.Fprintf(cmd.OutOrStdout(), "Warning: save source encryption cache: %v; future round trips may generate new ciphertext.\n", err)
 		}
 		if err := writeSourceDocuments(documents); err != nil {
 			return err
 		}
-		for _, candidate := range prepared {
-			if candidate.result.Action == encryptPostActionEncrypted {
-				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("ENCRYPTED", currentLogTheme.Success, candidate.result.Path, candidate.result.KeyName))
+		for index := range prepared {
+			if prepared[index].result.Action == encryptPostActionEncrypted {
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("ENCRYPTED", currentLogTheme.Success, prepared[index].result.Path, prepared[index].result.KeyName))
 			}
 		}
 	}
@@ -250,6 +259,10 @@ func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	sourceCache, cacheErr := buildcache.LoadSourceEncryptionCache(buildcache.DefaultCacheDir)
+	if cacheErr != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "Warning: %v; unchanged files may receive new ciphertext.\n", cacheErr)
+	}
 	prepared, err := prepareSourceFiles(files, encryptionWorkers, func(file string) (preparedDecryptPost, error) {
 		return prepareDecryptPostSourceFile(file, cfg)
 	})
@@ -258,8 +271,8 @@ func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	stats := decryptPostsStats{}
-	for _, candidate := range prepared {
-		result := candidate.result
+	for index := range prepared {
+		result := prepared[index].result
 		stats.add(result)
 		if result.Action == decryptPostActionDecrypted {
 			if decryptionDryRun {
@@ -270,17 +283,21 @@ func runDecryptPostsCommand(cmd *cobra.Command, args []string) error {
 
 	if !decryptionDryRun {
 		documents := make([]sourceDocument, 0, stats.Decrypted)
-		for _, candidate := range prepared {
-			if candidate.result.Action == decryptPostActionDecrypted {
-				documents = append(documents, candidate.document)
+		for index := range prepared {
+			if prepared[index].result.Action == decryptPostActionDecrypted {
+				documents = append(documents, prepared[index].document)
 			}
+		}
+		cacheSourceEncryptionDocuments(sourceCache, documents)
+		if err := sourceCache.Save(); err != nil {
+			fmt.Fprintf(cmd.OutOrStdout(), "Warning: save source encryption cache: %v; future round trips may generate new ciphertext.\n", err)
 		}
 		if err := writeSourceDocuments(documents); err != nil {
 			return err
 		}
-		for _, candidate := range prepared {
-			if candidate.result.Action == decryptPostActionDecrypted {
-				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("DECRYPTED", currentLogTheme.Success, candidate.result.Path, candidate.result.KeyName))
+		for index := range prepared {
+			if prepared[index].result.Action == decryptPostActionDecrypted {
+				fmt.Fprintln(cmd.OutOrStdout(), formatEncryptionProgress("DECRYPTED", currentLogTheme.Success, prepared[index].result.Path, prepared[index].result.KeyName))
 			}
 		}
 	}
@@ -419,10 +436,12 @@ func prepareDecryptPostSourceFile(path string, cfg *models.Config) (preparedDecr
 	return preparedDecryptPost{
 		result: decryptPostResult{Path: path, KeyName: keyName, Action: decryptPostActionDecrypted},
 		document: sourceDocument{
-			path:     path,
-			original: content,
-			content:  decryptedSourceDocument(rawFrontmatter, plaintext),
-			mode:     sourceFileMode(path),
+			path:                    path,
+			original:                content,
+			content:                 decryptedSourceDocument(rawFrontmatter, plaintext),
+			mode:                    sourceFileMode(path),
+			sourceEncryptionKeyName: keyName,
+			sourceEncryptedBody:     body,
 		},
 	}, nil
 }
@@ -533,6 +552,10 @@ func encryptPostSourceFile(path string, cfg *models.Config, dryRun bool) (encryp
 }
 
 func prepareEncryptPostSourceFile(path string, cfg *models.Config) (preparedEncryptPost, error) {
+	return prepareEncryptPostSourceFileWithCache(path, cfg, nil)
+}
+
+func prepareEncryptPostSourceFileWithCache(path string, cfg *models.Config, cache *buildcache.SourceEncryptionCache) (preparedEncryptPost, error) {
 	contentBytes, err := os.ReadFile(path)
 	if err != nil {
 		return preparedEncryptPost{}, fmt.Errorf("read %s: %w", path, err)
@@ -574,17 +597,25 @@ func prepareEncryptPostSourceFile(path string, cfg *models.Config) (preparedEncr
 		return preparedEncryptPost{}, fmt.Errorf("private post %s key %q failed policy: %w", path, keyName, err)
 	}
 
-	encryptedBody, err := encryption.EncryptSourceMarkdown(body, keyName, password)
-	if err != nil {
-		return preparedEncryptPost{}, fmt.Errorf("encrypt source body for %s: %w", path, err)
+	encryptedBody := ""
+	if cache != nil {
+		encryptedBody, _ = cache.Get(path, body, keyName, password)
+	}
+	if encryptedBody == "" {
+		encryptedBody, err = encryption.EncryptSourceMarkdown(body, keyName, password)
+		if err != nil {
+			return preparedEncryptPost{}, fmt.Errorf("encrypt source body for %s: %w", path, err)
+		}
 	}
 	return preparedEncryptPost{
 		result: encryptPostResult{Path: path, KeyName: keyName, Action: encryptPostActionEncrypted},
 		document: sourceDocument{
-			path:     path,
-			original: content,
-			content:  encryptedSourceDocument(rawFrontmatter, encryptedBody),
-			mode:     sourceFileMode(path),
+			path:                    path,
+			original:                content,
+			content:                 encryptedSourceDocument(rawFrontmatter, encryptedBody),
+			mode:                    sourceFileMode(path),
+			sourceEncryptionKeyName: keyName,
+			sourceEncryptedBody:     encryptedBody,
 		},
 	}, nil
 }
@@ -597,10 +628,21 @@ func sourceFileMode(path string) os.FileMode {
 }
 
 type sourceDocument struct {
-	path     string
-	original string
-	content  string
-	mode     os.FileMode
+	path                    string
+	original                string
+	content                 string
+	mode                    os.FileMode
+	sourceEncryptionKeyName string
+	sourceEncryptedBody     string
+}
+
+func cacheSourceEncryptionDocuments(cache *buildcache.SourceEncryptionCache, documents []sourceDocument) {
+	if cache == nil {
+		return
+	}
+	for _, document := range documents {
+		cache.Put(document.path, document.sourceEncryptionKeyName, document.sourceEncryptedBody)
+	}
 }
 
 // writeSourceDocuments writes a prepared batch only when every source still
@@ -761,6 +803,9 @@ func validateEncryptPostsPassword(password string, cfg *models.Config) error {
 
 func applyEncryptPostsPrivateTags(post *models.Post, cfg *models.Config) {
 	if post == nil || cfg == nil || post.Skip || post.Draft {
+		return
+	}
+	if post.IsExplicitlyPublic() {
 		return
 	}
 	for _, tag := range post.Tags {

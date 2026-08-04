@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
@@ -244,6 +245,30 @@ tagged secret
 	}
 }
 
+func TestEncryptPostSourceFile_ExplicitPrivateFalseOverridesTag(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	cfg.Encryption.PrivateTags = map[string]string{"diary": "personal"}
+	path := writeMarkdownFile(t, `---
+title: Public diary
+private: false
+tags:
+  - diary
+---
+public body
+`)
+
+	result, err := encryptPostSourceFile(path, cfg, false)
+	if err != nil {
+		t.Fatalf("encryptPostSourceFile() error = %v", err)
+	}
+	if result.Action != encryptPostActionPublic {
+		t.Fatalf("action = %q, want %q", result.Action, encryptPostActionPublic)
+	}
+	if encryption.IsSourceEncrypted(strings.TrimSpace(strings.SplitN(readFileString(t, path), "---", 3)[2])) {
+		t.Fatal("explicit private: false post was encrypted")
+	}
+}
+
 func TestEncryptPostSourceFile_AlreadyEncryptedSkipsWithoutKey(t *testing.T) {
 	cfg := testEncryptPostsConfig()
 	encryptedBody, err := encryption.EncryptSourceMarkdown("secret body\n", "default", "h7Qm!2Vx9#Lp4@Td")
@@ -386,6 +411,51 @@ body
 	}
 	if got := readFileString(t, path); got != original {
 		t.Fatalf("round trip mismatch:\ngot  %q\nwant %q", got, original)
+	}
+}
+
+func TestSourceEncryptionCache_ReusesCiphertextAfterDecrypt(t *testing.T) {
+	cfg := testEncryptPostsConfig()
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
+	path := writeMarkdownFile(t, `---
+title: Secret
+private: true
+---
+secret body
+`)
+	cache, err := buildcache.LoadSourceEncryptionCache(t.TempDir())
+	if err != nil {
+		t.Fatalf("load source encryption cache: %v", err)
+	}
+
+	first, err := prepareEncryptPostSourceFileWithCache(path, cfg, cache)
+	if err != nil {
+		t.Fatalf("initial preparation: %v", err)
+	}
+	if err := writeSourceDocuments([]sourceDocument{first.document}); err != nil {
+		t.Fatalf("write encrypted source: %v", err)
+	}
+	cacheSourceEncryptionDocuments(cache, []sourceDocument{first.document})
+	originalEncrypted := readFileString(t, path)
+
+	decrypted, err := prepareDecryptPostSourceFile(path, cfg)
+	if err != nil {
+		t.Fatalf("decrypt preparation: %v", err)
+	}
+	if err := writeSourceDocuments([]sourceDocument{decrypted.document}); err != nil {
+		t.Fatalf("write decrypted source: %v", err)
+	}
+	cacheSourceEncryptionDocuments(cache, []sourceDocument{decrypted.document})
+
+	reencrypted, err := prepareEncryptPostSourceFileWithCache(path, cfg, cache)
+	if err != nil {
+		t.Fatalf("re-encrypt preparation: %v", err)
+	}
+	if err := writeSourceDocuments([]sourceDocument{reencrypted.document}); err != nil {
+		t.Fatalf("write re-encrypted source: %v", err)
+	}
+	if got := readFileString(t, path); got != originalEncrypted {
+		t.Fatalf("re-encryption changed unchanged ciphertext")
 	}
 }
 

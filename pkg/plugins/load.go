@@ -449,6 +449,7 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache
 	post.Published = data.Published
 	post.Draft = data.Draft
 	post.Private = data.Private
+	post.PrivateOverride = data.PrivateOverride
 	post.Skip = data.Skip
 	post.Tags = data.Tags
 	post.Description = data.Description
@@ -601,27 +602,28 @@ func computePostGardenHash(post *models.Post) string {
 // postToCachedData converts a Post to cacheable data.
 func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostData {
 	return &buildcache.CachedPostData{
-		Path:           post.Path,
-		Content:        post.Content,
-		Slug:           post.Slug,
-		Href:           post.Href,
-		Title:          post.Title,
-		Date:           post.Date,
-		Modified:       post.Modified,
-		Published:      post.Published,
-		Draft:          post.Draft,
-		Private:        post.Private,
-		Skip:           post.Skip,
-		Tags:           post.Tags,
-		Description:    post.Description,
-		Template:       post.Template,
-		Templates:      post.Templates,
-		RawFrontmatter: post.RawFrontmatter,
-		InputHash:      post.InputHash,
-		Authors:        post.Authors,
-		Author:         post.Author,
-		SecretKey:      post.SecretKey, // pragma: allowlist secret
-		Extra:          post.Extra,
+		Path:            post.Path,
+		Content:         post.Content,
+		Slug:            post.Slug,
+		Href:            post.Href,
+		Title:           post.Title,
+		Date:            post.Date,
+		Modified:        post.Modified,
+		Published:       post.Published,
+		Draft:           post.Draft,
+		Private:         post.Private,
+		PrivateOverride: post.PrivateOverride,
+		Skip:            post.Skip,
+		Tags:            post.Tags,
+		Description:     post.Description,
+		Template:        post.Template,
+		Templates:       post.Templates,
+		RawFrontmatter:  post.RawFrontmatter,
+		InputHash:       post.InputHash,
+		Authors:         post.Authors,
+		Author:          post.Author,
+		SecretKey:       post.SecretKey, // pragma: allowlist secret
+		Extra:           post.Extra,
 	}
 }
 
@@ -782,6 +784,9 @@ func (p *LoadPlugin) applySourcePrivateTags(post *models.Post) {
 	if len(p.encryptionTags) == 0 || post == nil || post.Skip || post.Draft {
 		return
 	}
+	if post.IsExplicitlyPublic() {
+		return
+	}
 	for _, tag := range post.Tags {
 		if keyName, ok := p.encryptionTags[strings.ToLower(tag)]; ok {
 			post.Private = true
@@ -876,7 +881,9 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	post.Draft = GetBool(metadata, "draft", false)
 
 	// Private
-	post.Private = GetBool(metadata, "private", false)
+	if err := applyPrivateMetadata(post, metadata); err != nil {
+		return err
+	}
 
 	// Skip
 	post.Skip = GetBool(metadata, "skip", false)
@@ -949,6 +956,22 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		}
 	}
 
+	return nil
+}
+
+func applyPrivateMetadata(post *models.Post, metadata map[string]interface{}) error {
+	post.Private = false
+	post.PrivateOverride = nil
+	rawPrivate, ok := metadata["private"]
+	if !ok {
+		return nil
+	}
+	private, ok := rawPrivate.(bool)
+	if !ok {
+		return fmt.Errorf("frontmatter field private must be a boolean")
+	}
+	post.Private = private
+	post.PrivateOverride = &private
 	return nil
 }
 

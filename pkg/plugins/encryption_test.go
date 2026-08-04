@@ -405,6 +405,16 @@ func TestEncryptionPlugin_ApplyPrivateTags(t *testing.T) {
 			wantSecretKey: "personal",
 		},
 		{
+			name: "explicit private false overrides matching tag",
+			post: func() *models.Post {
+				private := false
+				post := &models.Post{Tags: []string{"diary"}, PrivateOverride: &private}
+				return post
+			}(),
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
+		{
 			name: "no matching tag leaves post unchanged",
 			post: &models.Post{
 				Tags: []string{"golang", "tutorial"},

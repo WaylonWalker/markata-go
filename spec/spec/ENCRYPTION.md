@@ -183,6 +183,10 @@ The full list of post paths should not be printed in the error message.
 
 Posts with `Draft = true` or `Skip = true` are excluded from all encryption processing. They are not subject to key validation and are never encrypted.
 
+An explicit `private: false` is also an opt-out from `encryption.private_tags` and
+template-key privacy defaults. This allows an individual post to remain public
+even when its tag or template normally marks posts private.
+
 ### Disabled State
 
 When `enabled = false`, the plugin's `Render()` method returns `nil` immediately. No posts are modified.
@@ -289,6 +293,17 @@ markata-go encryption decrypt-posts --workers 4
 - The password is read from `MARKATA_GO_ENCRYPTION_KEY_<KEY>`. A missing env var or an incorrect password MUST fail before any file is written.
 - Key strength policy is NOT enforced for decryption; only the correct password matters.
 - `--workers` bounds concurrent source-body preparation. The default (`0`) uses `GOMAXPROCS`; set `--workers 1` to process serially.
+
+### Source encryption round trips
+
+The source-encryption commands store authenticated ciphertext in the dedicated
+`.markata/source-encryption-cache.json` file. After `decrypt-posts`, an
+unchanged body passed to `encrypt-posts` is decrypted and compared with the
+current body before its original ciphertext and nonce are reused. Only changed
+source bodies are re-encrypted, so a decrypt/edit/encrypt cycle does not create
+repository-wide ciphertext churn. The cache contains no plaintext, password,
+or password-derived verifier. Cache failures are non-fatal; encryption falls
+back to fresh ciphertext and reports a warning.
 
 ### Source Command Write Safety
 
