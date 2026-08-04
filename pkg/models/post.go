@@ -41,6 +41,10 @@ type Post struct {
 	// Private posts are rendered but excluded from feeds, sitemaps, and add noindex meta tag
 	Private bool `json:"private" yaml:"private" toml:"private"`
 
+	// PrivateOverride records whether private was explicitly set in frontmatter.
+	// A non-nil false value opts out of inferred privacy from private tags.
+	PrivateOverride *bool `json:"-" yaml:"-" toml:"-"`
+
 	// SecretKey is the name of the encryption key to use for this post.
 	// When set along with Private=true, the post content will be encrypted.
 	// The actual key is read from environment variable MARKATA_GO_ENCRYPTION_KEY_{SecretKey}
@@ -134,6 +138,12 @@ type Post struct {
 
 	// Computed fields (not in frontmatter)
 	AuthorObjects []Author `json:"-" yaml:"-" toml:"-"`
+}
+
+// IsExplicitlyPublic reports whether frontmatter explicitly opted out of
+// inferred privacy.
+func (p *Post) IsExplicitlyPublic() bool {
+	return p != nil && p.PrivateOverride != nil && !*p.PrivateOverride
 }
 
 // NewPost creates a new Post with the given source file path and default values.

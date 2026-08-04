@@ -10,6 +10,33 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+func TestParsePostFromContent_PrivateOverride(t *testing.T) {
+	public, err := ParsePostFromContent("public.md", "---\nprivate: false\n---\nbody\n")
+	if err != nil {
+		t.Fatalf("parse explicit false: %v", err)
+	}
+	if !public.IsExplicitlyPublic() || public.Private {
+		t.Fatal("explicit private: false was not preserved")
+	}
+
+	private, err := ParsePostFromContent("private.md", "---\nprivate: true\n---\nbody\n")
+	if err != nil {
+		t.Fatalf("parse explicit true: %v", err)
+	}
+	if private.IsExplicitlyPublic() || !private.Private {
+		t.Fatal("explicit private: true was not preserved")
+	}
+}
+
+func TestParsePostFromContent_InvalidPrivateValue(t *testing.T) {
+	for _, value := range []string{"\"false\"", "0", "null"} {
+		_, err := ParsePostFromContent("invalid.md", "---\nprivate: "+value+"\n---\nbody\n")
+		if err == nil {
+			t.Errorf("private: %s should fail parsing", value)
+		}
+	}
+}
+
 func TestResolveFileModTime_UsesGlobCachedModTime(t *testing.T) {
 	m := lifecycle.NewManager()
 	m.Cache().Set(cacheKeyGlobFileModTimes, map[string]int64{"post.md": 12345})

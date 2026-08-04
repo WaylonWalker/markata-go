@@ -206,6 +206,23 @@ written.
 
 A typical edit cycle is `decrypt-posts <file>`, edit the Markdown, then `encrypt-posts` before committing.
 
+The commands keep authenticated ciphertext in
+`.markata/source-encryption-cache.json`. When a body is unchanged,
+`encrypt-posts` verifies and restores the existing ciphertext instead of
+generating a new random nonce. This keeps decrypt/re-encrypt cycles from
+changing every encrypted file. The cache stores ciphertext only, never
+plaintext or password-derived hashes, and is written with owner-only
+permissions.
+
+To opt one post out of a private tag or template default, set an explicit
+boolean override:
+
+```yaml
+private: false
+```
+
+An explicit `private: false` takes precedence over `encryption.private_tags`.
+
 Both bulk commands prepare documents in parallel by default, then begin writing only after every candidate is successfully prepared. A missing key, invalid password, malformed source file, cryptographic error, or detected edit during preparation leaves the repository unchanged. Replacements use atomic file writes, and a write failure restores earlier files. Use `--workers 1` if you need serial processing; `--workers 0` is the default and uses `GOMAXPROCS` workers.
 
 When run in a terminal, encryption progress uses your active CLI color theme. Use `--color` to force colors or `--no-color` for plain output.

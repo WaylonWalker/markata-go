@@ -217,6 +217,10 @@ func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 		if post.Skip || post.Draft {
 			continue
 		}
+		// An explicit private: false is an opt-out from tag/template defaults.
+		if post.IsExplicitlyPublic() {
+			continue
+		}
 
 		// Check tags
 		matched := false
