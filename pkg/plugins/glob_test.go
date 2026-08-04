@@ -95,3 +95,37 @@ func TestGlobPlugin_StoresFileModTimes(t *testing.T) {
 		t.Fatalf("expected non-zero modtime for post.md, got %d", modTimes["post.md"])
 	}
 }
+
+func TestGlobPlugin_SkipsIgnoredDirectoriesDuringWalk(t *testing.T) {
+	tmpDir := t.TempDir()
+	ignoredDir := filepath.Join(tmpDir, "output")
+	if err := os.MkdirAll(ignoredDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	for path, contents := range map[string]string{
+		filepath.Join(tmpDir, "post.md"):          "# post",
+		filepath.Join(ignoredDir, "generated.md"): "# generated",
+		filepath.Join(tmpDir, ".gitignore"):       "output\n",
+	} {
+		if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = tmpDir
+	m.Config().GlobPatterns = []string{"**/*.md"}
+
+	plugin := NewGlobPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	if err := plugin.Glob(m); err != nil {
+		t.Fatalf("Glob() error = %v", err)
+	}
+
+	want := []string{"post.md"}
+	if got := m.Files(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("Files() = %v, want %v", got, want)
+	}
+}

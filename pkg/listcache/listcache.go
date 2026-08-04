@@ -117,7 +117,7 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 		return err
 	}
 
-	postsByPath, err := buildPostsFromCache(contentDir, files, changedFiles, cache.Posts, m.Config())
+	postsByPath, err := buildPostsFromCache(contentDir, files, changedFiles, cache.Posts, m.Config(), m.Concurrency())
 	if err != nil {
 		return err
 	}
@@ -161,6 +161,7 @@ func buildPostsFromCache(
 	changed map[string]bool,
 	cached map[string]CachedPost,
 	cfg *lifecycle.Config,
+	concurrency int,
 ) (map[string]*models.Post, error) {
 	postsByPath := make(map[string]*models.Post, len(files))
 	for _, file := range files {
@@ -173,7 +174,7 @@ func buildPostsFromCache(
 		return postsByPath, nil
 	}
 
-	updated, err := loadChangedPosts(contentDir, changed, cfg)
+	updated, err := loadChangedPosts(contentDir, changed, cfg, concurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -314,22 +315,77 @@ func diffFiles(files []string, modTimes map[string]plugins.GlobFileInfo, content
 	return current, changed, nil
 }
 
-func loadChangedPosts(contentDir string, changed map[string]bool, cfg *lifecycle.Config) ([]*models.Post, error) {
-	posts := make([]*models.Post, 0, len(changed))
-	modelsConfig := modelsConfigFromLifecycleConfig(cfg)
+func loadChangedPosts(contentDir string, changed map[string]bool, cfg *lifecycle.Config, concurrency int) ([]*models.Post, error) {
+	paths := make([]string, 0, len(changed))
 	for path := range changed {
-		fullPath := filepath.Join(contentDir, path)
-		content, err := os.ReadFile(fullPath)
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", path, err)
-		}
-		post, err := plugins.ParsePostFromContentWithConfig(path, string(content), modelsConfig)
-		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", path, err)
-		}
-		posts = append(posts, post)
+		paths = append(paths, path)
 	}
-	return posts, nil
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	if concurrency > len(paths) {
+		concurrency = len(paths)
+	}
+
+	modelsConfig := modelsConfigFromLifecycleConfig(cfg)
+	type result struct {
+		index int
+		post  *models.Post
+		err   error
+	}
+	jobs := make(chan int)
+	results := make(chan result, len(paths))
+	for worker := 0; worker < concurrency; worker++ {
+		go func() {
+			for index := range jobs {
+				path := paths[index]
+				fullPath := filepath.Join(contentDir, path)
+				content, err := os.ReadFile(fullPath)
+				if err != nil {
+					results <- result{index: index, err: fmt.Errorf("read %s: %w", path, err)}
+					continue
+				}
+				post, err := plugins.ParsePostFromContentWithConfig(path, string(content), modelsConfig)
+				if err != nil {
+					results <- result{index: index, err: fmt.Errorf("parse %s: %w", path, err)}
+					continue
+				}
+				results <- result{index: index, post: post}
+			}
+		}()
+	}
+	go func() {
+		for index := range paths {
+			jobs <- index
+		}
+		close(jobs)
+	}()
+
+	posts := make([]*models.Post, len(paths))
+	var firstErr error
+	for range paths {
+		result := <-results
+		if result.err != nil {
+			if firstErr == nil {
+				firstErr = result.err
+			}
+			continue
+		}
+		posts[result.index] = result.post
+	}
+	if firstErr != nil {
+		return nil, firstErr
+	}
+	ordered := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if post != nil {
+			ordered = append(ordered, post)
+		}
+	}
+	return ordered, nil
 }
 
 func modelsConfigFromLifecycleConfig(cfg *lifecycle.Config) *models.Config {
