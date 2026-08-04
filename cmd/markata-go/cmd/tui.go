@@ -36,7 +36,7 @@ func init() {
 	rootCmd.AddCommand(tuiCmd)
 }
 
-func runTUI(cmd *cobra.Command, _ []string) error {
+func runTUI(_ *cobra.Command, _ []string) error {
 	// Create the manager using the existing helper
 	manager, err := createManager(cfgFile)
 	if err != nil {
