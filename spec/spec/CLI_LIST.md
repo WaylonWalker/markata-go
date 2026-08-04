@@ -103,8 +103,16 @@ Use `list feeds posts` with a feed name to print the posts in that feed:
 `list` and `tui` use a persistent cache at `.markata/cache/list.json`.
 
 - Cache is reused when the config hash matches and file metadata is unchanged.
-- Partial refresh re-parses only changed files and rebuilds feed/tag aggregates from cached posts.
+- Partial refresh re-parses only changed files concurrently and rebuilds feed/tag aggregates from cached posts.
 - Delete the cache file to force a full refresh.
+
+File discovery honors the configured content globs and `.gitignore` rules. It
+prunes ignored directories while scanning so large generated-output and
+dependency trees do not add unnecessary startup work.
+
+The TUI starts rendering before its initial list load completes. It displays a
+loading state while the cache, changed posts, tags, and feeds are prepared in a
+background Bubble Tea command.
 
 ## Errors
 

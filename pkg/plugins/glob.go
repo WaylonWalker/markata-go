@@ -53,6 +53,14 @@ type GlobPlugin struct {
 
 	// gitignorePatterns holds parsed gitignore patterns.
 	gitignorePatterns []string
+	ignoreRules       []ignoreRule
+}
+
+type ignoreRule struct {
+	pattern  string
+	filename string
+	meta     bool
+	pathRule bool
 }
 
 // NewGlobPlugin creates a new GlobPlugin with default settings.
@@ -92,9 +100,23 @@ func (p *GlobPlugin) Configure(m *lifecycle.Manager) error {
 				return err
 			}
 		}
+		p.prepareIgnoreRules()
 	}
 
 	return nil
+}
+
+func (p *GlobPlugin) prepareIgnoreRules() {
+	p.ignoreRules = make([]ignoreRule, 0, len(p.gitignorePatterns))
+	for _, pattern := range p.gitignorePatterns {
+		pattern = filepath.ToSlash(strings.TrimSuffix(pattern, "/"))
+		p.ignoreRules = append(p.ignoreRules, ignoreRule{
+			pattern:  pattern,
+			filename: filepath.Base(pattern),
+			meta:     strings.ContainsAny(pattern, "*?[{"),
+			pathRule: strings.Contains(pattern, "/"),
+		})
+	}
 }
 
 // loadGitignore reads and parses .gitignore patterns.
@@ -122,49 +144,57 @@ func (p *GlobPlugin) loadGitignore(baseDir string) error {
 
 // isIgnored checks if a path matches any gitignore pattern.
 func (p *GlobPlugin) isIgnored(path string) bool {
-	if !p.useGitignore || len(p.gitignorePatterns) == 0 {
+	if !p.useGitignore || len(p.ignoreRules) == 0 {
 		return false
 	}
 
 	// Normalize path separators
 	normalizedPath := filepath.ToSlash(path)
+	filename := filepath.Base(normalizedPath)
 
-	for _, pattern := range p.gitignorePatterns {
+	for _, rule := range p.ignoreRules {
+		pattern := rule.pattern
 		// Handle negation patterns (patterns starting with !)
 		if strings.HasPrefix(pattern, "!") {
 			continue // Skip negation for now in ignore check
 		}
 
-		// Normalize the pattern
-		normalizedPattern := filepath.ToSlash(pattern)
-
-		// Handle directory patterns (ending with /)
-		normalizedPattern = strings.TrimSuffix(normalizedPattern, "/")
+		// Most .gitignore entries are literal directory or file names. Avoid
+		// running doublestar's pattern validator for those entries on every
+		// matched file. This is particularly important for large sites with
+		// generated output and dependency directories.
+		if !rule.meta {
+			if normalizedPath == pattern || strings.HasPrefix(normalizedPath, pattern+"/") ||
+				filename == rule.filename || strings.HasSuffix(normalizedPath, "/"+pattern) ||
+				strings.HasSuffix(normalizedPath, "/"+pattern+"/") {
+				return true
+			}
+			continue
+		}
 
 		// Try different matching strategies
 
 		// 1. Direct match with the pattern
-		matched, err := doublestar.Match(normalizedPattern, normalizedPath)
-		if err == nil && matched {
+		if doublestar.MatchUnvalidated(pattern, normalizedPath) {
 			return true
 		}
 
 		// 2. Pattern as prefix (for directory patterns)
-		if strings.HasPrefix(normalizedPath, normalizedPattern+"/") {
+		if strings.HasPrefix(normalizedPath, pattern+"/") {
 			return true
 		}
 
-		// 3. Match against just the filename
-		filename := filepath.Base(normalizedPath)
-		matched, err = doublestar.Match(normalizedPattern, filename)
-		if err == nil && matched {
-			return true
+		// 3. Patterns containing a path separator cannot match a basename
+		// (except **/ rules, which intentionally match at any depth).
+		if !rule.pathRule || strings.HasPrefix(pattern, "**/") {
+			if doublestar.MatchUnvalidated(pattern, filename) {
+				return true
+			}
 		}
 
 		// 4. Try with **/ prefix for patterns that should match anywhere
-		if !strings.HasPrefix(normalizedPattern, "**/") && !strings.HasPrefix(normalizedPattern, "/") {
-			matched, err = doublestar.Match("**/"+normalizedPattern, normalizedPath)
-			if err == nil && matched {
+		if !strings.HasPrefix(pattern, "**/") && !strings.HasPrefix(pattern, "/") {
+			if doublestar.MatchUnvalidated("**/"+pattern, normalizedPath) {
 				return true
 			}
 		}
@@ -244,6 +274,61 @@ func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
 
 // scanFiles performs full glob scan and records file modtimes for later stages.
 func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFileInfo) {
+	for _, pattern := range p.patterns {
+		if filepath.IsAbs(pattern) {
+			return p.scanFilesWithGlob(absBaseDir)
+		}
+	}
+
+	fileSet := make(map[string]struct{})
+	modTimes := make(map[string]GlobFileInfo)
+
+	err := filepath.WalkDir(absBaseDir, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if path == absBaseDir {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(absBaseDir, path)
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			if p.isIgnored(relPath) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		// Apply the content glob before the ignore rules. The old glob walker
+		// only presented matching files to isIgnored; preserving that order is
+		// important because .gitignore files can contain hundreds of rules.
+		if !p.matchesAnyPattern(relPath) || p.isIgnored(relPath) {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return nil
+		}
+		fileSet[relPath] = struct{}{}
+		modTimes[relPath] = GlobFileInfo{ModTime: info.ModTime().UnixNano(), Size: info.Size()}
+		return nil
+	})
+	if err != nil {
+		return nil, nil
+	}
+
+	files := make([]string, 0, len(fileSet))
+	for file := range fileSet {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+	return files, modTimes
+}
+
+func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]GlobFileInfo) {
 	fileSet := make(map[string]struct{})
 	modTimes := make(map[string]GlobFileInfo)
 
@@ -263,7 +348,6 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFile
 			if err != nil {
 				relPath = match
 			}
-
 			if p.isIgnored(relPath) {
 				continue
 			}
@@ -272,18 +356,31 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFile
 			if err != nil || info.IsDir() {
 				continue
 			}
-
 			fileSet[relPath] = struct{}{}
 			modTimes[relPath] = GlobFileInfo{ModTime: info.ModTime().UnixNano(), Size: info.Size()}
 		}
 	}
 
+	return sortedGlobFiles(fileSet), modTimes
+}
+
+func (p *GlobPlugin) matchesAnyPattern(path string) bool {
+	path = filepath.ToSlash(path)
+	for _, pattern := range p.patterns {
+		if doublestar.MatchUnvalidated(filepath.ToSlash(pattern), path) {
+			return true
+		}
+	}
+	return false
+}
+
+func sortedGlobFiles(fileSet map[string]struct{}) []string {
 	files := make([]string, 0, len(fileSet))
 	for file := range fileSet {
 		files = append(files, file)
 	}
 	sort.Strings(files)
-	return files, modTimes
+	return files
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.

@@ -36,7 +36,7 @@ func init() {
 	rootCmd.AddCommand(tuiCmd)
 }
 
-func runTUI(cmd *cobra.Command, _ []string) error {
+func runTUI(_ *cobra.Command, _ []string) error {
 	// Create the manager using the existing helper
 	manager, err := createManager(cfgFile)
 	if err != nil {
@@ -53,12 +53,6 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 		CacheDir:   listcache.DefaultCacheDir,
 		ConfigHash: configHash,
 	})
-
-	// Load posts through Collect stage for full TUI functionality
-	// This runs Transform (for stats, auto-titles) and Collect (for feeds)
-	if err := app.Build.LoadForTUI(cmd.Context()); err != nil {
-		return fmt.Errorf("failed to load posts: %w", err)
-	}
 
 	// Load theme from configuration
 	paletteName := tui.GetPaletteNameFromConfig(manager.Config().Extra)
