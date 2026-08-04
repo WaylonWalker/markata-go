@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	CacheVersion    = 5
+	CacheVersion    = 6
 	DefaultCacheDir = ".markata/cache"
 	CacheFileName   = "list.json"
 )
@@ -44,27 +44,28 @@ type FileInfo struct {
 }
 
 type CachedPost struct {
-	Path        string            `json:"path"`
-	Content     string            `json:"content"`
-	Slug        string            `json:"slug"`
-	Href        string            `json:"href"`
-	Title       *string           `json:"title,omitempty"`
-	Date        *time.Time        `json:"date,omitempty"`
-	Published   bool              `json:"published"`
-	Draft       bool              `json:"draft"`
-	Private     bool              `json:"private"`
-	Skip        bool              `json:"skip"`
-	Tags        []string          `json:"tags,omitempty"`
-	Description *string           `json:"description,omitempty"`
-	Template    string            `json:"template"`
-	Templates   map[string]string `json:"templates,omitempty"`
-	Authors     []string          `json:"authors,omitempty"`
-	Author      *string           `json:"author,omitempty"`
-	SecretKey   string            `json:"secret_key,omitempty"`
-	Extra       map[string]any    `json:"extra,omitempty"`
-	WordCount   int               `json:"word_count"`
-	ReadingTime int               `json:"reading_time"`
-	CharCount   int               `json:"char_count"`
+	Path            string            `json:"path"`
+	Content         string            `json:"content"`
+	Slug            string            `json:"slug"`
+	Href            string            `json:"href"`
+	Title           *string           `json:"title,omitempty"`
+	Date            *time.Time        `json:"date,omitempty"`
+	Published       bool              `json:"published"`
+	Draft           bool              `json:"draft"`
+	Private         bool              `json:"private"`
+	PrivateOverride *bool             `json:"private_override,omitempty"`
+	Skip            bool              `json:"skip"`
+	Tags            []string          `json:"tags,omitempty"`
+	Description     *string           `json:"description,omitempty"`
+	Template        string            `json:"template"`
+	Templates       map[string]string `json:"templates,omitempty"`
+	Authors         []string          `json:"authors,omitempty"`
+	Author          *string           `json:"author,omitempty"`
+	SecretKey       string            `json:"secret_key,omitempty"`
+	Extra           map[string]any    `json:"extra,omitempty"`
+	WordCount       int               `json:"word_count"`
+	ReadingTime     int               `json:"reading_time"`
+	CharCount       int               `json:"char_count"`
 }
 
 type CachedFeed struct {
@@ -439,12 +440,15 @@ func markPrivateTags(cfg *lifecycle.Config, posts []*models.Post) {
 	}
 	privateTags := modelsConfig.Encryption.PrivateTags
 	for _, post := range posts {
-		if post == nil || post.Skip || post.Draft || post.Private {
+		if post == nil || post.Skip || post.Draft || post.Private || post.IsExplicitlyPublic() {
 			continue
 		}
 		for _, tag := range post.Tags {
-			if _, ok := privateTags[strings.ToLower(tag)]; ok {
+			if keyName, ok := privateTags[strings.ToLower(tag)]; ok {
 				post.Private = true
+				if post.SecretKey == "" {
+					post.SecretKey = keyName
+				}
 				break
 			}
 		}
@@ -452,8 +456,11 @@ func markPrivateTags(cfg *lifecycle.Config, posts []*models.Post) {
 			continue
 		}
 		if post.Template != "" {
-			if _, ok := privateTags[strings.ToLower(post.Template)]; ok {
+			if keyName, ok := privateTags[strings.ToLower(post.Template)]; ok {
 				post.Private = true
+				if post.SecretKey == "" {
+					post.SecretKey = keyName
+				}
 			}
 		}
 	}
@@ -501,27 +508,28 @@ func cloneFeedConfigs(feeds []models.FeedConfig) []models.FeedConfig {
 
 func modelToCachedPost(post *models.Post) CachedPost {
 	return CachedPost{
-		Path:        post.Path,
-		Content:     post.Content,
-		Slug:        post.Slug,
-		Href:        post.Href,
-		Title:       post.Title,
-		Date:        post.Date,
-		Published:   post.Published,
-		Draft:       post.Draft,
-		Private:     post.Private,
-		Skip:        post.Skip,
-		Tags:        append([]string{}, post.Tags...),
-		Description: post.Description,
-		Template:    post.Template,
-		Templates:   cloneStringMap(post.Templates),
-		Authors:     append([]string{}, post.Authors...),
-		Author:      post.Author,
-		SecretKey:   post.SecretKey, // pragma: allowlist secret
-		Extra:       cloneAnyMap(post.Extra),
-		WordCount:   getExtraInt(post.Extra, "word_count"),
-		ReadingTime: getExtraInt(post.Extra, "reading_time"),
-		CharCount:   getExtraInt(post.Extra, "char_count"),
+		Path:            post.Path,
+		Content:         post.Content,
+		Slug:            post.Slug,
+		Href:            post.Href,
+		Title:           post.Title,
+		Date:            post.Date,
+		Published:       post.Published,
+		Draft:           post.Draft,
+		Private:         post.Private,
+		PrivateOverride: post.PrivateOverride,
+		Skip:            post.Skip,
+		Tags:            append([]string{}, post.Tags...),
+		Description:     post.Description,
+		Template:        post.Template,
+		Templates:       cloneStringMap(post.Templates),
+		Authors:         append([]string{}, post.Authors...),
+		Author:          post.Author,
+		SecretKey:       post.SecretKey, // pragma: allowlist secret
+		Extra:           cloneAnyMap(post.Extra),
+		WordCount:       getExtraInt(post.Extra, "word_count"),
+		ReadingTime:     getExtraInt(post.Extra, "reading_time"),
+		CharCount:       getExtraInt(post.Extra, "char_count"),
 	}
 }
 
@@ -535,6 +543,7 @@ func cachedPostToModel(cached CachedPost) *models.Post {
 	post.Published = cached.Published
 	post.Draft = cached.Draft
 	post.Private = cached.Private
+	post.PrivateOverride = cached.PrivateOverride
 	post.Skip = cached.Skip
 	post.Tags = append([]string{}, cached.Tags...)
 	post.Description = cached.Description
