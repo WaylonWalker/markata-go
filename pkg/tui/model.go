@@ -123,6 +123,7 @@ type Model struct {
 	// Refresh state
 	lastRefresh time.Time // Track last refresh time
 	refreshing  bool      // Indicate refresh in progress
+	loading     bool      // Initial site data is loading in the background
 
 	// Search view state
 	searchInput          textinput.Model    // Main search input
@@ -169,6 +170,12 @@ type editorFinishedMsg struct {
 type refreshStartedMsg struct{}
 
 type refreshCompletedMsg struct {
+	posts []*models.Post
+	tags  []services.TagInfo
+	feeds []*lifecycle.Feed
+}
+
+type initialDataLoadedMsg struct {
 	posts []*models.Post
 	tags  []services.TagInfo
 	feeds []*lifecycle.Feed
@@ -252,6 +259,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 		sortOrder:       services.SortDesc,
 		theme:           theme,
 		configExpanded:  make(map[string]bool),
+		loading:         true,
 	}
 
 	return m
@@ -350,7 +358,7 @@ func postsTableColumns(width int) []table.Column {
 
 // Init initializes the model
 func (m Model) Init() tea.Cmd {
-	return m.loadPosts()
+	return m.loadInitialData()
 }
 
 // handleWindowResize handles terminal window resize events.
@@ -427,6 +435,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWindowResize(msg)
 
 	case tea.KeyMsg:
+		if m.loading && msg.String() != "q" && msg.String() != "ctrl+c" {
+			return m, nil
+		}
 		return m.handleKey(msg)
 
 	case tea.MouseMsg:
@@ -436,6 +447,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.visiblePosts = msg.posts
 		m.posts = filterVisiblePosts(msg.posts, m.filter)
 		m.postsTable.SetRows(m.postsToRows())
+		return m, nil
+
+	case initialDataLoadedMsg:
+		m.loading = false
+		m.visiblePosts = msg.posts
+		m.posts = filterVisiblePosts(msg.posts, m.filter)
+		m.tags = msg.tags
+		m.visibleFeeds = msg.feeds
+		m.feeds = filterVisibleFeeds(msg.feeds, m.filter)
+		m.postsTable.SetRows(m.postsToRows())
+		m.tagsTable.SetRows(m.tagsToRows())
+		m.feedsTable.SetRows(m.feedsToRows())
 		return m, nil
 
 	case tagsLoadedMsg:
@@ -450,6 +473,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case errMsg:
+		m.loading = false
 		m.err = msg.err
 		return m, nil
 
@@ -1760,6 +1784,34 @@ func (m Model) loadPosts() tea.Cmd {
 	}
 }
 
+// loadInitialData performs the expensive site load after Bubble Tea has
+// started rendering. This lets the TUI show its loading screen immediately
+// instead of blocking terminal initialization on disk I/O and decryption.
+func (m Model) loadInitialData() tea.Cmd {
+	return func() tea.Msg {
+		if err := m.app.Build.LoadForTUI(context.Background()); err != nil {
+			return errMsg{err}
+		}
+
+		posts, err := m.app.Posts.List(context.Background(), services.ListOptions{
+			SortBy:    m.sortBy,
+			SortOrder: m.sortOrder,
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		tags, err := m.app.Tags.List(context.Background())
+		if err != nil {
+			return errMsg{err}
+		}
+		feeds, err := m.app.Feeds.List(context.Background())
+		if err != nil {
+			return errMsg{err}
+		}
+		return initialDataLoadedMsg{posts: posts, tags: tags, feeds: feeds}
+	}
+}
+
 func (m Model) loadTags() tea.Cmd {
 	return func() tea.Msg {
 		tags, err := m.app.Tags.List(context.Background())
@@ -1964,19 +2016,23 @@ func (m Model) renderLayout(content string) string {
 
 	// Status bar with clickable buttons
 	var statusBar string
-	switch m.mode {
-	case ModeFilter:
-		statusBar = "Filter: " + m.filterInput.View()
-	case ModeCommand:
-		statusBar = ":" + m.cmdInput.View()
-	default:
-		// Build sort indicator
-		sortArrow := "↓"
-		if m.sortOrder == services.SortAsc {
-			sortArrow = "↑"
+	if m.loading {
+		statusBar = m.theme.SubtleStyle.Render("Loading site data...  q:quit")
+	} else {
+		switch m.mode {
+		case ModeFilter:
+			statusBar = "Filter: " + m.filterInput.View()
+		case ModeCommand:
+			statusBar = ":" + m.cmdInput.View()
+		default:
+			// Build sort indicator
+			sortArrow := "↓"
+			if m.sortOrder == services.SortAsc {
+				sortArrow = "↑"
+			}
+			sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
+			statusBar = m.renderFooter(sortIndicator)
 		}
-		sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
-		statusBar = m.renderFooter(sortIndicator)
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -2129,6 +2185,9 @@ func (m *Model) renderFooter(sortIndicator string) string {
 }
 
 func (m Model) renderPosts() string {
+	if m.loading {
+		return "Loading site data..."
+	}
 	if len(m.posts) == 0 {
 		return "No posts found."
 	}

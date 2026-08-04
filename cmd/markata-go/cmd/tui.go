@@ -54,12 +54,6 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 		ConfigHash: configHash,
 	})
 
-	// Load posts through Collect stage for full TUI functionality
-	// This runs Transform (for stats, auto-titles) and Collect (for feeds)
-	if err := app.Build.LoadForTUI(cmd.Context()); err != nil {
-		return fmt.Errorf("failed to load posts: %w", err)
-	}
-
 	// Load theme from configuration
 	paletteName := tui.GetPaletteNameFromConfig(manager.Config().Extra)
 	colors := tui.LoadColors(paletteName)

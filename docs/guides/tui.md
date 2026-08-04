@@ -13,6 +13,16 @@ tags:
 
 Launch the terminal UI with `markata-go tui`.
 
+The interface appears immediately with a loading state while site data is
+prepared in the background. You can quit during loading; navigation becomes
+available when the initial data arrives.
+
+The TUI reuses `.markata/cache/list.json` between launches. It checks file
+metadata and the configured globs, then refreshes only changed posts. Ignored
+directories are skipped during discovery, so generated output and dependency
+trees do not need to be scanned. On a cold cache, changed posts are parsed in
+parallel, including source-encrypted posts.
+
 ## Filter the posts you can see
 
 Press `/` in the posts or feeds view and start typing. Results update
