@@ -1,0 +1,61 @@
+schema: markata.font/v1
+id: knewave
+family: Knewave
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/knewave
+  files:
+    normal: ed3bac761d755b89ab3082c844d4a623d63c7d6eef85d22ba1fb6c680e6a4436
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 14b3fbd06078a869cf2ba96e6dacb852d373703c86ca7ad54a4cdd6e20fbab19
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: Knewave-Regular.ttf
+tiers:
+  display-core:
+    file: knewave-display-core.woff2
+    profile: display-core
+    sha256: 56fc586096f8e158fc214e3de31ee47c15ff80fc0abd5e0646ddff47a6af27ba
+    bytes: 15136
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: knewave-full.woff2
+    profile: full
+    sha256: 9ca7db99de9360e044033ad86c07a4e855c27db58a1ce2f1f9400e3ec8c64d0f
+    bytes: 18148
+  latin-ext:
+    file: knewave-latin-ext.woff2
+    profile: latin-ext
+    sha256: 9cce5f7b2b91e783f645fed7cc91627ab6ecb4c31f1af2d25189689de9e40692
+    bytes: 676
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F

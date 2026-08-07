@@ -1,0 +1,97 @@
+schema: markata.font/v1
+id: instrument-serif
+family: Instrument Serif
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/instrumentserif
+  files:
+    normal: 498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: InstrumentSerif-Regular.ttf
+tiers:
+  code-core:
+    file: instrument-serif-code-core.woff2
+    profile: code-core
+    sha256: 6c68cfb8b62a36005f992279f18d40f54e79247869393c7fd7dc65c4e27db0c3
+    bytes: 11184
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: instrument-serif-display-core.woff2
+    profile: display-core
+    sha256: 63dec97c553a91ec32c1024bd7e67907c48ef423698c9949fc91c8d28b14c358
+    bytes: 12040
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: instrument-serif-full.woff2
+    profile: full
+    sha256: 7362cca6899c47d9a5d057927a191ba19d3d5695fee82162a8fc0b8b7a266e17
+    bytes: 20056
+  latin-ext:
+    file: instrument-serif-latin-ext.woff2
+    profile: latin-ext
+    sha256: 5f2c21cbd78481863cc97d43be8656ae680496d8ad757a76a00b37b6235c99d0
+    bytes: 2672
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: instrument-serif-prose-core.woff2
+    profile: prose-core
+    sha256: 9524a97f5e7dbe7b2ad74bd1ac0263704819cda6e2798aa151b59ea32ce940a2
+    bytes: 18496
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

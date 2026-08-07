@@ -1,0 +1,102 @@
+schema: markata.font/v1
+id: ibm-plex-sans
+family: IBM Plex Sans
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/ibmplexsans
+  files:
+    normal: 3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 100.0
+    - 700.0
+    source_file: IBMPlexSans[wdth,wght].ttf
+    axes:
+      wght: *id001
+      wdth:
+      - 75.0
+      - 100.0
+tiers:
+  code-core:
+    file: ibm-plex-sans-code-core.woff2
+    profile: code-core
+    sha256: a2069c19c6ebd11be068a8ec7e5e201795ccf5a855b79917570416d8b8158a03
+    bytes: 52324
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: ibm-plex-sans-display-core.woff2
+    profile: display-core
+    sha256: 3b46162135923faae3853130b77b2fb7a1b089f66c2cf6c68ff71e540ba809d4
+    bytes: 50084
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: ibm-plex-sans-full.woff2
+    profile: full
+    sha256: 7c1b423b4d10ccead4eb821d1e6a6e8521f50e5460d427c70bf0c9c2a1941ffb
+    bytes: 217644
+  latin-ext:
+    file: ibm-plex-sans-latin-ext.woff2
+    profile: latin-ext
+    sha256: bc07e1adab1b7f5f958c819c8253e96d95d9ffe208e71e567bd9dc19cff46495
+    bytes: 20012
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: ibm-plex-sans-prose-core.woff2
+    profile: prose-core
+    sha256: a367faf2cdfcd7b595dc4e9df894b755f533ef22fa3efabd8efc9a74c9901fc7
+    bytes: 105076
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

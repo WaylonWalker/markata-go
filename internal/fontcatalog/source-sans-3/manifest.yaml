@@ -1,0 +1,58 @@
+schema: markata.font/v1
+id: source-sans-3
+family: Source Sans 3
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/sourcesans3
+  files:
+    normal: 042fe2cc0b933e328410d7acbd0aa6a1873dca5aef81875f4bc214b08825c7b9
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 09746787287a289323b0ec3cff4d1a4a801331b82b7207c1e186f5d26619a392
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 200.0
+    - 900.0
+    source_file: SourceSans3[wght].ttf
+    axes:
+      wght: *id001
+tiers:
+  full:
+    file: source-sans-3-full.woff2
+    profile: full
+    sha256: 4bc88c1e05f4394d6b34d5364317e44e9f1a45e9c00476a7174f1a691b92a7a3
+    bytes: 170992
+  latin-ext:
+    file: source-sans-3-latin-ext.woff2
+    profile: latin-ext
+    sha256: 2adc66a55929af0d354cb78480378d481079eaff2f86d8804cb4cf1116b5266f
+    bytes: 41452
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: source-sans-3-prose-core.woff2
+    profile: prose-core
+    sha256: a933a7f822d0b08977e63b5fe92cb952dcda1ef05b9ed0f0055daea33b3e1f97
+    bytes: 79284
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

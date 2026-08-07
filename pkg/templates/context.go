@@ -460,6 +460,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 				"trusted_domains": append([]string{}, c.Templates.Media.TrustedDomains...),
 			},
 		},
+		"fontpack": c.Extra["fontpack"],
 	}
 
 	// Add Extra map for plugin configs (e.g., glightbox_enabled, glightbox_options)

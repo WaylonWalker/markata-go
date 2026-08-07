@@ -1,0 +1,97 @@
+schema: markata.font/v1
+id: special-elite
+family: Special Elite
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: apache/specialelite
+  files:
+    normal: a776fcb4ceb8bdf03e2967688ebdad42680de5b91a7e62c17e718ae212d14bc4
+license:
+  id: Apache-2.0
+  file: OFL.txt
+  sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: SpecialElite-Regular.ttf
+tiers:
+  code-core:
+    file: special-elite-code-core.woff2
+    profile: code-core
+    sha256: 2d2a6da99fe305c20635a66b4bb41fd92068aedcd83638d5b8b6ee8940089026
+    bytes: 44520
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: special-elite-display-core.woff2
+    profile: display-core
+    sha256: c75aefb6e734145dc39a55e1fc257c91f38599cf8055b23f51b6ab86649712a6
+    bytes: 46480
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: special-elite-full.woff2
+    profile: full
+    sha256: 7b3e7fc0da40054c0de68f4b28fba57201be223d2a7eb74ee67a01984e188f56
+    bytes: 61304
+  latin-ext:
+    file: special-elite-latin-ext.woff2
+    profile: latin-ext
+    sha256: 232cfbc996c4ccc12ab4fb638dbfeb4bb9a895ba1b38d66e5398dd881c14c136
+    bytes: 6076
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: special-elite-prose-core.woff2
+    profile: prose-core
+    sha256: b23e8504793ea3e6fef68ea184240f11b5540481b2a43fd5b3931ffe990b8507
+    bytes: 59688
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
