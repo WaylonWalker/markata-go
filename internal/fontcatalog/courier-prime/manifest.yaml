@@ -22,6 +22,26 @@ faces:
     - 400
     source_file: CourierPrime-Regular.ttf
 tiers:
+  code-core:
+    file: courier-prime-code-core.woff2
+    profile: code-core
+    sha256: 185daed3bee09f1b5a114d995fefdda1fa49041487703485460269fadddbf1af
+    bytes: 8936
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: courier-prime-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: courier-prime-full.woff2
+    profile: full
+    sha256: 4c8f8e3fc8be9575a5ccddaa7b515609ee38d20030931efb158a99b2ca965680
+    bytes: 15884
+  latin-ext:
+    file: courier-prime-latin-ext.woff2
+    profile: latin-ext
+    sha256: d4c59d0d4b25fe06bcb57d28a4eb293f70d64102251ea99ea39d1485dca3c154
+    bytes: 1828
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: courier-prime-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: courier-prime-code-core.woff2
-    profile: code-core
-    sha256: 185daed3bee09f1b5a114d995fefdda1fa49041487703485460269fadddbf1af
-    bytes: 8936
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: courier-prime-latin-ext.woff2
-    profile: latin-ext
-    sha256: d4c59d0d4b25fe06bcb57d28a4eb293f70d64102251ea99ea39d1485dca3c154
-    bytes: 1828
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: courier-prime-full.woff2
-    profile: full
-    sha256: 4c8f8e3fc8be9575a5ccddaa7b515609ee38d20030931efb158a99b2ca965680
-    bytes: 15884

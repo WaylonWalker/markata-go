@@ -22,6 +22,26 @@ faces:
     - 900
     source_file: Bitter[wght].ttf
 tiers:
+  code-core:
+    file: bitter-code-core.woff2
+    profile: code-core
+    sha256: 3491aad9dcf464bb30c069b9697031920dae594a23002ffc6e140b7fb3a8ede9
+    bytes: 35568
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: bitter-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: bitter-full.woff2
+    profile: full
+    sha256: bdf2cab0451af03b56e624f99357c5567027c84c5477213957a4a1085b71b240
+    bytes: 111876
+  latin-ext:
+    file: bitter-latin-ext.woff2
+    profile: latin-ext
+    sha256: 77dc09b9862ab5a17a4bc26c699409ac82f75f0db5784995cc80afceac22636a
+    bytes: 25904
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: bitter-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: bitter-code-core.woff2
-    profile: code-core
-    sha256: 3491aad9dcf464bb30c069b9697031920dae594a23002ffc6e140b7fb3a8ede9
-    bytes: 35568
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: bitter-latin-ext.woff2
-    profile: latin-ext
-    sha256: 77dc09b9862ab5a17a4bc26c699409ac82f75f0db5784995cc80afceac22636a
-    bytes: 25904
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: bitter-full.woff2
-    profile: full
-    sha256: bdf2cab0451af03b56e624f99357c5567027c84c5477213957a4a1085b71b240
-    bytes: 111876

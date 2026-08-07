@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func verificationFixture(t *testing.T) (*CatalogSource, *Lockfile, string) {
+func verificationFixture(t *testing.T) (*CatalogSource, *Lockfile, string, string) {
 	t.Helper()
 	root := t.TempDir()
 	family := filepath.Join(root, "demo")
@@ -51,14 +51,14 @@ func verificationFixture(t *testing.T) (*CatalogSource, *Lockfile, string) {
 	if err := os.WriteFile(lockPath, lockData, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return &CatalogSource{Catalog: c, FS: os.DirFS(root), Root: ".", LockFS: os.DirFS(root), Lock: "lock.yaml"}, lock, lockPath
+	return &CatalogSource{Catalog: c, FS: os.DirFS(root), Root: ".", LockFS: os.DirFS(root), Lock: "lock.yaml"}, lock, lockPath, filepath.Join(family, "manifest.yaml")
 }
 
 func TestVerifySourceRejectsChangedLockProvenance(t *testing.T) {
 	fields := []string{"Provider", "Family", "Revision", "Directory"}
 	for _, field := range fields {
 		t.Run(field, func(t *testing.T) {
-			source, lock, lockPath := verificationFixture(t)
+			source, lock, lockPath, _ := verificationFixture(t)
 			locked := lock.Sources["demo"]
 			switch field {
 			case "Provider":
@@ -86,7 +86,7 @@ func TestVerifySourceRejectsChangedLockProvenance(t *testing.T) {
 }
 
 func TestVerifySourceRejectsChangedSourceHash(t *testing.T) {
-	source, lock, lockPath := verificationFixture(t)
+	source, lock, lockPath, _ := verificationFixture(t)
 	locked := lock.Sources["demo"]
 	locked.Files["normal"] = LockedFile{Source: "Demo-Regular.ttf", SHA256: hex.EncodeToString(make([]byte, 32))}
 	lock.Sources["demo"] = locked
@@ -114,7 +114,7 @@ func TestVerifySourceRequiresExactManifestLockFileSet(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source, lock, lockPath := verificationFixture(t)
+			source, lock, lockPath, _ := verificationFixture(t)
 			locked := lock.Sources["demo"]
 			locked.Files = tc.files
 			lock.Sources["demo"] = locked
@@ -129,5 +129,64 @@ func TestVerifySourceRequiresExactManifestLockFileSet(t *testing.T) {
 				t.Fatal("inexact source file set was accepted")
 			}
 		})
+	}
+}
+
+func TestVerifySourceRejectsMissingManifestProvenance(t *testing.T) {
+	source, _, _, manifestPath := verificationFixture(t)
+	// The fixture uses an OS directory filesystem, so rewrite the source file
+	// directly after removing its authoritative source.files mapping.
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Source.Files = nil
+	data, err = yaml.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifySource(source, "demo"); err == nil {
+		t.Fatal("manifest without source file provenance was accepted")
+	}
+}
+
+func TestVerifySourceAcceptsMatchingManifestProvenance(t *testing.T) {
+	source, lock, lockPath, manifestPath := verificationFixture(t)
+	_ = lock
+	_ = lockPath
+	_ = manifestPath
+	if err := VerifySource(source, "demo"); err != nil {
+		t.Fatalf("matching provenance rejected: %v", err)
+	}
+}
+
+func TestVerifySourceRejectsDuplicateTierContent(t *testing.T) {
+	source, _, lockPath, manifestPath := verificationFixture(t)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Tiers["latin-ext"] = Tier{File: "demo.woff2", Profile: "latin-ext", SHA256: manifest.Tiers["prose-core"].SHA256, Bytes: manifest.Tiers["prose-core"].Bytes, UnicodeRange: []string{"U+0100"}}
+	data, err = yaml.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The lock remains valid; the duplicate tier must be rejected before asset checks.
+	if err := VerifySource(source, "demo"); err == nil {
+		t.Fatalf("duplicate tier content was accepted (lock %s)", lockPath)
 	}
 }

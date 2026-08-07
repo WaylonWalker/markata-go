@@ -43,17 +43,6 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
-  latin-ext:
-    file: finger-paint-latin-ext.woff2
-    profile: latin-ext
-    sha256: 5a74932973b3bd6f088aad04fd36989b606e8316eef01d57a51de4bb7f2b4c88
-    bytes: 37844
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
   full:
     file: finger-paint-full.woff2
     profile: full

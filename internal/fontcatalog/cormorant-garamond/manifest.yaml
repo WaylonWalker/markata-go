@@ -22,6 +22,26 @@ faces:
     - 900
     source_file: CormorantGaramond[wght].ttf
 tiers:
+  code-core:
+    file: cormorant-garamond-code-core.woff2
+    profile: code-core
+    sha256: 42af0f1bd7c7265cd9747ddffafa489677f968489688b22a8860ceea25792f17
+    bytes: 47936
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: cormorant-garamond-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: cormorant-garamond-full.woff2
+    profile: full
+    sha256: 8a74fea6ff44e82acea96d77de2eb7686cce74d80413c276adc99653e0c1d86f
+    bytes: 187716
+  latin-ext:
+    file: cormorant-garamond-latin-ext.woff2
+    profile: latin-ext
+    sha256: 1d7fbfb1ef574c6a444c0f77450e5728c410e1d92c69259603b37e7fbb23952e
+    bytes: 41908
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: cormorant-garamond-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: cormorant-garamond-code-core.woff2
-    profile: code-core
-    sha256: 42af0f1bd7c7265cd9747ddffafa489677f968489688b22a8860ceea25792f17
-    bytes: 47936
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: cormorant-garamond-latin-ext.woff2
-    profile: latin-ext
-    sha256: 1d7fbfb1ef574c6a444c0f77450e5728c410e1d92c69259603b37e7fbb23952e
-    bytes: 41908
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: cormorant-garamond-full.woff2
-    profile: full
-    sha256: 8a74fea6ff44e82acea96d77de2eb7686cce74d80413c276adc99653e0c1d86f
-    bytes: 187716

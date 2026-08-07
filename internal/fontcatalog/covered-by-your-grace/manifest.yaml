@@ -1,6 +1,6 @@
 schema: markata.font/v1
 id: covered-by-your-grace
-family: "Covered By Your Grace"
+family: Covered By Your Grace
 scope: builtin
 source:
   provider: google-fonts
@@ -13,12 +13,13 @@ license:
   id: OFL-1.1
   file: OFL.txt
   sha256: 0e441ae9f18ad0c294cc5b6ae3974c2db1614cab220598578b1b58c4cc334485
-  copyright: "Copyright (c) 2010, Kimberly Geswein (kimberlygeswein.com)"
 faces:
   normal:
     style: normal
     variable: false
-    weight: [400, 400]
+    weight:
+    - 400
+    - 400
     source_file: CoveredByYourGrace.ttf
 tiers:
   display-core:
@@ -26,15 +27,35 @@ tiers:
     profile: display-core
     sha256: 1dc7caf67ce7be5112a8ebe191a11d05c72bda278d45056019c1a32f1c26f219
     bytes: 13164
-    unicode_range: [U+0020-007E, U+00A0, U+00A2-00A5, U+00A9, U+00AE, U+00B0, U+00D7, U+00F7, U+2010-2027, U+2030, U+2032-2033, U+2044, U+20AC, U+2122, U+2190-2199]
-  latin-ext:
-    file: covered-by-your-grace-latin-ext.woff2
-    profile: latin-ext
-    sha256: 6d5743d74f12a4bb5567a64b510252427772f0163f81232cf90808b26a0aead1
-    bytes: 2780
-    unicode_range: [U+0180-024F, U+1E00-1EFF, U+2C60-2C7F, U+A720-A7FF, U+AB30-AB6F]
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
   full:
     file: covered-by-your-grace-full.woff2
     profile: full
     sha256: 2e527dbf9154acd931d8ad915eb59829329fe099d0c351eaeddb4b25e1d24c33
     bytes: 18256
+  latin-ext:
+    file: covered-by-your-grace-latin-ext.woff2
+    profile: latin-ext
+    sha256: 6d5743d74f12a4bb5567a64b510252427772f0163f81232cf90808b26a0aead1
+    bytes: 2780
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F

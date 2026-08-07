@@ -145,11 +145,18 @@ func verifyBundledSource(s *CatalogSource, source string, lock Lockfile) error {
 	if err := verifyTiers(s, source, manifest); err != nil {
 		return err
 	}
-	if len(manifest.Source.Files) > 0 && len(locked.Files) != len(manifest.Source.Files) {
+	if len(manifest.Source.Files) == 0 {
+		return fmt.Errorf("source %q manifest has no source file provenance", source)
+	}
+	if len(locked.Files) != len(manifest.Source.Files) {
 		return fmt.Errorf("source %q lock and manifest source file sets differ", source)
 	}
 	for name, file := range locked.Files {
-		if file.Source == "" || !fullSHA256(file.SHA256) {
+		expected, exists := manifest.Source.Files[name]
+		if !exists {
+			return fmt.Errorf("source %q manifest is missing file %q", source, name)
+		}
+		if !fullSHA256(expected) || file.Source == "" || !fullSHA256(file.SHA256) {
 			return fmt.Errorf("source %q lock file %q has invalid provenance hash", source, name)
 		}
 		matched := false
@@ -161,7 +168,7 @@ func verifyBundledSource(s *CatalogSource, source string, lock Lockfile) error {
 		if !matched {
 			return fmt.Errorf("source %q lock file %q is not represented by manifest", source, name)
 		}
-		if expected := manifest.Source.Files[name]; expected != "" && expected != file.SHA256 {
+		if expected != file.SHA256 {
 			return fmt.Errorf("source %q file %q hash differs from manifest", source, name)
 		}
 	}
@@ -174,7 +181,18 @@ func verifyBundledSource(s *CatalogSource, source string, lock Lockfile) error {
 }
 
 func verifyTiers(s *CatalogSource, source string, manifest Manifest) error {
+	seenHashes := map[string]struct {
+		name         string
+		unicodeRange []string
+	}{}
 	for tierName, tier := range manifest.Tiers {
+		if previous, ok := seenHashes[tier.SHA256]; ok && !sameStrings(previous.unicodeRange, tier.UnicodeRange) {
+			return fmt.Errorf("source %q tiers %q and %q have different unicode ranges but identical content", source, previous.name, tierName)
+		}
+		seenHashes[tier.SHA256] = struct {
+			name         string
+			unicodeRange []string
+		}{tierName, tier.UnicodeRange}
 		path := filepath.ToSlash(filepath.Join(s.Root, source, tier.File))
 		info, err := fs.Stat(s.FS, path)
 		if err != nil {
@@ -195,6 +213,18 @@ func verifyTiers(s *CatalogSource, source string, manifest Manifest) error {
 		}
 	}
 	return nil
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func verifyHashFS(source fs.FS, path, expected string) error {

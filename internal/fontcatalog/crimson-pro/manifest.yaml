@@ -22,6 +22,26 @@ faces:
     - 900
     source_file: CrimsonPro[wght].ttf
 tiers:
+  code-core:
+    file: crimson-pro-code-core.woff2
+    profile: code-core
+    sha256: 5fad0be4f980dd048006e682a98ae7f14a4b3ab29dd0fcfa55af7ad9a8b7d992
+    bytes: 42804
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: crimson-pro-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: crimson-pro-full.woff2
+    profile: full
+    sha256: 1bdf5c3f0983d9021fc6b3f56c226ac03c76055b9d9f34238758f4540ea03093
+    bytes: 85480
+  latin-ext:
+    file: crimson-pro-latin-ext.woff2
+    profile: latin-ext
+    sha256: bbf6875066e3661a44d93bd7f520be12dcb0c8738477035e07960fd6c03d709d
+    bytes: 26036
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: crimson-pro-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: crimson-pro-code-core.woff2
-    profile: code-core
-    sha256: 5fad0be4f980dd048006e682a98ae7f14a4b3ab29dd0fcfa55af7ad9a8b7d992
-    bytes: 42804
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: crimson-pro-latin-ext.woff2
-    profile: latin-ext
-    sha256: bbf6875066e3661a44d93bd7f520be12dcb0c8738477035e07960fd6c03d709d
-    bytes: 26036
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: crimson-pro-full.woff2
-    profile: full
-    sha256: 1bdf5c3f0983d9021fc6b3f56c226ac03c76055b9d9f34238758f4540ea03093
-    bytes: 85480

@@ -81,4 +81,18 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	if err != nil || !strings.Contains(string(reportOutput), "Files emitted:") {
 		t.Fatalf("fonts report did not inspect configured output directory: %v\n%s", err, reportOutput)
 	}
+	invalidConfig := filepath.Join(site, "markata-go.toml")
+	if err := os.WriteFile(invalidConfig, []byte("[markata-go]\nfontpacks_file = \"./does-not-exist.yaml\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	verifyBuiltin := exec.Command(binary, "fonts", "verify")
+	verifyBuiltin.Dir = site
+	if output, err := verifyBuiltin.CombinedOutput(); err != nil {
+		t.Fatalf("bare fonts verify depended on invalid custom catalog: %v\n%s", err, output)
+	}
+	verifyCustom := exec.Command(binary, "fonts", "verify", "field-notebook")
+	verifyCustom.Dir = site
+	if output, err := verifyCustom.CombinedOutput(); err == nil {
+		t.Fatalf("pack-specific verification unexpectedly ignored invalid custom catalog:\n%s", output)
+	}
 }

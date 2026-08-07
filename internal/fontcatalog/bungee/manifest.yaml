@@ -22,6 +22,26 @@ faces:
     - 400
     source_file: Bungee-Regular.ttf
 tiers:
+  code-core:
+    file: bungee-code-core.woff2
+    profile: code-core
+    sha256: 442e91c706436b9ff3760b2bfdef05342a460d6f449913214d7e724ec2cc93db
+    bytes: 21964
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: bungee-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: bungee-full.woff2
+    profile: full
+    sha256: d47ed7deac199dd703852012c803412fe4c891b269c4dd13d9d4df303f9a3a8a
+    bytes: 39508
+  latin-ext:
+    file: bungee-latin-ext.woff2
+    profile: latin-ext
+    sha256: bffbe1419f6591f7bb70fb5aa113eec7d9a34e204d2650fcf0b7b658afe27e43
+    bytes: 6264
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: bungee-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: bungee-code-core.woff2
-    profile: code-core
-    sha256: 442e91c706436b9ff3760b2bfdef05342a460d6f449913214d7e724ec2cc93db
-    bytes: 21964
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: bungee-latin-ext.woff2
-    profile: latin-ext
-    sha256: bffbe1419f6591f7bb70fb5aa113eec7d9a34e204d2650fcf0b7b658afe27e43
-    bytes: 6264
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: bungee-full.woff2
-    profile: full
-    sha256: d47ed7deac199dd703852012c803412fe4c891b269c4dd13d9d4df303f9a3a8a
-    bytes: 39508

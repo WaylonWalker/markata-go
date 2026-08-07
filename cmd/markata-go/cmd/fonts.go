@@ -125,14 +125,17 @@ func runFontsVerify(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		selected = args[0]
 	}
-	verifySource, err := loadConfiguredFontSource()
-	if err != nil {
-		return err
-	}
+	var verifySource *fontpacks.CatalogSource
+	var err error
 	if selected == "" {
 		// Bare verification is an integrity check of the shipped catalog, not
 		// a check of the zero-download default pack.
 		verifySource, err = fontpacks.BuiltinSource()
+		if err != nil {
+			return err
+		}
+	} else {
+		verifySource, err = loadConfiguredFontSource()
 		if err != nil {
 			return err
 		}

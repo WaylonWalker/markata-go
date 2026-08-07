@@ -43,17 +43,6 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
-  latin-ext:
-    file: rock-salt-latin-ext.woff2
-    profile: latin-ext
-    sha256: 309af5f8215573690062fc93bef57ff7e225067fcda10c9c0288c99b5a26b0f8
-    bytes: 43868
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
   full:
     file: rock-salt-full.woff2
     profile: full
