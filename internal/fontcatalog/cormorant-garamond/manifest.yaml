@@ -17,10 +17,12 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
-    - 300
-    - 900
+    weight: &id001
+    - 300.0
+    - 700.0
     source_file: CormorantGaramond[wght].ttf
+    axes:
+      wght: *id001
 tiers:
   code-core:
     file: cormorant-garamond-code-core.woff2

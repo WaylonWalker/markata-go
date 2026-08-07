@@ -20,6 +20,8 @@ faces:
     variable: true
     weight: [200, 900]
     source_file: SourceSans3[wght].ttf
+    axes:
+      wght: [200.0, 900.0]
 tiers:
   prose-core:
     file: source-sans-3-prose-core.woff2

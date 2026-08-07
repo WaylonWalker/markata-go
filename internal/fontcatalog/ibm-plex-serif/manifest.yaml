@@ -18,10 +18,30 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: IBMPlexSerif-Regular.ttf
 tiers:
+  code-core:
+    file: ibm-plex-serif-code-core.woff2
+    profile: code-core
+    sha256: e16063b7291990f5dc0967f99eab18c3abdf5e69396f786110a36e8b206de53c
+    bytes: 11976
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: ibm-plex-serif-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: ibm-plex-serif-full.woff2
+    profile: full
+    sha256: 05be4061b5f3f53ff5bcc6c8c991b03ef8e490fc91a67c433cc310cfa576afea
+    bytes: 39212
+  latin-ext:
+    file: ibm-plex-serif-latin-ext.woff2
+    profile: latin-ext
+    sha256: 9bb0f917618b30911b685b835f2ea803fec3bb7ca07d966d6d213fe7ee0acc9a
+    bytes: 5516
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: ibm-plex-serif-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: ibm-plex-serif-code-core.woff2
-    profile: code-core
-    sha256: e16063b7291990f5dc0967f99eab18c3abdf5e69396f786110a36e8b206de53c
-    bytes: 11976
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: ibm-plex-serif-latin-ext.woff2
-    profile: latin-ext
-    sha256: 9bb0f917618b30911b685b835f2ea803fec3bb7ca07d966d6d213fe7ee0acc9a
-    bytes: 5516
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: ibm-plex-serif-full.woff2
-    profile: full
-    sha256: 05be4061b5f3f53ff5bcc6c8c991b03ef8e490fc91a67c433cc310cfa576afea
-    bytes: 39212

@@ -17,11 +17,33 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
-    - 300
-    - 900
+    weight: &id001
+    - 100.0
+    - 800.0
     source_file: JetBrainsMono[wght].ttf
+    axes:
+      wght: *id001
 tiers:
+  code-core:
+    file: jetbrains-mono-code-core.woff2
+    profile: code-core
+    sha256: 7667540ef9ee15027ac399c18074df4e9352e395c8c29d313f25b5bb5700f68f
+    bytes: 42676
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: jetbrains-mono-display-core.woff2
     profile: display-core
@@ -43,6 +65,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: jetbrains-mono-full.woff2
+    profile: full
+    sha256: 85357237c4f1dbaad7c6845b9c0a9af04d3bae75eb29ed678205b38f9202b23e
+    bytes: 70884
+  latin-ext:
+    file: jetbrains-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: f869f1cd467bc3701c619e970a09f75004167c76ea52cb57331dcf1c0fea0b2b
+    bytes: 9580
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: jetbrains-mono-prose-core.woff2
     profile: prose-core
@@ -59,39 +97,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: jetbrains-mono-code-core.woff2
-    profile: code-core
-    sha256: 7667540ef9ee15027ac399c18074df4e9352e395c8c29d313f25b5bb5700f68f
-    bytes: 42676
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: jetbrains-mono-latin-ext.woff2
-    profile: latin-ext
-    sha256: f869f1cd467bc3701c619e970a09f75004167c76ea52cb57331dcf1c0fea0b2b
-    bytes: 9580
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: jetbrains-mono-full.woff2
-    profile: full
-    sha256: 85357237c4f1dbaad7c6845b9c0a9af04d3bae75eb29ed678205b38f9202b23e
-    bytes: 70884

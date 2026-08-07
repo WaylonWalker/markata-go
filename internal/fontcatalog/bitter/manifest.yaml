@@ -17,10 +17,12 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
-    - 300
-    - 900
+    weight: &id001
+    - 100.0
+    - 900.0
     source_file: Bitter[wght].ttf
+    axes:
+      wght: *id001
 tiers:
   code-core:
     file: bitter-code-core.woff2

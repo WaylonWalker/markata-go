@@ -18,9 +18,13 @@ faces:
     style: normal
     variable: true
     weight:
-    - 300
-    - 900
+    - 400.0
+    - 800.0
     source_file: Syne[wght].ttf
+    axes:
+      wght:
+      - 400.0
+      - 800.0
 tiers:
   display-core:
     file: syne-display-core.woff2

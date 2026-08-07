@@ -20,6 +20,8 @@ faces:
     variable: true
     weight: [300, 700]
     source_file: SpaceGrotesk[wght].ttf
+    axes:
+      wght: [300.0, 700.0]
 tiers:
   prose-core:
     file: space-grotesk-prose-core.woff2

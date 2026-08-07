@@ -18,9 +18,16 @@ faces:
     style: normal
     variable: true
     weight:
-    - 300
-    - 900
+    - 200.0
+    - 900.0
     source_file: SourceSerif4[opsz,wght].ttf
+    axes:
+      opsz:
+      - 8.0
+      - 60.0
+      wght:
+      - 200.0
+      - 900.0
 tiers:
   display-core:
     file: source-serif-4-display-core.woff2

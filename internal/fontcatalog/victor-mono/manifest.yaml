@@ -18,9 +18,13 @@ faces:
     style: normal
     variable: true
     weight:
-    - 300
-    - 900
+    - 100.0
+    - 700.0
     source_file: VictorMono[wght].ttf
+    axes:
+      wght:
+      - 100.0
+      - 700.0
 tiers:
   display-core:
     file: victor-mono-display-core.woff2

@@ -17,11 +17,42 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
-    - 300
-    - 900
+    weight: &id001
+    - 100.0
+    - 900.0
     source_file: Fraunces[SOFT,WONK,opsz,wght].ttf
+    axes:
+      opsz:
+      - 9.0
+      - 144.0
+      wght: *id001
+      SOFT:
+      - 0.0
+      - 100.0
+      WONK:
+      - 0.0
+      - 1.0
 tiers:
+  code-core:
+    file: fraunces-code-core.woff2
+    profile: code-core
+    sha256: 6b7859c15a38929a6573dfe27ef9351199113de99ff8f4033069e11ed1cedcb7
+    bytes: 86324
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: fraunces-display-core.woff2
     profile: display-core
@@ -43,6 +74,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: fraunces-full.woff2
+    profile: full
+    sha256: 304e73514fa0e4176562dbcdf339f36ab7152ef1e628a6be70dda751d198a57e
+    bytes: 194044
+  latin-ext:
+    file: fraunces-latin-ext.woff2
+    profile: latin-ext
+    sha256: e7386a78dbc1ba5c9321801b7d1c9a9467d1276187b056d495b6d09b6be15a62
+    bytes: 76732
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: fraunces-prose-core.woff2
     profile: prose-core
@@ -59,39 +106,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: fraunces-code-core.woff2
-    profile: code-core
-    sha256: 6b7859c15a38929a6573dfe27ef9351199113de99ff8f4033069e11ed1cedcb7
-    bytes: 86324
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: fraunces-latin-ext.woff2
-    profile: latin-ext
-    sha256: e7386a78dbc1ba5c9321801b7d1c9a9467d1276187b056d495b6d09b6be15a62
-    bytes: 76732
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: fraunces-full.woff2
-    profile: full
-    sha256: 304e73514fa0e4176562dbcdf339f36ab7152ef1e628a6be70dda751d198a57e
-    bytes: 194044

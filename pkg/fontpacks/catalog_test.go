@@ -58,6 +58,21 @@ func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
 	}
 }
 
+func TestRequiredTiersUseFullWhenSourceLacksOptionalTier(t *testing.T) {
+	c := testCatalog(t)
+	_, pack, err := c.ResolvePack("bundled")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifests := map[string]Manifest{"demo": {Tiers: map[string]Tier{
+		"prose-core": {Profile: "prose-core"}, "full": {Profile: "full"},
+	}}}
+	got := c.RequiredTiersForManifest(pack, "<p>Ā</p>", manifests)["demo"]
+	if !got["full"] || len(got) != 1 {
+		t.Fatalf("source without latin-ext selected %#v, want full only", got)
+	}
+}
+
 func TestResolveDeduplicatesSourceTierAndCopiesAsset(t *testing.T) {
 	c := testCatalog(t)
 	c.FontPacks["bundled"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
@@ -119,6 +134,51 @@ func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
 	}
 	if len(resolved.Assets) != 4 || !strings.Contains(resolved.CSS, "Finger Paint") || !strings.Contains(resolved.CSS, "Rock Salt") {
 		t.Fatalf("painted-sign assets/CSS = %d\n%s", len(resolved.Assets), resolved.CSS)
+	}
+}
+
+func TestBuiltinPaintedSignCoversExtendedCharactersPerSource(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveFS("painted-sign", source.FS, source.Root, "<article><p>Ǎ</p></article>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[string]bool)
+	for _, asset := range resolved.Assets {
+		seen[asset.Source+":"+asset.Tier] = true
+	}
+	for _, want := range []string{"finger-paint:full", "rock-salt:full", "source-sans-3:latin-ext", "dm-mono:latin-ext"} {
+		if !seen[want] {
+			t.Errorf("extended painted-sign coverage missing %s (assets=%v)", want, seen)
+		}
+	}
+}
+
+func TestRoleTypographyPropertiesReachGeneratedCSS(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["bundled"].Roles["body"] = Role{Source: "demo", Tier: "prose-core", Weight: 450, Style: "italic", Size: "1.2rem", OpticalSize: 18}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := c.Resolve("bundled", root, t.TempDir(), "<p>Hello</p>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"--font-body-weight: 450", "--font-body-style: italic", "--font-body-size: 1.2rem", "--font-body-variation: \"opsz\" 18", "font-weight: var(--font-body-weight"} {
+		if !strings.Contains(r.CSS, want) {
+			t.Errorf("CSS missing %q:\n%s", want, r.CSS)
+		}
 	}
 }
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -35,11 +36,49 @@ def validate_tiers(family_id: str, tiers: dict[str, dict]) -> None:
         seen[digest] = (name, ranges)
 
 
+def variable_axes(path: Path) -> dict[str, list[float]]:
+    """Return the real fvar axis bounds, rather than guessed weight limits."""
+    try:
+        from fontTools.ttLib import TTFont
+    except ImportError as exc:
+        raise SystemExit(
+            "reading variable-font axes requires FontTools; install "
+            "fonttools[woff] in the maintenance environment"
+        ) from exc
+
+    font = TTFont(path, lazy=True)
+    try:
+        fvar = font["fvar"]
+        return {
+            axis.axisTag: [float(axis.minValue), float(axis.maxValue)]
+            for axis in fvar.axes
+        }
+    except KeyError:
+        return {}
+    finally:
+        font.close()
+
+
+def face_metadata(source: Path, source_name: str) -> dict[str, Any]:
+    axes = variable_axes(source)
+    weight = axes.get("wght", [400.0, 400.0])
+    face: dict[str, Any] = {
+        "style": "normal",
+        "variable": bool(axes),
+        "weight": weight,
+        "source_file": source_name,
+    }
+    if axes:
+        face["axes"] = axes
+    return face
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--google-fonts", type=Path, required=True)
     parser.add_argument("--catalog-root", type=Path, default=Path("internal/fontcatalog"))
     parser.add_argument("--lockfile", type=Path, default=Path("internal/fontcatalog/markata-fonts.lock.yaml"))
+    parser.add_argument("--check", action="store_true", help="fail when generated files are not current")
     args = parser.parse_args()
 
     catalog = yaml.safe_load((args.catalog_root / "markata-fontpacks.yaml").read_text())
@@ -47,7 +86,14 @@ def main() -> None:
     profiles = catalog["subset_profiles"]
     revision = lock["revision"]
     repository = lock.get("repository", REPOSITORY)
-    for family_id in sorted(catalog["font_sources"]):
+    used_sources = {
+        role["source"]
+        for pack in catalog["fontpacks"].values()
+        if pack.get("performance", {}).get("class") == "bundled"
+        for role in pack.get("roles", {}).values()
+        if role.get("source")
+    }
+    for family_id in sorted(used_sources):
         locked = lock["sources"].get(family_id)
         if not locked:
             raise SystemExit(f"{family_id}: missing source in lockfile")
@@ -66,8 +112,7 @@ def main() -> None:
             actual = sha256(args.google_fonts / upstream_dir / file["source"])
             if actual != file["sha256"]:
                 raise SystemExit(f"{family_id}: lock hash mismatch for source file {name}")
-        variable = "[" in source_name
-        face_weight = [300, 900] if variable else [400, 400]
+        face = face_metadata(source, source_name)
         tiers = {}
         tier_names = sorted(p for p in profiles if (family_dir / f"{family_id}-{p}.woff2").exists())
         if "full" not in tier_names:
@@ -85,17 +130,28 @@ def main() -> None:
             "schema": "markata.font/v1", "id": family_id, "family": family, "scope": "builtin",
             "source": {"provider": locked["provider"], "repository": repository, "revision": revision, "directory": upstream_dir, "files": {name: file["sha256"] for name, file in locked["files"].items()}},
             "license": {"id": license_id, "file": license_path.name, "sha256": sha256(license_path)},
-            "faces": {"normal": {"style": "normal", "variable": variable, "weight": face_weight, "source_file": source_name}},
+            "faces": {"normal": face},
             "tiers": tiers,
         }
-        (family_dir / "manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False))
+        manifest_path = family_dir / "manifest.yaml"
+        manifest_text = yaml.safe_dump(manifest, sort_keys=False)
+        if args.check:
+            if manifest_path.read_text() != manifest_text:
+                raise SystemExit(f"generated manifest is stale: {manifest_path}")
+        else:
+            manifest_path.write_text(manifest_text)
         lock["sources"][family_id] = {
             "provider": locked["provider"], "family": family, "repository": repository,
             "revision": revision, "directory": upstream_dir,
             "files": {name: {"source": file["source"], "sha256": sha256(args.google_fonts / upstream_dir / file["source"])} for name, file in locked["files"].items()},
             "license": {"id": license_id, "file": license_path.name, "sha256": sha256(license_path)},
         }
-    args.lockfile.write_text(yaml.safe_dump(lock, sort_keys=False))
+    lock_text = yaml.safe_dump(lock, sort_keys=False)
+    if args.check:
+        if args.lockfile.read_text() != lock_text:
+            raise SystemExit(f"generated lockfile is stale: {args.lockfile}")
+    else:
+        args.lockfile.write_text(lock_text)
 
 
 if __name__ == "__main__":

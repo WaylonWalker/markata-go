@@ -62,6 +62,18 @@ Markata tracks emitted files in `output/assets/fonts/.markata-fonts.json`.
 Switching packs removes obsolete Markata-generated files while preserving
 unrelated user-managed files in the same directory.
 
+Coverage is selected per font family. A family gets `latin-ext` only when its
+manifest provides that tier; otherwise Markata falls back to that family's
+`full` tier, so expressive faces without extended subsets still render all
+text. Role `weight`, `style`, `size`, and `optical_size` values are emitted as
+CSS properties and applied to the corresponding body, heading, code, lead,
+quote, and caption elements.
+
+The maintenance generator reads variable-font `fvar` axes from the source
+font, including their real weight and optical-size bounds. To check generated
+manifests without rewriting them, run it with `--check` and the pinned
+google/fonts checkout.
+
 Regenerate the comparison pages after changing the catalog with:
 
 ```bash

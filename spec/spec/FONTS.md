@@ -31,3 +31,14 @@ metadata; it is not permitted to maintain a separate family list. Generated
 tiers with different Unicode ranges must not have identical content. A family
 that has no additional glyphs for a tier omits that tier rather than shipping a
 duplicate asset.
+
+Tier selection is source-aware. `latin-ext` is requested only when the selected
+family manifest provides it; otherwise the resolver selects that family's
+`full` tier. Unsupported scripts likewise select `full`. A missing required
+tier still fails verification when the family has no `full` fallback.
+
+Role `weight`, `style`, `size`, and `optical_size` are functional. They are
+emitted as role variables and applied by the generated stylesheet to body,
+heading, code, lead, quote, and caption elements. Variable-font manifests
+record the actual `fvar` axis bounds discovered from the source font; the
+generator never assumes a `[300, 900]` weight range.

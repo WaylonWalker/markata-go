@@ -17,11 +17,33 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
-    - 300
-    - 900
+    weight: &id001
+    - 200.0
+    - 800.0
     source_file: Manrope[wght].ttf
+    axes:
+      wght: *id001
 tiers:
+  code-core:
+    file: manrope-code-core.woff2
+    profile: code-core
+    sha256: 80778546d69c74388ede52d7357d1f0470112ac8c253a7650ca8362f43f46ff6
+    bytes: 19152
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: manrope-display-core.woff2
     profile: display-core
@@ -43,6 +65,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: manrope-full.woff2
+    profile: full
+    sha256: c878460f5a5ccf3035715ad52e418396cd2ca1482beec863fcbf459d228ac00f
+    bytes: 53444
+  latin-ext:
+    file: manrope-latin-ext.woff2
+    profile: latin-ext
+    sha256: c7d9a359f39ba65b07c2845e9e6b4fbfd213da811122ca7946020955bab741c1
+    bytes: 8992
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: manrope-prose-core.woff2
     profile: prose-core
@@ -59,39 +97,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: manrope-code-core.woff2
-    profile: code-core
-    sha256: 80778546d69c74388ede52d7357d1f0470112ac8c253a7650ca8362f43f46ff6
-    bytes: 19152
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: manrope-latin-ext.woff2
-    profile: latin-ext
-    sha256: c7d9a359f39ba65b07c2845e9e6b4fbfd213da811122ca7946020955bab741c1
-    bytes: 8992
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: manrope-full.woff2
-    profile: full
-    sha256: c878460f5a5ccf3035715ad52e418396cd2ca1482beec863fcbf459d228ac00f
-    bytes: 53444

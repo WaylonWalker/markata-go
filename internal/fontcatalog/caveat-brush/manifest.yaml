@@ -18,8 +18,8 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: CaveatBrush-Regular.ttf
 tiers:
   code-core:

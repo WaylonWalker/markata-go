@@ -78,13 +78,14 @@ type Performance struct {
 	ExpectedFontBytes int64  `yaml:"expected_font_bytes"`
 }
 type Role struct {
-	Stack    string  `yaml:"stack"`
-	Source   string  `yaml:"source"`
-	Tier     string  `yaml:"tier"`
-	Fallback string  `yaml:"fallback"`
-	Weight   float64 `yaml:"weight"`
-	Style    string  `yaml:"style"`
-	Size     string  `yaml:"size"`
+	Stack       string  `yaml:"stack"`
+	Source      string  `yaml:"source"`
+	Tier        string  `yaml:"tier"`
+	Fallback    string  `yaml:"fallback"`
+	Weight      float64 `yaml:"weight"`
+	Style       string  `yaml:"style"`
+	Size        string  `yaml:"size"`
+	OpticalSize float64 `yaml:"optical_size"`
 }
 
 // Manifest describes one vendored family and its stable tiers.
@@ -129,10 +130,11 @@ func FindFamily(id string, roots ...string) (string, error) {
 }
 
 type Face struct {
-	Style      string    `yaml:"style"`
-	Variable   bool      `yaml:"variable"`
-	Weight     []float64 `yaml:"weight"`
-	SourceFile string    `yaml:"source_file"`
+	Style      string               `yaml:"style"`
+	Variable   bool                 `yaml:"variable"`
+	Weight     []float64            `yaml:"weight"`
+	Axes       map[string][]float64 `yaml:"axes"`
+	SourceFile string               `yaml:"source_file"`
 }
 type Tier struct {
 	File         string   `yaml:"file"`
@@ -273,6 +275,38 @@ func (c *Catalog) RequiredTiers(pack FontPack, renderedHTML string) map[string]m
 		if tiers["full"] {
 			result[source] = map[string]bool{"full": true}
 		}
+	}
+	return result
+}
+
+// RequiredTiersForManifest makes optional coverage decisions against the
+// tiers that a particular family actually ships. A family without latin-ext
+// must use full coverage rather than failing the entire pack resolution.
+func (c *Catalog) RequiredTiersForManifest(pack FontPack, renderedHTML string, manifests map[string]Manifest) map[string]map[string]bool {
+	requested := c.RequiredTiers(pack, renderedHTML)
+	result := make(map[string]map[string]bool, len(requested))
+	for source, tiers := range requested {
+		manifest := manifests[source]
+		available := make(map[string]bool, len(manifest.Tiers))
+		for tier := range manifest.Tiers {
+			available[tier] = true
+		}
+		selected := make(map[string]bool)
+		for tier := range tiers {
+			if available[tier] {
+				selected[tier] = true
+				continue
+			}
+			if available["full"] {
+				selected["full"] = true
+				continue
+			}
+			selected[tier] = true // retain the useful missing-tier diagnostic
+		}
+		if selected["full"] {
+			selected = map[string]bool{"full": true}
+		}
+		result[source] = selected
 	}
 	return result
 }

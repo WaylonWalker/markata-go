@@ -18,10 +18,30 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: IBMPlexMono-Regular.ttf
 tiers:
+  code-core:
+    file: ibm-plex-mono-code-core.woff2
+    profile: code-core
+    sha256: ad55628e2ba7563730abe0d390c98dbedb45d7abbd499a5ce2ce59bc195c3283
+    bytes: 10612
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: ibm-plex-mono-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: ibm-plex-mono-full.woff2
+    profile: full
+    sha256: e129bf1c609dd0f27c194119f5dadf1880dfcadbcd1e98873884a0ceede9fd6a
+    bytes: 26120
+  latin-ext:
+    file: ibm-plex-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: a6880a733cdff2d12dbff92feb27c308afff0cff7101801bcea3353b68d14e33
+    bytes: 5008
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: ibm-plex-mono-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: ibm-plex-mono-code-core.woff2
-    profile: code-core
-    sha256: ad55628e2ba7563730abe0d390c98dbedb45d7abbd499a5ce2ce59bc195c3283
-    bytes: 10612
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: ibm-plex-mono-latin-ext.woff2
-    profile: latin-ext
-    sha256: a6880a733cdff2d12dbff92feb27c308afff0cff7101801bcea3353b68d14e33
-    bytes: 5008
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: ibm-plex-mono-full.woff2
-    profile: full
-    sha256: e129bf1c609dd0f27c194119f5dadf1880dfcadbcd1e98873884a0ceede9fd6a
-    bytes: 26120

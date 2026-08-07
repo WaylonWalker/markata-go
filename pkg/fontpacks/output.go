@@ -84,17 +84,23 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 		return nil, err
 	}
 	r := &Resolved{Name: resolvedName, Pack: pack}
-	required := c.RequiredTiers(pack, renderedHTML)
-	for _, source := range SortedKeys(required) {
+	requested := c.RequiredTiers(pack, renderedHTML)
+	manifests := make(map[string]Manifest, len(requested))
+	for source := range requested {
 		manifestPath := filepath.ToSlash(filepath.Join(assetRoot, source, "manifest.yaml"))
-		var manifest Manifest
 		data, err := fs.ReadFile(assetFS, manifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("font source %q requires %s: %w", source, manifestPath, err)
 		}
+		var manifest Manifest
 		if err := yamlUnmarshal(data, &manifest); err != nil {
 			return nil, fmt.Errorf("parse font manifest %q: %w", source, err)
 		}
+		manifests[source] = manifest
+	}
+	required := c.RequiredTiersForManifest(pack, renderedHTML, manifests)
+	for _, source := range SortedKeys(required) {
+		manifest := manifests[source]
 		for _, tier := range SortedKeys(required[source]) {
 			entry, ok := manifest.Tiers[tier]
 			if !ok {
@@ -203,6 +209,7 @@ func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset) string 
 		b.WriteString(roleDeclarations(c, packs[name]))
 		b.WriteString("}\n")
 	}
+	b.WriteString(roleRules())
 	return b.String()
 }
 
@@ -211,6 +218,7 @@ func rolesCSS(c *Catalog, pack FontPack) string {
 	b.WriteString(":root {\n")
 	b.WriteString(roleDeclarations(c, pack))
 	b.WriteString("}\n")
+	b.WriteString(roleRules())
 	return b.String()
 }
 
@@ -229,8 +237,40 @@ func roleDeclarations(c *Catalog, pack FontPack) string {
 		b.WriteString(": ")
 		b.WriteString(value)
 		b.WriteString(";\n")
+		if r.Weight != 0 {
+			writeRoleProperty(&b, role, "weight", fmt.Sprintf("%g", r.Weight))
+		}
+		if r.Style != "" {
+			writeRoleProperty(&b, role, "style", r.Style)
+		}
+		if r.Size != "" {
+			writeRoleProperty(&b, role, "size", r.Size)
+		}
+		if r.OpticalSize != 0 {
+			writeRoleProperty(&b, role, "variation", fmt.Sprintf(`"opsz" %g`, r.OpticalSize))
+		}
 	}
 	return b.String()
+}
+
+func writeRoleProperty(b *strings.Builder, role, property, value string) {
+	b.WriteString("  --font-")
+	b.WriteString(role)
+	b.WriteByte('-')
+	b.WriteString(property)
+	b.WriteString(": ")
+	b.WriteString(value)
+	b.WriteString(";\n")
+}
+
+func roleRules() string {
+	return `body { font-family: var(--font-body); font-weight: var(--font-body-weight, inherit); font-style: var(--font-body-style, normal); font-size: var(--font-body-size, inherit); font-variation-settings: var(--font-body-variation, normal); }
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading, var(--font-body)); font-weight: var(--font-heading-weight, inherit); font-style: var(--font-heading-style, normal); font-size: var(--font-heading-size, inherit); font-variation-settings: var(--font-heading-variation, normal); }
+code, pre, kbd, samp { font-family: var(--font-code, monospace); font-weight: var(--font-code-weight, inherit); font-style: var(--font-code-style, normal); font-size: var(--font-code-size, inherit); font-variation-settings: var(--font-code-variation, normal); }
+.lead { font-family: var(--font-lead, var(--font-body)); font-weight: var(--font-lead-weight, inherit); font-style: var(--font-lead-style, normal); font-size: var(--font-lead-size, inherit); font-variation-settings: var(--font-lead-variation, normal); }
+blockquote, .quote { font-family: var(--font-quote, var(--font-body)); font-weight: var(--font-quote-weight, inherit); font-style: var(--font-quote-style, normal); font-size: var(--font-quote-size, inherit); font-variation-settings: var(--font-quote-variation, normal); }
+.caption, figcaption { font-family: var(--font-caption, var(--font-body)); font-weight: var(--font-caption-weight, inherit); font-style: var(--font-caption-style, normal); font-size: var(--font-caption-size, inherit); font-variation-settings: var(--font-caption-variation, normal); }
+`
 }
 func fallback(c *Catalog, name string) string {
 	if s, ok := c.SystemStacks[name]; ok {
