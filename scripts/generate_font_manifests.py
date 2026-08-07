@@ -79,15 +79,12 @@ def main() -> None:
     parser.add_argument("--catalog-root", type=Path, default=Path("internal/fontcatalog"))
     parser.add_argument("--lockfile", type=Path, default=Path("internal/fontcatalog/markata-fonts.lock.yaml"))
     parser.add_argument("--check", action="store_true", help="fail when generated files are not current")
+    parser.add_argument("--completeness", action="store_true", help="check that every bundled source has a manifest")
     args = parser.parse_args()
 
     catalog = yaml.safe_load((args.catalog_root / "markata-fontpacks.yaml").read_text())
     lock = yaml.safe_load(args.lockfile.read_text())
-    if args.check and not args.google_fonts.exists():
-        # Source checkouts are intentionally not vendored. CI and maintainers
-        # with a pinned checkout get byte-for-byte regeneration below; a clean
-        # checkout can still verify that every catalog source has a committed
-        # generated manifest without requiring network access.
+    if args.completeness:
         used_sources = {
             role["source"]
             for pack in catalog["fontpacks"].values()
@@ -99,6 +96,8 @@ def main() -> None:
         if missing:
             raise SystemExit(f"missing generated manifests: {', '.join(missing)}")
         return
+    if args.check and not args.google_fonts.exists():
+        raise SystemExit(f"pinned Google Fonts source checkout is required: {args.google_fonts}")
     profiles = catalog["subset_profiles"]
     revision = lock["revision"]
     repository = lock.get("repository", REPOSITORY)

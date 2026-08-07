@@ -18,10 +18,30 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: TradeWinds-Regular.ttf
 tiers:
+  code-core:
+    file: trade-winds-code-core.woff2
+    profile: code-core
+    sha256: ac13d958b24e81e68ed3be1d92f41cdcd6be5319c79a2116caaa169cfbf7f23f
+    bytes: 25876
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: trade-winds-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: trade-winds-full.woff2
+    profile: full
+    sha256: 348a0b226bdd9a58e524dec545a1daa0088c3745abaf52daf82825cfef7e4072
+    bytes: 36792
+  latin-ext:
+    file: trade-winds-latin-ext.woff2
+    profile: latin-ext
+    sha256: 8ef95d442b161ba0fe1e54d690e2f05b3722dda48edb89ed7474083d71729e19
+    bytes: 444
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: trade-winds-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: trade-winds-code-core.woff2
-    profile: code-core
-    sha256: ac13d958b24e81e68ed3be1d92f41cdcd6be5319c79a2116caaa169cfbf7f23f
-    bytes: 25876
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: trade-winds-latin-ext.woff2
-    profile: latin-ext
-    sha256: 8ef95d442b161ba0fe1e54d690e2f05b3722dda48edb89ed7474083d71729e19
-    bytes: 444
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: trade-winds-full.woff2
-    profile: full
-    sha256: 348a0b226bdd9a58e524dec545a1daa0088c3745abaf52daf82825cfef7e4072
-    bytes: 36792

@@ -284,23 +284,36 @@ func roleRulesForPack(pack FontPack) string {
 
 func roleRulesForPacks(packs map[string]FontPack) string {
 	var b strings.Builder
-	writeSharedRoleRule(&b, "body", "body", "", packs)
-	writeSharedRoleRule(&b, "h1", "display", "heading", packs)
-	writeSharedRoleRule(&b, "h2, h3, h4, h5, h6", "heading", "", packs)
-	writeSharedRoleRule(&b, "code, pre, kbd, samp", "code", "", packs)
-	writeSharedRoleRule(&b, ".lead", "lead", "body", packs)
-	writeSharedRoleRule(&b, "blockquote, .quote", "quote", "body", packs)
-	writeSharedRoleRule(&b, ".caption, figcaption", "caption", "body", packs)
+	for _, name := range SortedKeys(packs) {
+		prefix := `[data-fontpack="` + name + `"] `
+		writeRoleRuleForPack(&b, prefix+"body", "body", "", packs[name])
+		writeRoleRuleForPack(&b, prefix+"h1", firstRole(packs[name], "display", "heading"), "", packs[name])
+		writeRoleRuleForPack(&b, prefix+"h2, "+prefix+"h3, "+prefix+"h4, "+prefix+"h5, "+prefix+"h6", "heading", "", packs[name])
+		writeRoleRuleForPack(&b, prefix+"code, "+prefix+"pre, "+prefix+"kbd, "+prefix+"samp", "code", "", packs[name])
+		writeRoleRuleForPack(&b, prefix+".lead", "lead", "body", packs[name])
+		writeRoleRuleForPack(&b, prefix+"blockquote, "+prefix+".quote", "quote", "body", packs[name])
+		writeRoleRuleForPack(&b, prefix+".caption, "+prefix+"figcaption", "caption", "body", packs[name])
+	}
 	return b.String()
 }
 
-func writeSharedRoleRule(b *strings.Builder, selector, role, fallback string, packs map[string]FontPack) {
+func writeRoleRuleForPack(b *strings.Builder, selector, role, fallback string, pack FontPack) {
+	if _, ok := pack.Roles[role]; !ok {
+		if fallback == "" {
+			return
+		}
+		if _, ok := pack.Roles[fallback]; !ok {
+			return
+		}
+		role = fallback
+		fallback = ""
+	}
 	props := make([]string, 0, 5)
-	if anyRoleFamily(packs, role) || (fallback != "" && anyRoleFamily(packs, fallback)) {
+	if roleValue(pack, role) || (fallback != "" && roleValue(pack, fallback)) {
 		props = append(props, "font-family: "+roleVar(role, fallback))
 	}
 	for _, property := range []string{"weight", roleStyleProperty, "size", "variation"} {
-		if anyRoleProperty(packs, role, property) || (fallback != "" && anyRoleProperty(packs, fallback, property)) {
+		if roleHasProperty(pack, role, property) || (fallback != "" && roleHasProperty(pack, fallback, property)) {
 			cssProperty := "font-" + property
 			if property == "variation" {
 				cssProperty = "font-variation-settings"
@@ -334,34 +347,23 @@ func rolePropertyVar(role, fallback, property string) string {
 	return value
 }
 
-func anyRoleFamily(packs map[string]FontPack, role string) bool {
-	for _, pack := range packs {
-		if ok := roleValue(pack, role); ok {
-			return true
-		}
+func roleHasProperty(pack FontPack, role, property string) bool {
+	r, ok := pack.Roles[role]
+	if !ok {
+		return false
 	}
-	return false
-}
-
-func anyRoleProperty(packs map[string]FontPack, role, property string) bool {
-	for _, pack := range packs {
-		r, ok := pack.Roles[role]
-		if !ok {
-			continue
-		}
-		switch property {
-		case "weight":
-			ok = r.Weight != 0
-		case roleStyleProperty, "size":
-			ok = (property == roleStyleProperty && r.Style != "") || (property == "size" && r.Size != "")
-		case "variation":
-			ok = r.OpticalSize != 0
-		}
-		if ok {
-			return true
-		}
+	switch property {
+	case "weight":
+		return r.Weight != 0
+	case roleStyleProperty:
+		return r.Style != ""
+	case "size":
+		return r.Size != ""
+	case "variation":
+		return r.OpticalSize != 0
+	default:
+		return false
 	}
-	return false
 }
 
 func firstRole(pack FontPack, preferred, fallback string) string {
@@ -372,37 +374,7 @@ func firstRole(pack FontPack, preferred, fallback string) string {
 }
 
 func writeRoleRule(b *strings.Builder, selector, role string, pack FontPack) {
-	r, ok := pack.Roles[role]
-	if !ok {
-		return
-	}
-	props := make([]string, 0, 5)
-	if configured := roleValue(pack, role); configured {
-		props = append(props, "font-family: var(--font-"+role+")")
-	}
-	if r.Weight != 0 {
-		props = append(props, "font-weight: var(--font-"+role+"-weight)")
-	}
-	if r.Style != "" {
-		props = append(props, "font-style: var(--font-"+role+"-"+roleStyleProperty+")")
-	}
-	if r.Size != "" {
-		props = append(props, "font-size: var(--font-"+role+"-size)")
-	}
-	if r.OpticalSize != 0 {
-		props = append(props, "font-variation-settings: var(--font-"+role+"-variation)")
-	}
-	if len(props) == 0 {
-		return
-	}
-	b.WriteString(selector)
-	b.WriteString(" {\n")
-	for _, prop := range props {
-		b.WriteString("  ")
-		b.WriteString(prop)
-		b.WriteString(";\n")
-	}
-	b.WriteString("}\n")
+	writeRoleRuleForPack(b, selector, role, "", pack)
 }
 
 func roleValue(pack FontPack, role string) bool {

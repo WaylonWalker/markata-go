@@ -111,8 +111,8 @@ func ValidateRoleCapabilities(c *Catalog, packs map[string]FontPack, manifests m
 			if !ok {
 				continue
 			}
-			if !roleSupported(manifest, role) {
-				return fmt.Errorf("fontpack %q role %q requests %s weight %g style %q, but bundled source %q cannot satisfy it", packName, roleName, c.FontSources[role.Source].Family, role.Weight, requestedStyle(role), role.Source)
+			if reason := roleCapabilityFailure(manifest, role); reason != "" {
+				return fmt.Errorf("fontpack %q role %q requests %s, but bundled source %q (%s) cannot satisfy it", packName, roleName, reason, role.Source, c.FontSources[role.Source].Family)
 			}
 		}
 	}
@@ -126,19 +126,38 @@ func requestedStyle(role Role) string {
 	return role.Style
 }
 
-func roleSupported(manifest Manifest, role Role) bool {
+//nolint:gocyclo // weight, style, and optical-size capabilities are independent checks.
+func roleCapabilityFailure(manifest Manifest, role Role) string {
 	// Minimal/custom manifests may intentionally omit capability metadata; the
 	// full verifier still checks their assets, while built-in manifests are
 	// required to describe every bundled face.
 	if len(manifest.Faces) == 0 {
-		return true
+		if role.OpticalSize != 0 {
+			return fmt.Sprintf("optical_size %g, but its manifest has no opsz capability metadata", role.OpticalSize)
+		}
+		return ""
 	}
+	matchedStyle := false
+	axisFound := false
+	var minValue, maxValue float64
 	for _, face := range manifest.Faces {
 		if requestedStyle(role) != face.Style && !(requestedStyle(role) == "normal" && face.Style == "") {
 			continue
 		}
+		matchedStyle = true
+		if role.OpticalSize != 0 {
+			bounds, ok := face.Axes["opsz"]
+			if !ok || len(bounds) != 2 {
+				continue
+			}
+			axisFound = true
+			minValue, maxValue = bounds[0], bounds[1]
+			if role.OpticalSize < minValue || role.OpticalSize > maxValue {
+				continue
+			}
+		}
 		if role.Weight == 0 {
-			return true
+			return ""
 		}
 		weight := face.Weight
 		if bounds, ok := face.Axes["wght"]; ok {
@@ -146,11 +165,20 @@ func roleSupported(manifest Manifest, role Role) bool {
 		}
 		if len(weight) == 2 && role.Weight >= weight[0] && role.Weight <= weight[1] {
 			if face.Variable || weight[0] == weight[1] && role.Weight == weight[0] {
-				return true
+				return ""
 			}
 		}
 	}
-	return false
+	if role.OpticalSize != 0 {
+		if !axisFound {
+			return fmt.Sprintf("optical_size %g, but the selected face has no opsz axis", role.OpticalSize)
+		}
+		return fmt.Sprintf("optical_size %g, but the selected face supports opsz %g–%g", role.OpticalSize, minValue, maxValue)
+	}
+	if !matchedStyle {
+		return fmt.Sprintf("%s style %q", "style", requestedStyle(role))
+	}
+	return fmt.Sprintf("%s weight %g style %q", "requested", role.Weight, requestedStyle(role))
 }
 
 func readManifest(s *CatalogSource, source string) (Manifest, error) {

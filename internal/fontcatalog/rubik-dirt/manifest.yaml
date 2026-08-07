@@ -18,10 +18,30 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: RubikDirt-Regular.ttf
 tiers:
+  code-core:
+    file: rubik-dirt-code-core.woff2
+    profile: code-core
+    sha256: ff538dee1cbdd318a127d4dacd3db934d07d7fa19bc81a29d88bbdb524af6fc6
+    bytes: 292528
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: rubik-dirt-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: rubik-dirt-full.woff2
+    profile: full
+    sha256: 28140c11a8ece052c274a50e3f9c9527cc9ea4515ea1cda9398d25007e76aedf
+    bytes: 691188
+  latin-ext:
+    file: rubik-dirt-latin-ext.woff2
+    profile: latin-ext
+    sha256: c987ce0d75a03b9c51f2b1f1b8cfffa2c7d5b5e7b1e19e446a5e0c527bfe62da
+    bytes: 34104
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: rubik-dirt-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: rubik-dirt-code-core.woff2
-    profile: code-core
-    sha256: ff538dee1cbdd318a127d4dacd3db934d07d7fa19bc81a29d88bbdb524af6fc6
-    bytes: 292528
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: rubik-dirt-latin-ext.woff2
-    profile: latin-ext
-    sha256: c987ce0d75a03b9c51f2b1f1b8cfffa2c7d5b5e7b1e19e446a5e0c527bfe62da
-    bytes: 34104
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: rubik-dirt-full.woff2
-    profile: full
-    sha256: 28140c11a8ece052c274a50e3f9c9527cc9ea4515ea1cda9398d25007e76aedf
-    bytes: 691188

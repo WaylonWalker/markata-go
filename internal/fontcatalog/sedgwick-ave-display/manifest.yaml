@@ -18,10 +18,30 @@ faces:
     style: normal
     variable: false
     weight:
-    - 400
-    - 400
+    - 400.0
+    - 400.0
     source_file: SedgwickAveDisplay-Regular.ttf
 tiers:
+  code-core:
+    file: sedgwick-ave-display-code-core.woff2
+    profile: code-core
+    sha256: ea2e69b21f958d52ebea1209878b4e8f70369c8e55ef583cb24e9e5ae72e47a2
+    bytes: 21336
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: sedgwick-ave-display-display-core.woff2
     profile: display-core
@@ -43,6 +63,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: sedgwick-ave-display-full.woff2
+    profile: full
+    sha256: 42c3be277aba1c875555c17bfa75eaf21fc82e5ec6bf5f5ac721b51244063d2b
+    bytes: 37136
+  latin-ext:
+    file: sedgwick-ave-display-latin-ext.woff2
+    profile: latin-ext
+    sha256: aa9af8e9535e52ab5553e6022f6b8c601b8c5f50a242bb9bdb601f3099630bae
+    bytes: 10488
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: sedgwick-ave-display-prose-core.woff2
     profile: prose-core
@@ -59,39 +95,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: sedgwick-ave-display-code-core.woff2
-    profile: code-core
-    sha256: ea2e69b21f958d52ebea1209878b4e8f70369c8e55ef583cb24e9e5ae72e47a2
-    bytes: 21336
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: sedgwick-ave-display-latin-ext.woff2
-    profile: latin-ext
-    sha256: aa9af8e9535e52ab5553e6022f6b8c601b8c5f50a242bb9bdb601f3099630bae
-    bytes: 10488
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: sedgwick-ave-display-full.woff2
-    profile: full
-    sha256: 42c3be277aba1c875555c17bfa75eaf21fc82e5ec6bf5f5ac721b51244063d2b
-    bytes: 37136

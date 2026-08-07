@@ -209,3 +209,40 @@ func TestValidateRoleCapabilitiesChecksStaticAndVariableFaces(t *testing.T) {
 		t.Fatal("unsupported italic style was accepted")
 	}
 }
+
+func TestValidateRoleCapabilitiesChecksOpticalSizeAxisAndRange(t *testing.T) {
+	c := &Catalog{FontSources: map[string]FontSource{"demo": {Family: "Demo"}}}
+	packs := map[string]FontPack{"pack": {Performance: Performance{Class: bundledPerformanceClass}, Roles: map[string]Role{
+		"heading": {Source: "demo", OpticalSize: 72},
+	}}}
+	valid := map[string]Manifest{"demo": {Faces: map[string]Face{"normal": {
+		Style: "normal", Variable: true, Axes: map[string][]float64{"opsz": {9, 144}},
+	}}}}
+	if err := ValidateRoleCapabilities(c, packs, valid); err != nil {
+		t.Fatalf("supported optical size rejected: %v", err)
+	}
+
+	for _, test := range []struct {
+		name        string
+		axis        []float64
+		opticalSize float64
+	}{
+		{name: "missing axis", opticalSize: 72},
+		{name: "too low", axis: []float64{9, 144}, opticalSize: 8},
+		{name: "too high", axis: []float64{9, 144}, opticalSize: 145},
+	} {
+		name, axis := test.name, test.axis
+		role := packs["pack"].Roles["heading"]
+		role.OpticalSize = test.opticalSize
+		packs["pack"].Roles["heading"] = role
+		manifest := map[string]Manifest{"demo": {Faces: map[string]Face{"normal": {
+			Style: "normal", Variable: true, Axes: map[string][]float64{},
+		}}}}
+		if axis != nil {
+			manifest["demo"].Faces["normal"] = Face{Style: "normal", Variable: true, Axes: map[string][]float64{"opsz": axis}}
+		}
+		if err := ValidateRoleCapabilities(c, packs, manifest); err == nil {
+			t.Errorf("%s optical-size capability was accepted", name)
+		}
+	}
+}

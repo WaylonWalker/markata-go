@@ -221,7 +221,7 @@ func TestRoleTypographyPropertiesReachGeneratedCSS(t *testing.T) {
 	if err := os.MkdirAll(family, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("faces:\n  italic:\n    style: italic\n    variable: true\n    weight: [300, 800]\n    axes:\n      wght: [300, 800]\n      opsz: [9, 144]\ntiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
@@ -262,6 +262,72 @@ func TestResolveManyGeneratesPerPackRoleSelectors(t *testing.T) {
 	}
 	if len(resolved.Assets) != 1 {
 		t.Fatalf("assets = %d, want one deduplicated asset", len(resolved.Assets))
+	}
+}
+
+func TestResolveManyScopesOptionalRolePropertiesPerPack(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["pack-a"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"quote": {Source: "demo", Tier: "prose-core", Size: "1.25rem", Style: "italic"},
+	}}
+	c.FontPacks["pack-b"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"quote": {Source: "demo", Tier: "prose-core"},
+	}}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := c.ResolveManyFS([]string{"pack-a", "pack-b"}, os.DirFS(root), ".", "<blockquote>Quote</blockquote>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, wantSize := range map[string]bool{"pack-a": true, "pack-b": false} {
+		start := strings.Index(resolved.CSS, `[data-fontpack="`+name+`"] blockquote`)
+		if start < 0 {
+			t.Fatalf("missing scoped quote rule for %s:\n%s", name, resolved.CSS)
+		}
+		end := strings.Index(resolved.CSS[start:], "}\n")
+		if end < 0 {
+			t.Fatalf("unterminated scoped quote rule for %s", name)
+		}
+		rule := resolved.CSS[start : start+end]
+		if strings.Contains(rule, "font-size:") != wantSize || strings.Contains(rule, "font-style:") != wantSize {
+			t.Errorf("%s optional properties leaked or disappeared: %s", name, rule)
+		}
+	}
+}
+
+func TestResolveManyPreservesDisplayHeadingMapping(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["sign"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"display": {Source: "demo", Tier: "prose-core"},
+		"heading": {Source: "demo", Tier: "prose-core"},
+	}}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := c.ResolveManyFS([]string{"sign"}, os.DirFS(root), ".", "<h1>Title</h1>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resolved.CSS, "[data-fontpack=\"sign\"] h1 {\n  font-family: var(--font-display)") || !strings.Contains(resolved.CSS, `[data-fontpack="sign"] h2,`) || !strings.Contains(resolved.CSS, `[data-fontpack="sign"] h3`) {
+		t.Fatalf("display/heading mapping regressed:\n%s", resolved.CSS)
 	}
 }
 

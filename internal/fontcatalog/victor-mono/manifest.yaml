@@ -17,15 +17,33 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
+    weight: &id001
     - 100.0
     - 700.0
     source_file: VictorMono[wght].ttf
     axes:
-      wght:
-      - 100.0
-      - 700.0
+      wght: *id001
 tiers:
+  code-core:
+    file: victor-mono-code-core.woff2
+    profile: code-core
+    sha256: 7465756755c93fe8cdb0629fdb28a73c292c04fa61690a530dcd45148d6fea85
+    bytes: 35076
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: victor-mono-display-core.woff2
     profile: display-core
@@ -47,6 +65,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: victor-mono-full.woff2
+    profile: full
+    sha256: 390b20e1adb41106eac5caa0f1cd26867f6ca5a01eb6b4cfcfd3ebfa482abf78
+    bytes: 64532
+  latin-ext:
+    file: victor-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: 79593691f895c552c48042afa5745830ac0e407270505a58a9902a1643971eda
+    bytes: 5552
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: victor-mono-prose-core.woff2
     profile: prose-core
@@ -63,39 +97,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: victor-mono-code-core.woff2
-    profile: code-core
-    sha256: 7465756755c93fe8cdb0629fdb28a73c292c04fa61690a530dcd45148d6fea85
-    bytes: 35076
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: victor-mono-latin-ext.woff2
-    profile: latin-ext
-    sha256: 79593691f895c552c48042afa5745830ac0e407270505a58a9902a1643971eda
-    bytes: 5552
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: victor-mono-full.woff2
-    profile: full
-    sha256: 390b20e1adb41106eac5caa0f1cd26867f6ca5a01eb6b4cfcfd3ebfa482abf78
-    bytes: 64532

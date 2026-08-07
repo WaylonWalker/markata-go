@@ -68,6 +68,9 @@ manifest provides that tier; otherwise Markata falls back to that family's
 text. Role `weight`, `style`, `size`, and `optical_size` values are emitted as
 CSS properties and applied to the corresponding body, heading, code, lead,
 quote, and caption elements.
+When multiple packs are used, role variables and declarations are scoped to
+`[data-fontpack="..."]`; optional properties from one pack cannot affect
+another pack.
 
 The maintenance generator reads variable-font `fvar` axes from the source
 font, including their real weight and optical-size bounds. To check generated

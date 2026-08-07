@@ -1,6 +1,6 @@
 schema: markata.font/v1
 id: water-brush
-family: "Water Brush"
+family: Water Brush
 scope: builtin
 source:
   provider: google-fonts
@@ -13,12 +13,13 @@ license:
   id: OFL-1.1
   file: OFL.txt
   sha256: eaa2e23b59eb264d9f982126f5d6cb7594b00a6a5e3684d916ecbf0c31004610
-  copyright: "Copyright 2004-2021 The Water Brush Project Authors (https://github.com/googlefonts/water-brush)"
 faces:
   normal:
     style: normal
     variable: false
-    weight: [400, 400]
+    weight:
+    - 400.0
+    - 400.0
     source_file: WaterBrush-Regular.ttf
 tiers:
   display-core:
@@ -26,15 +27,35 @@ tiers:
     profile: display-core
     sha256: f6a5a53c15ba12b640080071b3b01cc990a89547c7d73043e3cc603a9b5fdaa2
     bytes: 56184
-    unicode_range: [U+0020-007E, U+00A0, U+00A2-00A5, U+00A9, U+00AE, U+00B0, U+00D7, U+00F7, U+2010-2027, U+2030, U+2032-2033, U+2044, U+20AC, U+2122, U+2190-2199]
-  latin-ext:
-    file: water-brush-latin-ext.woff2
-    profile: latin-ext
-    sha256: 591f8b1a1e955b3f5946ce8e5e5be32d47e75f92aad8917d2ff15ce1253751c6
-    bytes: 27208
-    unicode_range: [U+0180-024F, U+1E00-1EFF, U+2C60-2C7F, U+A720-A7FF, U+AB30-AB6F]
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
   full:
     file: water-brush-full.woff2
     profile: full
     sha256: 30a86a48d94740e0df65f758bd46f1f69896b98fb387f68c9d8fd8b95b7b7725
     bytes: 89940
+  latin-ext:
+    file: water-brush-latin-ext.woff2
+    profile: latin-ext
+    sha256: 591f8b1a1e955b3f5946ce8e5e5be32d47e75f92aad8917d2ff15ce1253751c6
+    bytes: 27208
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F

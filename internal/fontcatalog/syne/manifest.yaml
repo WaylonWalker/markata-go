@@ -17,15 +17,33 @@ faces:
   normal:
     style: normal
     variable: true
-    weight:
+    weight: &id001
     - 400.0
     - 800.0
     source_file: Syne[wght].ttf
     axes:
-      wght:
-      - 400.0
-      - 800.0
+      wght: *id001
 tiers:
+  code-core:
+    file: syne-code-core.woff2
+    profile: code-core
+    sha256: c3b65e99abd1cdd66380a99d9e2656332a8602f1422f0e8057951c5a3988c9ce
+    bytes: 31468
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
   display-core:
     file: syne-display-core.woff2
     profile: display-core
@@ -47,6 +65,22 @@ tiers:
     - U+20AC
     - U+2122
     - U+2190-2199
+  full:
+    file: syne-full.woff2
+    profile: full
+    sha256: c530bed8bf7b9c7fd37ad7b5a98a146db332f707a7b79f969f06e0c73a112613
+    bytes: 60108
+  latin-ext:
+    file: syne-latin-ext.woff2
+    profile: latin-ext
+    sha256: 2694f5afbd7786f7a879f3fa1dd6b6b5bcf56575deccab660f2f4008f9cc6226
+    bytes: 3920
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
   prose-core:
     file: syne-prose-core.woff2
     profile: prose-core
@@ -63,39 +97,3 @@ tiers:
     - U+2100-214F
     - U+2190-21FF
     - U+2150-218F
-  code-core:
-    file: syne-code-core.woff2
-    profile: code-core
-    sha256: c3b65e99abd1cdd66380a99d9e2656332a8602f1422f0e8057951c5a3988c9ce
-    bytes: 31468
-    unicode_range:
-    - U+0020-007E
-    - U+00A0
-    - U+00AC
-    - U+00B0
-    - U+00B1
-    - U+00B7
-    - U+00D7
-    - U+00F7
-    - U+2010-2027
-    - U+2190-21FF
-    - U+2200-22FF
-    - U+2300-23FF
-    - U+2500-259F
-    - U+25A0-25FF
-  latin-ext:
-    file: syne-latin-ext.woff2
-    profile: latin-ext
-    sha256: 2694f5afbd7786f7a879f3fa1dd6b6b5bcf56575deccab660f2f4008f9cc6226
-    bytes: 3920
-    unicode_range:
-    - U+0180-024F
-    - U+1E00-1EFF
-    - U+2C60-2C7F
-    - U+A720-A7FF
-    - U+AB30-AB6F
-  full:
-    file: syne-full.woff2
-    profile: full
-    sha256: c530bed8bf7b9c7fd37ad7b5a98a146db332f707a7b79f969f06e0c73a112613
-    bytes: 60108

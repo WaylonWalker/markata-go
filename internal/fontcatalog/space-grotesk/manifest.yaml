@@ -1,6 +1,6 @@
 schema: markata.font/v1
 id: space-grotesk
-family: "Space Grotesk"
+family: Space Grotesk
 scope: builtin
 source:
   provider: google-fonts
@@ -13,30 +13,46 @@ license:
   id: OFL-1.1
   file: OFL.txt
   sha256: 564ce565c371c5e5bbf286006565a7c9aa55a9f56e7ca58d56e05d649dd61a72
-  copyright: "Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)"
 faces:
   normal:
     style: normal
     variable: true
-    weight: [300, 700]
+    weight: &id001
+    - 300.0
+    - 700.0
     source_file: SpaceGrotesk[wght].ttf
     axes:
-      wght: [300.0, 700.0]
+      wght: *id001
 tiers:
-  prose-core:
-    file: space-grotesk-prose-core.woff2
-    profile: prose-core
-    sha256: 5010c6e79c7e65a058dfd39a71d8d60f7b56070a3c32cc911d9dddbaec7f0851
-    bytes: 43732
-    unicode_range: [U+0020-007E, U+00A0-00FF, U+0100-017F, U+0180-024F, U+1E00-1EFF, U+2000-206F, U+20A0-20CF, U+2100-214F, U+2190-21FF, U+2150-218F]
-  latin-ext:
-    file: space-grotesk-latin-ext.woff2
-    profile: latin-ext
-    sha256: bbb248d20e98990491c71181503ac908a2352ed9249675493296d688b058c88a
-    bytes: 14900
-    unicode_range: [U+0180-024F, U+1E00-1EFF, U+2C60-2C7F, U+A720-A7FF, U+AB30-AB6F]
   full:
     file: space-grotesk-full.woff2
     profile: full
     sha256: fccce74568b1bc83eab5903171cfbde5f6ec6f95fc7d08866a9a1b3a8e20f07a
     bytes: 48228
+  latin-ext:
+    file: space-grotesk-latin-ext.woff2
+    profile: latin-ext
+    sha256: bbb248d20e98990491c71181503ac908a2352ed9249675493296d688b058c88a
+    bytes: 14900
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: space-grotesk-prose-core.woff2
+    profile: prose-core
+    sha256: 5010c6e79c7e65a058dfd39a71d8d60f7b56070a3c32cc911d9dddbaec7f0851
+    bytes: 43732
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
