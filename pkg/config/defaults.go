@@ -8,6 +8,7 @@ import (
 // DefaultConfig returns a Config with sensible default values.
 func DefaultConfig() *models.Config {
 	return &models.Config{
+		Fontpack:     "system",
 		OutputDir:    "output",
 		TemplatesDir: "templates",
 		AssetsDir:    "static",

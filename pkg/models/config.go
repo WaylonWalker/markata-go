@@ -479,6 +479,9 @@ func (c *ComponentsConfig) IsContentSidebarEnabled() bool {
 
 // Config represents the site configuration for markata-go.
 type Config struct {
+	// Fontpack selects a catalog typography pack. It defaults to the zero-download system pack.
+	Fontpack string `json:"fontpack,omitempty" yaml:"fontpack,omitempty" toml:"fontpack,omitempty"`
+
 	// OutputDir is the directory where generated files are written (default: "output")
 	OutputDir string `json:"output_dir" yaml:"output_dir" toml:"output_dir"`
 

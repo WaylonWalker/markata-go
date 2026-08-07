@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: courier-prime
+family: Courier Prime
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/courierprime
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 9a755af092b494944c99f471be6fddd19b006a448fefdc4717e4ee0aa09a97b0
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400
+    - 400
+    source_file: CourierPrime-Regular.ttf
+tiers:
+  display-core:
+    file: courier-prime-display-core.woff2
+    profile: display-core
+    sha256: f25820b53021c2bafa50cc46779e458e8f5d98ab258280509bf1397d2761f0a4
+    bytes: 9000
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: courier-prime-prose-core.woff2
+    profile: prose-core
+    sha256: 17b67e09c700e05705011b6fbe0033332241c3343df4aeedd7b8b32b9e02acff
+    bytes: 14580
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: courier-prime-code-core.woff2
+    profile: code-core
+    sha256: 185daed3bee09f1b5a114d995fefdda1fa49041487703485460269fadddbf1af
+    bytes: 8936
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: courier-prime-latin-ext.woff2
+    profile: latin-ext
+    sha256: d4c59d0d4b25fe06bcb57d28a4eb293f70d64102251ea99ea39d1485dca3c154
+    bytes: 1828
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: courier-prime-full.woff2
+    profile: full
+    sha256: 4c8f8e3fc8be9575a5ccddaa7b515609ee38d20030931efb158a99b2ca965680
+    bytes: 15884

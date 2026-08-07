@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: crimson-pro
+family: Crimson Pro
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/crimsonpro
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 1820869bd5baa1c2d88fa87c89eea532cf9442d841008acab720654b7f82823d
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight:
+    - 300
+    - 900
+    source_file: CrimsonPro[wght].ttf
+tiers:
+  display-core:
+    file: crimson-pro-display-core.woff2
+    profile: display-core
+    sha256: 313303ff431f78552260f4dbfb8c5b2d6413b2eb49b7ce96cb2552d807878ac3
+    bytes: 42368
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: crimson-pro-prose-core.woff2
+    profile: prose-core
+    sha256: dfd4338ca1416345de07da05880997f0031f4be84fa785dd9690cd6d579fde6f
+    bytes: 74588
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: crimson-pro-code-core.woff2
+    profile: code-core
+    sha256: 5fad0be4f980dd048006e682a98ae7f14a4b3ab29dd0fcfa55af7ad9a8b7d992
+    bytes: 42804
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: crimson-pro-latin-ext.woff2
+    profile: latin-ext
+    sha256: bbf6875066e3661a44d93bd7f520be12dcb0c8738477035e07960fd6c03d709d
+    bytes: 26036
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: crimson-pro-full.woff2
+    profile: full
+    sha256: 1bdf5c3f0983d9021fc6b3f56c226ac03c76055b9d9f34238758f4540ea03093
+    bytes: 85480

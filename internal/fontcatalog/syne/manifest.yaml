@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: syne
+family: Syne
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/syne
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: cc43cdce6f91c57989af8459341c276655e34224e954fa69c2ad700831a742d8
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight:
+    - 300
+    - 900
+    source_file: Syne[wght].ttf
+tiers:
+  display-core:
+    file: syne-display-core.woff2
+    profile: display-core
+    sha256: d19095d20f432d4a84116449a26ef5d617bb111dc667fc9560e4afae0805da0e
+    bytes: 31400
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: syne-prose-core.woff2
+    profile: prose-core
+    sha256: 1a3feb70304008eda59c259fccaea3df4d9c7c49efe3c2f9deedcf75ee8e21bd
+    bytes: 46756
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: syne-code-core.woff2
+    profile: code-core
+    sha256: c3b65e99abd1cdd66380a99d9e2656332a8602f1422f0e8057951c5a3988c9ce
+    bytes: 31468
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: syne-latin-ext.woff2
+    profile: latin-ext
+    sha256: 2694f5afbd7786f7a879f3fa1dd6b6b5bcf56575deccab660f2f4008f9cc6226
+    bytes: 3920
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: syne-full.woff2
+    profile: full
+    sha256: c530bed8bf7b9c7fd37ad7b5a98a146db332f707a7b79f969f06e0c73a112613
+    bytes: 60108

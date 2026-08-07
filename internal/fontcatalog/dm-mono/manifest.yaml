@@ -1,0 +1,38 @@
+schema: markata.font/v1
+id: dm-mono
+family: "DM Mono"
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/dmmono
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 2bada5ea45c3c63b7f1ea1f88ce9672c9e4f0c42b2c3b7378949084fe55a3066
+  copyright: "Copyright 2020 The DM Mono Project Authors (https://www.github.com/googlefonts/dm-mono)"
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight: [400, 500]
+    source_file: DMMono-Regular.ttf
+tiers:
+  code-core:
+    file: dm-mono-code-core.woff2
+    profile: code-core
+    sha256: 90c42888e73fa88ebf3d0e27e0461535acd661e3892bbcb6eb21047f33b67c32
+    bytes: 6776
+    unicode_range: [U+0020-007E, U+00A0, U+00AC, U+00B0, U+00B1, U+00B7, U+00D7, U+00F7, U+2010-2027, U+2190-21FF, U+2200-22FF, U+2300-23FF, U+2500-259F, U+25A0-25FF]
+  latin-ext:
+    file: dm-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: 594055dfc2363ee995f0828b24fea731575440216132d0a895088d50afc45a96
+    bytes: 1984
+    unicode_range: [U+0180-024F, U+1E00-1EFF, U+2C60-2C7F, U+A720-A7FF, U+AB30-AB6F]
+  full:
+    file: dm-mono-full.woff2
+    profile: full
+    sha256: b40f182f84b98ce593aec1f9e6815474166c138997be7dd47c29a7777fd01a87
+    bytes: 13148

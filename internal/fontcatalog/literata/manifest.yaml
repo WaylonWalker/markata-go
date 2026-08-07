@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: literata
+family: Literata
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/literata
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 8742963604cd89dc81437811a850018fc03b2bfad686d7422c8235967c87614e
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight:
+    - 300
+    - 900
+    source_file: Literata[opsz,wght].ttf
+tiers:
+  display-core:
+    file: literata-display-core.woff2
+    profile: display-core
+    sha256: bf67a6b1adc555e868d2ca549682a1ba57559996681e62202b366868cfcd9ff4
+    bytes: 127392
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: literata-prose-core.woff2
+    profile: prose-core
+    sha256: 43c1bac1e98d8374a0c10ba2db22075b5823596940ebec90b28b84f941818311
+    bytes: 247500
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: literata-code-core.woff2
+    profile: code-core
+    sha256: ea31c0deadb0ca2eded017abdfc4ed8f858af26bfe89a06f4ce61afca4982095
+    bytes: 123780
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: literata-latin-ext.woff2
+    profile: latin-ext
+    sha256: 01e0f33da35a00d2336bf94a08a9ccab9d135d80295b99a74dd3d9f1abfcebfb
+    bytes: 76516
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: literata-full.woff2
+    profile: full
+    sha256: 28b04c0c2bf57d7537a35da31ee458829bb0e43a2e4512f6bf195f32f0885c5e
+    bytes: 394332

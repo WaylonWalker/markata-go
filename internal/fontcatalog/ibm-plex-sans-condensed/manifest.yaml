@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: ibm-plex-sans-condensed
+family: IBM Plex Sans Condensed
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/ibmplexsanscondensed
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400
+    - 400
+    source_file: IBMPlexSansCondensed-Regular.ttf
+tiers:
+  display-core:
+    file: ibm-plex-sans-condensed-display-core.woff2
+    profile: display-core
+    sha256: dd2161cc2e5672560ce336abf01eda1f0ad2b4c26c772b0c1d4bfba3a1ae1b51
+    bytes: 11072
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: ibm-plex-sans-condensed-prose-core.woff2
+    profile: prose-core
+    sha256: 9a8573c60ea3f82d3bfbf68e23bc231970fe6944f019c5743922c41751f309e7
+    bytes: 22828
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: ibm-plex-sans-condensed-code-core.woff2
+    profile: code-core
+    sha256: e90ae0e9a73dadd79e73deb98337d28b30f79a82fa449b9ac2619745de928eef
+    bytes: 11404
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: ibm-plex-sans-condensed-latin-ext.woff2
+    profile: latin-ext
+    sha256: dfbb3e387ba33daa907f134c05f41eb7c870cc5746c9c5ab90243345791f444e
+    bytes: 5540
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: ibm-plex-sans-condensed-full.woff2
+    profile: full
+    sha256: 7ac8755b61086ef0819bb812b032ded044cd12199cab617caf93387b2454c580
+    bytes: 25784

@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: jetbrains-mono
+family: JetBrains Mono
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/jetbrainsmono
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight:
+    - 300
+    - 900
+    source_file: JetBrainsMono[wght].ttf
+tiers:
+  display-core:
+    file: jetbrains-mono-display-core.woff2
+    profile: display-core
+    sha256: d2757f40c5b31a9aaeff83cc2016bfd44b694f81cbeeb3e7be0bff0ee5ee0815
+    bytes: 37092
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: jetbrains-mono-prose-core.woff2
+    profile: prose-core
+    sha256: bf4ff76017819ecf27d91698870887c530ad594eab48bef1871a34b690d5ff15
+    bytes: 50776
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: jetbrains-mono-code-core.woff2
+    profile: code-core
+    sha256: 7667540ef9ee15027ac399c18074df4e9352e395c8c29d313f25b5bb5700f68f
+    bytes: 42676
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: jetbrains-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: f869f1cd467bc3701c619e970a09f75004167c76ea52cb57331dcf1c0fea0b2b
+    bytes: 9580
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: jetbrains-mono-full.woff2
+    profile: full
+    sha256: 85357237c4f1dbaad7c6845b9c0a9af04d3bae75eb29ed678205b38f9202b23e
+    bytes: 70884

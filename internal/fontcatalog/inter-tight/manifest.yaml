@@ -1,0 +1,95 @@
+schema: markata.font/v1
+id: inter-tight
+family: Inter Tight
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/intertight
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 50240ab035cf1b6b3307940235481d515c4b6de3ab1fa843dbe59e7892cb9d58
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight:
+    - 300
+    - 900
+    source_file: InterTight[wght].ttf
+tiers:
+  display-core:
+    file: inter-tight-display-core.woff2
+    profile: display-core
+    sha256: e45f470084f4553d68746dbebaf091fe79887a75a7206d43e70f76315c31f31b
+    bytes: 42192
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  prose-core:
+    file: inter-tight-prose-core.woff2
+    profile: prose-core
+    sha256: d5115503808c10af907a7fe1d5bdb0912e983e755c5c3f9c1154e5ee72d18581
+    bytes: 117456
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
+  code-core:
+    file: inter-tight-code-core.woff2
+    profile: code-core
+    sha256: 54f6ff84efd3062df746d9059b1a1a04809e6c16f478df624e79531c1788cd16
+    bytes: 48176
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  latin-ext:
+    file: inter-tight-latin-ext.woff2
+    profile: latin-ext
+    sha256: 607eaf5437979b6316f43d46bf39abf5d06cdf1f46ffa15af29cd58b06fb7a4f
+    bytes: 53104
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: inter-tight-full.woff2
+    profile: full
+    sha256: 309bad031b446073bdab1ea6145ccc86734932332d416f0df744365196dbe3e5
+    bytes: 232812

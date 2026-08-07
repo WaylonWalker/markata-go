@@ -90,6 +90,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["head"] = cfg.Head
 	lcConfig.Extra["toc"] = cfg.Toc
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
+	lcConfig.Extra["fontpack"] = cfg.Fontpack
 
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = cfg.Theme
