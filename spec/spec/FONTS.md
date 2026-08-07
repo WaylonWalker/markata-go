@@ -39,14 +39,16 @@ tier still fails verification when the family has no `full` fallback.
 
 Role `weight`, `style`, `size`, and `optical_size` are functional. They are
 emitted as role variables and applied by the generated stylesheet only when
-the corresponding role property is configured. Unspecified properties are
-omitted, so a font pack cannot reset a site's existing size, style, or other
-typography rules. In a multi-pack stylesheet, both role variables and role
-rules are scoped by `data-fontpack`, so an optional property configured by one
-pack cannot affect another pack. The `display` role is applied to `h1`; the
-`heading` role is applied to `h2` through `h6`, with `display` falling back to
-`heading` when it is absent. Variable-font manifests record the actual `fvar`
-axis bounds discovered from the source font; the generator never assumes a
-`[300, 900]` weight range. A non-zero `optical_size` requires an `opsz` axis
-whose recorded bounds contain the requested value. `fonts verify` rejects
-role weights, styles, and optical sizes that no bundled face can satisfy.
+the corresponding role property is configured. If a role is absent, its
+entire rule falls back to `body`; if it exists, omitted optional properties
+remain omitted rather than inheriting from `body`. This prevents a specialized
+role from accidentally receiving body typography such as optical sizing. In a
+multi-pack stylesheet, both role variables and role rules are scoped by
+`data-fontpack`, so an optional property configured by one pack cannot affect
+another pack. The `display` role is applied to `h1`; the `heading` role is
+applied to `h2` through `h6`, with `display` falling back to `heading` when it
+is absent. Variable-font manifests record the actual `fvar` axis bounds
+discovered from the source font; the generator never assumes a `[300, 900]`
+weight range. A non-zero `optical_size` requires an `opsz` axis whose recorded
+bounds contain the requested value. `fonts verify` rejects role weights,
+styles, and optical sizes that no bundled face can satisfy.

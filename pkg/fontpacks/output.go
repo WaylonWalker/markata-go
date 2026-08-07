@@ -306,14 +306,18 @@ func writeRoleRuleForPack(b *strings.Builder, selector, role, fallback string, p
 			return
 		}
 		role = fallback
-		fallback = ""
 	}
+	// Resolve fallback at the role level, not independently for each
+	// property. An existing specialized role must not inherit optional body
+	// properties that it omitted; an absent role uses the fallback role in its
+	// entirety.
+	fallback = ""
 	props := make([]string, 0, 5)
-	if roleValue(pack, role) || (fallback != "" && roleValue(pack, fallback)) {
+	if roleValue(pack, role) {
 		props = append(props, "font-family: "+roleVar(role, fallback))
 	}
 	for _, property := range []string{"weight", roleStyleProperty, "size", "variation"} {
-		if roleHasProperty(pack, role, property) || (fallback != "" && roleHasProperty(pack, fallback, property)) {
+		if roleHasProperty(pack, role, property) {
 			cssProperty := "font-" + property
 			if property == "variation" {
 				cssProperty = "font-variation-settings"

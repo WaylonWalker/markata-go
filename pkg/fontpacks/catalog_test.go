@@ -143,6 +143,32 @@ func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
 	}
 }
 
+func TestBuiltinEditorialQuoteDoesNotInheritBodyOpticalSize(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveManyFS([]string{"editorial"}, source.FS, source.Root, "<blockquote>Quote</blockquote>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := strings.Index(resolved.CSS, `[data-fontpack="editorial"] blockquote`)
+	if start < 0 {
+		t.Fatalf("missing editorial quote rule:\n%s", resolved.CSS)
+	}
+	end := strings.Index(resolved.CSS[start:], "}\n")
+	if end < 0 {
+		t.Fatalf("unterminated editorial quote rule")
+	}
+	rule := resolved.CSS[start : start+end]
+	if !strings.Contains(rule, "font-family: var(--font-quote)") || !strings.Contains(rule, "font-size: var(--font-quote-size)") {
+		t.Fatalf("editorial quote role lost its configured properties: %s", rule)
+	}
+	if strings.Contains(rule, "font-variation-settings:") || strings.Contains(rule, "opsz") {
+		t.Fatalf("editorial quote inherited body optical size: %s", rule)
+	}
+}
+
 func TestRoleCSSDoesNotResetUnspecifiedHeadingSize(t *testing.T) {
 	c := testCatalog(t)
 	c.FontPacks["bundled"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
@@ -300,6 +326,63 @@ func TestResolveManyScopesOptionalRolePropertiesPerPack(t *testing.T) {
 		rule := resolved.CSS[start : start+end]
 		if strings.Contains(rule, "font-size:") != wantSize || strings.Contains(rule, "font-style:") != wantSize {
 			t.Errorf("%s optional properties leaked or disappeared: %s", name, rule)
+		}
+	}
+}
+
+func TestResolveManyDoesNotInheritBodyOptionalPropertiesForPresentRole(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["specialized"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"body":  {Source: "demo", Tier: "prose-core", OpticalSize: 18},
+		"quote": {Source: "demo", Tier: "prose-core", Weight: 600, Size: "1.35rem"},
+	}}
+	c.FontPacks["absent"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"body": {Source: "demo", Tier: "prose-core", OpticalSize: 18},
+	}}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "faces:\n  normal:\n    style: normal\n    variable: true\n    weight: [300, 800]\n    axes:\n      wght: [300, 800]\n      opsz: [8, 72]\ntiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved, err := c.ResolveManyFS([]string{"specialized", "absent"}, os.DirFS(root), ".", "<blockquote>Quote</blockquote>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string][]string{
+		"specialized": {
+			"font-family: var(--font-quote)",
+			"font-weight: var(--font-quote-weight)",
+			"font-size: var(--font-quote-size)",
+		},
+		"absent": {
+			"font-family: var(--font-body)",
+			"font-variation-settings: var(--font-body-variation)",
+		},
+	} {
+		start := strings.Index(resolved.CSS, `[data-fontpack="`+name+`"] blockquote`)
+		if start < 0 {
+			t.Fatalf("missing scoped quote rule for %s:\n%s", name, resolved.CSS)
+		}
+		end := strings.Index(resolved.CSS[start:], "}\n")
+		if end < 0 {
+			t.Fatalf("unterminated scoped quote rule for %s", name)
+		}
+		rule := resolved.CSS[start : start+end]
+		for _, property := range want {
+			if !strings.Contains(rule, property) {
+				t.Errorf("%s quote rule missing %q: %s", name, property, rule)
+			}
+		}
+		if name == "specialized" && strings.Contains(rule, "font-variation-settings:") {
+			t.Errorf("%s quote rule inherited body optical size: %s", name, rule)
 		}
 	}
 }

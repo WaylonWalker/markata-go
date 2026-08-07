@@ -70,7 +70,10 @@ CSS properties and applied to the corresponding body, heading, code, lead,
 quote, and caption elements.
 When multiple packs are used, role variables and declarations are scoped to
 `[data-fontpack="..."]`; optional properties from one pack cannot affect
-another pack.
+another pack. A missing specialized role falls back to `body` as a whole, but
+an existing specialized role does not inherit optional properties that it did
+not configure. For example, a quote role without `optical_size` will not pick
+up the body's optical-size setting.
 
 The maintenance generator reads variable-font `fvar` axes from the source
 font, including their real weight and optical-size bounds. To check generated
