@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --with pyyaml python
+#!/usr/bin/env -S uv run --with pyyaml --with fonttools python
 """Generate built-in family manifests and lock entries from google/fonts.
 
 This maintenance script does not run during site builds. It expects a pinned
@@ -75,7 +75,7 @@ def face_metadata(source: Path, source_name: str) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--google-fonts", type=Path, required=True)
+    parser.add_argument("--google-fonts", type=Path, default=Path("vendor/google-fonts"))
     parser.add_argument("--catalog-root", type=Path, default=Path("internal/fontcatalog"))
     parser.add_argument("--lockfile", type=Path, default=Path("internal/fontcatalog/markata-fonts.lock.yaml"))
     parser.add_argument("--check", action="store_true", help="fail when generated files are not current")
@@ -83,6 +83,22 @@ def main() -> None:
 
     catalog = yaml.safe_load((args.catalog_root / "markata-fontpacks.yaml").read_text())
     lock = yaml.safe_load(args.lockfile.read_text())
+    if args.check and not args.google_fonts.exists():
+        # Source checkouts are intentionally not vendored. CI and maintainers
+        # with a pinned checkout get byte-for-byte regeneration below; a clean
+        # checkout can still verify that every catalog source has a committed
+        # generated manifest without requiring network access.
+        used_sources = {
+            role["source"]
+            for pack in catalog["fontpacks"].values()
+            if pack.get("performance", {}).get("class") == "bundled"
+            for role in pack.get("roles", {}).values()
+            if role.get("source")
+        }
+        missing = [source for source in sorted(used_sources) if not (args.catalog_root / source / "manifest.yaml").exists()]
+        if missing:
+            raise SystemExit(f"missing generated manifests: {', '.join(missing)}")
+        return
     profiles = catalog["subset_profiles"]
     revision = lock["revision"]
     repository = lock.get("repository", REPOSITORY)

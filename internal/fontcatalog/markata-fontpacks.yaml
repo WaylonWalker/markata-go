@@ -277,7 +277,7 @@ fontpacks:
       subheading: { source: inter, tier: prose-core, weight: 650, fallback: sans }
       body:       { source: source-serif-4, tier: prose-core, weight: 400, fallback: serif }
       lead:       { source: source-serif-4, tier: prose-core, weight: 450, size: 1.18rem, fallback: serif }
-      quote:      { source: source-serif-4, tier: prose-core, style: italic, weight: 450, fallback: serif }
+      quote:      { source: source-serif-4, tier: prose-core, weight: 450, fallback: serif }
       caption:    { source: inter, tier: prose-core, weight: 450, fallback: sans }
       code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
       ui:         { source: inter, tier: prose-core, weight: 500, fallback: sans }
@@ -296,13 +296,13 @@ fontpacks:
       subheading: { source: fraunces, tier: prose-core, weight: 600, optical_size: 36, fallback: serif }
       body:       { source: source-serif-4, tier: prose-core, weight: 400, optical_size: 18, fallback: serif }
       lead:       { source: fraunces, tier: prose-core, weight: 450, optical_size: 24, size: 1.22rem, fallback: serif }
-      quote:      { source: cormorant-garamond, tier: prose-core, style: italic, weight: 600, size: 1.35rem, fallback: serif }
+      quote:      { source: cormorant-garamond, tier: prose-core, weight: 600, size: 1.35rem, fallback: serif }
       caption:    { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
       code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
       ui:         { source: ibm-plex-sans, tier: prose-core, weight: 500, fallback: sans }
-      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 500, fallback: sans }
-      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
-      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 450, fallback: mono }
+      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
+      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
+      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
 
   brush-poster:
     name: Brush Poster
@@ -321,7 +321,7 @@ fontpacks:
       ui:         { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
       metadata:   { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
       label:      { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
-      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+      numbers:    { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
 
   poster-grit:
     name: Poster Grit
@@ -369,7 +369,7 @@ fontpacks:
     tags: [marker, notebook, sketchbook]
     roles:
       display:    { source: permanent-marker, tier: display-core, weight: 400, fallback: handwriting }
-      heading:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      heading:    { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
       subheading: { source: source-sans-3, tier: prose-core, weight: 600, fallback: sans }
       body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
       quote:      { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
@@ -411,7 +411,7 @@ fontpacks:
       heading:    { source: literata, tier: prose-core, weight: 700, fallback: serif }
       subheading: { source: cormorant-garamond, tier: prose-core, weight: 600, fallback: serif }
       body:       { source: literata, tier: prose-core, weight: 400, fallback: serif }
-      quote:      { source: cormorant-garamond, tier: prose-core, style: italic, weight: 600, fallback: serif }
+      quote:      { source: cormorant-garamond, tier: prose-core, weight: 600, fallback: serif }
       code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
 
   modern-editorial:
@@ -424,7 +424,7 @@ fontpacks:
       heading:    { source: manrope, tier: prose-core, weight: 800, fallback: sans }
       subheading: { source: manrope, tier: prose-core, weight: 700, fallback: sans }
       body:       { source: manrope, tier: prose-core, weight: 400, fallback: sans }
-      quote:      { source: instrument-serif, tier: display-core, style: italic, weight: 400, fallback: serif }
+      quote:      { source: instrument-serif, tier: display-core, weight: 400, fallback: serif }
       code:       { source: geist-mono, tier: code-core, weight: 400, fallback: mono }
 
   brutalist:
@@ -450,7 +450,7 @@ fontpacks:
       heading:    { source: source-sans-3, tier: prose-core, weight: 700, fallback: sans }
       subheading: { source: source-serif-4, tier: prose-core, weight: 600, fallback: serif }
       body:       { source: source-serif-4, tier: prose-core, weight: 400, fallback: serif }
-      quote:      { source: source-serif-4, tier: prose-core, style: italic, weight: 400, fallback: serif }
+      quote:      { source: source-serif-4, tier: prose-core, weight: 400, fallback: serif }
       code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
 
   code-editorial:
@@ -463,7 +463,7 @@ fontpacks:
       heading:    { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
       subheading: { source: literata, tier: prose-core, weight: 600, fallback: serif }
       body:       { source: literata, tier: prose-core, weight: 400, fallback: serif }
-      quote:      { source: literata, tier: prose-core, style: italic, weight: 400, fallback: serif }
+      quote:      { source: literata, tier: prose-core, weight: 400, fallback: serif }
       code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
 
   handwritten:
@@ -472,9 +472,9 @@ fontpacks:
     performance: { class: bundled }
     tags: [handwritten, notebook, warm]
     roles:
-      display:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      display:    { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
       heading:    { source: caveat-brush, tier: display-core, weight: 400, fallback: handwriting }
-      subheading: { source: kalam, tier: display-core, weight: 500, fallback: handwriting }
+      subheading: { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
       body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
       quote:      { source: caveat-brush, tier: display-core, weight: 400, fallback: handwriting }
       code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
@@ -485,18 +485,18 @@ fontpacks:
     performance: { class: bundled }
     tags: [technical, docs, code]
     roles:
-      display:    { source: ibm-plex-sans, tier: display-core, weight: 750, fallback: sans }
-      heading:    { source: ibm-plex-sans, tier: prose-core, weight: 700, fallback: sans }
-      subheading: { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
+      display:    { source: ibm-plex-sans, tier: display-core, weight: 400, fallback: sans }
+      heading:    { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
+      subheading: { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
       body:       { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
-      lead:       { source: ibm-plex-sans, tier: prose-core, weight: 500, size: 1.15rem, fallback: sans }
-      quote:      { source: ibm-plex-serif, tier: prose-core, style: italic, weight: 450, fallback: serif }
+      lead:       { source: ibm-plex-sans, tier: prose-core, weight: 400, size: 1.15rem, fallback: sans }
+      quote:      { source: ibm-plex-serif, tier: prose-core, weight: 400, fallback: serif }
       caption:    { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
       code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
-      ui:         { source: ibm-plex-sans, tier: prose-core, weight: 500, fallback: sans }
-      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 550, fallback: sans }
-      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
-      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 500, fallback: mono }
+      ui:         { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
+      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
+      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
+      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
 
   field-notebook:
     name: Field Notebook
@@ -505,8 +505,8 @@ fontpacks:
     tags: [notebook, handwritten, practical]
     roles:
       display:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
-      heading:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
-      subheading: { source: kalam, tier: display-core, weight: 500, fallback: handwriting }
+      heading:    { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
       body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
       lead:       { source: source-sans-3, tier: prose-core, weight: 550, size: 1.17rem, fallback: sans }
       quote:      { source: covered-by-your-grace, tier: display-core, weight: 400, size: 1.35rem, fallback: handwriting }
@@ -514,8 +514,8 @@ fontpacks:
       code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
       ui:         { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
       metadata:   { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
-      label:      { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
-      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+      label:      { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
+      numbers:    { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
 
   painted-sign:
     name: Painted Sign
@@ -534,7 +534,7 @@ fontpacks:
       ui:         { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
       metadata:   { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
       label:      { source: rock-salt, tier: display-core, weight: 400, fallback: handwriting }
-      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+      numbers:    { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
 
   modern-soft:
     name: Modern Soft
@@ -547,7 +547,7 @@ fontpacks:
       subheading: { source: manrope, tier: prose-core, weight: 700, fallback: sans }
       body:       { source: manrope, tier: prose-core, weight: 400, fallback: sans }
       lead:       { source: manrope, tier: prose-core, weight: 550, size: 1.18rem, fallback: sans }
-      quote:      { source: instrument-serif, tier: display-core, style: italic, weight: 400, size: 1.35rem, fallback: serif }
+      quote:      { source: instrument-serif, tier: display-core, weight: 400, size: 1.35rem, fallback: serif }
       caption:    { source: manrope, tier: prose-core, weight: 450, fallback: sans }
       code:       { source: geist-mono, tier: code-core, weight: 400, fallback: mono }
       ui:         { source: manrope, tier: prose-core, weight: 550, fallback: sans }

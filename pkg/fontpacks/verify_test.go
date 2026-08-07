@@ -190,3 +190,22 @@ func TestVerifySourceRejectsDuplicateTierContent(t *testing.T) {
 		t.Fatalf("duplicate tier content was accepted (lock %s)", lockPath)
 	}
 }
+
+func TestValidateRoleCapabilitiesChecksStaticAndVariableFaces(t *testing.T) {
+	c := &Catalog{FontSources: map[string]FontSource{"demo": {Family: "Demo"}}}
+	packs := map[string]FontPack{"pack": {Performance: Performance{Class: bundledPerformanceClass}, Roles: map[string]Role{
+		"heading": {Source: "demo", Weight: 700},
+	}}}
+	static := map[string]Manifest{"demo": {Faces: map[string]Face{"normal": {Style: "normal", Weight: []float64{400, 400}}}}}
+	if err := ValidateRoleCapabilities(c, packs, static); err == nil {
+		t.Fatal("unsupported static weight was accepted")
+	}
+	variable := map[string]Manifest{"demo": {Faces: map[string]Face{"normal": {Style: "normal", Variable: true, Weight: []float64{300, 800}, Axes: map[string][]float64{"wght": {300, 800}}}}}}
+	if err := ValidateRoleCapabilities(c, packs, variable); err != nil {
+		t.Fatalf("variable weight rejected: %v", err)
+	}
+	packs["pack"].Roles["heading"] = Role{Source: "demo", Style: "italic", Weight: 400}
+	if err := ValidateRoleCapabilities(c, packs, variable); err == nil {
+		t.Fatal("unsupported italic style was accepted")
+	}
+}

@@ -66,6 +66,7 @@ func VerifySource(s *CatalogSource, selected ...string) error {
 		packs = map[string]FontPack{name: pack}
 	}
 	used := map[string]bool{}
+	manifests := map[string]Manifest{}
 	for _, pack := range packs {
 		if pack.Performance.Class != bundledPerformanceClass {
 			continue
@@ -73,8 +74,18 @@ func VerifySource(s *CatalogSource, selected ...string) error {
 		for _, role := range pack.Roles {
 			if role.Source != "" {
 				used[role.Source] = true
+				if _, ok := manifests[role.Source]; !ok {
+					manifest, manifestErr := readManifest(s, role.Source)
+					if manifestErr != nil {
+						return manifestErr
+					}
+					manifests[role.Source] = manifest
+				}
 			}
 		}
+	}
+	if err := ValidateRoleCapabilities(c, packs, manifests); err != nil {
+		return err
 	}
 	for source := range used {
 		sourceErr := verifyBundledSource(s, source, lock)
@@ -83,6 +94,76 @@ func VerifySource(s *CatalogSource, selected ...string) error {
 		}
 	}
 	return nil
+}
+
+// ValidateRoleCapabilities ensures role metadata can be served by the bundled
+// faces instead of relying on browser-synthesized weights or styles.
+func ValidateRoleCapabilities(c *Catalog, packs map[string]FontPack, manifests map[string]Manifest) error {
+	for packName, pack := range packs {
+		if pack.Performance.Class != bundledPerformanceClass {
+			continue
+		}
+		for roleName, role := range pack.Roles {
+			if role.Source == "" {
+				continue
+			}
+			manifest, ok := manifests[role.Source]
+			if !ok {
+				continue
+			}
+			if !roleSupported(manifest, role) {
+				return fmt.Errorf("fontpack %q role %q requests %s weight %g style %q, but bundled source %q cannot satisfy it", packName, roleName, c.FontSources[role.Source].Family, role.Weight, requestedStyle(role), role.Source)
+			}
+		}
+	}
+	return nil
+}
+
+func requestedStyle(role Role) string {
+	if role.Style == "" {
+		return "normal"
+	}
+	return role.Style
+}
+
+func roleSupported(manifest Manifest, role Role) bool {
+	// Minimal/custom manifests may intentionally omit capability metadata; the
+	// full verifier still checks their assets, while built-in manifests are
+	// required to describe every bundled face.
+	if len(manifest.Faces) == 0 {
+		return true
+	}
+	for _, face := range manifest.Faces {
+		if requestedStyle(role) != face.Style && !(requestedStyle(role) == "normal" && face.Style == "") {
+			continue
+		}
+		if role.Weight == 0 {
+			return true
+		}
+		weight := face.Weight
+		if bounds, ok := face.Axes["wght"]; ok {
+			weight = bounds
+		}
+		if len(weight) == 2 && role.Weight >= weight[0] && role.Weight <= weight[1] {
+			if face.Variable || weight[0] == weight[1] && role.Weight == weight[0] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func readManifest(s *CatalogSource, source string) (Manifest, error) {
+	path := filepath.ToSlash(filepath.Join(s.Root, source, "manifest.yaml"))
+	data, err := fs.ReadFile(s.FS, path)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("source %q manifest: %w", source, err)
+	}
+	var manifest Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return Manifest{}, fmt.Errorf("source %q manifest: %w", source, err)
+	}
+	return manifest, nil
 }
 
 // BundledScope reports the number of bundled packs and unique sources.

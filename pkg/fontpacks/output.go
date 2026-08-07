@@ -29,6 +29,8 @@ type Resolved struct {
 	Bytes  int64
 }
 
+const roleStyleProperty = "style"
+
 const managedFontsManifest = ".markata-fonts.json"
 
 // ResolveMany resolves a site pack plus any per-page overrides into one
@@ -97,6 +99,9 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 			return nil, fmt.Errorf("parse font manifest %q: %w", source, err)
 		}
 		manifests[source] = manifest
+	}
+	if err := ValidateRoleCapabilities(c, map[string]FontPack{resolvedName: pack}, manifests); err != nil {
+		return nil, err
 	}
 	required := c.RequiredTiersForManifest(pack, renderedHTML, manifests)
 	for _, source := range SortedKeys(required) {
@@ -209,7 +214,7 @@ func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset) string 
 		b.WriteString(roleDeclarations(c, packs[name]))
 		b.WriteString("}\n")
 	}
-	b.WriteString(roleRules())
+	b.WriteString(roleRulesForPacks(packs))
 	return b.String()
 }
 
@@ -218,7 +223,7 @@ func rolesCSS(c *Catalog, pack FontPack) string {
 	b.WriteString(":root {\n")
 	b.WriteString(roleDeclarations(c, pack))
 	b.WriteString("}\n")
-	b.WriteString(roleRules())
+	b.WriteString(roleRulesForPack(pack))
 	return b.String()
 }
 
@@ -232,16 +237,18 @@ func roleDeclarations(c *Catalog, pack FontPack) string {
 		} else if src, ok := c.FontSources[r.Source]; ok {
 			value = cssQuote(src.Family) + ", " + fallback(c, r.Fallback)
 		}
-		b.WriteString("  --font-")
-		b.WriteString(role)
-		b.WriteString(": ")
-		b.WriteString(value)
-		b.WriteString(";\n")
+		if value != "" {
+			b.WriteString("  --font-")
+			b.WriteString(role)
+			b.WriteString(": ")
+			b.WriteString(value)
+			b.WriteString(";\n")
+		}
 		if r.Weight != 0 {
 			writeRoleProperty(&b, role, "weight", fmt.Sprintf("%g", r.Weight))
 		}
 		if r.Style != "" {
-			writeRoleProperty(&b, role, "style", r.Style)
+			writeRoleProperty(&b, role, roleStyleProperty, r.Style)
 		}
 		if r.Size != "" {
 			writeRoleProperty(&b, role, "size", r.Size)
@@ -263,14 +270,147 @@ func writeRoleProperty(b *strings.Builder, role, property, value string) {
 	b.WriteString(";\n")
 }
 
-func roleRules() string {
-	return `body { font-family: var(--font-body); font-weight: var(--font-body-weight, inherit); font-style: var(--font-body-style, normal); font-size: var(--font-body-size, inherit); font-variation-settings: var(--font-body-variation, normal); }
-h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading, var(--font-body)); font-weight: var(--font-heading-weight, inherit); font-style: var(--font-heading-style, normal); font-size: var(--font-heading-size, inherit); font-variation-settings: var(--font-heading-variation, normal); }
-code, pre, kbd, samp { font-family: var(--font-code, monospace); font-weight: var(--font-code-weight, inherit); font-style: var(--font-code-style, normal); font-size: var(--font-code-size, inherit); font-variation-settings: var(--font-code-variation, normal); }
-.lead { font-family: var(--font-lead, var(--font-body)); font-weight: var(--font-lead-weight, inherit); font-style: var(--font-lead-style, normal); font-size: var(--font-lead-size, inherit); font-variation-settings: var(--font-lead-variation, normal); }
-blockquote, .quote { font-family: var(--font-quote, var(--font-body)); font-weight: var(--font-quote-weight, inherit); font-style: var(--font-quote-style, normal); font-size: var(--font-quote-size, inherit); font-variation-settings: var(--font-quote-variation, normal); }
-.caption, figcaption { font-family: var(--font-caption, var(--font-body)); font-weight: var(--font-caption-weight, inherit); font-style: var(--font-caption-style, normal); font-size: var(--font-caption-size, inherit); font-variation-settings: var(--font-caption-variation, normal); }
-`
+func roleRulesForPack(pack FontPack) string {
+	var b strings.Builder
+	writeRoleRule(&b, "body", "body", pack)
+	writeRoleRule(&b, "h1", firstRole(pack, "display", "heading"), pack)
+	writeRoleRule(&b, "h2, h3, h4, h5, h6", "heading", pack)
+	writeRoleRule(&b, "code, pre, kbd, samp", "code", pack)
+	writeRoleRule(&b, ".lead", "lead", pack)
+	writeRoleRule(&b, "blockquote, .quote", "quote", pack)
+	writeRoleRule(&b, ".caption, figcaption", "caption", pack)
+	return b.String()
+}
+
+func roleRulesForPacks(packs map[string]FontPack) string {
+	var b strings.Builder
+	writeSharedRoleRule(&b, "body", "body", "", packs)
+	writeSharedRoleRule(&b, "h1", "display", "heading", packs)
+	writeSharedRoleRule(&b, "h2, h3, h4, h5, h6", "heading", "", packs)
+	writeSharedRoleRule(&b, "code, pre, kbd, samp", "code", "", packs)
+	writeSharedRoleRule(&b, ".lead", "lead", "body", packs)
+	writeSharedRoleRule(&b, "blockquote, .quote", "quote", "body", packs)
+	writeSharedRoleRule(&b, ".caption, figcaption", "caption", "body", packs)
+	return b.String()
+}
+
+func writeSharedRoleRule(b *strings.Builder, selector, role, fallback string, packs map[string]FontPack) {
+	props := make([]string, 0, 5)
+	if anyRoleFamily(packs, role) || (fallback != "" && anyRoleFamily(packs, fallback)) {
+		props = append(props, "font-family: "+roleVar(role, fallback))
+	}
+	for _, property := range []string{"weight", roleStyleProperty, "size", "variation"} {
+		if anyRoleProperty(packs, role, property) || (fallback != "" && anyRoleProperty(packs, fallback, property)) {
+			cssProperty := "font-" + property
+			if property == "variation" {
+				cssProperty = "font-variation-settings"
+			}
+			props = append(props, cssProperty+": "+rolePropertyVar(role, fallback, property))
+		}
+	}
+	if len(props) == 0 {
+		return
+	}
+	b.WriteString(selector + " {\n")
+	for _, prop := range props {
+		b.WriteString("  " + prop + ";\n")
+	}
+	b.WriteString("}\n")
+}
+
+func roleVar(role, fallback string) string {
+	value := "var(--font-" + role + ")"
+	if fallback != "" {
+		value = "var(--font-" + role + ", var(--font-" + fallback + "))"
+	}
+	return value
+}
+
+func rolePropertyVar(role, fallback, property string) string {
+	value := "var(--font-" + role + "-" + property + ")"
+	if fallback != "" {
+		value = "var(--font-" + role + "-" + property + ", var(--font-" + fallback + "-" + property + "))"
+	}
+	return value
+}
+
+func anyRoleFamily(packs map[string]FontPack, role string) bool {
+	for _, pack := range packs {
+		if ok := roleValue(pack, role); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func anyRoleProperty(packs map[string]FontPack, role, property string) bool {
+	for _, pack := range packs {
+		r, ok := pack.Roles[role]
+		if !ok {
+			continue
+		}
+		switch property {
+		case "weight":
+			ok = r.Weight != 0
+		case roleStyleProperty, "size":
+			ok = (property == roleStyleProperty && r.Style != "") || (property == "size" && r.Size != "")
+		case "variation":
+			ok = r.OpticalSize != 0
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
+func firstRole(pack FontPack, preferred, fallback string) string {
+	if _, ok := pack.Roles[preferred]; ok {
+		return preferred
+	}
+	return fallback
+}
+
+func writeRoleRule(b *strings.Builder, selector, role string, pack FontPack) {
+	r, ok := pack.Roles[role]
+	if !ok {
+		return
+	}
+	props := make([]string, 0, 5)
+	if configured := roleValue(pack, role); configured {
+		props = append(props, "font-family: var(--font-"+role+")")
+	}
+	if r.Weight != 0 {
+		props = append(props, "font-weight: var(--font-"+role+"-weight)")
+	}
+	if r.Style != "" {
+		props = append(props, "font-style: var(--font-"+role+"-"+roleStyleProperty+")")
+	}
+	if r.Size != "" {
+		props = append(props, "font-size: var(--font-"+role+"-size)")
+	}
+	if r.OpticalSize != 0 {
+		props = append(props, "font-variation-settings: var(--font-"+role+"-variation)")
+	}
+	if len(props) == 0 {
+		return
+	}
+	b.WriteString(selector)
+	b.WriteString(" {\n")
+	for _, prop := range props {
+		b.WriteString("  ")
+		b.WriteString(prop)
+		b.WriteString(";\n")
+	}
+	b.WriteString("}\n")
+}
+
+func roleValue(pack FontPack, role string) bool {
+	r, ok := pack.Roles[role]
+	if !ok {
+		return false
+	}
+	return r.Source != "" || r.Stack != ""
 }
 func fallback(c *Catalog, name string) string {
 	if s, ok := c.SystemStacks[name]; ok {

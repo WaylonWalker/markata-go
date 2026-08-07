@@ -135,6 +135,62 @@ func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
 	if len(resolved.Assets) != 4 || !strings.Contains(resolved.CSS, "Finger Paint") || !strings.Contains(resolved.CSS, "Rock Salt") {
 		t.Fatalf("painted-sign assets/CSS = %d\n%s", len(resolved.Assets), resolved.CSS)
 	}
+	if !strings.Contains(resolved.CSS, "h1 {\n  font-family: var(--font-display)") {
+		t.Fatalf("display role is not consumed by h1:\n%s", resolved.CSS)
+	}
+	if !strings.Contains(resolved.CSS, "h2, h3, h4, h5, h6 {\n  font-family: var(--font-heading)") {
+		t.Fatalf("heading role is not consumed by h2-h6:\n%s", resolved.CSS)
+	}
+}
+
+func TestRoleCSSDoesNotResetUnspecifiedHeadingSize(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["bundled"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"heading": {Source: "demo", Tier: "prose-core", Weight: 400},
+	}}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := c.Resolve("bundled", root, t.TempDir(), `<style>h1 { font-size: 3rem; } h2 { font-size: 2rem; }</style><h1>Title</h1><h2>Section</h2>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(r.CSS, "font-size:") {
+		t.Fatalf("unspecified heading size reset existing hierarchy:\n%s", r.CSS)
+	}
+}
+
+func TestDisplayFallsBackToHeadingWhenAbsent(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["bundled"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"heading": {Source: "demo", Tier: "prose-core", Weight: 400},
+	}}
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := c.Resolve("bundled", root, t.TempDir(), "<h1>Title</h1>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(r.CSS, "h1 {\n  font-family: var(--font-heading)") || strings.Contains(r.CSS, "var(--font-display)") {
+		t.Fatalf("h1 did not fall back to heading:\n%s", r.CSS)
+	}
 }
 
 func TestBuiltinPaintedSignCoversExtendedCharactersPerSource(t *testing.T) {
