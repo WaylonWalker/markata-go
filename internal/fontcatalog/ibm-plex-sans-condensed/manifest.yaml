@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/ibmplexsanscondensed
+  files:
+    normal: e7437c072eef2ef592ae6f2beb0000446287385907abb57ac1cf07bcbaa2aa33
 license:
   id: OFL-1.1
   file: OFL.txt

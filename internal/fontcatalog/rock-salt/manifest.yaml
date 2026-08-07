@@ -1,0 +1,61 @@
+schema: markata.font/v1
+id: rock-salt
+family: Rock Salt
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: apache/rocksalt
+  files:
+    normal: c5421d1ced1949488f29d11b75b7ef967abe2d870f816246bf18fdc0f3e29c96
+license:
+  id: Apache-2.0
+  file: LICENSE.txt
+  sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400
+    - 400
+    source_file: RockSalt-Regular.ttf
+tiers:
+  display-core:
+    file: rock-salt-display-core.woff2
+    profile: display-core
+    sha256: 309af5f8215573690062fc93bef57ff7e225067fcda10c9c0288c99b5a26b0f8
+    bytes: 43868
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  latin-ext:
+    file: rock-salt-latin-ext.woff2
+    profile: latin-ext
+    sha256: 309af5f8215573690062fc93bef57ff7e225067fcda10c9c0288c99b5a26b0f8
+    bytes: 43868
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: rock-salt-full.woff2
+    profile: full
+    sha256: 6d9ede9d5ca5632c913594e9adbe4f514ddbd5cab38931cef819db9c12ba0dfc
+    bytes: 59508

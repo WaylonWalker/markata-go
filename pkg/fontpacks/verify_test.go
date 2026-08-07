@@ -25,16 +25,28 @@ func verificationFixture(t *testing.T) (*CatalogSource, *Lockfile, string) {
 	if err := os.WriteFile(filepath.Join(family, "demo.woff2"), font, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	licenseHash, _, _ := AssetSHA256(filepath.Join(family, "OFL.txt"))
-	fontHash, _, _ := AssetSHA256(filepath.Join(family, "demo.woff2"))
+	licenseHash, _, err := AssetSHA256(filepath.Join(family, "OFL.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fontHash, _, err := AssetSHA256(filepath.Join(family, "demo.woff2"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	manifest := Manifest{ID: "demo", Family: "Demo", Source: ManifestSource{Provider: "test", Repository: "https://example.test/fonts", Revision: "rev1", Directory: "ofl/demo", Files: map[string]string{"normal": strings.Repeat("a", 64)}}, License: License{ID: "OFL-1.1", File: "OFL.txt", SHA256: licenseHash}, Faces: map[string]Face{"normal": {SourceFile: "Demo-Regular.ttf"}}, Tiers: map[string]Tier{"prose-core": {File: "demo.woff2", Profile: "prose-core", SHA256: fontHash, Bytes: int64(len(font))}}}
-	data, _ := yaml.Marshal(manifest)
+	data, err := yaml.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(family, "manifest.yaml"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c := &Catalog{SystemStacks: map[string]SystemStack{"sans": {CSS: "system-ui"}}, FontSources: map[string]FontSource{"demo": {Provider: "test", Family: "Demo"}}, FontPacks: map[string]FontPack{"demo": {Performance: Performance{Class: "bundled"}, Roles: map[string]Role{"body": {Source: "demo", Tier: "prose-core"}}}}}
 	lock := &Lockfile{Sources: map[string]LockedSource{"demo": {Provider: "test", Family: "Demo", Repository: "https://example.test/fonts", Revision: "rev1", Directory: "ofl/demo", Files: map[string]LockedFile{"normal": {Source: "Demo-Regular.ttf", SHA256: strings.Repeat("a", 64)}}, License: LockedLicense{ID: "OFL-1.1", File: "OFL.txt", SHA256: licenseHash}}}}
-	lockData, _ := yaml.Marshal(lock)
+	lockData, err := yaml.Marshal(lock)
+	if err != nil {
+		t.Fatal(err)
+	}
 	lockPath := filepath.Join(root, "lock.yaml")
 	if err := os.WriteFile(lockPath, lockData, 0o644); err != nil {
 		t.Fatal(err)
@@ -59,7 +71,10 @@ func TestVerifySourceRejectsChangedLockProvenance(t *testing.T) {
 				locked.Directory = "changed"
 			}
 			lock.Sources["demo"] = locked
-			data, _ := yaml.Marshal(lock)
+			data, err := yaml.Marshal(lock)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if err := os.WriteFile(lockPath, data, 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -75,11 +90,44 @@ func TestVerifySourceRejectsChangedSourceHash(t *testing.T) {
 	locked := lock.Sources["demo"]
 	locked.Files["normal"] = LockedFile{Source: "Demo-Regular.ttf", SHA256: hex.EncodeToString(make([]byte, 32))}
 	lock.Sources["demo"] = locked
-	data, _ := yaml.Marshal(lock)
+	data, err := yaml.Marshal(lock)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(lockPath, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := VerifySource(source, "demo"); err == nil {
 		t.Fatal("changed source hash was accepted")
+	}
+}
+
+func TestVerifySourceRequiresExactManifestLockFileSet(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		files map[string]LockedFile
+	}{
+		{name: "missing", files: map[string]LockedFile{}},
+		{name: "unexpected", files: map[string]LockedFile{
+			"normal": {Source: "Demo-Regular.ttf", SHA256: strings.Repeat("a", 64)},
+			"italic": {Source: "Demo-Italic.ttf", SHA256: strings.Repeat("b", 64)},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, lock, lockPath := verificationFixture(t)
+			locked := lock.Sources["demo"]
+			locked.Files = tc.files
+			lock.Sources["demo"] = locked
+			data, err := yaml.Marshal(lock)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(lockPath, data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := VerifySource(source, "demo"); err == nil {
+				t.Fatal("inexact source file set was accepted")
+			}
+		})
 	}
 }

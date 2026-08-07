@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/inter
+  files:
+    normal: 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031
 license:
   id: OFL-1.1
   file: OFL.txt

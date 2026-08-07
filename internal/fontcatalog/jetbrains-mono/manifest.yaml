@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/jetbrainsmono
+  files:
+    normal: 48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda
 license:
   id: OFL-1.1
   file: OFL.txt

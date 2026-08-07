@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/ibmplexserif
+  files:
+    normal: e882efa9c41949a528ac2369079ec5ef050c1c996bbd0bacce3c3326d44cf80d
 license:
   id: OFL-1.1
   file: OFL.txt

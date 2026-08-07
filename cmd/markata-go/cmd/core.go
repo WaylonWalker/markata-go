@@ -91,7 +91,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["toc"] = cfg.Toc
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
 	lcConfig.Extra["fontpack"] = cfg.Fontpack
-	lcConfig.Extra["fontpacks_file"] = cfg.FontpacksFile
+	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)
 
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = cfg.Theme
@@ -138,6 +138,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 			lcConfig.Extra[key] = value
 		}
 	}
+	// Keep path-bearing plugin configuration aligned with the resolved build
+	// paths even when the raw config also contains the option in Extra.
+	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)
 
 	// Store full models.Config for components that need direct access (e.g., 404 page handler)
 	lcConfig.Extra["models_config"] = cfg

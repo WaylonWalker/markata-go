@@ -40,6 +40,12 @@ markata-go fonts report
 
 ## Compare packs on one site
 
+### Painted Sign
+
+`painted-sign` combines Finger Paint display lettering with scratchy Rock Salt
+headings and accents over a clean Source Sans 3 prose stack. DM Mono remains
+available for code, so the expressive hierarchy does not compromise reading.
+
 The `fontpack` frontmatter field overrides the site default for one page:
 
 ```yaml

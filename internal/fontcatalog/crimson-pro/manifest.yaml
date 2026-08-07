@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/crimsonpro
+  files:
+    normal: 16aa9fb7300a93637da51fac03a071b2ff08b6bbf65f99c794c25f040b58af6a
 license:
   id: OFL-1.1
   file: OFL.txt

@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/manrope
+  files:
+    normal: d0639be45d0af36e798172419d7bd173c4bd4f29e2b76cbb69db1d11bf8b0a40
 license:
   id: OFL-1.1
   file: OFL.txt

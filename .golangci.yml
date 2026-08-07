@@ -149,6 +149,13 @@ issues:
         - goconst
         - funlen
 
+    # Fontpack fixture files intentionally use public-style permissions and
+    # nested asset paths to model generated static-site output.
+    - path: pkg/fontpacks/.*_test\.go
+      linters:
+        - gosec
+        - gocritic
+
     # Config parser has legitimate duplication for TOML/YAML/JSON converters
     - path: pkg/config/parser\.go
       linters:

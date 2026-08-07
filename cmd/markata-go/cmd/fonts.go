@@ -21,6 +21,8 @@ var fontsVerifyCmd = &cobra.Command{Use: "verify [pack]", Short: "Validate the l
 var fontsReportCmd = &cobra.Command{Use: "report", Short: "Report selected pack size", RunE: runFontsReport}
 var fontsLicensesCmd = &cobra.Command{Use: "licenses", Short: "List catalog license records", RunE: runFontsLicenses}
 
+const defaultFontpack = "system"
+
 func init() {
 	rootCmd.AddCommand(fontsCmd)
 	fontsCmd.AddCommand(fontsListCmd, fontsPacksCmd, fontsShowCmd, fontsDoctorCmd, fontsVerifyCmd, fontsReportCmd, fontsLicensesCmd)
@@ -36,7 +38,11 @@ func loadConfiguredFontSource() (*fontpacks.CatalogSource, error) {
 	if err != nil || cfg.FontpacksFile == "" {
 		return loadFontSource()
 	}
-	return fontpacks.LoadSource(filepath.Join(filepath.Dir(path), cfg.FontpacksFile))
+	catalogPath := cfg.FontpacksFile
+	if !filepath.IsAbs(catalogPath) {
+		catalogPath = filepath.Join(filepath.Dir(path), catalogPath)
+	}
+	return fontpacks.LoadSource(catalogPath)
 }
 func loadFontCatalog() (*fontpacks.Catalog, error) {
 	s, err := loadConfiguredFontSource()
@@ -49,11 +55,11 @@ func loadFontCatalog() (*fontpacks.Catalog, error) {
 func configuredFontpack() string {
 	path, err := config.Discover()
 	if err != nil {
-		return "system"
+		return defaultFontpack
 	}
 	cfg, err := config.Load(path)
 	if err != nil || cfg.Fontpack == "" {
-		return "system"
+		return defaultFontpack
 	}
 	return cfg.Fontpack
 }
@@ -115,20 +121,36 @@ func runFontsDoctor(*cobra.Command, []string) error {
 	return nil
 }
 func runFontsVerify(_ *cobra.Command, args []string) error {
-	s, err := loadConfiguredFontSource()
-	if err != nil {
-		return err
-	}
 	selected := ""
 	if len(args) == 1 {
 		selected = args[0]
-	} else {
-		selected = configuredFontpack()
 	}
-	if err := fontpacks.VerifySource(s, selected); err != nil {
+	verifySource, err := loadConfiguredFontSource()
+	if err != nil {
 		return err
 	}
-	outln("Font catalog, manifests, licenses, hashes, and WOFF2 assets verified.")
+	if selected == "" {
+		// Bare verification is an integrity check of the shipped catalog, not
+		// a check of the zero-download default pack.
+		verifySource, err = fontpacks.BuiltinSource()
+		if err != nil {
+			return err
+		}
+	}
+	if err := fontpacks.VerifySource(verifySource, selected); err != nil {
+		return err
+	}
+	if selected == "" {
+		packs, sources := fontpacks.BundledScope(verifySource.Catalog)
+		outlnf("Verified %d bundled font sources across %d built-in packs.", sources, packs)
+	} else {
+		resolved, pack, resolveErr := verifySource.Catalog.ResolvePack(selected)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		_, sources := fontpacks.BundledScopeForPack(pack)
+		outlnf("Verified fontpack %q: %d font sources.", resolved, sources)
+	}
 	return nil
 }
 func runFontsReport(*cobra.Command, []string) error {
@@ -137,8 +159,7 @@ func runFontsReport(*cobra.Command, []string) error {
 		return err
 	}
 	c := s.Catalog
-	name := "system"
-	name = configuredFontpack()
+	name := configuredFontpack()
 	resolvedName, p, err := c.ResolvePack(name)
 	if err != nil {
 		return err
@@ -150,10 +171,19 @@ func runFontsReport(*cobra.Command, []string) error {
 		}
 	}
 	files, bytes := 0, int64(0)
-	if names, readErr := fontpacks.ManagedFontFiles("output"); readErr == nil {
+	outputDir := "output"
+	if path, discoverErr := config.Discover(); discoverErr == nil {
+		if cfg, loadErr := config.Load(path); loadErr == nil {
+			outputDir = cfg.OutputDir
+			if !filepath.IsAbs(outputDir) {
+				outputDir = filepath.Join(filepath.Dir(path), outputDir)
+			}
+		}
+	}
+	if names, readErr := fontpacks.ManagedFontFiles(outputDir); readErr == nil {
 		files = len(names)
 		for _, name := range names {
-			if info, infoErr := os.Stat("output/assets/fonts/" + name); infoErr == nil {
+			if info, infoErr := os.Stat(filepath.Join(outputDir, "assets", "fonts", name)); infoErr == nil {
 				bytes += info.Size()
 			}
 		}

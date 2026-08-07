@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/cormorantgaramond
+  files:
+    normal: b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0
 license:
   id: OFL-1.1
   file: OFL.txt

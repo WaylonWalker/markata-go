@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/tradewinds
+  files:
+    normal: bbc4c9a17927d6c5076a1957b0b165fae6c835c1bfa0fb8c07053243097e495b
 license:
   id: OFL-1.1
   file: OFL.txt

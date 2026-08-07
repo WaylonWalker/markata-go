@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/intertight
+  files:
+    normal: b81b73dcb64df3c230cabade7df6c5773bf863233f24c9ee51087519f1f88b6f
 license:
   id: OFL-1.1
   file: OFL.txt

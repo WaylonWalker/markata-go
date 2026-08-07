@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/sedgwickavedisplay
+  files:
+    normal: 3b9c295a146bafb93c8a12c1dde38a2fe47512777daf1458825e291752469a38
 license:
   id: OFL-1.1
   file: OFL.txt

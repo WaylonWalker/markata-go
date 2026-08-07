@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/bitter
+  files:
+    normal: ef2b9a711fb02f1e5823b34da1b7450e0fc76793b7d733a8b41006e24916d4a7
 license:
   id: OFL-1.1
   file: OFL.txt

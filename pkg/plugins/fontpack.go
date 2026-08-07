@@ -2,8 +2,6 @@ package plugins
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -139,17 +137,6 @@ func markHTMLFontpack(content, name string) string {
 		}
 	}
 	return content
-}
-
-func writeSystemCSS(output string) error {
-	if err := fontpacks.CleanManagedFonts(output); err != nil {
-		return err
-	}
-	css := ":root {\n  --font-display: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-heading: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-subheading: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-body: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-lead: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-quote: ui-serif, Georgia, serif;\n  --font-caption: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-code: ui-monospace, \"SFMono-Regular\", \"Cascadia Mono\", \"Segoe UI Mono\", Menlo, Consolas, monospace;\n  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-metadata: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-label: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  --font-numbers: ui-monospace, \"SFMono-Regular\", Menlo, monospace;\n}\n"
-	if err := os.MkdirAll(filepath.Join(output, "css"), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(output, "css/fonts.css"), []byte(css), 0o644)
 }
 
 var _ lifecycle.ConfigurePlugin = (*FontpackPlugin)(nil)

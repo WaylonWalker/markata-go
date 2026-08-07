@@ -38,6 +38,8 @@ type LockedLicense struct {
 	SHA256 string `yaml:"sha256"`
 }
 
+const bundledPerformanceClass = "bundled"
+
 // Verify checks every family/tier referenced by a bundled pack, including the
 // generated file hash, license file, WOFF2 signature, and lockfile source.
 func Verify(c *Catalog, catalogRoot, lockPath string, selected ...string) error {
@@ -65,7 +67,7 @@ func VerifySource(s *CatalogSource, selected ...string) error {
 	}
 	used := map[string]bool{}
 	for _, pack := range packs {
-		if pack.Performance.Class != "bundled" {
+		if pack.Performance.Class != bundledPerformanceClass {
 			continue
 		}
 		for _, role := range pack.Roles {
@@ -75,78 +77,124 @@ func VerifySource(s *CatalogSource, selected ...string) error {
 		}
 	}
 	for source := range used {
-		manifestPath := filepath.ToSlash(filepath.Join(s.Root, source, "manifest.yaml"))
-		data, err := fs.ReadFile(s.FS, manifestPath)
-		if err != nil {
-			return fmt.Errorf("source %q manifest: %w", source, err)
-		}
-		var manifest Manifest
-		if err := yaml.Unmarshal(data, &manifest); err != nil {
-			return fmt.Errorf("source %q manifest: %w", source, err)
-		}
-		locked, ok := lock.Sources[source]
-		if !ok {
-			return fmt.Errorf("source %q is missing from font lockfile", source)
-		}
-		if locked.Provider != manifest.Source.Provider || locked.Family != manifest.Family || locked.Repository != manifest.Source.Repository || locked.Revision != manifest.Source.Revision || locked.Directory != manifest.Source.Directory {
-			return fmt.Errorf("source %q lock provenance does not match manifest", source)
-		}
-		if locked.Revision == "" || locked.Directory == "" || locked.Provider == "" || locked.Family == "" || locked.Repository == "" {
-			return fmt.Errorf("source %q has incomplete lock resolution", source)
-		}
-		if locked.License.ID != manifest.License.ID || locked.License.File != manifest.License.File || locked.License.SHA256 != manifest.License.SHA256 {
-			return fmt.Errorf("source %q lock/license metadata mismatch", source)
-		}
-		licensePath := filepath.ToSlash(filepath.Join(s.Root, source, manifest.License.File))
-		if err := verifyHashFS(s.FS, licensePath, manifest.License.SHA256); err != nil {
-			return fmt.Errorf("source %q license: %w", source, err)
-		}
-		if locked.License.SHA256 != manifest.License.SHA256 {
-			return fmt.Errorf("source %q lock/license hash mismatch", source)
-		}
-		for tierName, tier := range manifest.Tiers {
-			path := filepath.ToSlash(filepath.Join(s.Root, source, tier.File))
-			info, err := fs.Stat(s.FS, path)
-			if err != nil {
-				return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
-			}
-			if tier.Bytes > 0 && tier.Bytes != info.Size() {
-				return fmt.Errorf("source %q tier %q byte count is %d, want %d", source, tierName, info.Size(), tier.Bytes)
-			}
-			if err := verifyHashFS(s.FS, path, tier.SHA256); err != nil {
-				return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
-			}
-			b, err := fs.ReadFile(s.FS, path)
-			if err != nil {
-				return err
-			}
-			if !bytes.HasPrefix(b, []byte("wOF2")) {
-				return fmt.Errorf("source %q tier %q is not a WOFF2 file", source, tierName)
-			}
-		}
-		for name, file := range locked.Files {
-			if !fullSHA256(file.SHA256) || file.Source == "" {
-				return fmt.Errorf("source %q lock file %q has invalid provenance hash", source, name)
-			}
-			matched := false
-			for _, face := range manifest.Faces {
-				if face.SourceFile == file.Source {
-					matched = true
-					if expected := manifest.Source.Files[name]; expected != "" && expected != file.SHA256 {
-						return fmt.Errorf("source %q file %q hash differs from manifest", source, name)
-					}
-				}
-			}
-			if !matched {
-				return fmt.Errorf("source %q lock file %q is not represented by manifest", source, name)
-			}
+		sourceErr := verifyBundledSource(s, source, lock)
+		if sourceErr != nil {
+			return sourceErr
 		}
 	}
 	return nil
 }
 
-func verifyHash(path, expected string) error {
-	return verifyHashFS(os.DirFS(filepath.Dir(path)), filepath.Base(path), expected)
+// BundledScope reports the number of bundled packs and unique sources.
+func BundledScope(c *Catalog) (packs, sources int) {
+	used := map[string]bool{}
+	for _, pack := range c.FontPacks {
+		if pack.Performance.Class != "bundled" {
+			continue
+		}
+		packs++
+		for _, role := range pack.Roles {
+			if role.Source != "" {
+				used[role.Source] = true
+			}
+		}
+	}
+	return packs, len(used)
+}
+
+func BundledScopeForPack(pack FontPack) (packs, sources int) {
+	used := map[string]bool{}
+	if pack.Performance.Class == bundledPerformanceClass {
+		for _, role := range pack.Roles {
+			if role.Source != "" {
+				used[role.Source] = true
+			}
+		}
+	}
+	return 1, len(used)
+}
+
+//nolint:gocyclo // provenance verification has independent checks for each locked artifact.
+func verifyBundledSource(s *CatalogSource, source string, lock Lockfile) error {
+	manifestPath := filepath.ToSlash(filepath.Join(s.Root, source, "manifest.yaml"))
+	data, err := fs.ReadFile(s.FS, manifestPath)
+	if err != nil {
+		return fmt.Errorf("source %q manifest: %w", source, err)
+	}
+	var manifest Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return fmt.Errorf("source %q manifest: %w", source, err)
+	}
+	locked, ok := lock.Sources[source]
+	if !ok {
+		return fmt.Errorf("source %q is missing from font lockfile", source)
+	}
+	if locked.Provider != manifest.Source.Provider || locked.Family != manifest.Family || locked.Repository != manifest.Source.Repository || locked.Revision != manifest.Source.Revision || locked.Directory != manifest.Source.Directory {
+		return fmt.Errorf("source %q lock provenance does not match manifest", source)
+	}
+	if locked.Revision == "" || locked.Directory == "" || locked.Provider == "" || locked.Family == "" || locked.Repository == "" {
+		return fmt.Errorf("source %q has incomplete lock resolution", source)
+	}
+	if locked.License.ID != manifest.License.ID || locked.License.File != manifest.License.File || locked.License.SHA256 != manifest.License.SHA256 {
+		return fmt.Errorf("source %q lock/license metadata mismatch", source)
+	}
+	licensePath := filepath.ToSlash(filepath.Join(s.Root, source, manifest.License.File))
+	if err := verifyHashFS(s.FS, licensePath, manifest.License.SHA256); err != nil {
+		return fmt.Errorf("source %q license: %w", source, err)
+	}
+	if err := verifyTiers(s, source, manifest); err != nil {
+		return err
+	}
+	if len(manifest.Source.Files) > 0 && len(locked.Files) != len(manifest.Source.Files) {
+		return fmt.Errorf("source %q lock and manifest source file sets differ", source)
+	}
+	for name, file := range locked.Files {
+		if file.Source == "" || !fullSHA256(file.SHA256) {
+			return fmt.Errorf("source %q lock file %q has invalid provenance hash", source, name)
+		}
+		matched := false
+		for _, face := range manifest.Faces {
+			if face.SourceFile == file.Source {
+				matched = true
+			}
+		}
+		if !matched {
+			return fmt.Errorf("source %q lock file %q is not represented by manifest", source, name)
+		}
+		if expected := manifest.Source.Files[name]; expected != "" && expected != file.SHA256 {
+			return fmt.Errorf("source %q file %q hash differs from manifest", source, name)
+		}
+	}
+	for name := range manifest.Source.Files {
+		if _, exists := locked.Files[name]; !exists {
+			return fmt.Errorf("source %q lock is missing file %q", source, name)
+		}
+	}
+	return nil
+}
+
+func verifyTiers(s *CatalogSource, source string, manifest Manifest) error {
+	for tierName, tier := range manifest.Tiers {
+		path := filepath.ToSlash(filepath.Join(s.Root, source, tier.File))
+		info, err := fs.Stat(s.FS, path)
+		if err != nil {
+			return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
+		}
+		if tier.Bytes > 0 && tier.Bytes != info.Size() {
+			return fmt.Errorf("source %q tier %q byte count is %d, want %d", source, tierName, info.Size(), tier.Bytes)
+		}
+		if err := verifyHashFS(s.FS, path, tier.SHA256); err != nil {
+			return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
+		}
+		b, err := fs.ReadFile(s.FS, path)
+		if err != nil {
+			return err
+		}
+		if !bytes.HasPrefix(b, []byte("wOF2")) {
+			return fmt.Errorf("source %q tier %q is not a WOFF2 file", source, tierName)
+		}
+	}
+	return nil
 }
 
 func verifyHashFS(source fs.FS, path, expected string) error {

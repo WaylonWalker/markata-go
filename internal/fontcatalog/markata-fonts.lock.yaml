@@ -127,7 +127,7 @@ sources:
         sha256: 28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5
     license:
       id: Apache-2.0
-      file: LICENSE.txt
+      file: OFL.txt
       sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
   rubik-dirt:
     provider: google-fonts
@@ -211,7 +211,7 @@ sources:
         sha256: a776fcb4ceb8bdf03e2967688ebdad42680de5b91a7e62c17e718ae212d14bc4
     license:
       id: Apache-2.0
-      file: LICENSE.txt
+      file: OFL.txt
       sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
   bitter:
     provider: google-fonts
@@ -465,3 +465,31 @@ sources:
       id: OFL-1.1
       file: OFL.txt
       sha256: cc43cdce6f91c57989af8459341c276655e34224e954fa69c2ad700831a742d8
+  finger-paint:
+    provider: google-fonts
+    family: Finger Paint
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/fingerpaint
+    files:
+      normal:
+        source: FingerPaint-Regular.ttf
+        sha256: fce000ae028b09ca53949172a838282c678796e1542d259e6da373e257377fc8
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: d336c098ea798bf14de111cd90dff7d6bc340852405246511345d0f8564fe76e
+  rock-salt:
+    provider: google-fonts
+    family: Rock Salt
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: apache/rocksalt
+    files:
+      normal:
+        source: RockSalt-Regular.ttf
+        sha256: c5421d1ced1949488f29d11b75b7ef967abe2d870f816246bf18fdc0f3e29c96
+    license:
+      id: Apache-2.0
+      file: LICENSE.txt
+      sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30

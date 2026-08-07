@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/geistmono
+  files:
+    normal: d00e590b8eb3a59acc329b2d044fd143ae935090b7da33199ebee27cc7de8196
 license:
   id: OFL-1.1
   file: OFL.txt

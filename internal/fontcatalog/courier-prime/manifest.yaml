@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/courierprime
+  files:
+    normal: 72f793376f8e2841656bf21d77a5de010f2929bd6956a22ee848ad0c7eb978af
 license:
   id: OFL-1.1
   file: OFL.txt

@@ -255,7 +255,7 @@ func (c *Catalog) RequiredTiers(pack FontPack, renderedHTML string) map[string]m
 	}
 	text := VisibleText(renderedHTML)
 	for source, tiers := range result {
-		for _, r := range []rune(text) {
+		for _, r := range text {
 			if r == utf8.RuneError {
 				continue
 			}
@@ -305,10 +305,16 @@ func unicodeRangeContains(s string, r rune) bool {
 	if len(m) == 0 {
 		return false
 	}
-	a, _ := strconv.ParseInt(m[1], 16, 32)
+	a, err := strconv.ParseInt(m[1], 16, 32)
+	if err != nil {
+		return false
+	}
 	b := a
 	if m[2] != "" {
-		b, _ = strconv.ParseInt(m[2], 16, 32)
+		b, err = strconv.ParseInt(m[2], 16, 32)
+		if err != nil {
+			return false
+		}
 	}
 	return int64(r) >= a && int64(r) <= b
 }
@@ -339,7 +345,7 @@ func VisibleText(source string) string {
 }
 
 // AssetSHA256 returns the authoritative full SHA-256 hash for an asset.
-func AssetSHA256(path string) (string, int64, error) {
+func AssetSHA256(path string) (hash string, bytes int64, err error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return "", 0, err
@@ -349,7 +355,7 @@ func AssetSHA256(path string) (string, int64, error) {
 }
 
 // AssetSHA256FS is the filesystem equivalent of AssetSHA256.
-func AssetSHA256FS(source fs.FS, path string) (string, int64, error) {
+func AssetSHA256FS(source fs.FS, path string) (hash string, bytes int64, err error) {
 	b, err := fs.ReadFile(source, path)
 	if err != nil {
 		return "", 0, err
@@ -367,7 +373,7 @@ func ShortHash(full string) string {
 }
 
 // AssetHash is kept as a compatibility alias and now returns the full hash.
-func AssetHash(path string) (string, int64, error) {
+func AssetHash(path string) (hash string, bytes int64, err error) {
 	return AssetSHA256(path)
 }
 

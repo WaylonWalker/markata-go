@@ -13,7 +13,10 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("installed binary integration test")
 	}
-	_, thisFile, _, _ := runtime.Caller(0)
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
 	repo := filepath.Dir(filepath.Dir(thisFile))
 	binary := filepath.Join(t.TempDir(), "markata-go")
 	build := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
@@ -25,10 +28,10 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(site, "pages"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(site, "markata-go.toml"), []byte("[markata-go]\nfontpack = \"field-notebook\"\noutput_dir = \"output\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(site, "markata-go.toml"), []byte("[markata-go]\nfontpack = \"field-notebook\"\noutput_dir = \"public\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(site, "pages", "note.md"), []byte("---\ntitle: Embedded fonts\npublished: true\n---\n\nHello from an installed binary.\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(site, "pages", "note.md"), []byte("---\ntitle: Embedded fonts\npublished: true\n---\n\nHello from an installed binary.\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(binary, "build", "--fast", "--config", filepath.Join(site, "markata-go.toml"))
@@ -36,14 +39,14 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("standalone build: %v\n%s", err, output)
 	}
-	css, err := os.ReadFile(filepath.Join(site, "output", "css", "fonts.css"))
+	css, err := os.ReadFile(filepath.Join(site, "public", "css", "fonts.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(css), "@font-face") {
 		t.Fatal("generated font CSS has no @font-face declaration")
 	}
-	entries, err := os.ReadDir(filepath.Join(site, "output", "assets", "fonts"))
+	entries, err := os.ReadDir(filepath.Join(site, "public", "assets", "fonts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,5 +58,27 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	}
 	if fontCount == 0 {
 		t.Fatal("standalone build emitted no WOFF2 assets")
+	}
+	for _, line := range strings.Split(string(css), "\n") {
+		const marker = "url('"
+		start := strings.Index(line, marker)
+		if start < 0 {
+			continue
+		}
+		start += len(marker)
+		end := strings.Index(line[start:], "'")
+		if end < 0 {
+			t.Fatalf("malformed font URL in CSS line %q", line)
+		}
+		url := strings.TrimPrefix(line[start:start+end], "/")
+		if _, err := os.Stat(filepath.Join(site, "public", url)); err != nil {
+			t.Fatalf("CSS URL %q has no emitted file: %v", url, err)
+		}
+	}
+	report := exec.Command(binary, "fonts", "report", "--config", filepath.Join(site, "markata-go.toml"))
+	report.Dir = site
+	reportOutput, err := report.CombinedOutput()
+	if err != nil || !strings.Contains(string(reportOutput), "Files emitted:") {
+		t.Fatalf("fonts report did not inspect configured output directory: %v\n%s", err, reportOutput)
 	}
 }

@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/literata
+  files:
+    normal: b41138c9373112f32abb589cc22e8674b06ed4048b0c513be922bdd26f274440
 license:
   id: OFL-1.1
   file: OFL.txt

@@ -18,3 +18,7 @@ stale files listed by that manifest on later builds.
 
 `fonts verify` checks manifest and lockfile provenance, license metadata, full
 64-character SHA-256 hashes, and WOFF2 assets. Short hashes are display-only.
+With no pack argument it verifies every unique source used by every built-in
+bundled pack; `fonts verify <pack>` limits the check to that pack. The built-in
+`painted-sign` pack uses Finger Paint for display lettering, Rock Salt for
+handwritten accents, Source Sans 3 for prose, and DM Mono for code.

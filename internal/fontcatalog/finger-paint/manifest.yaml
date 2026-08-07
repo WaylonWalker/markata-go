@@ -1,0 +1,61 @@
+schema: markata.font/v1
+id: finger-paint
+family: Finger Paint
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/fingerpaint
+  files:
+    normal: fce000ae028b09ca53949172a838282c678796e1542d259e6da373e257377fc8
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: d336c098ea798bf14de111cd90dff7d6bc340852405246511345d0f8564fe76e
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400
+    - 400
+    source_file: FingerPaint-Regular.ttf
+tiers:
+  display-core:
+    file: finger-paint-display-core.woff2
+    profile: display-core
+    sha256: 5a74932973b3bd6f088aad04fd36989b606e8316eef01d57a51de4bb7f2b4c88
+    bytes: 37844
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  latin-ext:
+    file: finger-paint-latin-ext.woff2
+    profile: latin-ext
+    sha256: 5a74932973b3bd6f088aad04fd36989b606e8316eef01d57a51de4bb7f2b4c88
+    bytes: 37844
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  full:
+    file: finger-paint-full.woff2
+    profile: full
+    sha256: d7914ff187d8f6b63d1911cf3d8324f2dffa4840b1b5be94a41c5618afda19a4
+    bytes: 54776

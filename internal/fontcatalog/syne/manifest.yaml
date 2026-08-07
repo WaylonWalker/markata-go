@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/syne
+  files:
+    normal: ce5ac77142a65cab2248a1a2ebb740b1d4d9c20b52488877d3ff664d1356104a
 license:
   id: OFL-1.1
   file: OFL.txt

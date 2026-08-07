@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/ibmplexmono
+  files:
+    normal: 6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46
 license:
   id: OFL-1.1
   file: OFL.txt

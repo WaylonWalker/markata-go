@@ -41,7 +41,10 @@ func TestResolvePackAliasAndSystemHasNoAssets(t *testing.T) {
 
 func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
 	c := testCatalog(t)
-	_, pack, _ := c.ResolvePack("bundled")
+	_, pack, err := c.ResolvePack("bundled")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got := c.RequiredTiers(pack, "<p>Hello</p>")["demo"]; !got["prose-core"] || got["latin-ext"] {
 		t.Fatalf("English tiers = %#v", got)
 	}
@@ -95,6 +98,27 @@ func TestBuiltinFieldNotebookResolvesStableBaseTiers(t *testing.T) {
 	}
 	if strings.Contains(r.CSS, "full.woff2") {
 		t.Fatalf("ordinary English selected full tiers:\n%s", r.CSS)
+	}
+}
+
+func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pack := source.Catalog.FontPacks["painted-sign"]
+	if pack.Roles["display"].Source != "finger-paint" || pack.Roles["heading"].Source != "rock-salt" {
+		t.Fatalf("expressive roles = %#v", pack.Roles)
+	}
+	if pack.Roles["body"].Source != "source-sans-3" || pack.Roles["code"].Source != "dm-mono" {
+		t.Fatalf("readability roles = %#v", pack.Roles)
+	}
+	resolved, err := source.Catalog.ResolveFS("painted-sign", source.FS, source.Root, "<article><h1>Painted sign</h1><p>Readable prose.</p></article>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resolved.Assets) != 4 || !strings.Contains(resolved.CSS, "Finger Paint") || !strings.Contains(resolved.CSS, "Rock Salt") {
+		t.Fatalf("painted-sign assets/CSS = %d\n%s", len(resolved.Assets), resolved.CSS)
 	}
 }
 

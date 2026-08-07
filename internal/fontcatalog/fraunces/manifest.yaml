@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/fraunces
+  files:
+    normal: 177ff6c0f14e5550a3c624247cd1189611d4eb65d000b14944c63d967958abbb
 license:
   id: OFL-1.1
   file: OFL.txt

@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/rubikdirt
+  files:
+    normal: 9de3d928e434a47ec85d759012c8a0ebfeab0860076eea4e3989a47c5e213123
 license:
   id: OFL-1.1
   file: OFL.txt

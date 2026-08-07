@@ -54,7 +54,8 @@ func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, render
 		if result.Name == "" {
 			result.Name, result.Pack = resolved.Name, resolved.Pack
 		}
-		for _, asset := range resolved.Assets {
+		for i := range resolved.Assets {
+			asset := resolved.Assets[i]
 			key := asset.Source + "\x00" + asset.Tier
 			if seen[key] {
 				continue
@@ -71,6 +72,7 @@ func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, render
 // Resolve builds deterministic CSS and the asset copy plan. catalogRoot is the
 // directory containing family directories with manifest.yaml files.
 func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*Resolved, error) {
+	_ = outputDir // retained for API compatibility; output is written by Copy.
 	return c.ResolveFS(name, os.DirFS(catalogRoot), ".", renderedHTML)
 }
 
@@ -113,7 +115,7 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 				}
 			}
 			face := manifest.Faces["normal"]
-			asset := Asset{Source: source, Tier: tier, File: entry.File, URL: "/" + filepath.ToSlash(filepath.Join("assets/fonts", entry.File)), Bytes: info.Size(), SHA256: entry.SHA256, UnicodeRange: entry.UnicodeRange, Style: face.Style, Weight: face.Weight}
+			asset := Asset{Source: source, Tier: tier, File: entry.File, URL: "/assets/fonts/" + filepath.ToSlash(entry.File), Bytes: info.Size(), SHA256: entry.SHA256, UnicodeRange: entry.UnicodeRange, Style: face.Style, Weight: face.Weight}
 			r.Assets = append(r.Assets, asset)
 			r.Bytes += info.Size()
 		}
@@ -124,12 +126,14 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 
 func yamlUnmarshal(data []byte, v any) error { return yaml.Unmarshal(data, v) }
 
+//nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
 func (c *Catalog) css(pack FontPack, assets []Asset) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font pack: ")
 	b.WriteString(pack.Name)
 	b.WriteString(" */\n")
-	for _, a := range assets {
+	for i := range assets {
+		a := assets[i]
 		family := ""
 		if src, ok := c.FontSources[a.Source]; ok {
 			family = src.Family
@@ -160,10 +164,12 @@ func (c *Catalog) css(pack FontPack, assets []Asset) string {
 	return b.String()
 }
 
+//nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
 func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font packs */\n")
-	for _, a := range assets {
+	for i := range assets {
+		a := assets[i]
 		family := ""
 		if src, ok := c.FontSources[a.Source]; ok {
 			family = src.Family
@@ -254,37 +260,30 @@ func (r *Resolved) Copy(catalogRoot, outputDir string) error {
 // which files Markata owns. Previous Markata-managed files are removed before
 // the new selection is written; unrelated user files are preserved.
 func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
-	if err := os.MkdirAll(filepath.Join(outputDir, "assets/fonts"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(outputDir, "assets", "fonts"), 0o755); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "css"), 0o755); err != nil {
 		return err
 	}
-	for _, a := range r.Assets {
+	for i := range r.Assets {
+		a := r.Assets[i]
 		name := filepath.Base(a.File)
 		src := filepath.ToSlash(filepath.Join(assetRoot, a.Source, a.File))
 		data, err := fs.ReadFile(assetFS, src)
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(outputDir, "assets/fonts", name), data, 0o644); err != nil {
+		// Generated web asset must remain world-readable for static hosting.
+		if err := os.WriteFile(filepath.Join(outputDir, "assets", "fonts", name), data, 0o644); err != nil { //nolint:gosec // public static asset
 			return err
 		}
 	}
 	if err := updateManagedFonts(outputDir, r.Assets); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS), 0o644)
-}
-func copyFile(src, dst string) error {
-	b, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(dst, b, 0o644)
+	// Generated web asset must remain world-readable for static hosting.
+	return os.WriteFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS), 0o644) //nolint:gosec // public static asset
 }
 
 type managedFonts struct {
@@ -292,7 +291,7 @@ type managedFonts struct {
 }
 
 func updateManagedFonts(outputDir string, assets []Asset) error {
-	dir := filepath.Join(outputDir, "assets/fonts")
+	dir := filepath.Join(outputDir, "assets", "fonts")
 	manifestPath := filepath.Join(dir, managedFontsManifest)
 	var previous managedFonts
 	if data, err := os.ReadFile(manifestPath); err == nil {
@@ -303,7 +302,8 @@ func updateManagedFonts(outputDir string, assets []Asset) error {
 		return err
 	}
 	wanted := make(map[string]bool, len(assets))
-	for _, asset := range assets {
+	for i := range assets {
+		asset := assets[i]
 		wanted[filepath.Base(asset.File)] = true
 	}
 	for _, name := range previous.Files {
@@ -324,7 +324,8 @@ func updateManagedFonts(outputDir string, assets []Asset) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(manifestPath, data, 0o644)
+	// Generated web asset must remain world-readable for static hosting.
+	return os.WriteFile(manifestPath, data, 0o644) //nolint:gosec // public static asset
 }
 
 // CleanManagedFonts removes only files named by the previous Markata manifest.
@@ -335,7 +336,7 @@ func CleanManagedFonts(outputDir string) error {
 // ManagedFontFiles returns the authoritative list of Markata-generated font
 // files in an output directory.
 func ManagedFontFiles(outputDir string) ([]string, error) {
-	data, err := os.ReadFile(filepath.Join(outputDir, "assets/fonts", managedFontsManifest))
+	data, err := os.ReadFile(filepath.Join(outputDir, "assets", "fonts", managedFontsManifest))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

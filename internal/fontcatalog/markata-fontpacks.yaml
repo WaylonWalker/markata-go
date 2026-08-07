@@ -167,6 +167,7 @@ font_sources:
   kalam:                    { provider: google-fonts, family: "Kalam" }
   literata:                 { provider: google-fonts, family: "Literata" }
   rock-salt:                { provider: google-fonts, family: "Rock Salt" }
+  finger-paint:             { provider: google-fonts, family: "Finger Paint" }
 
 fontpacks:
 
@@ -516,6 +517,25 @@ fontpacks:
       label:      { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
       numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
 
+  painted-sign:
+    name: Painted Sign
+    description: Playful hand-painted display lettering with rough handwritten accents.
+    performance: { class: bundled }
+    tags: [painted, handmade, expressive, poster]
+    roles:
+      display:    { source: finger-paint, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: rock-salt, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: source-sans-3, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
+      lead:       { source: source-sans-3, tier: prose-core, weight: 550, size: 1.17rem, fallback: sans }
+      quote:      { source: rock-salt, tier: display-core, weight: 400, size: 1.25rem, fallback: handwriting }
+      caption:    { source: source-sans-3, tier: prose-core, weight: 450, fallback: sans }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
+      metadata:   { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
+      label:      { source: rock-salt, tier: display-core, weight: 400, fallback: handwriting }
+      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+
   modern-soft:
     name: Modern Soft
     description: Rounded modernism with a restrained editorial accent.
@@ -545,3 +565,4 @@ aliases:
   brush: brush-poster
   docs: technical
   notebook: field-notebook
+  painted: painted-sign
