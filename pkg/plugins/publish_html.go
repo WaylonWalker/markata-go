@@ -1001,10 +1001,17 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 		dateStr = templates.FormatHumanDate(*post.Date)
 		dateISO = post.Date.Format("2006-01-02")
 	}
+	fontpack := "system"
+	if value, ok := config.Extra["fontpack"].(string); ok && value != "" {
+		fontpack = value
+	}
+	if value, ok := post.Extra["_resolved_fontpack"].(string); ok && value != "" {
+		fontpack = value
+	}
 
 	// Simple default template
 	tmplStr := `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-fontpack="{{.Fontpack}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1016,6 +1023,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/code.css">
     <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/fonts.css">
 </head>
 <body>
     <header>
@@ -1118,6 +1126,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 		Href        string
 		SiteURL     string
 		SiteTitle   string
+		Fontpack    string
 	}{
 		Title:       title,
 		Description: description,
@@ -1128,6 +1137,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 		Href:        post.Href,
 		SiteURL:     siteURL,
 		SiteTitle:   siteTitle,
+		Fontpack:    fontpack,
 	}
 
 	var buf bytes.Buffer

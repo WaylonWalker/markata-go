@@ -1,0 +1,99 @@
+schema: markata.font/v1
+id: bitter
+family: Bitter
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/bitter
+  files:
+    normal: ef2b9a711fb02f1e5823b34da1b7450e0fc76793b7d733a8b41006e24916d4a7
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 152a1e283e23b42c4940da4c72f2f5bebaa17969cb77c76d7af05903846006f1
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 100.0
+    - 900.0
+    source_file: Bitter[wght].ttf
+    axes:
+      wght: *id001
+tiers:
+  code-core:
+    file: bitter-code-core.woff2
+    profile: code-core
+    sha256: 3491aad9dcf464bb30c069b9697031920dae594a23002ffc6e140b7fb3a8ede9
+    bytes: 35568
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: bitter-display-core.woff2
+    profile: display-core
+    sha256: 6b21619f7620aa15703fba19541262dc7145d25d6dbde3bbb16c27846bff48b3
+    bytes: 34192
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: bitter-full.woff2
+    profile: full
+    sha256: bdf2cab0451af03b56e624f99357c5567027c84c5477213957a4a1085b71b240
+    bytes: 111876
+  latin-ext:
+    file: bitter-latin-ext.woff2
+    profile: latin-ext
+    sha256: 77dc09b9862ab5a17a4bc26c699409ac82f75f0db5784995cc80afceac22636a
+    bytes: 25904
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: bitter-prose-core.woff2
+    profile: prose-core
+    sha256: d1568c1b33611fd4a61b883f3f7e9463f514beae90e8ec166ca059c1d669cd69
+    bytes: 70028
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

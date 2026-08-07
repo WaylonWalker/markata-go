@@ -1,0 +1,99 @@
+schema: markata.font/v1
+id: geist-mono
+family: Geist Mono
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/geistmono
+  files:
+    normal: d00e590b8eb3a59acc329b2d044fd143ae935090b7da33199ebee27cc7de8196
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 1781d2806a07d91c4edf4740b88449fab7d0eadad53f7c351b94cd4d4eb8c00f
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 100.0
+    - 900.0
+    source_file: GeistMono[wght].ttf
+    axes:
+      wght: *id001
+tiers:
+  code-core:
+    file: geist-mono-code-core.woff2
+    profile: code-core
+    sha256: 5ead8d2eaaf75365f4a17a1d4a51e0cfa1118d4bca1d04b18684ded820d627e9
+    bytes: 36460
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: geist-mono-display-core.woff2
+    profile: display-core
+    sha256: c4cff99674b5656c9976cfbccc56d84d5f3569e72227f2b41b3425f3c4a08006
+    bytes: 30240
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: geist-mono-full.woff2
+    profile: full
+    sha256: b2be90fbf114fc326c80fdbee76cc1a8fa61ecc19a1847d6e1377cebdf5ad11c
+    bytes: 70240
+  latin-ext:
+    file: geist-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: 1d9e023349646ed591d5ca7e881275223b1cb68333c885805afc2d7bd4c8c63a
+    bytes: 10676
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: geist-mono-prose-core.woff2
+    profile: prose-core
+    sha256: fcaf507defa52675503ff6d4c372f61e4146785f27fa3fdc220b9830608e4428
+    bytes: 46128
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

@@ -49,6 +49,52 @@ func TestResolveConfigRelativePath(t *testing.T) {
 	}
 }
 
+func TestCreateManagerResolvesFontpacksFileRelativeToConfig(t *testing.T) {
+	root := t.TempDir()
+	site := filepath.Join(root, "site")
+	if err := os.MkdirAll(filepath.Join(site, "fonts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	catalog := "schema: markata.fontpacks/v2\nsystem_stacks: {sans: {css: system-ui}}\nfont_sources: {}\nfontpacks: {system: {performance: {class: zero-download}, roles: {body: {stack: sans}}}}\ncatalog: {bundled_asset_root: .}\n"
+	catalogPath := filepath.Join(site, "fonts", "catalog.yaml")
+	if err := os.WriteFile(catalogPath, []byte(catalog), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(site, "markata-go.yaml")
+	config := "markata-go:\n  fontpacks_file: fonts/catalog.yaml\n"
+	if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := createManager(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := manager.Config().Extra["fontpacks_file"].(string)
+	if !ok || got != catalogPath {
+		t.Fatalf("fontpacks_file = %q, want %q", got, catalogPath)
+	}
+}
+
+func TestCreateManagerPreservesAbsoluteFontpacksFile(t *testing.T) {
+	root := t.TempDir()
+	catalogPath := filepath.Join(root, "catalog.yaml")
+	catalog := "schema: markata.fontpacks/v2\nsystem_stacks: {sans: {css: system-ui}}\nfont_sources: {}\nfontpacks: {system: {performance: {class: zero-download}, roles: {body: {stack: sans}}}}\ncatalog: {bundled_asset_root: .}\n"
+	if err := os.WriteFile(catalogPath, []byte(catalog), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(root, "markata-go.yaml")
+	if err := os.WriteFile(configPath, []byte("markata-go:\n  fontpacks_file: "+catalogPath+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := createManager(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := manager.Config().Extra["fontpacks_file"]; got != catalogPath {
+		t.Fatalf("fontpacks_file = %q, want %q", got, catalogPath)
+	}
+}
+
 func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 	stdout := bytes.NewBuffer(nil)
 	command := &cobra.Command{Use: "build"}

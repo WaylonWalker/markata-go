@@ -1,0 +1,97 @@
+schema: markata.font/v1
+id: ibm-plex-mono
+family: IBM Plex Mono
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/ibmplexmono
+  files:
+    normal: 6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: IBMPlexMono-Regular.ttf
+tiers:
+  code-core:
+    file: ibm-plex-mono-code-core.woff2
+    profile: code-core
+    sha256: ad55628e2ba7563730abe0d390c98dbedb45d7abbd499a5ce2ce59bc195c3283
+    bytes: 10612
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: ibm-plex-mono-display-core.woff2
+    profile: display-core
+    sha256: 399ca09d0bef8651bc324ae40055a46fe84db2f12ff2d53f794747ccef3916cf
+    bytes: 8388
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: ibm-plex-mono-full.woff2
+    profile: full
+    sha256: e129bf1c609dd0f27c194119f5dadf1880dfcadbcd1e98873884a0ceede9fd6a
+    bytes: 26120
+  latin-ext:
+    file: ibm-plex-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: a6880a733cdff2d12dbff92feb27c308afff0cff7101801bcea3353b68d14e33
+    bytes: 5008
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: ibm-plex-mono-prose-core.woff2
+    profile: prose-core
+    sha256: 3a6165e9b0e46c546dba2a1c7a99d10239f733ea4ab78d4bb7423413ed175cde
+    bytes: 17832
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

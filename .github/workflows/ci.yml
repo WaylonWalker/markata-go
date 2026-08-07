@@ -55,6 +55,41 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
+  manifest-completeness:
+    name: Font Manifest Completeness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+      - name: Check bundled manifests
+        run: ./scripts/generate_font_manifests.py --completeness
+
+  manifest-generation:
+    name: Font Manifest Determinism
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+      - name: Fetch pinned Google Fonts sources
+        env:
+          GOOGLE_FONTS: vendor/google-fonts
+        run: |
+          revision=$(uv run --with pyyaml python -c 'import yaml; print(yaml.safe_load(open("internal/fontcatalog/markata-fonts.lock.yaml"))["revision"])')
+          directories=$(uv run --with pyyaml python -c 'import yaml; lock=yaml.safe_load(open("internal/fontcatalog/markata-fonts.lock.yaml")); print("\n".join(sorted({source["directory"] for source in lock["sources"].values()})))')
+          mkdir -p "$GOOGLE_FONTS"
+          git -C "$GOOGLE_FONTS" init
+          git -C "$GOOGLE_FONTS" remote add origin https://github.com/google/fonts.git
+          git -C "$GOOGLE_FONTS" fetch --depth=1 --filter=blob:none origin "$revision"
+          git -C "$GOOGLE_FONTS" sparse-checkout init --cone
+          git -C "$GOOGLE_FONTS" sparse-checkout set --stdin <<< "$directories"
+          git -C "$GOOGLE_FONTS" checkout --detach FETCH_HEAD
+      - name: Regenerate and compare manifests from pinned source
+        run: ./scripts/generate_font_manifests.py --check
+
   test:
     name: Test
     runs-on: ${{ matrix.os }}

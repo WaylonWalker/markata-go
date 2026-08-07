@@ -1,0 +1,97 @@
+schema: markata.font/v1
+id: permanent-marker
+family: Permanent Marker
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: apache/permanentmarker
+  files:
+    normal: 28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5
+license:
+  id: Apache-2.0
+  file: OFL.txt
+  sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: PermanentMarker-Regular.ttf
+tiers:
+  code-core:
+    file: permanent-marker-code-core.woff2
+    profile: code-core
+    sha256: 794dcb5e4e834b2dd23d0f285e3cb91a06245fa59c0fca03bfeff999f81c00b3
+    bytes: 19896
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: permanent-marker-display-core.woff2
+    profile: display-core
+    sha256: 8a55332c8630a0de79d2c8c63e0bea809be88c5211a000061ed72a08c36fe945
+    bytes: 21012
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: permanent-marker-full.woff2
+    profile: full
+    sha256: 4eb3cb61f53fa72149d995f9807d155a0d815ed325e3233ed6021c13dcbee37a
+    bytes: 30064
+  latin-ext:
+    file: permanent-marker-latin-ext.woff2
+    profile: latin-ext
+    sha256: b5bbed8038a92948512c0d8b2cf3f72f7da1a89c5e4432d0e131c4c0a3f8b705
+    bytes: 412
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: permanent-marker-prose-core.woff2
+    profile: prose-core
+    sha256: bcc31e235b496931708e6249c0b9411838cbb23c791b7e1d6669b85883de73f6
+    bytes: 29556
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

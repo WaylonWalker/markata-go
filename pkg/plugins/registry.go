@@ -213,6 +213,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
+		NewFontpackPlugin(),     // Copy selected stable font tiers and semantic role CSS
 		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
 		NewAestheticCSSPlugin(), // Generate aesthetic CSS
 		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS

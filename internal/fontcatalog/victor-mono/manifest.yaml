@@ -1,0 +1,99 @@
+schema: markata.font/v1
+id: victor-mono
+family: Victor Mono
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/victormono
+  files:
+    normal: 6fab3abe37b456f56d180987e04a3a0c326bace2cb825bc638b6be1eb03edf8f
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 493589852331b4ea83f1d6b0cbdc157b002ffdb995cf2429acf0c9863bc8f3df
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 100.0
+    - 700.0
+    source_file: VictorMono[wght].ttf
+    axes:
+      wght: *id001
+tiers:
+  code-core:
+    file: victor-mono-code-core.woff2
+    profile: code-core
+    sha256: 7465756755c93fe8cdb0629fdb28a73c292c04fa61690a530dcd45148d6fea85
+    bytes: 35076
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: victor-mono-display-core.woff2
+    profile: display-core
+    sha256: a1073811179baeea1cc9d81d692cafc03c688fa1d11a272be046cee8c0818a6c
+    bytes: 22744
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: victor-mono-full.woff2
+    profile: full
+    sha256: 390b20e1adb41106eac5caa0f1cd26867f6ca5a01eb6b4cfcfd3ebfa482abf78
+    bytes: 64532
+  latin-ext:
+    file: victor-mono-latin-ext.woff2
+    profile: latin-ext
+    sha256: 79593691f895c552c48042afa5745830ac0e407270505a58a9902a1643971eda
+    bytes: 5552
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: victor-mono-prose-core.woff2
+    profile: prose-core
+    sha256: 6de171d924d1e1bc3ff9dda059126650deb5c2709289c6bd6dad39b1865152d5
+    bytes: 35752
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

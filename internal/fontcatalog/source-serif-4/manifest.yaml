@@ -1,0 +1,102 @@
+schema: markata.font/v1
+id: source-serif-4
+family: Source Serif 4
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/sourceserif4
+  files:
+    normal: 97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 5f94c3fd3a23131a417ab5a0c8452de57e70c3cfb9f604d88241f7065ebf9fd9
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 200.0
+    - 900.0
+    source_file: SourceSerif4[opsz,wght].ttf
+    axes:
+      wght: *id001
+      opsz:
+      - 8.0
+      - 60.0
+tiers:
+  code-core:
+    file: source-serif-4-code-core.woff2
+    profile: code-core
+    sha256: 0d8f4477d00d36eb6db8740319966314a7279d9f1d2d3026731a747990ace8c6
+    bytes: 161296
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: source-serif-4-display-core.woff2
+    profile: display-core
+    sha256: c9ec84d98b12ad65cf83f612161546abf1e31f09acd879d50996025af5851c68
+    bytes: 161356
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: source-serif-4-full.woff2
+    profile: full
+    sha256: 769f15a0c1d7a3885ce49adda8bbb066857068cbd2f8040151f901896cbb4595
+    bytes: 422684
+  latin-ext:
+    file: source-serif-4-latin-ext.woff2
+    profile: latin-ext
+    sha256: 8e79bd537db2b54597759cbbbaccefb6e038c94f8e2fe2b6ad03525215f5b970
+    bytes: 60936
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: source-serif-4-prose-core.woff2
+    profile: prose-core
+    sha256: 22fa0813e1049159cbbabde1df85b0804c42916728f77a6ec593dfafabddb771
+    bytes: 248440
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

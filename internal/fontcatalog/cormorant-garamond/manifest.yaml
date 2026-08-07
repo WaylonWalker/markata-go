@@ -1,0 +1,99 @@
+schema: markata.font/v1
+id: cormorant-garamond
+family: Cormorant Garamond
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/cormorantgaramond
+  files:
+    normal: b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 60700d351cac4650c51f3f9db318d2a420f8b45052dba2715eb5fec41f0f6956
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 300.0
+    - 700.0
+    source_file: CormorantGaramond[wght].ttf
+    axes:
+      wght: *id001
+tiers:
+  code-core:
+    file: cormorant-garamond-code-core.woff2
+    profile: code-core
+    sha256: 42af0f1bd7c7265cd9747ddffafa489677f968489688b22a8860ceea25792f17
+    bytes: 47936
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: cormorant-garamond-display-core.woff2
+    profile: display-core
+    sha256: 5faf307f352fd8ba9e1209e5972535bdb65224ea50c3808fda14305ae99f8214
+    bytes: 48016
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: cormorant-garamond-full.woff2
+    profile: full
+    sha256: 8a74fea6ff44e82acea96d77de2eb7686cce74d80413c276adc99653e0c1d86f
+    bytes: 187716
+  latin-ext:
+    file: cormorant-garamond-latin-ext.woff2
+    profile: latin-ext
+    sha256: 1d7fbfb1ef574c6a444c0f77450e5728c410e1d92c69259603b37e7fbb23952e
+    bytes: 41908
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: cormorant-garamond-prose-core.woff2
+    profile: prose-core
+    sha256: 49344f81301f58faa701e6b223e70f2f089b1a59f378e1f4dc83a4aafe98d168
+    bytes: 115864
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

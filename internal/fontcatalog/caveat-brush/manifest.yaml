@@ -1,0 +1,97 @@
+schema: markata.font/v1
+id: caveat-brush
+family: Caveat Brush
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/caveatbrush
+  files:
+    normal: e565bd7bffd895ca64f8d1cb77c816b9b38d9c010246386a07c9648592f6f282
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 21b54eb0d7513524798a00dfbaf99a02c003a0012a728cc5f0e02d24c50482fb
+faces:
+  normal:
+    style: normal
+    variable: false
+    weight:
+    - 400.0
+    - 400.0
+    source_file: CaveatBrush-Regular.ttf
+tiers:
+  code-core:
+    file: caveat-brush-code-core.woff2
+    profile: code-core
+    sha256: 093a3413e0f50822d2d5b28e5c5dec617cbbdb99497fcd49139d6eed4f703bdb
+    bytes: 47024
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: caveat-brush-display-core.woff2
+    profile: display-core
+    sha256: 5b7eb6dea166ea94d8e45ab81ae90d736d58d4560372c39ec9983e9689d1045d
+    bytes: 47672
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: caveat-brush-full.woff2
+    profile: full
+    sha256: 8664e35298853a765f4f6729e8d63d575d9ffbd8b82fd0fe531afd44cc68d754
+    bytes: 62912
+  latin-ext:
+    file: caveat-brush-latin-ext.woff2
+    profile: latin-ext
+    sha256: 473a18047e38f8de2c09f8a206df01a94dab536c7a37229235476ea9f9399418
+    bytes: 10444
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: caveat-brush-prose-core.woff2
+    profile: prose-core
+    sha256: c72d47babafaef932e9b1cb1d664ce6c33a6786a83a3934cf081188bc82cdac1
+    bytes: 60620
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F

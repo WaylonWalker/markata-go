@@ -1,0 +1,102 @@
+schema: markata.font/v1
+id: inter
+family: Inter
+scope: builtin
+source:
+  provider: google-fonts
+  repository: https://github.com/google/fonts
+  revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+  directory: ofl/inter
+  files:
+    normal: 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031
+license:
+  id: OFL-1.1
+  file: OFL.txt
+  sha256: 5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57
+faces:
+  normal:
+    style: normal
+    variable: true
+    weight: &id001
+    - 100.0
+    - 900.0
+    source_file: Inter[opsz,wght].ttf
+    axes:
+      opsz:
+      - 14.0
+      - 32.0
+      wght: *id001
+tiers:
+  code-core:
+    file: inter-code-core.woff2
+    profile: code-core
+    sha256: dc59e691013bbea5fb56a32368a6761383a2874701415fe629741aec7f01843a
+    bytes: 94256
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00AC
+    - U+00B0
+    - U+00B1
+    - U+00B7
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2190-21FF
+    - U+2200-22FF
+    - U+2300-23FF
+    - U+2500-259F
+    - U+25A0-25FF
+  display-core:
+    file: inter-display-core.woff2
+    profile: display-core
+    sha256: 6ff087669f06b3a04f9b7db87e9ab8c7fb10764c988cfc1973a10ff44672c7be
+    bytes: 85396
+    unicode_range:
+    - U+0020-007E
+    - U+00A0
+    - U+00A2-00A5
+    - U+00A9
+    - U+00AE
+    - U+00B0
+    - U+00D7
+    - U+00F7
+    - U+2010-2027
+    - U+2030
+    - U+2032-2033
+    - U+2044
+    - U+20AC
+    - U+2122
+    - U+2190-2199
+  full:
+    file: inter-full.woff2
+    profile: full
+    sha256: 9e92aa0f290b0a77906f890c45d8b5b29b03b3fbe437463242c78107573d2ae4
+    bytes: 348108
+  latin-ext:
+    file: inter-latin-ext.woff2
+    profile: latin-ext
+    sha256: a235c1e3e02ed99a50c927c41848116530ac64a3628be098ad305348dde940a5
+    bytes: 83400
+    unicode_range:
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2C60-2C7F
+    - U+A720-A7FF
+    - U+AB30-AB6F
+  prose-core:
+    file: inter-prose-core.woff2
+    profile: prose-core
+    sha256: 67b4cb47115c516ccb791ca520217592ae307aff19c48b438ead9abf6b6aebb4
+    bytes: 187388
+    unicode_range:
+    - U+0020-007E
+    - U+00A0-00FF
+    - U+0100-017F
+    - U+0180-024F
+    - U+1E00-1EFF
+    - U+2000-206F
+    - U+20A0-20CF
+    - U+2100-214F
+    - U+2190-21FF
+    - U+2150-218F
