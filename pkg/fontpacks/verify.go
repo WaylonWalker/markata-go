@@ -3,23 +3,30 @@ package fontpacks
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Lockfile struct {
-	Sources map[string]LockedSource `yaml:"sources"`
+	Schema         string                  `yaml:"schema"`
+	CatalogVersion string                  `yaml:"catalog_version"`
+	Repository     string                  `yaml:"repository"`
+	Revision       string                  `yaml:"revision"`
+	Sources        map[string]LockedSource `yaml:"sources"`
 }
 type LockedSource struct {
-	Provider  string                `yaml:"provider"`
-	Family    string                `yaml:"family"`
-	Revision  string                `yaml:"revision"`
-	Directory string                `yaml:"directory"`
-	Files     map[string]LockedFile `yaml:"files"`
-	License   LockedLicense         `yaml:"license"`
+	Provider   string                `yaml:"provider"`
+	Family     string                `yaml:"family"`
+	Repository string                `yaml:"repository"`
+	Revision   string                `yaml:"revision"`
+	Directory  string                `yaml:"directory"`
+	Files      map[string]LockedFile `yaml:"files"`
+	License    LockedLicense         `yaml:"license"`
 }
 type LockedFile struct {
 	Source string `yaml:"source"`
@@ -34,16 +41,19 @@ type LockedLicense struct {
 // Verify checks every family/tier referenced by a bundled pack, including the
 // generated file hash, license file, WOFF2 signature, and lockfile source.
 func Verify(c *Catalog, catalogRoot, lockPath string, selected ...string) error {
+	s := &CatalogSource{Catalog: c, FS: os.DirFS(catalogRoot), Root: ".", LockFS: os.DirFS(filepath.Dir(lockPath)), Lock: filepath.Base(lockPath)}
+	return VerifySource(s, selected...)
+}
+
+// VerifySource verifies provenance and integrity using the source filesystem.
+func VerifySource(s *CatalogSource, selected ...string) error {
+	c := s.Catalog
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	lockData, err := os.ReadFile(lockPath)
+	lock, err := loadLock(s)
 	if err != nil {
-		return fmt.Errorf("read font lockfile: %w", err)
-	}
-	var lock Lockfile
-	if err := yaml.Unmarshal(lockData, &lock); err != nil {
-		return fmt.Errorf("parse font lockfile: %w", err)
+		return err
 	}
 	packs := c.FontPacks
 	if len(selected) > 0 && selected[0] != "" {
@@ -65,8 +75,8 @@ func Verify(c *Catalog, catalogRoot, lockPath string, selected ...string) error 
 		}
 	}
 	for source := range used {
-		manifestPath := filepath.Join(catalogRoot, source, "manifest.yaml")
-		data, err := os.ReadFile(manifestPath)
+		manifestPath := filepath.ToSlash(filepath.Join(s.Root, source, "manifest.yaml"))
+		data, err := fs.ReadFile(s.FS, manifestPath)
 		if err != nil {
 			return fmt.Errorf("source %q manifest: %w", source, err)
 		}
@@ -78,29 +88,35 @@ func Verify(c *Catalog, catalogRoot, lockPath string, selected ...string) error 
 		if !ok {
 			return fmt.Errorf("source %q is missing from font lockfile", source)
 		}
-		if locked.Revision == "" || locked.Directory == "" {
+		if locked.Provider != manifest.Source.Provider || locked.Family != manifest.Family || locked.Repository != manifest.Source.Repository || locked.Revision != manifest.Source.Revision || locked.Directory != manifest.Source.Directory {
+			return fmt.Errorf("source %q lock provenance does not match manifest", source)
+		}
+		if locked.Revision == "" || locked.Directory == "" || locked.Provider == "" || locked.Family == "" || locked.Repository == "" {
 			return fmt.Errorf("source %q has incomplete lock resolution", source)
 		}
-		licensePath := filepath.Join(catalogRoot, source, manifest.License.File)
-		if err := verifyHash(licensePath, manifest.License.SHA256); err != nil {
+		if locked.License.ID != manifest.License.ID || locked.License.File != manifest.License.File || locked.License.SHA256 != manifest.License.SHA256 {
+			return fmt.Errorf("source %q lock/license metadata mismatch", source)
+		}
+		licensePath := filepath.ToSlash(filepath.Join(s.Root, source, manifest.License.File))
+		if err := verifyHashFS(s.FS, licensePath, manifest.License.SHA256); err != nil {
 			return fmt.Errorf("source %q license: %w", source, err)
 		}
 		if locked.License.SHA256 != manifest.License.SHA256 {
 			return fmt.Errorf("source %q lock/license hash mismatch", source)
 		}
 		for tierName, tier := range manifest.Tiers {
-			path := filepath.Join(catalogRoot, source, tier.File)
-			info, err := os.Stat(path)
+			path := filepath.ToSlash(filepath.Join(s.Root, source, tier.File))
+			info, err := fs.Stat(s.FS, path)
 			if err != nil {
 				return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
 			}
 			if tier.Bytes > 0 && tier.Bytes != info.Size() {
 				return fmt.Errorf("source %q tier %q byte count is %d, want %d", source, tierName, info.Size(), tier.Bytes)
 			}
-			if err := verifyHash(path, tier.SHA256); err != nil {
+			if err := verifyHashFS(s.FS, path, tier.SHA256); err != nil {
 				return fmt.Errorf("source %q tier %q: %w", source, tierName, err)
 			}
-			b, err := os.ReadFile(path)
+			b, err := fs.ReadFile(s.FS, path)
 			if err != nil {
 				return err
 			}
@@ -108,20 +124,48 @@ func Verify(c *Catalog, catalogRoot, lockPath string, selected ...string) error 
 				return fmt.Errorf("source %q tier %q is not a WOFF2 file", source, tierName)
 			}
 		}
+		for name, file := range locked.Files {
+			if !fullSHA256(file.SHA256) || file.Source == "" {
+				return fmt.Errorf("source %q lock file %q has invalid provenance hash", source, name)
+			}
+			matched := false
+			for _, face := range manifest.Faces {
+				if face.SourceFile == file.Source {
+					matched = true
+					if expected := manifest.Source.Files[name]; expected != "" && expected != file.SHA256 {
+						return fmt.Errorf("source %q file %q hash differs from manifest", source, name)
+					}
+				}
+			}
+			if !matched {
+				return fmt.Errorf("source %q lock file %q is not represented by manifest", source, name)
+			}
+		}
 	}
 	return nil
 }
 
 func verifyHash(path, expected string) error {
+	return verifyHashFS(os.DirFS(filepath.Dir(path)), filepath.Base(path), expected)
+}
+
+func verifyHashFS(source fs.FS, path, expected string) error {
 	if expected == "" {
 		return fmt.Errorf("%s has no recorded sha256", path)
 	}
-	hash, _, err := AssetHash(path)
+	if !fullSHA256(expected) {
+		return fmt.Errorf("%s has a non-canonical sha256 %q", path, expected)
+	}
+	hash, _, err := AssetSHA256FS(source, path)
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(expected, hash) {
+	if expected != hash {
 		return fmt.Errorf("sha256 %q does not match %s", hash, expected)
 	}
 	return nil
 }
+
+var sha256RE = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
+func fullSHA256(value string) bool { return sha256RE.MatchString(strings.TrimSpace(value)) }

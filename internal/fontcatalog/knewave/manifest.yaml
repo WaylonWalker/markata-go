@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/knewave
+  files:
+    normal: ed3bac761d755b89ab3082c844d4a623d63c7d6eef85d22ba1fb6c680e6a4436
 license:
   id: OFL-1.1
   file: OFL.txt

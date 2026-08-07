@@ -82,11 +82,11 @@ func TestResolveDeduplicatesSourceTierAndCopiesAsset(t *testing.T) {
 }
 
 func TestBuiltinFieldNotebookResolvesStableBaseTiers(t *testing.T) {
-	c, err := Load(filepath.Join("..", "..", "markata-fontpacks.yaml"))
+	source, err := BuiltinSource()
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := c.Resolve("field-notebook", filepath.Join("..", "..", "internal", "fontcatalog"), t.TempDir(), "<article><h1>Hello</h1><p>Ordinary prose.</p></article>")
+	r, err := source.Catalog.ResolveFS("field-notebook", source.FS, source.Root, "<article><h1>Hello</h1><p>Ordinary prose.</p></article>")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,5 +122,81 @@ func TestResolveManyGeneratesPerPackRoleSelectors(t *testing.T) {
 	}
 	if len(resolved.Assets) != 1 {
 		t.Fatalf("assets = %d, want one deduplicated asset", len(resolved.Assets))
+	}
+}
+
+func TestLoadSourceResolvesAssetsRelativeToNestedCatalog(t *testing.T) {
+	root := t.TempDir()
+	catalogDir := filepath.Join(root, "config", "fonts")
+	assetDir := filepath.Join(catalogDir, "assets", "demo")
+	if err := os.MkdirAll(assetDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	catalog := `schema: markata.fontpacks/v2
+system_stacks: {sans: {css: system-ui}}
+subset_profiles: {prose-core: {unicode: [U+0020-007E]}}
+font_sources: {demo: {provider: test, family: Demo}}
+fontpacks: {custom: {performance: {class: bundled}, roles: {body: {source: demo, tier: prose-core}}}}
+catalog: {bundled_asset_root: assets}
+`
+	path := filepath.Join(catalogDir, "catalog.yaml")
+	if err := os.WriteFile(path, []byte(catalog), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assetDir, "manifest.yaml"), []byte("tiers:\n  prose-core: {file: demo.woff2, profile: prose-core}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assetDir, "demo.woff2"), []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	source, err := LoadSource(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveFS("custom", source.FS, source.Root, "<p>Hello</p>")
+	if err != nil || len(resolved.Assets) != 1 {
+		t.Fatalf("nested catalog resolution = %#v, %v", resolved, err)
+	}
+}
+
+func TestAssetSHA256IsFullHash(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "font.woff2")
+	if err := os.WriteFile(path, []byte("wOF2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hash, _, err := AssetSHA256(path)
+	if err != nil || len(hash) != 64 {
+		t.Fatalf("hash = %q, err = %v", hash, err)
+	}
+}
+
+func TestCopyFSRemovesOnlyStaleManagedFonts(t *testing.T) {
+	root := t.TempDir()
+	family := filepath.Join(root, "demo")
+	if err := os.MkdirAll(family, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"old.woff2", "new.woff2"} {
+		if err := os.WriteFile(filepath.Join(family, name), []byte("wOF2"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := filepath.Join(t.TempDir(), "output")
+	first := &Resolved{Assets: []Asset{{Source: "demo", File: "old.woff2"}}}
+	if err := first.Copy(root, out); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "assets/fonts/user.woff2"), []byte("user"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second := &Resolved{Assets: []Asset{{Source: "demo", File: "new.woff2"}}}
+	if err := second.Copy(root, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "assets/fonts/old.woff2")); !os.IsNotExist(err) {
+		t.Fatalf("stale managed font still exists: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "assets/fonts/user.woff2")); err != nil {
+		t.Fatalf("user font was removed: %v", err)
 	}
 }

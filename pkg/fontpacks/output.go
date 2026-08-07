@@ -1,9 +1,12 @@
 package fontpacks
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -26,17 +29,24 @@ type Resolved struct {
 	Bytes  int64
 }
 
+const managedFontsManifest = ".markata-fonts.json"
+
 // ResolveMany resolves a site pack plus any per-page overrides into one
 // reusable stylesheet and one deduplicated asset set. Font binaries remain
 // site-level; only the semantic variables vary per page.
 func (c *Catalog) ResolveMany(names []string, catalogRoot, renderedHTML string) (*Resolved, error) {
+	return c.ResolveManyFS(names, os.DirFS(catalogRoot), ".", renderedHTML)
+}
+
+// ResolveManyFS resolves multiple packs from a portable filesystem source.
+func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
 	if len(names) == 0 {
 		names = []string{"system"}
 	}
 	result := &Resolved{Packs: map[string]FontPack{}}
 	seen := map[string]bool{}
 	for _, name := range names {
-		resolved, err := c.Resolve(name, catalogRoot, "", renderedHTML)
+		resolved, err := c.ResolveFS(name, assetFS, assetRoot, renderedHTML)
 		if err != nil {
 			return nil, err
 		}
@@ -61,6 +71,12 @@ func (c *Catalog) ResolveMany(names []string, catalogRoot, renderedHTML string) 
 // Resolve builds deterministic CSS and the asset copy plan. catalogRoot is the
 // directory containing family directories with manifest.yaml files.
 func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*Resolved, error) {
+	return c.ResolveFS(name, os.DirFS(catalogRoot), ".", renderedHTML)
+}
+
+// ResolveFS resolves manifests and assets from an fs.FS. The filesystem is
+// rooted at the catalog's asset directory, so all catalog paths are portable.
+func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
 	resolvedName, pack, err := c.ResolvePack(name)
 	if err != nil {
 		return nil, err
@@ -68,9 +84,9 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 	r := &Resolved{Name: resolvedName, Pack: pack}
 	required := c.RequiredTiers(pack, renderedHTML)
 	for _, source := range SortedKeys(required) {
-		manifestPath := filepath.Join(catalogRoot, source, "manifest.yaml")
+		manifestPath := filepath.ToSlash(filepath.Join(assetRoot, source, "manifest.yaml"))
 		var manifest Manifest
-		data, err := os.ReadFile(manifestPath)
+		data, err := fs.ReadFile(assetFS, manifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("font source %q requires %s: %w", source, manifestPath, err)
 		}
@@ -82,8 +98,8 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 			if !ok {
 				return nil, fmt.Errorf("font source %q has no required tier %q", source, tier)
 			}
-			path := filepath.Join(catalogRoot, source, entry.File)
-			info, err := os.Stat(path)
+			path := filepath.ToSlash(filepath.Join(assetRoot, source, entry.File))
+			info, err := fs.Stat(assetFS, path)
 			if err != nil {
 				return nil, fmt.Errorf("font tier %q for %s is missing: %w", tier, source, err)
 			}
@@ -91,8 +107,8 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 				return nil, fmt.Errorf("font tier %q for %s declares profile %q", tier, source, entry.Profile)
 			}
 			if entry.SHA256 != "" {
-				hash, _, hashErr := AssetHash(path)
-				if hashErr != nil || !strings.HasPrefix(entry.SHA256, hash) {
+				hash, _, hashErr := AssetSHA256FS(assetFS, path)
+				if hashErr != nil || entry.SHA256 != hash {
 					return nil, fmt.Errorf("font tier %q for %s has checksum %q, want %s", tier, source, hash, entry.SHA256)
 				}
 			}
@@ -103,7 +119,6 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 		}
 	}
 	r.CSS = c.css(pack, r.Assets)
-	_ = outputDir // retained in the API for callers that resolve before writing
 	return r, nil
 }
 
@@ -232,6 +247,13 @@ func cssQuote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `\"`) +
 
 // Copy writes only selected assets and the shared font stylesheet.
 func (r *Resolved) Copy(catalogRoot, outputDir string) error {
+	return r.CopyFS(os.DirFS(catalogRoot), ".", outputDir)
+}
+
+// CopyFS copies selected assets from a portable filesystem source and records
+// which files Markata owns. Previous Markata-managed files are removed before
+// the new selection is written; unrelated user files are preserved.
+func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
 	if err := os.MkdirAll(filepath.Join(outputDir, "assets/fonts"), 0o755); err != nil {
 		return err
 	}
@@ -239,9 +261,18 @@ func (r *Resolved) Copy(catalogRoot, outputDir string) error {
 		return err
 	}
 	for _, a := range r.Assets {
-		if err := copyFile(filepath.Join(catalogRoot, a.Source, a.File), filepath.Join(outputDir, "assets/fonts", a.File)); err != nil {
+		name := filepath.Base(a.File)
+		src := filepath.ToSlash(filepath.Join(assetRoot, a.Source, a.File))
+		data, err := fs.ReadFile(assetFS, src)
+		if err != nil {
 			return err
 		}
+		if err := os.WriteFile(filepath.Join(outputDir, "assets/fonts", name), data, 0o644); err != nil {
+			return err
+		}
+	}
+	if err := updateManagedFonts(outputDir, r.Assets); err != nil {
+		return err
 	}
 	return os.WriteFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS), 0o644)
 }
@@ -254,6 +285,69 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, b, 0o644)
+}
+
+type managedFonts struct {
+	Files []string `json:"files"`
+}
+
+func updateManagedFonts(outputDir string, assets []Asset) error {
+	dir := filepath.Join(outputDir, "assets/fonts")
+	manifestPath := filepath.Join(dir, managedFontsManifest)
+	var previous managedFonts
+	if data, err := os.ReadFile(manifestPath); err == nil {
+		if err := json.Unmarshal(data, &previous); err != nil {
+			return fmt.Errorf("parse generated font manifest: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	wanted := make(map[string]bool, len(assets))
+	for _, asset := range assets {
+		wanted[filepath.Base(asset.File)] = true
+	}
+	for _, name := range previous.Files {
+		name = filepath.Base(name)
+		if !wanted[name] && name != managedFontsManifest {
+			if err := os.Remove(filepath.Join(dir, name)); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remove stale generated font %q: %w", name, err)
+			}
+		}
+	}
+	files := make([]string, 0, len(wanted))
+	for name := range wanted {
+		files = append(files, name)
+	}
+	sort.Strings(files)
+	data, err := json.MarshalIndent(managedFonts{Files: files}, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	return os.WriteFile(manifestPath, data, 0o644)
+}
+
+// CleanManagedFonts removes only files named by the previous Markata manifest.
+func CleanManagedFonts(outputDir string) error {
+	return updateManagedFonts(outputDir, nil)
+}
+
+// ManagedFontFiles returns the authoritative list of Markata-generated font
+// files in an output directory.
+func ManagedFontFiles(outputDir string) ([]string, error) {
+	data, err := os.ReadFile(filepath.Join(outputDir, "assets/fonts", managedFontsManifest))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var manifest managedFonts
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, err
+	}
+	sort.Strings(manifest.Files)
+	return manifest.Files, nil
 }
 
 // SystemResolved is useful to callers that have no catalog files installed.

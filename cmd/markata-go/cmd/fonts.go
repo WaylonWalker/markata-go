@@ -26,7 +26,25 @@ func init() {
 	fontsCmd.AddCommand(fontsListCmd, fontsPacksCmd, fontsShowCmd, fontsDoctorCmd, fontsVerifyCmd, fontsReportCmd, fontsLicensesCmd)
 	fontsCmd.AddCommand(unsupportedFontsCommand("vendor"), unsupportedFontsCommand("rebuild"), unsupportedFontsCommand("add"), unsupportedFontsCommand("remove"))
 }
-func loadFontCatalog() (*fontpacks.Catalog, error) { return fontpacks.Load("markata-fontpacks.yaml") }
+func loadFontSource() (*fontpacks.CatalogSource, error) { return fontpacks.BuiltinSource() }
+func loadConfiguredFontSource() (*fontpacks.CatalogSource, error) {
+	path, err := config.Discover()
+	if err != nil {
+		return loadFontSource()
+	}
+	cfg, err := config.Load(path)
+	if err != nil || cfg.FontpacksFile == "" {
+		return loadFontSource()
+	}
+	return fontpacks.LoadSource(filepath.Join(filepath.Dir(path), cfg.FontpacksFile))
+}
+func loadFontCatalog() (*fontpacks.Catalog, error) {
+	s, err := loadConfiguredFontSource()
+	if err != nil {
+		return nil, err
+	}
+	return s.Catalog, nil
+}
 
 func configuredFontpack() string {
 	path, err := config.Discover()
@@ -97,17 +115,9 @@ func runFontsDoctor(*cobra.Command, []string) error {
 	return nil
 }
 func runFontsVerify(_ *cobra.Command, args []string) error {
-	c, err := loadFontCatalog()
+	s, err := loadConfiguredFontSource()
 	if err != nil {
 		return err
-	}
-	root := c.Catalog.BundledAssetRoot
-	if root == "" {
-		root = "internal/fontcatalog"
-	}
-	lock := c.Catalog.Lockfile
-	if lock == "" {
-		lock = "markata-fonts.lock.yaml"
 	}
 	selected := ""
 	if len(args) == 1 {
@@ -115,17 +125,18 @@ func runFontsVerify(_ *cobra.Command, args []string) error {
 	} else {
 		selected = configuredFontpack()
 	}
-	if err := fontpacks.Verify(c, filepath.Clean(root), filepath.Clean(lock), selected); err != nil {
+	if err := fontpacks.VerifySource(s, selected); err != nil {
 		return err
 	}
 	outln("Font catalog, manifests, licenses, hashes, and WOFF2 assets verified.")
 	return nil
 }
 func runFontsReport(*cobra.Command, []string) error {
-	c, err := loadFontCatalog()
+	s, err := loadConfiguredFontSource()
 	if err != nil {
 		return err
 	}
+	c := s.Catalog
 	name := "system"
 	name = configuredFontpack()
 	resolvedName, p, err := c.ResolvePack(name)
@@ -139,14 +150,10 @@ func runFontsReport(*cobra.Command, []string) error {
 		}
 	}
 	files, bytes := 0, int64(0)
-	if entries, readErr := os.ReadDir(filepath.Join("output", "assets/fonts")); readErr == nil {
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			info, infoErr := entry.Info()
-			if infoErr == nil {
-				files++
+	if names, readErr := fontpacks.ManagedFontFiles("output"); readErr == nil {
+		files = len(names)
+		for _, name := range names {
+			if info, infoErr := os.Stat("output/assets/fonts/" + name); infoErr == nil {
 				bytes += info.Size()
 			}
 		}

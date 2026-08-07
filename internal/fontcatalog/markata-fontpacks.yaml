@@ -1,0 +1,547 @@
+# markata-fontpacks.yaml
+#
+# Markata editorial font packs and font acquisition catalog.
+#
+# Built-in font packs fall into two performance classes:
+#   zero-download  Uses only system fonts and emits no @font-face assets.
+#   bundled        Uses curated, vendored, stable WOFF2 tiers shipped with Markata.
+#
+# Custom fonts are resolved through the same source schema, but require the
+# optional font-ingestion toolchain when their prebuilt tiers do not exist.
+
+schema: markata.fontpacks/v2
+version: 2
+
+catalog:
+  content_version: 2026.08.0
+  lockfile: markata-fonts.lock.yaml
+  bundled_asset_root: .
+  project_asset_root: assets/fonts
+  output_asset_root: assets/fonts
+  resolution_order: [project, user, builtin]
+
+system_stacks:
+  sans:
+    css: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  serif:
+    css: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'
+  book:
+    css: 'Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, ui-serif, serif'
+  mono:
+    css: 'ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace'
+  condensed:
+    css: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue Condensed", system-ui, sans-serif'
+
+defaults:
+  typography:
+    body:
+      size: 1rem
+      line_height: 1.68
+      measure: 68ch
+    heading:
+      line_height: 1.08
+      text_wrap: balance
+    code:
+      line_height: 1.55
+      ligatures: false
+    caption:
+      size: 0.84rem
+      line_height: 1.45
+    metadata:
+      size: 0.78rem
+      letter_spacing: 0.075em
+    label:
+      size: 0.74rem
+      letter_spacing: 0.09em
+      text_transform: uppercase
+    numbers:
+      font_variant_numeric: tabular-nums
+
+subset_profiles:
+  display-core:
+    description: Compact Latin set for hero, poster, and decorative display text.
+    unicode:
+      - U+0020-007E
+      - U+00A0
+      - U+00A2-00A5
+      - U+00A9
+      - U+00AE
+      - U+00B0
+      - U+00D7
+      - U+00F7
+      - U+2010-2027
+      - U+2030
+      - U+2032-2033
+      - U+2044
+      - U+20AC
+      - U+2122
+      - U+2190-2199
+
+  prose-core:
+    description: Broad reusable Latin set for English prose and common names.
+    unicode:
+      - U+0020-007E
+      - U+00A0-00FF
+      - U+0100-017F
+      - U+0180-024F
+      - U+1E00-1EFF
+      - U+2000-206F
+      - U+20A0-20CF
+      - U+2100-214F
+      - U+2190-21FF
+      - U+2150-218F
+
+  code-core:
+    description: ASCII, programming punctuation, arrows, math, box drawing, and block characters.
+    unicode:
+      - U+0020-007E
+      - U+00A0
+      - U+00AC
+      - U+00B0
+      - U+00B1
+      - U+00B7
+      - U+00D7
+      - U+00F7
+      - U+2010-2027
+      - U+2190-21FF
+      - U+2200-22FF
+      - U+2300-23FF
+      - U+2500-259F
+      - U+25A0-25FF
+
+  latin-ext:
+    description: Additional Latin coverage loaded only when a page needs it.
+    unicode:
+      - U+0180-024F
+      - U+1E00-1EFF
+      - U+2C60-2C7F
+      - U+A720-A7FF
+      - U+AB30-AB6F
+
+  full:
+    description: Complete upstream face. Used only for unsupported scripts or explicit full coverage.
+    passthrough: true
+
+# Acquisition metadata. A resolver turns each Google Fonts family into an exact
+# repository path, source file, license, and commit in markata-fonts.lock.yaml.
+#
+# The config intentionally does not hard-code a moving branch URL or an unpinned
+# source filename. `markata fonts vendor --lock` resolves these against the
+# official google/fonts repository and records immutable values in the lockfile.
+font_sources:
+  inter:                    { provider: google-fonts, family: "Inter" }
+  inter-tight:              { provider: google-fonts, family: "Inter Tight" }
+  source-serif-4:           { provider: google-fonts, family: "Source Serif 4" }
+  source-sans-3:            { provider: google-fonts, family: "Source Sans 3" }
+  jetbrains-mono:           { provider: google-fonts, family: "JetBrains Mono" }
+  cormorant-garamond:       { provider: google-fonts, family: "Cormorant Garamond" }
+  fraunces:                 { provider: google-fonts, family: "Fraunces" }
+  ibm-plex-sans:            { provider: google-fonts, family: "IBM Plex Sans" }
+  ibm-plex-sans-condensed:  { provider: google-fonts, family: "IBM Plex Sans Condensed" }
+  ibm-plex-serif:           { provider: google-fonts, family: "IBM Plex Serif" }
+  ibm-plex-mono:            { provider: google-fonts, family: "IBM Plex Mono" }
+  water-brush:              { provider: google-fonts, family: "Water Brush" }
+  knewave:                  { provider: google-fonts, family: "Knewave" }
+  space-grotesk:            { provider: google-fonts, family: "Space Grotesk" }
+  covered-by-your-grace:    { provider: google-fonts, family: "Covered By Your Grace" }
+  dm-mono:                  { provider: google-fonts, family: "DM Mono" }
+  rubik-dirt:               { provider: google-fonts, family: "Rubik Dirt" }
+  bungee:                   { provider: google-fonts, family: "Bungee" }
+  outfit:                   { provider: google-fonts, family: "Outfit" }
+  caveat-brush:             { provider: google-fonts, family: "Caveat Brush" }
+  victor-mono:              { provider: google-fonts, family: "Victor Mono" }
+  special-elite:            { provider: google-fonts, family: "Special Elite" }
+  bitter:                   { provider: google-fonts, family: "Bitter" }
+  crimson-pro:              { provider: google-fonts, family: "Crimson Pro" }
+  im-fell-english:          { provider: google-fonts, family: "IM FELL English" }
+  libre-franklin:           { provider: google-fonts, family: "Libre Franklin" }
+  courier-prime:            { provider: google-fonts, family: "Courier Prime" }
+  syne:                     { provider: google-fonts, family: "Syne" }
+  manrope:                  { provider: google-fonts, family: "Manrope" }
+  instrument-serif:         { provider: google-fonts, family: "Instrument Serif" }
+  geist-mono:               { provider: google-fonts, family: "Geist Mono" }
+  sedgwick-ave-display:     { provider: google-fonts, family: "Sedgwick Ave Display" }
+  permanent-marker:         { provider: google-fonts, family: "Permanent Marker" }
+  trade-winds:              { provider: google-fonts, family: "Trade Winds" }
+  long-cang:                { provider: google-fonts, family: "Long Cang" }
+  kalam:                    { provider: google-fonts, family: "Kalam" }
+  literata:                 { provider: google-fonts, family: "Literata" }
+  rock-salt:                { provider: google-fonts, family: "Rock Salt" }
+
+fontpacks:
+
+  system:
+    name: System
+    description: Neutral system UI typography with zero font downloads.
+    performance: { class: zero-download, expected_font_bytes: 0 }
+    tags: [system, fastest, zero-download]
+    roles:
+      display:    { stack: sans, weight: 800 }
+      heading:    { stack: sans, weight: 700 }
+      subheading: { stack: sans, weight: 650 }
+      body:       { stack: sans, weight: 400 }
+      lead:       { stack: sans, weight: 500, size: 1.16rem }
+      quote:      { stack: serif, style: italic, size: 1.2rem }
+      caption:    { stack: sans, weight: 400 }
+      code:       { stack: mono, weight: 400 }
+      ui:         { stack: sans, weight: 500 }
+      metadata:   { stack: sans, weight: 500 }
+      label:      { stack: sans, weight: 650 }
+      numbers:    { stack: mono, weight: 450 }
+
+  system-serif:
+    name: System Serif
+    description: Editorial system-serif reading experience with no web-font requests.
+    performance: { class: zero-download, expected_font_bytes: 0 }
+    tags: [system, serif, editorial, zero-download]
+    roles:
+      display:    { stack: serif, weight: 700 }
+      heading:    { stack: serif, weight: 700 }
+      subheading: { stack: serif, weight: 650 }
+      body:       { stack: serif, weight: 400 }
+      lead:       { stack: serif, weight: 500, size: 1.2rem }
+      quote:      { stack: serif, style: italic, size: 1.26rem }
+      caption:    { stack: sans, weight: 400 }
+      code:       { stack: mono, weight: 400 }
+      ui:         { stack: sans, weight: 500 }
+      metadata:   { stack: sans, weight: 500 }
+      label:      { stack: sans, weight: 650 }
+      numbers:    { stack: mono, weight: 450 }
+
+  system-reader:
+    name: System Reader
+    description: Book-like system stack optimized for long-form articles.
+    performance: { class: zero-download, expected_font_bytes: 0 }
+    tags: [system, reading, book, zero-download]
+    roles:
+      display:    { stack: book, weight: 700 }
+      heading:    { stack: book, weight: 700 }
+      subheading: { stack: book, weight: 650 }
+      body:       { stack: book, weight: 400 }
+      lead:       { stack: book, weight: 500, size: 1.2rem }
+      quote:      { stack: book, style: italic, size: 1.26rem }
+      caption:    { stack: sans, weight: 400 }
+      code:       { stack: mono, weight: 400 }
+      ui:         { stack: sans, weight: 500 }
+      metadata:   { stack: sans, weight: 500 }
+      label:      { stack: sans, weight: 650 }
+      numbers:    { stack: mono, weight: 450 }
+
+  system-terminal:
+    name: System Terminal
+    description: Monospace-led technical design using only installed system faces.
+    performance: { class: zero-download, expected_font_bytes: 0 }
+    tags: [system, terminal, technical, zero-download]
+    roles:
+      display:    { stack: mono, weight: 700 }
+      heading:    { stack: mono, weight: 700 }
+      subheading: { stack: mono, weight: 650 }
+      body:       { stack: sans, weight: 400 }
+      lead:       { stack: mono, weight: 500, size: 1.1rem }
+      quote:      { stack: mono, style: italic, size: 1.05rem }
+      caption:    { stack: sans, weight: 400 }
+      code:       { stack: mono, weight: 400 }
+      ui:         { stack: sans, weight: 500 }
+      metadata:   { stack: mono, weight: 500 }
+      label:      { stack: mono, weight: 700 }
+      numbers:    { stack: mono, weight: 450 }
+
+  system-newspaper:
+    name: System Newspaper
+    description: Newspaper hierarchy built from Georgia-like serif and system sans stacks.
+    performance: { class: zero-download, expected_font_bytes: 0 }
+    tags: [system, newspaper, editorial, zero-download]
+    roles:
+      display:    { stack: serif, weight: 800 }
+      heading:    { stack: serif, weight: 700 }
+      subheading: { stack: serif, weight: 650 }
+      body:       { stack: serif, weight: 400 }
+      lead:       { stack: serif, weight: 500, size: 1.22rem }
+      quote:      { stack: serif, style: italic, size: 1.28rem }
+      caption:    { stack: condensed, weight: 500 }
+      code:       { stack: mono, weight: 400 }
+      ui:         { stack: sans, weight: 500 }
+      metadata:   { stack: condensed, weight: 600 }
+      label:      { stack: condensed, weight: 700 }
+      numbers:    { stack: mono, weight: 450 }
+
+  plain:
+    name: Plain
+    description: Quiet, durable typography for technical writing and everyday notes.
+    performance: { class: bundled }
+    tags: [plain, readable, documentation]
+    roles:
+      display:    { source: inter-tight, tier: display-core, weight: 750, fallback: sans }
+      heading:    { source: inter, tier: prose-core, weight: 700, fallback: sans }
+      subheading: { source: inter, tier: prose-core, weight: 650, fallback: sans }
+      body:       { source: source-serif-4, tier: prose-core, weight: 400, fallback: serif }
+      lead:       { source: source-serif-4, tier: prose-core, weight: 450, size: 1.18rem, fallback: serif }
+      quote:      { source: source-serif-4, tier: prose-core, style: italic, weight: 450, fallback: serif }
+      caption:    { source: inter, tier: prose-core, weight: 450, fallback: sans }
+      code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: inter, tier: prose-core, weight: 500, fallback: sans }
+      metadata:   { source: inter, tier: prose-core, weight: 500, fallback: sans }
+      label:      { source: inter, tier: prose-core, weight: 650, fallback: sans }
+      numbers:    { source: jetbrains-mono, tier: code-core, weight: 450, fallback: mono }
+
+  editorial:
+    name: Editorial
+    description: Magazine-like hierarchy with expressive headlines and calm reading text.
+    performance: { class: bundled }
+    tags: [editorial, magazine, serif]
+    roles:
+      display:    { source: cormorant-garamond, tier: display-core, weight: 700, fallback: serif }
+      heading:    { source: fraunces, tier: prose-core, weight: 700, optical_size: 72, fallback: serif }
+      subheading: { source: fraunces, tier: prose-core, weight: 600, optical_size: 36, fallback: serif }
+      body:       { source: source-serif-4, tier: prose-core, weight: 400, optical_size: 18, fallback: serif }
+      lead:       { source: fraunces, tier: prose-core, weight: 450, optical_size: 24, size: 1.22rem, fallback: serif }
+      quote:      { source: cormorant-garamond, tier: prose-core, style: italic, weight: 600, size: 1.35rem, fallback: serif }
+      caption:    { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
+      code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: ibm-plex-sans, tier: prose-core, weight: 500, fallback: sans }
+      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 500, fallback: sans }
+      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
+      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 450, fallback: mono }
+
+  brush-poster:
+    name: Brush Poster
+    description: Real brush display texture supported by clean geometric reading fonts.
+    performance: { class: bundled }
+    tags: [brush, poster, expressive]
+    roles:
+      display:    { source: water-brush, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
+      lead:       { source: space-grotesk, tier: prose-core, weight: 550, size: 1.18rem, fallback: sans }
+      quote:      { source: covered-by-your-grace, tier: display-core, weight: 400, size: 1.38rem, fallback: handwriting }
+      caption:    { source: space-grotesk, tier: prose-core, weight: 450, fallback: sans }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
+      metadata:   { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
+      label:      { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+
+  poster-grit:
+    name: Poster Grit
+    description: Rough painted poster typography with sharp marker accents.
+    performance: { class: bundled }
+    tags: [poster, grit, painted]
+    roles:
+      display:    { source: sedgwick-ave-display, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: permanent-marker, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: permanent-marker, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+
+  dry-brush:
+    name: Dry Brush
+    description: Bristled painted display faces balanced by readable prose.
+    performance: { class: bundled }
+    tags: [brush, bristle, expressive]
+    roles:
+      display:    { source: water-brush, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: sedgwick-ave-display, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: source-sans-3, tier: prose-core, weight: 600, fallback: sans }
+      body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: sedgwick-ave-display, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+
+  indie-zine:
+    name: Indie Zine
+    description: Photocopied DIY energy with distressed display lettering.
+    performance: { class: bundled }
+    tags: [zine, diy, photocopy]
+    roles:
+      display:    { source: rubik-dirt, tier: display-core, weight: 400, fallback: sans }
+      heading:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: victor-mono, tier: code-core, weight: 400, fallback: mono }
+
+  marker-note:
+    name: Marker Note
+    description: Sharpie-like headings with a calm sketchbook reading face.
+    performance: { class: bundled }
+    tags: [marker, notebook, sketchbook]
+    roles:
+      display:    { source: permanent-marker, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      subheading: { source: source-sans-3, tier: prose-core, weight: 600, fallback: sans }
+      body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: kalam, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+
+  garage:
+    name: Garage
+    description: Hand-painted workshop signage with technical clarity.
+    performance: { class: bundled }
+    tags: [garage, workshop, signage]
+    roles:
+      display:    { source: trade-winds, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: sedgwick-ave-display, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: ibm-plex-sans, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: sedgwick-ave-display, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
+
+  typewriter:
+    name: Typewriter
+    description: Typed field notes with literary serif texture.
+    performance: { class: bundled }
+    tags: [typewriter, field-notes, literary]
+    roles:
+      display:    { source: special-elite, tier: display-core, weight: 400, fallback: serif }
+      heading:    { source: bitter, tier: prose-core, weight: 700, fallback: serif }
+      subheading: { source: crimson-pro, tier: prose-core, weight: 600, fallback: serif }
+      body:       { source: crimson-pro, tier: prose-core, weight: 400, fallback: serif }
+      quote:      { source: bitter, tier: prose-core, weight: 400, fallback: serif }
+      code:       { source: courier-prime, tier: code-core, weight: 400, fallback: mono }
+
+  literary:
+    name: Literary
+    description: Book typography with expressive optical-size-aware forms.
+    performance: { class: bundled }
+    tags: [literary, book, reading]
+    roles:
+      display:    { source: fraunces, tier: display-core, weight: 700, fallback: serif }
+      heading:    { source: literata, tier: prose-core, weight: 700, fallback: serif }
+      subheading: { source: cormorant-garamond, tier: prose-core, weight: 600, fallback: serif }
+      body:       { source: literata, tier: prose-core, weight: 400, fallback: serif }
+      quote:      { source: cormorant-garamond, tier: prose-core, style: italic, weight: 600, fallback: serif }
+      code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
+
+  modern-editorial:
+    name: Modern Editorial
+    description: Contemporary magazine typography with a refined serif accent.
+    performance: { class: bundled }
+    tags: [modern, editorial, magazine]
+    roles:
+      display:    { source: fraunces, tier: display-core, weight: 700, fallback: serif }
+      heading:    { source: manrope, tier: prose-core, weight: 800, fallback: sans }
+      subheading: { source: manrope, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: manrope, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: instrument-serif, tier: display-core, style: italic, weight: 400, fallback: serif }
+      code:       { source: geist-mono, tier: code-core, weight: 400, fallback: mono }
+
+  brutalist:
+    name: Brutalist
+    description: Stark oversized display typography for unapologetic layouts.
+    performance: { class: bundled }
+    tags: [brutalist, oversized, stark]
+    roles:
+      display:    { source: bungee, tier: display-core, weight: 400, fallback: sans }
+      heading:    { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      subheading: { source: space-grotesk, tier: prose-core, weight: 600, fallback: sans }
+      body:       { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
+      code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
+
+  humanist:
+    name: Humanist
+    description: Warm, highly readable sans and serif typography.
+    performance: { class: bundled }
+    tags: [humanist, readable, warm]
+    roles:
+      display:    { source: source-sans-3, tier: display-core, weight: 700, fallback: sans }
+      heading:    { source: source-sans-3, tier: prose-core, weight: 700, fallback: sans }
+      subheading: { source: source-serif-4, tier: prose-core, weight: 600, fallback: serif }
+      body:       { source: source-serif-4, tier: prose-core, weight: 400, fallback: serif }
+      quote:      { source: source-serif-4, tier: prose-core, style: italic, weight: 400, fallback: serif }
+      code:       { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
+
+  code-editorial:
+    name: Code Editorial
+    description: Developer typography that reads like a magazine, not documentation.
+    performance: { class: bundled }
+    tags: [code, editorial, developer]
+    roles:
+      display:    { source: space-grotesk, tier: display-core, weight: 700, fallback: sans }
+      heading:    { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
+      subheading: { source: literata, tier: prose-core, weight: 600, fallback: serif }
+      body:       { source: literata, tier: prose-core, weight: 400, fallback: serif }
+      quote:      { source: literata, tier: prose-core, style: italic, weight: 400, fallback: serif }
+      code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
+
+  handwritten:
+    name: Handwritten
+    description: Notebook warmth without sacrificing practical readability.
+    performance: { class: bundled }
+    tags: [handwritten, notebook, warm]
+    roles:
+      display:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      heading:    { source: caveat-brush, tier: display-core, weight: 400, fallback: handwriting }
+      subheading: { source: kalam, tier: display-core, weight: 500, fallback: handwriting }
+      body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
+      quote:      { source: caveat-brush, tier: display-core, weight: 400, fallback: handwriting }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+
+  technical:
+    name: Technical
+    description: Documentation-first typography with clear data, code, and interface roles.
+    performance: { class: bundled }
+    tags: [technical, docs, code]
+    roles:
+      display:    { source: ibm-plex-sans, tier: display-core, weight: 750, fallback: sans }
+      heading:    { source: ibm-plex-sans, tier: prose-core, weight: 700, fallback: sans }
+      subheading: { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
+      body:       { source: ibm-plex-sans, tier: prose-core, weight: 400, fallback: sans }
+      lead:       { source: ibm-plex-sans, tier: prose-core, weight: 500, size: 1.15rem, fallback: sans }
+      quote:      { source: ibm-plex-serif, tier: prose-core, style: italic, weight: 450, fallback: serif }
+      caption:    { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
+      code:       { source: jetbrains-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: ibm-plex-sans, tier: prose-core, weight: 500, fallback: sans }
+      metadata:   { source: ibm-plex-sans-condensed, tier: prose-core, weight: 550, fallback: sans }
+      label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 650, fallback: sans }
+      numbers:    { source: ibm-plex-mono, tier: code-core, weight: 500, fallback: mono }
+
+  field-notebook:
+    name: Field Notebook
+    description: Practical handwritten accents over highly readable notes and documentation.
+    performance: { class: bundled }
+    tags: [notebook, handwritten, practical]
+    roles:
+      display:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
+      heading:    { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      subheading: { source: kalam, tier: display-core, weight: 500, fallback: handwriting }
+      body:       { source: source-sans-3, tier: prose-core, weight: 400, fallback: sans }
+      lead:       { source: source-sans-3, tier: prose-core, weight: 550, size: 1.17rem, fallback: sans }
+      quote:      { source: covered-by-your-grace, tier: display-core, weight: 400, size: 1.35rem, fallback: handwriting }
+      caption:    { source: source-sans-3, tier: prose-core, weight: 450, fallback: sans }
+      code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
+      metadata:   { source: source-sans-3, tier: prose-core, weight: 550, fallback: sans }
+      label:      { source: kalam, tier: display-core, weight: 700, fallback: handwriting }
+      numbers:    { source: dm-mono, tier: code-core, weight: 500, fallback: mono }
+
+  modern-soft:
+    name: Modern Soft
+    description: Rounded modernism with a restrained editorial accent.
+    performance: { class: bundled }
+    tags: [modern, soft, friendly]
+    roles:
+      display:    { source: syne, tier: display-core, weight: 750, fallback: sans }
+      heading:    { source: manrope, tier: prose-core, weight: 800, fallback: sans }
+      subheading: { source: manrope, tier: prose-core, weight: 700, fallback: sans }
+      body:       { source: manrope, tier: prose-core, weight: 400, fallback: sans }
+      lead:       { source: manrope, tier: prose-core, weight: 550, size: 1.18rem, fallback: sans }
+      quote:      { source: instrument-serif, tier: display-core, style: italic, weight: 400, size: 1.35rem, fallback: serif }
+      caption:    { source: manrope, tier: prose-core, weight: 450, fallback: sans }
+      code:       { source: geist-mono, tier: code-core, weight: 400, fallback: mono }
+      ui:         { source: manrope, tier: prose-core, weight: 550, fallback: sans }
+      metadata:   { source: manrope, tier: prose-core, weight: 550, fallback: sans }
+      label:      { source: manrope, tier: prose-core, weight: 750, fallback: sans }
+      numbers:    { source: geist-mono, tier: code-core, weight: 450, fallback: mono }
+
+aliases:
+  default: system
+  fastest: system
+  reader: system-reader
+  terminal: system-terminal
+  newspaper: system-newspaper
+  magazine: editorial
+  brush: brush-poster
+  docs: technical
+  notebook: field-notebook

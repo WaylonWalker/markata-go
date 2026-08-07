@@ -6,8 +6,10 @@ package fontpacks
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +33,18 @@ type Catalog struct {
 	FontSources    map[string]FontSource    `yaml:"font_sources"`
 	FontPacks      map[string]FontPack      `yaml:"fontpacks"`
 	Aliases        map[string]string        `yaml:"aliases"`
+}
+
+// CatalogSource keeps a catalog together with the filesystem that owns the
+// paths referenced by its manifests. Relative asset paths therefore remain
+// relative to the catalog, whether the source is embedded or user-provided.
+type CatalogSource struct {
+	Catalog *Catalog
+	FS      fs.FS
+	Root    string
+	LockFS  fs.FS
+	Lock    string
+	Builtin bool
 }
 
 type CatalogPaths struct {
@@ -85,10 +99,11 @@ type Manifest struct {
 	Tiers   map[string]Tier `yaml:"tiers"`
 }
 type ManifestSource struct {
-	Provider   string `yaml:"provider"`
-	Repository string `yaml:"repository"`
-	Revision   string `yaml:"revision"`
-	Directory  string `yaml:"directory"`
+	Provider   string            `yaml:"provider"`
+	Repository string            `yaml:"repository"`
+	Revision   string            `yaml:"revision"`
+	Directory  string            `yaml:"directory"`
+	Files      map[string]string `yaml:"files"`
 }
 type License struct {
 	ID        string `yaml:"id"`
@@ -144,6 +159,37 @@ func Load(path string) (*Catalog, error) {
 		return nil, err
 	}
 	return &c, nil
+}
+
+// LoadSource loads a filesystem catalog and resolves its asset root relative
+// to the catalog file rather than the process working directory.
+func LoadSource(path string) (*CatalogSource, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	c, err := Load(abs)
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Dir(abs)
+	root := c.Catalog.BundledAssetRoot
+	if root == "" {
+		root = "."
+	}
+	assetRoot := root
+	if !filepath.IsAbs(assetRoot) {
+		assetRoot = filepath.Join(dir, assetRoot)
+	}
+	assetRoot = filepath.Clean(assetRoot)
+	lock := c.Catalog.Lockfile
+	if lock == "" {
+		lock = "markata-fonts.lock.yaml"
+	}
+	if !filepath.IsAbs(lock) {
+		lock = filepath.Join(dir, lock)
+	}
+	return &CatalogSource{Catalog: c, FS: os.DirFS(assetRoot), Root: ".", LockFS: os.DirFS(filepath.Dir(lock)), Lock: filepath.Base(lock)}, nil
 }
 
 func (c *Catalog) Validate() error {
@@ -292,13 +338,37 @@ func VisibleText(source string) string {
 	return b.String()
 }
 
-// AssetHash returns a short stable content hash for a copied asset.
-func AssetHash(path string) (string, int64, error) {
+// AssetSHA256 returns the authoritative full SHA-256 hash for an asset.
+func AssetSHA256(path string) (string, int64, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return "", 0, err
 	}
-	return fmt.Sprintf("%x", sha256.Sum256(b))[:12], int64(len(b)), nil
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), int64(len(b)), nil
+}
+
+// AssetSHA256FS is the filesystem equivalent of AssetSHA256.
+func AssetSHA256FS(source fs.FS, path string) (string, int64, error) {
+	b, err := fs.ReadFile(source, path)
+	if err != nil {
+		return "", 0, err
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), int64(len(b)), nil
+}
+
+// ShortHash returns a display/cache identifier from a full hash.
+func ShortHash(full string) string {
+	if len(full) < 12 {
+		return full
+	}
+	return full[:12]
+}
+
+// AssetHash is kept as a compatibility alias and now returns the full hash.
+func AssetHash(path string) (string, int64, error) {
+	return AssetSHA256(path)
 }
 
 // SortedKeys makes generated CSS and reports deterministic.

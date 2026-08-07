@@ -1,0 +1,467 @@
+schema: markata.fonts.lock/v1
+catalog_version: 2026.08.0
+repository: https://github.com/google/fonts
+revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+sources:
+  water-brush:
+    provider: google-fonts
+    family: Water Brush
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/waterbrush
+    files:
+      normal:
+        source: WaterBrush-Regular.ttf
+        sha256: 2cbdccbca5d4be005fe4edd8895b91618a7f96639eaeeb4987ad83e81afc71a7
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: eaa2e23b59eb264d9f982126f5d6cb7594b00a6a5e3684d916ecbf0c31004610
+  space-grotesk:
+    provider: google-fonts
+    family: Space Grotesk
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/spacegrotesk
+    files:
+      normal:
+        source: SpaceGrotesk[wght].ttf
+        sha256: acad6de1fc93436f5c0f1f4137751ef04f1aea3063e7036535970ffcfbd79f72
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 564ce565c371c5e5bbf286006565a7c9aa55a9f56e7ca58d56e05d649dd61a72
+  knewave:
+    provider: google-fonts
+    family: Knewave
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/knewave
+    files:
+      normal:
+        source: Knewave-Regular.ttf
+        sha256: ed3bac761d755b89ab3082c844d4a623d63c7d6eef85d22ba1fb6c680e6a4436
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 14b3fbd06078a869cf2ba96e6dacb852d373703c86ca7ad54a4cdd6e20fbab19
+  kalam:
+    provider: google-fonts
+    family: Kalam
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/kalam
+    files:
+      normal:
+        source: Kalam-Regular.ttf
+        sha256: 57cecb63d4608019371954274ae1d8c397764debd5b19d4a33c1efa4dc923c0b
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: f62ef357d3a1c3d27edd35a6e1ba350e8a8d13499797964eeadefbf0b3b15d1f
+  source-sans-3:
+    provider: google-fonts
+    family: Source Sans 3
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/sourcesans3
+    files:
+      normal:
+        source: SourceSans3[wght].ttf
+        sha256: 042fe2cc0b933e328410d7acbd0aa6a1873dca5aef81875f4bc214b08825c7b9
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 09746787287a289323b0ec3cff4d1a4a801331b82b7207c1e186f5d26619a392
+  covered-by-your-grace:
+    provider: google-fonts
+    family: Covered By Your Grace
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/coveredbyyourgrace
+    files:
+      normal:
+        source: CoveredByYourGrace.ttf
+        sha256: 8a7e5687a4f9aad95243eb28cdc624009a335e0de5175113bc5f1348a4d67fd7
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 0e441ae9f18ad0c294cc5b6ae3974c2db1614cab220598578b1b58c4cc334485
+  dm-mono:
+    provider: google-fonts
+    family: DM Mono
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/dmmono
+    files:
+      normal:
+        source: DMMono-Regular.ttf
+        sha256: 55b4c98f123daebb3ed27947ba47b2af00554fc6284d639a540bcef5e6258ad2
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 2bada5ea45c3c63b7f1ea1f88ce9672c9e4f0c42b2c3b7378949084fe55a3066
+  sedgwick-ave-display:
+    provider: google-fonts
+    family: Sedgwick Ave Display
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/sedgwickavedisplay
+    files:
+      normal:
+        source: SedgwickAveDisplay-Regular.ttf
+        sha256: 3b9c295a146bafb93c8a12c1dde38a2fe47512777daf1458825e291752469a38
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: f323edc1e5a6d8fa16120aa15367cdfb15468474cc621f9bda1a2f73c5d08d73
+  permanent-marker:
+    provider: google-fonts
+    family: Permanent Marker
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: apache/permanentmarker
+    files:
+      normal:
+        source: PermanentMarker-Regular.ttf
+        sha256: 28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5
+    license:
+      id: Apache-2.0
+      file: LICENSE.txt
+      sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+  rubik-dirt:
+    provider: google-fonts
+    family: Rubik Dirt
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/rubikdirt
+    files:
+      normal:
+        source: RubikDirt-Regular.ttf
+        sha256: 9de3d928e434a47ec85d759012c8a0ebfeab0860076eea4e3989a47c5e213123
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: f9e2d4498ea80d38bac7b8841d68af68c132fa67e1552e7c05717e6987de1d74
+  victor-mono:
+    provider: google-fonts
+    family: Victor Mono
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/victormono
+    files:
+      normal:
+        source: VictorMono[wght].ttf
+        sha256: 6fab3abe37b456f56d180987e04a3a0c326bace2cb825bc638b6be1eb03edf8f
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 493589852331b4ea83f1d6b0cbdc157b002ffdb995cf2429acf0c9863bc8f3df
+  trade-winds:
+    provider: google-fonts
+    family: Trade Winds
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/tradewinds
+    files:
+      normal:
+        source: TradeWinds-Regular.ttf
+        sha256: bbc4c9a17927d6c5076a1957b0b165fae6c835c1bfa0fb8c07053243097e495b
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 018d17b5e04c0a217a21979fa6b6d77bd5a143a5f06ea2ea102e427abd1ebfa2
+  ibm-plex-sans:
+    provider: google-fonts
+    family: IBM Plex Sans
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/ibmplexsans
+    files:
+      normal:
+        source: IBMPlexSans[wdth,wght].ttf
+        sha256: 3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+  jetbrains-mono:
+    provider: google-fonts
+    family: JetBrains Mono
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/jetbrainsmono
+    files:
+      normal:
+        source: JetBrainsMono[wght].ttf
+        sha256: 48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d
+  special-elite:
+    provider: google-fonts
+    family: Special Elite
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: apache/specialelite
+    files:
+      normal:
+        source: SpecialElite-Regular.ttf
+        sha256: a776fcb4ceb8bdf03e2967688ebdad42680de5b91a7e62c17e718ae212d14bc4
+    license:
+      id: Apache-2.0
+      file: LICENSE.txt
+      sha256: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+  bitter:
+    provider: google-fonts
+    family: Bitter
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/bitter
+    files:
+      normal:
+        source: Bitter[wght].ttf
+        sha256: ef2b9a711fb02f1e5823b34da1b7450e0fc76793b7d733a8b41006e24916d4a7
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 152a1e283e23b42c4940da4c72f2f5bebaa17969cb77c76d7af05903846006f1
+  crimson-pro:
+    provider: google-fonts
+    family: Crimson Pro
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/crimsonpro
+    files:
+      normal:
+        source: CrimsonPro[wght].ttf
+        sha256: 16aa9fb7300a93637da51fac03a071b2ff08b6bbf65f99c794c25f040b58af6a
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 1820869bd5baa1c2d88fa87c89eea532cf9442d841008acab720654b7f82823d
+  courier-prime:
+    provider: google-fonts
+    family: Courier Prime
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/courierprime
+    files:
+      normal:
+        source: CourierPrime-Regular.ttf
+        sha256: 72f793376f8e2841656bf21d77a5de010f2929bd6956a22ee848ad0c7eb978af
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 9a755af092b494944c99f471be6fddd19b006a448fefdc4717e4ee0aa09a97b0
+  fraunces:
+    provider: google-fonts
+    family: Fraunces
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/fraunces
+    files:
+      normal:
+        source: Fraunces[SOFT,WONK,opsz,wght].ttf
+        sha256: 177ff6c0f14e5550a3c624247cd1189611d4eb65d000b14944c63d967958abbb
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b
+  literata:
+    provider: google-fonts
+    family: Literata
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/literata
+    files:
+      normal:
+        source: Literata[opsz,wght].ttf
+        sha256: b41138c9373112f32abb589cc22e8674b06ed4048b0c513be922bdd26f274440
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 8742963604cd89dc81437811a850018fc03b2bfad686d7422c8235967c87614e
+  cormorant-garamond:
+    provider: google-fonts
+    family: Cormorant Garamond
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/cormorantgaramond
+    files:
+      normal:
+        source: CormorantGaramond[wght].ttf
+        sha256: b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 60700d351cac4650c51f3f9db318d2a420f8b45052dba2715eb5fec41f0f6956
+  ibm-plex-mono:
+    provider: google-fonts
+    family: IBM Plex Mono
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/ibmplexmono
+    files:
+      normal:
+        source: IBMPlexMono-Regular.ttf
+        sha256: 6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+  manrope:
+    provider: google-fonts
+    family: Manrope
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/manrope
+    files:
+      normal:
+        source: Manrope[wght].ttf
+        sha256: d0639be45d0af36e798172419d7bd173c4bd4f29e2b76cbb69db1d11bf8b0a40
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: e01b637272e0cbdfb240184dd98ea5cc671556d9894dae2668d92ab2c906787c
+  instrument-serif:
+    provider: google-fonts
+    family: Instrument Serif
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/instrumentserif
+    files:
+      normal:
+        source: InstrumentSerif-Regular.ttf
+        sha256: 498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521
+  geist-mono:
+    provider: google-fonts
+    family: Geist Mono
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/geistmono
+    files:
+      normal:
+        source: GeistMono[wght].ttf
+        sha256: d00e590b8eb3a59acc329b2d044fd143ae935090b7da33199ebee27cc7de8196
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 1781d2806a07d91c4edf4740b88449fab7d0eadad53f7c351b94cd4d4eb8c00f
+  bungee:
+    provider: google-fonts
+    family: Bungee
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/bungee
+    files:
+      normal:
+        source: Bungee-Regular.ttf
+        sha256: c4f5361ce120af3e6b9156d0bf379fa19cda2ea0cd18ac01fd99596c6bf66e3f
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: d5787a50dde5be6c6daecab9ed459939b1bc37cff0d0e00257eaf1ec2cf4c16c
+  source-serif-4:
+    provider: google-fonts
+    family: Source Serif 4
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/sourceserif4
+    files:
+      normal:
+        source: SourceSerif4[opsz,wght].ttf
+        sha256: 97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 5f94c3fd3a23131a417ab5a0c8452de57e70c3cfb9f604d88241f7065ebf9fd9
+  caveat-brush:
+    provider: google-fonts
+    family: Caveat Brush
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/caveatbrush
+    files:
+      normal:
+        source: CaveatBrush-Regular.ttf
+        sha256: e565bd7bffd895ca64f8d1cb77c816b9b38d9c010246386a07c9648592f6f282
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 21b54eb0d7513524798a00dfbaf99a02c003a0012a728cc5f0e02d24c50482fb
+  inter:
+    provider: google-fonts
+    family: Inter
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/inter
+    files:
+      normal:
+        source: Inter[opsz,wght].ttf
+        sha256: 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57
+  inter-tight:
+    provider: google-fonts
+    family: Inter Tight
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/intertight
+    files:
+      normal:
+        source: InterTight[wght].ttf
+        sha256: b81b73dcb64df3c230cabade7df6c5773bf863233f24c9ee51087519f1f88b6f
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 50240ab035cf1b6b3307940235481d515c4b6de3ab1fa843dbe59e7892cb9d58
+  ibm-plex-sans-condensed:
+    provider: google-fonts
+    family: IBM Plex Sans Condensed
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/ibmplexsanscondensed
+    files:
+      normal:
+        source: IBMPlexSansCondensed-Regular.ttf
+        sha256: e7437c072eef2ef592ae6f2beb0000446287385907abb57ac1cf07bcbaa2aa33
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+  ibm-plex-serif:
+    provider: google-fonts
+    family: IBM Plex Serif
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/ibmplexserif
+    files:
+      normal:
+        source: IBMPlexSerif-Regular.ttf
+        sha256: e882efa9c41949a528ac2369079ec5ef050c1c996bbd0bacce3c3326d44cf80d
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: 7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da
+  syne:
+    provider: google-fonts
+    family: Syne
+    repository: https://github.com/google/fonts
+    revision: c28e08582e7bd36751febb3391142a5eb18bbb34
+    directory: ofl/syne
+    files:
+      normal:
+        source: Syne[wght].ttf
+        sha256: ce5ac77142a65cab2248a1a2ebb740b1d4d9c20b52488877d3ff664d1356104a
+    license:
+      id: OFL-1.1
+      file: OFL.txt
+      sha256: cc43cdce6f91c57989af8459341c276655e34224e954fa69c2ad700831a742d8

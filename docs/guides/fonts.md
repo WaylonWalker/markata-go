@@ -18,11 +18,15 @@ site configuration:
 fontpack: system-reader
 ```
 
-Catalog-defined bundled packs use vendored, stable WOFF2 tiers. This
-repository currently ships the assets required by `field-notebook` and
-`brush-poster`; other bundled pack definitions remain catalog entries until
-their family assets are vendored. Bundled builds do not run Python or FontTools
-during `markata build`.
+Catalog-defined bundled packs use vendored, stable WOFF2 tiers. The built-in
+catalog, manifests, licenses, and font assets are embedded in the executable,
+so these packs work from an installed or GoReleaser binary in any working
+directory. Bundled builds do not run Python or FontTools during `markata build`.
+
+System packs use local system stacks and transfer zero font files. Custom packs
+are loaded from an explicit catalog and may reference local assets. Relative
+paths in a custom catalog are resolved relative to the catalog file, not the
+current working directory.
 
 Inspect the catalog with:
 
@@ -30,6 +34,8 @@ Inspect the catalog with:
 markata-go fonts packs
 markata-go fonts show system
 markata-go fonts doctor
+markata-go fonts verify
+markata-go fonts report
 ```
 
 ## Compare packs on one site
@@ -45,6 +51,10 @@ fontpack: brush-poster
 
 All selected page packs share one generated stylesheet and deduplicated asset
 set. The comparison pages in `pages/post/test-*.md` use this mechanism.
+
+Markata tracks emitted files in `output/assets/fonts/.markata-fonts.json`.
+Switching packs removes obsolete Markata-generated files while preserving
+unrelated user-managed files in the same directory.
 
 Regenerate the comparison pages after changing the catalog with:
 

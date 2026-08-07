@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/kalam
+  files:
+    normal: 57cecb63d4608019371954274ae1d8c397764debd5b19d4a33c1efa4dc923c0b
 license:
   id: OFL-1.1
   file: OFL.txt

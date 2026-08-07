@@ -7,6 +7,8 @@ source:
   repository: https://github.com/google/fonts
   revision: c28e08582e7bd36751febb3391142a5eb18bbb34
   directory: ofl/sourcesans3
+  files:
+    normal: 042fe2cc0b933e328410d7acbd0aa6a1873dca5aef81875f4bc214b08825c7b9
 license:
   id: OFL-1.1
   file: OFL.txt

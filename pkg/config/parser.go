@@ -45,6 +45,7 @@ type configSource interface {
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
 	Fontpack       string
+	FontpacksFile  string
 	OutputDir      string
 	URL            string
 	Title          string
@@ -180,6 +181,7 @@ func buildConfig(src configSource) *models.Config {
 	base := src.getBaseConfig()
 	config := &models.Config{
 		Fontpack:       base.Fontpack,
+		FontpacksFile:  base.FontpacksFile,
 		OutputDir:      base.OutputDir,
 		URL:            base.URL,
 		Title:          base.Title,
@@ -471,6 +473,7 @@ func ParseJSON(data []byte) (*models.Config, error) {
 // tomlConfig is an internal struct for parsing TOML configuration.
 type tomlConfig struct {
 	Fontpack        string                    `toml:"fontpack"`
+	FontpacksFile   string                    `toml:"fontpacks_file"`
 	OutputDir       string                    `toml:"output_dir"`
 	URL             string                    `toml:"url"`
 	Title           string                    `toml:"title"`
@@ -1782,6 +1785,7 @@ func (w *tomlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 func (c *tomlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
 		Fontpack:       c.Fontpack,
+		FontpacksFile:  c.FontpacksFile,
 		OutputDir:      c.OutputDir,
 		URL:            c.URL,
 		Title:          c.Title,
@@ -2009,6 +2013,7 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 // yamlConfig is an internal struct for parsing YAML configuration.
 type yamlConfig struct {
 	Fontpack        string                    `yaml:"fontpack"`
+	FontpacksFile   string                    `yaml:"fontpacks_file"`
 	OutputDir       string                    `yaml:"output_dir"`
 	URL             string                    `yaml:"url"`
 	Title           string                    `yaml:"title"`
@@ -3352,6 +3357,7 @@ func (w *yamlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 func (c *yamlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
 		Fontpack:       c.Fontpack,
+		FontpacksFile:  c.FontpacksFile,
 		OutputDir:      c.OutputDir,
 		URL:            c.URL,
 		Title:          c.Title,
@@ -3513,6 +3519,7 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 // jsonConfig is an internal struct for parsing JSON configuration.
 type jsonConfig struct {
 	Fontpack        string                    `json:"fontpack"`
+	FontpacksFile   string                    `json:"fontpacks_file"`
 	OutputDir       string                    `json:"output_dir"`
 	URL             string                    `json:"url"`
 	Title           string                    `json:"title"`
@@ -4880,6 +4887,7 @@ func (w *jsonWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 func (c *jsonConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
 		Fontpack:       c.Fontpack,
+		FontpacksFile:  c.FontpacksFile,
 		OutputDir:      c.OutputDir,
 		URL:            c.URL,
 		Title:          c.Title,
