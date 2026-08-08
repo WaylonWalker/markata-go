@@ -49,6 +49,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["toc"] = func() lifecycle.Plugin { return NewTocPlugin() }
 	pluginRegistry.constructors["description"] = func() lifecycle.Plugin { return NewDescriptionPlugin() }
 	pluginRegistry.constructors["auto_title"] = func() lifecycle.Plugin { return NewAutoTitlePlugin() }
+	pluginRegistry.constructors["inline_titles"] = func() lifecycle.Plugin { return NewInlineTitlesPlugin() }
 	pluginRegistry.constructors["reading_time"] = func() lifecycle.Plugin { return NewReadingTimePlugin() }
 	pluginRegistry.constructors["static_assets"] = func() lifecycle.Plugin { return NewStaticAssetsPlugin() }
 	pluginRegistry.constructors["palette_css"] = func() lifecycle.Plugin { return NewPaletteCSSPlugin() }
@@ -166,6 +167,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Transform stage plugins (in order)
 		NewAutoTitlePlugin(),              // Auto-generate titles first
+		NewInlineTitlesPlugin(),           // Derive rich/plain title representations
 		NewAuthorsPlugin(),                // Resolve author IDs to Author objects
 		NewDescriptionPlugin(),            // Auto-generate descriptions early
 		NewStructuredDataPlugin(),         // Generate structured data (needs title, description)
@@ -244,6 +246,8 @@ func MinimalPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
 		NewGlobPlugin(),
 		NewLoadPlugin(),
+		NewAutoTitlePlugin(),
+		NewInlineTitlesPlugin(),
 		NewRenderMarkdownPlugin(),
 		NewTemplatesPlugin(),
 		NewPublishHTMLPlugin(),
@@ -255,6 +259,7 @@ func MinimalPlugins() []lifecycle.Plugin {
 func TransformPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
 		NewAutoTitlePlugin(),
+		NewInlineTitlesPlugin(),
 		NewDescriptionPlugin(),
 		NewReadingTimePlugin(),
 		NewStatsPlugin(),

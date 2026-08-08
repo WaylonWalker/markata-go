@@ -202,8 +202,8 @@ func (p *WebmentionsLeaderboardPlugin) sortAndLimit(
 
 // getPostTitle extracts the title from a post.
 func getPostTitle(post *models.Post) string {
-	if post.Title != nil && *post.Title != "" {
-		return *post.Title
+	if post.PlainTitle() != "" {
+		return post.PlainTitle()
 	}
 	return post.Slug
 }

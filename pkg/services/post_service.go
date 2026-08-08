@@ -307,7 +307,7 @@ func matchesSearch(p *models.Post, query string, opts SearchOptions) bool {
 		query = strings.ToLower(query)
 	}
 
-	if (searchAll || hasField(fields, "title")) && p.Title != nil && contains(*p.Title, query) {
+	if (searchAll || hasField(fields, "title")) && contains(p.PlainTitle(), query) {
 		return true
 	}
 	if (searchAll || hasField(fields, "description")) && p.Description != nil && contains(*p.Description, query) {

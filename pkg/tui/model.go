@@ -653,8 +653,8 @@ func (m Model) styleFeedTitle(feed *lifecycle.Feed, title string) string {
 func postToRow(p *models.Post) table.Row {
 	// Title (truncate to 33 chars to leave room for selection indicator)
 	title := "(untitled)"
-	if p.Title != nil && *p.Title != "" {
-		title = *p.Title
+	if p.PlainTitle() != "" {
+		title = p.PlainTitle()
 	}
 	if len(title) > 33 {
 		title = title[:30] + "..."
@@ -1304,8 +1304,8 @@ func (m Model) buildPostViewportContent(p *models.Post, width int) string {
 // appendPostMetadata appends post metadata to the provided string builder.
 func (m Model) appendPostMetadata(metadata *strings.Builder, p *models.Post, theme *Theme, width int) {
 	title := "(untitled)"
-	if p.Title != nil && *p.Title != "" {
-		title = *p.Title
+	if p.PlainTitle() != "" {
+		title = p.PlainTitle()
 	}
 	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Title:"), title)
 	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Path:"), p.Path)

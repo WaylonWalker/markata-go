@@ -246,6 +246,70 @@ h4 { font-size: var(--text-xl); }
 h5 { font-size: var(--text-lg); }
 h6 { font-size: var(--text-base); font-weight: 600; }
 
+/* Expressive inline Markdown in display headings. The semantic elements stay
+   ordinary in prose; only page/article H1 and content H1/H2 receive this
+   stronger treatment. Font packs may override the line-height variable when
+   their display metrics need more vertical room. */
+@layer overrides {
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) {
+  font-family: var(--font-display, var(--font-heading)) !important;
+  line-height: var(--leading-heading-expressive, 1.35);
+  border-top: 2px solid var(--heading-rule);
+  border-bottom: 2px solid var(--heading-rule);
+  padding: .42em .16em .48em;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) strong {
+  color: var(--heading-accent) !important;
+  font-weight: inherit;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) em {
+  color: var(--heading-accent) !important;
+  font-family: var(--font-display, var(--font-heading)) !important;
+  font-style: italic;
+  font-weight: 500;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) mark {
+  color: var(--heading-mark-fg) !important;
+  background: var(--heading-mark-bg) !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 .16em;
+  border-radius: .18em;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) mark :is(strong, em, code, del, a) {
+  color: inherit !important;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) code {
+  font-family: var(--font-code, var(--font-mono));
+  font-size: .72em;
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: .08em .24em;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: .25em;
+  background: var(--heading-code-bg);
+  color: var(--heading-code-fg);
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--heading-link-decoration);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .12em;
+}
+
+html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) del {
+  color: color-mix(in srgb, var(--color-text) 54%, var(--color-background) 46%) !important;
+  text-decoration-color: color-mix(in srgb, var(--heading-accent) 64%, var(--color-text) 36%) !important;
+}
+}
+
 /* Heading Anchors */
 .heading-anchor {
   opacity: 0;

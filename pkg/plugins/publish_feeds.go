@@ -1264,9 +1264,9 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, output
 
 	// Posts list
 	for _, post := range fc.Posts {
-		postTitle := post.Slug
-		if post.Title != nil {
-			postTitle = html.UnescapeString(*post.Title)
+		postTitle := post.PlainTitle()
+		if postTitle == "" {
+			postTitle = post.Slug
 		}
 
 		sb.WriteString("- [" + postTitle + "](" + post.Href + ")")
@@ -1311,9 +1311,9 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir 
 
 	// Posts list
 	for _, post := range fc.Posts {
-		postTitle := post.Slug
-		if post.Title != nil {
-			postTitle = html.UnescapeString(*post.Title)
+		postTitle := post.PlainTitle()
+		if postTitle == "" {
+			postTitle = post.Slug
 		}
 
 		if post.Date != nil {

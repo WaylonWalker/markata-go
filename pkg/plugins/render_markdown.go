@@ -17,9 +17,11 @@ import (
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
 	figure "github.com/mangoumbrella/goldmark-figure"
@@ -45,8 +47,9 @@ const attributionMarker = "<!--markata-attribution-->"
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
-	md    goldmark.Markdown
-	cache *buildcache.Cache // build cache for HTML caching
+	md       goldmark.Markdown
+	inlineMD goldmark.Markdown
+	cache    *buildcache.Cache // build cache for HTML caching
 }
 
 // CacheKeyMarkdownRenderer is the manager cache key for the markdown render
@@ -57,6 +60,22 @@ const CacheKeyMarkdownRenderer = "markdown.renderer"
 // MarkdownRenderFunc is the signature of the on-demand markdown renderer
 // stored under CacheKeyMarkdownRenderer.
 type MarkdownRenderFunc func(content string) (string, error)
+
+// InlineResult contains the two representations needed when inline Markdown
+// is used outside an article body. HTML is for trusted display contexts; Text
+// is for metadata, feeds, search, and other plain-text consumers.
+type InlineResult struct {
+	HTML string
+	Text string
+}
+
+// InlineRenderFunc renders an inline Markdown fragment with the site's
+// configured Markdown extensions and safe HTML policy.
+type InlineRenderFunc func(source string) (InlineResult, error)
+
+// CacheKeyInlineRenderer is the manager cache key for the shared inline
+// renderer used by title processing and other plugins.
+const CacheKeyInlineRenderer = "markdown.inline_renderer"
 
 // NewRenderMarkdownPlugin creates a new RenderMarkdownPlugin with goldmark configured.
 // The goldmark instance is configured with:
@@ -71,7 +90,8 @@ type MarkdownRenderFunc func(content string) (string, error)
 // site's palette configuration.
 func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
 	return &RenderMarkdownPlugin{
-		md: createMarkdownRenderer(palettes.DefaultChromaThemeDark, false, DefaultMarkdownExtensionConfig()),
+		md:       createMarkdownRenderer(palettes.DefaultChromaThemeDark, false, DefaultMarkdownExtensionConfig(), true),
+		inlineMD: createMarkdownRenderer(palettes.DefaultChromaThemeDark, false, DefaultMarkdownExtensionConfig(), false),
 	}
 }
 
@@ -100,7 +120,11 @@ func DefaultMarkdownExtensionConfig() MarkdownExtensionConfig {
 }
 
 // createMarkdownRenderer creates a goldmark instance with the specified highlighting options.
-func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig MarkdownExtensionConfig) goldmark.Markdown {
+func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig MarkdownExtensionConfig, unsafeOptions ...bool) goldmark.Markdown {
+	unsafeHTML := true
+	if len(unsafeOptions) > 0 {
+		unsafeHTML = unsafeOptions[0]
+	}
 	// Use CSS classes instead of inline styles for syntax highlighting.
 	// This enables theme customization via external CSS files.
 	formatOptions := []chromahtml.Option{
@@ -130,6 +154,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		&AdmonitionExtension{},
 		// Mark extension for ==highlighted text==
 		&MarkExtension{},
+		&ScriptExtension{},
 		// Keys extension for ++Ctrl+Alt+Del++
 		&KeysExtension{},
 		// Container extension for ::: class
@@ -174,7 +199,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		extensions = append(extensions, extension.Footnote)
 	}
 
-	return goldmark.New(
+	options := []goldmark.Option{
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
@@ -185,11 +210,11 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 				util.Prioritized(&AttributeTransformer{}, -100),
 			),
 		),
-		goldmark.WithRendererOptions(
-			// Allow raw HTML in markdown
-			html.WithUnsafe(),
-		),
-	)
+	}
+	if unsafeHTML {
+		options = append(options, goldmark.WithRendererOptions(html.WithUnsafe()))
+	}
+	return goldmark.New(options...)
 }
 
 // Name returns the unique name of the plugin.
@@ -218,14 +243,60 @@ func (p *RenderMarkdownPlugin) Configure(m *lifecycle.Manager) error {
 	extConfig := p.resolveExtensionConfig(m.Config().Extra)
 
 	// Reconfigure the markdown renderer with the resolved theme and extensions
-	p.md = createMarkdownRenderer(chromaTheme, lineNumbers, extConfig)
+	p.md = createMarkdownRenderer(chromaTheme, lineNumbers, extConfig, true)
+	p.inlineMD = createMarkdownRenderer(chromaTheme, false, extConfig, false)
 
 	// Register the render function so other plugins (e.g. feed helpers during
 	// jinja_md transform) can render markdown on-demand when ArticleHTML has
 	// not yet been populated by the Render stage.
 	m.Cache().Set(CacheKeyMarkdownRenderer, MarkdownRenderFunc(p.doRender))
+	m.Cache().Set(CacheKeyInlineRenderer, InlineRenderFunc(p.renderInline))
 
 	return nil
+}
+
+// renderInline renders a Markdown fragment without a paragraph wrapper. It
+// parses through the same configured Goldmark instance as body content while
+// deliberately keeping raw HTML disabled for this metadata-adjacent path.
+func (p *RenderMarkdownPlugin) renderInline(source string) (InlineResult, error) {
+	// A leading text token keeps tag-looking input in an inline paragraph
+	// rather than letting Goldmark classify a leading HTML block. Raw HTML is
+	// still disabled on this renderer, so the source cannot become executable.
+	bytesSource := []byte("x " + source)
+	document := p.inlineMD.Parser().Parse(text.NewReader(bytesSource))
+	paragraph := document.FirstChild()
+	if paragraph == nil {
+		return InlineResult{}, nil
+	}
+
+	var htmlBuffer bytes.Buffer
+	var plain strings.Builder
+	for child := paragraph.FirstChild(); child != nil; child = child.NextSibling() {
+		if err := p.inlineMD.Renderer().Render(&htmlBuffer, bytesSource, child); err != nil {
+			return InlineResult{}, err
+		}
+		appendInlineText(&plain, child, bytesSource)
+	}
+	richHTML := strings.TrimPrefix(htmlBuffer.String(), "x ")
+	plainText := strings.TrimPrefix(plain.String(), "x ")
+	return InlineResult{HTML: richHTML, Text: strings.Join(strings.Fields(plainText), " ")}, nil
+}
+
+func appendInlineText(out *strings.Builder, node ast.Node, source []byte) {
+	if err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		switch n := n.(type) {
+		case *ast.Text:
+			out.Write(n.Segment.Value(source))
+		case *ast.String:
+			out.Write(n.Value)
+		}
+		return ast.WalkContinue, nil
+	}); err != nil {
+		return
+	}
 }
 
 // resolveHighlightConfig extracts highlight configuration from the config.Extra map.

@@ -288,7 +288,7 @@ func toPostDoc(p *models.Post) Document {
 		doc.Tags = p.Tags
 	}
 	if p.Title != nil && (!p.Private || explicitFrontmatterTitle(p)) {
-		doc.Title = *p.Title
+		doc.Title = p.PlainTitle()
 	} else if p.Private {
 		doc.Title = ""
 	}
