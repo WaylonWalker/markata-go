@@ -1178,10 +1178,7 @@ func (p *MentionsPlugin) registerPostAsHandle(post *models.Post, source models.M
 	handle = strings.ToLower(handle)
 
 	// Get the title for the entry
-	title := ""
-	if post.Title != nil {
-		title = *post.Title
-	}
+	title := post.PlainTitle()
 
 	// Build metadata from the post's frontmatter fields
 	metadata := p.buildPostMetadata(post, source)
@@ -1275,9 +1272,8 @@ func (p *MentionsPlugin) buildPostMetadata(post *models.Post, source models.Ment
 	}
 
 	// Name from post title
-	if post.Title != nil {
-		metadata.Name = *post.Title
-	} else {
+	metadata.Name = post.PlainTitle()
+	if metadata.Name == "" {
 		metadata.Name = post.Slug
 	}
 

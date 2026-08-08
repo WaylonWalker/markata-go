@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
+{% block title %}{{ post.title_text }} | {{ config.title | default:'My Site' }}{% endblock %}
 {% block description %}{{ post.description | default:'' }}{% endblock %}
 
 {% block meta %}
@@ -33,7 +33,7 @@
 {% endfor %}
 {% else %}
 {# Fallback to basic OG tags if no structured data #}
-<meta property="og:title" content="{{ post.title }}">
+<meta property="og:title" content="{{ post.title_text }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ config.url }}{{ post.href }}">
 {% if post.description %}
@@ -69,7 +69,7 @@
 
         <header class="post-header">
             <div class="post-header__title-row">
-                <h1 class="p-name" data-pagefind-meta="title">{{ post.title }}</h1>
+                <h1 class="p-name" data-pagefind-meta="title">{{ post.title_html | safe }}</h1>
 
                 {# Author byline and post metadata #}
             {% include "components/post_byline.html" %}

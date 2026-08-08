@@ -728,9 +728,9 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 	siteTitle := getSiteTitle(config)
 	siteURL := getSiteURL(config)
 
-	title := post.Slug
-	if post.Title != nil {
-		title = *post.Title
+	title := post.PlainTitle()
+	if title == "" {
+		title = post.Slug
 	}
 
 	description := ""
@@ -985,9 +985,9 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 	siteURL := getSiteURL(config)
 	siteTitle := getSiteTitle(config)
 
-	title := post.Slug
-	if post.Title != nil {
-		title = *post.Title
+	title := post.PlainTitle()
+	if title == "" {
+		title = post.Slug
 	}
 
 	description := ""

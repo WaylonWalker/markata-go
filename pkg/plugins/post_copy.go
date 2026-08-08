@@ -146,8 +146,8 @@ func buildPostCopyText(post *models.Post, config *lifecycle.Config, postURL stri
 }
 
 func resolvePostTitle(post *models.Post, fallback string) string {
-	if post != nil && post.Title != nil && *post.Title != "" {
-		return *post.Title
+	if post != nil && post.PlainTitle() != "" {
+		return post.PlainTitle()
 	}
 	if fallback != "" {
 		return fallback
@@ -165,10 +165,10 @@ func buildTerminalPage(post *models.Post, config *lifecycle.Config, ansi bool) s
 
 	var buf strings.Builder
 
-	if post.Title != nil && *post.Title != "" {
-		buf.WriteString(*post.Title)
+	if post.PlainTitle() != "" {
+		buf.WriteString(post.PlainTitle())
 		buf.WriteString("\n")
-		buf.WriteString(strings.Repeat(terminalpage.DoubleRule, len([]rune(*post.Title))))
+		buf.WriteString(strings.Repeat(terminalpage.DoubleRule, len([]rune(post.PlainTitle()))))
 		buf.WriteString("\n\n")
 	}
 	if post.Description != nil && *post.Description != "" {

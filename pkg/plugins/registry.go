@@ -166,6 +166,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Transform stage plugins (in order)
 		NewAutoTitlePlugin(),              // Auto-generate titles first
+		NewInlineTitlesPlugin(),           // Derive rich/plain title representations
 		NewAuthorsPlugin(),                // Resolve author IDs to Author objects
 		NewDescriptionPlugin(),            // Auto-generate descriptions early
 		NewStructuredDataPlugin(),         // Generate structured data (needs title, description)

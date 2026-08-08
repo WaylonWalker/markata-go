@@ -368,8 +368,8 @@ func (b *Builder) BuildFromFeeds() []models.SidebarNavItem {
 // postToNavItem converts a Post to a SidebarNavItem.
 func postToNavItem(post *models.Post) models.SidebarNavItem {
 	title := post.Slug
-	if post.Title != nil && *post.Title != "" {
-		title = *post.Title
+	if post.PlainTitle() != "" {
+		title = post.PlainTitle()
 	}
 	return models.SidebarNavItem{
 		Title: title,

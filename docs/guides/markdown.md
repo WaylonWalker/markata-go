@@ -90,6 +90,31 @@ Use `#` characters to create headings (levels 1-6):
 
     The linter will warn you if H1 headings are detected in content.
 
+#### Expressive headings
+
+Headings and frontmatter titles use ordinary semantic Markdown inline elements.
+The active theme and font pack choose how strongly they are presented in H1 and
+H2 headings:
+
+```yaml
+---
+title: "Good themes make **good places** to ==think.=="
+---
+```
+
+```markdown
+## A **good theme** makes _quiet words_, `technical words`, and ==loud words== work together.
+
+## Make a ~~perfect~~ memorable site.
+```
+
+This supports strong, emphasis, mark, code, links, and GFM strikethrough,
+including nested forms such as `==**strange little ideas.**==`. These are
+semantic elements rather than a separate heading syntax. Visible headings keep
+their rich semantics, while browser titles, feeds, search, and social metadata
+use the readable plain-text title. This behavior is intended to match
+[Plaindown](https://git.waylonwalker.com/waylon/md.waylonwalker.com).
+
 ### Paragraphs
 
 Paragraphs are separated by blank lines:

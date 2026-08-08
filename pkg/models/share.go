@@ -214,8 +214,8 @@ func buildPostURL(base, href string) string {
 
 func newSharePlaceholders(post *Post, fallbackTitle, postURL string) map[string]string {
 	title := fallbackTitle
-	if post.Title != nil && *post.Title != "" {
-		title = *post.Title
+	if post.PlainTitle() != "" {
+		title = post.PlainTitle()
 	}
 	if title == "" {
 		title = post.Slug

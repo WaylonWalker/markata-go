@@ -25,6 +25,13 @@ type Post struct {
 	// Title is the optional post title
 	Title *string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
 
+	// TitleHTML is the safe inline-Markdown rendering for visual title contexts.
+	TitleHTML string `json:"-" yaml:"-" toml:"-"`
+
+	// TitleText is the semantic plain-text title for metadata and other
+	// non-visual consumers. Title remains the authored/source value.
+	TitleText string `json:"-" yaml:"-" toml:"-"`
+
 	// Date is the optional publication date
 	Date *time.Time `json:"date,omitempty" yaml:"date,omitempty" toml:"date,omitempty"`
 
@@ -258,12 +265,33 @@ func (p *Post) GenerateSlug() {
 }
 
 func (p *Post) GenerateSlugWithMode(mode string) {
+	title := p.Title
+	if p.TitleText != "" {
+		titleText := p.TitleText
+		title = &titleText
+	}
 	switch NormalizeSlugMode(mode) {
 	case SlugModePath:
-		p.Slug = generatePathSlug(p.Path, p.Title)
+		p.Slug = generatePathSlug(p.Path, title)
 	default:
-		p.Slug = generateFlatSlug(p.Path, p.Title)
+		p.Slug = generateFlatSlug(p.Path, title)
 	}
+}
+
+// PlainTitle returns the semantic title for metadata and other plain-text
+// consumers, falling back to the source title for callers outside the build
+// lifecycle.
+func (p *Post) PlainTitle() string {
+	if p == nil {
+		return ""
+	}
+	if p.TitleText != "" {
+		return p.TitleText
+	}
+	if p.Title != nil {
+		return *p.Title
+	}
+	return ""
 }
 
 // Slugify converts a string to a URL-safe slug.

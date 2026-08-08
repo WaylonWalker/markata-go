@@ -1183,8 +1183,8 @@ func appendFeedParamToHref(href, feedSlug string) string {
 // postToSidebarJSON converts a Post to a sidebarPostJSON.
 func postToSidebarJSON(fp *models.Post, active bool, feedSlug string) sidebarPostJSON {
 	title := fp.Slug
-	if fp.Title != nil {
-		title = *fp.Title
+	if fp.PlainTitle() != "" {
+		title = fp.PlainTitle()
 	}
 	return sidebarPostJSON{
 		Slug:   fp.Slug,

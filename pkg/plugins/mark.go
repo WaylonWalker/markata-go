@@ -34,9 +34,23 @@ func NewMark() *Mark {
 	return &Mark{}
 }
 
-// markParser parses ==text== syntax for highlighted text.
-// This uses a simple greedy approach: find == opening, then find == closing.
+// markParser parses ==text== syntax for highlighted text as a delimiter pair.
+// Using Goldmark's delimiter processing lets the normal inline parsers build
+// nested children (for example, ==**bold**==) instead of treating the marked
+// source as one literal text node.
 type markParser struct{}
+
+type markDelimiterProcessor struct{}
+
+func (p *markDelimiterProcessor) IsDelimiter(b byte) bool { return b == '=' }
+
+func (p *markDelimiterProcessor) CanOpenCloser(opener, closer *parser.Delimiter) bool {
+	return opener.Char == closer.Char
+}
+
+func (p *markDelimiterProcessor) OnMatch(_ int) ast.Node { return NewMark() }
+
+var defaultMarkDelimiterProcessor = &markDelimiterProcessor{}
 
 // newMarkParser creates a new mark parser.
 func newMarkParser() parser.InlineParser {
@@ -49,60 +63,20 @@ func (p *markParser) Trigger() []byte {
 }
 
 // Parse parses the ==text== syntax.
-func (p *markParser) Parse(_ ast.Node, block text.Reader, _ parser.Context) ast.Node {
+func (p *markParser) Parse(_ ast.Node, block text.Reader, pc parser.Context) ast.Node {
+	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
-
-	// Must start with ==
-	if len(line) < 4 || line[0] != '=' || line[1] != '=' {
+	node := parser.ScanDelimiter(line, before, 2, defaultMarkDelimiterProcessor)
+	if node == nil || node.OriginalLength != 2 || before == '=' {
 		return nil
 	}
-
-	// Don't match === (could be other syntax or just decoration)
-	if len(line) > 2 && line[2] == '=' {
-		return nil
-	}
-
-	// Find the closing ==
-	// Start searching after the opening ==
-	content := line[2:]
-	closeIdx := -1
-
-	for i := 0; i < len(content)-1; i++ {
-		if content[i] == '=' && content[i+1] == '=' {
-			// Found closing ==, but make sure we have content
-			if i > 0 {
-				closeIdx = i
-				break
-			}
-		}
-	}
-
-	if closeIdx == -1 {
-		return nil
-	}
-
-	// Extract the content between == and ==
-	markedContent := content[:closeIdx]
-	if len(markedContent) == 0 {
-		return nil
-	}
-
-	// Create the mark node
-	mark := NewMark()
-
-	// Add the content as a text child
-	// The content segment starts at: segment.Start + 2 (after opening ==)
-	// and ends at: segment.Start + 2 + closeIdx
-	contentSegment := text.NewSegment(segment.Start+2, segment.Start+2+closeIdx)
-	textNode := ast.NewTextSegment(contentSegment)
-	mark.AppendChild(mark, textNode)
-
-	// Advance past the entire ==content== (opening + content + closing)
-	totalLen := 2 + closeIdx + 2
-	block.Advance(totalLen)
-
-	return mark
+	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
+	block.Advance(node.OriginalLength)
+	pc.PushDelimiter(node)
+	return node
 }
+
+func (p *markParser) CloseBlock(_ ast.Node, _ parser.Context) {}
 
 // markHTMLRenderer renders Mark nodes to HTML.
 type markHTMLRenderer struct {

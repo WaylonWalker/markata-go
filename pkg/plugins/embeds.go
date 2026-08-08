@@ -568,8 +568,8 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 
 	title := displayText
 	if title == "" {
-		if post.Title != nil && *post.Title != "" {
-			title = *post.Title
+		if post.PlainTitle() != "" {
+			title = post.PlainTitle()
 		} else {
 			title = post.Slug
 		}

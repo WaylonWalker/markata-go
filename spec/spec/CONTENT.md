@@ -17,6 +17,23 @@ This document specifies how markdown content is processed.
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
+## Expressive Inline Titles and Headings
+
+Markdown inline semantics are supported in body headings and frontmatter
+titles. The authored `Post.Title` remains the source string. The build derives
+two explicit representations:
+
+- `TitleHTML` is safe inline HTML for the visible page title.
+- `TitleText` is semantic plain text for browser titles, feeds, search,
+  structured data, social metadata, slugs, and other non-visual consumers.
+
+The shared inline renderer uses the configured Goldmark extensions, including
+GFM strikethrough and Markata's `==mark==` extension. Mark is a delimiter
+container, so nested constructs such as `==**strong**==`, ``==`code`==``, and
+`==[link](/path)==` retain their child semantics. Raw HTML is not enabled in
+title rendering, and title links use the same safe destination policy as body
+Markdown.
+
 ---
 
 ## Frontmatter Extraction

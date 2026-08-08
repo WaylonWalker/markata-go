@@ -306,10 +306,10 @@ func isSearchExcluded(post *models.Post) bool {
 }
 
 func postTitle(post *models.Post) string {
-	if post == nil || post.Title == nil {
+	if post == nil || post.PlainTitle() == "" {
 		return ""
 	}
-	return *post.Title
+	return post.PlainTitle()
 }
 
 func postDescription(post *models.Post) string {

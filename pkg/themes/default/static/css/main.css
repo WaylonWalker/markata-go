@@ -246,6 +246,58 @@ h4 { font-size: var(--text-xl); }
 h5 { font-size: var(--text-lg); }
 h6 { font-size: var(--text-base); font-weight: 600; }
 
+/* Expressive inline Markdown in display headings. The semantic elements stay
+   ordinary in prose; only page/article H1 and content H1/H2 receive this
+   stronger treatment. Font packs may override the line-height variable when
+   their display metrics need more vertical room. */
+:is(.post-header h1, .post-content h1, .post-content h2) {
+  line-height: var(--leading-heading-expressive, 1.35);
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) strong {
+  color: var(--color-primary);
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) em {
+  font-style: italic;
+  font-weight: 500;
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) mark {
+  color: var(--color-background);
+  background: color-mix(in srgb, var(--color-primary) 78%, var(--color-text) 22%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 .12em;
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) mark :is(strong, em, code, del, a) {
+  color: inherit;
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) code {
+  font-family: var(--font-mono);
+  font-size: .72em;
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: .08em .24em;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: .25em;
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .12em;
+}
+
+:is(.post-header h1, .post-content h1, .post-content h2) del {
+  color: var(--color-text-muted);
+  text-decoration-color: var(--color-primary);
+}
+
 /* Heading Anchors */
 .heading-anchor {
   opacity: 0;

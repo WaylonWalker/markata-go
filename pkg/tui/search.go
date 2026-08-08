@@ -303,7 +303,7 @@ func searchPostsSubstring(posts []*models.Post, queryStr string, limit int) []se
 }
 
 func matchesPostSubstring(p *models.Post, q string) bool {
-	if p.Title != nil && strings.Contains(strings.ToLower(*p.Title), q) {
+	if strings.Contains(strings.ToLower(p.PlainTitle()), q) {
 		return true
 	}
 	if p.Description != nil && strings.Contains(strings.ToLower(*p.Description), q) {
