@@ -32,6 +32,11 @@ type Post struct {
 	// non-visual consumers. Title remains the authored/source value.
 	TitleText string `json:"-" yaml:"-" toml:"-"`
 
+	// TitleTextDerived records that title processing has completed. It is
+	// separate from TitleText because an authored title can derive to an empty
+	// semantic value.
+	TitleTextDerived bool `json:"-" yaml:"-" toml:"-"`
+
 	// Date is the optional publication date
 	Date *time.Time `json:"date,omitempty" yaml:"date,omitempty" toml:"date,omitempty"`
 
@@ -266,7 +271,7 @@ func (p *Post) GenerateSlug() {
 
 func (p *Post) GenerateSlugWithMode(mode string) {
 	title := p.Title
-	if p.TitleText != "" {
+	if p.TitleTextDerived || p.TitleText != "" {
 		titleText := p.TitleText
 		title = &titleText
 	}
@@ -285,7 +290,7 @@ func (p *Post) PlainTitle() string {
 	if p == nil {
 		return ""
 	}
-	if p.TitleText != "" {
+	if p.TitleTextDerived || p.TitleText != "" {
 		return p.TitleText
 	}
 	if p.Title != nil {

@@ -1,12 +1,15 @@
 package plugins
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/yuin/goldmark/ast"
 	extast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/text"
@@ -128,5 +131,101 @@ func TestInlineTitlesPlugin_PopulatesExplicitRepresentations(t *testing.T) {
 	}
 	if post.TitleText != "Good themes make good places to think." {
 		t.Fatalf("TitleText = %q", post.TitleText)
+	}
+}
+
+func TestMinimalPlugins_DerivesTitleAndTitleFallbackSlugThroughLifecycle(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".md")
+	source := "---\ntitle: Good **places** to ==think==\n---\nBody\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = dir
+	m.SetFiles([]string{".md"})
+	m.RegisterPlugins(MinimalPlugins()...)
+	if err := m.RunTo(lifecycle.StageTransform); err != nil {
+		t.Fatal(err)
+	}
+	posts := m.Posts()
+	if len(posts) != 1 {
+		t.Fatalf("posts = %d, want 1", len(posts))
+	}
+	post := posts[0]
+	if *post.Title != "Good **places** to ==think==" {
+		t.Fatalf("source title changed: %q", *post.Title)
+	}
+	if post.TitleText != "Good places to think" || post.TitleTextDerived != true {
+		t.Fatalf("semantic title = %q, derived = %v", post.TitleText, post.TitleTextDerived)
+	}
+	if post.TitleHTML != `Good <strong>places</strong> to <mark>think</mark>` {
+		t.Fatalf("title HTML = %q", post.TitleHTML)
+	}
+	if post.Slug != "good-places-to-think" {
+		t.Fatalf("slug = %q", post.Slug)
+	}
+	if got := templates.GetPostMap(post)["title"]; got != "Good places to think" {
+		t.Fatalf("template title = %#v", got)
+	}
+}
+
+func TestInlineTitles_EmptySemanticTitleDoesNotFallBackToSource(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	m := lifecycle.NewManager()
+	if err := p.Configure(m); err != nil {
+		t.Fatal(err)
+	}
+	title := "<!-- hidden -->"
+	post := models.NewPost("hidden.md")
+	post.Title = &title
+	m.AddPost(post)
+	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if !post.TitleTextDerived || post.PlainTitle() != "" {
+		t.Fatalf("plain title = %q, derived = %v", post.PlainTitle(), post.TitleTextDerived)
+	}
+	if got := templates.GetPostMap(post)["title"]; got != "" {
+		t.Fatalf("template title leaked source markup: %#v", got)
+	}
+}
+
+func TestPluginRegistry_ResolvesInlineTitles(t *testing.T) {
+	plugin, ok := PluginByName("inline_titles")
+	if !ok || plugin.Name() != "inline_titles" {
+		t.Fatalf("inline_titles registry result = %#v, %v", plugin, ok)
+	}
+	plugins, warnings := ByNames([]string{"inline_titles"})
+	if len(warnings) != 0 || len(plugins) != 1 {
+		t.Fatalf("ByNames() = %d plugins, warnings %v", len(plugins), warnings)
+	}
+}
+
+func TestParsePostFromContent_DerivesTitleFallbackSlug(t *testing.T) {
+	post, err := ParsePostFromContent(".md", "---\ntitle: Good **places** to ==think==\n---\nBody\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if post.Slug != "good-places-to-think" || post.Href != "/good-places-to-think/" {
+		t.Fatalf("slug/href = %q/%q", post.Slug, post.Href)
+	}
+	if post.PlainTitle() != "Good places to think" {
+		t.Fatalf("plain title = %q", post.PlainTitle())
+	}
+}
+
+func TestInlineTitles_InitializesSharedRendererWhenNotRegistered(t *testing.T) {
+	m := lifecycle.NewManager()
+	title := "Good **places**"
+	post := models.NewPost("post.md")
+	post.Title = &title
+	m.AddPost(post)
+	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if post.TitleText != "Good places" || post.TitleHTML != "Good <strong>places</strong>" {
+		t.Fatalf("derived title = %q / %q", post.TitleText, post.TitleHTML)
 	}
 }

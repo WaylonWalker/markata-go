@@ -486,6 +486,20 @@ func TestManagerMap(t *testing.T) {
 	}
 }
 
+func TestManagerMap_TitleUsesSemanticRepresentation(t *testing.T) {
+	source := "Good **places** to ==think=="
+	post := &models.Post{Title: &source, TitleText: "Good places to think", TitleTextDerived: true}
+	m := NewManager()
+	m.SetPosts([]*models.Post{post})
+	values, err := m.Map("title", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(values) != 1 || values[0] != "Good places to think" {
+		t.Fatalf("Map(title) = %#v", values)
+	}
+}
+
 func TestManagerCache(t *testing.T) {
 	m := NewManager()
 

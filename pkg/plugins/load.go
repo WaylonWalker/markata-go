@@ -670,7 +670,25 @@ func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*
 			}
 		}
 	}
-	return loader.parseFile(path, content)
+	post, err := loader.parseFile(path, content)
+	if err != nil || post.Slug != "" || post.Title == nil || post.Has("_slug_explicit") {
+		return post, err
+	}
+
+	// Standalone callers do not run the transform stage. Complete the same
+	// title derivation here before resolving a title-only fallback slug.
+	m := lifecycle.NewManager()
+	renderer := NewRenderMarkdownPlugin()
+	if err := renderer.Configure(m); err != nil {
+		return nil, err
+	}
+	m.AddPost(post)
+	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
+		return nil, err
+	}
+	post.GenerateSlugWithMode(models.SlugModeForPath(path, loader.slugMode, loader.slugRules))
+	post.GenerateHref()
+	return post, nil
 }
 
 // parseFile parses a markdown file's content into a Post object.
@@ -703,7 +721,11 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Generate slug if not explicitly set in frontmatter
 	// If slug was explicitly set (even to empty string), respect it
 	if !post.Has("_slug_explicit") && post.Slug == "" {
-		post.GenerateSlugWithMode(models.SlugModeForPath(path, p.slugMode, p.slugRules))
+		candidate := models.NewPost(path)
+		candidate.GenerateSlugWithMode(models.SlugModeForPath(path, p.slugMode, p.slugRules))
+		if candidate.Slug != "" {
+			post.Slug = candidate.Slug
+		}
 	}
 
 	// Generate href from slug
