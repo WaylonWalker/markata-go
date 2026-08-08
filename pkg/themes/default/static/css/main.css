@@ -252,6 +252,9 @@ h6 { font-size: var(--text-base); font-weight: 600; }
    their display metrics need more vertical room. */
 :is(.post-header h1, .post-content h1, .post-content h2) {
   line-height: var(--leading-heading-expressive, 1.35);
+  border-top: 2px solid var(--heading-rule);
+  border-bottom: 2px solid var(--heading-rule);
+  padding: .42em .16em .48em;
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) strong {
@@ -271,7 +274,8 @@ h6 { font-size: var(--text-base); font-weight: 600; }
   background: var(--heading-mark-bg);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  padding: 0 .12em;
+  padding: 0 .16em;
+  border-radius: .18em;
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) mark :is(strong, em, code, del, a) {

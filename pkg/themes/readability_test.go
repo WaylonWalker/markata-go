@@ -21,6 +21,8 @@ func TestCSSTypographyReadability(t *testing.T) {
 		for _, required := range []string{
 			":is(.post-header h1, .post-content h1, .post-content h2)",
 			"font-weight: inherit",
+			"border-top: 2px solid var(--heading-rule)",
+			"border-bottom: 2px solid var(--heading-rule)",
 			"box-decoration-break: clone",
 			"-webkit-box-decoration-break: clone",
 			"mark :is(strong, em, code, del, a)",

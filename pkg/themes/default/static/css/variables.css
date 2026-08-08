@@ -17,6 +17,7 @@
   --heading-code-bg: color-mix(in srgb, var(--color-surface) 72%, var(--color-primary) 28%);
   --heading-code-fg: var(--color-text);
   --heading-link-decoration: var(--color-primary);
+  --heading-rule: color-mix(in srgb, var(--color-text) 72%, var(--heading-accent) 28%);
 
   /* Semantic colors */
   --color-text: #1f2937;
