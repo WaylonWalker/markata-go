@@ -126,9 +126,8 @@ func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
 	}
 
 	// Add title
-	if post.Title != nil {
-		item.Title = *post.Title
-	} else {
+	item.Title = post.PlainTitle()
+	if item.Title == "" {
 		item.Title = post.Slug
 	}
 

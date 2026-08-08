@@ -17,6 +17,23 @@ func TestCSSTypographyReadability(t *testing.T) {
 	}
 	css := string(mainCSS)
 
+	t.Run("expressive heading roles preserve semantic contrast", func(t *testing.T) {
+		for _, required := range []string{
+			"html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2)",
+			"font-weight: inherit",
+			"border-top: 2px solid var(--heading-rule)",
+			"border-bottom: 2px solid var(--heading-rule)",
+			"box-decoration-break: clone",
+			"-webkit-box-decoration-break: clone",
+			"mark :is(strong, em, code, del, a)",
+			"var(--font-code, var(--font-mono))",
+		} {
+			if !strings.Contains(css, required) {
+				t.Errorf("main.css missing expressive heading rule %q", required)
+			}
+		}
+	})
+
 	varsCSS, err := ReadStatic("css/variables.css")
 	if err != nil {
 		t.Fatalf("Failed to read variables.css: %v", err)

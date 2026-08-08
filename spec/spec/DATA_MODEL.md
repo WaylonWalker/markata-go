@@ -47,6 +47,22 @@ These fields SHOULD be supported:
 | `author` | string? | null | Legacy single-author field |
 | `author_objects` | Author[] | [] | Computed: resolved Author structs (not serialized, see [AUTHORS.md](AUTHORS.md)) |
 
+### Title representations
+
+An authored `title` remains available as the source value. After the
+`auto_title` and `inline_titles` transform plugins run, posts also expose:
+
+| Field | Description |
+|-------|-------------|
+| `title_html` | Safe inline-Markdown HTML for visible headings |
+| `title_text` | Semantic plain text for metadata, feeds, search, browser titles, and slugs |
+| `title_source` | The authored/source title value |
+
+`title_text` has an explicit derived state. An empty value can mean either
+that derivation has not run or that the source contained no semantic text.
+Once derivation completes, consumers MUST use the empty derived value and MUST
+NOT fall back to authored Markdown syntax.
+
 ### Field Behaviors
 
 #### `published` - Shadow Pages

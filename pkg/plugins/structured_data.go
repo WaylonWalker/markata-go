@@ -47,7 +47,7 @@ func (p *StructuredDataPlugin) Transform(m *lifecycle.Manager) error {
 		if post.Skip || post.Draft {
 			return false
 		}
-		return post.Title != nil && *post.Title != ""
+		return post.PlainTitle() != ""
 	})
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
@@ -83,7 +83,7 @@ func (p *StructuredDataPlugin) generateJSONLD(post *models.Post, config *lifecyc
 	postURL := siteURL + post.Href
 
 	// Create BlogPosting schema
-	bp := models.NewBlogPosting(*post.Title, postURL)
+	bp := models.NewBlogPosting(post.PlainTitle(), postURL)
 
 	// Add description
 	if post.Description != nil {
@@ -136,7 +136,7 @@ func (p *StructuredDataPlugin) generateOpenGraph(sd *models.StructuredData, post
 	postURL := siteURL + post.Href
 
 	// Required tags
-	sd.AddOpenGraph("og:title", *post.Title)
+	sd.AddOpenGraph("og:title", post.PlainTitle())
 	sd.AddOpenGraph("og:url", postURL)
 	sd.AddOpenGraph("og:site_name", siteTitle)
 
@@ -211,7 +211,7 @@ func (p *StructuredDataPlugin) generateTwitterCard(sd *models.StructuredData, po
 	}
 
 	// Title
-	sd.AddTwitter("twitter:title", *post.Title)
+	sd.AddTwitter("twitter:title", post.PlainTitle())
 
 	// Description (truncated to 200 chars for Twitter)
 	if post.Description != nil {

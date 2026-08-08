@@ -157,6 +157,16 @@ This specification offers **three lifecycle variants** to suit different impleme
 8. `write` - Write all output files
 9. `cleanup` - Release resources
 
+Title lifecycle ordering is part of the standard transform contract:
+
+```text
+auto_title → inline_titles → semantic-title consumers
+```
+
+`inline_titles` derives `title_html` and `title_text` before plugins that
+consume titles for metadata, feeds, search, or title-derived slugs. Load may
+leave an automatic fallback slug pending until this transform completes.
+
 **Key differences from Full:**
 - `configure` combines model creation + config loading + plugin init
 - `transform` replaces `pre_render` (clearer name)

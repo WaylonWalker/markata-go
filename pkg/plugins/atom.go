@@ -150,10 +150,8 @@ func postToAtomEntry(post *models.Post, meta siteMetadata, fallback time.Time) A
 	permalink := meta.URL + post.Href
 
 	// Get title
-	title := ""
-	if post.Title != nil {
-		title = *post.Title
-	} else {
+	title := post.PlainTitle()
+	if title == "" {
 		title = post.Slug
 	}
 

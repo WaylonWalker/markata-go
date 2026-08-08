@@ -45,12 +45,19 @@ Usually available in HTML templates:
 - `post.html`
 - `post.article_html`
 - `post.title`
+- `post.title_html` (safe rendered inline Markdown for visible headings)
+- `post.title_text` (semantic plain text for metadata, feeds, search, and slugs)
+- `post.title_source` (authored/source title)
 - `post.date`
 - `post.description`
 - `post.author`
 - `post.authors`
 - `post.author_objects`
 - `post.Extra`
+
+`post.title` uses the semantic plain title. Use `post.title_html` only in a
+trusted visual heading context. A successfully derived empty `title_text` is
+intentional and must not fall back to `title_source`.
 
 ## Stats And Analytics Fields
 

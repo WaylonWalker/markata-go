@@ -420,8 +420,8 @@ func (p *BreadcrumbsPlugin) humanizeSegment(segment string) string {
 
 // getPostTitle returns the post's title for display.
 func (p *BreadcrumbsPlugin) getPostTitle(post *models.Post) string {
-	if post.Title != nil && *post.Title != "" {
-		return *post.Title
+	if post.PlainTitle() != "" {
+		return post.PlainTitle()
 	}
 	return ""
 }

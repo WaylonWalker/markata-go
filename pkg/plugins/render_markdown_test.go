@@ -68,6 +68,22 @@ func TestRenderMarkdownPlugin_Headings(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownPlugin_ExpressiveH1AndH2(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "# **Strong** _emphasis_ ==mark== `code` [link](/test) ~~delete~~\n\n## ==**nested**=="}
+	if err := p.renderPost(post); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"<strong>Strong</strong> <em>emphasis</em> <mark>mark</mark> <code>code</code> <a href=\"/test\">link</a> <del>delete</del>",
+		"<mark><strong>nested</strong></mark>",
+	} {
+		if !strings.Contains(post.ArticleHTML, want) {
+			t.Errorf("rendered headings %q do not contain %q", post.ArticleHTML, want)
+		}
+	}
+}
+
 func TestRenderMarkdownPlugin_Emphasis(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	post := &models.Post{Content: "*italic* and **bold**"}

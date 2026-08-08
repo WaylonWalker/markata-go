@@ -403,8 +403,8 @@ func (p *GlossaryPlugin) isGlossaryPost(post *models.Post) bool {
 func (p *GlossaryPlugin) extractGlossaryTerm(post *models.Post) *GlossaryTerm {
 	// Get the term name (title)
 	termName := ""
-	if post.Title != nil && *post.Title != "" {
-		termName = *post.Title
+	if post.PlainTitle() != "" {
+		termName = post.PlainTitle()
 	} else {
 		// Use slug as fallback
 		termName = post.Slug

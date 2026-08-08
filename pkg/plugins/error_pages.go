@@ -88,9 +88,8 @@ func (p *ErrorPagesPlugin) generatePostsIndex(m *lifecycle.Manager, cfg *models.
 			URL:  "/" + post.Slug + "/",
 		}
 
-		if post.Title != nil {
-			entry.Title = *post.Title
-		} else {
+		entry.Title = post.PlainTitle()
+		if entry.Title == "" {
 			entry.Title = post.Slug
 		}
 

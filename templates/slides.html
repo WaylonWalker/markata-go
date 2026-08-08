@@ -2,7 +2,7 @@
 
 {% block body_class %}slides-page{% endblock %}
 
-{% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
+{% block title %}{{ post.title_text }} | {{ config.title | default:'My Site' }}{% endblock %}
 {% block description %}{{ post.description | default:'' }}{% endblock %}
 
 {% block header %}{% endblock %}

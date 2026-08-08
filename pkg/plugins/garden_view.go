@@ -405,9 +405,8 @@ func (p *GardenViewPlugin) postToNode(post *models.Post) GardenNode {
 		Tags: post.Tags,
 	}
 
-	if post.Title != nil {
-		node.Label = *post.Title
-	} else {
+	node.Label = post.PlainTitle()
+	if node.Label == "" {
 		node.Label = post.Slug
 	}
 

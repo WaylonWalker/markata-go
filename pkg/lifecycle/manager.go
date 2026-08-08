@@ -709,6 +709,12 @@ func (m *Manager) Map(field, filterExpr, sortField string, reverse bool) ([]inte
 
 // getPostField retrieves a field value from a post using reflection.
 func getPostField(post *models.Post, field string) interface{} {
+	if strings.EqualFold(field, "title") {
+		if post == nil || post.Title == nil {
+			return nil
+		}
+		return post.PlainTitle()
+	}
 	// Check Extra fields first
 	if post.Extra != nil {
 		if v, ok := post.Extra[field]; ok {

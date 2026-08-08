@@ -131,10 +131,13 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 
 	// Handle pointer fields - dereference if not nil
 	if p.Title != nil {
-		m["title"] = *p.Title
+		m["title"] = p.PlainTitle()
 	} else {
 		m["title"] = nil
 	}
+	m["title_source"] = p.Title
+	m["title_html"] = p.TitleHTML
+	m["title_text"] = p.PlainTitle()
 
 	if p.Date != nil {
 		m["date"] = *p.Date
@@ -241,10 +244,13 @@ func postSummaryToMap(post *models.Post) map[string]interface{} {
 		"slug": post.Slug,
 	}
 	if post.Title != nil {
-		result["title"] = *post.Title
+		result["title"] = post.PlainTitle()
 	} else {
 		result["title"] = nil
 	}
+	result["title_source"] = post.Title
+	result["title_html"] = post.TitleHTML
+	result["title_text"] = post.PlainTitle()
 
 	return result
 }

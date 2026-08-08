@@ -372,7 +372,7 @@ func getKnownField(post *models.Post, name string) (interface{}, bool) {
 		if post.Title == nil {
 			return nil, true
 		}
-		return *post.Title, true
+		return post.PlainTitle(), true
 	case "date", "Date":
 		if post.Date == nil {
 			return nil, true

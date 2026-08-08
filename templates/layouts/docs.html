@@ -1,7 +1,7 @@
 {# Documentation Layout - 3-panel layout with sidebar, content, and TOC #}
 {% extends "base.html" %}
 
-{% block title %}{{ post.title | default:config.title | default:'My Site' }}{% endblock %}
+{% block title %}{{ post.title_text | default:config.title | default:'My Site' }}{% endblock %}
 {% block description %}{{ post.description | default:config.description | default:'' }}{% endblock %}
 
 {% block body_class %}layout layout--docs{% endblock %}
@@ -59,7 +59,7 @@
     <main class="layout-content" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
         <article class="post h-entry" data-pagefind-body>
             <header class="post-header">
-                <h1 class="p-name">{{ post.title }}</h1>
+                <h1 class="p-name">{{ post.title_html | safe }}</h1>
                 {% if post.description %}
                 <p class="post-description p-summary">{{ post.description }}</p>
                 {% endif %}
