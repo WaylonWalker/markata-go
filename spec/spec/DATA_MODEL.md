@@ -63,6 +63,13 @@ that derivation has not run or that the source contained no semantic text.
 Once derivation completes, consumers MUST use the empty derived value and MUST
 NOT fall back to authored Markdown syntax.
 
+For visible heading titles, each rendered `<mark>` MUST be wrapped in a
+`<span class="heading-highlight">`. The `<mark>` background is the
+no-JavaScript fallback. The default theme MAY enhance this wrapper after
+layout by measuring its line fragments and drawing a contour that rounds only
+the exterior corners. The enhancement MUST recalculate after viewport,
+content, font, and theme changes.
+
 ### Field Behaviors
 
 #### `published` - Shadow Pages

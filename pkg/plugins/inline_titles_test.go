@@ -126,7 +126,7 @@ func TestInlineTitlesPlugin_PopulatesExplicitRepresentations(t *testing.T) {
 	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
 		t.Fatal(err)
 	}
-	if post.TitleHTML != `Good themes make <strong>good places</strong> to <mark>think.</mark>` {
+	if post.TitleHTML != `Good themes make <strong>good places</strong> to <span class="heading-highlight"><mark>think.</mark></span>` {
 		t.Fatalf("TitleHTML = %q", post.TitleHTML)
 	}
 	if post.TitleText != "Good themes make good places to think." {
@@ -160,7 +160,7 @@ func TestMinimalPlugins_DerivesTitleAndTitleFallbackSlugThroughLifecycle(t *test
 	if post.TitleText != "Good places to think" || post.TitleTextDerived != true {
 		t.Fatalf("semantic title = %q, derived = %v", post.TitleText, post.TitleTextDerived)
 	}
-	if post.TitleHTML != `Good <strong>places</strong> to <mark>think</mark>` {
+	if post.TitleHTML != `Good <strong>places</strong> to <span class="heading-highlight"><mark>think</mark></span>` {
 		t.Fatalf("title HTML = %q", post.TitleHTML)
 	}
 	if post.Slug != "good-places-to-think" {

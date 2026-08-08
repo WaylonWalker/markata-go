@@ -750,6 +750,7 @@
    {% if config.theme.switcher.enabled or (config.theme.switcher.mode_toggle and config.header.show_theme_toggle) %}
    <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
+   <script src="{{ 'js/heading-highlights.js' | theme_asset_hashed }}" defer></script>
 
     {% if config.components.post_connections.enabled and config.components.post_connections.display_graph %}
     <script>

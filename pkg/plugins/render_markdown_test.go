@@ -38,6 +38,17 @@ func TestRenderMarkdownPlugin_BasicParagraph(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownPlugin_WrapsHeadingHighlights(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "## A ==wrapped highlight==\n"}
+	if err := p.renderPost(post); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(post.ArticleHTML, `<span class="heading-highlight"><mark>wrapped highlight</mark></span>`) {
+		t.Fatalf("heading highlight wrapper missing: %s", post.ArticleHTML)
+	}
+}
+
 func TestRenderMarkdownPlugin_Headings(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -75,8 +86,8 @@ func TestRenderMarkdownPlugin_ExpressiveH1AndH2(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"<strong>Strong</strong> <em>emphasis</em> <mark>mark</mark> <code>code</code> <a href=\"/test\">link</a> <del>delete</del>",
-		"<mark><strong>nested</strong></mark>",
+		"<strong>Strong</strong> <em>emphasis</em> <span class=\"heading-highlight\"><mark>mark</mark></span> <code>code</code> <a href=\"/test\">link</a> <del>delete</del>",
+		"<span class=\"heading-highlight\"><mark><strong>nested</strong></mark></span>",
 	} {
 		if !strings.Contains(post.ArticleHTML, want) {
 			t.Errorf("rendered headings %q do not contain %q", post.ArticleHTML, want)

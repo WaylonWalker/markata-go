@@ -446,7 +446,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		if p.cache != nil && !isSourceEncryptedPost(post) {
 			contentHash := buildcache.ContentHash(post.Content)
 			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
-				post.ArticleHTML = cachedHTML
+				post.ArticleHTML = wrapHeadingMarkHighlights(cachedHTML)
 				// Detect CSS requirements from cached HTML
 				p.detectCSSRequirements(post)
 				return false // Already handled, no concurrent processing needed
@@ -494,6 +494,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	}
 	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
 	renderedHTML = mergeBlockquoteAttributions(renderedHTML)
+	renderedHTML = wrapHeadingMarkHighlights(renderedHTML)
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds
