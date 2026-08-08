@@ -11,9 +11,9 @@
   --color-link-hover: #1e40af;
 
   /* Semantic roles for expressive H1/H2 inline Markdown. */
-  --heading-accent: var(--color-code-operator, var(--color-warning, var(--color-primary)));
-  --heading-mark-bg: color-mix(in srgb, var(--color-code-operator, var(--color-warning, var(--color-primary))) 70%, var(--color-background) 30%);
-  --heading-mark-fg: var(--color-background);
+  --heading-accent: var(--color-primary);
+  --heading-mark-bg: var(--color-mark-bg, color-mix(in srgb, var(--color-warning, var(--color-primary)) 70%, var(--color-background) 30%));
+  --heading-mark-fg: var(--color-mark-text, var(--color-background));
   --heading-code-bg: color-mix(in srgb, var(--color-surface) 72%, var(--color-primary) 28%);
   --heading-code-fg: var(--color-text);
   --heading-link-decoration: var(--color-primary);
