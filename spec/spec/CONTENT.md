@@ -28,7 +28,7 @@ two explicit representations:
   structured data, social metadata, slugs, and other non-visual consumers.
 
 The shared inline renderer uses the configured Goldmark extensions, including
-GFM strikethrough and Markata's `==mark==` extension. Mark is a delimiter
+GFM strikethrough, superscript/subscript, and Markata's `==mark==` extension. Mark is a delimiter
 container, so nested constructs such as `==**strong**==`, ``==`code`==``, and
 `==[link](/path)==` retain their child semantics. Raw HTML is not enabled in
 title rendering, and title links use the same safe destination policy as body

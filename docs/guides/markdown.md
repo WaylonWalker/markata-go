@@ -108,7 +108,7 @@ title: "Good themes make **good places** to ==think.=="
 ## Make a ~~perfect~~ memorable site.
 ```
 
-This supports strong, emphasis, mark, code, links, and GFM strikethrough,
+This supports strong, emphasis, mark, code, links, superscript, subscript, and GFM strikethrough,
 including nested forms such as `==**strange little ideas.**==`. These are
 semantic elements rather than a separate heading syntax. Visible headings keep
 their rich semantics, while browser titles, feeds, search, and social metadata

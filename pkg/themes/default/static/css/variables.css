@@ -12,10 +12,10 @@
 
   /* Semantic roles for expressive H1/H2 inline Markdown. */
   --heading-accent: var(--color-primary);
-  --heading-mark-bg: var(--color-mark-bg, color-mix(in srgb, var(--color-warning, var(--color-primary)) 70%, var(--color-background) 30%));
-  --heading-mark-fg: var(--color-mark-text, var(--color-background));
-  --heading-code-bg: color-mix(in srgb, var(--color-surface) 72%, var(--color-primary) 28%);
-  --heading-code-fg: var(--color-text);
+  --heading-mark-bg: var(--color-primary);
+  --heading-mark-fg: var(--color-background);
+  --heading-code-bg: var(--color-code-bg, var(--color-surface));
+  --heading-code-fg: var(--color-code-text, var(--color-text));
   --heading-link-decoration: var(--color-primary);
   --heading-rule: color-mix(in srgb, var(--color-text) 72%, var(--heading-accent) 28%);
 

@@ -26,6 +26,20 @@ func TestRenderInline_ProducesRichAndPlainRepresentations(t *testing.T) {
 	}
 }
 
+func TestRenderInline_ParsesSuperscriptAndSubscript(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	result, err := p.renderInline("H~2~O and x^2^")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.HTML != "H<sub>2</sub>O and x<sup>2</sup>" {
+		t.Fatalf("HTML = %q", result.HTML)
+	}
+	if result.Text != "H2O and x2" {
+		t.Fatalf("Text = %q", result.Text)
+	}
+}
+
 func TestRenderInline_SemanticsAndSafety(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	result, err := p.renderInline("<script>alert(1)</script> _quiet_ ==**loud**== [bad](javascript:alert(1)) ~~old~~ `literal ==mark==`")

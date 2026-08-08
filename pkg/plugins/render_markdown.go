@@ -154,6 +154,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		&AdmonitionExtension{},
 		// Mark extension for ==highlighted text==
 		&MarkExtension{},
+		&ScriptExtension{},
 		// Keys extension for ++Ctrl+Alt+Del++
 		&KeysExtension{},
 		// Container extension for ::: class
