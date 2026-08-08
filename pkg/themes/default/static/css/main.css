@@ -255,17 +255,20 @@ h6 { font-size: var(--text-base); font-weight: 600; }
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) strong {
-  color: var(--color-primary);
+  color: var(--heading-accent);
+  font-weight: inherit;
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) em {
+  color: var(--heading-accent);
+  font-family: var(--font-heading);
   font-style: italic;
   font-weight: 500;
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) mark {
-  color: var(--color-background);
-  background: color-mix(in srgb, var(--color-primary) 78%, var(--color-text) 22%);
+  color: var(--heading-mark-fg);
+  background: var(--heading-mark-bg);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   padding: 0 .12em;
@@ -276,26 +279,28 @@ h6 { font-size: var(--text-base); font-weight: 600; }
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) code {
-  font-family: var(--font-mono);
+  font-family: var(--font-code, var(--font-mono));
   font-size: .72em;
   font-weight: 600;
   letter-spacing: .01em;
   padding: .08em .24em;
   border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
   border-radius: .25em;
+  background: var(--heading-code-bg);
+  color: var(--heading-code-fg);
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) a {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: var(--color-primary);
+  text-decoration-color: var(--heading-link-decoration);
   text-decoration-thickness: .08em;
   text-underline-offset: .12em;
 }
 
 :is(.post-header h1, .post-content h1, .post-content h2) del {
   color: var(--color-text-muted);
-  text-decoration-color: var(--color-primary);
+  text-decoration-color: var(--heading-link-decoration);
 }
 
 /* Heading Anchors */

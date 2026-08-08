@@ -10,6 +10,14 @@
   --color-link: #1d4ed8;
   --color-link-hover: #1e40af;
 
+  /* Semantic roles for expressive H1/H2 inline Markdown. */
+  --heading-accent: var(--color-primary);
+  --heading-mark-bg: color-mix(in srgb, var(--color-primary) 82%, var(--color-text) 18%);
+  --heading-mark-fg: var(--color-background);
+  --heading-code-bg: color-mix(in srgb, var(--color-surface) 72%, var(--color-primary) 28%);
+  --heading-code-fg: var(--color-text);
+  --heading-link-decoration: var(--color-primary);
+
   /* Semantic colors */
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
@@ -33,6 +41,7 @@
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-heading: var(--font-body);
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+  --leading-heading-expressive: 1.35;
 
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
