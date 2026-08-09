@@ -278,6 +278,16 @@ func TestParsePostFromContent_DerivesAuthoredTitleWithFilenameSlug(t *testing.T)
 	}
 }
 
+func TestParsePostFromContent_PreservesAutolinkInSemanticTitle(t *testing.T) {
+	post, err := ParsePostFromContent("docs.md", "---\ntitle: \"Docs <https://example.com>\"\n---\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if post.PlainTitle() != "Docs https://example.com" {
+		t.Fatalf("plain title = %q, want URL-preserving semantic title", post.PlainTitle())
+	}
+}
+
 func TestParsePostFromContent_PreservesExplicitSlugWhileDerivingTitle(t *testing.T) {
 	post, err := ParsePostFromContent("posts/foo.md", "---\ntitle: Good **places**\nslug: custom-place\n---\n")
 	if err != nil {

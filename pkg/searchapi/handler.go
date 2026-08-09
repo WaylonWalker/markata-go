@@ -459,13 +459,6 @@ func (h *Handler) openOrBuildIndex() (*search.Index, error) {
 	return search.BuildIfNeededAt(indexDir, hashPath, h.posts)
 }
 
-func derefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
-}
-
 func (h *Handler) corsAllowed(origin string) bool {
 	for _, allowed := range h.config.CORSOrigins {
 		if allowed == "*" || allowed == origin {
