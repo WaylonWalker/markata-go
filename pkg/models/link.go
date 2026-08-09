@@ -64,16 +64,16 @@ func (l *Link) TargetSlug() string {
 
 // SourceTitle returns the title of the source post, or empty string if nil.
 func (l *Link) SourceTitle() string {
-	if l.SourcePost == nil || l.SourcePost.Title == nil {
+	if l.SourcePost == nil {
 		return ""
 	}
-	return *l.SourcePost.Title
+	return l.SourcePost.PlainTitle()
 }
 
 // TargetTitle returns the title of the target post, or empty string if nil.
 func (l *Link) TargetTitle() string {
-	if l.TargetPost == nil || l.TargetPost.Title == nil {
+	if l.TargetPost == nil {
 		return ""
 	}
-	return *l.TargetPost.Title
+	return l.TargetPost.PlainTitle()
 }

@@ -273,7 +273,7 @@ func buildResponse(queryStr string, results []search.Result, fuzzy bool, limit i
 		if hit.Post != nil {
 			doc = search.Document{}
 			if !hit.Post.Private || hit.Post.Has("_title_explicit") {
-				doc.Title = derefString(hit.Post.Title)
+				doc.Title = hit.Post.PlainTitle()
 			}
 			doc.Path = hit.Post.Path
 			doc.Slug = hit.Post.Slug

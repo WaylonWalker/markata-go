@@ -383,13 +383,7 @@ func sortPosts(posts []*models.Post, orderBy string, reverse bool) {
 		var less bool
 		switch orderBy {
 		case "title":
-			ti, tj := "", ""
-			if posts[i].Title != nil {
-				ti = *posts[i].Title
-			}
-			if posts[j].Title != nil {
-				tj = *posts[j].Title
-			}
+			ti, tj := posts[i].PlainTitle(), posts[j].PlainTitle()
 			less = ti < tj
 		case "date":
 			switch {

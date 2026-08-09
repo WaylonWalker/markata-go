@@ -16,6 +16,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
+	emojiast "github.com/yuin/goldmark-emoji/ast"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -292,6 +293,15 @@ func appendInlineText(out *strings.Builder, node ast.Node, source []byte) {
 			out.Write(n.Segment.Value(source))
 		case *ast.String:
 			out.Write(n.Value)
+		case *ast.AutoLink:
+			// AutoLink is a leaf node, so its visible label is not visited
+			// as a child Text node. Use Goldmark's supported label API so
+			// URL and email autolinks retain their human-visible text.
+			out.Write(n.Label(source))
+		case *emojiast.Emoji:
+			if n.Value != nil {
+				out.WriteString(string(n.Value.Unicode))
+			}
 		}
 		return ast.WalkContinue, nil
 	}); err != nil {

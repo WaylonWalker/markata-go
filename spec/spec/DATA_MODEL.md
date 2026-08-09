@@ -63,6 +63,14 @@ that derivation has not run or that the source contained no semantic text.
 Once derivation completes, consumers MUST use the empty derived value and MUST
 NOT fall back to authored Markdown syntax.
 
+Template contexts expose this state as `title_text_derived`. Layouts and other
+plain-text consumers MUST use that flag when selecting a site-level fallback,
+so a successfully derived empty title remains empty. Standalone parsing helpers
+MUST derive title representations whenever an authored title exists, regardless
+of whether the source path already supplied a filename-based slug. Slug
+generation remains separate and only fills an otherwise empty, non-explicit
+slug.
+
 For visible heading titles, each rendered `<mark>` MUST be wrapped in a
 `<span class="heading-highlight">`. The `<mark>` background is the
 no-JavaScript fallback. The default theme MAY enhance this wrapper after

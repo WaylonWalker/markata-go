@@ -62,6 +62,37 @@ func TestRenderInline_SemanticsAndSafety(t *testing.T) {
 	}
 }
 
+func TestRenderInline_ExtractsSemanticTextFromInlineNodes(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{name: "strong", source: "Good **places**", want: "Good places"},
+		{name: "link", source: "Docs [site](https://example.com)", want: "Docs site"},
+		{name: "autolink", source: "Docs <https://example.com>", want: "Docs https://example.com"},
+		{name: "autolink only", source: "<https://example.com>", want: "https://example.com"},
+		{name: "code", source: "`code`", want: "code"},
+		{name: "strikethrough", source: "~~strike~~", want: "strike"},
+		{name: "mark", source: "==mark==", want: "mark"},
+		{name: "image alt text", source: "![alt text](img.png)", want: "alt text"},
+		{name: "raw HTML and comment", source: "visible <span>hidden</span><!-- comment -->", want: "visible hidden"},
+		{name: "emoji", source: ":smile:", want: "😄"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := p.renderInline(tt.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Text != tt.want {
+				t.Fatalf("Text = %q, want %q (HTML %q)", got.Text, tt.want, got.HTML)
+			}
+		})
+	}
+}
+
 func TestMarkParser_BuildsNestedInlineAST(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	source := []byte("==**strong**== ==_emphasis_== ==`code`== ==[link](/test)== ==~~deleted~~==")
@@ -213,6 +244,83 @@ func TestParsePostFromContent_DerivesTitleFallbackSlug(t *testing.T) {
 	}
 	if post.PlainTitle() != "Good places to think" {
 		t.Fatalf("plain title = %q", post.PlainTitle())
+	}
+}
+
+func TestParsePostFromContent_DerivesAuthoredTitleWithFilenameSlug(t *testing.T) {
+	tests := []struct {
+		path string
+		slug string
+	}{
+		{path: "posts/foo.md", slug: "foo"},
+		{path: "foo.md", slug: "foo"},
+		{path: "notes/something.md", slug: "something"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			post, err := ParsePostFromContent(tt.path, "---\ntitle: Good **places**\n---\n")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if post.Title == nil || *post.Title != "Good **places**" {
+				t.Fatalf("source title = %v, want authored Markdown", post.Title)
+			}
+			if post.TitleText != "Good places" || post.PlainTitle() != "Good places" {
+				t.Fatalf("semantic title = %q / %q", post.TitleText, post.PlainTitle())
+			}
+			if !strings.Contains(post.TitleHTML, "<strong>places</strong>") {
+				t.Fatalf("title HTML = %q", post.TitleHTML)
+			}
+			if post.Slug != tt.slug || post.Href != "/"+tt.slug+"/" {
+				t.Fatalf("slug/href = %q/%q, want %q/%q", post.Slug, post.Href, tt.slug, "/"+tt.slug+"/")
+			}
+		})
+	}
+}
+
+func TestParsePostFromContent_PreservesExplicitSlugWhileDerivingTitle(t *testing.T) {
+	post, err := ParsePostFromContent("posts/foo.md", "---\ntitle: Good **places**\nslug: custom-place\n---\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if post.Slug != "custom-place" || post.Href != "/custom-place/" {
+		t.Fatalf("slug/href = %q/%q", post.Slug, post.Href)
+	}
+	if post.PlainTitle() != "Good places" || !strings.Contains(post.TitleHTML, "<strong>places</strong>") {
+		t.Fatalf("semantic title = %q / %q", post.PlainTitle(), post.TitleHTML)
+	}
+}
+
+func TestLayouts_PreserveDerivedEmptyTitle(t *testing.T) {
+	root, err := filepath.Abs("../../templates")
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := templates.NewEngine(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	title := "<!-- hidden -->"
+	post := models.NewPost("hidden.md")
+	post.Title = &title
+	m := lifecycle.NewManager()
+	if err := NewRenderMarkdownPlugin().Configure(m); err != nil {
+		t.Fatal(err)
+	}
+	m.AddPost(post)
+	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	config := &models.Config{Title: "My Site"}
+	output, err := engine.Render("layouts/blog.html", templates.NewContext(post, "body", config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output, "<title></title>") {
+		t.Fatalf("rendered title did not preserve empty derivation: %q", output)
+	}
+	if strings.Contains(output, "<title>My Site</title>") {
+		t.Fatalf("rendered title used site fallback: %q", output)
 	}
 }
 
