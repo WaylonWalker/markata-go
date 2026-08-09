@@ -60,8 +60,30 @@ An authored `title` remains available as the source value. After the
 
 `title_text` has an explicit derived state. An empty value can mean either
 that derivation has not run or that the source contained no semantic text.
-Once derivation completes, consumers MUST use the empty derived value and MUST
-NOT fall back to authored Markdown syntax.
+Once derivation completes, `title_text_derived` MUST be true, even when
+`title_text` is empty. `PlainTitle()` returns that semantic value, including
+`""`, and MUST NOT fall back to authored Markdown syntax such as
+`<!-- hidden -->`. In the Go model, this is represented as
+`TitleTextDerived == true` and `TitleText == ""`.
+
+Template contexts expose this state as `title_text_derived`. The semantic/model
+layer MUST preserve an empty derived value, but individual presentation
+consumers MAY deliberately apply a fallback when an empty value would produce
+poor UX or invalid or unhelpful output. For example, a browser title MAY use
+`config.title` or the site title, RSS/Atom/JSON Feed MAY use the post slug, and
+CLI output MAY use `(untitled)`. These presentation fallbacks belong at the
+consumer boundary; they MUST NOT change `PlainTitle()` or restore authored
+Markdown syntax. Standalone parsing helpers MUST derive title representations
+whenever an authored title exists, regardless of whether the source path already
+supplied a filename-based slug. Slug generation remains separate and only fills
+an otherwise empty, non-explicit slug.
+
+For visible heading titles, each rendered `<mark>` MUST be wrapped in a
+`<span class="heading-highlight">`. The `<mark>` background is the
+no-JavaScript fallback. The default theme MAY enhance this wrapper after
+layout by measuring its line fragments and drawing a contour that rounds only
+the exterior corners. The enhancement MUST recalculate after viewport,
+content, font, and theme changes.
 
 ### Field Behaviors
 

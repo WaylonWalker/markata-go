@@ -16,6 +16,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
+	emojiast "github.com/yuin/goldmark-emoji/ast"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -292,6 +293,15 @@ func appendInlineText(out *strings.Builder, node ast.Node, source []byte) {
 			out.Write(n.Segment.Value(source))
 		case *ast.String:
 			out.Write(n.Value)
+		case *ast.AutoLink:
+			// AutoLink is a leaf node, so its visible label is not visited
+			// as a child Text node. Use Goldmark's supported label API so
+			// URL and email autolinks retain their human-visible text.
+			out.Write(n.Label(source))
+		case *emojiast.Emoji:
+			if n.Value != nil {
+				out.WriteString(string(n.Value.Unicode))
+			}
 		}
 		return ast.WalkContinue, nil
 	}); err != nil {
@@ -446,7 +456,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		if p.cache != nil && !isSourceEncryptedPost(post) {
 			contentHash := buildcache.ContentHash(post.Content)
 			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
-				post.ArticleHTML = cachedHTML
+				post.ArticleHTML = wrapHeadingMarkHighlights(cachedHTML)
 				// Detect CSS requirements from cached HTML
 				p.detectCSSRequirements(post)
 				return false // Already handled, no concurrent processing needed
@@ -494,6 +504,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	}
 	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
 	renderedHTML = mergeBlockquoteAttributions(renderedHTML)
+	renderedHTML = wrapHeadingMarkHighlights(renderedHTML)
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds

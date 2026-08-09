@@ -3,6 +3,8 @@ package plugins
 import (
 	"fmt"
 	"html"
+	"regexp"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -51,6 +53,7 @@ func (p *InlineTitlesPlugin) Transform(m *lifecycle.Manager) error {
 			return err
 		}
 		post.TitleHTML = result.HTML
+		post.TitleHTML = wrapHeadingHighlights(post.TitleHTML)
 		post.TitleText = result.Text
 		post.TitleTextDerived = true
 		if post.Slug == "" && !post.Has("_slug_explicit") {
@@ -76,6 +79,35 @@ func (p *InlineTitlesPlugin) Transform(m *lifecycle.Manager) error {
 			}
 		}
 		return nil
+	})
+}
+
+var (
+	openingMarkTagPattern = regexp.MustCompile(`(?i)<mark(\s[^>]*)?>`)
+	closingMarkTagPattern = regexp.MustCompile(`(?i)</mark\s*>`)
+	headingBlockPattern   = regexp.MustCompile(`(?is)<h([12])([^>]*)>(.*?)</h[12]>`)
+)
+
+// wrapHeadingHighlights adds a semantic hook around marks used in title HTML.
+// The mark remains the no-JavaScript fallback; the heading-highlights script
+// can replace its background with a measured multi-line contour.
+func wrapHeadingHighlights(value string) string {
+	if !strings.Contains(strings.ToLower(value), "<mark") {
+		return value
+	}
+	value = openingMarkTagPattern.ReplaceAllString(value, `<span class="heading-highlight">$0`)
+	return closingMarkTagPattern.ReplaceAllString(value, `$0</span>`)
+}
+
+// wrapHeadingMarkHighlights adds the same semantic hook to Markdown headings
+// in article HTML. Prose marks retain their ordinary fallback styling.
+func wrapHeadingMarkHighlights(value string) string {
+	return headingBlockPattern.ReplaceAllStringFunc(value, func(block string) string {
+		parts := headingBlockPattern.FindStringSubmatch(block)
+		if len(parts) != 4 {
+			return block
+		}
+		return "<h" + parts[1] + parts[2] + ">" + wrapHeadingHighlights(parts[3]) + "</h" + parts[1] + ">"
 	})
 }
 

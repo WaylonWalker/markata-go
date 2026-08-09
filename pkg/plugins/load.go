@@ -671,23 +671,33 @@ func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*
 		}
 	}
 	post, err := loader.parseFile(path, content)
-	if err != nil || post.Slug != "" || post.Title == nil || post.Has("_slug_explicit") {
+	if err != nil {
 		return post, err
 	}
 
 	// Standalone callers do not run the transform stage. Complete the same
-	// title derivation here before resolving a title-only fallback slug.
-	m := lifecycle.NewManager()
-	renderer := NewRenderMarkdownPlugin()
-	if err := renderer.Configure(m); err != nil {
-		return nil, err
+	// title derivation here even when parseFile already derived a filename slug.
+	if post.Title != nil {
+		m := lifecycle.NewManager()
+		if cfg != nil {
+			m.Config().Extra = cfg.Extra
+		}
+		renderer := NewRenderMarkdownPlugin()
+		if err := renderer.Configure(m); err != nil {
+			return nil, err
+		}
+		m.AddPost(post)
+		if err := NewInlineTitlesPlugin().Transform(m); err != nil {
+			return nil, err
+		}
 	}
-	m.AddPost(post)
-	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
-		return nil, err
+
+	// Only generate a title-based fallback when parseFile did not already
+	// produce a slug and the user did not explicitly provide one.
+	if post.Slug == "" && !post.Has("_slug_explicit") {
+		post.GenerateSlugWithMode(models.SlugModeForPath(path, loader.slugMode, loader.slugRules))
+		post.GenerateHref()
 	}
-	post.GenerateSlugWithMode(models.SlugModeForPath(path, loader.slugMode, loader.slugRules))
-	post.GenerateHref()
 	return post, nil
 }
 

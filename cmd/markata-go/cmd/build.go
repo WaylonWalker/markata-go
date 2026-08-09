@@ -247,8 +247,8 @@ func runDryBuild(m *lifecycle.Manager) error {
 		errln("\nPosts that would be generated:")
 		for _, p := range m.Posts() {
 			title := p.Slug
-			if p.Title != nil {
-				title = *p.Title
+			if p.PlainTitle() != "" {
+				title = p.PlainTitle()
 			}
 			status := "published"
 			if p.Draft {

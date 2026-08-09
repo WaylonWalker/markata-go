@@ -138,6 +138,7 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	m["title_source"] = p.Title
 	m["title_html"] = p.TitleHTML
 	m["title_text"] = p.PlainTitle()
+	m["title_text_derived"] = p.TitleTextDerived
 
 	if p.Date != nil {
 		m["date"] = *p.Date
@@ -251,6 +252,7 @@ func postSummaryToMap(post *models.Post) map[string]interface{} {
 	result["title_source"] = post.Title
 	result["title_html"] = post.TitleHTML
 	result["title_text"] = post.PlainTitle()
+	result["title_text_derived"] = post.TitleTextDerived
 
 	return result
 }
