@@ -316,7 +316,7 @@ func TestParsePostFromContentWithConfig_UsesMarkdownTitleConfiguration(t *testin
 	}
 }
 
-func TestLayouts_PreserveDerivedEmptyTitle(t *testing.T) {
+func TestLayouts_FallbackToSiteTitleForDerivedEmptyTitle(t *testing.T) {
 	root, err := filepath.Abs("../../templates")
 	if err != nil {
 		t.Fatal(err)
@@ -337,15 +337,22 @@ func TestLayouts_PreserveDerivedEmptyTitle(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := &models.Config{Title: "My Site"}
-	output, err := engine.Render("layouts/blog.html", templates.NewContext(post, "body", config))
-	if err != nil {
-		t.Fatal(err)
+	if post.TitleText != "" || !post.TitleTextDerived || post.PlainTitle() != "" {
+		t.Fatalf("semantic title = %q, derived = %v, plain = %q", post.TitleText, post.TitleTextDerived, post.PlainTitle())
 	}
-	if !strings.Contains(output, "<title></title>") {
-		t.Fatalf("rendered title did not preserve empty derivation: %q", output)
-	}
-	if strings.Contains(output, "<title>My Site</title>") {
-		t.Fatalf("rendered title used site fallback: %q", output)
+	for _, layout := range []string{"bare", "blog", "docs", "landing"} {
+		t.Run(layout, func(t *testing.T) {
+			output, err := engine.Render("layouts/"+layout+".html", templates.NewContext(post, "body", config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(output, "<title>My Site</title>") {
+				t.Fatalf("rendered title did not use site fallback: %q", output)
+			}
+			if strings.Contains(output, "<title></title>") {
+				t.Fatalf("rendered title was empty: %q", output)
+			}
+		})
 	}
 }
 
