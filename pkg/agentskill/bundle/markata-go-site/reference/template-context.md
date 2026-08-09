@@ -47,6 +47,7 @@ Usually available in HTML templates:
 - `post.title`
 - `post.title_html` (safe rendered inline Markdown for visible headings)
 - `post.title_text` (semantic plain text for metadata, feeds, search, and slugs)
+- `post.title_text_derived` (whether semantic title derivation completed)
 - `post.title_source` (authored/source title)
 - `post.date`
 - `post.description`
@@ -57,7 +58,9 @@ Usually available in HTML templates:
 
 `post.title` uses the semantic plain title. Use `post.title_html` only in a
 trusted visual heading context. A successfully derived empty `title_text` is
-intentional and must not fall back to `title_source`.
+intentional and must not fall back to `title_source`. Use
+`post.title_text_derived` when selecting a site-title fallback so an empty
+derived title stays empty.
 
 ## Stats And Analytics Fields
 
