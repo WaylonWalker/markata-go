@@ -78,6 +78,12 @@ func TestLink_SourceTitle(t *testing.T) {
 	if title := link.SourceTitle(); title != "My Post Title" {
 		t.Errorf("expected 'My Post Title', got %q", title)
 	}
+	semanticTitle := "Good places"
+	link.SourcePost.TitleText = semanticTitle
+	link.SourcePost.TitleTextDerived = true
+	if title := link.SourceTitle(); title != semanticTitle {
+		t.Errorf("expected semantic source title %q, got %q", semanticTitle, title)
+	}
 }
 
 func TestLink_TargetTitle(t *testing.T) {
@@ -98,6 +104,12 @@ func TestLink_TargetTitle(t *testing.T) {
 	link.TargetPost = &Post{Title: &postTitle}
 	if title := link.TargetTitle(); title != "Target Post Title" {
 		t.Errorf("expected 'Target Post Title', got %q", title)
+	}
+	semanticTitle := "Good places"
+	link.TargetPost.TitleText = semanticTitle
+	link.TargetPost.TitleTextDerived = true
+	if title := link.TargetTitle(); title != semanticTitle {
+		t.Errorf("expected semantic target title %q, got %q", semanticTitle, title)
 	}
 }
 

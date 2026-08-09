@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestRenderPostsTable_UsesCommandWriter(t *testing.T) {
@@ -27,5 +29,17 @@ func TestRenderPostsTable_UsesCommandWriter(t *testing.T) {
 	output := stdout.String()
 	if !strings.Contains(output, "TITLE") || !strings.Contains(output, "posts/hello.md") {
 		t.Fatalf("expected table output in command writer, got %q", output)
+	}
+}
+
+func TestPostTitle_UsesUntitledPlaceholderForDerivedEmptyTitle(t *testing.T) {
+	title := "<!-- hidden -->"
+	post := &models.Post{Title: &title, TitleTextDerived: true}
+
+	if post.PlainTitle() != "" {
+		t.Fatalf("PlainTitle() = %q, want empty semantic title", post.PlainTitle())
+	}
+	if got := postTitle(post); got != "(untitled)" {
+		t.Fatalf("postTitle() = %q, want %q", got, "(untitled)")
 	}
 }

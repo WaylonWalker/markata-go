@@ -176,7 +176,7 @@ func sortPosts(posts []*models.Post, field string, order SortOrder) {
 		case "date":
 			cmp = compareDates(posts[i].Date, posts[j].Date)
 		case "title":
-			cmp = compareTitles(posts[i].Title, posts[j].Title)
+			cmp = compareTitles(posts[i], posts[j])
 		case "path":
 			cmp = strings.Compare(posts[i].Path, posts[j].Path)
 		case "words":
@@ -220,13 +220,13 @@ func compareDates(a, b *time.Time) int {
 	return 0
 }
 
-func compareTitles(a, b *string) int {
+func compareTitles(a, b *models.Post) int {
 	as, bs := "", ""
 	if a != nil {
-		as = *a
+		as = a.PlainTitle()
 	}
 	if b != nil {
-		bs = *b
+		bs = b.PlainTitle()
 	}
 	return strings.Compare(strings.ToLower(as), strings.ToLower(bs))
 }

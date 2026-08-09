@@ -262,7 +262,7 @@ func searchSubstring(posts []*models.Post, queryStr, fieldsStr string, limit int
 func matchesSearchLocal(p *models.Post, query string, fields []string) bool {
 	searchAll := len(fields) == 0
 
-	if (searchAll || fieldIn(fields, "title")) && p.Title != nil && strings.Contains(strings.ToLower(*p.Title), query) {
+	if (searchAll || fieldIn(fields, "title")) && strings.Contains(strings.ToLower(p.PlainTitle()), query) {
 		return true
 	}
 	if (searchAll || fieldIn(fields, "description")) && p.Description != nil && strings.Contains(strings.ToLower(*p.Description), query) {

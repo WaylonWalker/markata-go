@@ -196,21 +196,24 @@ func descriptionValue(value string) string {
 }
 
 func TestReadOnlyHandler_Search(t *testing.T) {
-	title := "Read Only Search"
+	title := "Read **Only** Search"
+	semanticTitle := "Read Only Search"
 	description := "Index served without loading site content"
 	date := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
 
 	posts := []*models.Post{
 		{
-			Path:        "posts/read-only.md",
-			Title:       &title,
-			Description: &description,
-			Content:     "This post validates read only bleve serving.",
-			Slug:        "read-only",
-			Href:        "/read-only",
-			Tags:        []string{"search", "bleve"},
-			Published:   true,
-			Date:        &date,
+			Path:             "posts/read-only.md",
+			Title:            &title,
+			TitleText:        semanticTitle,
+			TitleTextDerived: true,
+			Description:      &description,
+			Content:          "This post validates read only bleve serving.",
+			Slug:             "read-only",
+			Href:             "/read-only",
+			Tags:             []string{"search", "bleve"},
+			Published:        true,
+			Date:             &date,
 		},
 	}
 
@@ -241,8 +244,8 @@ func TestReadOnlyHandler_Search(t *testing.T) {
 	if resp.Total == 0 {
 		t.Fatal("expected read-only handler to return results")
 	}
-	if resp.Results[0].Title != title {
-		t.Fatalf("title = %q, want %q", resp.Results[0].Title, title)
+	if resp.Results[0].Title != semanticTitle {
+		t.Fatalf("title = %q, want semantic title %q", resp.Results[0].Title, semanticTitle)
 	}
 	if resp.Results[0].Href != "/read-only" {
 		t.Fatalf("href = %q, want %q", resp.Results[0].Href, "/read-only")
