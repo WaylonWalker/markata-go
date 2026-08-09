@@ -670,10 +670,10 @@ func renderJSON(v interface{}) error {
 }
 
 func postTitle(post *models.Post) string {
-	if post == nil || post.Title == nil || *post.Title == "" {
+	if post == nil || post.PlainTitle() == "" {
 		return "(untitled)"
 	}
-	return *post.Title
+	return post.PlainTitle()
 }
 
 func postDate(post *models.Post) string {

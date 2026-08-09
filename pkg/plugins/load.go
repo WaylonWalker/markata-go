@@ -679,6 +679,9 @@ func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*
 	// title derivation here even when parseFile already derived a filename slug.
 	if post.Title != nil {
 		m := lifecycle.NewManager()
+		if cfg != nil {
+			m.Config().Extra = cfg.Extra
+		}
 		renderer := NewRenderMarkdownPlugin()
 		if err := renderer.Configure(m); err != nil {
 			return nil, err

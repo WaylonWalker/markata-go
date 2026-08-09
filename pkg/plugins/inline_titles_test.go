@@ -291,6 +291,21 @@ func TestParsePostFromContent_PreservesExplicitSlugWhileDerivingTitle(t *testing
 	}
 }
 
+func TestParsePostFromContentWithConfig_UsesMarkdownTitleConfiguration(t *testing.T) {
+	cfg := &models.Config{Extra: map[string]interface{}{
+		"markdown": map[string]interface{}{
+			"extensions": map[string]interface{}{"typographer": false},
+		},
+	}}
+	post, err := ParsePostFromContentWithConfig("foo.md", "---\ntitle: Hello -- world\n---\n", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if post.PlainTitle() != "Hello -- world" {
+		t.Fatalf("plain title = %q, want configured Markdown output", post.PlainTitle())
+	}
+}
+
 func TestLayouts_PreserveDerivedEmptyTitle(t *testing.T) {
 	root, err := filepath.Abs("../../templates")
 	if err != nil {
