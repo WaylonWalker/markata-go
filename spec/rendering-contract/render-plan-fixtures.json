@@ -1,0 +1,1213 @@
+{
+  "schema_version": 1,
+  "contract_version": 1,
+  "fixtures": [
+    {
+      "id": "default",
+      "tags": [
+        "default"
+      ],
+      "inputs": {
+        "theme": {}
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0.01
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "palette-light-variant",
+      "tags": [
+        "variants"
+      ],
+      "inputs": {
+        "theme": {
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "off",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          },
+          "palette": "ayu-light"
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-light",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "off",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-light",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "off",
+          "kind": "off",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "palette-dark-variant",
+      "tags": [
+        "variants"
+      ],
+      "inputs": {
+        "theme": {
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "off",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          },
+          "palette": "nord-dark"
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "nord-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "off",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "nord-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "off",
+          "kind": "off",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "mix-endpoints",
+      "tags": [
+        "mix-endpoints"
+      ],
+      "inputs": {
+        "theme": {
+          "heading_texture": {
+            "color_mix": 1,
+            "kind": "inherit",
+            "row_offset": 0,
+            "scale": 1,
+            "scatter": 0,
+            "wobble": 0
+          },
+          "motif": {
+            "color": "ink",
+            "color_mix": 0,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "block-w",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          },
+          "texture": {
+            "color_mix": 0,
+            "kind": "screenprint",
+            "row_offset": 0,
+            "scale": 1,
+            "scatter": 0,
+            "scope": "all",
+            "wobble": 0
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 1,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 1,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "heading-modes",
+      "tags": [
+        "heading-modes"
+      ],
+      "inputs": {
+        "theme": {
+          "heading_texture": {
+            "color_mix": 0.5,
+            "kind": "none",
+            "row_offset": 0,
+            "scale": 1,
+            "scatter": 0,
+            "wobble": 0
+          },
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "off",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "none",
+          "color_mix": 0.5,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "off",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "none",
+          "mix": 0.5,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "off",
+          "kind": "off",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "scales-low-high",
+      "tags": [
+        "scales"
+      ],
+      "inputs": {
+        "theme": {
+          "heading_texture": {
+            "color_mix": 0.45,
+            "kind": "inherit",
+            "row_offset": 0,
+            "scale": 3,
+            "scatter": 0,
+            "wobble": 0
+          },
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "off",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          },
+          "texture": {
+            "color_mix": 0.35,
+            "kind": "screenprint",
+            "row_offset": 0,
+            "scale": 0.25,
+            "scatter": 0,
+            "scope": "all",
+            "wobble": 0
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 0.25,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 3
+        },
+        "motif": {
+          "kind": "off",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 0.25,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 3
+        },
+        "motif": {
+          "recipe": "off",
+          "kind": "off",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "motif-layers",
+      "tags": [
+        "motif-layers"
+      ],
+      "inputs": {
+        "theme": {
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "block-w",
+            "layer": "under",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0.18
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "under",
+          "scatter": 0,
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "under"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0.01
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "motif-geometry",
+      "tags": [
+        "motif-geometry"
+      ],
+      "inputs": {
+        "theme": {
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "7px",
+            "glyph": "W",
+            "kind": "block-w",
+            "layer": "sandwich",
+            "row_offset": 0,
+            "scale": 0,
+            "scatter": 1,
+            "size": "44px",
+            "wobble": 1
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "44px",
+          "gap": "7px",
+          "row_offset": 0,
+          "wobble": 1,
+          "scatter": 1,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "44px",
+          "gap": "7px",
+          "row_offset": 0,
+          "wobble": 1,
+          "scatter": 1,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0.01
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "motif-url",
+      "tags": [
+        "motif-url"
+      ],
+      "inputs": {
+        "theme": {
+          "motif": {
+            "color": "ink",
+            "color_mix": 0.01,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "block-w",
+            "layer": "sandwich",
+            "row_offset": 0.24,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "url": "https://example.test/motif.svg",
+            "wobble": 0.18
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink",
+          "url": "https://example.test/motif.svg"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "url": "https://example.test/motif.svg",
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0.01
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "legacy-migration",
+      "tags": [
+        "legacy"
+      ],
+      "inputs": {
+        "aesthetic": "minimal",
+        "heading_texture": "inherit",
+        "heading_texture_strength": "45%",
+        "motif": "block-w",
+        "motif_color": "ink",
+        "motif_color_distance": "1%",
+        "motif_gap": "10px",
+        "motif_glyph": "W",
+        "motif_layer": "sandwich",
+        "motif_row_offset": "24%",
+        "motif_size": "78px",
+        "palette": "ayu-dark",
+        "texture": "screenprint",
+        "texture_scope": "all",
+        "texture_strength": "35%"
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0.01,
+          "scatter": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.35,
+          "scale": 1,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.45,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0.24,
+          "wobble": 0.18,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0.01,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0.01
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.35
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0.01
+          }
+        ]
+      }
+    },
+    {
+      "id": "zero-dials",
+      "tags": [
+        "zero"
+      ],
+      "inputs": {
+        "theme": {
+          "heading_texture": {
+            "color_mix": 0,
+            "kind": "inherit",
+            "row_offset": 0,
+            "scale": 1,
+            "scatter": 0,
+            "wobble": 0
+          },
+          "motif": {
+            "color": "ink",
+            "color_mix": 0,
+            "gap": "10px",
+            "glyph": "W",
+            "kind": "block-w",
+            "layer": "sandwich",
+            "row_offset": 0,
+            "scale": 0,
+            "scatter": 0,
+            "size": "78px",
+            "wobble": 0
+          },
+          "texture": {
+            "color_mix": 0,
+            "kind": "screenprint",
+            "row_offset": 0,
+            "scale": 0.25,
+            "scatter": 0,
+            "scope": "all",
+            "wobble": 0
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0,
+          "scale": 0.25,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0,
+          "scale": 1
+        },
+        "motif": {
+          "kind": "block-w",
+          "color_mix": 0,
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0,
+          "wobble": 0,
+          "scatter": 0,
+          "layer": "sandwich",
+          "color": "ink"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-dark",
+        "aesthetic": "minimal",
+        "fontpack": "brush-poster",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0,
+          "scale": 0.25,
+          "scope": "all"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0,
+          "scale": 1
+        },
+        "motif": {
+          "recipe": "block-w",
+          "kind": "block-w",
+          "glyph": "W",
+          "size": "78px",
+          "gap": "10px",
+          "row_offset": 0,
+          "wobble": 0,
+          "scatter": 0,
+          "color": "ink",
+          "mix": 0,
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "block-w",
+            "mix": 0
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0
+          },
+          {
+            "role": "motif-over",
+            "recipe": "block-w",
+            "mix": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "stress-recipe",
+      "tags": [
+        "stress"
+      ],
+      "inputs": {
+        "theme": {
+          "aesthetic": "brutal",
+          "fontpack": "editorial",
+          "heading_texture": {
+            "color_mix": 0.72,
+            "kind": "inherit",
+            "row_offset": 0,
+            "scale": 0.75,
+            "scatter": 0,
+            "wobble": 0
+          },
+          "motif": {
+            "color": "accent",
+            "color_mix": 0.8,
+            "gap": "3px",
+            "glyph": "R",
+            "kind": "letter",
+            "layer": "sandwich",
+            "row_offset": 0.63,
+            "scale": 0,
+            "scatter": 0.22,
+            "size": "96px",
+            "url": "https://example.test/stress.svg",
+            "wobble": 0.41
+          },
+          "palette": "ayu-light",
+          "texture": {
+            "color_mix": 0.28,
+            "kind": "screenprint",
+            "row_offset": 0,
+            "scale": 1.5,
+            "scatter": 0,
+            "scope": "quiet",
+            "wobble": 0
+          }
+        }
+      },
+      "expected_normalized": {
+        "contract_version": 1,
+        "palette": "ayu-light",
+        "aesthetic": "brutal",
+        "fontpack": "editorial",
+        "texture": {
+          "kind": "screenprint",
+          "color_mix": 0.28,
+          "scale": 1.5,
+          "scope": "quiet"
+        },
+        "heading_texture": {
+          "kind": "screenprint",
+          "color_mix": 0.72,
+          "scale": 0.75
+        },
+        "motif": {
+          "kind": "letter",
+          "color_mix": 0.8,
+          "scatter": 0.22,
+          "glyph": "R",
+          "size": "96px",
+          "gap": "3px",
+          "row_offset": 0.63,
+          "wobble": 0.41,
+          "scatter": 0.22,
+          "layer": "sandwich",
+          "color": "accent",
+          "url": "https://example.test/stress.svg"
+        }
+      },
+      "expected_plan": {
+        "palette": "ayu-light",
+        "aesthetic": "brutal",
+        "fontpack": "editorial",
+        "texture": {
+          "recipe": "screenprint",
+          "mix": 0.28,
+          "scale": 1.5,
+          "scope": "quiet"
+        },
+        "heading_texture": {
+          "recipe": "screenprint",
+          "mix": 0.72,
+          "scale": 0.75
+        },
+        "motif": {
+          "recipe": "letter",
+          "kind": "letter",
+          "glyph": "R",
+          "size": "96px",
+          "gap": "3px",
+          "row_offset": 0.63,
+          "wobble": 0.41,
+          "scatter": 0.22,
+          "color": "accent",
+          "mix": 0.8,
+          "url": "https://example.test/stress.svg",
+          "layer": "sandwich"
+        },
+        "layers": [
+          {
+            "role": "motif-under",
+            "recipe": "letter",
+            "mix": 0.8
+          },
+          {
+            "role": "surface",
+            "recipe": "screenprint",
+            "mix": 0.28
+          },
+          {
+            "role": "motif-over",
+            "recipe": "letter",
+            "mix": 0.8
+          }
+        ]
+      }
+    }
+  ]
+}

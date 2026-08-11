@@ -106,6 +106,11 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 	if col > len(line) {
 		col = len(line)
 	}
+	if strings.HasSuffix(params.TextDocument.URI, ".toml") || strings.HasSuffix(params.TextDocument.URI, ".yaml") || strings.HasSuffix(params.TextDocument.URI, ".yml") || strings.HasSuffix(params.TextDocument.URI, ".json") {
+		if items := getThemeConfigCompletions(doc.Content, params.Position.Line, line[:col]); items != nil {
+			return s.sendResponse(msg.ID, &CompletionList{Items: items})
+		}
+	}
 
 	// Check if we're inside frontmatter
 	frontmatterCtx := getFrontmatterContext(doc.Content, params.Position.Line, col)

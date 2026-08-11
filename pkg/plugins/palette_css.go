@@ -14,6 +14,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
@@ -55,6 +56,9 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
+	paletteName = canonicalPaletteName(paletteName)
+	paletteLight = canonicalPaletteName(paletteLight)
+	paletteDark = canonicalPaletteName(paletteDark)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
@@ -92,6 +96,7 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	} else {
 		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	}
+	css += p.generateContractPaletteCSS(config)
 
 	// Compute hash of generated CSS
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
@@ -117,6 +122,9 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Get palette configuration from config.Extra["theme"].
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
+	paletteName = canonicalPaletteName(paletteName)
+	paletteLight = canonicalPaletteName(paletteLight)
+	paletteDark = canonicalPaletteName(paletteDark)
 	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
@@ -160,6 +168,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		// Generate CSS for just the configured light/dark pair
 		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	}
+	css += p.generateContractPaletteCSS(config)
 
 	// Write to output directory
 	cssDir := filepath.Join(outputDir, "css")
@@ -193,6 +202,127 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	paletteCSSLog.Phase("write").Printf("Wrote %d bytes to %s", len(css), cssPath)
 
 	return nil
+}
+
+// canonicalPaletteName resolves contract aliases before the legacy palette
+// loader is called. The loader remains a compatibility projection, but it must
+// receive the same identity selected by the canonical contract.
+func canonicalPaletteName(name string) string {
+	if name == "" {
+		return name
+	}
+	contract, err := renderingcontract.Load()
+	if err != nil {
+		return name
+	}
+	seen := map[string]bool{}
+	for {
+		if seen[name] {
+			return name
+		}
+		seen[name] = true
+		alias, ok := contract.Aliases[name]
+		if !ok || strings.HasPrefix(alias, "theme.") {
+			return name
+		}
+		name = alias
+	}
+}
+
+func (p *PaletteCSSPlugin) generateContractPaletteCSS(config *lifecycle.Config) string {
+	modelsConfig, ok := config.Extra["models_config"].(*models.Config)
+	if !ok {
+		return ""
+	}
+	contract, err := renderingcontract.Load()
+	if err != nil {
+		return ""
+	}
+	resolve := func(id string) string {
+		for i := 0; i < len(contract.Aliases); i++ {
+			alias, ok := contract.Aliases[id]
+			if !ok || strings.HasPrefix(alias, "theme.") {
+				return id
+			}
+			id = alias
+		}
+		return id
+	}
+	selected := resolve(modelsConfig.Theme.Palette)
+	find := func(id string) *renderingcontract.Palette {
+		for index := range contract.Palettes {
+			if contract.Palettes[index].ID == id {
+				return &contract.Palettes[index]
+			}
+		}
+		return nil
+	}
+	active := find(selected)
+	if active == nil {
+		return ""
+	}
+	var light, dark *renderingcontract.Palette
+	for index := range contract.Palettes {
+		palette := &contract.Palettes[index]
+		if palette.Family != active.Family {
+			continue
+		}
+		if palette.Variant == "light" {
+			light = palette
+		}
+		if palette.Variant == "dark" {
+			dark = palette
+		}
+	}
+	write := func(builder *strings.Builder, palette *renderingcontract.Palette) {
+		if palette == nil {
+			return
+		}
+		projected := renderingcontract.FinalRenderPalette(*palette)
+		background, surface := projected["background"], projected["surface"]
+		ink, accent := projected["text"], projected["link"]
+		roles := map[string]string{"background": background, "surface": surface, "ink": ink, "accent": accent}
+		for _, role := range []string{"background", "surface", "ink", "accent"} {
+			fmt.Fprintf(builder, "  --%s: %s;\n", map[string]string{"background": "bg", "surface": "panel", "ink": "ink", "accent": "accent"}[role], roles[role])
+		}
+		// These are the variables consumed by the active Markata templates.
+		fmt.Fprintf(builder, "  --color-background: %s;\n  --color-surface: %s;\n  --color-text: %s;\n  --color-primary: %s;\n  --color-border: %s;\n", background, surface, ink, accent, ink)
+	}
+	var builder strings.Builder
+	builder.WriteString("\n@layer tokens {\n")
+	aesthetic := modelsConfig.Theme.Aesthetic
+	if aesthetic == "" {
+		aesthetic = contract.Defaults.Aesthetic
+	}
+	if values, ok := contract.Aesthetics[aesthetic]; ok {
+		fmt.Fprintf(&builder, ":root { --aesthetic: %q;\n", aesthetic)
+		keys := make([]string, 0, len(values))
+		for key := range values {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			fmt.Fprintf(&builder, "  --theme-%s: %v;\n", key, values[key])
+		}
+		builder.WriteString("}\n")
+	}
+	if dark != nil {
+		builder.WriteString(":root:not([data-theme=\"light\"]), [data-theme=\"dark\"] {\n")
+		write(&builder, dark)
+		builder.WriteString("}\n")
+	}
+	if light != nil {
+		builder.WriteString("[data-theme=\"light\"] {\n")
+		write(&builder, light)
+		builder.WriteString("}\n")
+	}
+	for _, palette := range contract.Palettes {
+		fmt.Fprintf(&builder, "[data-palette=%q] {\n", palette.ID)
+		write(&builder, &palette)
+		builder.WriteString("}\n")
+	}
+	builder.WriteString("}\n")
+	return builder.String()
 }
 
 // isSwitcherEnabled checks if the theme switcher is enabled in config.
@@ -576,12 +706,16 @@ func (p *PaletteCSSPlugin) writePaletteVariables(buf *bytes.Buffer, palette *pal
 
 // resolveWithContrast resolves a color from the palette and adjusts it to meet WCAG contrast ratio against a background color.
 func (p *PaletteCSSPlugin) resolveWithContrast(palette *palettes.Palette, fgKey string, minRatio float64) string {
+	return p.resolveWithContrastAgainst(palette, fgKey, "bg-primary", minRatio)
+}
+
+func (p *PaletteCSSPlugin) resolveWithContrastAgainst(palette *palettes.Palette, fgKey, bgKey string, minRatio float64) string {
 	fgHex := palette.Resolve(fgKey)
 	if fgHex == "" {
 		return ""
 	}
 
-	bgHex := palette.Resolve("bg-primary")
+	bgHex := palette.Resolve(bgKey)
 	if bgHex == "" {
 		return fgHex
 	}
@@ -667,7 +801,7 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 	if codeBg := palette.Resolve("code-bg"); codeBg != "" {
 		fmt.Fprintf(buf, "\n%s/* Code colors */\n", indent)
 		fmt.Fprintf(buf, "%s--color-code-bg: %s;\n", indent, codeBg)
-		if codeText := palette.Resolve("code-text"); codeText != "" {
+		if codeText := p.resolveWithContrastAgainst(palette, "code-text", "code-bg", 4.5); codeText != "" {
 			fmt.Fprintf(buf, "%s--color-code-text: %s;\n", indent, codeText)
 		}
 		for _, role := range []string{
@@ -680,7 +814,7 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 			"operator",
 		} {
 			componentName := "code-" + role
-			if value := palette.Resolve(componentName); value != "" {
+			if value := p.resolveWithContrastAgainst(palette, componentName, "code-bg", 4.5); value != "" {
 				fmt.Fprintf(buf, "%s--color-%s: %s;\n", indent, componentName, value)
 			}
 		}
@@ -725,6 +859,35 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 // If mark-bg/mark-text are not defined in the palette, computes them from the warning color.
 func (p *PaletteCSSPlugin) writeMarkColors(buf *bytes.Buffer, palette *palettes.Palette, indent string) {
 	fmt.Fprintf(buf, "\n%s/* Mark/highlight colors */\n", indent)
+	// Highlight semantics are palette roles, not Web Awesome warning tokens.
+	// Keep the legacy mark names as compatibility aliases for existing themes.
+	highlightBg := p.resolveWithContrast(palette, "accent", 4.5)
+	highlightText := palette.Resolve("accent-ink")
+	if highlightText == "" {
+		highlightText = palette.Resolve("background")
+	}
+	if bgColor, err := palettes.ParseHexColor(highlightBg); err == nil {
+		if textColor, err := palettes.ParseHexColor(highlightText); err == nil {
+			if adjusted, ok := textColor.AdjustForContrast(bgColor, 4.5); ok {
+				highlightText = adjusted.Hex()
+			}
+		}
+	}
+	if highlightBg != "" {
+		fmt.Fprintf(buf, "%s--color-highlight: %s;\n", indent, highlightBg)
+	}
+	if highlightText != "" {
+		fmt.Fprintf(buf, "%s--color-highlight-text: %s;\n", indent, highlightText)
+	}
+	// Heading contour/mark styles historically read --heading-mark-bg, which
+	// could retain the Web Awesome warning yellow even when the canonical
+	// semantic token changed. Emit the resolved presentation roles together.
+	if highlightBg != "" {
+		fmt.Fprintf(buf, "%s--heading-mark-bg: %s;\n", indent, highlightBg)
+	}
+	if highlightText != "" {
+		fmt.Fprintf(buf, "%s--heading-mark-fg: %s;\n", indent, highlightText)
+	}
 
 	// Try explicit mark colors first
 	markBg := palette.Resolve("mark-bg")

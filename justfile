@@ -47,6 +47,10 @@ clean:
 test:
     go test -v ./...
 
+# Verify language-neutral rendering contract projections are current.
+rendering-contract-check:
+    go run ./scripts/rendering-contract --check
+
 # Run tests with race detector
 test-race:
     go test -v -race ./...

@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
 // loadResolvedConfig loads a config file, resolves recursive includes, then
@@ -23,19 +24,35 @@ func loadResolvedConfig(configPath string) (*models.Config, error) {
 		return nil, err
 	}
 
+	warnings := normalizeRenderingTheme(rawWrapper)
 	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
 	}
 
 	rawWrapper = mergeRawMaps(nil, defaultRaw, rawWrapper)
+	warnings = append(warnings, normalizeRenderingTheme(rawWrapper)...)
 
 	config, err := configFromRawWrapper(rawWrapper)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(warnings) > 0 {
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 	return config, nil
+}
+
+func normalizeRenderingTheme(wrapper map[string]any) []string {
+	markata, ok := wrapper["markata-go"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	theme, warnings := renderingcontract.NormalizeTheme(markata)
+	markata["theme"] = theme
+	wrapper["markata-go"] = markata
+	return warnings
 }
 
 // loadResolvedRawConfig loads a config file, recursively resolves include

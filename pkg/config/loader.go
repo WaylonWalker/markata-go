@@ -161,12 +161,14 @@ func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, er
 		mergedRaw = mergeRawMaps(nil, mergedRaw, overrideRaw)
 	}
 
+	warnings := normalizeRenderingTheme(mergedRaw)
 	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
 	}
 
 	mergedRaw = mergeRawMaps(nil, defaultRaw, mergedRaw)
+	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
 
 	baseConfig, err := configFromRawWrapper(mergedRaw)
 	if err != nil {
@@ -178,6 +180,9 @@ func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, er
 		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
 	}
 
+	if len(warnings) > 0 {
+		baseConfig.Extra["theme_migration_warnings"] = warnings
+	}
 	return baseConfig, nil
 }
 
@@ -206,7 +211,18 @@ func LoadSingleConfig(configPath string) (*models.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
-
+	resolvedRaw, rawErr := loadRawConfigData(data, format)
+	if rawErr != nil {
+		return nil, rawErr
+	}
+	warnings := normalizeRenderingTheme(resolvedRaw)
+	config, err = configFromRawWrapper(resolvedRaw)
+	if err != nil {
+		return nil, err
+	}
+	if len(warnings) > 0 {
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 	return config, nil
 }
 
@@ -232,16 +248,22 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 		return nil, err
 	}
 
+	warnings := normalizeRenderingTheme(resolvedRaw)
 	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
 	}
 
-	config, err := configFromRawWrapper(mergeRawMaps(nil, defaultRaw, resolvedRaw))
+	mergedRaw := mergeRawMaps(nil, defaultRaw, resolvedRaw)
+	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	config, err := configFromRawWrapper(mergedRaw)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(warnings) > 0 {
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 	return config, nil
 }
 

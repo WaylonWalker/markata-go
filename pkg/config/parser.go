@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
 // configSource defines the interface for format-specific config structs (TOML, YAML, JSON)
@@ -326,6 +327,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 
 	// Extract the markata-go section as a map
 	if markataGoRaw, ok := rawWrapper["markata-go"].(map[string]any); ok {
+		normalizeParsedTheme(config, rawWrapper)
 		if globRaw, ok := markataGoRaw["glob"].(map[string]any); ok && len(config.GlobConfig.SlugRules) == 0 {
 			config.GlobConfig.SlugRules = extractSlugRules(globRaw["slug_rules"])
 		}
@@ -452,7 +454,12 @@ func ParseYAML(data []byte) (*models.Config, error) {
 		return nil, err
 	}
 
-	return wrapper.MarkataGo.toConfig(), nil
+	config := wrapper.MarkataGo.toConfig()
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err == nil {
+		normalizeParsedTheme(config, raw)
+	}
+	return config, nil
 }
 
 // ParseJSON parses JSON configuration data into a Config struct.
@@ -467,7 +474,32 @@ func ParseJSON(data []byte) (*models.Config, error) {
 		return nil, err
 	}
 
-	return wrapper.MarkataGo.toConfig(), nil
+	config := wrapper.MarkataGo.toConfig()
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err == nil {
+		normalizeParsedTheme(config, raw)
+	}
+	return config, nil
+}
+
+func normalizeParsedTheme(config *models.Config, wrapper map[string]any) {
+	markata, ok := wrapper["markata-go"].(map[string]any)
+	if !ok {
+		return
+	}
+	config.Theme.MarkThemeNumericPresence(markata)
+	theme, warnings := renderingcontract.NormalizeTheme(markata)
+	encoded, err := json.Marshal(theme)
+	if err == nil {
+		_ = json.Unmarshal(encoded, &config.Theme)
+	}
+	config.Theme.MarkThemeNumericPresence(markata)
+	if len(warnings) > 0 {
+		if config.Extra == nil {
+			config.Extra = make(map[string]any)
+		}
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 }
 
 // tomlConfig is an internal struct for parsing TOML configuration.
@@ -552,18 +584,48 @@ type tomlFooterConfig struct {
 }
 
 type tomlThemeConfig struct {
-	Name         string                  `toml:"name"`
-	Aesthetic    string                  `toml:"aesthetic"`
-	Palette      string                  `toml:"palette"`
-	PaletteLight string                  `toml:"palette_light"`
-	PaletteDark  string                  `toml:"palette_dark"`
-	FallbackMode string                  `toml:"fallback_mode"`
-	SeedColor    string                  `toml:"seed_color"`
-	Variables    map[string]string       `toml:"variables"`
-	CustomCSS    string                  `toml:"custom_css"`
-	Background   tomlBackgroundConfig    `toml:"background"`
-	Font         tomlFontConfig          `toml:"font"`
-	Switcher     tomlThemeSwitcherConfig `toml:"switcher"`
+	ContractVersion int                      `toml:"contract_version"`
+	Fontpack        string                   `toml:"fontpack"`
+	Name            string                   `toml:"name"`
+	Aesthetic       string                   `toml:"aesthetic"`
+	Palette         string                   `toml:"palette"`
+	PaletteLight    string                   `toml:"palette_light"`
+	PaletteDark     string                   `toml:"palette_dark"`
+	FallbackMode    string                   `toml:"fallback_mode"`
+	SeedColor       string                   `toml:"seed_color"`
+	Variables       map[string]string        `toml:"variables"`
+	CustomCSS       string                   `toml:"custom_css"`
+	Background      tomlBackgroundConfig     `toml:"background"`
+	Font            tomlFontConfig           `toml:"font"`
+	Switcher        tomlThemeSwitcherConfig  `toml:"switcher"`
+	Texture         tomlTextureConfig        `toml:"texture"`
+	HeadingTexture  tomlHeadingTextureConfig `toml:"heading_texture"`
+	Motif           tomlMotifConfig          `toml:"motif"`
+}
+
+type tomlTextureConfig struct {
+	Kind     string  `toml:"kind"`
+	ColorMix float64 `toml:"color_mix"`
+	Scale    float64 `toml:"scale"`
+	Scope    string  `toml:"scope"`
+}
+type tomlHeadingTextureConfig struct {
+	Kind     string  `toml:"kind"`
+	ColorMix float64 `toml:"color_mix"`
+	Scale    float64 `toml:"scale"`
+}
+type tomlMotifConfig struct {
+	Kind      string  `toml:"kind"`
+	Glyph     string  `toml:"glyph"`
+	Size      string  `toml:"size"`
+	Gap       string  `toml:"gap"`
+	RowOffset float64 `toml:"row_offset"`
+	Wobble    float64 `toml:"wobble"`
+	Scatter   float64 `toml:"scatter"`
+	Layer     string  `toml:"layer"`
+	Color     string  `toml:"color"`
+	ColorMix  float64 `toml:"color_mix"`
+	URL       string  `toml:"url"`
 }
 
 type tomlThemeSwitcherConfig struct {
@@ -1871,18 +1933,23 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		variables = make(map[string]string)
 	}
 	return models.ThemeConfig{
-		Name:         t.Name,
-		Aesthetic:    t.Aesthetic,
-		Palette:      t.Palette,
-		PaletteLight: t.PaletteLight,
-		PaletteDark:  t.PaletteDark,
-		FallbackMode: t.FallbackMode,
-		SeedColor:    t.SeedColor,
-		Variables:    variables,
-		CustomCSS:    t.CustomCSS,
-		Background:   t.Background.toBackgroundConfig(),
-		Font:         t.Font.toFontConfig(),
-		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+		ContractVersion: t.ContractVersion,
+		Fontpack:        t.Fontpack,
+		Name:            t.Name,
+		Aesthetic:       t.Aesthetic,
+		Palette:         t.Palette,
+		PaletteLight:    t.PaletteLight,
+		PaletteDark:     t.PaletteDark,
+		FallbackMode:    t.FallbackMode,
+		SeedColor:       t.SeedColor,
+		Variables:       variables,
+		CustomCSS:       t.CustomCSS,
+		Background:      t.Background.toBackgroundConfig(),
+		Font:            t.Font.toFontConfig(),
+		Switcher:        t.Switcher.toThemeSwitcherConfig(),
+		Texture:         models.ThemeTextureConfig{Kind: t.Texture.Kind, ColorMix: t.Texture.ColorMix, Scale: t.Texture.Scale, Scope: t.Texture.Scope},
+		HeadingTexture:  models.ThemeHeadingTextureConfig{Kind: t.HeadingTexture.Kind, ColorMix: t.HeadingTexture.ColorMix, Scale: t.HeadingTexture.Scale},
+		Motif:           models.ThemeMotifConfig{Kind: t.Motif.Kind, Glyph: t.Motif.Glyph, Size: t.Motif.Size, Gap: t.Motif.Gap, RowOffset: t.Motif.RowOffset, Wobble: t.Motif.Wobble, Scatter: t.Motif.Scatter, Layer: t.Motif.Layer, Color: t.Motif.Color, ColorMix: t.Motif.ColorMix, URL: t.Motif.URL},
 	}
 }
 
@@ -2636,18 +2703,48 @@ func (g *yamlGardenConfig) toGardenConfig() models.GardenConfig {
 }
 
 type yamlThemeConfig struct {
-	Name         string                  `yaml:"name"`
-	Aesthetic    string                  `yaml:"aesthetic"`
-	Palette      string                  `yaml:"palette"`
-	PaletteLight string                  `yaml:"palette_light"`
-	PaletteDark  string                  `yaml:"palette_dark"`
-	FallbackMode string                  `yaml:"fallback_mode"`
-	SeedColor    string                  `yaml:"seed_color"`
-	Variables    map[string]string       `yaml:"variables"`
-	CustomCSS    string                  `yaml:"custom_css"`
-	Background   yamlBackgroundConfig    `yaml:"background"`
-	Font         yamlFontConfig          `yaml:"font"`
-	Switcher     yamlThemeSwitcherConfig `yaml:"switcher"`
+	ContractVersion int                      `yaml:"contract_version"`
+	Fontpack        string                   `yaml:"fontpack"`
+	Name            string                   `yaml:"name"`
+	Aesthetic       string                   `yaml:"aesthetic"`
+	Palette         string                   `yaml:"palette"`
+	PaletteLight    string                   `yaml:"palette_light"`
+	PaletteDark     string                   `yaml:"palette_dark"`
+	FallbackMode    string                   `yaml:"fallback_mode"`
+	SeedColor       string                   `yaml:"seed_color"`
+	Variables       map[string]string        `yaml:"variables"`
+	CustomCSS       string                   `yaml:"custom_css"`
+	Background      yamlBackgroundConfig     `yaml:"background"`
+	Font            yamlFontConfig           `yaml:"font"`
+	Switcher        yamlThemeSwitcherConfig  `yaml:"switcher"`
+	Texture         yamlTextureConfig        `yaml:"texture"`
+	HeadingTexture  yamlHeadingTextureConfig `yaml:"heading_texture"`
+	Motif           yamlMotifConfig          `yaml:"motif"`
+}
+
+type yamlTextureConfig struct {
+	Kind     string  `yaml:"kind"`
+	ColorMix float64 `yaml:"color_mix"`
+	Scale    float64 `yaml:"scale"`
+	Scope    string  `yaml:"scope"`
+}
+type yamlHeadingTextureConfig struct {
+	Kind     string  `yaml:"kind"`
+	ColorMix float64 `yaml:"color_mix"`
+	Scale    float64 `yaml:"scale"`
+}
+type yamlMotifConfig struct {
+	Kind      string  `yaml:"kind"`
+	Glyph     string  `yaml:"glyph"`
+	Size      string  `yaml:"size"`
+	Gap       string  `yaml:"gap"`
+	RowOffset float64 `yaml:"row_offset"`
+	Wobble    float64 `yaml:"wobble"`
+	Scatter   float64 `yaml:"scatter"`
+	Layer     string  `yaml:"layer"`
+	Color     string  `yaml:"color"`
+	ColorMix  float64 `yaml:"color_mix"`
+	URL       string  `yaml:"url"`
 }
 
 type yamlThemeSwitcherConfig struct {
@@ -2693,18 +2790,23 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		variables = make(map[string]string)
 	}
 	return models.ThemeConfig{
-		Name:         t.Name,
-		Aesthetic:    t.Aesthetic,
-		Palette:      t.Palette,
-		PaletteLight: t.PaletteLight,
-		PaletteDark:  t.PaletteDark,
-		FallbackMode: t.FallbackMode,
-		SeedColor:    t.SeedColor,
-		Variables:    variables,
-		CustomCSS:    t.CustomCSS,
-		Background:   t.Background.toBackgroundConfig(),
-		Font:         t.Font.toFontConfig(),
-		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+		ContractVersion: t.ContractVersion,
+		Fontpack:        t.Fontpack,
+		Name:            t.Name,
+		Aesthetic:       t.Aesthetic,
+		Palette:         t.Palette,
+		PaletteLight:    t.PaletteLight,
+		PaletteDark:     t.PaletteDark,
+		FallbackMode:    t.FallbackMode,
+		SeedColor:       t.SeedColor,
+		Variables:       variables,
+		CustomCSS:       t.CustomCSS,
+		Background:      t.Background.toBackgroundConfig(),
+		Font:            t.Font.toFontConfig(),
+		Switcher:        t.Switcher.toThemeSwitcherConfig(),
+		Texture:         models.ThemeTextureConfig{Kind: t.Texture.Kind, ColorMix: t.Texture.ColorMix, Scale: t.Texture.Scale, Scope: t.Texture.Scope},
+		HeadingTexture:  models.ThemeHeadingTextureConfig{Kind: t.HeadingTexture.Kind, ColorMix: t.HeadingTexture.ColorMix, Scale: t.HeadingTexture.Scale},
+		Motif:           models.ThemeMotifConfig{Kind: t.Motif.Kind, Glyph: t.Motif.Glyph, Size: t.Motif.Size, Gap: t.Motif.Gap, RowOffset: t.Motif.RowOffset, Wobble: t.Motif.Wobble, Scatter: t.Motif.Scatter, Layer: t.Motif.Layer, Color: t.Motif.Color, ColorMix: t.Motif.ColorMix, URL: t.Motif.URL},
 	}
 }
 
@@ -4166,18 +4268,48 @@ func (g *jsonGardenConfig) toGardenConfig() models.GardenConfig {
 }
 
 type jsonThemeConfig struct {
-	Name         string                  `json:"name"`
-	Aesthetic    string                  `json:"aesthetic"`
-	Palette      string                  `json:"palette"`
-	PaletteLight string                  `json:"palette_light"`
-	PaletteDark  string                  `json:"palette_dark"`
-	FallbackMode string                  `json:"fallback_mode"`
-	SeedColor    string                  `json:"seed_color"`
-	Variables    map[string]string       `json:"variables"`
-	CustomCSS    string                  `json:"custom_css"`
-	Background   jsonBackgroundConfig    `json:"background"`
-	Font         jsonFontConfig          `json:"font"`
-	Switcher     jsonThemeSwitcherConfig `json:"switcher"`
+	ContractVersion int                      `json:"contract_version"`
+	Fontpack        string                   `json:"fontpack"`
+	Name            string                   `json:"name"`
+	Aesthetic       string                   `json:"aesthetic"`
+	Palette         string                   `json:"palette"`
+	PaletteLight    string                   `json:"palette_light"`
+	PaletteDark     string                   `json:"palette_dark"`
+	FallbackMode    string                   `json:"fallback_mode"`
+	SeedColor       string                   `json:"seed_color"`
+	Variables       map[string]string        `json:"variables"`
+	CustomCSS       string                   `json:"custom_css"`
+	Background      jsonBackgroundConfig     `json:"background"`
+	Font            jsonFontConfig           `json:"font"`
+	Switcher        jsonThemeSwitcherConfig  `json:"switcher"`
+	Texture         jsonTextureConfig        `json:"texture"`
+	HeadingTexture  jsonHeadingTextureConfig `json:"heading_texture"`
+	Motif           jsonMotifConfig          `json:"motif"`
+}
+
+type jsonTextureConfig struct {
+	Kind     string  `json:"kind"`
+	ColorMix float64 `json:"color_mix"`
+	Scale    float64 `json:"scale"`
+	Scope    string  `json:"scope"`
+}
+type jsonHeadingTextureConfig struct {
+	Kind     string  `json:"kind"`
+	ColorMix float64 `json:"color_mix"`
+	Scale    float64 `json:"scale"`
+}
+type jsonMotifConfig struct {
+	Kind      string  `json:"kind"`
+	Glyph     string  `json:"glyph"`
+	Size      string  `json:"size"`
+	Gap       string  `json:"gap"`
+	RowOffset float64 `json:"row_offset"`
+	Wobble    float64 `json:"wobble"`
+	Scatter   float64 `json:"scatter"`
+	Layer     string  `json:"layer"`
+	Color     string  `json:"color"`
+	ColorMix  float64 `json:"color_mix"`
+	URL       string  `json:"url"`
 }
 
 type jsonThemeSwitcherConfig struct {
@@ -4223,18 +4355,23 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		variables = make(map[string]string)
 	}
 	return models.ThemeConfig{
-		Name:         t.Name,
-		Aesthetic:    t.Aesthetic,
-		Palette:      t.Palette,
-		PaletteLight: t.PaletteLight,
-		PaletteDark:  t.PaletteDark,
-		FallbackMode: t.FallbackMode,
-		SeedColor:    t.SeedColor,
-		Variables:    variables,
-		CustomCSS:    t.CustomCSS,
-		Background:   t.Background.toBackgroundConfig(),
-		Font:         t.Font.toFontConfig(),
-		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+		ContractVersion: t.ContractVersion,
+		Fontpack:        t.Fontpack,
+		Name:            t.Name,
+		Aesthetic:       t.Aesthetic,
+		Palette:         t.Palette,
+		PaletteLight:    t.PaletteLight,
+		PaletteDark:     t.PaletteDark,
+		FallbackMode:    t.FallbackMode,
+		SeedColor:       t.SeedColor,
+		Variables:       variables,
+		CustomCSS:       t.CustomCSS,
+		Background:      t.Background.toBackgroundConfig(),
+		Font:            t.Font.toFontConfig(),
+		Switcher:        t.Switcher.toThemeSwitcherConfig(),
+		Texture:         models.ThemeTextureConfig{Kind: t.Texture.Kind, ColorMix: t.Texture.ColorMix, Scale: t.Texture.Scale, Scope: t.Texture.Scope},
+		HeadingTexture:  models.ThemeHeadingTextureConfig{Kind: t.HeadingTexture.Kind, ColorMix: t.HeadingTexture.ColorMix, Scale: t.HeadingTexture.Scale},
+		Motif:           models.ThemeMotifConfig{Kind: t.Motif.Kind, Glyph: t.Motif.Glyph, Size: t.Motif.Size, Gap: t.Motif.Gap, RowOffset: t.Motif.RowOffset, Wobble: t.Motif.Wobble, Scatter: t.Motif.Scatter, Layer: t.Motif.Layer, Color: t.Motif.Color, ColorMix: t.Motif.ColorMix, URL: t.Motif.URL},
 	}
 }
 

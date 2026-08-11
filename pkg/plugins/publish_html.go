@@ -1021,6 +1021,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
     <link rel="stylesheet" href="/css/variables.css">
     <link rel="stylesheet" href="/css/palette.css">
     <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/aesthetic.css">
     <link rel="stylesheet" href="/css/code.css">
     <link rel="stylesheet" href="/css/admonitions.css">
     <link rel="stylesheet" href="/css/fonts.css">

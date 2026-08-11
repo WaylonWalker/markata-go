@@ -4122,10 +4122,18 @@ kbd.kbd {
    ========================================================================== */
 
 mark {
-  background-color: var(--color-mark-bg);
-  color: var(--color-mark-text);
+  /* Markdown presentation owns the final pixels. This must win over
+     component-library warning defaults, which also target <mark>. */
+  background: var(--color-highlight) !important;
+  color: var(--color-highlight-text) !important;
   padding: 0.125em 0.25em;
   border-radius: 0.125em;
+}
+html mark,
+html[data-fontpack] mark,
+html[data-palette] mark {
+  background-color: var(--color-highlight) !important;
+  color: var(--color-highlight-text) !important;
 }
 
 /* User text selection - matches mark highlight for consistency */

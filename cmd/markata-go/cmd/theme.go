@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 	"github.com/spf13/cobra"
 )
 
@@ -938,54 +939,32 @@ type ThemeCheckAllResult struct {
 
 // runThemeCheckAllCommand runs accessibility checks on all themes.
 func runThemeCheckAllCommand(_ *cobra.Command, _ []string) error {
-	loader := palettes.NewLoader()
-	infos, err := loader.Discover()
-	if err != nil {
-		return fmt.Errorf("failed to discover palettes: %w", err)
-	}
-
-	if len(infos) == 0 {
+	contract, err := renderingcontract.Load()
+	if err != nil { return fmt.Errorf("failed to load rendering contract: %w", err) }
+	if len(contract.Palettes) == 0 {
 		fmt.Println("No palettes found.")
 		return nil
 	}
 
 	allResult := ThemeCheckAllResult{
 		Timestamp:     time.Now().Format(time.RFC3339),
-		TotalPalettes: len(infos),
+		TotalPalettes: len(contract.Palettes),
 	}
 
 	if !themeCheckJSON {
-		fmt.Printf("Checking accessibility for %d palettes...\n", len(infos))
+		fmt.Printf("Checking final-render accessibility for %d canonical palettes...\n", len(contract.Palettes))
 		fmt.Println(strings.Repeat("=", 60))
 	}
 
-	for _, info := range infos {
-		p, err := loader.Load(info.Name)
-		if err != nil {
-			if !themeCheckJSON {
-				fmt.Fprintf(os.Stderr, "Warning: failed to load %s: %v\n", info.Name, err)
-			}
-			continue
-		}
-
-		var results []palettes.ContrastCheck
-		if themeCheckStrict {
-			results = p.CheckContrastStrict()
-		} else {
-			results = p.CheckContrast()
-		}
-
-		summary := palettes.SummarizeContrast(p.Name, results)
+	for _, p := range contract.Palettes {
+		results := renderingcontract.FinalRenderContrast(p)
+		summary := palettes.SummarizeContrast(p.ID, results)
 
 		checkResult := ThemeCheckResult{
-			Palette:         p.Name,
-			Variant:         string(p.Variant),
+			Palette:         p.ID,
+			Variant:         p.Variant,
 			ContrastSummary: summary,
 			AllPassed:       summary.AllPassed,
-		}
-
-		if themeCheckColorblindness {
-			checkResult.ColorBlindness = analyzeColorBlindnessRisks(p)
 		}
 
 		allResult.Results = append(allResult.Results, checkResult)

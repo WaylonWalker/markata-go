@@ -21,7 +21,7 @@ func TestRenderInline_ProducesRichAndPlainRepresentations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.HTML != `Good themes make <strong>good places</strong> to <mark>think.</mark>` {
+	if result.HTML != `Good themes make <strong>good places</strong> to <mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important">think.</mark>` {
 		t.Fatalf("HTML = %q", result.HTML)
 	}
 	if result.Text != "Good themes make good places to think." {
@@ -49,7 +49,7 @@ func TestRenderInline_SemanticsAndSafety(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"<em>quiet</em>", "<mark><strong>loud</strong></mark>", "<del>old</del>"} {
+	for _, want := range []string{"<em>quiet</em>", `<mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important"><strong>loud</strong></mark>`, "<del>old</del>"} {
 		if !strings.Contains(result.HTML, want) {
 			t.Errorf("HTML %q does not contain %q", result.HTML, want)
 		}
@@ -157,7 +157,7 @@ func TestInlineTitlesPlugin_PopulatesExplicitRepresentations(t *testing.T) {
 	if err := NewInlineTitlesPlugin().Transform(m); err != nil {
 		t.Fatal(err)
 	}
-	if post.TitleHTML != `Good themes make <strong>good places</strong> to <span class="heading-highlight"><mark>think.</mark></span>` {
+	if post.TitleHTML != `Good themes make <strong>good places</strong> to <span class="heading-highlight"><mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important">think.</mark></span>` {
 		t.Fatalf("TitleHTML = %q", post.TitleHTML)
 	}
 	if post.TitleText != "Good themes make good places to think." {
@@ -191,7 +191,7 @@ func TestMinimalPlugins_DerivesTitleAndTitleFallbackSlugThroughLifecycle(t *test
 	if post.TitleText != "Good places to think" || post.TitleTextDerived != true {
 		t.Fatalf("semantic title = %q, derived = %v", post.TitleText, post.TitleTextDerived)
 	}
-	if post.TitleHTML != `Good <strong>places</strong> to <span class="heading-highlight"><mark>think</mark></span>` {
+	if post.TitleHTML != `Good <strong>places</strong> to <span class="heading-highlight"><mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important">think</mark></span>` {
 		t.Fatalf("title HTML = %q", post.TitleHTML)
 	}
 	if post.Slug != "good-places-to-think" {

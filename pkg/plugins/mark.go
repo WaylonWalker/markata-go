@@ -100,7 +100,10 @@ func (r *markHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer
 //nolint:errcheck // WriteString errors are handled at a higher level in goldmark
 func (r *markHTMLRenderer) renderMark(w util.BufWriter, _ []byte, _ ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<mark>")
+		// Keep Markdown highlight pixels owned by the canonical presentation
+		// contract even when a component library installs warning-style <mark>
+		// defaults with a stronger cascade.
+		_, _ = w.WriteString(`<mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important">`)
 	} else {
 		_, _ = w.WriteString("</mark>")
 	}

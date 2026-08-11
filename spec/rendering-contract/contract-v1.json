@@ -1,0 +1,1212 @@
+{
+  "aesthetics": {
+    "balanced": {
+      "radius": "12px",
+      "shadow": "0 18px 55px rgb(7 7 13 / .24)",
+      "spacing": 1
+    },
+    "brutal": {
+      "radius": "0px",
+      "shadow": "6px 6px 0 var(--theme-line)",
+      "spacing": 1.25
+    },
+    "elevated": {
+      "radius": "22px",
+      "shadow": "0 24px 60px rgb(0 0 0 / .24)",
+      "spacing": 1.15
+    },
+    "minimal": {
+      "radius": "4px",
+      "shadow": "none",
+      "spacing": 0.9
+    },
+    "precision": {
+      "radius": "4px",
+      "shadow": "0 2px 7px rgb(0 0 0 / .10)",
+      "spacing": 1
+    }
+  },
+  "incomplete_palette_families": [],
+  "derived_palette_counterparts": {
+    "description": "Each former singleton family has an explicit counterpart. The counterpart keeps the source family and ID identity, and appends the missing variant suffix to its canonical ID.",
+    "strategy": "For every role color, convert sRGB to HSL, replace lightness L with 1-L, preserve hue and saturation, round each output channel to the nearest 8-bit value, and serialize as lowercase #rrggbb. This deterministic lightness reflection derives light from dark and dark from light without aliasing to another family.",
+    "source_scope": "singleton_palette_families"
+  },
+  "aliases": {
+    "ayu": "ayu-dark",
+    "brush-poster": "brush",
+    "catppuccin": "catppuccin-mocha",
+    "default": "default-light",
+    "heading_texture_strength": "theme.heading_texture.color_mix",
+    "motif_color_distance": "theme.motif.color_mix",
+    "nord": "nord-dark",
+    "system": "default-light",
+    "texture_strength": "theme.texture.color_mix"
+  },
+  "bounds": {
+    "color_mix": [
+      0,
+      1
+    ],
+    "row_offset": [
+      0,
+      1
+    ],
+    "scale": [
+      0.25,
+      3
+    ],
+    "scatter": [
+      0,
+      1
+    ],
+    "wobble": [
+      0,
+      1
+    ]
+  },
+  "control_hints": {
+    "motif": {
+      "size": { "min": "40px", "max": "140px", "step": "1px" },
+      "gap": { "min": "0px", "max": "32px", "step": "1px" },
+      "row_offset": { "min": 0, "max": 1, "step": 0.01, "display_scale": 100 },
+      "wobble": { "min": 0, "max": 1, "step": 0.01, "display_scale": 100 },
+      "scatter": { "min": 0, "max": 1, "step": 0.01, "display_scale": 100 },
+      "color_mix": { "min": 0, "max": 1, "step": 0.01, "display_scale": 100, "mapping": "logarithmic" }
+    }
+  },
+  "config_keys": {
+    "heading_texture": [
+      "kind",
+      "color_mix",
+      "scale"
+    ],
+    "motif": [
+      "kind",
+      "glyph",
+      "size",
+      "gap",
+      "row_offset",
+      "wobble",
+      "scatter",
+      "layer",
+      "color",
+      "color_mix",
+      "url"
+    ],
+    "texture": [
+      "kind",
+      "color_mix",
+      "scale",
+      "scope"
+    ],
+    "theme": [
+      "contract_version",
+      "palette",
+      "aesthetic",
+      "fontpack",
+      "texture",
+      "heading_texture",
+      "motif",
+      "variables"
+    ]
+  },
+  "contract_version": 1,
+  "motif_url_schemes": ["http:", "https:", "data:image/svg+xml,"],
+  "defaults": {
+    "aesthetic": "minimal",
+    "fontpack": "brush",
+    "heading_texture": {
+      "color_mix": 0.45,
+      "kind": "inherit",
+      "scale": 1
+    },
+    "motif": {
+      "color": "ink",
+      "color_mix": 0.01,
+      "gap": "10px",
+      "glyph": "W",
+      "kind": "block-w",
+      "layer": "sandwich",
+      "row_offset": 0.24,
+      "scatter": 0,
+      "size": "78px",
+        "url": "",
+      "wobble": 0.18
+    },
+    "palette": "ayu-dark",
+    "texture": {
+      "color_mix": 0.35,
+      "kind": "screenprint",
+      "scale": 1,
+      "scope": "all"
+    }
+  },
+  "enums": {
+    "aesthetics": [
+      "balanced",
+      "brutal",
+      "precision",
+      "elevated",
+      "minimal"
+    ],
+    "fontpacks": [
+      "system",
+      "plain",
+      "editorial",
+      "modern",
+      "brush",
+      "brush-poster",
+      "vintage-print",
+      "poster-grit",
+      "experimental-color",
+      "modern-soft",
+      "bold-swiss"
+    ],
+    "heading_textures": [
+      "inherit",
+      "none",
+      "splatter",
+      "brush",
+      "grunge",
+      "screenprint"
+    ],
+    "motif_colors": [
+      "ink",
+      "accent",
+      "muted",
+      "shadow"
+    ],
+    "motif_layers": [
+      "under",
+      "over",
+      "sandwich"
+    ],
+    "motifs": [
+      "off",
+      "block-w",
+      "letter"
+    ],
+    "scopes": [
+      "all",
+      "quiet"
+    ],
+    "textures": [
+      "none",
+      "paper",
+      "grain",
+      "grunge",
+      "splatter",
+      "screenprint",
+      "zine",
+      "wall",
+      "brush",
+      "water",
+      "pixels",
+      "halftone",
+      "scratches"
+    ]
+  },
+  "fontpacks": {
+    "bold-swiss": {
+      "body": "Plus Jakarta Sans",
+      "heading": "League Spartan",
+      "mono": "JetBrains Mono"
+    },
+    "brush": {
+      "body": "Space Grotesk",
+      "heading": "Knewave",
+      "mono": "DM Mono"
+    },
+    "brush-poster": {
+      "body": "Space Grotesk",
+      "heading": "Knewave",
+      "mono": "DM Mono"
+    },
+    "editorial": {
+      "body": "Inter",
+      "heading": "Space Grotesk",
+      "mono": "IBM Plex Mono"
+    },
+    "experimental-color": {
+      "body": "Sora",
+      "heading": "Nabla",
+      "mono": "JetBrains Mono"
+    },
+    "modern": {
+      "body": "Space Grotesk",
+      "heading": "Space Grotesk",
+      "mono": "Fira Code"
+    },
+    "modern-soft": {
+      "body": "Sora",
+      "heading": "Bricolage Grotesque",
+      "mono": "IBM Plex Mono"
+    },
+    "plain": {
+      "body": "DM Sans",
+      "heading": "Space Grotesk",
+      "mono": "DM Mono"
+    },
+    "poster-grit": {
+      "body": "Inter",
+      "heading": "Permanent Marker",
+      "mono": "IBM Plex Mono"
+    },
+    "system": {
+      "body": "system-ui",
+      "heading": "system-ui",
+      "mono": "ui-monospace"
+    },
+    "vintage-print": {
+      "body": "Inter",
+      "heading": "Rye",
+      "mono": "IBM Plex Mono"
+    }
+  },
+  "palettes": [
+    {
+      "family": "2bit-demichrome",
+      "id": "2bit-demichrome",
+      "name": "2bit Demichrome",
+      "roles": {
+        "accent": "#a0a08b",
+        "background": "#211e20",
+        "ink": "#e9efec",
+        "surface": "#555568"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "ash",
+      "id": "ash",
+      "name": "Ash",
+      "roles": {
+        "accent": "#c0c0c0",
+        "background": "#1e1e1e",
+        "ink": "#d4d4d4",
+        "surface": "#262626"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "autumn",
+      "id": "autumn",
+      "name": "Autumn",
+      "roles": {
+        "accent": "#f07700",
+        "background": "#1e1812",
+        "ink": "#e8dcc8",
+        "surface": "#2a221a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "ayu",
+      "id": "ayu-dark",
+      "name": "Ayu Dark",
+      "roles": {
+        "accent": "#e6b450",
+        "background": "#0d1017",
+        "ink": "#bfbdb6",
+        "surface": "#131721"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "ayu",
+      "id": "ayu-light",
+      "name": "Ayu Light",
+      "roles": {
+        "accent": "#9a5200",
+        "background": "#fafafa",
+        "ink": "#5c6166",
+        "surface": "#f0f0f0"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "ayu-mirage",
+      "id": "ayu-mirage",
+      "name": "Ayu Mirage",
+      "roles": {
+        "accent": "#ffcc66",
+        "background": "#1f2430",
+        "ink": "#cbccc6",
+        "surface": "#242936"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "berry-nebula",
+      "id": "berry-nebula",
+      "name": "Berry Nebula",
+      "roles": {
+        "accent": "#6cb9c9",
+        "background": "#0d001a",
+        "ink": "#6ceded",
+        "surface": "#4f1446"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "black-gold",
+      "id": "black-gold",
+      "name": "Black Gold",
+      "roles": {
+        "accent": "#d4af37",
+        "background": "#0d0d0d",
+        "ink": "#e8e4d8",
+        "surface": "#151515"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "blessing",
+      "id": "blessing",
+      "name": "Blessing",
+      "roles": {
+        "accent": "#74569b",
+        "background": "#f7ffae",
+        "ink": "#74569b",
+        "surface": "#f7ffae"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "catppuccin-frappe",
+      "id": "catppuccin-frappe",
+      "name": "Catppuccin Frappe",
+      "roles": {
+        "accent": "#ca9ee6",
+        "background": "#303446",
+        "ink": "#c6d0f5",
+        "surface": "#414559"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "catppuccin-latte",
+      "id": "catppuccin-latte",
+      "name": "Catppuccin Latte",
+      "roles": {
+        "accent": "#8839ef",
+        "background": "#eff1f5",
+        "ink": "#3c3e52",
+        "surface": "#ccd0da"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "catppuccin-macchiato",
+      "id": "catppuccin-macchiato",
+      "name": "Catppuccin Macchiato",
+      "roles": {
+        "accent": "#c6a0f6",
+        "background": "#24273a",
+        "ink": "#cad3f5",
+        "surface": "#363a4f"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "catppuccin-mocha",
+      "id": "catppuccin-mocha",
+      "name": "Catppuccin Mocha",
+      "roles": {
+        "accent": "#cba6f7",
+        "background": "#1e1e2e",
+        "ink": "#cdd6f4",
+        "surface": "#313244"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "christmas",
+      "id": "christmas",
+      "name": "Christmas",
+      "roles": {
+        "accent": "#ffd700",
+        "background": "#0f1a14",
+        "ink": "#f0f5f0",
+        "surface": "#1a2a20"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "default",
+      "id": "default-dark",
+      "name": "Default Dark",
+      "roles": {
+        "accent": "#60a5fa",
+        "background": "#111827",
+        "ink": "#f3f4f6",
+        "surface": "#1f2937"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "default",
+      "id": "default-light",
+      "name": "Default Light",
+      "roles": {
+        "accent": "#3b82f6",
+        "background": "#f9fafb",
+        "ink": "#111827",
+        "surface": "#f3f4f6"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "diwali",
+      "id": "diwali",
+      "name": "Diwali",
+      "roles": {
+        "accent": "#ffd700",
+        "background": "#1a0f0a",
+        "ink": "#fff8e8",
+        "surface": "#2a1a12"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "dracula",
+      "id": "dracula",
+      "name": "Dracula",
+      "roles": {
+        "accent": "#bd93f9",
+        "background": "#282a36",
+        "ink": "#f8f8f2",
+        "surface": "#44475a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "everforest",
+      "id": "everforest-dark",
+      "name": "Everforest Dark",
+      "roles": {
+        "accent": "#a7c080",
+        "background": "#2d353b",
+        "ink": "#d3c6aa",
+        "surface": "#3d484d"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "everforest",
+      "id": "everforest-light",
+      "name": "Everforest Light",
+      "roles": {
+        "accent": "#5f7000",
+        "background": "#fdf6e3",
+        "ink": "#3d4a50",
+        "surface": "#efebd4"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "graphite",
+      "id": "graphite-dark",
+      "name": "Graphite Dark",
+      "roles": {
+        "accent": "#78a9ff",
+        "background": "#212121",
+        "ink": "#e8e8e8",
+        "surface": "#2c2c2c"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "graphite",
+      "id": "graphite-light",
+      "name": "Graphite Light",
+      "roles": {
+        "accent": "#0f62fe",
+        "background": "#fafafa",
+        "ink": "#242424",
+        "surface": "#f2f2f2"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "gruvbox",
+      "id": "gruvbox-dark",
+      "name": "Gruvbox Dark",
+      "roles": {
+        "accent": "#fabd2f",
+        "background": "#282828",
+        "ink": "#ebdbb2",
+        "surface": "#3c3836"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "gruvbox",
+      "id": "gruvbox-light",
+      "name": "Gruvbox Light",
+      "roles": {
+        "accent": "#076678",
+        "background": "#fbf1c7",
+        "ink": "#3c3836",
+        "surface": "#ebdbb2"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "halloween",
+      "id": "halloween",
+      "name": "Halloween",
+      "roles": {
+        "accent": "#ff7518",
+        "background": "#0d0d0d",
+        "ink": "#e8e8e8",
+        "surface": "#1a1a1a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "hanukkah",
+      "id": "hanukkah",
+      "name": "Hanukkah",
+      "roles": {
+        "accent": "#87ceeb",
+        "background": "#0a1628",
+        "ink": "#f0f5ff",
+        "surface": "#142438"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "ink",
+      "id": "ink",
+      "name": "Ink",
+      "roles": {
+        "accent": "#96a2b3",
+        "background": "#1f1f29",
+        "ink": "#eaf0d8",
+        "surface": "#413a42"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "inkpink",
+      "id": "inkpink",
+      "name": "INKPINK",
+      "roles": {
+        "accent": "#fe6c90",
+        "background": "#260d34",
+        "ink": "#ffffff",
+        "surface": "#87286a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "kanagawa-dragon",
+      "id": "kanagawa-dragon",
+      "name": "Kanagawa Dragon",
+      "roles": {
+        "accent": "#8992a7",
+        "background": "#181616",
+        "ink": "#c5c9c5",
+        "surface": "#282727"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "kanagawa-lotus",
+      "id": "kanagawa-lotus",
+      "name": "Kanagawa Lotus",
+      "roles": {
+        "accent": "#624c83",
+        "background": "#f2ecbc",
+        "ink": "#545464",
+        "surface": "#dcd5ac"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "kanagawa-wave",
+      "id": "kanagawa-wave",
+      "name": "Kanagawa Wave",
+      "roles": {
+        "accent": "#957fb8",
+        "background": "#1f1f28",
+        "ink": "#dcd7ba",
+        "surface": "#2a2a37"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "lava-gb",
+      "id": "lava-gb",
+      "name": "Lava-GB",
+      "roles": {
+        "accent": "#c53a9d",
+        "background": "#051f39",
+        "ink": "#ff8e80",
+        "surface": "#4a2480"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "lunar-new-year",
+      "id": "lunar-new-year",
+      "name": "Lunar New Year",
+      "roles": {
+        "accent": "#ffd700",
+        "background": "#1a0a0a",
+        "ink": "#f8f0e8",
+        "surface": "#2a1515"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "matte-black",
+      "id": "matte-black",
+      "name": "Matte Black",
+      "roles": {
+        "accent": "#7090c0",
+        "background": "#121212",
+        "ink": "#e8e8e8",
+        "surface": "#1a1a1a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "midnight-ablaze",
+      "id": "midnight-ablaze",
+      "name": "Midnight Ablaze",
+      "roles": {
+        "accent": "#ff8274",
+        "background": "#130208",
+        "ink": "#ff8274",
+        "surface": "#1f0510"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "mist-gb",
+      "id": "mist-gb",
+      "name": "Mist GB",
+      "roles": {
+        "accent": "#5ab9a8",
+        "background": "#2d1b00",
+        "ink": "#c4f0c2",
+        "surface": "#1e606e"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "modus-operandi",
+      "id": "modus-operandi",
+      "name": "Modus Operandi",
+      "roles": {
+        "accent": "#0031a9",
+        "background": "#ffffff",
+        "ink": "#000000",
+        "surface": "#f2eff3"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "modus-vivendi",
+      "id": "modus-vivendi",
+      "name": "Modus Vivendi",
+      "roles": {
+        "accent": "#79a8ff",
+        "background": "#000000",
+        "ink": "#ffffff",
+        "surface": "#1e1e1e"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "monokai",
+      "id": "monokai",
+      "name": "Monokai",
+      "roles": {
+        "accent": "#ff4488",
+        "background": "#272822",
+        "ink": "#f8f8f2",
+        "surface": "#3e3d32"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "night-owl",
+      "id": "night-owl-light",
+      "name": "Night Owl Light",
+      "roles": {
+        "accent": "#0a7a7f",
+        "background": "#fbfbfb",
+        "ink": "#403f53",
+        "surface": "#f0f0f0"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "night-owl",
+      "id": "night-owl",
+      "name": "Night Owl",
+      "roles": {
+        "accent": "#7fdbca",
+        "background": "#011627",
+        "ink": "#d6deeb",
+        "surface": "#0b2942"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "nintendo-gameboy",
+      "id": "nintendo-gameboy",
+      "name": "Nintendo Gameboy",
+      "roles": {
+        "accent": "#88c070",
+        "background": "#081820",
+        "ink": "#e0f8d0",
+        "surface": "#346856"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "nord",
+      "id": "nord-dark",
+      "name": "Nord Dark",
+      "roles": {
+        "accent": "#88c0d0",
+        "background": "#242933",
+        "ink": "#d8dee9",
+        "surface": "#2e3440"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "nord",
+      "id": "nord-light",
+      "name": "Nord Light",
+      "roles": {
+        "accent": "#3d5f8a",
+        "background": "#eceff4",
+        "ink": "#2e3440",
+        "surface": "#e5e9f0"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "oil-6",
+      "id": "oil-6",
+      "name": "Oil 6",
+      "roles": {
+        "accent": "#8b6d9c",
+        "background": "#fbf5ef",
+        "ink": "#272744",
+        "surface": "#f2d3ab"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "one",
+      "id": "one-dark",
+      "name": "One Dark",
+      "roles": {
+        "accent": "#61afef",
+        "background": "#282c34",
+        "ink": "#abb2bf",
+        "surface": "#2c323c"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "one",
+      "id": "one-light",
+      "name": "One Light",
+      "roles": {
+        "accent": "#3060c0",
+        "background": "#fafafa",
+        "ink": "#383a42",
+        "surface": "#f0f0f1"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "pico-8",
+      "id": "pico-8",
+      "name": "PICO-8",
+      "roles": {
+        "accent": "#29adff",
+        "background": "#000000",
+        "ink": "#fff1e8",
+        "surface": "#5f574f"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "pitch-black",
+      "id": "pitch-black",
+      "name": "Pitch Black",
+      "roles": {
+        "accent": "#ffffff",
+        "background": "#000000",
+        "ink": "#ffffff",
+        "surface": "#0a0a0a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "pollen8",
+      "id": "pollen8",
+      "name": "Pollen8",
+      "roles": {
+        "accent": "#ab5675",
+        "background": "#ffe7d6",
+        "ink": "#73464c",
+        "surface": "#ffe7d6"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "rose-pine-dawn",
+      "id": "rose-pine-dawn",
+      "name": "Rose Pine Dawn",
+      "roles": {
+        "accent": "#6a5888",
+        "background": "#faf4ed",
+        "ink": "#575279",
+        "surface": "#f2e9e1"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "rose-pine-moon",
+      "id": "rose-pine-moon",
+      "name": "Rose Pine Moon",
+      "roles": {
+        "accent": "#c4a7e7",
+        "background": "#232136",
+        "ink": "#e0def4",
+        "surface": "#393552"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "rose-pine",
+      "id": "rose-pine",
+      "name": "Rose Pine",
+      "roles": {
+        "accent": "#c4a7e7",
+        "background": "#191724",
+        "ink": "#e0def4",
+        "surface": "#26233a"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "rust-gold-8",
+      "id": "rust-gold-8",
+      "name": "Rust Gold 8",
+      "roles": {
+        "accent": "#f6cd26",
+        "background": "#202020",
+        "ink": "#f6cd26",
+        "surface": "#393939"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "slso8",
+      "id": "slso8",
+      "name": "SLSO8",
+      "roles": {
+        "accent": "#ffaa5e",
+        "background": "#0d2b45",
+        "ink": "#ffecd6",
+        "surface": "#544e68"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "solarized",
+      "id": "solarized-dark",
+      "name": "Solarized Dark",
+      "roles": {
+        "accent": "#3ba3e8",
+        "background": "#002b36",
+        "ink": "#93a1a1",
+        "surface": "#073642"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "solarized",
+      "id": "solarized-light",
+      "name": "Solarized Light",
+      "roles": {
+        "accent": "#4a4f8a",
+        "background": "#fdf6e3",
+        "ink": "#002b36",
+        "surface": "#eee8d5"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "st.-patrick's-day",
+      "id": "st.-patrick's-day",
+      "name": "St. Patrick's Day",
+      "roles": {
+        "accent": "#00c070",
+        "background": "#0a1a10",
+        "ink": "#f0f8f2",
+        "surface": "#152a1c"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "summer-beach",
+      "id": "summer-beach",
+      "name": "Summer Beach",
+      "roles": {
+        "accent": "#006994",
+        "background": "#faf8f5",
+        "ink": "#2c3e50",
+        "surface": "#f0ebe5"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "sweet",
+      "id": "sweet",
+      "name": "Sweet",
+      "roles": {
+        "accent": "#00d3a7",
+        "background": "#1b1b2f",
+        "ink": "#f8f8f2",
+        "surface": "#252542"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "tokyo-night-day",
+      "id": "tokyo-night-day",
+      "name": "Tokyo Night Day",
+      "roles": {
+        "accent": "#7847bd",
+        "background": "#e1e2e7",
+        "ink": "#243a7d",
+        "surface": "#e9e9ec"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "tokyo-night-storm",
+      "id": "tokyo-night-storm",
+      "name": "Tokyo Night Storm",
+      "roles": {
+        "accent": "#bb9af7",
+        "background": "#24283b",
+        "ink": "#c0caf5",
+        "surface": "#1f2335"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "tokyo-night",
+      "id": "tokyo-night",
+      "name": "Tokyo Night",
+      "roles": {
+        "accent": "#9d7cd8",
+        "background": "#1a1b26",
+        "ink": "#c0caf5",
+        "surface": "#24283b"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "twilight-5",
+      "id": "twilight-5",
+      "name": "Twilight 5",
+      "roles": {
+        "accent": "#ee8695",
+        "background": "#292831",
+        "ink": "#fbbbad",
+        "surface": "#333f58"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "valentine",
+      "id": "valentine",
+      "name": "Valentine",
+      "roles": {
+        "accent": "#c21e56",
+        "background": "#1a0f14",
+        "ink": "#f8f0f4",
+        "surface": "#2a1a22"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "vinik24",
+      "id": "vinik24",
+      "name": "Vinik24",
+      "roles": {
+        "accent": "#68aca9",
+        "background": "#000000",
+        "ink": "#c5ccb8",
+        "surface": "#433455"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "white-gold",
+      "id": "white-gold",
+      "name": "White Gold",
+      "roles": {
+        "accent": "#7a5f00",
+        "background": "#fefefe",
+        "ink": "#2d2a24",
+        "surface": "#f8f6f0"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "whitesur",
+      "id": "whitesur-dark",
+      "name": "WhiteSur Dark",
+      "roles": {
+        "accent": "#4d9eff",
+        "background": "#1f1f1f",
+        "ink": "#f0f0f0",
+        "surface": "#282828"
+      },
+      "variant": "dark"
+    },
+    {
+      "family": "whitesur",
+      "id": "whitesur-light",
+      "name": "WhiteSur Light",
+      "roles": {
+        "accent": "#0066d6",
+        "background": "#f5f5f5",
+        "ink": "#242424",
+        "surface": "#ebebeb"
+      },
+      "variant": "light"
+    },
+    {
+      "family": "winter-frost",
+      "id": "winter-frost",
+      "name": "Winter Frost",
+      "roles": {
+        "accent": "#a5f2f3",
+        "background": "#1c2128",
+        "ink": "#e8f0f8",
+        "surface": "#252c35"
+      },
+      "variant": "dark"
+    },
+    {"family":"2bit-demichrome","id":"2bit-demichrome-light","name":"2bit Demichrome Light","roles":{"accent":"#74745f","background":"#e1dee0","ink":"#101613","surface":"#9797aa"},"variant":"light"},
+    {"family":"ash","id":"ash-light","name":"Ash Light","roles":{"accent":"#3f3f3f","background":"#e1e1e1","ink":"#2b2b2b","surface":"#d9d9d9"},"variant":"light"},
+    {"family":"autumn","id":"autumn-light","name":"Autumn Light","roles":{"accent":"#ff860f","background":"#ede7e1","ink":"#372b17","surface":"#e5ddd5"},"variant":"light"},
+    {"family":"ayu-mirage","id":"ayu-mirage-light","name":"Ayu Mirage Light","roles":{"accent":"#996600","background":"#cfd4e0","ink":"#383933","surface":"#c9cedb"},"variant":"light"},
+    {"family":"berry-nebula","id":"berry-nebula-light","name":"Berry Nebula Light","roles":{"accent":"#368393","background":"#f2e5ff","ink":"#129393","surface":"#ebb0e2"},"variant":"light"},
+    {"family":"black-gold","id":"black-gold-light","name":"Black Gold Light","roles":{"accent":"#c8a32b","background":"#f2f2f2","ink":"#272317","surface":"#eaeaea"},"variant":"light"},
+    {"family":"blessing","id":"blessing-dark","name":"Blessing Dark","roles":{"accent":"#8264a9","background":"#495100","ink":"#8264a9","surface":"#495100"},"variant":"dark"},
+    {"family":"catppuccin-frappe","id":"catppuccin-frappe-light","name":"Catppuccin Frappe Light","roles":{"accent":"#451961","background":"#b9bdcf","ink":"#0a1439","surface":"#a6aabe"},"variant":"light"},
+    {"family":"catppuccin-latte","id":"catppuccin-latte-dark","name":"Catppuccin Latte Dark","roles":{"accent":"#5f10c6","background":"#0a0c10","ink":"#adafc3","surface":"#252933"},"variant":"dark"},
+    {"family":"catppuccin-macchiato","id":"catppuccin-macchiato-light","name":"Catppuccin Macchiato Light","roles":{"accent":"#2f095f","background":"#c5c8db","ink":"#0a1335","surface":"#b0b4c9"},"variant":"light"},
+    {"family":"catppuccin-mocha","id":"catppuccin-mocha-light","name":"Catppuccin Mocha Light","roles":{"accent":"#2d0859","background":"#d1d1e1","ink":"#0b1432","surface":"#bbbcce"},"variant":"light"},
+    {"family":"christmas","id":"christmas-light","name":"Christmas Light","roles":{"accent":"#ffd700","background":"#e5f0ea","ink":"#0a0f0a","surface":"#d5e5db"},"variant":"light"},
+    {"family":"diwali","id":"diwali-light","name":"Diwali Light","roles":{"accent":"#ffd700","background":"#f5eae5","ink":"#171000","surface":"#edddd5"},"variant":"light"},
+    {"family":"dracula","id":"dracula-light","name":"Dracula Light","roles":{"accent":"#30066c","background":"#c9cbd7","ink":"#0d0d07","surface":"#a5a8bb"},"variant":"light"},
+    {"family":"halloween","id":"halloween-light","name":"Halloween Light","roles":{"accent":"#e75d00","background":"#f2f2f2","ink":"#171717","surface":"#e5e5e5"},"variant":"light"},
+    {"family":"hanukkah","id":"hanukkah-light","name":"Hanukkah Light","roles":{"accent":"#145b78","background":"#d7e3f5","ink":"#00050f","surface":"#c7d7eb"},"variant":"light"},
+    {"family":"ink","id":"ink-light","name":"Ink Light","roles":{"accent":"#4c5869","background":"#d6d6e0","ink":"#21270f","surface":"#c4bdc5"},"variant":"light"},
+    {"family":"inkpink","id":"inkpink-light","name":"INKPINK Light","roles":{"accent":"#930125","background":"#e4cbf2","ink":"#000000","surface":"#d778ba"},"variant":"light"},
+    {"family":"kanagawa-dragon","id":"kanagawa-dragon-light","name":"Kanagawa Dragon Light","roles":{"accent":"#586176","background":"#e9e7e7","ink":"#363a36","surface":"#d8d7d7"},"variant":"light"},
+    {"family":"kanagawa-lotus","id":"kanagawa-lotus-dark","name":"Kanagawa Lotus Dark","roles":{"accent":"#927cb3","background":"#433d0d","ink":"#9b9bab","surface":"#534c23"},"variant":"dark"},
+    {"family":"kanagawa-wave","id":"kanagawa-wave-light","name":"Kanagawa Wave Light","roles":{"accent":"#5d4780","background":"#d7d7e0","ink":"#454023","surface":"#c8c8d5"},"variant":"light"},
+    {"family":"lava-gb","id":"lava-gb-light","name":"Lava-GB Light","roles":{"accent":"#c53a9d","background":"#c6e0fa","ink":"#7f0e00","surface":"#a57fdb"},"variant":"light"},
+    {"family":"lunar-new-year","id":"lunar-new-year-light","name":"Lunar New Year Light","roles":{"accent":"#ffd700","background":"#f5e5e5","ink":"#170f07","surface":"#ead5d5"},"variant":"light"},
+    {"family":"matte-black","id":"matte-black-light","name":"Matte Black Light","roles":{"accent":"#3f5f8f","background":"#ededed","ink":"#171717","surface":"#e5e5e5"},"variant":"light"},
+    {"family":"midnight-ablaze","id":"midnight-ablaze-light","name":"Midnight Ablaze Light","roles":{"accent":"#8b0e00","background":"#fdecf2","ink":"#8b0e00","surface":"#fae0eb"},"variant":"light"},
+    {"family":"mist-gb","id":"mist-gb-light","name":"Mist GB Light","roles":{"accent":"#46a594","background":"#ffedd2","ink":"#113d0f","surface":"#91d3e1"},"variant":"light"},
+    {"family":"modus-operandi","id":"modus-operandi-dark","name":"Modus Operandi Dark","roles":{"accent":"#5687ff","background":"#000000","ink":"#ffffff","surface":"#0f0c10"},"variant":"dark"},
+    {"family":"modus-vivendi","id":"modus-vivendi-light","name":"Modus Vivendi Light","roles":{"accent":"#002f86","background":"#ffffff","ink":"#000000","surface":"#e1e1e1"},"variant":"light"},
+    {"family":"monokai","id":"monokai-light","name":"Monokai Light","roles":{"accent":"#bb0044","background":"#dcddd7","ink":"#0d0d07","surface":"#cdccc1"},"variant":"light"},
+    {"family":"nintendo-gameboy","id":"nintendo-gameboy-light","name":"Nintendo Gameboy Light","roles":{"accent":"#578f3f","background":"#dfeff7","ink":"#172f07","surface":"#97cbb9"},"variant":"light"},
+    {"family":"oil-6","id":"oil-6-dark","name":"Oil 6 Dark","roles":{"accent":"#816392","background":"#100a04","ink":"#bbbbd8","surface":"#54350d"},"variant":"dark"},
+    {"family":"pico-8","id":"pico-8-light","name":"PICO-8 Light","roles":{"accent":"#0084d6","background":"#ffffff","ink":"#170900","surface":"#b0a8a0"},"variant":"light"},
+    {"family":"pitch-black","id":"pitch-black-light","name":"Pitch Black Light","roles":{"accent":"#000000","background":"#ffffff","ink":"#000000","surface":"#f5f5f5"},"variant":"light"},
+    {"family":"pollen8","id":"pollen8-dark","name":"Pollen8 Dark","roles":{"accent":"#a95473","background":"#291100","ink":"#b98c92","surface":"#291100"},"variant":"dark"},
+    {"family":"rose-pine-dawn","id":"rose-pine-dawn-dark","name":"Rose Pine Dawn Dark","roles":{"accent":"#8977a7","background":"#120c05","ink":"#8b86ad","surface":"#1e150d"},"variant":"dark"},
+    {"family":"rose-pine-moon","id":"rose-pine-moon-light","name":"Rose Pine Moon Light","roles":{"accent":"#351858","background":"#cbc9de","ink":"#0d0b21","surface":"#b1adca"},"variant":"light"},
+    {"family":"rose-pine","id":"rose-pine-light","name":"Rose Pine Light","roles":{"accent":"#351858","background":"#dddbe8","ink":"#0d0b21","surface":"#c8c5dc"},"variant":"light"},
+    {"family":"rust-gold-8","id":"rust-gold-8-light","name":"Rust Gold 8 Light","roles":{"accent":"#d9b009","background":"#dfdfdf","ink":"#d9b009","surface":"#c6c6c6"},"variant":"light"},
+    {"family":"slso8","id":"slso8-light","name":"SLSO8 Light","roles":{"accent":"#a14c00","background":"#bad8f2","ink":"#291600","surface":"#9d97b1"},"variant":"light"},
+    {"family":"st.-patrick's-day","id":"st.-patrick's-day-light","name":"St. Patrick's Day Light","roles":{"accent":"#3fffaf","background":"#e5f5eb","ink":"#070f09","surface":"#d5eadc"},"variant":"light"},
+    {"family":"summer-beach","id":"summer-beach-dark","name":"Summer Beach Dark","roles":{"accent":"#6bd4ff","background":"#0a0805","ink":"#afc1d3","surface":"#1a150f"},"variant":"dark"},
+    {"family":"sweet","id":"sweet-light","name":"Sweet Light","roles":{"accent":"#2cffd3","background":"#d0d0e4","ink":"#0d0d07","surface":"#bdbdda"},"variant":"light"},
+    {"family":"tokyo-night-day","id":"tokyo-night-day-dark","name":"Tokyo Night Day Dark","roles":{"accent":"#7342b8","background":"#18191e","ink":"#8298db","surface":"#131316"},"variant":"dark"},
+    {"family":"tokyo-night-storm","id":"tokyo-night-storm-light","name":"Tokyo Night Storm Light","roles":{"accent":"#290865","background":"#c4c8db","ink":"#0a143f","surface":"#cacee0"},"variant":"light"},
+    {"family":"tokyo-night","id":"tokyo-night-light","name":"Tokyo Night Light","roles":{"accent":"#482783","background":"#d9dae5","ink":"#0a143f","surface":"#c4c8db"},"variant":"light"},
+    {"family":"twilight-5","id":"twilight-5-light","name":"Twilight 5 Light","roles":{"accent":"#791120","background":"#cfced7","ink":"#521204","surface":"#a7b3cc"},"variant":"light"},
+    {"family":"valentine","id":"valentine-light","name":"Valentine Light","roles":{"accent":"#e13d75","background":"#f0e5ea","ink":"#0f070b","surface":"#e5d5dd"},"variant":"light"},
+    {"family":"vinik24","id":"vinik24-light","name":"Vinik24 Light","roles":{"accent":"#539794","background":"#ffffff","ink":"#404733","surface":"#b9aacb"},"variant":"light"},
+    {"family":"white-gold","id":"white-gold-dark","name":"White Gold Dark","roles":{"accent":"#ffe485","background":"#010101","ink":"#dbd8d2","surface":"#0f0d07"},"variant":"dark"},
+    {"family":"winter-frost","id":"winter-frost-light","name":"Winter Frost Light","roles":{"accent":"#0c595a","background":"#d7dce3","ink":"#070f17","surface":"#cad1da"},"variant":"light"}
+  ],
+  "textures": {
+    "brush": {
+      "curve": 0.96,
+      "max_opacity": 0.2
+    },
+    "grain": {
+      "curve": 1.42,
+      "max_opacity": 0.26
+    },
+    "grunge": {
+      "curve": 1.04,
+      "max_opacity": 0.24
+    },
+    "halftone": {
+      "curve": 1,
+      "max_opacity": 0.21
+    },
+    "none": {
+      "max_opacity": 0
+    },
+    "paper": {
+      "curve": 1.32,
+      "max_opacity": 0.24
+    },
+    "pixels": {
+      "curve": 1.04,
+      "max_opacity": 0.2
+    },
+    "scratches": {
+      "curve": 0.98,
+      "max_opacity": 0.19
+    },
+    "screenprint": {
+      "curve": 1.08,
+      "max_opacity": 0.23
+    },
+    "splatter": {
+      "curve": 0.94,
+      "max_opacity": 0.21
+    },
+    "wall": {
+      "curve": 1.16,
+      "max_opacity": 0.23
+    },
+    "water": {
+      "curve": 1.02,
+      "max_opacity": 0.18
+    },
+    "zine": {
+      "curve": 1.14,
+      "max_opacity": 0.27
+    }
+  }
+}

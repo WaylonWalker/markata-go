@@ -273,7 +273,7 @@ func writeRoleProperty(b *strings.Builder, role, property, value string) {
 func roleRulesForPack(pack FontPack) string {
 	var b strings.Builder
 	writeRoleRule(&b, "body", "body", pack)
-	writeRoleRule(&b, "h1", firstRole(pack, "display", "heading"), pack)
+	writeRoleRule(&b, "h1", headingRole(pack), pack)
 	writeRoleRule(&b, "h2, h3, h4, h5, h6", "heading", pack)
 	writeRoleRule(&b, "code, pre, kbd, samp", "code", pack)
 	writeRoleRule(&b, ".lead", "lead", pack)
@@ -287,7 +287,7 @@ func roleRulesForPacks(packs map[string]FontPack) string {
 	for _, name := range SortedKeys(packs) {
 		prefix := `[data-fontpack="` + name + `"] `
 		writeRoleRuleForPack(&b, prefix+"body", "body", "", packs[name])
-		writeRoleRuleForPack(&b, prefix+"h1", firstRole(packs[name], "display", "heading"), "", packs[name])
+		writeRoleRuleForPack(&b, prefix+"h1", headingRole(packs[name]), "", packs[name])
 		writeRoleRuleForPack(&b, prefix+"h2, "+prefix+"h3, "+prefix+"h4, "+prefix+"h5, "+prefix+"h6", "heading", "", packs[name])
 		writeRoleRuleForPack(&b, prefix+"code, "+prefix+"pre, "+prefix+"kbd, "+prefix+"samp", "code", "", packs[name])
 		writeRoleRuleForPack(&b, prefix+".lead", "lead", "body", packs[name])
@@ -295,6 +295,16 @@ func roleRulesForPacks(packs map[string]FontPack) string {
 		writeRoleRuleForPack(&b, prefix+".caption, "+prefix+"figcaption", "caption", "body", packs[name])
 	}
 	return b.String()
+}
+
+func headingRole(pack FontPack) string {
+	// The canonical brush record uses Knewave for every heading level. The
+	// display role remains Water Brush for poster-specific consumers, but it is
+	// not the portable brush fontpack heading role.
+	if strings.EqualFold(pack.Name, "Brush Poster") || strings.EqualFold(pack.Name, "Brush") {
+		return firstRole(pack, "heading", "display")
+	}
+	return firstRole(pack, "display", "heading")
 }
 
 func writeRoleRuleForPack(b *strings.Builder, selector, role, fallback string, pack FontPack) {

@@ -2,7 +2,11 @@
 package plugins
 
 import (
+	"bytes"
 	"fmt"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
+	stdhtml "html"
 	"regexp"
 	"strings"
 
@@ -30,6 +34,56 @@ type HeadingAnchorsPlugin struct {
 
 	// class is the CSS class for the anchor link (default: "heading-anchor")
 	class string
+	wear  *HeadingWearPlugin
+}
+
+// HeadingWearPlugin applies heading texture glyph wrappers independently of
+// heading anchor configuration.
+type HeadingWearPlugin struct {
+	enabled bool
+}
+
+// NewHeadingWearPlugin creates a disabled heading-wear pass.
+func NewHeadingWearPlugin() *HeadingWearPlugin { return &HeadingWearPlugin{} }
+
+func (p *HeadingWearPlugin) Name() string { return "heading_wear" }
+
+func (p *HeadingWearPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageRender {
+		return lifecycle.PriorityLate
+	}
+	return lifecycle.PriorityDefault
+}
+
+func (p *HeadingWearPlugin) Configure(m *lifecycle.Manager) error {
+	p.enabled = false
+	if configured, ok := m.Config().Extra["models_config"].(*models.Config); ok {
+		p.enabled = configured.Theme.HeadingTexture.Kind != "none" && configured.Theme.HeadingTexture.ColorMix > 0
+	}
+	return nil
+}
+
+func (p *HeadingWearPlugin) SetEnabled(enabled bool) { p.enabled = enabled }
+
+func (p *HeadingWearPlugin) Render(m *lifecycle.Manager) error {
+	if !p.enabled {
+		return nil
+	}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.ArticleHTML != "" && strings.Contains(post.ArticleHTML, "<h")
+	})
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
+}
+
+func (p *HeadingWearPlugin) processPost(post *models.Post) error {
+	post.ArticleHTML = headingTagRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
+		submatches := headingTagRegex.FindStringSubmatch(match)
+		if len(submatches) < 4 {
+			return match
+		}
+		return fmt.Sprintf("<h%s%s>%s</h%s>", submatches[1], submatches[2], wrapHeadingGlyphText(submatches[3]), submatches[1])
+	})
+	return nil
 }
 
 // NewHeadingAnchorsPlugin creates a new HeadingAnchorsPlugin with default settings.
@@ -41,6 +95,7 @@ func NewHeadingAnchorsPlugin() *HeadingAnchorsPlugin {
 		position: PositionEnd,
 		symbol:   "#",
 		class:    "heading-anchor",
+		wear:     NewHeadingWearPlugin(),
 	}
 }
 
@@ -62,6 +117,12 @@ func (p *HeadingAnchorsPlugin) Priority(stage lifecycle.Stage) int {
 // Configuration is expected in config.Extra["heading_anchors"] as a map.
 func (p *HeadingAnchorsPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
+	if p.wear == nil {
+		p.wear = NewHeadingWearPlugin()
+	}
+	if err := p.wear.Configure(m); err != nil {
+		return err
+	}
 	if config.Extra == nil {
 		return nil
 	}
@@ -107,6 +168,13 @@ var idAttrRegex = regexp.MustCompile(`(?i)\bid=["']([^"']+)["']`)
 // Render processes article_html and adds anchor links to headings.
 // Posts with Skip=true or empty ArticleHTML are skipped.
 func (p *HeadingAnchorsPlugin) Render(m *lifecycle.Manager) error {
+	// Run wear before inserting generated anchors, and independently of the
+	// anchor enabled and level-range settings.
+	if p.wear != nil {
+		if err := p.wear.Render(m); err != nil {
+			return err
+		}
+	}
 	if !p.enabled {
 		return nil
 	}
@@ -188,6 +256,63 @@ func (p *HeadingAnchorsPlugin) processHeading(match string, idCounts map[string]
 	return fmt.Sprintf("<h%s%s>%s</h%s>", levelStr, attrs, newContent, levelStr)
 }
 
+func wrapHeadingGlyphText(content string) string {
+	// Parse the fragment as HTML. Wrapping serialized strings is unsafe: an
+	// inline element can contain another element, quoted attributes can contain
+	// angle brackets, and the heading anchor must never be worn.
+	root, err := html.ParseFragment(strings.NewReader(content), &html.Node{Type: html.ElementNode, Data: "span", DataAtom: atom.Span})
+	if err != nil {
+		return content
+	}
+	var wearText func(*html.Node, bool)
+	wearText = func(node *html.Node, inAnchor bool) {
+		anchor := inAnchor || (node.Type == html.ElementNode && node.Data == "a" && isGeneratedHeadingAnchor(node))
+		if node.Type == html.TextNode && !anchor && strings.TrimSpace(node.Data) != "" {
+			parent := node.Parent
+			if parent != nil && parent.Type == html.ElementNode && parent.Data == "span" && hasClass(parent, "heading-wear-glyph") {
+				return
+			}
+			wrapped := &html.Node{Type: html.ElementNode, Data: "span", Attr: []html.Attribute{{Key: "class", Val: "heading-wear-glyph"}}}
+			wrapped.AppendChild(&html.Node{Type: html.TextNode, Data: node.Data})
+			parent.InsertBefore(wrapped, node)
+			parent.RemoveChild(node)
+			return
+		}
+		for child := node.FirstChild; child != nil; {
+			next := child.NextSibling
+			wearText(child, anchor)
+			child = next
+		}
+	}
+	container := &html.Node{Type: html.ElementNode, Data: "div"}
+	for _, node := range root {
+		container.AppendChild(node)
+	}
+	wearText(container, false)
+	var out bytes.Buffer
+	for child := container.FirstChild; child != nil; child = child.NextSibling {
+		_ = html.Render(&out, child)
+	}
+	return out.String()
+}
+
+func hasClass(node *html.Node, class string) bool {
+	for _, attr := range node.Attr {
+		if attr.Key == "class" {
+			for _, value := range strings.Fields(attr.Val) {
+				if value == class {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isGeneratedHeadingAnchor(node *html.Node) bool {
+	return hasClass(node, "anchor") || hasClass(node, "heading-anchor")
+}
+
 // extractID extracts the id attribute value from heading attributes.
 func (p *HeadingAnchorsPlugin) extractID(attrs string) string {
 	matches := idAttrRegex.FindStringSubmatch(attrs)
@@ -233,11 +358,14 @@ func stripHTMLTags(content string) string {
 
 // createAnchor creates an anchor link element for the given ID.
 func (p *HeadingAnchorsPlugin) createAnchor(id string) string {
+	id = stdhtml.EscapeString(id)
+	class := stdhtml.EscapeString(p.class)
+	symbol := stdhtml.EscapeString(p.symbol)
 	// Add leading space for "end" position, trailing space for "start"
 	if p.position == PositionStart {
-		return fmt.Sprintf(`<a href="#%s" class=%q>%s</a> `, id, p.class, p.symbol)
+		return fmt.Sprintf(`<a href="#%s" class=%q>%s</a> `, id, class, symbol)
 	}
-	return fmt.Sprintf(` <a href="#%s" class=%q>%s</a>`, id, p.class, p.symbol)
+	return fmt.Sprintf(` <a href="#%s" class=%q>%s</a>`, id, class, symbol)
 }
 
 // SetEnabled enables or disables the plugin.
@@ -278,4 +406,8 @@ var (
 	_ lifecycle.ConfigurePlugin = (*HeadingAnchorsPlugin)(nil)
 	_ lifecycle.RenderPlugin    = (*HeadingAnchorsPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*HeadingAnchorsPlugin)(nil)
+	_ lifecycle.Plugin          = (*HeadingWearPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*HeadingWearPlugin)(nil)
+	_ lifecycle.RenderPlugin    = (*HeadingWearPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*HeadingWearPlugin)(nil)
 )

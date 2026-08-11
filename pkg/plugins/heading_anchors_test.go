@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -161,6 +162,97 @@ func TestHeadingAnchorsPlugin_BasicHeading(t *testing.T) {
 	// Should preserve ID
 	if !strings.Contains(post.ArticleHTML, `id="my-section"`) {
 		t.Errorf("expected id attribute preserved, got %q", post.ArticleHTML)
+	}
+}
+
+func TestWrapHeadingGlyphText_PreservesInlineMarkupAndWearsRegularLinks(t *testing.T) {
+	input := `plain <strong>strong</strong> <em>emphasis</em> <code>code</code> <mark>highlight</mark> <a href="https://example.com">linked</a>`
+	got := wrapHeadingGlyphText(input)
+	for _, tag := range []string{"<strong>", "</strong>", "<em>", "</em>", "<code>", "</code>", "<mark>", "</mark>", `<a href="https://example.com">`, "</a>"} {
+		if !strings.Contains(got, tag) {
+			t.Fatalf("output lost %s: %s", tag, got)
+		}
+	}
+	if strings.Count(got, `class="heading-wear-glyph"`) != 6 {
+		t.Fatalf("expected one glyph wrapper for each text run, got %d: %s", strings.Count(got, `class="heading-wear-glyph"`), got)
+	}
+}
+
+func TestHeadingWearPlugin_AllLevelsAndInlineMarkup(t *testing.T) {
+	p := NewHeadingWearPlugin()
+	p.SetEnabled(true)
+	post := &models.Post{ArticleHTML: `<h1> one, <mark>two</mark></h1><h2><code>two</code></h2><h3><em>three</em></h3><h4><strong>four</strong></h4><h5><a href="/five">five</a></h5><h6> six </h6>`}
+	if err := p.processPost(post); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(post.ArticleHTML, `class="heading-wear-glyph"`); got != 7 {
+		t.Fatalf("wear wrapper count = %d, want 7: %s", got, post.ArticleHTML)
+	}
+	for _, tag := range []string{"<h1>", "<h2>", "<h3>", "<h4>", "<h5>", "<h6>", `<a href="/five">`} {
+		if !strings.Contains(post.ArticleHTML, tag) {
+			t.Errorf("output lost %s: %s", tag, post.ArticleHTML)
+		}
+	}
+	if !strings.Contains(post.ArticleHTML, ` six </span>`) {
+		t.Errorf("heading whitespace was not preserved: %s", post.ArticleHTML)
+	}
+}
+
+func TestHeadingWearPlugin_SkipsNoneAndZeroMix(t *testing.T) {
+	for _, theme := range []models.ThemeHeadingTextureConfig{
+		{Kind: "none", ColorMix: 1},
+		{Kind: "screenprint", ColorMix: 0},
+	} {
+		p := NewHeadingWearPlugin()
+		m := lifecycle.NewManager()
+		m.Config().Extra = map[string]interface{}{"models_config": &models.Config{Theme: models.ThemeConfig{HeadingTexture: theme}}}
+		if err := p.Configure(m); err != nil {
+			t.Fatal(err)
+		}
+		post := &models.Post{ArticleHTML: `<h1>Heading</h1>`}
+		m.SetPosts([]*models.Post{post})
+		if err := p.Render(m); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(post.ArticleHTML, "heading-wear-glyph") {
+			t.Errorf("disabled wear changed output: %s", post.ArticleHTML)
+		}
+	}
+}
+
+func TestHeadingAnchorsPlugin_WearIndependentOfAnchors(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("anchors-enabled-%t", enabled), func(t *testing.T) {
+			p := NewHeadingAnchorsPlugin()
+			p.SetEnabled(enabled)
+			m := lifecycle.NewManager()
+			m.Config().Extra = map[string]interface{}{"models_config": &models.Config{Theme: models.ThemeConfig{HeadingTexture: models.ThemeHeadingTextureConfig{Kind: "screenprint", ColorMix: 1}}}}
+			post := &models.Post{ArticleHTML: `<h2>Heading</h2>`}
+			m.SetPosts([]*models.Post{post})
+			if err := p.Configure(m); err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Render(m); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(post.ArticleHTML, "heading-wear-glyph") {
+				t.Errorf("wear did not run: %s", post.ArticleHTML)
+			}
+			hasAnchor := strings.Contains(post.ArticleHTML, "heading-anchor")
+			if hasAnchor != enabled {
+				t.Errorf("hasAnchor = %v, want %v: %s", hasAnchor, enabled, post.ArticleHTML)
+			}
+			if enabled && strings.Contains(post.ArticleHTML, `<a href="#heading"><span class="heading-wear-glyph">`) {
+				t.Errorf("generated anchor text was worn: %s", post.ArticleHTML)
+			}
+		})
+	}
+}
+
+func TestWrapHeadingGlyphText_DoesNotWrapWhitespaceOnlyNodes(t *testing.T) {
+	got := wrapHeadingGlyphText("  <strong>text</strong>  ")
+	if strings.Contains(got, `class="heading-wear-glyph"> </span>`) {
+		t.Fatalf("wrapped whitespace: %s", got)
 	}
 }
 

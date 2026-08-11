@@ -7,6 +7,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // FontpackPlugin installs one site-wide typography stylesheet. It never calls
@@ -29,10 +30,7 @@ func (p *FontpackPlugin) Configure(m *lifecycle.Manager) error {
 	if m.Config().Extra == nil {
 		m.Config().Extra = make(map[string]any)
 	}
-	name := "system"
-	if v, ok := m.Config().Extra["fontpack"].(string); ok && v != "" {
-		name = v
-	}
+	name := configuredFontpackName(m.Config().Extra)
 	p.name = name
 	path := ""
 	if v, ok := m.Config().Extra["fontpacks_file"].(string); ok && v != "" {
@@ -49,6 +47,16 @@ func (p *FontpackPlugin) Configure(m *lifecycle.Manager) error {
 	}
 	m.Config().Extra["fontpack_css"] = true
 	return nil
+}
+
+func configuredFontpackName(extra map[string]any) string {
+	if configured, ok := extra["models_config"].(*models.Config); ok && configured.Theme.Fontpack != "" {
+		return configured.Theme.Fontpack
+	}
+	if value, ok := extra["fontpack"].(string); ok && value != "" {
+		return value
+	}
+	return "system"
 }
 
 func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {

@@ -148,6 +148,65 @@ func TestMergeConfigs_IntFields(t *testing.T) {
 	}
 }
 
+func TestMergeConfigs_ThemeNumericZeroOverrides(t *testing.T) {
+	base := &models.Config{Theme: models.ThemeConfig{
+		Texture:        models.ThemeTextureConfig{ColorMix: 0.8, Scale: 1.5},
+		HeadingTexture: models.ThemeHeadingTextureConfig{ColorMix: 0.7, Scale: 1.4},
+		Motif:          models.ThemeMotifConfig{ColorMix: 0.6, RowOffset: 0.5, Wobble: 0.4, Scatter: 0.3},
+	}}
+	override := &models.Config{Theme: models.ThemeConfig{
+		Texture:        models.ThemeTextureConfig{ColorMixSet: true, ScaleSet: true},
+		HeadingTexture: models.ThemeHeadingTextureConfig{ColorMixSet: true, ScaleSet: true},
+		Motif:          models.ThemeMotifConfig{ColorMixSet: true, RowOffsetSet: true, WobbleSet: true, ScatterSet: true},
+	}}
+
+	got := MergeConfigs(base, override).Theme
+	if got.Texture.ColorMix != 0 || got.Texture.Scale != 0 {
+		t.Errorf("texture zero values = %+v, want both zero", got.Texture)
+	}
+	if got.HeadingTexture.ColorMix != 0 || got.HeadingTexture.Scale != 0 {
+		t.Errorf("heading texture zero values = %+v, want both zero", got.HeadingTexture)
+	}
+	if got.Motif.ColorMix != 0 || got.Motif.RowOffset != 0 || got.Motif.Wobble != 0 || got.Motif.Scatter != 0 {
+		t.Errorf("motif zero values = %+v, want all zero", got.Motif)
+	}
+}
+
+func TestMergeConfigs_ThemeEmptyOverridePreservesBase(t *testing.T) {
+	base := &models.Config{Theme: models.ThemeConfig{
+		Texture:        models.ThemeTextureConfig{ColorMix: 0.8, Scale: 1.5},
+		HeadingTexture: models.ThemeHeadingTextureConfig{ColorMix: 0.7, Scale: 1.4},
+		Motif:          models.ThemeMotifConfig{ColorMix: 0.6, RowOffset: 0.5, Wobble: 0.4, Scatter: 0.3},
+	}}
+	got := MergeConfigs(base, &models.Config{}).Theme
+	if got.Texture != base.Theme.Texture || got.HeadingTexture != base.Theme.HeadingTexture || got.Motif != base.Theme.Motif {
+		t.Errorf("empty theme override changed base: got %+v", got)
+	}
+}
+
+func TestParseTOML_ThemeNumericPresence(t *testing.T) {
+	config, err := ParseTOML([]byte(`[markata-go.theme.texture]
+color_mix = 0
+
+[markata-go.theme.heading_texture]
+color_mix = 0
+
+[markata-go.theme.motif]
+color_mix = 0
+row_offset = 0
+wobble = 0
+scatter = 0
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !config.Theme.Texture.ColorMixSet || !config.Theme.HeadingTexture.ColorMixSet ||
+		!config.Theme.Motif.ColorMixSet || !config.Theme.Motif.RowOffsetSet ||
+		!config.Theme.Motif.WobbleSet || !config.Theme.Motif.ScatterSet {
+		t.Fatalf("parsed numeric presence not recorded: %+v %+v %+v", config.Theme.Texture, config.Theme.HeadingTexture, config.Theme.Motif)
+	}
+}
+
 func TestMergeConfigs_GlobConfig(t *testing.T) {
 	base := &models.Config{
 		GlobConfig: models.GlobConfig{

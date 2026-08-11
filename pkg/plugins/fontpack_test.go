@@ -3,7 +3,17 @@ package plugins
 import (
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+func TestConfiguredFontpackName_UsesCanonicalTheme(t *testing.T) {
+	configured := &models.Config{}
+	configured.Theme.Fontpack = "brush-poster"
+	if got := configuredFontpackName(map[string]any{"models_config": configured, "fontpack": "system"}); got != "brush-poster" {
+		t.Fatalf("fontpack = %q", got)
+	}
+}
 
 func TestMarkHTMLFontpackReplacesExactlyOneAttribute(t *testing.T) {
 	tests := []struct {
