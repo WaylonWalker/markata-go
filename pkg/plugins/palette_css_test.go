@@ -383,6 +383,48 @@ func TestPaletteCSSPlugin_Write_NoPaletteSkips(t *testing.T) {
 	}
 }
 
+func TestPaletteCSSPlugin_Write_ContractOwnsActiveVariables(t *testing.T) {
+	tmpDir := t.TempDir()
+	modelsConfig := &models.Config{}
+	modelsConfig.Theme = models.ThemeConfig{Palette: "nord", Aesthetic: "brutal"}
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{OutputDir: tmpDir, Extra: map[string]interface{}{"models_config": modelsConfig}})
+	if err := NewPaletteCSSPlugin().Write(m); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(tmpDir, "css", "palette.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(content)
+	for _, want := range []string{"--bg: #242933", "--panel: #2e3440", "--ink: #d8dee9", "--accent: #88c0d0", "--color-background: #242933", "--color-surface: #2e3440", "--color-text: #d8dee9", "--color-primary: #88c0d0", "--aesthetic: \"brutal\"", "--theme-radius: 0px"} {
+		if !strings.Contains(css, want) {
+			t.Errorf("CSS missing %q", want)
+		}
+	}
+}
+
+func TestPaletteCSSPlugin_Write_ResolvesContractAliasBeforeLegacyLoader(t *testing.T) {
+	tmpDir := t.TempDir()
+	modelsConfig := &models.Config{}
+	modelsConfig.Theme = models.ThemeConfig{Palette: "catppuccin"}
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{OutputDir: tmpDir, Extra: map[string]interface{}{"models_config": modelsConfig}})
+	if err := NewPaletteCSSPlugin().Write(m); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(tmpDir, "css", "palette.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(content)
+	for _, want := range []string{"--bg: #1e1e2e", "--panel: #313244", "--ink: #cdd6f4", "--accent: #cba6f7"} {
+		if !strings.Contains(css, want) {
+			t.Errorf("CSS missing Catppuccin role %q", want)
+		}
+	}
+}
+
 // TestPaletteCSSPlugin_ServeMode_ConfigChange simulates the serve mode scenario
 // where palette config changes should be detected and new CSS should be generated.
 func TestPaletteCSSPlugin_ServeMode_ConfigChange(t *testing.T) {

@@ -90,7 +90,11 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["head"] = cfg.Head
 	lcConfig.Extra["toc"] = cfg.Toc
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
-	lcConfig.Extra["fontpack"] = cfg.Fontpack
+	fontpack := cfg.Fontpack
+	if cfg.Theme.Fontpack != "" {
+		fontpack = cfg.Theme.Fontpack
+	}
+	lcConfig.Extra["fontpack"] = fontpack
 	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)
 
 	// Pass theme configuration to plugins
@@ -138,6 +142,10 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 			lcConfig.Extra[key] = value
 		}
 	}
+	// Canonical nested theme values remain authoritative after arbitrary plugin
+	// extras are copied. Legacy root keys are compatibility inputs only.
+	lcConfig.Extra["fontpack"] = fontpack
+	lcConfig.Extra["theme"] = cfg.Theme
 	// Keep path-bearing plugin configuration aligned with the resolved build
 	// paths even when the raw config also contains the option in Extra.
 	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)

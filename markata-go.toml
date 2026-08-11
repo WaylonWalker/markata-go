@@ -1,0 +1,45 @@
+[markata-go]
+title = "Rendering contract headings fixture"
+description = "Canonical cross-consumer rendering contract fixture"
+url = "http://localhost:8000"
+license = "cc-by-4.0"
+output_dir = "output-rendering-contract"
+templates_dir = "templates"
+assets_dir = "static"
+
+[markata-go.glob]
+patterns = ["rendering-fixtures/*.md"]
+use_gitignore = false
+
+[markata-go.theme]
+contract_version = 1
+palette = "ayu-dark"
+aesthetic = "balanced"
+fontpack = "brush"
+
+[markata-go.theme.texture]
+kind = "screenprint"
+color_mix = 0.211
+scale = 0.920
+scope = "quiet"
+
+[markata-go.theme.heading_texture]
+kind = "splatter"
+color_mix = 0.290
+scale = 0.250
+
+[markata-go.theme.motif]
+kind = "block-w"
+glyph = "W"
+size = "71px"
+gap = "11px"
+row_offset = 0.550
+wobble = 0.330
+scatter = 0.330
+layer = "over"
+color = "ink"
+color_mix = 0.010
+url = "https://waylonwalker.com/w.svg"
+
+[markata-go.theme.variables]
+"--content-width" = "68ch"

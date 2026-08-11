@@ -280,6 +280,21 @@ html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) mar
   padding-block: 0;
   border-radius: .18em;
 }
+html[data-fontpack] body .post-content mark,
+html[data-fontpack] body .post-header mark {
+  background: var(--color-highlight) !important;
+  background-color: var(--color-highlight) !important;
+  color: var(--color-highlight-text) !important;
+}
+
+/* <mark> is part of the Markdown presentation contract, including ordinary
+   paragraph highlights. Keep the rule in the always-loaded stylesheet: some
+   fixture pages do not load the optional component bundle. */
+html[data-fontpack] body mark {
+  background: var(--color-highlight) !important;
+  background-color: var(--color-highlight) !important;
+  color: var(--color-highlight-text) !important;
+}
 
 html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) .heading-highlight {
   position: relative;

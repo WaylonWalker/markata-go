@@ -977,6 +977,7 @@ mem.prof
 *.prof
 cache
 output
+output-rendering-contract
 .markata
 
 # Test-generated artifacts (tailwind rebuilds on every test run)

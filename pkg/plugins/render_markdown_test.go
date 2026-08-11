@@ -44,7 +44,7 @@ func TestRenderMarkdownPlugin_WrapsHeadingHighlights(t *testing.T) {
 	if err := p.renderPost(post); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(post.ArticleHTML, `<span class="heading-highlight"><mark>wrapped highlight</mark></span>`) {
+	if !strings.Contains(post.ArticleHTML, `<span class="heading-highlight"><mark style="background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important">wrapped highlight</mark></span>`) {
 		t.Fatalf("heading highlight wrapper missing: %s", post.ArticleHTML)
 	}
 }
@@ -86,8 +86,8 @@ func TestRenderMarkdownPlugin_ExpressiveH1AndH2(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"<strong>Strong</strong> <em>emphasis</em> <span class=\"heading-highlight\"><mark>mark</mark></span> <code>code</code> <a href=\"/test\">link</a> <del>delete</del>",
-		"<span class=\"heading-highlight\"><mark><strong>nested</strong></mark></span>",
+		"<strong>Strong</strong> <em>emphasis</em> <span class=\"heading-highlight\"><mark style=\"background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important\">mark</mark></span> <code>code</code> <a href=\"/test\">link</a> <del>delete</del>",
+		"<span class=\"heading-highlight\"><mark style=\"background-color:var(--color-highlight)!important;color:var(--color-highlight-text)!important\"><strong>nested</strong></mark></span>",
 	} {
 		if !strings.Contains(post.ArticleHTML, want) {
 			t.Errorf("rendered headings %q do not contain %q", post.ArticleHTML, want)

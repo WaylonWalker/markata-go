@@ -304,8 +304,8 @@ fontpacks:
       label:      { source: ibm-plex-sans-condensed, tier: prose-core, weight: 400, fallback: sans }
       numbers:    { source: ibm-plex-mono, tier: code-core, weight: 400, fallback: mono }
 
-  brush-poster:
-    name: Brush Poster
+  brush:
+    name: Brush
     description: Real brush display texture supported by clean geometric reading fonts.
     performance: { class: bundled }
     tags: [brush, poster, expressive]
@@ -562,7 +562,7 @@ aliases:
   terminal: system-terminal
   newspaper: system-newspaper
   magazine: editorial
-  brush: brush-poster
+  brush-poster: brush
   docs: technical
   notebook: field-notebook
   painted: painted-sign

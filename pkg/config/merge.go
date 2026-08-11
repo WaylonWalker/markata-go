@@ -188,6 +188,12 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.Aesthetic != "" {
 		result.Aesthetic = override.Aesthetic
 	}
+	if override.ContractVersion != 0 {
+		result.ContractVersion = override.ContractVersion
+	}
+	if override.Fontpack != "" {
+		result.Fontpack = override.Fontpack
+	}
 	if override.Palette != "" {
 		result.Palette = override.Palette
 	}
@@ -221,7 +227,79 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 
 	// Merge switcher config
 	result.Switcher = mergeSwitcherConfig(base.Switcher, override.Switcher)
+	result.Texture = mergeThemeTextureConfig(base.Texture, override.Texture)
+	result.HeadingTexture = mergeThemeHeadingTextureConfig(base.HeadingTexture, override.HeadingTexture)
+	result.Motif = mergeThemeMotifConfig(base.Motif, override.Motif)
 
+	return result
+}
+
+func mergeThemeTextureConfig(base, override models.ThemeTextureConfig) models.ThemeTextureConfig {
+	result := base
+	if override.Kind != "" {
+		result.Kind = override.Kind
+	}
+	if override.ColorMix != 0 || override.ColorMixSet {
+		result.ColorMix = override.ColorMix
+	}
+	if override.Scale != 0 || override.ScaleSet {
+		result.Scale = override.Scale
+	}
+	if override.Scope != "" {
+		result.Scope = override.Scope
+	}
+	return result
+}
+
+func mergeThemeHeadingTextureConfig(base, override models.ThemeHeadingTextureConfig) models.ThemeHeadingTextureConfig {
+	result := base
+	if override.Kind != "" {
+		result.Kind = override.Kind
+	}
+	if override.ColorMix != 0 || override.ColorMixSet {
+		result.ColorMix = override.ColorMix
+	}
+	if override.Scale != 0 || override.ScaleSet {
+		result.Scale = override.Scale
+	}
+	return result
+}
+
+func mergeThemeMotifConfig(base, override models.ThemeMotifConfig) models.ThemeMotifConfig {
+	result := base
+	if override.Kind != "" {
+		result.Kind = override.Kind
+	}
+	if override.Glyph != "" {
+		result.Glyph = override.Glyph
+	}
+	if override.Size != "" {
+		result.Size = override.Size
+	}
+	if override.Gap != "" {
+		result.Gap = override.Gap
+	}
+	if override.RowOffset != 0 || override.RowOffsetSet {
+		result.RowOffset = override.RowOffset
+	}
+	if override.Wobble != 0 || override.WobbleSet {
+		result.Wobble = override.Wobble
+	}
+	if override.Scatter != 0 || override.ScatterSet {
+		result.Scatter = override.Scatter
+	}
+	if override.Layer != "" {
+		result.Layer = override.Layer
+	}
+	if override.Color != "" {
+		result.Color = override.Color
+	}
+	if override.ColorMix != 0 || override.ColorMixSet {
+		result.ColorMix = override.ColorMix
+	}
+	if override.URL != "" {
+		result.URL = override.URL
+	}
 	return result
 }
 

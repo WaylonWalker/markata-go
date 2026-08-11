@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
 // ValidationError represents a configuration validation error.
@@ -34,6 +35,7 @@ func ValidateConfig(config *models.Config) []error {
 	}
 
 	var errs []error
+	errs = append(errs, validateRenderingTheme(config)...)
 
 	// Validate URL format if provided
 	if config.URL != "" {
@@ -138,6 +140,65 @@ func ValidateConfig(config *models.Config) []error {
 	// Sort errors first, then warnings
 	sortErrors(errs)
 
+	return errs
+}
+
+func validateRenderingTheme(config *models.Config) []error {
+	c, err := renderingcontract.Load()
+	if err != nil {
+		return []error{ValidationError{Field: "theme", Message: "cannot load rendering contract: " + err.Error()}}
+	}
+	var errs []error
+	valid := func(group, value, field string) {
+		if value == "" {
+			return
+		}
+		for _, candidate := range c.Enums[group] {
+			if value == candidate {
+				return
+			}
+		}
+		errs = append(errs, ValidationError{Field: field, Message: fmt.Sprintf("unsupported value %q", value)})
+	}
+	palette := config.Theme.Palette
+	if alias, ok := c.Aliases[palette]; ok {
+		palette = alias
+	}
+	found := false
+	for _, item := range c.Palettes {
+		if item.ID == palette {
+			found = true
+			break
+		}
+	}
+	if palette != "" && !found {
+		errs = append(errs, ValidationError{Field: "theme.palette", Message: fmt.Sprintf("unknown palette %q", config.Theme.Palette)})
+	}
+	valid("aesthetics", config.Theme.Aesthetic, "theme.aesthetic")
+	if config.Fontpack == "" || config.Fontpack != config.Theme.Fontpack {
+		valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
+	}
+	valid("textures", config.Theme.Texture.Kind, "theme.texture.kind")
+	valid("scopes", config.Theme.Texture.Scope, "theme.texture.scope")
+	valid("heading_textures", config.Theme.HeadingTexture.Kind, "theme.heading_texture.kind")
+	valid("motifs", config.Theme.Motif.Kind, "theme.motif.kind")
+	valid("motif_layers", config.Theme.Motif.Layer, "theme.motif.layer")
+	valid("motif_colors", config.Theme.Motif.Color, "theme.motif.color")
+	for field, value := range map[string]float64{"theme.texture.color_mix": config.Theme.Texture.ColorMix, "theme.heading_texture.color_mix": config.Theme.HeadingTexture.ColorMix, "theme.motif.color_mix": config.Theme.Motif.ColorMix, "theme.motif.row_offset": config.Theme.Motif.RowOffset, "theme.motif.wobble": config.Theme.Motif.Wobble, "theme.motif.scatter": config.Theme.Motif.Scatter} {
+		if value < 0 || value > 1 {
+			errs = append(errs, ValidationError{Field: field, Message: "must be between 0 and 1"})
+		}
+	}
+	for field, value := range map[string]float64{"theme.texture.scale": config.Theme.Texture.Scale, "theme.heading_texture.scale": config.Theme.HeadingTexture.Scale} {
+		if value != 0 && (value < .25 || value > 3) {
+			errs = append(errs, ValidationError{Field: field, Message: "must be between 0.25 and 3"})
+		}
+	}
+	if warnings, ok := config.Extra["theme_migration_warnings"].([]string); ok {
+		for _, warning := range warnings {
+			errs = append(errs, ValidationError{Field: "theme", Message: warning, IsWarn: true})
+		}
+	}
 	return errs
 }
 

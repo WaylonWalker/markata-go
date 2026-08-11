@@ -3,17 +3,23 @@ package plugins
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
+	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/aesthetic"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
@@ -50,6 +56,7 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 	} else {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
+	css += p.generatePresentationCSS(config)
 
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
 
@@ -87,6 +94,7 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	} else {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
+	css += p.generatePresentationCSS(config)
 
 	cssDir := filepath.Join(outputDir, "css")
 	cssPath := filepath.Join(cssDir, "aesthetic.css")
@@ -112,6 +120,365 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+func (p *AestheticCSSPlugin) generatePresentationCSS(config *lifecycle.Config) string {
+	body := p.generatePresentationCSSBody(config)
+	if config != nil {
+		if configured, ok := config.Extra["models_config"].(*models.Config); ok && configured.Theme.Motif.URL != "" {
+			contract, _ := renderingcontract.Load()
+			if !validMotifURL(contract, configured.Theme.Motif.URL) || strings.ContainsAny(configured.Theme.Motif.URL, "\"'()\n\r\t") {
+				body = strings.ReplaceAll(body, configured.Theme.Motif.URL, "")
+			}
+		}
+	}
+	body = unquoteCSSLengthProperty(body, "--theme-motif-size")
+	body = unquoteCSSLengthProperty(body, "--theme-motif-gap")
+	return body + `
+@layer tokens {
+  /* Motif color_mix selects the color. Motif paint stays opaque. */
+	  body { background-size: var(--theme-motif-field-size, calc(var(--theme-motif-size) + var(--theme-motif-gap))) auto; }
+	  body::after { background-size: var(--theme-motif-field-size, calc(var(--theme-motif-size) + var(--theme-motif-gap))) auto; opacity: 1; }
+  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-image: var(--theme-motif-over-image); background-repeat: repeat; }
+  body > * { position: relative; z-index: 2; }
+  body::before { background-size: calc(180px * var(--theme-texture-scale)); }
+	  body::after { transform: none; }
+  h1, h2, h3, h4, h5, h6 { mask-image: none !important; -webkit-mask-image: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+  /* Wear removes ink through a mask. It must not replace the semantic paint
+     inherited from mark, links, emphasis, or strong. */
+  .heading-wear-glyph { display: inline; color: inherit; background: none; -webkit-text-fill-color: currentColor; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }
+  .heading-wear-glyph .heading-anchor, .heading-anchor { mask: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+}
+` + `
+@layer tokens {
+	  body, body::after { background-size: var(--theme-motif-field-size, calc(16 * (var(--theme-motif-size) + var(--theme-motif-gap)))) auto; background-position: 0 0; }
+}
+`
+}
+
+func unquoteCSSLengthProperty(css, property string) string {
+	prefix := property + `: "`
+	start := strings.Index(css, prefix)
+	if start < 0 {
+		return css
+	}
+	valueStart := start + len(prefix)
+	end := strings.Index(css[valueStart:], `";`)
+	if end < 0 {
+		return css
+	}
+	end += valueStart
+	return css[:start] + property + ": " + css[valueStart:end] + css[end+1:]
+}
+
+func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Config) string {
+	if config == nil {
+		return ""
+	}
+	theme := models.NewThemeConfig()
+	if configured, ok := config.Extra["models_config"].(*models.Config); ok {
+		theme = configured.Theme
+	}
+	contract, _ := renderingcontract.Load()
+	textureKind := theme.Texture.Kind
+	headingTextureKind := theme.HeadingTexture.Kind
+	if headingTextureKind == "inherit" {
+		headingTextureKind = textureKind
+	}
+	// quiet keeps the texture on framing surfaces. The CSS projection below
+	// excludes the reading surface instead of silently discarding the texture.
+	textureMix := normalizedColorMix(theme.Texture.ColorMix)
+	headingMix := normalizedColorMix(theme.HeadingTexture.ColorMix)
+	motifMix := normalizedColorMix(theme.Motif.ColorMix)
+	textureColor := sharedColorMix("text", textureMix)
+	// Heading color_mix controls glyph wear. At zero the heading remains solid
+	// text (the texture is background-equivalent); increasing the dial enables
+	// the same glyph-scoped mask used by the browser consumers.
+	headingColor := "var(--color-text, #222)"
+	textureImage := textureImageFor(textureKind, textureColor)
+	motifImage := "none"
+	motifMask := "none"
+	motifPaint := "none"
+	if theme.Motif.Kind != "off" {
+		motifColor := resolveMotifPaint(contract, theme, motifMix)
+		motifPaint = motifColor
+		motifImage = motifImageFor(theme.Motif.Kind, motifColor, theme.Motif.Glyph)
+		if theme.Motif.Kind == "block-w" {
+			motifImage = blockWMotifField(motifColor, "", cssPixels(theme.Motif.Size, 78), cssPixels(theme.Motif.Gap, 10), theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter)
+		}
+	}
+	customMotifURL := validMotifURL(contract, theme.Motif.URL) && !strings.ContainsAny(theme.Motif.URL, "\"'()\n\r\t")
+	// The canonical W is portable contract artwork, not a network dependency.
+	// Keep the URL as authoring metadata but render the vendored path locally.
+	if customMotifURL && theme.Motif.URL == "https://waylonwalker.com/w.svg" {
+		customMotifURL = false
+	}
+	if customMotifURL {
+		// A custom URL supplies artwork, not an opaque page-sized background.
+		// Use it as an alpha source and paint it with the resolved contract color.
+		motifMask = "none"
+		motifImage = blockWMotifField(motifPaint, theme.Motif.URL, cssPixels(theme.Motif.Size, 78), cssPixels(theme.Motif.Gap, 10), theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter)
+	} else if theme.Motif.URL != "" {
+		log.Printf("[aesthetic_css] invalid-or-unsafe-custom-url: motif URL ignored")
+	}
+	headingImage := "none"
+	if headingMix > 0 {
+		headingImage = headingMaskFor(headingTextureKind, headingMix)
+	}
+	textureOpacity := textureOpacity(contract, textureKind, textureMix)
+	motifZ := motifLayerZ(theme.Motif.Layer)
+	aestheticCSS := ""
+	if contract, err := renderingcontract.Load(); err == nil {
+		if tokens, ok := contract.Aesthetics[theme.Aesthetic]; ok {
+			aestheticCSS = fmt.Sprintf("--radius: %v; --shadow: %v; --space: %v;", tokens["radius"], tokens["shadow"], tokens["spacing"])
+		}
+	}
+	underImage := "none"
+	if theme.Motif.Layer == "under" || theme.Motif.Layer == "sandwich" {
+		underImage = motifImage
+	}
+	overImage := "none"
+	if theme.Motif.Layer == "over" || theme.Motif.Layer == "sandwich" {
+		overImage = motifImage
+	}
+	for name, value := range theme.Variables {
+		if strings.HasPrefix(name, "--") && !strings.ContainsAny(name+value, "{};\n\r") {
+			aestheticCSS += fmt.Sprintf(" %s: %s;", name, value)
+		}
+	}
+	return fmt.Sprintf("\n@layer tokens {\n  :root {\n    %s\n    --theme-contract-version: %d;\n    --theme-texture-kind: %q; --theme-texture-color-mix: %.3f; --theme-texture-scale: %.3f; --theme-texture-scope: %q; --theme-texture-opacity: %.3f; --theme-texture-image: %s;\n    --theme-heading-texture-kind: %q; --theme-heading-texture-color-mix: %.3f; --theme-heading-texture-scale: %.3f; --theme-heading-texture-color: %s; --theme-heading-texture-mask: %s;\n    --theme-motif-kind: %q; --theme-motif-glyph: %q; --theme-motif-color-mix: %.3f; --theme-motif-layer: %q; --theme-motif-image: %s; --theme-motif-under-image: %s; --theme-motif-over-image: %s; --theme-motif-mask: %s; --theme-motif-paint: %s; --theme-motif-size: %q; --theme-motif-gap: %q; --theme-motif-row-offset: %.3f; --theme-motif-wobble: %.3f; --theme-motif-scatter: %.3f; --theme-motif-color: %q; --theme-motif-url: %q; --theme-motif-z: %s;\n  }\n  body { background-image: var(--theme-motif-under-image); background-size: var(--theme-motif-field-size); background-position: 0 0; }\n  body::before { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: -1; background-image: var(--theme-texture-image); background-size: calc(180px * var(--theme-texture-scale)); background-position: 0 0; opacity: var(--theme-texture-opacity); }\n  [data-theme-texture-scope=quiet] main, [data-theme-texture-scope=quiet] article, [data-theme-texture-scope=quiet] [data-reading-surface], [data-theme-texture-scope=quiet] .reading-surface { background-color: var(--color-background, #fff); }\n  h1, h2, h3, h4, h5, h6 { color: transparent; background-color: var(--color-text, #222); background-image: var(--theme-heading-texture-color); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }\n  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-color: var(--theme-motif-paint); background-image: var(--theme-motif-over-image); mask-image: var(--theme-motif-mask); -webkit-mask-image: var(--theme-motif-mask); background-size: var(--theme-motif-field-size); mask-size: var(--theme-motif-field-size); background-position: 0 0; mask-position: 0 0; background-repeat: repeat; mask-repeat: repeat; opacity: 1; transform: none; }\n}\n", aestheticCSS, theme.ContractVersion, textureKind, textureMix, theme.Texture.Scale, theme.Texture.Scope, textureOpacity, textureImage, headingTextureKind, headingMix, theme.HeadingTexture.Scale, headingColor, headingImage, theme.Motif.Kind, theme.Motif.Glyph, motifMix, theme.Motif.Layer, motifImage, underImage, overImage, motifMask, motifPaint, theme.Motif.Size, theme.Motif.Gap, theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter, theme.Motif.Color, theme.Motif.URL, motifZ)
+}
+
+func resolveMotifPaint(contract renderingcontract.Contract, theme models.ThemeConfig, mix float64) string {
+	for _, palette := range contract.Palettes {
+		if palette.ID != theme.Palette && contract.Aliases[theme.Palette] != palette.ID {
+			continue
+		}
+		final := renderingcontract.FinalRenderPalette(palette)
+		background := final["background"]
+		target := final["text"]
+		switch theme.Motif.Color {
+		case "accent":
+			target = final["link"]
+		case "muted":
+			target = mixHex(background, final["text"], .55)
+		case "shadow":
+			target = mixHex(background, final["text"], .28)
+		}
+		return mixHex(background, target, mix)
+	}
+	return sharedColorMix(theme.Motif.Color, mix)
+}
+
+func mixHex(background, foreground string, amount float64) string {
+	parse := func(value string) ([3]int, bool) {
+		value = strings.TrimPrefix(strings.TrimSpace(value), "#")
+		if len(value) != 6 {
+			return [3]int{}, false
+		}
+		var result [3]int
+		for index := range result {
+			var channel int
+			if _, err := fmt.Sscanf(value[index*2:index*2+2], "%02x", &channel); err != nil {
+				return result, false
+			}
+			result[index] = channel
+		}
+		return result, true
+	}
+	bg, ok := parse(background)
+	if !ok {
+		return foreground
+	}
+	fg, ok := parse(foreground)
+	if !ok {
+		return foreground
+	}
+	if amount < 0 {
+		amount = 0
+	}
+	if amount > 1 {
+		amount = 1
+	}
+	return fmt.Sprintf("#%02x%02x%02x", int(float64(bg[0])+(float64(fg[0])-float64(bg[0]))*amount+.5), int(float64(bg[1])+(float64(fg[1])-float64(bg[1]))*amount+.5), int(float64(bg[2])+(float64(fg[2])-float64(bg[2]))*amount+.5))
+}
+
+func textureOpacity(contract renderingcontract.Contract, kind string, colorMix float64) float64 {
+	metadata, ok := contract.Textures[kind]
+	if !ok {
+		return 0
+	}
+	maxOpacity := metadata["max_opacity"]
+	if maxOpacity == 0 || colorMix <= 0 {
+		return 0
+	}
+	// The public dial resolves color separation. Theme Lab's coverage curve is
+	// implementation metadata applied after that resolution and is shared by
+	// all consumers; it does not redefine color_mix as opacity.
+	curve := metadata["curve"]
+	if curve == 0 {
+		curve = 1
+	}
+	return math.Min(.5, maxOpacity*math.Pow(colorMix*.85, curve))
+}
+
+func normalizedColorMix(value float64) float64 { return math.Max(0, math.Min(1, value)) }
+
+func validMotifURL(contract renderingcontract.Contract, value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, scheme := range contract.MotifURLSchemes {
+		if strings.HasPrefix(strings.ToLower(value), strings.ToLower(scheme)) {
+			return true
+		}
+	}
+	return false
+}
+
+func sharedColorMix(role string, mix float64) string {
+	color := "var(--color-text, #222)"
+	if role == "accent" {
+		color = "var(--color-primary, #369)"
+	} else if role == "muted" {
+		color = "color-mix(in srgb, var(--color-text, #222) 55%, var(--color-background, #fff))"
+	} else if role == "shadow" {
+		color = "color-mix(in srgb, var(--color-text, #222) 28%, var(--color-background, #fff))"
+	}
+	return fmt.Sprintf("color-mix(in srgb, var(--color-background, #fff) %.1f%%, %s %.1f%%)", (1-mix)*100, color, mix*100)
+}
+
+func textureImageFor(kind, color string) string {
+	switch kind {
+	case "none":
+		return "none"
+	case "screenprint", "halftone":
+		return fmt.Sprintf("radial-gradient(circle, %s 0 1px, transparent 1.5px)", color)
+	case "scratches":
+		return fmt.Sprintf("repeating-linear-gradient(105deg, transparent 0 8px, %s 8px 9px, transparent 9px 17px)", color)
+	case "splatter":
+		return fmt.Sprintf("radial-gradient(circle at 20%% 30%%, %s 0 2px, transparent 3px), radial-gradient(circle at 70%% 60%%, %s 0 1px, transparent 2px)", color, color)
+	default:
+		return fmt.Sprintf("repeating-radial-gradient(circle, %s 0 1px, transparent 1px 7px)", color)
+	}
+}
+
+func motifImageFor(kind, color, glyph string) string {
+	if kind == "letter" {
+		if glyph == "" {
+			glyph = "W"
+		}
+		glyph = strings.ReplaceAll(strings.ReplaceAll(glyph, "&", "&amp;"), "<", "&lt;")
+		svg := fmt.Sprintf("<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><text x='50' y='70' text-anchor='middle' font-size='72' fill='%s'>%s</text></svg>", color, glyph)
+		return `url("data:image/svg+xml;base64,` + base64.StdEncoding.EncodeToString([]byte(svg)) + `")`
+	}
+	return fmt.Sprintf("linear-gradient(135deg, transparent 0 42%%, %s 42%% 58%%, transparent 58%% 100%%)", color)
+}
+
+// blockWMotifField returns the canonical 16 by 10 motif field. The field uses
+// a unit-independent viewBox so CSS can size the complete field from the
+// nominal mark size and gap. Custom artwork is used only as an alpha mask;
+// every mark is still painted with the resolved opaque motif color.
+func cssPixels(value string, fallback float64) float64 {
+	parsed, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(value), "px"), 64)
+	if err == nil && parsed >= 0 {
+		return parsed
+	}
+	return fallback
+}
+
+func blockWMotifField(paint, artworkURL string, size, gap, rowOffset, wobble, scatter float64) string {
+	const columns, rows = 16, 10
+	logoHeight := size * (1005.76 / 1788.4)
+	cellWidth, cellHeight := size+gap, logoHeight+gap
+	fieldWidth, fieldHeight := float64(columns)*cellWidth, float64(rows)*cellHeight
+	state := uint32(0x6d2b79f5)
+	const blockWPath = "M0 905.76L0 0L414.385 2.88C414.385 162.646 412.703 352.984 412.703 512.75L606.319 511.128L608.484 4.32L1074.43 0L1074.67 501.942L1269.33 505.859L1268.94 0L1688.4 0L1688.4 905.76Z"
+	var svg strings.Builder
+	fmt.Fprintf(&svg, `<svg xmlns="http://www.w3.org/2000/svg" width="%.3f" height="%.3f" viewBox="0 0 %.3f %.3f" data-field="16x10" data-mark-size="%.3f">`, fieldWidth, fieldHeight, fieldWidth, fieldHeight, size)
+	for index := 0; index < columns*rows; index++ {
+		row, column := index/columns, index%columns
+		draw := func() float64 { state = state*1664525 + 1013904223; return float64(state) / 4294967296 }
+		jitterX, jitterY := 2*draw()-1, 2*draw()-1
+		jitterRotation, jitterScale := 2*draw()-1, 2*draw()-1
+		x := float64(column)*cellWidth + gap/2 + float64(row%2)*cellWidth*rowOffset + jitterX*size*scatter*.22
+		y := float64(row)*cellHeight + gap/2 + jitterY*size*scatter*.22 + math.Sin(float64(index+1)*1.61)*logoHeight*wobble*.55
+		rotation, scale := jitterRotation*wobble*16+wobble*12*math.Sin(float64(index+1)), 1+jitterScale*scatter*.24
+		transform := fmt.Sprintf(`translate(%.5f %.5f) rotate(%.5f %.5f %.5f) scale(%.8f %.8f)`, x, y, rotation, size/2, logoHeight/2, size*scale/1788.4, logoHeight*scale/1005.76)
+		if artworkURL == "" {
+			fmt.Fprintf(&svg, `<g data-index="%d" transform="%s"><path fill="%s" d="%s"/></g>`, index, transform, html.EscapeString(paint), blockWPath)
+			continue
+		}
+		maskID := fmt.Sprintf("motif-mask-%d", index)
+		// The remote image already has nominal mark dimensions. Apply only the
+		// placement/scatter transform, never the built-in source normalization.
+		remoteTransform := fmt.Sprintf(`translate(%.5f %.5f) rotate(%.5f %.5f %.5f) scale(%.8f)`, x, y, rotation, size/2, logoHeight/2, scale)
+		fmt.Fprintf(&svg, `<defs><mask id="%s" maskUnits="userSpaceOnUse" width="%.3f" height="%.3f" mask-type="alpha"><image href="%s" width="%.3f" height="%.3f" preserveAspectRatio="none"/></mask></defs><g data-index="%d" data-artwork="remote" transform="%s"><rect fill="%s" width="%.3f" height="%.3f" mask="url(#%s)"/></g>`, maskID, size, logoHeight, html.EscapeString(artworkURL), size, logoHeight, index, remoteTransform, html.EscapeString(paint), size, logoHeight, maskID)
+	}
+	svg.WriteString(`</svg>`)
+	return `url("data:image/svg+xml;base64,` + base64.StdEncoding.EncodeToString([]byte(svg.String())) + `")`
+}
+
+func headingMaskFor(kind string, mix float64) string {
+	if kind == "none" {
+		return "none"
+	}
+	// Portable v1 heading wear recipe. The browser renderer uses the same
+	// 180x180 tile, seed, LCG, primitive count, and opacity progression.
+	seed := uint32(17)
+	for _, character := range kind {
+		seed = seed*31 + uint32(character)
+	}
+	random := func() float64 {
+		seed = seed*1664525 + 1013904223
+		return float64(seed) / 4294967296
+	}
+	opacity := 0.14 + math.Max(0, math.Min(1, mix))*0.7
+	count := 26
+	if kind == "screenprint" {
+		count = 42
+	} else if kind == "brush" {
+		count = 12
+	}
+	var holes strings.Builder
+	for index := 0; index < count; index++ {
+		x, y := random()*180, random()*180
+		switch kind {
+		case "brush":
+			fmt.Fprintf(&holes, `<path d="M%.1f %.1fl%.1f %.1f" stroke="black" stroke-width="%.1f" stroke-linecap="round" opacity="%.2f"/>`, x, y, 14+random()*38, -2+random()*4, 1+random()*3, opacity)
+		case "grunge":
+			radius := 2 + random()*7
+			var points strings.Builder
+			for point := 0; point < 7; point++ {
+				angle := float64(point) / 7 * 2 * math.Pi
+				pointSize := radius * (0.65 + random()*0.6)
+				if point > 0 {
+					points.WriteByte(' ')
+				}
+				fmt.Fprintf(&points, "%.1f,%.1f", x+math.Cos(angle)*pointSize, y+math.Sin(angle)*pointSize)
+			}
+			fmt.Fprintf(&holes, `<polygon points="%s" fill="black" opacity="%.2f"/>`, points.String(), opacity)
+		default:
+			radius := 0.5 + random()*2.5
+			if kind == "splatter" {
+				radius = 1 + random()*5
+			}
+			fmt.Fprintf(&holes, `<circle cx="%.1f" cy="%.1f" r="%.1f" fill="black" opacity="%.2f"/>`, x, y, radius, opacity)
+		}
+	}
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><mask id="wear"><rect width="180" height="180" fill="white"/><g>%s</g></mask><rect width="180" height="180" fill="white" mask="url(#wear)"/></svg>`, holes.String())
+	return "url(\"data:image/svg+xml," + strings.ReplaceAll(url.QueryEscape(svg), "+", "%20") + "\")"
+}
+
+func motifLayerZ(layer string) string {
+	switch layer {
+	case "under":
+		return "-2"
+	case "sandwich":
+		return "0"
+	default:
+		return "1"
+	}
 }
 
 func (p *AestheticCSSPlugin) isSwitcherEnabled(extra map[string]interface{}) bool {

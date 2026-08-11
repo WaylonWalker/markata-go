@@ -1084,6 +1084,8 @@ func joinStrings(strs []string, sep string) string {
 
 // ThemeConfig configures the site theme.
 type ThemeConfig struct {
+	ContractVersion int    `json:"contract_version,omitempty" yaml:"contract_version,omitempty" toml:"contract_version,omitempty"`
+	Fontpack        string `json:"fontpack,omitempty" yaml:"fontpack,omitempty" toml:"fontpack,omitempty"`
 	// Name is the theme name (default: "default")
 	Name string `json:"name" yaml:"name" toml:"name"`
 
@@ -1124,7 +1126,67 @@ type ThemeConfig struct {
 	Font FontConfig `json:"font,omitempty" yaml:"font,omitempty" toml:"font,omitempty"`
 
 	// Switcher configures the multi-palette theme switcher dropdown
-	Switcher ThemeSwitcherConfig `json:"switcher,omitempty" yaml:"switcher,omitempty" toml:"switcher,omitempty"`
+	Switcher       ThemeSwitcherConfig       `json:"switcher,omitempty" yaml:"switcher,omitempty" toml:"switcher,omitempty"`
+	Texture        ThemeTextureConfig        `json:"texture,omitempty" yaml:"texture,omitempty" toml:"texture,omitempty"`
+	HeadingTexture ThemeHeadingTextureConfig `json:"heading_texture,omitempty" yaml:"heading_texture,omitempty" toml:"heading_texture,omitempty"`
+	Motif          ThemeMotifConfig          `json:"motif,omitempty" yaml:"motif,omitempty" toml:"motif,omitempty"`
+}
+
+type ThemeTextureConfig struct {
+	Kind        string  `json:"kind,omitempty" yaml:"kind,omitempty" toml:"kind,omitempty"`
+	ColorMix    float64 `json:"color_mix,omitempty" yaml:"color_mix,omitempty" toml:"color_mix,omitempty"`
+	Scale       float64 `json:"scale,omitempty" yaml:"scale,omitempty" toml:"scale,omitempty"`
+	Scope       string  `json:"scope,omitempty" yaml:"scope,omitempty" toml:"scope,omitempty"`
+	ColorMixSet bool    `json:"-" yaml:"-" toml:"-"`
+	ScaleSet    bool    `json:"-" yaml:"-" toml:"-"`
+}
+
+type ThemeHeadingTextureConfig struct {
+	Kind        string  `json:"kind,omitempty" yaml:"kind,omitempty" toml:"kind,omitempty"`
+	ColorMix    float64 `json:"color_mix,omitempty" yaml:"color_mix,omitempty" toml:"color_mix,omitempty"`
+	Scale       float64 `json:"scale,omitempty" yaml:"scale,omitempty" toml:"scale,omitempty"`
+	ColorMixSet bool    `json:"-" yaml:"-" toml:"-"`
+	ScaleSet    bool    `json:"-" yaml:"-" toml:"-"`
+}
+
+type ThemeMotifConfig struct {
+	Kind         string  `json:"kind,omitempty" yaml:"kind,omitempty" toml:"kind,omitempty"`
+	Glyph        string  `json:"glyph,omitempty" yaml:"glyph,omitempty" toml:"glyph,omitempty"`
+	Size         string  `json:"size,omitempty" yaml:"size,omitempty" toml:"size,omitempty"`
+	Gap          string  `json:"gap,omitempty" yaml:"gap,omitempty" toml:"gap,omitempty"`
+	RowOffset    float64 `json:"row_offset,omitempty" yaml:"row_offset,omitempty" toml:"row_offset,omitempty"`
+	Wobble       float64 `json:"wobble,omitempty" yaml:"wobble,omitempty" toml:"wobble,omitempty"`
+	Scatter      float64 `json:"scatter,omitempty" yaml:"scatter,omitempty" toml:"scatter,omitempty"`
+	Layer        string  `json:"layer,omitempty" yaml:"layer,omitempty" toml:"layer,omitempty"`
+	Color        string  `json:"color,omitempty" yaml:"color,omitempty" toml:"color,omitempty"`
+	ColorMix     float64 `json:"color_mix,omitempty" yaml:"color_mix,omitempty" toml:"color_mix,omitempty"`
+	URL          string  `json:"url,omitempty" yaml:"url,omitempty" toml:"url,omitempty"`
+	RowOffsetSet bool    `json:"-" yaml:"-" toml:"-"`
+	WobbleSet    bool    `json:"-" yaml:"-" toml:"-"`
+	ScatterSet   bool    `json:"-" yaml:"-" toml:"-"`
+	ColorMixSet  bool    `json:"-" yaml:"-" toml:"-"`
+}
+
+// MarkThemeNumericPresence records numeric theme fields present in source config.
+// It is used by config parsers because zero is a valid dial value.
+func (c *ThemeConfig) MarkThemeNumericPresence(theme map[string]any) {
+	if nested, ok := theme["theme"].(map[string]any); ok {
+		theme = nested
+	}
+	if texture, ok := theme["texture"].(map[string]any); ok {
+		_, c.Texture.ColorMixSet = texture["color_mix"]
+		_, c.Texture.ScaleSet = texture["scale"]
+	}
+	if heading, ok := theme["heading_texture"].(map[string]any); ok {
+		_, c.HeadingTexture.ColorMixSet = heading["color_mix"]
+		_, c.HeadingTexture.ScaleSet = heading["scale"]
+	}
+	if motif, ok := theme["motif"].(map[string]any); ok {
+		_, c.Motif.RowOffsetSet = motif["row_offset"]
+		_, c.Motif.WobbleSet = motif["wobble"]
+		_, c.Motif.ScatterSet = motif["scatter"]
+		_, c.Motif.ColorMixSet = motif["color_mix"]
+	}
 }
 
 // ThemeSwitcherConfig configures the multi-palette theme switcher dropdown.
@@ -3312,17 +3374,10 @@ func NewConfig() *Config {
 			Extensions: []string{},
 			Highlight:  NewHighlightConfig(),
 		},
-		Feeds:        []FeedConfig{},
-		FeedDefaults: NewFeedDefaults(),
-		Concurrency:  0,
-		Theme: ThemeConfig{
-			Name:         "default",
-			Palette:      "default-light",
-			FallbackMode: "dark",
-			Variables:    make(map[string]string),
-			Font:         NewFontConfig(),
-			Switcher:     NewThemeSwitcherConfig(),
-		},
+		Feeds:            []FeedConfig{},
+		FeedDefaults:     NewFeedDefaults(),
+		Concurrency:      0,
+		Theme:            NewThemeConfig(),
 		ThemeCalendar:    NewThemeCalendarConfig(),
 		PostFormats:      NewPostFormatsConfig(),
 		SEO:              NewSEOConfig(),
@@ -3379,12 +3434,17 @@ func (c *Config) NeedsLicenseWarning() bool {
 // NewThemeConfig creates a new ThemeConfig with default values.
 func NewThemeConfig() ThemeConfig {
 	return ThemeConfig{
-		Name:         "default",
-		Palette:      "default-light",
-		FallbackMode: "dark",
-		Variables:    make(map[string]string),
-		Font:         NewFontConfig(),
-		Switcher:     NewThemeSwitcherConfig(),
+		ContractVersion: 1,
+		Name:            "default",
+		Palette:         "ayu-dark",
+		Aesthetic:       "minimal",
+		FallbackMode:    "dark",
+		Variables:       make(map[string]string),
+		Texture:         ThemeTextureConfig{Kind: "screenprint", ColorMix: 0.35, Scale: 1, Scope: "all"},
+		HeadingTexture:  ThemeHeadingTextureConfig{Kind: "inherit", ColorMix: 0.45, Scale: 1},
+		Motif:           ThemeMotifConfig{Kind: "block-w", Glyph: "W", Size: "78px", Gap: "10px", RowOffset: 0.24, Wobble: 0.18, Layer: "sandwich", Color: "ink", ColorMix: 0.01},
+		Font:            NewFontConfig(),
+		Switcher:        NewThemeSwitcherConfig(),
 	}
 }
 
