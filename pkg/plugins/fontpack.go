@@ -50,11 +50,17 @@ func (p *FontpackPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 func configuredFontpackName(extra map[string]any) string {
+	canonicalize := func(name string) string {
+		if name == "brush-poster" {
+			return "brush"
+		}
+		return name
+	}
 	if configured, ok := extra["models_config"].(*models.Config); ok && configured.Theme.Fontpack != "" {
-		return configured.Theme.Fontpack
+		return canonicalize(configured.Theme.Fontpack)
 	}
 	if value, ok := extra["fontpack"].(string); ok && value != "" {
-		return value
+		return canonicalize(value)
 	}
 	return "system"
 }
@@ -68,6 +74,9 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		rendered.WriteByte('\n')
 		name := p.name
 		if value, ok := post.Extra["fontpack"].(string); ok && value != "" {
+			if value == "brush-poster" {
+				value = "brush"
+			}
 			name = value
 		}
 		if p.source != nil {

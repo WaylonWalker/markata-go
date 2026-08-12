@@ -310,12 +310,12 @@ fontpacks:
     performance: { class: bundled }
     tags: [brush, poster, expressive]
     roles:
-      display:    { source: water-brush, tier: display-core, weight: 400, fallback: handwriting }
+      display:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
       heading:    { source: knewave, tier: display-core, weight: 400, fallback: handwriting }
       subheading: { source: space-grotesk, tier: prose-core, weight: 700, fallback: sans }
       body:       { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
       lead:       { source: space-grotesk, tier: prose-core, weight: 550, size: 1.18rem, fallback: sans }
-      quote:      { source: covered-by-your-grace, tier: display-core, weight: 400, size: 1.38rem, fallback: handwriting }
+      quote:      { source: space-grotesk, tier: prose-core, weight: 400, fallback: sans }
       caption:    { source: space-grotesk, tier: prose-core, weight: 450, fallback: sans }
       code:       { source: dm-mono, tier: code-core, weight: 400, fallback: mono }
       ui:         { source: space-grotesk, tier: prose-core, weight: 500, fallback: sans }
