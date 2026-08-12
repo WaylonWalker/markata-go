@@ -6,20 +6,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html"
 	"log"
 	"math"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/aesthetic"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
+	"github.com/WaylonWalker/markata-go/pkg/renderingrecipe"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
@@ -57,6 +56,13 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
 	css += p.generatePresentationCSS(config)
+	if bundle, err := compileMotifBundle(config); err != nil {
+		return err
+	} else if len(bundle.Assets) != 0 {
+		hash := renderingrecipe.AssetHash(bundle.Assets["assets/motif-block-w-v1.svg"])
+		m.SetAssetHash("assets/motif-block-w-v1.svg", hash)
+		templates.SetAssetHashes(map[string]string{"assets/motif-block-w-v1.svg": hash})
+	}
 
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
 
@@ -98,6 +104,17 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	cssDir := filepath.Join(outputDir, "css")
 	cssPath := filepath.Join(cssDir, "aesthetic.css")
+	if bundle, err := compileMotifBundle(config); err != nil {
+		return err
+	} else if len(bundle.Assets) != 0 {
+		assetPath := filepath.Join(outputDir, filepath.FromSlash("assets/motif-block-w-v1.svg"))
+		if err := os.MkdirAll(filepath.Dir(assetPath), 0o755); err != nil {
+			return fmt.Errorf("creating motif asset directory: %w", err)
+		}
+		if err := os.WriteFile(assetPath, bundle.Assets["assets/motif-block-w-v1.svg"], 0o600); err != nil {
+			return fmt.Errorf("writing compiled motif asset: %w", err)
+		}
+	}
 	if existing, err := os.ReadFile(cssPath); err == nil {
 		if bytes.Equal(existing, []byte(css)) {
 			return nil
@@ -202,22 +219,32 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	if theme.Motif.Kind != "off" {
 		motifColor := resolveMotifPaint(contract, theme, motifMix)
 		motifPaint = motifColor
-		motifImage = motifImageFor(theme.Motif.Kind, motifColor, theme.Motif.Glyph)
-		if theme.Motif.Kind == "block-w" {
-			motifImage = blockWMotifField(motifColor, "", cssPixels(theme.Motif.Size, 78), cssPixels(theme.Motif.Gap, 10), theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter)
+		if theme.Motif.Kind != "block-w" {
+			motifImage = motifImageFor(theme.Motif.Kind, motifColor, theme.Motif.Glyph)
+		}
+	}
+	if bundle, err := compileMotifBundle(config); err == nil && len(bundle.Assets) != 0 && theme.Motif.Kind == "block-w" {
+		// Canonical consumers attach the compiler-owned field. Keep the local CSS
+		// layer and pseudo-element integration, but do not regenerate geometry.
+		if _, exists := bundle.Assets["assets/motif-block-w-v1.svg"]; exists {
+			motifImage = `url("/assets/motif-block-w-v1.svg")`
 		}
 	}
 	customMotifURL := validMotifURL(contract, theme.Motif.URL) && !strings.ContainsAny(theme.Motif.URL, "\"'()\n\r\t")
 	// The canonical W is portable contract artwork, not a network dependency.
 	// Keep the URL as authoring metadata but render the vendored path locally.
+	if customMotifURL && theme.Motif.Kind == "block-w" {
+		// block-w is compiler-owned. Custom artwork is not silently substituted
+		// into the canonical field because that would change its digest.
+		customMotifURL = false
+	}
 	if customMotifURL && theme.Motif.URL == "https://waylonwalker.com/w.svg" {
 		customMotifURL = false
 	}
 	if customMotifURL {
-		// A custom URL supplies artwork, not an opaque page-sized background.
-		// Use it as an alpha source and paint it with the resolved contract color.
-		motifMask = "none"
-		motifImage = blockWMotifField(motifPaint, theme.Motif.URL, cssPixels(theme.Motif.Size, 78), cssPixels(theme.Motif.Gap, 10), theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter)
+		// Custom artwork is not supported by the compiled block-w asset. Reject it
+		// explicitly instead of falling back to a second geometry generator.
+		log.Printf("[aesthetic_css] unsupported motif custom URL: block-w uses the canonical compiled asset")
 	} else if theme.Motif.URL != "" {
 		log.Printf("[aesthetic_css] invalid-or-unsafe-custom-url: motif URL ignored")
 	}
@@ -247,6 +274,44 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 		}
 	}
 	return fmt.Sprintf("\n@layer tokens {\n  :root {\n    %s\n    --theme-contract-version: %d;\n    --theme-texture-kind: %q; --theme-texture-color-mix: %.3f; --theme-texture-scale: %.3f; --theme-texture-scope: %q; --theme-texture-opacity: %.3f; --theme-texture-image: %s;\n    --theme-heading-texture-kind: %q; --theme-heading-texture-color-mix: %.3f; --theme-heading-texture-scale: %.3f; --theme-heading-texture-color: %s; --theme-heading-texture-mask: %s;\n    --theme-motif-kind: %q; --theme-motif-glyph: %q; --theme-motif-color-mix: %.3f; --theme-motif-layer: %q; --theme-motif-image: %s; --theme-motif-under-image: %s; --theme-motif-over-image: %s; --theme-motif-mask: %s; --theme-motif-paint: %s; --theme-motif-size: %q; --theme-motif-gap: %q; --theme-motif-row-offset: %.3f; --theme-motif-wobble: %.3f; --theme-motif-scatter: %.3f; --theme-motif-color: %q; --theme-motif-url: %q; --theme-motif-z: %s;\n  }\n  body { background-image: var(--theme-motif-under-image); background-size: var(--theme-motif-field-size); background-position: 0 0; }\n  body::before { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: -1; background-image: var(--theme-texture-image); background-size: calc(180px * var(--theme-texture-scale)); background-position: 0 0; opacity: var(--theme-texture-opacity); }\n  [data-theme-texture-scope=quiet] main, [data-theme-texture-scope=quiet] article, [data-theme-texture-scope=quiet] [data-reading-surface], [data-theme-texture-scope=quiet] .reading-surface { background-color: var(--color-background, #fff); }\n  h1, h2, h3, h4, h5, h6 { color: transparent; background-color: var(--color-text, #222); background-image: var(--theme-heading-texture-color); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }\n  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-color: var(--theme-motif-paint); background-image: var(--theme-motif-over-image); mask-image: var(--theme-motif-mask); -webkit-mask-image: var(--theme-motif-mask); background-size: var(--theme-motif-field-size); mask-size: var(--theme-motif-field-size); background-position: 0 0; mask-position: 0 0; background-repeat: repeat; mask-repeat: repeat; opacity: 1; transform: none; }\n}\n", aestheticCSS, theme.ContractVersion, textureKind, textureMix, theme.Texture.Scale, theme.Texture.Scope, textureOpacity, textureImage, headingTextureKind, headingMix, theme.HeadingTexture.Scale, headingColor, headingImage, theme.Motif.Kind, theme.Motif.Glyph, motifMix, theme.Motif.Layer, motifImage, underImage, overImage, motifMask, motifPaint, theme.Motif.Size, theme.Motif.Gap, theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter, theme.Motif.Color, theme.Motif.URL, motifZ)
+}
+
+// compiledMotifBundle is the single bridge from the model configuration to
+// the shared compiler. Unsupported themes keep the legacy local projection;
+// they must not silently attach an asset compiled from different semantics.
+func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error) {
+	if config == nil || config.Extra == nil {
+		return renderingrecipe.Bundle{}, nil
+	}
+	configured, ok := config.Extra["models_config"].(*models.Config)
+	if !ok || configured.Theme.Motif.Kind != "block-w" {
+		return renderingrecipe.Bundle{}, nil
+	}
+	theme := configured.Theme
+	if theme.Fontpack == "" {
+		theme.Fontpack = "brush"
+	}
+	if theme.HeadingTexture.Kind == "inherit" {
+		theme.HeadingTexture.Kind = "splatter"
+	}
+	if theme.Motif.URL != "" && theme.Motif.URL != "https://waylonwalker.com/w.svg" {
+		return renderingrecipe.Bundle{}, fmt.Errorf("motif block-w custom URL is unsupported by the compiler")
+	}
+	bundleTheme := renderingrecipe.Theme{
+		ContractVersion: theme.ContractVersion,
+		Palette:         theme.Palette,
+		Aesthetic:       theme.Aesthetic,
+		Fontpack:        theme.Fontpack,
+		Texture:         renderingcontract.Dial{Kind: theme.Texture.Kind, ColorMix: theme.Texture.ColorMix, Scale: theme.Texture.Scale, Scope: theme.Texture.Scope},
+		HeadingTexture:  renderingcontract.Dial{Kind: theme.HeadingTexture.Kind, ColorMix: theme.HeadingTexture.ColorMix, Scale: theme.HeadingTexture.Scale},
+		Motif:           renderingcontract.MotifState{Kind: theme.Motif.Kind, ColorMix: theme.Motif.ColorMix, Glyph: theme.Motif.Glyph, Size: theme.Motif.Size, Gap: theme.Motif.Gap, RowOffset: theme.Motif.RowOffset, Wobble: theme.Motif.Wobble, Scatter: theme.Motif.Scatter, Layer: theme.Motif.Layer, Color: theme.Motif.Color, URL: theme.Motif.URL},
+		Variables:       theme.Variables,
+	}
+	bundle, err := renderingrecipe.Compile(bundleTheme)
+	if err != nil {
+		return renderingrecipe.Bundle{}, fmt.Errorf("compile motif bundle: %w", err)
+	}
+	return bundle, nil
 }
 
 func resolveMotifPaint(contract renderingcontract.Contract, theme models.ThemeConfig, mix float64) string {
@@ -373,50 +438,6 @@ func motifImageFor(kind, color, glyph string) string {
 		return `url("data:image/svg+xml;base64,` + base64.StdEncoding.EncodeToString([]byte(svg)) + `")`
 	}
 	return fmt.Sprintf("linear-gradient(135deg, transparent 0 42%%, %s 42%% 58%%, transparent 58%% 100%%)", color)
-}
-
-// blockWMotifField returns the canonical 16 by 10 motif field. The field uses
-// a unit-independent viewBox so CSS can size the complete field from the
-// nominal mark size and gap. Custom artwork is used only as an alpha mask;
-// every mark is still painted with the resolved opaque motif color.
-func cssPixels(value string, fallback float64) float64 {
-	parsed, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(value), "px"), 64)
-	if err == nil && parsed >= 0 {
-		return parsed
-	}
-	return fallback
-}
-
-func blockWMotifField(paint, artworkURL string, size, gap, rowOffset, wobble, scatter float64) string {
-	const columns, rows = 16, 10
-	logoHeight := size * (1005.76 / 1788.4)
-	cellWidth, cellHeight := size+gap, logoHeight+gap
-	fieldWidth, fieldHeight := float64(columns)*cellWidth, float64(rows)*cellHeight
-	state := uint32(0x6d2b79f5)
-	const blockWPath = "M0 905.76L0 0L414.385 2.88C414.385 162.646 412.703 352.984 412.703 512.75L606.319 511.128L608.484 4.32L1074.43 0L1074.67 501.942L1269.33 505.859L1268.94 0L1688.4 0L1688.4 905.76Z"
-	var svg strings.Builder
-	fmt.Fprintf(&svg, `<svg xmlns="http://www.w3.org/2000/svg" width="%.3f" height="%.3f" viewBox="0 0 %.3f %.3f" data-field="16x10" data-mark-size="%.3f">`, fieldWidth, fieldHeight, fieldWidth, fieldHeight, size)
-	for index := 0; index < columns*rows; index++ {
-		row, column := index/columns, index%columns
-		draw := func() float64 { state = state*1664525 + 1013904223; return float64(state) / 4294967296 }
-		jitterX, jitterY := 2*draw()-1, 2*draw()-1
-		jitterRotation, jitterScale := 2*draw()-1, 2*draw()-1
-		x := float64(column)*cellWidth + gap/2 + float64(row%2)*cellWidth*rowOffset + jitterX*size*scatter*.22
-		y := float64(row)*cellHeight + gap/2 + jitterY*size*scatter*.22 + math.Sin(float64(index+1)*1.61)*logoHeight*wobble*.55
-		rotation, scale := jitterRotation*wobble*16+wobble*12*math.Sin(float64(index+1)), 1+jitterScale*scatter*.24
-		transform := fmt.Sprintf(`translate(%.5f %.5f) rotate(%.5f %.5f %.5f) scale(%.8f %.8f)`, x, y, rotation, size/2, logoHeight/2, size*scale/1788.4, logoHeight*scale/1005.76)
-		if artworkURL == "" {
-			fmt.Fprintf(&svg, `<g data-index="%d" transform="%s"><path fill="%s" d="%s"/></g>`, index, transform, html.EscapeString(paint), blockWPath)
-			continue
-		}
-		maskID := fmt.Sprintf("motif-mask-%d", index)
-		// The remote image already has nominal mark dimensions. Apply only the
-		// placement/scatter transform, never the built-in source normalization.
-		remoteTransform := fmt.Sprintf(`translate(%.5f %.5f) rotate(%.5f %.5f %.5f) scale(%.8f)`, x, y, rotation, size/2, logoHeight/2, scale)
-		fmt.Fprintf(&svg, `<defs><mask id="%s" maskUnits="userSpaceOnUse" width="%.3f" height="%.3f" mask-type="alpha"><image href="%s" width="%.3f" height="%.3f" preserveAspectRatio="none"/></mask></defs><g data-index="%d" data-artwork="remote" transform="%s"><rect fill="%s" width="%.3f" height="%.3f" mask="url(#%s)"/></g>`, maskID, size, logoHeight, html.EscapeString(artworkURL), size, logoHeight, index, remoteTransform, html.EscapeString(paint), size, logoHeight, maskID)
-	}
-	svg.WriteString(`</svg>`)
-	return `url("data:image/svg+xml;base64,` + base64.StdEncoding.EncodeToString([]byte(svg.String())) + `")`
 }
 
 func headingMaskFor(kind string, mix float64) string {

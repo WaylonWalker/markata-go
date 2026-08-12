@@ -3,11 +3,21 @@ package renderingrecipe
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+type motifSVGRoot struct {
+	XMLName xml.Name `xml:"svg"`
+	Paths   []struct {
+		Index string `xml:"data-index,attr"`
+		Fill  string `xml:"fill,attr"`
+	} `xml:"path"`
+}
 
 // TestCanonicalBundle_AttachmentProbes exercises the same HTTP attachment path
 // a browser uses, without changing the site generator or migrating recipes.
@@ -50,15 +60,52 @@ func TestCanonicalBundle_AttachmentProbes(t *testing.T) {
 			t.Fatalf("probe %s: hash=%s manifest=%s", asset.Path, got, asset.SHA256)
 		}
 	}
+	motifBytes := assets["assets/motif-block-w-v1.svg"]
+	var motif motifSVGRoot
+	if err := xml.Unmarshal(motifBytes, &motif); err != nil {
+		t.Fatalf("decode compiled motif: %v", err)
+	}
+	if len(motif.Paths) != 160 {
+		t.Fatalf("compiled motif mark count = %d, want 160", len(motif.Paths))
+	}
+	if motif.Paths[0].Fill != "#0f1219" {
+		t.Fatalf("compiled motif paint = %q, want canonical 1%% owning-surface mix", motif.Paths[0].Fill)
+	}
 
 	for _, pass := range bundle.Manifest.Passes {
 		if _, ok := assets[pass.Asset]; !ok {
 			t.Fatalf("pass %s references unattached asset %s", pass.ID, pass.Asset)
 		}
 	}
+	if got := []string{bundle.Manifest.Passes[0].ID, bundle.Manifest.Passes[1].ID}; got[0] != "surface-texture" || got[1] != "motif-over" {
+		t.Fatalf("canonical over layer order = %v", got)
+	}
 	for _, asset := range bundle.Manifest.Assets {
 		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 28480 10060" || asset.Width != 28480 || asset.Height != 10060) {
 			t.Fatalf("motif geometry metadata drifted: %+v", asset)
 		}
+	}
+}
+
+func TestCanonicalMotif_CalibrationPaintEndpoints(t *testing.T) {
+	theme, err := LoadCanonicalTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for mix, want := range map[float64]string{0: "#0d1017", 1: "#bfbdb6"} {
+		t.Run(fmt.Sprintf("mix-%v", mix), func(t *testing.T) {
+			theme.Motif.ColorMix = mix
+			bundle, err := Compile(theme)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var motif motifSVGRoot
+			if err := xml.Unmarshal(bundle.Assets["assets/motif-block-w-v1.svg"], &motif); err != nil {
+				t.Fatal(err)
+			}
+			if len(motif.Paths) != 160 || motif.Paths[0].Fill != want {
+				t.Fatalf("calibration mix %v: count=%d paint=%q, want 160/%q", mix, len(motif.Paths), motif.Paths[0].Fill, want)
+			}
+		})
 	}
 }
