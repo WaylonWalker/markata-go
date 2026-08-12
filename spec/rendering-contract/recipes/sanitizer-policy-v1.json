@@ -1,0 +1,1 @@
+{"schema_version":"rendering-svg-sanitizer-v1","allow_elements":["svg","g","path","rect","circle","ellipse","polygon","polyline","line","mask","image"],"deny_elements":["script","foreignObject","animate","filter"],"deny_attributes":["onload","onclick","onerror","href_external"]}
