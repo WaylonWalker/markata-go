@@ -74,6 +74,8 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["copyright"] = cfg.Copyright
 	lcConfig.Extra["templates_dir"] = cfg.TemplatesDir
 	lcConfig.Extra["assets_dir"] = cfg.AssetsDir
+	lcConfig.Extra["template_presets"] = cfg.TemplatePresets
+	lcConfig.Extra["default_templates"] = cfg.DefaultTemplates
 	lcConfig.Extra["feeds"] = cfg.Feeds
 	lcConfig.Extra["feed_defaults"] = cfg.FeedDefaults
 	lcConfig.Extra["use_gitignore"] = cfg.GlobConfig.UseGitignore
@@ -146,6 +148,12 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// extras are copied. Legacy root keys are compatibility inputs only.
 	lcConfig.Extra["fontpack"] = fontpack
 	lcConfig.Extra["theme"] = cfg.Theme
+	// Keep resolved path-bearing settings authoritative after copying arbitrary
+	// extras. Otherwise a raw "templates" value can replace the config-relative
+	// absolute path and make the engine load the default theme tree instead of
+	// the site's templates.
+	lcConfig.Extra["templates_dir"] = cfg.TemplatesDir
+	lcConfig.Extra["assets_dir"] = cfg.AssetsDir
 	// Keep path-bearing plugin configuration aligned with the resolved build
 	// paths even when the raw config also contains the option in Extra.
 	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)

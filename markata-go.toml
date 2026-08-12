@@ -7,6 +7,9 @@ output_dir = "output-rendering-contract"
 templates_dir = "templates"
 assets_dir = "static"
 
+[markata-go.template_presets.post]
+html = "post.html"
+
 [markata-go.glob]
 patterns = ["rendering-fixtures/*.md"]
 use_gitignore = false
