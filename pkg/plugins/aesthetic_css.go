@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -59,9 +58,12 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 	if bundle, err := compileMotifBundle(config); err != nil {
 		return err
 	} else if len(bundle.Assets) != 0 {
-		hash := renderingrecipe.AssetHash(bundle.Assets["assets/motif-block-w-v1.svg"])
-		m.SetAssetHash("assets/motif-block-w-v1.svg", hash)
-		templates.SetAssetHashes(map[string]string{"assets/motif-block-w-v1.svg": hash})
+		hashes := make(map[string]string)
+		for path, data := range bundle.Assets {
+			hashes[path] = renderingrecipe.AssetHash(data)
+			m.SetAssetHash(path, hashes[path])
+		}
+		templates.SetAssetHashes(hashes)
 	}
 
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
@@ -107,12 +109,14 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	if bundle, err := compileMotifBundle(config); err != nil {
 		return err
 	} else if len(bundle.Assets) != 0 {
-		assetPath := filepath.Join(outputDir, filepath.FromSlash("assets/motif-block-w-v1.svg"))
-		if err := os.MkdirAll(filepath.Dir(assetPath), 0o755); err != nil {
-			return fmt.Errorf("creating motif asset directory: %w", err)
-		}
-		if err := os.WriteFile(assetPath, bundle.Assets["assets/motif-block-w-v1.svg"], 0o600); err != nil {
-			return fmt.Errorf("writing compiled motif asset: %w", err)
+		for path, data := range bundle.Assets {
+			assetPath := filepath.Join(outputDir, filepath.FromSlash(path))
+			if err := os.MkdirAll(filepath.Dir(assetPath), 0o755); err != nil {
+				return fmt.Errorf("creating compiled asset directory: %w", err)
+			}
+			if err := os.WriteFile(assetPath, data, 0o600); err != nil {
+				return fmt.Errorf("writing compiled asset: %w", err)
+			}
 		}
 	}
 	if existing, err := os.ReadFile(cssPath); err == nil {
@@ -207,12 +211,24 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	textureMix := normalizedColorMix(theme.Texture.ColorMix)
 	headingMix := normalizedColorMix(theme.HeadingTexture.ColorMix)
 	motifMix := normalizedColorMix(theme.Motif.ColorMix)
-	textureColor := sharedColorMix("text", textureMix)
 	// Heading color_mix controls glyph wear. At zero the heading remains solid
 	// text (the texture is background-equivalent); increasing the dial enables
 	// the same glyph-scoped mask used by the browser consumers.
 	headingColor := "var(--color-text, #222)"
-	textureImage := textureImageFor(textureKind, textureColor)
+	textureImage := "none"
+	headingImage := "none"
+	if bundle, err := compileMotifBundle(config); err == nil {
+		for _, pass := range bundle.Manifest.Passes {
+			switch pass.ID {
+			case "surface-texture":
+				textureImage = `url("/` + pass.Asset + `")`
+			case "heading-wear":
+				headingImage = `url("/` + pass.Asset + `")`
+			}
+		}
+	} else {
+		log.Printf("[aesthetic_css] compiled texture/heading assets unavailable: %v", err)
+	}
 	motifImage := "none"
 	motifMask := "none"
 	motifPaint := "none"
@@ -248,11 +264,10 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	} else if theme.Motif.URL != "" {
 		log.Printf("[aesthetic_css] invalid-or-unsafe-custom-url: motif URL ignored")
 	}
-	headingImage := "none"
-	if headingMix > 0 {
-		headingImage = headingMaskFor(headingTextureKind, headingMix)
+	textureOpacity := 1.0
+	if textureImage == "none" || textureMix == 0 {
+		textureOpacity = 0
 	}
-	textureOpacity := textureOpacity(contract, textureKind, textureMix)
 	motifZ := motifLayerZ(theme.Motif.Layer)
 	aestheticCSS := ""
 	if contract, err := renderingcontract.Load(); err == nil {
@@ -284,7 +299,7 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 		return renderingrecipe.Bundle{}, nil
 	}
 	configured, ok := config.Extra["models_config"].(*models.Config)
-	if !ok || configured.Theme.Motif.Kind != "block-w" {
+	if !ok {
 		return renderingrecipe.Bundle{}, nil
 	}
 	theme := configured.Theme
@@ -293,6 +308,9 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	}
 	if theme.HeadingTexture.Kind == "inherit" {
 		theme.HeadingTexture.Kind = "splatter"
+	}
+	if theme.Texture.Kind != "screenprint" || theme.HeadingTexture.Kind != "splatter" || theme.Motif.Kind != "block-w" {
+		return renderingrecipe.Bundle{}, fmt.Errorf("unsupported rendering recipe: texture=%q heading_texture=%q motif=%q", theme.Texture.Kind, theme.HeadingTexture.Kind, theme.Motif.Kind)
 	}
 	if theme.Motif.URL != "" && theme.Motif.URL != "https://waylonwalker.com/w.svg" {
 		return renderingrecipe.Bundle{}, fmt.Errorf("motif block-w custom URL is unsupported by the compiler")
@@ -368,25 +386,6 @@ func mixHex(background, foreground string, amount float64) string {
 	return fmt.Sprintf("#%02x%02x%02x", int(float64(bg[0])+(float64(fg[0])-float64(bg[0]))*amount+.5), int(float64(bg[1])+(float64(fg[1])-float64(bg[1]))*amount+.5), int(float64(bg[2])+(float64(fg[2])-float64(bg[2]))*amount+.5))
 }
 
-func textureOpacity(contract renderingcontract.Contract, kind string, colorMix float64) float64 {
-	metadata, ok := contract.Textures[kind]
-	if !ok {
-		return 0
-	}
-	maxOpacity := metadata["max_opacity"]
-	if maxOpacity == 0 || colorMix <= 0 {
-		return 0
-	}
-	// The public dial resolves color separation. Theme Lab's coverage curve is
-	// implementation metadata applied after that resolution and is shared by
-	// all consumers; it does not redefine color_mix as opacity.
-	curve := metadata["curve"]
-	if curve == 0 {
-		curve = 1
-	}
-	return math.Min(.5, maxOpacity*math.Pow(colorMix*.85, curve))
-}
-
 func normalizedColorMix(value float64) float64 { return math.Max(0, math.Min(1, value)) }
 
 func validMotifURL(contract renderingcontract.Contract, value string) bool {
@@ -413,21 +412,6 @@ func sharedColorMix(role string, mix float64) string {
 	return fmt.Sprintf("color-mix(in srgb, var(--color-background, #fff) %.1f%%, %s %.1f%%)", (1-mix)*100, color, mix*100)
 }
 
-func textureImageFor(kind, color string) string {
-	switch kind {
-	case "none":
-		return "none"
-	case "screenprint", "halftone":
-		return fmt.Sprintf("radial-gradient(circle, %s 0 1px, transparent 1.5px)", color)
-	case "scratches":
-		return fmt.Sprintf("repeating-linear-gradient(105deg, transparent 0 8px, %s 8px 9px, transparent 9px 17px)", color)
-	case "splatter":
-		return fmt.Sprintf("radial-gradient(circle at 20%% 30%%, %s 0 2px, transparent 3px), radial-gradient(circle at 70%% 60%%, %s 0 1px, transparent 2px)", color, color)
-	default:
-		return fmt.Sprintf("repeating-radial-gradient(circle, %s 0 1px, transparent 1px 7px)", color)
-	}
-}
-
 func motifImageFor(kind, color, glyph string) string {
 	if kind == "letter" {
 		if glyph == "" {
@@ -438,57 +422,6 @@ func motifImageFor(kind, color, glyph string) string {
 		return `url("data:image/svg+xml;base64,` + base64.StdEncoding.EncodeToString([]byte(svg)) + `")`
 	}
 	return fmt.Sprintf("linear-gradient(135deg, transparent 0 42%%, %s 42%% 58%%, transparent 58%% 100%%)", color)
-}
-
-func headingMaskFor(kind string, mix float64) string {
-	if kind == "none" {
-		return "none"
-	}
-	// Portable v1 heading wear recipe. The browser renderer uses the same
-	// 180x180 tile, seed, LCG, primitive count, and opacity progression.
-	seed := uint32(17)
-	for _, character := range kind {
-		seed = seed*31 + uint32(character)
-	}
-	random := func() float64 {
-		seed = seed*1664525 + 1013904223
-		return float64(seed) / 4294967296
-	}
-	opacity := 0.14 + math.Max(0, math.Min(1, mix))*0.7
-	count := 26
-	if kind == "screenprint" {
-		count = 42
-	} else if kind == "brush" {
-		count = 12
-	}
-	var holes strings.Builder
-	for index := 0; index < count; index++ {
-		x, y := random()*180, random()*180
-		switch kind {
-		case "brush":
-			fmt.Fprintf(&holes, `<path d="M%.1f %.1fl%.1f %.1f" stroke="black" stroke-width="%.1f" stroke-linecap="round" opacity="%.2f"/>`, x, y, 14+random()*38, -2+random()*4, 1+random()*3, opacity)
-		case "grunge":
-			radius := 2 + random()*7
-			var points strings.Builder
-			for point := 0; point < 7; point++ {
-				angle := float64(point) / 7 * 2 * math.Pi
-				pointSize := radius * (0.65 + random()*0.6)
-				if point > 0 {
-					points.WriteByte(' ')
-				}
-				fmt.Fprintf(&points, "%.1f,%.1f", x+math.Cos(angle)*pointSize, y+math.Sin(angle)*pointSize)
-			}
-			fmt.Fprintf(&holes, `<polygon points="%s" fill="black" opacity="%.2f"/>`, points.String(), opacity)
-		default:
-			radius := 0.5 + random()*2.5
-			if kind == "splatter" {
-				radius = 1 + random()*5
-			}
-			fmt.Fprintf(&holes, `<circle cx="%.1f" cy="%.1f" r="%.1f" fill="black" opacity="%.2f"/>`, x, y, radius, opacity)
-		}
-	}
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><mask id="wear"><rect width="180" height="180" fill="white"/><g>%s</g></mask><rect width="180" height="180" fill="white" mask="url(#wear)"/></svg>`, holes.String())
-	return "url(\"data:image/svg+xml," + strings.ReplaceAll(url.QueryEscape(svg), "+", "%20") + "\")"
 }
 
 func motifLayerZ(layer string) string {

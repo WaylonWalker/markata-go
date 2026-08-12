@@ -53,14 +53,16 @@ type Asset struct {
 }
 
 type Pass struct {
-	ID           string `json:"id"`
-	Role         string `json:"role"`
-	Mode         string `json:"mode"`
-	Asset        string `json:"asset"`
-	MediaType    string `json:"media_type"`
-	ViewBox      string `json:"view_box"`
-	Repeat       string `json:"repeat"`
-	ScaleMilli   int    `json:"scale_milli"`
+	ID         string `json:"id"`
+	Role       string `json:"role"`
+	Mode       string `json:"mode"`
+	Asset      string `json:"asset"`
+	MediaType  string `json:"media_type"`
+	ViewBox    string `json:"view_box"`
+	Repeat     string `json:"repeat"`
+	ScaleMilli int    `json:"scale_milli"`
+	// ScaleMilli is the repeat tile size multiplier in thousandths. Consumers
+	// apply it to the asset ViewBox dimensions in CSS pixels.
 	Scope        string `json:"scope,omitempty"`
 	OpacityMilli *int   `json:"opacity_milli,omitempty"`
 	Paint        string `json:"paint,omitempty"`
@@ -770,11 +772,14 @@ func validateTheme(theme Theme) error {
 func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte {
 	color := mixColor(background, ink, mix)
 	offset := float64(source.Seed % 17)
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><rect width="180" height="180" fill="%s"/><circle cx="%.3f" cy="%.3f" r="11" fill="%s"/><circle cx="%.3f" cy="%.3f" r="8" fill="%s"/></svg>`, source.ViewBox, background, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
+	// The texture is a transparent decoration. Its owning surface supplies the
+	// background; baking that color into the tile makes quiet scope opaque and
+	// leaks a second, incorrect surface through transparent chrome.
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><circle cx="%.3f" cy="%.3f" r="11" fill="%s"/><circle cx="%.3f" cy="%.3f" r="8" fill="%s"/></svg>\n`, source.ViewBox, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
 }
 func headingSVG(mix float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><mask id="wear"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="black"/><circle cx="%.3f" cy="113" r="4" fill="black"/></mask><rect width="180" height="180" fill="white" mask="url(#wear)"/></svg>`, source.ViewBox, 31+offset, 129-offset))
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><mask id="wear"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="black"/><circle cx="%.3f" cy="113" r="4" fill="black"/></mask><rect width="180" height="180" fill="white" mask="url(#wear)"/></svg>\n`, source.ViewBox, 31+offset, 129-offset))
 }
 func motifSVG(m renderingcontract.MotifState, color, background string, source recipeSource) []byte {
 	path := source.Path

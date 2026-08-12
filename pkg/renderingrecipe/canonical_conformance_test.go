@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -83,6 +84,31 @@ func TestCanonicalBundle_AttachmentProbes(t *testing.T) {
 	for _, asset := range bundle.Manifest.Assets {
 		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 28480 10060" || asset.Width != 28480 || asset.Height != 10060) {
 			t.Fatalf("motif geometry metadata drifted: %+v", asset)
+		}
+	}
+}
+
+func TestCanonicalBundle_AssetBytesAreAuthoritative(t *testing.T) {
+	theme, err := LoadCanonicalTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := Compile(theme)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"assets/surface-screenprint-v1.svg": "e17ce82e807c5bae2aadcf0cbe183a92ee10f7652092372b2be627272bd83edd",
+		"assets/heading-splatter-v1.svg":    "659fb6802eca5fca5e4c34baaf53a81de204794a6ca28ca5f3083977e772cd6a",
+	}
+	// The surface tile must remain transparent. The exact digest is asserted
+	// below after the compiler output is frozen and copied to consumers.
+	if bytes := bundle.Assets["assets/surface-screenprint-v1.svg"]; len(bytes) == 0 || strings.Contains(string(bytes), "<rect") {
+		t.Fatal("surface texture must not contain an opaque background rectangle")
+	}
+	for path, expected := range want {
+		if got := AssetHash(bundle.Assets[path]); got != expected {
+			t.Fatalf("%s hash=%s want=%s", path, got, expected)
 		}
 	}
 }
