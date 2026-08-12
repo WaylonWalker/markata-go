@@ -306,10 +306,19 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	if theme.Fontpack == "" {
 		theme.Fontpack = "brush"
 	}
+	// An omitted texture is the canonical no-op. Keep the other supported
+	// projections compilable: the heading wear and motif passes are independent
+	// of the surface texture pass.
+	if strings.TrimSpace(theme.Texture.Kind) == "" {
+		theme.Texture.Kind = "none"
+	}
+	if strings.TrimSpace(theme.Texture.Scope) == "" {
+		theme.Texture.Scope = "all"
+	}
 	if theme.HeadingTexture.Kind == "inherit" {
 		theme.HeadingTexture.Kind = "splatter"
 	}
-	if theme.Texture.Kind != "screenprint" || theme.HeadingTexture.Kind != "splatter" || theme.Motif.Kind != "block-w" {
+	if (theme.Texture.Kind != "none" && theme.Texture.Kind != "screenprint") || theme.HeadingTexture.Kind != "splatter" || theme.Motif.Kind != "block-w" {
 		return renderingrecipe.Bundle{}, fmt.Errorf("unsupported rendering recipe: texture=%q heading_texture=%q motif=%q", theme.Texture.Kind, theme.HeadingTexture.Kind, theme.Motif.Kind)
 	}
 	if theme.Motif.URL != "" && theme.Motif.URL != "https://waylonwalker.com/w.svg" {

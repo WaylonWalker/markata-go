@@ -7,6 +7,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
+	"github.com/WaylonWalker/markata-go/pkg/renderingrecipe"
 )
 
 func TestAestheticCSSPlugin_Configure(t *testing.T) {
@@ -106,6 +107,47 @@ func TestAestheticCSSPlugin_CanonicalMotifUsesCompiledAsset(t *testing.T) {
 	if strings.Count(string(bundle.Assets["assets/motif-block-w-v1.svg"]), `data-index="`) != 160 {
 		t.Fatal("compiled canonical motif must contain 160 marks")
 	}
+}
+
+func TestAestheticCSSPlugin_EmptyTextureKeepsSupportedHeadingAndMotif(t *testing.T) {
+	config := lifecycle.NewConfig()
+	theme := models.NewThemeConfig()
+	theme.Texture.Kind = ""
+	theme.HeadingTexture.Kind = "splatter"
+	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+
+	bundle, err := compileMotifBundle(config)
+	if err != nil {
+		t.Fatalf("empty texture should be a no-op: %v", err)
+	}
+	for _, pass := range bundle.Manifest.Passes {
+		if pass.ID == "surface-texture" {
+			t.Fatal("empty texture must not emit a surface texture pass")
+		}
+	}
+	if !containsPass(bundle.Manifest.Passes, "heading-wear") || !containsPass(bundle.Manifest.Passes, "motif-under") || !containsPass(bundle.Manifest.Passes, "motif-over") {
+		t.Fatalf("heading and motif passes should still compile: %+v", bundle.Manifest.Passes)
+	}
+}
+
+func TestAestheticCSSPlugin_InvalidTextureStillRejected(t *testing.T) {
+	config := lifecycle.NewConfig()
+	theme := models.NewThemeConfig()
+	theme.Texture.Kind = "unsupported"
+	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+
+	if _, err := compileMotifBundle(config); err == nil {
+		t.Fatal("unsupported texture kind must be rejected")
+	}
+}
+
+func containsPass(passes []renderingrecipe.Pass, id string) bool {
+	for _, pass := range passes {
+		if pass.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func TestAestheticCSSPlugin_PresentationRendersOverMotifPass(t *testing.T) {
