@@ -49,8 +49,8 @@ func TestAestheticCSSPlugin_PresentationUsesContractTextureSemantics(t *testing.
 	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
 
 	css := plugin.generatePresentationCSS(config)
-	if !strings.Contains(css, `--theme-texture-opacity: 0.062;`) {
-		t.Errorf("texture opacity should use the shared coverage curve: %s", css)
+	if !strings.Contains(css, `--theme-texture-opacity: 1.000;`) {
+		t.Errorf("compiled texture paint should remain opaque at nonzero mix: %s", css)
 	}
 	if !strings.Contains(css, `--theme-heading-texture-kind: "screenprint";`) {
 		t.Errorf("inherit heading texture was not resolved: %s", css)
@@ -141,7 +141,7 @@ func TestAestheticCSSPlugin_PresentationUsesNormalizedSeparationAndLayers(t *tes
 	if !strings.Contains(css, `--theme-motif-color-mix: 0.500;`) || !strings.Contains(css, `--theme-motif-z: -2;`) {
 		t.Fatalf("intermediate motif mix or under layer missing: %s", css)
 	}
-	if !strings.Contains(css, "mask-image: var(--theme-heading-texture-mask)") || !strings.Contains(css, "data:image/svg+xml,") {
+	if !strings.Contains(css, "mask-image: var(--theme-heading-texture-mask)") || !strings.Contains(css, "/assets/heading-splatter-v1.svg") {
 		t.Fatal("heading wear must use a stable SVG mask")
 	}
 	if strings.Contains(css, "opacity: var(--theme-motif-color-mix)") {
@@ -200,8 +200,8 @@ func TestAestheticCSSPlugin_PresentationMotifMixEndpoints(t *testing.T) {
 		config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
 		css := plugin.generatePresentationCSS(config)
 		_ = want // Endpoint paint is now resolved to an opaque concrete SVG color.
-		if !strings.Contains(css, `--theme-texture-opacity: 0.091;`) {
-			t.Errorf("texture opacity should remain controlled by texture mix: %s", css)
+		if !strings.Contains(css, `--theme-texture-opacity: 1.000;`) {
+			t.Errorf("texture paint should remain opaque at nonzero mix: %s", css)
 		}
 		if !strings.Contains(css, `background-size: var(--theme-motif-field-size, calc(16 * (var(--theme-motif-size) + var(--theme-motif-gap)))) auto`) {
 			t.Errorf("motif size and opacity must be independent of color mix: %s", css)
