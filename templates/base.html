@@ -12,6 +12,11 @@
 
   {% block head %}
   <script>
+    if (new URLSearchParams(location.search).get('specimen') === 'canonical-headings') {
+      document.documentElement.classList.add('canonical-specimen-route');
+    }
+  </script>
+  <script>
     (function() {
       var fallbackMode = '{% if config.theme.fallback_mode == "light" %}light{% else %}dark{% endif %}';
       window.__markataThemeFallbackMode = fallbackMode;
@@ -453,7 +458,8 @@
     }
     [data-rendering-specimen="canonical-headings"] .canonical-document {
       box-sizing: border-box;
-      width: min(100%, var(--content-width, 68ch));
+       width: 680px;
+       max-width: 100%;
       margin-inline: auto;
        padding-inline: 0;
       font-family: var(--font-body, system-ui, sans-serif);
@@ -496,11 +502,53 @@
     [data-rendering-specimen="canonical-headings"] .post-content p {
       margin: 1rem 0;
     }
-    [data-rendering-specimen="canonical-headings"] mark {
-      box-decoration-break: clone;
-      -webkit-box-decoration-break: clone;
-    }
-  </style>
+     [data-rendering-specimen="canonical-headings"] mark {
+       box-decoration-break: clone;
+       -webkit-box-decoration-break: clone;
+     }
+     /* The capture harness uses this query route. Keep the specimen itself as
+        the only painted surface; normal site chrome must not enter evidence. */
+      html.canonical-specimen-route body,
+      body:has([data-rendering-specimen="canonical-headings"]) {
+        overflow: hidden;
+      }
+      html.canonical-specimen-route body > :not(.page-wrapper),
+      body:has([data-rendering-specimen="canonical-headings"]) > :not(.skip-link):not(.site-header):not(#view-transition-progress):not(footer):not(.page-wrapper) {
+        display: none !important;
+      }
+     body:has([data-rendering-specimen="canonical-headings"]) > .skip-link,
+     body:has([data-rendering-specimen="canonical-headings"]) > .site-header,
+     body:has([data-rendering-specimen="canonical-headings"]) > #view-transition-progress,
+     body:has([data-rendering-specimen="canonical-headings"]) > footer {
+       display: none !important;
+     }
+      html.canonical-specimen-route body .page-wrapper,
+      body:has([data-rendering-specimen="canonical-headings"]) .page-wrapper {
+        display: contents;
+      }
+      body:has([data-rendering-specimen="canonical-headings"]) .page-wrapper > :not(main) {
+        display: none !important;
+      }
+      html.canonical-specimen-route body .page-wrapper > :not(main) {
+        display: none !important;
+      }
+      html.canonical-specimen-route body [data-rendering-specimen="canonical-headings"],
+      body:has([data-rendering-specimen="canonical-headings"]) [data-rendering-specimen="canonical-headings"] {
+        box-sizing: border-box;
+         width: 1280px;
+         height: 1000px;
+         min-height: 1000px;
+        max-width: none !important;
+        margin: 0;
+         padding: 32px;
+        overflow: visible;
+      }
+      html.canonical-specimen-route [data-rendering-specimen="canonical-headings"] .canonical-document {
+        width: 680px !important;
+        max-width: 100% !important;
+        margin-inline: auto;
+      }
+   </style>
   {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
