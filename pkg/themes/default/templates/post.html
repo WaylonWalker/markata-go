@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block content %}
-{% if post.slug == "test-headings" or slug == "test-headings" or post.template == "post" or post.template == "post.html" %}
+{% if post %}
 <div class="canonical-document-shell">
     <article class="canonical-document">
         <h1 class="canonical-document__title">{{ post.title_html | safe }}</h1>
