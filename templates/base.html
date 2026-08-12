@@ -587,7 +587,7 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1"{% if post.slug == "test-headings" or slug == "test-headings" or post.title == "test headings" or post.template == "post" or post.template == "post.html" %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+      <main class="main-content" id="main-content" tabindex="-1"{% if post %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 
