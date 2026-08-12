@@ -392,13 +392,17 @@ func Compile(theme Theme) (Bundle, error) {
 	if theme.Motif.Layer == "under" || theme.Motif.Layer == "sandwich" {
 		passes = append(passes, Pass{ID: "motif-under", Role: "motif-under", Mode: "image", Asset: motif.Path, MediaType: motif.MediaType, ViewBox: motif.ViewBox, Repeat: "repeat", ScaleMilli: 1000})
 	}
-	passes = append(passes, Pass{ID: "surface-texture", Role: "surface texture", Mode: "image", Asset: surface.Path, MediaType: surface.MediaType, ViewBox: surface.ViewBox, Repeat: "repeat", ScaleMilli: int(fixed(theme.Texture.Scale, .25, 3) * 1000), Scope: theme.Texture.Scope})
+	if theme.Texture.Kind != "none" {
+		passes = append(passes, Pass{ID: "surface-texture", Role: "surface texture", Mode: "image", Asset: surface.Path, MediaType: surface.MediaType, ViewBox: surface.ViewBox, Repeat: "repeat", ScaleMilli: int(fixed(theme.Texture.Scale, .25, 3) * 1000), Scope: theme.Texture.Scope})
+	}
 	if theme.Motif.Layer == "over" || theme.Motif.Layer == "sandwich" {
 		passes = append(passes, Pass{ID: "motif-over", Role: "motif-over", Mode: "image", Asset: motif.Path, MediaType: motif.MediaType, ViewBox: motif.ViewBox, Repeat: "repeat", ScaleMilli: 1000})
 	}
-	passes = append(passes,
-		Pass{ID: "heading-wear", Role: "heading wear", Mode: "alpha-mask", Asset: heading.Path, MediaType: heading.MediaType, ViewBox: heading.ViewBox, Repeat: "repeat", ScaleMilli: int(fixed(theme.HeadingTexture.Scale, .25, 3) * 1000), Paint: mixColor(colors.background, colors.ink, theme.HeadingTexture.ColorMix)},
-	)
+	if theme.HeadingTexture.Kind != "none" {
+		passes = append(passes,
+			Pass{ID: "heading-wear", Role: "heading wear", Mode: "alpha-mask", Asset: heading.Path, MediaType: heading.MediaType, ViewBox: heading.ViewBox, Repeat: "repeat", ScaleMilli: int(fixed(theme.HeadingTexture.Scale, .25, 3) * 1000), Paint: mixColor(colors.background, colors.ink, theme.HeadingTexture.ColorMix)},
+		)
+	}
 	for i := range passes {
 		if strings.HasPrefix(passes[i].ID, "motif-") {
 			size, gap, err := motifDimensions(theme.Motif)
@@ -752,8 +756,14 @@ func validateTheme(theme Theme) error {
 	if theme.Fontpack != "brush" {
 		return fmt.Errorf("fontpack %q is not compiled in recipe v1", theme.Fontpack)
 	}
-	if theme.Texture.Kind != "screenprint" || theme.HeadingTexture.Kind != "splatter" || theme.Motif.Kind != "block-w" {
-		return fmt.Errorf("recipe v1 supports screenprint, splatter, and block-w representative primitives only")
+	if theme.Texture.Kind != "none" && theme.Texture.Kind != "screenprint" {
+		return fmt.Errorf("recipe v1 does not support texture kind %q", theme.Texture.Kind)
+	}
+	if theme.HeadingTexture.Kind != "none" && theme.HeadingTexture.Kind != "splatter" && theme.HeadingTexture.Kind != "inherit" {
+		return fmt.Errorf("recipe v1 does not support heading texture kind %q", theme.HeadingTexture.Kind)
+	}
+	if theme.Motif.Kind != "block-w" {
+		return fmt.Errorf("recipe v1 supports block-w motif representative primitive only")
 	}
 	if theme.Motif.Layer != "under" && theme.Motif.Layer != "over" && theme.Motif.Layer != "sandwich" {
 		return fmt.Errorf("invalid motif layer %q", theme.Motif.Layer)
