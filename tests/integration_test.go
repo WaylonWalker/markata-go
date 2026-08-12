@@ -285,6 +285,55 @@ Notes content`)
 	}
 }
 
+func TestCanonicalHeadingsBuildUsesCanonicalPostProjection(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("test-headings.md", `---
+template: post
+title: test headings
+slug: test-headings
+published: true
+---
+
+# Canonical heading`)
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra: map[string]interface{}{
+			"templates_dir": "../templates",
+			"models_config": &models.Config{URL: "https://example.com"},
+		},
+	}
+	m.SetConfig(cfg)
+	templatesPlugin := plugins.NewTemplatesPlugin()
+	if err := templatesPlugin.Configure(m); err != nil {
+		t.Fatalf("templates configure failed: %v", err)
+	}
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(templatesPlugin)
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+	if err := m.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	html := site.readFile("test-headings/index.html")
+	for _, marker := range []string{
+		`data-rendering-specimen="canonical-headings"`,
+		`class="canonical-document"`,
+	} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("generated canonical post is missing %q", marker)
+		}
+	}
+	if strings.Contains(html, `class="post h-entry"`) {
+		t.Error("generated canonical post used the generic post projection")
+	}
+}
+
 func TestLinkAvatars_RootAbsoluteAssetsOnNestedPage(t *testing.T) {
 	site := newTestSite(t)
 	site.addPost("instant-pot-chicken-teriyaki.md", `---
