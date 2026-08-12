@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block content %}
-{% if post.slug == "test-headings" %}
+{% if post.slug == "test-headings" or slug == "test-headings" %}
 <div class="canonical-document-shell">
     <article class="canonical-document">
         <h1 class="canonical-document__title">{{ post.title_html | safe }}</h1>
@@ -83,7 +83,6 @@
 
                 {# Author byline and post metadata #}
             {% include "components/post_byline.html" %}
-            {% include "partials/link-metrics.html" %}
         </div>
 
             {% if post.description %}

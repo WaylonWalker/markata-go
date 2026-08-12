@@ -1,3 +1,4 @@
+{# Canonical rendering fixture template. #}
 <!DOCTYPE html>
 <html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-fontpack="{{ config.theme.fontpack }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
@@ -586,7 +587,7 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1"{% if post.slug == "test-headings" %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+      <main class="main-content" id="main-content" tabindex="-1"{% if post.slug == "test-headings" or slug == "test-headings" %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 

@@ -22,7 +22,7 @@ func TestCanonicalSpecimenContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
- for _, marker := range []string{`data-rendering-profile="canonical-document-v1"`, `data-rendering-content-width="68ch"`, `data-rendering-viewport="1280x1000"`, `data-rendering-layer-roles="surface,document,heading-wear,motif,texture"`} {
+	for _, marker := range []string{`data-rendering-specimen="canonical-headings"`, `data-rendering-profile="canonical-document-v1"`, `data-rendering-content-width="68ch"`, `data-rendering-viewport="1280x1000"`, `data-rendering-layer-roles="surface,document,heading-wear,motif,texture"`} {
 		if !strings.Contains(string(base), marker) {
 			t.Errorf("canonical specimen root is missing %q", marker)
 		}

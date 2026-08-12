@@ -93,23 +93,22 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 		buildCacheLog.Phase("configure").Printf("Config changed, full rebuild required")
 	}
 
-	// Compute and check templates hash
+	// Compute and check templates hash. The fingerprint is useful for avoiding
+	// metadata work, but it is not sufficient to invalidate rendered pages:
+	// template contents can change while preserving size and modtime (for
+	// example after a checkout or archive extraction). Always compare the
+	// content hash so cached full-page HTML cannot outlive its template.
 	templatesDir := PluginNameTemplates // default "templates"
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
 		templatesDir = extra
 	}
-	if fingerprint, err := buildcache.HashDirectoryState(templatesDir, []string{".html", ".txt", ".md"}); err == nil && fingerprint != "" {
-		if cache.GetTemplatesFingerprint() == fingerprint && cache.GetTemplatesHash() != "" {
-			// Template tree unchanged - reuse the existing content hash.
-		} else if hash, err := buildcache.HashDirectory(templatesDir, []string{".html", ".txt", ".md"}); err == nil && hash != "" {
-			changed := cache.SetTemplatesFingerprint(fingerprint)
-			if cache.SetTemplatesHash(hash) {
-				changed = true
-			}
-			if changed {
-				// Templates changed - cache was invalidated.
-				buildCacheLog.Phase("configure").Printf("Templates changed, full rebuild required")
-			}
+	if fingerprint, fingerprintErr := buildcache.HashDirectoryState(templatesDir, []string{".html", ".txt", ".md"}); fingerprintErr == nil && fingerprint != "" {
+		cache.SetTemplatesFingerprint(fingerprint)
+	}
+	if hash, err := buildcache.HashDirectory(templatesDir, []string{".html", ".txt", ".md"}); err == nil && hash != "" {
+		if cache.SetTemplatesHash(hash) {
+			// Templates changed - cache was invalidated.
+			buildCacheLog.Phase("configure").Printf("Templates changed, full rebuild required")
 		}
 	}
 
