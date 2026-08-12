@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"rendering-recipe-v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema_version","contract_version","semantic_hash","recipe_hash","assets","passes","fonts"],
+  "properties":{
+    "schema_version":{"const":"rendering-recipe-v1"},"contract_version":{"const":1},
+    "semantic_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"recipe_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "assets":{"type":"array","items":{"$ref":"#/$defs/asset"}},"passes":{"type":"array","minItems":1,"items":{"$ref":"#/$defs/pass"}},"fonts":{"type":"array","items":{"$ref":"#/$defs/font"}}
+  },
+  "$defs":{
+    "asset":{"type":"object","additionalProperties":false,"required":["path","sha256","media_type","view_box","width","height"],"properties":{"path":{"type":"string"},"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"media_type":{"const":"image/svg+xml"},"view_box":{"type":"string"},"width":{"type":"integer"},"height":{"type":"integer"}}},
+    "pass":{"type":"object","additionalProperties":false,"required":["id","role","mode","asset","media_type","view_box","repeat","scale_milli"],"properties":{"id":{"type":"string"},"role":{"type":"string"},"mode":{"enum":["image","alpha-mask"]},"asset":{"type":"string"},"media_type":{"const":"image/svg+xml"},"view_box":{"type":"string"},"repeat":{"enum":["repeat","no-repeat"]},"scale_milli":{"type":"integer"},"scope":{"type":"string"},"opacity_milli":{"type":"integer"}}},
+    "font":{"type":"object","additionalProperties":false,"required":["role","family","asset_path","sha256","weight","style","fallback_stack"],"properties":{"role":{"type":"string"},"family":{"type":"string"},"asset_path":{"type":"string"},"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"weight":{"type":"integer"},"style":{"type":"string"},"fallback_stack":{"type":"array","items":{"type":"string"}}}}
+  }
+}
