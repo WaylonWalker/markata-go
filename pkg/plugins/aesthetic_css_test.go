@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"encoding/base64"
 	"strings"
 	"testing"
 
@@ -91,6 +90,24 @@ func TestAestheticCSSPlugin_PresentationEmitsMotifLengthsAsCSSLengths(t *testing
 	}
 }
 
+func TestAestheticCSSPlugin_CanonicalMotifUsesCompiledAsset(t *testing.T) {
+	plugin := NewAestheticCSSPlugin()
+	config := lifecycle.NewConfig()
+	theme := models.NewThemeConfig()
+	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+	css := plugin.generatePresentationCSS(config)
+	if !strings.Contains(css, `--theme-motif-image: url("/assets/motif-block-w-v1.svg")`) || strings.Contains(css, "data:image/svg+xml;base64,") {
+		t.Fatalf("canonical motif must attach compiler asset without data URI: %s", css)
+	}
+	bundle, err := compileMotifBundle(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(bundle.Assets["assets/motif-block-w-v1.svg"]), `data-index="`) != 160 {
+		t.Fatal("compiled canonical motif must contain 160 marks")
+	}
+}
+
 func TestAestheticCSSPlugin_PresentationRendersOverMotifPass(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()
 	config := lifecycle.NewConfig()
@@ -124,7 +141,7 @@ func TestAestheticCSSPlugin_PresentationUsesNormalizedSeparationAndLayers(t *tes
 	if !strings.Contains(css, `--theme-motif-color-mix: 0.500;`) || !strings.Contains(css, `--theme-motif-z: -2;`) {
 		t.Fatalf("intermediate motif mix or under layer missing: %s", css)
 	}
-	if !strings.Contains(css, "mask-image: var(--theme-heading-texture-mask)") || !strings.Contains(css, "data:image/svg+xml;base64,") {
+	if !strings.Contains(css, "mask-image: var(--theme-heading-texture-mask)") || !strings.Contains(css, "data:image/svg+xml,") {
 		t.Fatal("heading wear must use a stable SVG mask")
 	}
 	if strings.Contains(css, "opacity: var(--theme-motif-color-mix)") {
@@ -162,7 +179,7 @@ func TestAestheticCSSPlugin_PresentationKeepsTextureAndMotifPassesIndependent(t 
 		if !strings.Contains(css, `--theme-texture-opacity: 0.000;`) {
 			t.Errorf("%s texture pass should be transparent at mix zero: %s", layer, css)
 		}
-		if !strings.Contains(css, "body { background-image: var(--theme-motif-under-image)") || !strings.Contains(css, `--theme-motif-under-image: url("data:image/svg+xml;base64,`) {
+		if !strings.Contains(css, "body { background-image: var(--theme-motif-under-image)") || !strings.Contains(css, `--theme-motif-under-image: url("/assets/motif-block-w-v1.svg")`) {
 			t.Errorf("%s motif pass must remain independent of texture opacity: %s", layer, css)
 		}
 	}
@@ -214,6 +231,7 @@ func TestAestheticCSSPlugin_PresentationValidatesMotifURLSchemes(t *testing.T) {
 	for _, scheme := range contract.MotifURLSchemes {
 		config := lifecycle.NewConfig()
 		theme := models.NewThemeConfig()
+		theme.Motif.Kind = "letter"
 		theme.Motif.URL = scheme + "example"
 		config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
 		css := plugin.generatePresentationCSS(config)
@@ -229,54 +247,6 @@ func TestAestheticCSSPlugin_PresentationValidatesMotifURLSchemes(t *testing.T) {
 	if css := plugin.generatePresentationCSS(config); strings.Contains(css, "javascript:alert") {
 		t.Fatal("unsupported motif URL scheme must fall back to the generated field")
 	}
-}
-
-func TestBlockWMotifField_IsCanonicalDeterministicGrid(t *testing.T) {
-	image := blockWMotifField("#123", "", 71, 11, .24, .18, .33)
-	encoded := strings.TrimSuffix(strings.TrimPrefix(image, `url("data:image/svg+xml;base64,`), `")`)
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		t.Fatalf("decode motif field: %v", err)
-	}
-	svg := string(decoded)
-	if !strings.Contains(svg, `data-field="16x10" data-mark-size="71.000"`) {
-		t.Fatalf("motif field must expose full 16x10 dimensions: %s", svg)
-	}
-	if got := strings.Count(svg, `data-index="`); got != 160 {
-		t.Fatalf("motif field has %d marks, want 160", got)
-	}
-	if image != blockWMotifField("#123", "", 71, 11, .24, .18, .33) {
-		t.Fatal("motif field must be deterministic")
-	}
-}
-
-func TestBlockWMotifField_DialsChangeTransforms(t *testing.T) {
-	base := string(decodeMotifDataURL(t, blockWMotifField("#123", "", 71, 11, 0, 0, 0)))
-	varied := string(decodeMotifDataURL(t, blockWMotifField("#123", "", 71, 11, .24, .18, .33)))
-	if base == varied || !strings.Contains(varied, `rotate(`) || !strings.Contains(varied, `scale(`) {
-		t.Fatal("wobble and scatter must change per-mark transforms")
-	}
-}
-
-func TestBlockWMotifField_CustomURLIsPerMarkAlphaMask(t *testing.T) {
-	image := blockWMotifField("#7f7f7f", "https://example.test/w.svg", 71, 11, .24, .18, .33)
-	svg := string(decodeMotifDataURL(t, image))
-	if strings.Count(svg, `<mask `) != 160 || !strings.Contains(svg, `mask-type="alpha"`) {
-		t.Fatal("custom artwork must be an alpha mask for every mark")
-	}
-	if !strings.Contains(svg, `fill="#7f7f7f"`) {
-		t.Fatal("custom artwork masks must use resolved opaque paint")
-	}
-}
-
-func decodeMotifDataURL(t *testing.T, image string) []byte {
-	t.Helper()
-	encoded := strings.TrimSuffix(strings.TrimPrefix(image, `url("data:image/svg+xml;base64,`), `")`)
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		t.Fatalf("decode motif field: %v", err)
-	}
-	return decoded
 }
 
 func TestAestheticCSSPlugin_PresentationQuietScopeProtectsReadingSurfaces(t *testing.T) {
