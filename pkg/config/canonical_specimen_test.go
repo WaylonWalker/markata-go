@@ -22,10 +22,33 @@ func TestCanonicalSpecimenContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, marker := range []string{`data-rendering-profile="canonical-document-v1"`, `data-rendering-content-width="68ch"`, `data-rendering-viewport="1280x1000"`, `data-rendering-layer-roles="surface,document,heading-wear,motif,texture"`} {
+ for _, marker := range []string{`data-rendering-profile="canonical-document-v1"`, `data-rendering-content-width="68ch"`, `data-rendering-viewport="1280x1000"`, `data-rendering-layer-roles="surface,document,heading-wear,motif,texture"`} {
 		if !strings.Contains(string(base), marker) {
 			t.Errorf("canonical specimen root is missing %q", marker)
 		}
+	}
+}
+
+func TestCanonicalSpecimenCaptureGeometry(t *testing.T) {
+	base, err := os.ReadFile(filepath.Join("..", "..", "templates", "base.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	markup := string(base)
+	for _, marker := range []string{
+		"width: 1280px;",
+		"height: 1000px;",
+		"min-height: 1000px;",
+		"width: 680px;",
+		"padding: 32px;",
+		"body:has([data-rendering-specimen=\"canonical-headings\"]) > .site-header",
+	} {
+		if !strings.Contains(markup, marker) {
+			t.Errorf("canonical capture geometry is missing %q", marker)
+		}
+	}
+	if strings.Contains(markup, "width: 100vw;") || strings.Contains(markup, "height: 100vh;") {
+		t.Fatal("canonical capture geometry must not depend on viewport units")
 	}
 }
 

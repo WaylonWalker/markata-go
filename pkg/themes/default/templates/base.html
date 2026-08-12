@@ -465,6 +465,37 @@
   <style id="markata-mark-presentation">
     html mark { background-color: var(--color-highlight) !important; color: var(--color-highlight-text) !important; }
   </style>
+  <style id="markata-canonical-document-profile">
+    [data-rendering-specimen="canonical-headings"] {
+      box-sizing: border-box;
+      width: 1280px;
+      height: 1000px;
+      min-height: 1000px;
+      max-width: none !important;
+      margin: 0;
+      padding: 24px;
+      overflow: visible;
+    }
+    [data-rendering-specimen="canonical-headings"] .canonical-document {
+      box-sizing: border-box;
+      width: 680px;
+      max-width: 100%;
+      margin-inline: auto;
+    }
+    html.canonical-specimen-route body { overflow: hidden; }
+    html.canonical-specimen-route body > :not(.page-wrapper),
+    body:has([data-rendering-specimen="canonical-headings"]) > :not(.skip-link):not(.site-header):not(#view-transition-progress):not(footer):not(.page-wrapper) {
+      display: none !important;
+    }
+    html.canonical-specimen-route body .page-wrapper { display: contents; }
+    html.canonical-specimen-route body .page-wrapper > :not(main),
+    body:has([data-rendering-specimen="canonical-headings"]) .page-wrapper > :not(main) {
+      display: none !important;
+    }
+    html.canonical-specimen-route body [data-rendering-specimen="canonical-headings"] {
+      display: block;
+    }
+  </style>
   {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -507,7 +538,7 @@
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1">
+      <main class="main-content" id="main-content" tabindex="-1"{% if post.title_text == "test headings" %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 
