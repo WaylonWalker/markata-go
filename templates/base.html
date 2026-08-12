@@ -455,16 +455,23 @@
       box-sizing: border-box;
       width: min(100%, var(--content-width, 68ch));
       margin-inline: auto;
-      padding-inline: 0.12em;
+       padding-inline: 0;
       font-family: var(--font-body, system-ui, sans-serif);
       font-size: 1rem;
       line-height: 1.6;
     }
     [data-rendering-specimen="canonical-headings"] .canonical-document__title,
     [data-rendering-specimen="canonical-headings"] .post-content h1,
-    [data-rendering-specimen="canonical-headings"] .post-content h2 {
+    [data-rendering-specimen="canonical-headings"] .post-content h2,
+    [data-rendering-specimen="canonical-headings"] .post-content h3,
+    [data-rendering-specimen="canonical-headings"] .post-content h4,
+    [data-rendering-specimen="canonical-headings"] .post-content h5,
+    [data-rendering-specimen="canonical-headings"] .post-content h6 {
       font-family: var(--font-heading, var(--font-body, system-ui, sans-serif));
-      font-weight: 400;
+       font-weight: 400;
+       overflow: visible;
+       border: 0;
+       padding: 0;
     }
     [data-rendering-specimen="canonical-headings"] .canonical-document__title {
       margin: 0 0 0.75rem;
@@ -481,6 +488,11 @@
       font-size: clamp(2rem, 5vw, 3.5rem);
       line-height: 1;
     }
+    [data-rendering-specimen="canonical-headings"] .post-content h3 { margin: 2.5rem 0 0.75rem; font-size: 2rem; line-height: 1.05; }
+    [data-rendering-specimen="canonical-headings"] .post-content h4 { margin: 2.5rem 0 0.75rem; font-size: 1.5rem; line-height: 1.1; }
+    [data-rendering-specimen="canonical-headings"] .post-content h5 { margin: 2.5rem 0 0.75rem; font-size: 1.25rem; line-height: 1.2; }
+    [data-rendering-specimen="canonical-headings"] .post-content h6 { margin: 2.5rem 0 0.75rem; font-size: 1rem; line-height: 1.25; }
+    [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, pre, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
     [data-rendering-specimen="canonical-headings"] .post-content p {
       margin: 1rem 0;
     }

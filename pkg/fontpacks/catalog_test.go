@@ -39,6 +39,53 @@ func TestResolvePackAliasAndSystemHasNoAssets(t *testing.T) {
 	}
 }
 
+func TestBuiltinBrushUsesCanonicalDocumentRoles(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, pack, err := source.Catalog.ResolvePack("brush-poster")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "brush" {
+		t.Fatalf("resolved name = %q, want brush", name)
+	}
+	for role, want := range map[string]string{
+		"body":    "space-grotesk",
+		"heading": "knewave",
+		"code":    "dm-mono",
+	} {
+		if got := pack.Roles[role].Source; got != want {
+			t.Errorf("brush %s source = %q, want %q", role, got, want)
+		}
+	}
+}
+
+func TestBuiltinBrushAssetsHaveCanonicalDigests(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveFS("brush", source.FS, source.Root, "<article><h1>Specimen</h1><p>Text</p><code>x</code></article>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"space-grotesk": "5010c6e79c7e65a058dfd39a71d8d60f7b56070a3c32cc911d9dddbaec7f0851",
+		"knewave":       "56fc586096f8e158fc214e3de31ee47c15ff80fc0abd5e0646ddff47a6af27ba",
+		"dm-mono":       "90c42888e73fa88ebf3d0e27e0461535acd661e3892bbcb6eb21047f33b67c32",
+	}
+	if len(resolved.Assets) != len(want) {
+		t.Fatalf("brush assets = %d, want %d", len(resolved.Assets), len(want))
+	}
+	for _, asset := range resolved.Assets {
+		if got := want[asset.Source]; got == "" || asset.SHA256 != got {
+			t.Errorf("asset %q digest = %q, want %q", asset.Source, asset.SHA256, got)
+		}
+	}
+}
+
 func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
 	c := testCatalog(t)
 	_, pack, err := c.ResolvePack("bundled")

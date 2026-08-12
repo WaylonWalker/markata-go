@@ -298,12 +298,6 @@ func roleRulesForPacks(packs map[string]FontPack) string {
 }
 
 func headingRole(pack FontPack) string {
-	// The canonical brush record uses Knewave for every heading level. The
-	// display role remains Water Brush for poster-specific consumers, but it is
-	// not the portable brush fontpack heading role.
-	if strings.EqualFold(pack.Name, "Brush Poster") || strings.EqualFold(pack.Name, "Brush") {
-		return firstRole(pack, "heading", "display")
-	}
 	return firstRole(pack, "display", "heading")
 }
 

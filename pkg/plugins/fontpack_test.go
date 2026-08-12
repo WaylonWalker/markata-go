@@ -10,7 +10,7 @@ import (
 func TestConfiguredFontpackName_UsesCanonicalTheme(t *testing.T) {
 	configured := &models.Config{}
 	configured.Theme.Fontpack = "brush-poster"
-	if got := configuredFontpackName(map[string]any{"models_config": configured, "fontpack": "system"}); got != "brush-poster" {
+	if got := configuredFontpackName(map[string]any{"models_config": configured, "fontpack": "system"}); got != "brush" {
 		t.Fatalf("fontpack = %q", got)
 	}
 }
