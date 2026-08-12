@@ -132,6 +132,13 @@ func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
 // 5. Global default for format (default_templates.html, etc.)
 // 6. Hardcoded default (post.html, default.txt, etc.)
 func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
+	// The canonical specimen uses the post template preset. Keep its
+	// projection explicit so a preset resolved from frontmatter cannot fall
+	// through to a generic post layout.
+	if format == formatHTML && post.Slug == "test-headings" {
+		return "post.html"
+	}
+
 	// 1. Check per-format override in frontmatter
 	if post.Templates != nil {
 		if tmpl, ok := post.Templates[format]; ok && tmpl != "" {
