@@ -443,6 +443,52 @@
   <style id="markata-mark-presentation">
     html mark { background-color: var(--color-highlight) !important; color: var(--color-highlight-text) !important; }
   </style>
+  <style id="markata-canonical-document-profile">
+    /* Internal conformance profile; scoped so normal site documents are unchanged. */
+    [data-rendering-specimen="canonical-headings"] {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 100%;
+      padding: 32px;
+    }
+    [data-rendering-specimen="canonical-headings"] .canonical-document {
+      box-sizing: border-box;
+      width: min(100%, var(--content-width, 68ch));
+      margin-inline: auto;
+      padding-inline: 0.12em;
+      font-family: var(--font-body, system-ui, sans-serif);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    [data-rendering-specimen="canonical-headings"] .canonical-document__title,
+    [data-rendering-specimen="canonical-headings"] .post-content h1,
+    [data-rendering-specimen="canonical-headings"] .post-content h2 {
+      font-family: var(--font-heading, var(--font-body, system-ui, sans-serif));
+      font-weight: 400;
+    }
+    [data-rendering-specimen="canonical-headings"] .canonical-document__title {
+      margin: 0 0 0.75rem;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      line-height: 0.95;
+    }
+    [data-rendering-specimen="canonical-headings"] .post-content h1 {
+      margin: 2.5rem 0 0.75rem;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      line-height: 0.95;
+    }
+    [data-rendering-specimen="canonical-headings"] .post-content h2 {
+      margin: 2.5rem 0 0.75rem;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1;
+    }
+    [data-rendering-specimen="canonical-headings"] .post-content p {
+      margin: 1rem 0;
+    }
+    [data-rendering-specimen="canonical-headings"] mark {
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+  </style>
   {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -480,7 +526,7 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1">
+      <main class="main-content" id="main-content" tabindex="-1"{% if post.slug == "test-headings" %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 
