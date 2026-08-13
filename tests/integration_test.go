@@ -295,6 +295,12 @@ published: true
 ---
 
 # Canonical heading`)
+	site.addPost("ordinary.md", `---
+title: ordinary
+published: true
+---
+
+# Ordinary heading`)
 
 	m := lifecycle.NewManager()
 	cfg := &lifecycle.Config{
@@ -331,6 +337,19 @@ published: true
 	}
 	if strings.Contains(html, `class="post h-entry"`) {
 		t.Error("generated canonical post used the generic post projection")
+	}
+	if !site.fileExists("test-headings/index.html") {
+		t.Fatal("canonical fixture was not written to its slug path")
+	}
+	ordinary := site.readFile("ordinary/index.html")
+	if strings.Contains(ordinary, `<main class="main-content" id="main-content" tabindex="-1" data-rendering-specimen=`) {
+		t.Error("ordinary post unexpectedly contains the canonical route marker")
+	}
+	if strings.Contains(ordinary, `class="canonical-document"`) {
+		t.Error("ordinary post unexpectedly contains the canonical projection")
+	}
+	if !strings.Contains(ordinary, `class="post h-entry"`) {
+		t.Error("ordinary post did not use the generic post projection")
 	}
 }
 

@@ -135,7 +135,7 @@ func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format str
 	// The canonical specimen uses the post template preset. Keep its
 	// projection explicit so a preset resolved from frontmatter cannot fall
 	// through to a generic post layout.
-	if format == formatHTML && post.Slug == "test-headings" {
+	if format == formatHTML && isCanonicalRenderingFixture(post) {
 		return "post.html"
 	}
 
@@ -521,6 +521,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	modelsConfig := applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config))
 	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
 	ctx = ctx.WithCore(m)
+	ctx.Set("canonical_rendering_fixture", isCanonicalRenderingFixture(post))
 	ctx.Set("feed_posts", createFeedPostsFunc(m))
 	ctx.Set("render_feed", createRenderFeedFunc(m))
 	ctx.Set("render_slashes", createRenderSlashesFunc(m))
@@ -580,6 +581,14 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	}
 
 	return html, nil
+}
+
+// isCanonicalRenderingFixture identifies the one explicit post used by the
+// rendering contract. The slug alone is not sufficient: keep the authored
+// title and template as part of the identity so an ordinary post cannot
+// inherit the canonical projection accidentally.
+func isCanonicalRenderingFixture(post *models.Post) bool {
+	return post != nil && post.Slug == "test-headings" && post.PlainTitle() == "test headings" && post.Template == "post"
 }
 
 // getFeedSidebarPosts returns the posts for the feed sidebar if the post belongs to a configured feed.
