@@ -386,7 +386,10 @@ func Compile(theme Theme) (Bundle, error) {
 	heading := add("assets/heading-splatter-v1.svg", headingSVG(theme.HeadingTexture.ColorMix, sources["heading-splatter-v1"]), "image/svg+xml", "0 0 180 180", 180, 180)
 	motifSource := sources["motif-block-w-v1"]
 	motifView := motifSource.ViewBox
-	motifWidth, motifHeight := motifFieldDimensions(motifSource)
+	motifWidth, motifHeight, err := motifFieldDimensions(theme.Motif, motifSource)
+	if err != nil {
+		return Bundle{}, err
+	}
 	motif := add("assets/motif-block-w-v1.svg", motifSVG(theme.Motif, motifRoleColor(theme.Motif.Color, colors), colors.background, motifSource), "image/svg+xml", motifView, motifWidth, motifHeight)
 	fonts := canonicalFonts()
 	passes := []Pass{}
@@ -790,7 +793,9 @@ func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte
 }
 func headingSVG(mix float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)
- return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="black" opacity=".34"/><circle cx="%.3f" cy="113" r="4" fill="black" opacity=".34"/></svg>`, source.ViewBox, 31+offset, 129-offset))
+	// This is a direct alpha image. The even-odd path cuts genuine transparent
+	// holes from the opaque field; the second hole is restored only partially.
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><path fill="white" fill-rule="evenodd" d="M0 0H180V180H0ZM%.3f 47m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0ZM%.3f 113m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0Z"/><circle cx="%.3f" cy="113" r="4" fill="white" opacity=".42"/></svg>`, source.ViewBox, 31+offset, 129-offset, 129-offset))
 }
 func motifSVG(m renderingcontract.MotifState, color, background string, source recipeSource) []byte {
 	path := source.Path
@@ -819,8 +824,13 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 
 const motifPadding = 8
 
-func motifFieldDimensions(source recipeSource) (int, int) {
-	return int(math.Ceil(float64(source.Columns)*82 + 2*motifPadding)), int(math.Ceil(float64(source.Rows)*(71*905.76/1688.4+11) + 2*motifPadding))
+func motifFieldDimensions(m renderingcontract.MotifState, source recipeSource) (int, int, error) {
+	size, gap, err := motifDimensions(m)
+	if err != nil {
+		return 0, 0, err
+	}
+	markHeight := size * 905.76 / 1688.4
+	return int(math.Ceil(float64(source.Columns)*(size+gap) + 2*motifPadding)), int(math.Ceil(float64(source.Rows)*(markHeight+gap) + 2*motifPadding)), nil
 }
 
 var pixelsRE = regexp.MustCompile(`^(40|[4-9][0-9]|1[0-3][0-9]|140)px$`)
