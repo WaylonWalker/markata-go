@@ -82,7 +82,7 @@ func TestCanonicalBundle_AttachmentProbes(t *testing.T) {
 		t.Fatalf("canonical over layer order = %v", got)
 	}
 	for _, asset := range bundle.Manifest.Assets {
-		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 28480 10060" || asset.Width != 28480 || asset.Height != 10060) {
+		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 1328 507" || asset.Width != 1328 || asset.Height != 507) {
 			t.Fatalf("motif geometry metadata drifted: %+v", asset)
 		}
 	}
@@ -99,7 +99,7 @@ func TestCanonicalBundle_AssetBytesAreAuthoritative(t *testing.T) {
 	}
 	want := map[string]string{
 		"assets/surface-screenprint-v1.svg": "e17ce82e807c5bae2aadcf0cbe183a92ee10f7652092372b2be627272bd83edd",
-		"assets/heading-splatter-v1.svg":    "659fb6802eca5fca5e4c34baaf53a81de204794a6ca28ca5f3083977e772cd6a",
+		"assets/heading-splatter-v1.svg":    "1bb8bf31924619059fa58ed4b28e47914a004cdde029d43f4fb564432d955dc9",
 	}
 	// The surface tile must remain transparent. The exact digest is asserted
 	// below after the compiler output is frozen and copied to consumers.

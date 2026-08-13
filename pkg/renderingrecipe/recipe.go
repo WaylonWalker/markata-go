@@ -386,7 +386,8 @@ func Compile(theme Theme) (Bundle, error) {
 	heading := add("assets/heading-splatter-v1.svg", headingSVG(theme.HeadingTexture.ColorMix, sources["heading-splatter-v1"]), "image/svg+xml", "0 0 180 180", 180, 180)
 	motifSource := sources["motif-block-w-v1"]
 	motifView := motifSource.ViewBox
-	motif := add("assets/motif-block-w-v1.svg", motifSVG(theme.Motif, motifRoleColor(theme.Motif.Color, colors), colors.background, motifSource), "image/svg+xml", motifView, 28480, 10060)
+	motifWidth, motifHeight := motifFieldDimensions(motifSource)
+	motif := add("assets/motif-block-w-v1.svg", motifSVG(theme.Motif, motifRoleColor(theme.Motif.Color, colors), colors.background, motifSource), "image/svg+xml", motifView, motifWidth, motifHeight)
 	fonts := canonicalFonts()
 	passes := []Pass{}
 	if theme.Motif.Layer == "under" || theme.Motif.Layer == "sandwich" {
@@ -789,7 +790,7 @@ func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte
 }
 func headingSVG(mix float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><mask id="wear"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="black"/><circle cx="%.3f" cy="113" r="4" fill="black"/></mask><rect width="180" height="180" fill="white" mask="url(#wear)"/></svg>\n`, source.ViewBox, 31+offset, 129-offset))
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="white" opacity=".34"/><circle cx="%.3f" cy="113" r="4" fill="white" opacity=".34"/></svg>\n`, source.ViewBox, 31+offset, 129-offset))
 }
 func motifSVG(m renderingcontract.MotifState, color, background string, source recipeSource) []byte {
 	path := source.Path
@@ -805,8 +806,8 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 	markScale := markSize / 1688.4
 	for index := 0; index < source.Columns*source.Rows; index++ {
 		row, column := index/source.Columns, index%source.Columns
-		x := float64(column)*(markSize+gap) + float64(row%2)*m.RowOffset*(markSize+gap)
-		y := float64(row) * (markSize*905.76/1688.4 + gap)
+		x := motifPadding + float64(column)*(markSize+gap) + float64(row%2)*m.RowOffset*(markSize+gap)
+		y := motifPadding + float64(row)*(markSize*905.76/1688.4+gap)
 		seedIndex := index + source.Seed
 		rotation := (float64(seedIndex%7) - 3) * m.Wobble * 2
 		scale := 1 + (float64((seedIndex*13)%11)-5)*m.Scatter*.01
@@ -814,6 +815,12 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 	}
 	svg.WriteString(`</svg>`)
 	return []byte(svg.String())
+}
+
+const motifPadding = 8
+
+func motifFieldDimensions(source recipeSource) (int, int) {
+	return int(math.Ceil(float64(source.Columns)*82 + 2*motifPadding)), int(math.Ceil(float64(source.Rows)*(71*905.76/1688.4+11) + 2*motifPadding))
 }
 
 var pixelsRE = regexp.MustCompile(`^(40|[4-9][0-9]|1[0-3][0-9]|140)px$`)
