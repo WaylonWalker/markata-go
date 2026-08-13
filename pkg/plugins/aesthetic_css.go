@@ -160,14 +160,15 @@ func (p *AestheticCSSPlugin) generatePresentationCSS(config *lifecycle.Config) s
   /* Motif color_mix selects the color. Motif paint stays opaque. */
 	  body { background-size: var(--theme-motif-field-size, calc(var(--theme-motif-size) + var(--theme-motif-gap))) auto; }
 	  body::after { background-size: var(--theme-motif-field-size, calc(var(--theme-motif-size) + var(--theme-motif-gap))) auto; opacity: 1; }
-  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-image: var(--theme-motif-over-image); background-repeat: repeat; }
-  body > * { position: relative; z-index: 2; }
+   body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: 0; background-color: transparent; background-image: var(--theme-motif-over-image); background-repeat: repeat; }
+   body > * { position: relative; z-index: 2; }
+   [data-rendering-specimen="canonical-headings"] { position: relative; z-index: 4; }
   body::before { background-size: calc(180px * var(--theme-texture-scale)); }
 	  body::after { transform: none; }
   h1, h2, h3, h4, h5, h6 { mask-image: none !important; -webkit-mask-image: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
   /* Wear removes ink through a mask. It must not replace the semantic paint
      inherited from mark, links, emphasis, or strong. */
-   .heading-wear-glyph { display: inline-block; color: inherit; background: none; -webkit-text-fill-color: currentColor; mask-image: var(--theme-heading-texture-mask) !important; -webkit-mask-image: var(--theme-heading-texture-mask) !important; mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }
+   .heading-wear-glyph { display: inline-block; position: relative; z-index: 5; color: inherit; background: none; -webkit-text-fill-color: currentColor; mask-image: var(--theme-heading-texture-mask) !important; -webkit-mask-image: var(--theme-heading-texture-mask) !important; mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }
   .heading-wear-glyph .heading-anchor, .heading-anchor { mask: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
 }
 ` + `
