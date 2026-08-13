@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block content %}
-{% if post %}
+{% if canonical_rendering_fixture %}
 <div class="canonical-document-shell">
     <article class="canonical-document">
         <h1 class="canonical-document__title">{{ post.title_html | safe }}</h1>

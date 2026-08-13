@@ -36,11 +36,11 @@ func TestCanonicalSpecimenCaptureGeometry(t *testing.T) {
 	}
 	markup := string(base)
 	for _, marker := range []string{
-		"width: 1280px;",
-		"height: 1000px;",
-		"min-height: 1000px;",
+		"width: 1280px !important;",
+		"height: 1000px !important;",
+		"min-height: 1000px !important;",
 		"width: 680px;",
-		"padding: 32px;",
+		"padding: 24px;",
 		"body:has([data-rendering-specimen=\"canonical-headings\"]) > .site-header",
 	} {
 		if !strings.Contains(markup, marker) {

@@ -453,9 +453,11 @@
     /* Internal conformance profile; scoped so normal site documents are unchanged. */
     [data-rendering-specimen="canonical-headings"] {
       box-sizing: border-box;
-      width: 100%;
-      min-height: 100%;
-      padding: 32px;
+       width: 1280px !important;
+       height: 1000px !important;
+       min-height: 1000px !important;
+       padding: 24px;
+       overflow: hidden !important;
     }
     [data-rendering-specimen="canonical-headings"] .canonical-document {
       box-sizing: border-box;
@@ -536,19 +538,27 @@
       html.canonical-specimen-route body [data-rendering-specimen="canonical-headings"],
       body:has([data-rendering-specimen="canonical-headings"]) [data-rendering-specimen="canonical-headings"] {
         box-sizing: border-box;
-         width: 1280px;
-         height: 1000px;
-         min-height: 1000px;
-        max-width: none !important;
-        margin: 0;
-         padding: 32px;
-        overflow: visible;
+          width: 1280px !important;
+          height: 1000px !important;
+          min-height: 1000px !important;
+          max-width: none !important;
+          margin: 0;
+          padding: 24px;
+          overflow: hidden !important;
       }
-      html.canonical-specimen-route [data-rendering-specimen="canonical-headings"] .canonical-document {
-        width: 680px !important;
-        max-width: 100% !important;
-        margin-inline: auto;
-      }
+       html.canonical-specimen-route [data-rendering-specimen="canonical-headings"] .canonical-document {
+         width: 680px !important;
+         max-width: 100% !important;
+         margin-inline: auto;
+       }
+       html.canonical-specimen-route [data-rendering-specimen="canonical-headings"] {
+         box-sizing: border-box !important;
+         width: 1280px !important;
+         height: 1000px !important;
+         min-height: 1000px !important;
+         max-height: 1000px !important;
+         overflow: hidden !important;
+       }
    </style>
   {% endblock %}
 </head>
@@ -587,7 +597,7 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1"{% if post %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+      <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 
