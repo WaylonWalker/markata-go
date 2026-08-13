@@ -790,7 +790,7 @@ func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte
 }
 func headingSVG(mix float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="white" opacity=".34"/><circle cx="%.3f" cy="113" r="4" fill="white" opacity=".34"/></svg>\n`, source.ViewBox, 31+offset, 129-offset))
+ return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><rect width="180" height="180" fill="white"/><circle cx="%.3f" cy="47" r="3" fill="black" opacity=".34"/><circle cx="%.3f" cy="113" r="4" fill="black" opacity=".34"/></svg>`, source.ViewBox, 31+offset, 129-offset))
 }
 func motifSVG(m renderingcontract.MotifState, color, background string, source recipeSource) []byte {
 	path := source.Path
