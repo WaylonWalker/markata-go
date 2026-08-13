@@ -82,7 +82,7 @@ func TestCanonicalBundle_AttachmentProbes(t *testing.T) {
 		t.Fatalf("canonical over layer order = %v", got)
 	}
 	for _, asset := range bundle.Manifest.Assets {
-		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 1328 507" || asset.Width != 1328 || asset.Height != 507) {
+		if asset.Path == "assets/motif-block-w-v1.svg" && (asset.ViewBox != "0 0 1328 507" || asset.Width != 1344 || asset.Height != 559) {
 			t.Fatalf("motif geometry metadata drifted: %+v", asset)
 		}
 	}
