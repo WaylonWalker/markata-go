@@ -130,6 +130,37 @@ func TestHeadingGeometry_IndependentOfMix(t *testing.T) {
 	}
 }
 
+func TestHeadingSVG_HasMostlyOpaqueFieldAndRealWearAlpha(t *testing.T) {
+	sources, err := loadRecipeSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := string(headingSVG(0, sources["heading-splatter-v1"]))
+	if !bytes.Contains([]byte(data), []byte(`fill-rule="evenodd"`)) || !bytes.Contains([]byte(data), []byte(`opacity=".42"`)) {
+		t.Fatalf("heading asset does not contain direct transparent and partial-alpha wear: %s", data)
+	}
+	if bytes.Contains([]byte(data), []byte(`<mask`)) {
+		t.Fatal("heading asset contains nested SVG mask")
+	}
+}
+
+func TestMotifFieldDimensions_DeriveFromState(t *testing.T) {
+	sources, err := loadRecipeSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical := renderingcontract.MotifState{Size: "71px", Gap: "11px"}
+	wantW, wantH, err := motifFieldDimensions(canonical, sources["motif-block-w-v1"])
+	if err != nil || wantW != 1328 || wantH != 507 {
+		t.Fatalf("canonical field = %dx%d (%v)", wantW, wantH, err)
+	}
+	changed := renderingcontract.MotifState{Size: "60px", Gap: "18px"}
+	gotW, gotH, err := motifFieldDimensions(changed, sources["motif-block-w-v1"])
+	if err != nil || gotW == wantW || gotH == wantH {
+		t.Fatalf("field did not respond to size/gap: %dx%d (%v)", gotW, gotH, err)
+	}
+}
+
 func TestMotifDimensions_AllowsZeroGap(t *testing.T) {
 	size, gap, err := motifDimensions(renderingcontract.MotifState{Size: "40px", Gap: "0px"})
 	if err != nil || size != 40 || gap != 0 {
