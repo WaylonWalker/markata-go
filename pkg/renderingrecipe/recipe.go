@@ -803,7 +803,8 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 		return nil
 	}
 	var svg strings.Builder
-	svg.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s" data-field="%dx%d">`, source.ViewBox, source.Columns, source.Rows))
+	width, height, _ := motifFieldDimensions(m, source)
+	svg.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" data-field="%dx%d">`, width, height, source.Columns, source.Rows))
 	markColor := mixColor(background, colorForMotif(m.Color, color), m.ColorMix)
 	markSize, gap, _ := motifDimensions(m)
 	// The path's normalized bounds are 1688.4 by 905.76. Size is the visible

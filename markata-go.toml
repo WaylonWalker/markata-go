@@ -34,11 +34,11 @@ scale = 0.250
 [markata-go.theme.motif]
 kind = "block-w"
 glyph = "W"
-size = "71px"
-gap = "11px"
-row_offset = 0.550
-wobble = 0.330
-scatter = 0.330
+size = "62px"
+gap = "21px"
+row_offset = 0.500
+wobble = 0.180
+scatter = 0.180
 layer = "over"
 color = "ink"
 color_mix = 0.010
