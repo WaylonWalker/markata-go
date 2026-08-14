@@ -168,7 +168,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSS(config *lifecycle.Config) s
   h1, h2, h3, h4, h5, h6 { mask-image: none !important; -webkit-mask-image: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
   /* Wear removes ink through a mask. It must not replace the semantic paint
      inherited from mark, links, emphasis, or strong. */
-   .heading-wear-glyph { display: inline-block; position: relative; z-index: 5; color: inherit; background: none; -webkit-text-fill-color: currentColor; mask-image: var(--theme-heading-texture-mask) !important; -webkit-mask-image: var(--theme-heading-texture-mask) !important; mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }
+   .heading-wear-glyph { display: inline; position: relative; z-index: 5; color: inherit; background: none; -webkit-text-fill-color: currentColor; mask-image: var(--theme-heading-texture-mask) !important; -webkit-mask-image: var(--theme-heading-texture-mask) !important; mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }
   .heading-wear-glyph .heading-anchor, .heading-anchor { mask: none !important; background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
 }
 ` + `
@@ -304,6 +304,11 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 		return renderingrecipe.Bundle{}, nil
 	}
 	theme := configured.Theme
+	// Recipe v1 is the canonical brush projection. Existing bundled fontpacks
+	// keep their legacy CSS projection until their recipes are compiled.
+	if theme.Fontpack != "" && theme.Fontpack != "brush" {
+		return renderingrecipe.Bundle{}, nil
+	}
 	if theme.Fontpack == "" {
 		theme.Fontpack = "brush"
 	}
