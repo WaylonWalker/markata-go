@@ -458,6 +458,7 @@
        min-height: 1000px !important;
        padding: 24px;
        overflow: hidden !important;
+       line-height: 1.6 !important;
     }
     [data-rendering-specimen="canonical-headings"] .canonical-document {
       box-sizing: border-box;
@@ -501,7 +502,13 @@
     [data-rendering-specimen="canonical-headings"] .post-content h4 { margin: 2.5rem 0 0.75rem; font-size: 1.5rem; line-height: 1.1; }
     [data-rendering-specimen="canonical-headings"] .post-content h5 { margin: 2.5rem 0 0.75rem; font-size: 1.25rem; line-height: 1.2; }
     [data-rendering-specimen="canonical-headings"] .post-content h6 { margin: 2.5rem 0 0.75rem; font-size: 1rem; line-height: 1.25; }
-    [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, pre, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
+     [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, pre, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
+     [data-rendering-specimen="canonical-headings"] .canonical-document :is(strong, em, mark, a) { font-family: inherit; }
+     [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
+     html.canonical-specimen-route body { background-size: 1344px 559px !important; }
+     html.canonical-specimen-route body { line-height: 1.6 !important; }
+     html.canonical-specimen-route body::before { background-size: calc(180px * .92) calc(180px * .92) !important; }
+     html.canonical-specimen-route body::after { background-size: 1344px 559px !important; }
     [data-rendering-specimen="canonical-headings"] .post-content p {
       margin: 1rem 0;
     }
@@ -597,7 +604,7 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-      <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+     <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
         {% block content %}{% endblock %}
       </main>
 
