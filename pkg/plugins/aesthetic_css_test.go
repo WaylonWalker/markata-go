@@ -61,6 +61,38 @@ func TestAestheticCSSPlugin_PresentationUsesContractTextureSemantics(t *testing.
 	}
 }
 
+func TestCompileMotifBundle_NonCanonicalFontpacksUseLegacyProjection(t *testing.T) {
+	for _, fontpack := range []string{"field-notebook", "editorial"} {
+		t.Run(fontpack, func(t *testing.T) {
+			config := lifecycle.NewConfig()
+			theme := models.NewThemeConfig()
+			theme.Fontpack = fontpack
+			config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+			bundle, err := compileMotifBundle(config)
+			if err != nil {
+				t.Fatalf("legacy fontpack must not fail recipe compilation: %v", err)
+			}
+			if len(bundle.Assets) != 0 {
+				t.Fatalf("legacy fontpack received canonical assets: %v", bundle.Assets)
+			}
+		})
+	}
+}
+
+func TestCompileMotifBundle_CanonicalBrushStillCompiles(t *testing.T) {
+	config := lifecycle.NewConfig()
+	theme := models.NewThemeConfig()
+	theme.Fontpack = "brush"
+	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+	bundle, err := compileMotifBundle(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bundle.Assets) == 0 {
+		t.Fatal("canonical brush did not compile assets")
+	}
+}
+
 func TestAestheticCSSPlugin_PresentationPropagatesCanonicalContentWidth(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()
 	config := lifecycle.NewConfig()
