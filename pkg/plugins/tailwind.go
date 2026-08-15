@@ -558,6 +558,11 @@ func (p *TailwindPlugin) writeHashedTailwindCopy(destPath string, data []byte) e
 	if err := os.WriteFile(hashedPath, data, 0o600); err != nil {
 		return fmt.Errorf("tailwind: writing hashed css copy: %w", err)
 	}
+	relPath := filepath.ToSlash(filepath.Base(destPath))
+	if dir := filepath.ToSlash(filepath.Dir(destPath)); dir != "." {
+		relPath = filepath.ToSlash(filepath.Join(filepath.Base(dir), filepath.Base(destPath)))
+	}
+	templates.SetAssetHashes(map[string]string{relPath: hash})
 	return nil
 }
 
