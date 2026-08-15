@@ -451,8 +451,9 @@
   </style>
   <style id="markata-canonical-document-profile">
     /* Internal conformance profile; scoped so normal site documents are unchanged. */
-    [data-rendering-specimen="canonical-headings"] {
-      box-sizing: border-box;
+     [data-rendering-specimen="canonical-headings"] {
+       box-sizing: border-box;
+       --heading-accent: var(--color-text);
        width: 1280px !important;
        height: 1000px !important;
        min-height: 1000px !important;
@@ -498,7 +499,6 @@
       font-size: clamp(2rem, 5vw, 3.5rem);
        line-height: 1;
      }
-     [data-rendering-specimen="canonical-headings"] .post-content > h1:first-of-type { font-size: 56px !important; line-height: 1 !important; }
     [data-rendering-specimen="canonical-headings"] .post-content h3 { margin: 2.5rem 0 0.75rem; font-size: 2rem; line-height: 1.05; }
     [data-rendering-specimen="canonical-headings"] .post-content h4 { margin: 2.5rem 0 0.75rem; font-size: 1.5rem; line-height: 1.1; }
     [data-rendering-specimen="canonical-headings"] .post-content h5 { margin: 2.5rem 0 0.75rem; font-size: 1.25rem; line-height: 1.2; }
@@ -506,9 +506,9 @@
      [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, pre, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
      [data-rendering-specimen="canonical-headings"] .canonical-document :is(strong, em, mark, a) { font-family: inherit; }
       [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
-      html[data-fontpack] [data-rendering-specimen="canonical-headings"] .post-content :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; font-family: var(--font-heading) !important; }
+       html[data-fontpack] [data-rendering-specimen="canonical-headings"] .post-content :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; -webkit-text-fill-color: var(--color-text) !important; font-family: var(--font-heading) !important; }
       html[data-fontpack] [data-rendering-specimen="canonical-headings"] .post-content :is(h1, h2, h3, h4, h5, h6) mark { background: var(--color-highlight) !important; color: var(--color-highlight-text) !important; -webkit-text-fill-color: var(--color-highlight-text) !important; }
-      [data-rendering-specimen="canonical-headings"] .canonical-document :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; font-family: var(--font-heading) !important; }
+       html[data-fontpack] [data-rendering-specimen="canonical-headings"] .canonical-document :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; -webkit-text-fill-color: var(--color-text) !important; font-family: var(--font-heading) !important; }
       [data-rendering-specimen="canonical-headings"] .canonical-document :is(h1, h2, h3, h4, h5, h6) mark { background: var(--color-highlight) !important; color: var(--color-highlight-text) !important; -webkit-text-fill-color: var(--color-highlight-text) !important; }
       [data-rendering-specimen="canonical-headings"] :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; font-family: var(--font-heading) !important; }
       [data-rendering-specimen="canonical-headings"] :is(h1, h2, h3, h4, h5, h6) mark { background: var(--color-highlight) !important; color: var(--color-highlight-text) !important; -webkit-text-fill-color: var(--color-highlight-text) !important; }

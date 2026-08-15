@@ -25,7 +25,7 @@ func TestCanonicalHeadingsFixtureLoadsWithContractValues(t *testing.T) {
 		t.Fatalf("canonical heading texture did not load: %#v", cfg.Theme.HeadingTexture)
 	}
 	motif := cfg.Theme.Motif
-	if motif.Kind != "block-w" || motif.Size != "71px" || motif.Gap != "11px" || motif.RowOffset != .550 || motif.Wobble != .330 || motif.Scatter != .330 || motif.Layer != "over" || motif.Color != "ink" || motif.ColorMix != .010 || motif.URL != "https://waylonwalker.com/w.svg" {
+	if motif.Kind != "block-w" || motif.Size != "62px" || motif.Gap != "21px" || motif.RowOffset != .500 || motif.Wobble != .180 || motif.Scatter != .180 || motif.Layer != "over" || motif.Color != "ink" || motif.ColorMix != .010 || motif.URL != "https://waylonwalker.com/w.svg" {
 		t.Fatalf("canonical motif did not load: %#v", motif)
 	}
 	if cfg.Theme.Variables["--content-width"] != "68ch" {

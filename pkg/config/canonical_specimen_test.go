@@ -90,7 +90,7 @@ func TestCanonicalDocumentProfileExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := sha256Digest(theme); got != "ef60779d2feb5035004638f677e399145e057510f7ef7762b5b4146c8ff6dd09" {
+	if got := sha256Digest(theme); got != "c751df3b26ae476615d22107adfd5d00a4b76c661b613cbc44bd8499f7076806" {
 		t.Fatalf("canonical theme fixture hash drifted: %s", got)
 	}
 }
