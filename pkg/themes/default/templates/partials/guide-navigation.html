@@ -1,0 +1,29 @@
+{# Guide navigation - prev/next navigation for guide series #}
+{% if post.Prev or post.Next %}
+<nav class="guide-navigation" aria-label="Guide series navigation">
+    {% if post.Prev %}
+    <a href="{{ post.Prev.href }}" class="guide-nav guide-nav--prev" rel="prev">
+        <span class="guide-nav-label">Previous</span>
+        <span class="guide-nav-title">{{ post.Prev.title }}</span>
+    </a>
+    {% else %}
+    <span class="guide-nav guide-nav--prev guide-nav--disabled"></span>
+    {% endif %}
+
+    {% if post.PrevNextFeed %}
+    <a href="/{{ post.PrevNextFeed }}/" class="guide-nav guide-nav--series">
+        <span class="guide-nav-label">Series</span>
+        <span class="guide-nav-title">View All</span>
+    </a>
+    {% endif %}
+
+    {% if post.Next %}
+    <a href="{{ post.Next.href }}" class="guide-nav guide-nav--next" rel="next">
+        <span class="guide-nav-label">Next</span>
+        <span class="guide-nav-title">{{ post.Next.title }}</span>
+    </a>
+    {% else %}
+    <span class="guide-nav guide-nav--next guide-nav--disabled"></span>
+    {% endif %}
+</nav>
+{% endif %}

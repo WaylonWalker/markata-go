@@ -21,6 +21,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/andybalholm/cascadia"
@@ -188,6 +189,7 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	m.SetAssetHash("css/link-avatars.css", cssHash)
+	templates.SetAssetHashes(map[string]string{"css/link-avatars.css": cssHash})
 
 	if p.config.Mode == linkAvatarModeJS {
 		jsContent := p.generateJavaScript()
@@ -205,6 +207,7 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 		}
 
 		m.SetAssetHash("js/link-avatars.js", jsHash)
+		templates.SetAssetHashes(map[string]string{"js/link-avatars.js": jsHash})
 	}
 
 	return nil

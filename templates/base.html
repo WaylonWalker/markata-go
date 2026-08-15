@@ -505,7 +505,7 @@
     [data-rendering-specimen="canonical-headings"] .post-content h6 { margin: 2.5rem 0 0.75rem; font-size: 1rem; line-height: 1.25; }
      [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, pre, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
      [data-rendering-specimen="canonical-headings"] .canonical-document :is(strong, em, mark, a) { font-family: inherit; }
-      [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); }
+      [data-rendering-specimen="canonical-headings"] .canonical-document :is(code, kbd, samp) { font-family: var(--font-code, ui-monospace, monospace); white-space: nowrap; }
        html[data-fontpack] [data-rendering-specimen="canonical-headings"] .post-content :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; -webkit-text-fill-color: var(--color-text) !important; font-family: var(--font-heading) !important; }
       html[data-fontpack] [data-rendering-specimen="canonical-headings"] .post-content :is(h1, h2, h3, h4, h5, h6) mark { background: var(--color-highlight) !important; color: var(--color-highlight-text) !important; -webkit-text-fill-color: var(--color-highlight-text) !important; }
        html[data-fontpack] [data-rendering-specimen="canonical-headings"] .canonical-document :is(h1, h2, h3, h4, h5, h6) :is(strong, em, a) { color: var(--color-text) !important; -webkit-text-fill-color: var(--color-text) !important; font-family: var(--font-heading) !important; }
@@ -517,11 +517,21 @@
      html.canonical-specimen-route body { line-height: 1.6 !important; }
      html.canonical-specimen-route body::before { background-size: calc(180px * .92) calc(180px * .92) !important; }
      html.canonical-specimen-route body::after { background-size: 1344px 559px !important; }
-    [data-rendering-specimen="canonical-headings"] .post-content p {
-      margin: 1rem 0;
-    }
-     [data-rendering-specimen="canonical-headings"] mark {
-       box-decoration-break: clone;
+     [data-rendering-specimen="canonical-headings"] .post-content p {
+       font-family: var(--font-body, system-ui, sans-serif);
+       font-size: 1rem;
+       line-height: 1.6;
+       margin: 1rem 0;
+     }
+      [data-rendering-specimen="canonical-headings"] .heading-anchor {
+        position: absolute;
+        left: 100%;
+        top: 0;
+        margin-left: var(--space-2);
+      }
+      [data-rendering-specimen="canonical-headings"] mark {
+        padding: 0;
+        box-decoration-break: clone;
        -webkit-box-decoration-break: clone;
      }
      /* The capture harness uses this query route. Keep the specimen itself as
