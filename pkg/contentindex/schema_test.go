@@ -18,13 +18,22 @@ func TestV1JSONSchemaValidatesFixturesAndWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, fixture := range fixtures {
-		t.Run(filepath.Base(fixture), func(t *testing.T) { validateJSONSchema(t, schema, readJSON(t, fixture)) })
+		t.Run(filepath.Base(fixture), func(t *testing.T) {
+			data := readJSON(t, fixture)
+			validateJSONSchema(t, schema, data)
+			if _, err := Parse(data); err != nil {
+				t.Fatalf("parser rejected schema-valid fixture: %v", err)
+			}
+		})
 	}
 	data, err := Marshal(Index{Scope: "public", Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "post.md", Slug: "post", Href: "/post/", Published: true}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	validateJSONSchema(t, schema, data)
+	if _, err := Parse(data); err != nil {
+		t.Fatalf("parser rejected schema-valid generated artifact: %v", err)
+	}
 }
 
 func TestV1JSONSchemaRejectsInvalidArtifacts(t *testing.T) {
@@ -40,6 +49,7 @@ func TestV1JSONSchemaRejectsInvalidArtifacts(t *testing.T) {
 		"wrong schema version":             {`"schema_version":1`, `"schema_version":2`},
 		"wrong scope type":                 {`"scope":"public"`, `"scope":false`},
 		"invalid document type":            {`"published":true`, `"published":"yes"`},
+		"document needs an identifier":     {`"slug":"post","href":"/post/"`, `"slug":"","href":""`},
 		"invalid date":                     {`"href":"/post/"`, `"href":"/post/","date":"not-a-date"`},
 		"invalid source type":              {`"source":{}`, `"source":{"dirty":"no"}`},
 		"dirty without commit":             {`"source":{}`, `"source":{"dirty":true}`},
@@ -53,6 +63,9 @@ func TestV1JSONSchemaRejectsInvalidArtifacts(t *testing.T) {
 			if err := schema.Validate(mustJSON(t, data)); err == nil {
 				t.Fatal("schema accepted invalid artifact")
 			}
+			if _, err := Parse(data); err == nil {
+				t.Fatal("parser accepted invalid artifact")
+			}
 		})
 	}
 }
@@ -63,6 +76,35 @@ func TestV1JSONSchemaAllowsUnknownOptionalFields(t *testing.T) {
 	validateJSONSchema(t, schema, data)
 	if _, err := Parse(data); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestV1JSONSchemaAndParserAcceptIntegralJSONNumbers(t *testing.T) {
+	schema := loadV1Schema(t)
+	data := []byte(`{"$schema":"markata://schemas/content-index/v1","schema":"markata.content-index","schema_version":1.0,"scope":"public","generator":{"name":"markata-go","version":"test"},"source":{},"document_count":1.0,"documents":[{"path":"post.md","slug":"post","href":"/post/","published":true,"draft":false,"private":false}]}`)
+	validateJSONSchema(t, schema, data)
+	if _, err := Parse(data); err != nil {
+		t.Fatalf("parser rejected schema-valid integral numbers: %v", err)
+	}
+}
+
+func TestV1JSONSchemaAndParserAcceptExponentIntegralNumbers(t *testing.T) {
+	schema := loadV1Schema(t)
+	data := []byte(`{"$schema":"markata://schemas/content-index/v1","schema":"markata.content-index","schema_version":1e0,"scope":"public","generator":{"name":"markata-go","version":"test"},"source":{},"document_count":1e0,"documents":[{"path":"post.md","slug":"post","href":"/post/","published":true,"draft":false,"private":false}]}`)
+	validateJSONSchema(t, schema, data)
+	if _, err := Parse(data); err != nil {
+		t.Fatalf("parser rejected schema-valid exponent numbers: %v", err)
+	}
+}
+
+func TestV1JSONSchemaAndParserRejectNonIntegralJSONNumbers(t *testing.T) {
+	schema := loadV1Schema(t)
+	data := []byte(`{"$schema":"markata://schemas/content-index/v1","schema":"markata.content-index","schema_version":1.1,"scope":"public","generator":{"name":"markata-go","version":"test"},"source":{},"document_count":1,"documents":[{"path":"post.md","slug":"post","href":"/post/","published":true,"draft":false,"private":false}]}`)
+	if err := schema.Validate(mustJSON(t, data)); err == nil {
+		t.Fatal("schema accepted a non-integral schema version")
+	}
+	if _, err := Parse(data); err == nil {
+		t.Fatal("parser accepted a non-integral schema version")
 	}
 }
 

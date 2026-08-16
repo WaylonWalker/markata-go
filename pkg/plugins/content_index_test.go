@@ -17,12 +17,14 @@ func TestContentIndexPlugin_WritesPublicMetadataAndFeeds(t *testing.T) {
 	m.SetConfig(&lifecycle.Config{ContentDir: dir, OutputDir: dir, Extra: map[string]interface{}{"content_index": map[string]interface{}{"enabled": true, "output": output}, "markata_version": "test"}})
 	public := models.NewPost("posts/public.md")
 	public.Slug, public.Href, public.Published, public.Tags = "public", "/public/", true, []string{"z", "a"}
+	unpublished := models.NewPost("pages/unpublished.md")
+	unpublished.Slug, unpublished.Href = "unpublished", "/unpublished/"
 	private := models.NewPost("posts/private.md")
 	private.Private, private.Published = true, true
 	draft := models.NewPost("posts/draft.md")
 	draft.Draft = true
-	m.SetPosts([]*models.Post{private, draft, public})
-	m.SetFeeds([]*lifecycle.Feed{{Name: "blog", Posts: []*models.Post{public, private}}, {Name: "archive", Posts: []*models.Post{public}}})
+	m.SetPosts([]*models.Post{private, draft, public, unpublished})
+	m.SetFeeds([]*lifecycle.Feed{{Name: "blog", Posts: []*models.Post{public, private}}, {Name: "archive", Posts: []*models.Post{public}}, {Name: "draft", Posts: []*models.Post{unpublished}}})
 	if err := NewContentIndexPlugin().Write(m); err != nil {
 		t.Fatal(err)
 	}
@@ -34,11 +36,14 @@ func TestContentIndexPlugin_WritesPublicMetadataAndFeeds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if index.DocumentCount != 1 || index.Documents[0].Path != public.Path {
+	if index.DocumentCount != 2 || index.Documents[0].Path != unpublished.Path || index.Documents[1].Path != public.Path {
 		t.Fatalf("privacy filtering failed: %#v", index)
 	}
-	if got := index.Documents[0].Feeds; len(got) != 2 || got[0] != "archive" || got[1] != "blog" {
+	if got := index.Documents[1].Feeds; len(got) != 2 || got[0] != "archive" || got[1] != "blog" {
 		t.Fatalf("feeds = %v", got)
+	}
+	if index.Documents[0].Published || len(index.Documents[0].Feeds) != 1 || index.Documents[0].Feeds[0] != "draft" {
+		t.Fatalf("unpublished direct page or draft feed was conflated: %#v", index.Documents[0])
 	}
 }
 

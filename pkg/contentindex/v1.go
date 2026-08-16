@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 )
 
 type v1Index struct {
 	SchemaURL     string       `json:"$schema"`
 	Schema        string       `json:"schema"`
-	SchemaVersion int          `json:"schema_version"`
+	SchemaVersion json.Number  `json:"schema_version"`
 	Scope         string       `json:"scope"`
 	Generator     v1Generator  `json:"generator"`
 	Source        v1Source     `json:"source"`
-	DocumentCount int          `json:"document_count"`
+	DocumentCount json.Number  `json:"document_count"`
 	Documents     []v1Document `json:"documents"`
 }
 
@@ -101,7 +102,7 @@ func encodeV1(index Index) ([]byte, error) {
 	if index.Source.Commit != "" && index.Source.Dirty == nil {
 		return nil, fmt.Errorf("source.commit requires source.dirty")
 	}
-	return json.Marshal(v1Index{SchemaURL, index.Schema, index.SchemaVersion, index.Scope, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit, index.Source.Dirty}, index.DocumentCount, docs})
+	return json.Marshal(v1Index{SchemaURL, index.Schema, json.Number(strconv.Itoa(index.SchemaVersion)), index.Scope, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit, index.Source.Dirty}, json.Number(strconv.Itoa(index.DocumentCount)), docs})
 }
 
 //nolint:gocyclo // Versioned wire-format validation is intentionally isolated.
@@ -111,9 +112,10 @@ func decodeV1(data []byte) (Index, error) {
 		return Index{}, fmt.Errorf("decode v1 JSON: %w", err)
 	}
 	var raw struct {
+		SchemaVersion json.RawMessage              `json:"schema_version"`
 		Generator     map[string]json.RawMessage   `json:"generator"`
 		Source        json.RawMessage              `json:"source"`
-		DocumentCount *int                         `json:"document_count"`
+		DocumentCount json.RawMessage              `json:"document_count"`
 		Scope         *string                      `json:"scope"`
 		Documents     []map[string]json.RawMessage `json:"documents"`
 	}
@@ -125,6 +127,9 @@ func decodeV1(data []byte) (Index, error) {
 	}
 	if string(raw.Source) == "null" || string(raw.Source) == "" {
 		return Index{}, fmt.Errorf("source must be an object")
+	}
+	if !isJSONNumber(raw.SchemaVersion) || !isJSONNumber(raw.DocumentCount) {
+		return Index{}, fmt.Errorf("schema_version and document_count must be JSON numbers")
 	}
 	var sourceFields map[string]json.RawMessage
 	if err := json.Unmarshal(raw.Source, &sourceFields); err != nil {
@@ -223,8 +228,12 @@ func decodeV1(data []byte) (Index, error) {
 	if wire.Schema != Schema {
 		return Index{}, fmt.Errorf("%w %q", ErrUnsupportedSchema, wire.Schema)
 	}
-	if wire.SchemaVersion != 1 {
-		return Index{}, fmt.Errorf("%w %d", ErrUnsupportedVersion, wire.SchemaVersion)
+	version, err := jsonInteger(json.Number(string(raw.SchemaVersion)))
+	if err != nil {
+		return Index{}, fmt.Errorf("schema_version must be an integer: %w", err)
+	}
+	if version != 1 {
+		return Index{}, fmt.Errorf("%w %d", ErrUnsupportedVersion, version)
 	}
 	if wire.Scope == "" {
 		return Index{}, fmt.Errorf("scope is required")
@@ -232,10 +241,14 @@ func decodeV1(data []byte) (Index, error) {
 	if wire.Generator.Name == "" {
 		return Index{}, fmt.Errorf("generator.name is required")
 	}
-	if wire.DocumentCount != len(wire.Documents) {
-		return Index{}, fmt.Errorf("document_count %d does not match documents length %d", wire.DocumentCount, len(wire.Documents))
+	documentCount, err := jsonInteger(json.Number(string(raw.DocumentCount)))
+	if err != nil {
+		return Index{}, fmt.Errorf("document_count must be an integer: %w", err)
 	}
-	result := Index{Schema: wire.Schema, SchemaVersion: 1, Scope: wire.Scope, Generator: Generator{wire.Generator.Name, wire.Generator.Version}, DocumentCount: wire.DocumentCount, Documents: make([]Document, len(wire.Documents))}
+	if documentCount != len(wire.Documents) {
+		return Index{}, fmt.Errorf("document_count %d does not match documents length %d", documentCount, len(wire.Documents))
+	}
+	result := Index{Schema: wire.Schema, SchemaVersion: version, Scope: wire.Scope, Generator: Generator{wire.Generator.Name, wire.Generator.Version}, DocumentCount: documentCount, Documents: make([]Document, len(wire.Documents))}
 	if wire.Source.Commit != nil {
 		result.Source.Commit = *wire.Source.Commit
 	}

@@ -78,9 +78,10 @@ not an access-control mechanism.
 `source.commit` is the full checked-out Git `HEAD` when it can be read from
 the content directory. `source.dirty` is `false` for a clean checkout and
 `true` when Git reports tracked modifications, staged changes, deleted tracked
-files, or untracked files. Untracked files count because they can be visible
-to Markata's content glob. If Git/source state is unavailable, both fields
-are omitted; Markata MUST NOT fabricate `dirty: false`.
+files, untracked files, or ignored Markdown source files. Untracked and
+ignored source files count because they can be visible to Markata's content
+glob when Git-ignore filtering is disabled. If Git/source state is unavailable, both fields are omitted;
+Markata MUST NOT fabricate `dirty: false`.
 
 When `commit` matches and `dirty` is false, consumers MAY treat the index as an
 exact description of that checked-out commit. When `dirty` is true, `commit`

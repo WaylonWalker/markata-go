@@ -19,6 +19,7 @@
     "document": {
       "type": "object", "additionalProperties": true,
       "required": ["path", "slug", "href", "published", "draft", "private"],
+      "anyOf": [{"properties": {"slug": {"minLength": 1}}}, {"properties": {"href": {"minLength": 1}}}],
       "properties": {
         "path": {"type": "string", "minLength": 1}, "slug": {"type": "string"}, "href": {"type": "string"},
         "title": {"type": ["string", "null"]}, "title_text": {"type": ["string", "null"]},
