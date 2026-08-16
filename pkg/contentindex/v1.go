@@ -66,7 +66,8 @@ func encodeV1(index Index) ([]byte, error) {
 	seenPaths := make(map[string]struct{}, len(index.Documents))
 	sort.SliceStable(index.Documents, func(i, j int) bool { return index.Documents[i].Path < index.Documents[j].Path })
 	docs := make([]v1Document, len(index.Documents))
-	for i, d := range index.Documents {
+	for i := range index.Documents {
+		d := &index.Documents[i]
 		if d.Path == "" {
 			return nil, fmt.Errorf("documents[%d].path is required", i)
 		}
@@ -80,7 +81,7 @@ func encodeV1(index Index) ([]byte, error) {
 		d.Tags = sortedStrings(d.Tags)
 		d.Feeds = sortedStrings(d.Feeds)
 		d.Aliases = sortedStrings(d.Aliases)
-		docs[i] = v1Document{d.Path, d.Slug, d.Href, d.Title, d.TitleText, d.Date, d.Modified, d.Published, d.Draft, d.Private, d.Template, d.Tags, d.Description, d.Feeds, d.Aliases}
+		docs[i] = v1Document{Path: d.Path, Slug: d.Slug, Href: d.Href, Title: d.Title, TitleText: d.TitleText, Date: d.Date, Modified: d.Modified, Published: d.Published, Draft: d.Draft, Private: d.Private, Template: d.Template, Tags: d.Tags, Description: d.Description, Feeds: d.Feeds, Aliases: d.Aliases}
 	}
 	var commit *string
 	if index.Source.Commit != "" {
@@ -89,6 +90,7 @@ func encodeV1(index Index) ([]byte, error) {
 	return json.Marshal(v1Index{SchemaURL, index.Schema, index.SchemaVersion, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit}, index.DocumentCount, docs})
 }
 
+//nolint:gocyclo // Versioned wire-format validation is intentionally isolated.
 func decodeV1(data []byte) (Index, error) {
 	var wire v1Index
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -205,7 +207,8 @@ func decodeV1(data []byte) (Index, error) {
 		result.Source.Commit = *wire.Source.Commit
 	}
 	seenPaths := make(map[string]struct{}, len(wire.Documents))
-	for i, d := range wire.Documents {
+	for i := range wire.Documents {
+		d := &wire.Documents[i]
 		if d.Path == "" {
 			return Index{}, fmt.Errorf("documents[%d].path is required", i)
 		}

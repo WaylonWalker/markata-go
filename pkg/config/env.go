@@ -136,7 +136,10 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		if config.Extra == nil {
 			config.Extra = make(map[string]interface{})
 		}
-		contentIndex, _ := config.Extra["content_index"].(map[string]interface{})
+		contentIndex, contentIndexOK := config.Extra["content_index"].(map[string]interface{})
+		if !contentIndexOK {
+			contentIndex = nil
+		}
 		if contentIndex == nil {
 			contentIndex = make(map[string]interface{})
 		}

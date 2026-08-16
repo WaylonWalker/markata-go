@@ -31,6 +31,7 @@ func (p *ContentIndexPlugin) Priority(stage lifecycle.Stage) int {
 	return lifecycle.PriorityDefault
 }
 
+//nolint:gocyclo // The writer coordinates the complete build-time artifact pipeline.
 func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	defer func() {
 		if err != nil {
@@ -138,7 +139,7 @@ func contentIndexDestination(outputDir, configured string) (string, error) {
 }
 
 func replaceContentIndex(source, destination string) error {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == tailwindOSWindows {
 		if err := os.Remove(destination); err != nil && !os.IsNotExist(err) {
 			return err
 		}

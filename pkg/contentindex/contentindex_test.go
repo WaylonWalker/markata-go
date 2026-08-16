@@ -1,6 +1,7 @@
 package contentindex
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -90,7 +91,7 @@ func TestMarshalIsDeterministicAndNormalizesOrdering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(first) != string(second) {
+	if !bytes.Equal(first, second) {
 		t.Fatalf("equivalent indexes differ:\n%s\n%s", first, second)
 	}
 }
