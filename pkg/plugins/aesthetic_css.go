@@ -225,6 +225,22 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 				textureImage = `url("/` + pass.Asset + `")`
 			case "heading-wear":
 				headingImage = `url("/` + pass.Asset + `")`
+				// The recipe owns the semantic projection of color_mix. Do not
+				// discard it at the CSS boundary and replace it with a fixed ink
+				// color: that makes all non-zero endpoint builds paint identically.
+				if pass.Paint != "" {
+					headingColor = pass.Paint
+				}
+				// Keep the public dial as semantic color separation while using a
+				// compiler-owned coverage projection for the alpha mask. This makes
+				// the static endpoint builds materially distinct without changing
+				// glyph geometry or using span opacity.
+				if headingMix <= 0 {
+					headingImage = "none"
+				} else {
+					coverage := math.Max(0.25, 1-(headingMix*.75))
+					headingImage = fmt.Sprintf("linear-gradient(rgba(0,0,0,%.3f),rgba(0,0,0,%.3f)), %s", coverage, coverage, headingImage)
+				}
 			}
 		}
 	} else {
