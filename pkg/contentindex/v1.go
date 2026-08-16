@@ -138,6 +138,9 @@ func decodeV1(data []byte) (Index, error) {
 		if isJSONNull(commit) || json.Unmarshal(commit, &value) != nil {
 			return Index{}, fmt.Errorf("source.commit must be a string")
 		}
+		if value == "" {
+			return Index{}, fmt.Errorf("source.commit must not be empty")
+		}
 	}
 	if dirty, ok := sourceFields["dirty"]; ok {
 		if _, ok := sourceFields["commit"]; !ok {

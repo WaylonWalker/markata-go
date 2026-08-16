@@ -19,7 +19,11 @@ import (
 
 // ContentIndexPlugin writes the opt-in Markata Content Index after feed
 // membership has been resolved.
-type ContentIndexPlugin struct{}
+type ContentIndexPlugin struct {
+	initialSource    sourcegit.State
+	initialSourceErr error
+	capturedSource   bool
+}
 
 func NewContentIndexPlugin() *ContentIndexPlugin { return &ContentIndexPlugin{} }
 func (p *ContentIndexPlugin) Name() string       { return "content_index" }
@@ -28,6 +32,21 @@ func (p *ContentIndexPlugin) Priority(stage lifecycle.Stage) int {
 		return lifecycle.PriorityLast
 	}
 	return lifecycle.PriorityDefault
+}
+
+// Configure captures source state before content discovery starts. The final
+// write compares this snapshot with a second snapshot before publishing.
+func (p *ContentIndexPlugin) Configure(m *lifecycle.Manager) error {
+	cfg, ok, err := contentIndexConfig(m.Config().Extra)
+	if err != nil {
+		return err
+	}
+	if !ok || !cfg.Enabled {
+		return nil
+	}
+	p.initialSource, p.initialSourceErr = sourcegit.Read(context.Background(), m.Config().ContentDir)
+	p.capturedSource = true
+	return nil
 }
 
 //nolint:gocyclo // The writer coordinates the complete build-time artifact pipeline.
@@ -46,6 +65,10 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	}
 	if cfg.SchemaVersion != 0 && cfg.SchemaVersion != contentindex.CurrentVersion {
 		return fmt.Errorf("content_index.schema_version %d is unsupported; latest is %d", cfg.SchemaVersion, contentindex.CurrentVersion)
+	}
+	stateBefore, beforeErr := p.initialSource, p.initialSourceErr
+	if !p.capturedSource {
+		stateBefore, beforeErr = sourcegit.Read(context.Background(), m.Config().ContentDir)
 	}
 
 	posts := m.Posts()
@@ -84,9 +107,13 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 		version = v
 	}
 	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: contentindex.CurrentVersion, Scope: contentindex.PublicScope, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
-	if state, err := sourcegit.Read(context.Background(), m.Config().ContentDir); err == nil {
-		index.Source.Commit = state.Commit
-		index.Source.Dirty = state.Dirty
+	stateAfter, afterErr := sourcegit.Read(context.Background(), m.Config().ContentDir)
+	if beforeErr == nil && afterErr == nil {
+		if !stateBefore.Equal(stateAfter) {
+			return fmt.Errorf("source Git state changed during Content Index build")
+		}
+		index.Source.Commit = stateAfter.Commit
+		index.Source.Dirty = stateAfter.Dirty
 	}
 	data, err := contentindex.Marshal(index)
 	if err != nil {

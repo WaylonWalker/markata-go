@@ -86,6 +86,9 @@ When `commit` matches and `dirty` is false, consumers MAY treat the index as an
 exact description of that checked-out commit. When `dirty` is true, `commit`
 is only the base HEAD and the index includes working-tree-derived metadata.
 When either value is unavailable, revision equality is not a freshness proof.
+Markata captures source state before content discovery and rechecks it before
+writing; if the snapshots differ, the enabled index build fails rather than
+publishing a mismatched clean identity.
 
 ## Configuration and discovery
 

@@ -44,6 +44,7 @@ func TestV1JSONSchemaRejectsInvalidArtifacts(t *testing.T) {
 		"invalid source type":              {`"source":{}`, `"source":{"dirty":"no"}`},
 		"dirty without commit":             {`"source":{}`, `"source":{"dirty":true}`},
 		"commit without dirty":             {`"source":{}`, `"source":{"commit":"abc"}`},
+		"empty commit":                     {`"source":{}`, `"source":{"commit":"","dirty":false}`},
 		"forbidden null":                   {`"private":false`, `"private":null`},
 	} {
 		t.Run(name, func(t *testing.T) {

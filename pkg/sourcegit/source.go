@@ -34,7 +34,25 @@ func Read(ctx context.Context, sourceDir string) (State, error) {
 		return State{}, fmt.Errorf("read git worktree status: %w", err)
 	}
 	dirty := strings.TrimSpace(string(statusOutput)) != ""
+	finalCommit, err := Head(ctx, sourceDir)
+	if err != nil {
+		return State{}, err
+	}
+	if finalCommit != commit {
+		return State{}, fmt.Errorf("source Git HEAD changed while reading status")
+	}
 	return State{Commit: commit, Dirty: &dirty}, nil
+}
+
+// Equal reports whether two complete source snapshots are identical.
+func (s State) Equal(other State) bool {
+	if s.Commit != other.Commit {
+		return false
+	}
+	if s.Dirty == nil || other.Dirty == nil {
+		return s.Dirty == nil && other.Dirty == nil
+	}
+	return *s.Dirty == *other.Dirty
 }
 
 // Head returns only the checked-out commit without scanning worktree status.

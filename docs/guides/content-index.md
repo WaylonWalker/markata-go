@@ -38,6 +38,9 @@ false for a clean checkout and true when Git reports tracked, staged, deleted,
 or untracked files. Compare both values with the source repository revision
 before using metadata as a bootstrap cache. Both fields are absent when Git
 cannot provide source state.
+Markata captures this state before content discovery and rechecks it before
+writing. A changing source state fails an enabled index write instead of
+publishing a mismatched clean identity.
 
 The public scope excludes private, draft, and skipped documents. A
 `published: false` direct page may still appear. A feed named `draft` is feed
