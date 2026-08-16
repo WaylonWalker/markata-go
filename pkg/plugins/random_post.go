@@ -105,12 +105,12 @@ func (p *RandomPostPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	indexHTML := buildRandomPostIndexHTML(hrefs, string(hrefsJSON))
-	if err := writeRandomPostFile(indexPath, []byte(indexHTML), 0o644); err != nil { //nolint:gosec // static HTML needs world-readable permissions for web serving
+	if err := writeRandomPostFile(indexPath, []byte(indexHTML), 0o644); err != nil {
 		return fmt.Errorf("writing random endpoint %s: %w", indexPath, err)
 	}
 
 	if p.config.EmitPostsJSON {
-		if err := writeRandomPostFile(postsJSONPath, hrefsJSON, 0o644); err != nil { //nolint:gosec // static JSON needs world-readable permissions for web serving
+		if err := writeRandomPostFile(postsJSONPath, hrefsJSON, 0o644); err != nil {
 			return fmt.Errorf("writing random posts json %s: %w", postsJSONPath, err)
 		}
 	}
@@ -307,10 +307,7 @@ func writeRandomPostFile(path string, data []byte, perm os.FileMode) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(temporaryName, path); err != nil {
-		return err
-	}
-	return nil
+	return os.Rename(temporaryName, path)
 }
 
 func eligibleRandomPostHrefs(posts []*models.Post, excludeTags []string) []string {
