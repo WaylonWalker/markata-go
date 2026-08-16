@@ -82,7 +82,11 @@ Successful builds MUST preserve the existing atomic release publication model:
 3. run `markata-go build` into the work directory
 4. move the finished output into `releases/<release-id>/`
 5. atomically repoint `current` to the new release
-6. prune old releases according to retention policy
+6. publish build success and queue release pruning according to retention policy
+
+Release pruning MUST NOT block successful publication or the next queued build.
+Pruning MUST remain serialized with promotion and rollback, and MUST re-check
+the current release before deleting each expired release.
 
 Every retained successful release MUST be available through the protected preview path
 `/__preview/<release-id>/`. Preview routing MUST use the same ForwardAuth policy as builder-admin
@@ -95,7 +99,7 @@ The service MUST record phase timings for at least:
 - prepare
 - build
 - promote
-- prune
+- prune (recorded when asynchronous cleanup completes)
 - total
 
 The service MUST store the full raw build log and a parsed performance summary that includes any `Duration:` and `Hotspots:` lines emitted by markata-go.

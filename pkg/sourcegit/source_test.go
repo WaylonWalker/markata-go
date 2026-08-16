@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -52,6 +53,34 @@ func TestReadSourceState(t *testing.T) {
 	state, err = Read(context.Background(), dir)
 	if err != nil || state.Dirty == nil || !*state.Dirty {
 		t.Fatalf("untracked dirty state = %#v, err = %v", state, err)
+	}
+}
+
+func TestReadSourceStateDetectsTrackedModeChanges(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Git executable mode bits are not portable on Windows")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "post.md")
+	writeFile(t, path, "one")
+	git(t, dir, "init")
+	git(t, dir, "config", "user.email", "test@example.invalid")
+	git(t, dir, "config", "user.name", "Content Index Test")
+	git(t, dir, "add", "post.md")
+	git(t, dir, "commit", "-m", "initial")
+	clean, err := Read(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	modeChanged, err := Read(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clean.Equal(modeChanged) {
+		t.Fatal("tracked mode change was not detected")
 	}
 }
 
