@@ -223,6 +223,29 @@ func TestAestheticCSSPlugin_PresentationUsesNormalizedSeparationAndLayers(t *tes
 	}
 }
 
+func TestAestheticCSSPlugin_HeadingColorMixChangesResolvedWearPaint(t *testing.T) {
+	plugin := NewAestheticCSSPlugin()
+	colors := make([]string, 0, 3)
+	for _, mix := range []float64{0, 0.29, 1} {
+		config := lifecycle.NewConfig()
+		theme := models.NewThemeConfig()
+		theme.HeadingTexture.ColorMix = mix
+		config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+		css := plugin.generatePresentationCSS(config)
+		marker := "--theme-heading-texture-color: "
+		start := strings.Index(css, marker)
+		if start < 0 {
+			t.Fatalf("missing resolved heading paint for mix %v", mix)
+		}
+		value := css[start+len(marker):]
+		value = value[:strings.IndexByte(value, ';')]
+		colors = append(colors, value)
+	}
+	if colors[0] == colors[1] || colors[1] == colors[2] || colors[0] == colors[2] {
+		t.Fatalf("heading endpoint paints must progress, got %v", colors)
+	}
+}
+
 func TestAestheticCSSPlugin_MotifLayersHaveStableZSemantics(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()
 	for layer, want := range map[string]string{"under": "-2", "sandwich": "0", "over": "1"} {

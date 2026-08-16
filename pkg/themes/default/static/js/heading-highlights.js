@@ -2,6 +2,9 @@
 (function () {
   "use strict";
 
+  // canonical-document-v1 contour input; never infer this from consumer CSS.
+  var canonicalHighlightRadius = 10.08;
+
   var selector = "html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) .heading-highlight";
   var scheduled = false;
   var observers = [];
@@ -67,7 +70,7 @@
         bottom: rect.bottom - base.top
       };
     });
-    var radius = parseFloat(style.borderRadius) || 0;
+    var radius = canonicalHighlightRadius;
     var paths = [];
 
     rects.forEach(function (rect, index) {
