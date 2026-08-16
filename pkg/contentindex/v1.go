@@ -12,6 +12,7 @@ type v1Index struct {
 	SchemaURL     string       `json:"$schema"`
 	Schema        string       `json:"schema"`
 	SchemaVersion int          `json:"schema_version"`
+	Scope         string       `json:"scope"`
 	Generator     v1Generator  `json:"generator"`
 	Source        v1Source     `json:"source"`
 	DocumentCount int          `json:"document_count"`
@@ -30,6 +31,7 @@ type v1Generator struct {
 }
 type v1Source struct {
 	Commit *string `json:"commit,omitempty"`
+	Dirty  *bool   `json:"dirty,omitempty"`
 }
 type v1Document struct {
 	Path        string     `json:"path"`
@@ -55,6 +57,12 @@ func encodeV1(index Index) ([]byte, error) {
 	}
 	if index.SchemaVersion == 0 {
 		index.SchemaVersion = CurrentVersion
+	}
+	if index.Scope == "" {
+		index.Scope = PublicScope
+	}
+	if index.Scope != PublicScope {
+		return nil, fmt.Errorf("unsupported v1 scope %q", index.Scope)
 	}
 	if index.DocumentCount != 0 && index.DocumentCount != len(index.Documents) {
 		return nil, fmt.Errorf("document_count %d does not match documents length %d", index.DocumentCount, len(index.Documents))
@@ -87,7 +95,13 @@ func encodeV1(index Index) ([]byte, error) {
 	if index.Source.Commit != "" {
 		commit = &index.Source.Commit
 	}
-	return json.Marshal(v1Index{SchemaURL, index.Schema, index.SchemaVersion, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit}, index.DocumentCount, docs})
+	if index.Source.Dirty != nil && index.Source.Commit == "" {
+		return nil, fmt.Errorf("source.dirty requires source.commit")
+	}
+	if index.Source.Commit != "" && index.Source.Dirty == nil {
+		return nil, fmt.Errorf("source.commit requires source.dirty")
+	}
+	return json.Marshal(v1Index{SchemaURL, index.Schema, index.SchemaVersion, index.Scope, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit, index.Source.Dirty}, index.DocumentCount, docs})
 }
 
 //nolint:gocyclo // Versioned wire-format validation is intentionally isolated.
@@ -100,13 +114,14 @@ func decodeV1(data []byte) (Index, error) {
 		Generator     map[string]json.RawMessage   `json:"generator"`
 		Source        json.RawMessage              `json:"source"`
 		DocumentCount *int                         `json:"document_count"`
+		Scope         *string                      `json:"scope"`
 		Documents     []map[string]json.RawMessage `json:"documents"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return Index{}, fmt.Errorf("validate v1 structure: %w", err)
 	}
-	if raw.Generator == nil || raw.Source == nil || raw.DocumentCount == nil || raw.Documents == nil {
-		return Index{}, fmt.Errorf("v1 requires generator, source, and documents")
+	if raw.Generator == nil || raw.Source == nil || raw.Scope == nil || raw.DocumentCount == nil || raw.Documents == nil {
+		return Index{}, fmt.Errorf("v1 requires generator, source, scope, document_count, and documents")
 	}
 	if string(raw.Source) == "null" || string(raw.Source) == "" {
 		return Index{}, fmt.Errorf("source must be an object")
@@ -116,9 +131,21 @@ func decodeV1(data []byte) (Index, error) {
 		return Index{}, fmt.Errorf("source must be an object")
 	}
 	if commit, ok := sourceFields["commit"]; ok {
+		if _, hasDirty := sourceFields["dirty"]; !hasDirty {
+			return Index{}, fmt.Errorf("source.commit requires source.dirty")
+		}
 		var value string
 		if isJSONNull(commit) || json.Unmarshal(commit, &value) != nil {
 			return Index{}, fmt.Errorf("source.commit must be a string")
+		}
+	}
+	if dirty, ok := sourceFields["dirty"]; ok {
+		if _, ok := sourceFields["commit"]; !ok {
+			return Index{}, fmt.Errorf("source.dirty requires source.commit")
+		}
+		var value bool
+		if isJSONNull(dirty) || json.Unmarshal(dirty, &value) != nil {
+			return Index{}, fmt.Errorf("source.dirty must be a boolean")
 		}
 	}
 	for _, field := range []string{"name", "version"} {
@@ -196,16 +223,20 @@ func decodeV1(data []byte) (Index, error) {
 	if wire.SchemaVersion != 1 {
 		return Index{}, fmt.Errorf("%w %d", ErrUnsupportedVersion, wire.SchemaVersion)
 	}
+	if wire.Scope == "" {
+		return Index{}, fmt.Errorf("scope is required")
+	}
 	if wire.Generator.Name == "" {
 		return Index{}, fmt.Errorf("generator.name is required")
 	}
 	if wire.DocumentCount != len(wire.Documents) {
 		return Index{}, fmt.Errorf("document_count %d does not match documents length %d", wire.DocumentCount, len(wire.Documents))
 	}
-	result := Index{Schema: wire.Schema, SchemaVersion: 1, Generator: Generator{wire.Generator.Name, wire.Generator.Version}, DocumentCount: wire.DocumentCount, Documents: make([]Document, len(wire.Documents))}
+	result := Index{Schema: wire.Schema, SchemaVersion: 1, Scope: wire.Scope, Generator: Generator{wire.Generator.Name, wire.Generator.Version}, DocumentCount: wire.DocumentCount, Documents: make([]Document, len(wire.Documents))}
 	if wire.Source.Commit != nil {
 		result.Source.Commit = *wire.Source.Commit
 	}
+	result.Source.Dirty = wire.Source.Dirty
 	seenPaths := make(map[string]struct{}, len(wire.Documents))
 	for i := range wire.Documents {
 		d := &wire.Documents[i]

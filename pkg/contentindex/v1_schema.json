@@ -4,13 +4,14 @@
   "title": "Markata Content Index v1",
   "type": "object",
   "additionalProperties": true,
-  "required": ["$schema", "schema", "schema_version", "generator", "source", "document_count", "documents"],
+  "required": ["$schema", "schema", "schema_version", "scope", "generator", "source", "document_count", "documents"],
   "properties": {
     "$schema": {"const": "markata://schemas/content-index/v1"},
     "schema": {"const": "markata.content-index"},
     "schema_version": {"const": 1},
+    "scope": {"type": "string", "minLength": 1},
     "generator": {"type": "object", "required": ["name", "version"], "additionalProperties": true, "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string"}}},
-    "source": {"type": "object", "additionalProperties": true, "properties": {"commit": {"type": "string", "minLength": 1}}},
+    "source": {"type": "object", "additionalProperties": true, "properties": {"commit": {"type": "string", "minLength": 1}, "dirty": {"type": "boolean"}}, "allOf": [{"if": {"required": ["dirty"]}, "then": {"required": ["commit"]}}, {"if": {"required": ["commit"]}, "then": {"required": ["dirty"]}}]},
     "document_count": {"type": "integer", "minimum": 0},
     "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}}
   },

@@ -33,8 +33,14 @@ latest known generation.
 ## v1 Artifact
 
 The required top-level fields are `$schema`, `schema`, `schema_version`,
-`generator`, `source`, `document_count`, and `documents`. `documents` is a
-single array in v1; chunks and pagination are not implemented.
+`scope`, `generator`, `source`, `document_count`, and `documents`. `documents`
+is a single array in v1; chunks and pagination are not implemented.
+
+V1 emits `scope: "public"`. Scope is an open, non-empty string so a future
+producer can define a workspace scope without changing the type or meaning of
+the public scope. Consumers MUST preserve unknown scope values at their
+normalization boundary and MUST NOT treat them as public unless they understand
+their definition. Markata's v1 writer emits only `public`.
 
 Each document is identified by its repository-relative `path`. A consumer
 MUST use `path` to map a record back to its source file. `slug` and `href` are
@@ -52,6 +58,15 @@ membership after Markata evaluates filters, sorting, limits, and offsets; a
 consumer MUST NOT reconstruct Markata's feed language when this field is
 present. Feed names are sorted. There is no duplicated top-level feed map.
 
+`draft`, `published`, `private`, and `skip` are separate Markata concepts. A
+document with `draft: true` is source/workspace content and is excluded from
+the public artifact. `published: false` does not alone make a document private:
+a non-draft, non-private direct page MAY be included with no feed membership.
+A feed named `draft` is only a feed name and is not equivalent to
+`document.draft`; feed membership always reports Markata's resolved result.
+The `draft` and `private` fields remain in v1 so future scope-aware models can
+normalize them without changing document shape.
+
 ## Privacy and revision
 
 The public artifact includes non-skipped, non-draft, non-private documents.
@@ -61,10 +76,16 @@ shadow page MAY be present because Markata renders it as a direct page; its
 not an access-control mechanism.
 
 `source.commit` is the full checked-out Git `HEAD` when it can be read from
-the content directory. If Git is unavailable, the field is omitted. Markata
-MUST NOT fabricate a revision. Consumers SHOULD compare this value with the
-source tree and treat an absent or different value as unknown or potentially
-stale.
+the content directory. `source.dirty` is `false` for a clean checkout and
+`true` when Git reports tracked modifications, staged changes, deleted tracked
+files, or untracked files. Untracked files count because they can be visible
+to Markata's content glob. If Git/source state is unavailable, both fields
+are omitted; Markata MUST NOT fabricate `dirty: false`.
+
+When `commit` matches and `dirty` is false, consumers MAY treat the index as an
+exact description of that checked-out commit. When `dirty` is true, `commit`
+is only the base HEAD and the index includes working-tree-derived metadata.
+When either value is unavailable, revision equality is not a freshness proof.
 
 ## Configuration and discovery
 

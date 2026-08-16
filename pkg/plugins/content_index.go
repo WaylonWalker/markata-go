@@ -2,11 +2,9 @@ package plugins
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -16,6 +14,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/contentindex"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/sourcegit"
 )
 
 // ContentIndexPlugin writes the opt-in Markata Content Index after feed
@@ -84,9 +83,10 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	if v, ok := m.Config().Extra["markata_version"].(string); ok && v != "" {
 		version = v
 	}
-	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: contentindex.CurrentVersion, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
-	if commit, err := sourceRevision(m.Config().ContentDir); err == nil {
-		index.Source.Commit = commit
+	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: contentindex.CurrentVersion, Scope: contentindex.PublicScope, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
+	if state, err := sourcegit.Read(context.Background(), m.Config().ContentDir); err == nil {
+		index.Source.Commit = state.Commit
+		index.Source.Dirty = state.Dirty
 	}
 	data, err := contentindex.Marshal(index)
 	if err != nil {
@@ -247,20 +247,4 @@ func parseOptionalInt(value interface{}) (int, bool) {
 	default:
 		return 0, false
 	}
-}
-
-func sourceRevision(sourceDir string) (string, error) {
-	if sourceDir == "" {
-		return "", errors.New("source directory is empty")
-	}
-	args := []string{"-c", "safe.directory=" + sourceDir, "-C", sourceDir, "rev-parse", "HEAD"}
-	output, err := exec.CommandContext(context.Background(), "git", args...).Output()
-	if err != nil {
-		return "", fmt.Errorf("read source git HEAD: %w", err)
-	}
-	commit := strings.TrimSpace(string(output))
-	if commit == "" {
-		return "", errors.New("git returned an empty HEAD")
-	}
-	return commit, nil
 }

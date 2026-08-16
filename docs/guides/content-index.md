@@ -21,7 +21,7 @@ output = "content-index.json"
 
 The file is written below `output_dir` unless `output` is absolute. Its
 identity is `schema = "markata.content-index"` and its current generation is
-`schema_version = 1`.
+`schema_version = 1`. V1 emits `scope = "public"`.
 
 ## Reading the file
 
@@ -33,9 +33,15 @@ Use each document's repository-relative `path` to find its source file. The
 `feeds` array already contains resolved Markata feed membership. Consumers
 should not implement Markata's feed filter language again.
 
-`source.commit` is the full Git `HEAD` used for the build. Compare it with the
-source repository revision before using metadata as a bootstrap cache. The
-field is absent when Git cannot provide a revision.
+`source.commit` is the full Git `HEAD` used for the build. `source.dirty` is
+false for a clean checkout and true when Git reports tracked, staged, deleted,
+or untracked files. Compare both values with the source repository revision
+before using metadata as a bootstrap cache. Both fields are absent when Git
+cannot provide source state.
+
+The public scope excludes private, draft, and skipped documents. A
+`published: false` direct page may still appear. A feed named `draft` is feed
+membership only and does not mean that the document has `draft: true`.
 
 Markata retains readers for every released generation and normalizes them into
 one current internal model. The index is not a source archive, rendered-body
