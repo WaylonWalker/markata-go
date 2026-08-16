@@ -33,14 +33,21 @@ Use each document's repository-relative `path` to find its source file. The
 `feeds` array already contains resolved Markata feed membership. Consumers
 should not implement Markata's feed filter language again.
 
-`source.commit` is the full Git `HEAD` used for the build. `source.dirty` is
-false for a clean checkout and true when Git reports tracked, staged, deleted,
-or untracked files. Compare both values with the source repository revision
-before using metadata as a bootstrap cache. Both fields are absent when Git
-cannot provide source state.
+`source.commit` identifies the Git `HEAD` observed for the build.
+`source.dirty` is false when the working tree was observed clean at the Content
+Index source-state boundaries. It is true when Git reports tracked, staged,
+deleted, untracked, or ignored Markdown source files. Compare both values with
+the source repository revision before using metadata as a bootstrap cache.
+Both fields are absent when Git cannot provide source state.
 Markata captures this state before content discovery and rechecks it before
 writing. A changing source state fails an enabled index write instead of
-publishing a mismatched clean identity.
+publishing a mismatched identity.
+
+The pair `source.commit` plus `dirty: false` is build provenance. It does not
+prove that every document came byte-for-byte from a blob in that Git revision.
+A source file can change and be restored between the two observations. Use Git
+commit/blob identity, or another exact source identity mechanism, when exact
+per-file synchronization is required.
 
 The public scope excludes private, draft, and skipped documents. A
 `published: false` direct page may still appear. A feed named `draft` is feed

@@ -75,21 +75,27 @@ shadow page MAY be present because Markata renders it as a direct page; its
 `published` value remains false and it is normally in no feeds. `robots` is
 not an access-control mechanism.
 
-`source.commit` is the full checked-out Git `HEAD` when it can be read from
-the content directory. `source.dirty` is `false` for a clean checkout and
-`true` when Git reports tracked modifications, staged changes, deleted tracked
-files, untracked files, or ignored Markdown source files. Untracked and
-ignored source files count because they can be visible to Markata's content
-glob when Git-ignore filtering is disabled. If Git/source state is unavailable, both fields are omitted;
-Markata MUST NOT fabricate `dirty: false`.
+`source.commit` identifies the Git `HEAD` observed for the build when it can be
+read from the content directory. `source.dirty` is `false` when the working
+tree was observed clean at the Content Index source-state boundaries used by
+Markata. It is `true` when Git reports tracked modifications, staged changes,
+deleted tracked files, untracked files, or ignored Markdown source files.
+Untracked and ignored source files count because they can be visible to
+Markata's content glob when Git-ignore filtering is disabled. If Git/source
+state is unavailable, both fields are omitted; Markata MUST NOT fabricate
+`dirty: false`.
 
-When `commit` matches and `dirty` is false, consumers MAY treat the index as an
-exact description of that checked-out commit. When `dirty` is true, `commit`
-is only the base HEAD and the index includes working-tree-derived metadata.
-When either value is unavailable, revision equality is not a freshness proof.
-Markata captures source state before content discovery and rechecks it before
-writing; if the snapshots differ, the enabled index build fails rather than
-publishing a mismatched clean identity.
+When `dirty` is `true`, `commit` is only the base HEAD and the index includes
+working-tree-derived metadata. When either value is unavailable, revision
+equality is not a freshness proof. Markata captures source state before content
+discovery and rechecks it before writing; if the snapshots differ, the enabled
+index build fails rather than publishing a mismatched identity.
+
+`commit` plus `dirty: false` is build provenance, not byte-level proof that every
+derived document came from a blob in that Git revision. A source file can change
+and be restored between the two state observations. Consumers that require
+exact per-file synchronization SHOULD use Git commit/blob identity or another
+exact source identity mechanism.
 
 ## Configuration and discovery
 
