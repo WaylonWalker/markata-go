@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/sourcegit"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -640,11 +641,7 @@ func gitBranch(sourceDir string) (string, error) {
 }
 
 func gitHead(sourceDir string) (string, error) {
-	output, err := gitCommandForSource(context.Background(), sourceDir, "rev-parse", "HEAD").Output()
-	if err != nil {
-		return "", fmt.Errorf("read git HEAD: %w", err)
-	}
-	return strings.TrimSpace(string(output)), nil
+	return sourcegit.Head(context.Background(), sourceDir)
 }
 
 func (s *Service) gitCommand(ctx context.Context, args ...string) *exec.Cmd {
@@ -652,8 +649,7 @@ func (s *Service) gitCommand(ctx context.Context, args ...string) *exec.Cmd {
 }
 
 func gitCommandForSource(ctx context.Context, sourceDir string, args ...string) *exec.Cmd {
-	gitArgs := append([]string{"-c", "safe.directory=" + sourceDir, "-C", sourceDir}, args...)
-	return exec.CommandContext(ctx, "git", gitArgs...)
+	return sourcegit.Command(ctx, sourceDir, args...)
 }
 
 func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
