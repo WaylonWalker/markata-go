@@ -58,6 +58,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
+| [CONTENT_INDEX.md](./spec/CONTENT_INDEX.md) | Versioned derived metadata artifact and parser contract |
 | [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |
 | [OPTIONAL_PLUGINS.md](./spec/OPTIONAL_PLUGINS.md) | Optional enhancement plugins |
