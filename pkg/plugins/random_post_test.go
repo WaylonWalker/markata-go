@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,7 +110,7 @@ func TestRandomPostPlugin_WritesIndexAndOptionalJSON(t *testing.T) {
 	}
 }
 
-func TestRandomPostPlugin_DoesNotClobberExistingOutput(t *testing.T) {
+func TestRandomPostPlugin_ReplacesSeededOutput(t *testing.T) {
 	p := NewRandomPostPlugin()
 	m := lifecycle.NewManager()
 	outDir := t.TempDir()
@@ -118,8 +119,13 @@ func TestRandomPostPlugin_DoesNotClobberExistingOutput(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	if err := os.WriteFile(indexPath, []byte("existing"), 0o644); err != nil { //nolint:gosec // test fixture
+	seedPath := filepath.Join(outDir, "seed-index.html")
+	seed := []byte("<!-- markata-go random_post -->\nexisting")
+	if err := os.WriteFile(seedPath, seed, 0o644); err != nil { //nolint:gosec // test fixture
 		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.Link(seedPath, indexPath); err != nil {
+		t.Fatalf("Link() error = %v", err)
 	}
 
 	m.SetConfig(&lifecycle.Config{
@@ -133,7 +139,92 @@ func TestRandomPostPlugin_DoesNotClobberExistingOutput(t *testing.T) {
 	if err := p.Configure(m); err != nil {
 		t.Fatalf("Configure() error = %v", err)
 	}
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if string(data) == "existing" {
+		t.Fatal("seeded output was not replaced")
+	}
+	seedData, err := os.ReadFile(seedPath)
+	if err != nil {
+		t.Fatalf("ReadFile(seed) error = %v", err)
+	}
+	if !bytes.Equal(seedData, seed) {
+		t.Fatalf("seeded source was modified: %q", seedData)
+	}
+}
+
+func TestRandomPostPlugin_RejectsUnrelatedOutput(t *testing.T) {
+	p := NewRandomPostPlugin()
+	m := lifecycle.NewManager()
+	outDir := t.TempDir()
+	indexPath := filepath.Join(outDir, "random", "index.html")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(indexPath, []byte("unrelated"), 0o644); err != nil { //nolint:gosec // test fixture
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	m.SetConfig(&lifecycle.Config{OutputDir: outDir, Extra: map[string]interface{}{"random_post": map[string]any{"enabled": true}}})
+	m.SetPosts([]*models.Post{{Slug: "a", Href: "/a/", Published: true}})
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
 	if err := p.Write(m); err == nil {
-		t.Fatalf("expected Write() to error due to existing output")
+		t.Fatal("expected Write() to reject unrelated output")
+	}
+}
+
+func TestRandomPostPlugin_RejectsUnrelatedRandomTitle(t *testing.T) {
+	p := NewRandomPostPlugin()
+	m := lifecycle.NewManager()
+	outDir := t.TempDir()
+	indexPath := filepath.Join(outDir, "random", "index.html")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(indexPath, []byte("<title>Random post</title>"), 0o644); err != nil { //nolint:gosec // test fixture
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	m.SetConfig(&lifecycle.Config{OutputDir: outDir, Extra: map[string]interface{}{"random_post": map[string]any{"enabled": true}}})
+	m.SetPosts([]*models.Post{{Slug: "a", Href: "/a/", Published: true}})
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	if err := p.Write(m); err == nil {
+		t.Fatal("expected Write() to reject unrelated titled output")
+	}
+}
+
+func TestRandomPostPlugin_DoesNotClobberPostRoute(t *testing.T) {
+	p := NewRandomPostPlugin()
+	m := lifecycle.NewManager()
+	outDir := t.TempDir()
+
+	indexPath := filepath.Join(outDir, "random", "index.html")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(indexPath, []byte("<!-- markata-go random_post -->\nexisting"), 0o644); err != nil { //nolint:gosec // test fixture
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: outDir,
+		Extra: map[string]interface{}{
+			"random_post": map[string]any{"enabled": true},
+		},
+	})
+	m.SetPosts([]*models.Post{{Slug: "random", Href: "/random/", Published: true}})
+
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	if err := p.Write(m); err == nil {
+		t.Fatal("expected Write() to error due to post route collision")
 	}
 }
