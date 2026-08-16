@@ -1,0 +1,48 @@
+---
+title: "Content Index"
+description: "Use Markata's stable metadata index for search and tooling."
+date: 2026-08-15
+published: true
+tags:
+  - documentation
+  - content-index
+---
+
+# Content Index
+
+Markata can write one compact JSON file with the metadata it resolved during a
+build. It does not include article bodies.
+
+```toml
+[markata-go.content_index]
+enabled = true
+output = "content-index.json"
+```
+
+The file is written below `output_dir` unless `output` is absolute. Its
+identity is `schema = "markata.content-index"` and its current generation is
+`schema_version = 1`.
+
+## Reading the file
+
+Read `schema` and `schema_version` before decoding. Ignore fields you do not
+know. If the generation is newer than the reader supports, stop with a clear
+upgrade message. Do not guess how a future generation works.
+
+Use each document's repository-relative `path` to find its source file. The
+`feeds` array already contains resolved Markata feed membership. Consumers
+should not implement Markata's feed filter language again.
+
+`source.commit` is the full Git `HEAD` used for the build. Compare it with the
+source repository revision before using metadata as a bootstrap cache. The
+field is absent when Git cannot provide a revision.
+
+Markata retains readers for every released generation and normalizes them into
+one current internal model. The index is not a source archive, rendered-body
+cache, access-control system, or guarantee that source files remain available.
+Private and draft documents are excluded from the public artifact.
+If you disable the output, use a clean output directory or remove the old
+artifact before deployment.
+
+The v1 schema and immutable interoperability fixtures are in
+`pkg/contentindex/v1_schema.json` and `pkg/contentindex/fixtures/`.

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "markata://schemas/content-index/v1",
+  "title": "Markata Content Index v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["$schema", "schema", "schema_version", "generator", "source", "document_count", "documents"],
+  "properties": {
+    "$schema": {"const": "markata://schemas/content-index/v1"},
+    "schema": {"const": "markata.content-index"},
+    "schema_version": {"const": 1},
+    "generator": {"type": "object", "required": ["name", "version"], "additionalProperties": true, "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string"}}},
+    "source": {"type": "object", "additionalProperties": true, "properties": {"commit": {"type": "string", "minLength": 1}}},
+    "document_count": {"type": "integer", "minimum": 0},
+    "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}}
+  },
+  "$defs": {
+    "document": {
+      "type": "object", "additionalProperties": true,
+      "required": ["path", "slug", "href", "published", "draft", "private"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1}, "slug": {"type": "string"}, "href": {"type": "string"},
+        "title": {"type": ["string", "null"]}, "title_text": {"type": ["string", "null"]},
+        "date": {"type": "string", "format": "date-time"}, "modified": {"type": "string", "format": "date-time"},
+        "published": {"type": "boolean"}, "draft": {"type": "boolean"}, "private": {"type": "boolean"},
+        "template": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}},
+        "description": {"type": ["string", "null"]}, "feeds": {"type": "array", "items": {"type": "string"}},
+        "aliases": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
