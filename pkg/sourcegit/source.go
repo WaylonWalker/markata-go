@@ -116,11 +116,27 @@ func ignoredMarkdownFiles(sourceDir string, status []byte) ([]string, error) {
 func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []byte, ignoredSources []string) (string, error) {
 	hash := sha256.New()
 	_, _ = hash.Write(statusOutput)
-	diff, err := Command(ctx, sourceDir, "diff", "HEAD", "--binary").Output()
+	// Hash the changed paths and their current bytes instead of asking Git to
+	// render a complete binary patch. The latter is needlessly expensive for a
+	// large dirty checkout, while path + bytes preserves the same snapshot
+	// distinction for tracked content changes.
+	rawDiff, err := Command(ctx, sourceDir, "diff", "HEAD", "--raw", "-z", "--").Output()
 	if err != nil {
-		return "", fmt.Errorf("read git worktree diff: %w", err)
+		return "", fmt.Errorf("read changed source metadata: %w", err)
 	}
-	_, _ = hash.Write(diff)
+	_, _ = hash.Write(rawDiff)
+	changed, err := Command(ctx, sourceDir, "diff", "HEAD", "--name-only", "-z", "--").Output()
+	if err != nil {
+		return "", fmt.Errorf("read changed source paths: %w", err)
+	}
+	for _, name := range splitNUL(changed) {
+		if name == "" {
+			continue
+		}
+		if err := hashSourceFile(ctx, hash, sourceDir, name, "tracked"); err != nil {
+			return "", err
+		}
+	}
 	untracked, err := Command(ctx, sourceDir, "ls-files", "--others", "--exclude-standard", "-z").Output()
 	if err != nil {
 		return "", fmt.Errorf("read untracked source files: %w", err)
@@ -129,39 +145,119 @@ func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []b
 		if name == "" {
 			continue
 		}
-		if _, err := io.WriteString(hash, name); err != nil {
-			return "", fmt.Errorf("hash untracked source file %q: %w", name, err)
-		}
-		file, err := os.Open(filepath.Join(sourceDir, filepath.FromSlash(name)))
-		if err != nil {
-			return "", fmt.Errorf("read untracked source file %q: %w", name, err)
-		}
-		if _, err := io.Copy(hash, file); err != nil {
-			_ = file.Close()
-			return "", fmt.Errorf("hash untracked source file %q: %w", name, err)
-		}
-		if err := file.Close(); err != nil {
-			return "", fmt.Errorf("close untracked source file %q: %w", name, err)
+		if err := hashSourceFile(ctx, hash, sourceDir, name, "untracked"); err != nil {
+			return "", err
 		}
 	}
 	for _, path := range ignoredSources {
-		name := path
-		if _, err := io.WriteString(hash, name); err != nil {
-			return "", fmt.Errorf("hash ignored source file %q: %w", name, err)
-		}
-		file, err := os.Open(filepath.Join(sourceDir, filepath.FromSlash(name)))
-		if err != nil {
-			return "", fmt.Errorf("read ignored source file %q: %w", name, err)
-		}
-		if _, err := io.Copy(hash, file); err != nil {
-			_ = file.Close()
-			return "", fmt.Errorf("hash ignored source file %q: %w", name, err)
-		}
-		if err := file.Close(); err != nil {
-			return "", fmt.Errorf("close ignored source file %q: %w", name, err)
+		if err := hashSourceFile(ctx, hash, sourceDir, path, "ignored"); err != nil {
+			return "", err
 		}
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+func hashSourceFile(ctx context.Context, hash io.Writer, sourceDir, name, kind string) error {
+	if _, err := io.WriteString(hash, kind+"\x00"+name+"\x00"); err != nil {
+		return fmt.Errorf("hash %s source file %q: %w", kind, name, err)
+	}
+	path := filepath.Join(sourceDir, filepath.FromSlash(name))
+	info, lstatErr := os.Lstat(path)
+	if lstatErr != nil && !os.IsNotExist(lstatErr) {
+		return fmt.Errorf("stat %s source file %q: %w", kind, name, lstatErr)
+	}
+	if lstatErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		if _, err := fmt.Fprintf(hash, "mode\x00%#o\x00", info.Mode()); err != nil {
+			return fmt.Errorf("hash mode for source file %q: %w", name, err)
+		}
+		target, err := os.Readlink(path)
+		if err != nil {
+			return fmt.Errorf("readlink %s source file %q: %w", kind, name, err)
+		}
+		if _, err := io.WriteString(hash, "symlink\x00"+target+"\x00"); err != nil {
+			return fmt.Errorf("hash symlink source file %q: %w", name, err)
+		}
+		if targetInfo, err := os.Stat(path); err == nil && targetInfo.Mode().IsRegular() {
+			return hashFileContents(hash, path, name, kind)
+		}
+		return nil
+	}
+	if lstatErr == nil && info.IsDir() {
+		return hashSubmodule(ctx, hash, path, name)
+	}
+	if lstatErr == nil {
+		if _, err := fmt.Fprintf(hash, "mode\x00%#o\x00", info.Mode()); err != nil {
+			return fmt.Errorf("hash mode for source file %q: %w", name, err)
+		}
+	}
+	return hashFileContents(hash, path, name, kind)
+}
+
+func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error {
+	head, err := Command(ctx, path, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return fmt.Errorf("read submodule HEAD %q: %w", name, err)
+	}
+	status, err := Command(ctx, path, "status", "--porcelain", "--untracked-files=all").Output()
+	if err != nil {
+		return fmt.Errorf("read submodule status %q: %w", name, err)
+	}
+	diff, err := Command(ctx, path, "diff", "HEAD", "--binary").Output()
+	if err != nil {
+		return fmt.Errorf("read submodule diff %q: %w", name, err)
+	}
+	for _, part := range [][]byte{head, status, diff} {
+		if _, err := hash.Write(part); err != nil {
+			return fmt.Errorf("hash submodule %q: %w", name, err)
+		}
+	}
+	ignoredStatus, err := Command(ctx, path, "status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all").Output()
+	if err != nil {
+		return fmt.Errorf("read submodule ignored files %q: %w", name, err)
+	}
+	ignoredSources, err := ignoredMarkdownFiles(path, ignoredStatus)
+	if err != nil {
+		return err
+	}
+	if _, err := hash.Write(ignoredStatus); err != nil {
+		return fmt.Errorf("hash submodule ignored files %q: %w", name, err)
+	}
+	for _, child := range ignoredSources {
+		if err := hashSourceFile(ctx, hash, path, child, "submodule-ignored"); err != nil {
+			return err
+		}
+	}
+	untracked, err := Command(ctx, path, "ls-files", "--others", "--exclude-standard", "-z").Output()
+	if err != nil {
+		return fmt.Errorf("read submodule untracked files %q: %w", name, err)
+	}
+	for _, child := range splitNUL(untracked) {
+		if child == "" {
+			continue
+		}
+		if err := hashSourceFile(ctx, hash, path, child, "submodule-untracked"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hashFileContents(hash io.Writer, path, name, kind string) error {
+	file, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read %s source file %q: %w", kind, name, err)
+	}
+	if _, err := io.Copy(hash, file); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("hash %s source file %q: %w", kind, name, err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close %s source file %q: %w", kind, name, err)
+	}
+	return nil
 }
 
 func isMarkdownSource(name string) bool {
