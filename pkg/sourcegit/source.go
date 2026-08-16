@@ -129,7 +129,9 @@ func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []b
 		if name == "" {
 			continue
 		}
-		_, _ = io.WriteString(hash, name)
+		if _, err := io.WriteString(hash, name); err != nil {
+			return "", fmt.Errorf("hash untracked source file %q: %w", name, err)
+		}
 		file, err := os.Open(filepath.Join(sourceDir, filepath.FromSlash(name)))
 		if err != nil {
 			return "", fmt.Errorf("read untracked source file %q: %w", name, err)
@@ -144,7 +146,9 @@ func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []b
 	}
 	for _, path := range ignoredSources {
 		name := path
-		_, _ = io.WriteString(hash, name)
+		if _, err := io.WriteString(hash, name); err != nil {
+			return "", fmt.Errorf("hash ignored source file %q: %w", name, err)
+		}
 		file, err := os.Open(filepath.Join(sourceDir, filepath.FromSlash(name)))
 		if err != nil {
 			return "", fmt.Errorf("read ignored source file %q: %w", name, err)

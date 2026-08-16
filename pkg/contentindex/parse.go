@@ -53,6 +53,8 @@ func jsonInteger(value json.Number) (int, error) {
 	if integer, err := strconv.Atoi(value.String()); err == nil {
 		return integer, nil
 	}
+	// The input is bounded by the JSON document size before parsing.
+	//nolint:gosec // exact numeric validation requires arbitrary precision.
 	rational, ok := new(big.Rat).SetString(value.String())
 	if !ok {
 		rational, ok = decimalRational(value.String())
@@ -61,7 +63,7 @@ func jsonInteger(value json.Number) (int, error) {
 		return 0, fmt.Errorf("%q is not an integer", value)
 	}
 	integer := rational.Num()
-	if !integer.IsInt64() || (strconv.IntSize == 32 && (integer.Int64() < -1<<31 || integer.Int64() > 1<<31-1)) {
+	if !integer.IsInt64() || (strconv.IntSize == 32 && (integer.Int64() < -1<<31 || integer.Int64() >= 1<<31)) {
 		return 0, fmt.Errorf("%q is outside the platform integer range", value)
 	}
 	return int(integer.Int64()), nil
