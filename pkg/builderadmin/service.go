@@ -197,6 +197,12 @@ type Service struct {
 	watchTimer           *time.Timer
 	stateMu              sync.Mutex
 	state                State
+	releaseMu            sync.Mutex
+	pruneScheduleMu      sync.Mutex
+	pruneRunning         bool
+	prunePending         []pruneRequest
+	pruneCancel          context.CancelFunc
+	pruneDone            chan struct{}
 	leaderMu             sync.RWMutex
 	leader               bool
 	leaderCancel         context.CancelFunc
@@ -217,6 +223,11 @@ type leaderRecord struct {
 type queueRequest struct {
 	QueuedOperation
 	commandArgs []string
+}
+
+type pruneRequest struct {
+	ctx     context.Context
+	buildID string
 }
 
 //nolint:gocyclo // Configuration normalization is intentionally kept together at construction.
@@ -414,6 +425,16 @@ func (s *Service) releaseLeadership() {
 	s.leaderMu.Unlock()
 	if cancel != nil {
 		cancel()
+	}
+	s.pruneScheduleMu.Lock()
+	pruneCancel := s.pruneCancel
+	pruneDone := s.pruneDone
+	s.pruneScheduleMu.Unlock()
+	if pruneCancel != nil {
+		pruneCancel()
+	}
+	if pruneDone != nil {
+		<-pruneDone
 	}
 	if s.leaderLock != nil {
 		_ = unlockFile(s.leaderLock)
@@ -1050,6 +1071,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	}
 	defer logFile.Close()
 	record.LogPath = logPath
+	leaderCtx := ctx
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.BuildTimeout)
 	defer cancel()
 
@@ -1112,16 +1134,12 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	record.ReleasePath = releasePath
 	record.BecameLive = true
 
-	phaseStart = time.Now()
-	s.updateRunningPhase("prune")
-	_ = s.pruneReleases()
-	record.PruneMS = time.Since(phaseStart).Milliseconds()
-
 	record.Status = "success"
 	record.FinishedAt = time.Now().UTC()
 	record.TotalMS = record.FinishedAt.Sub(started).Milliseconds()
 	record.PerfSummary = extractPerfSummaryFromFile(filepath.Join(s.logDir, logPath))
 	s.finishBuild(record)
+	s.schedulePrune(leaderCtx, record.ID)
 }
 
 func (s *Service) runRefresh(ctx context.Context, req queueRequest) {
@@ -1212,6 +1230,8 @@ func (s *Service) runRollback(req queueRequest) {
 	defer logFile.Close()
 	record.LogPath = logPath
 	s.updateRunningPhase("promote")
+	s.releaseMu.Lock()
+	defer s.releaseMu.Unlock()
 	releasePath := filepath.Join(s.cfg.SiteDir, "releases", req.ReleaseID)
 	if _, err := os.Stat(releasePath); err != nil {
 		record.Status = "failed"
@@ -1291,6 +1311,8 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 }
 
 func (s *Service) promoteBuild(buildWork string) (string, string, error) {
+	s.releaseMu.Lock()
+	defer s.releaseMu.Unlock()
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
 	releasePath := filepath.Join(s.cfg.SiteDir, "releases", releaseID)
 	if err := os.RemoveAll(releasePath); err != nil {
@@ -1320,12 +1342,79 @@ func (s *Service) pruneReleases() error {
 		return nil
 	}
 	for _, release := range releases[s.cfg.ReleasesKeep:] {
-		if release.Current {
+		s.releaseMu.Lock()
+		currentID := s.currentReleaseID()
+		if release.Current || release.ID == currentID {
+			s.releaseMu.Unlock()
 			continue
 		}
 		_ = os.RemoveAll(release.Path)
+		s.releaseMu.Unlock()
 	}
 	return nil
+}
+
+func (s *Service) schedulePrune(ctx context.Context, buildID string) {
+	s.pruneScheduleMu.Lock()
+	if s.pruneRunning {
+		s.prunePending = append(s.prunePending, pruneRequest{ctx: ctx, buildID: buildID})
+		s.pruneScheduleMu.Unlock()
+		return
+	}
+	pruneCtx, cancel := context.WithCancel(ctx)
+	s.pruneRunning = true
+	s.pruneCancel = cancel
+	s.pruneDone = make(chan struct{})
+	done := s.pruneDone
+	s.pruneScheduleMu.Unlock()
+	go s.runScheduledPrunes(pruneCtx, buildID, done)
+}
+
+func (s *Service) runScheduledPrunes(ctx context.Context, buildID string, done chan struct{}) {
+	defer func() {
+		close(done)
+		s.pruneScheduleMu.Lock()
+		if s.pruneDone == done {
+			s.pruneRunning = false
+			s.pruneCancel = nil
+			s.pruneDone = nil
+		}
+		s.pruneScheduleMu.Unlock()
+	}()
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		started := time.Now()
+		_ = s.pruneReleases()
+		pruneMS := time.Since(started).Milliseconds()
+		s.stateMu.Lock()
+		for i := range s.state.Builds {
+			if s.state.Builds[i].ID == buildID {
+				s.state.Builds[i].PruneMS = pruneMS
+				s.saveStateLocked()
+				break
+			}
+		}
+		s.stateMu.Unlock()
+
+		s.pruneScheduleMu.Lock()
+		if len(s.prunePending) == 0 {
+			s.pruneRunning = false
+			s.pruneCancel = nil
+			s.pruneDone = nil
+			s.pruneScheduleMu.Unlock()
+			return
+		}
+		next := s.prunePending[0]
+		s.prunePending = s.prunePending[1:]
+		s.pruneScheduleMu.Unlock()
+		if next.ctx == nil || next.ctx.Err() != nil {
+			continue
+		}
+		buildID = next.buildID
+		ctx = next.ctx
+	}
 }
 
 func (s *Service) runLoggedCommand(ctx context.Context, log io.Writer, cwd string, env []string, args ...string) error {
