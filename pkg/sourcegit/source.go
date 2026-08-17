@@ -47,11 +47,8 @@ func Read(ctx context.Context, sourceDir string) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("read ignored git worktree status: %w", err)
 	}
-	ignoredSources, err := ignoredMarkdownFiles(sourceDir, ignoredOutput)
-	if err != nil {
-		return State{}, err
-	}
-	if len(ignoredSources) > 0 {
+	ignoredSources := ignoredMarkdownFiles(ignoredOutput)
+	if strings.Contains(string(ignoredOutput), "!! ") {
 		dirty = true
 	}
 	fingerprint, err := snapshotFingerprint(ctx, sourceDir, statusOutput, ignoredSources)
@@ -82,35 +79,21 @@ func (s State) Equal(other State) bool {
 	return *s.Dirty == *other.Dirty
 }
 
-func ignoredMarkdownFiles(sourceDir string, status []byte) ([]string, error) {
+func ignoredMarkdownFiles(status []byte) []string {
 	var result []string
 	for _, record := range splitNUL(status) {
 		if !strings.HasPrefix(record, "!! ") {
 			continue
 		}
 		name := strings.TrimPrefix(record, "!! ")
-		path := filepath.Join(sourceDir, filepath.FromSlash(name))
-		if strings.HasSuffix(name, "/") {
-			if err := filepath.WalkDir(path, func(path string, entry os.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if !entry.IsDir() && isMarkdownSource(path) {
-					relative, err := filepath.Rel(sourceDir, path)
-					if err != nil {
-						return err
-					}
-					result = append(result, relative)
-				}
-				return nil
-			}); err != nil {
-				return nil, fmt.Errorf("scan ignored source directory %q: %w", name, err)
-			}
-		} else if isMarkdownSource(name) {
+		// Ignore whole directories without walking them. They are already
+		// represented as dirty, and walking generated output trees can dominate
+		// build time. Direct ignored Markdown files retain byte-level tracking.
+		if !strings.HasSuffix(name, "/") && isMarkdownSource(name) {
 			result = append(result, name)
 		}
 	}
-	return result, nil
+	return result
 }
 
 func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []byte, ignoredSources []string) (string, error) {
@@ -215,10 +198,7 @@ func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error
 	if err != nil {
 		return fmt.Errorf("read submodule ignored files %q: %w", name, err)
 	}
-	ignoredSources, err := ignoredMarkdownFiles(path, ignoredStatus)
-	if err != nil {
-		return err
-	}
+	ignoredSources := ignoredMarkdownFiles(ignoredStatus)
 	if _, err := hash.Write(ignoredStatus); err != nil {
 		return fmt.Errorf("hash submodule ignored files %q: %w", name, err)
 	}

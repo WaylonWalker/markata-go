@@ -92,21 +92,18 @@ func TestReadSourceStateWithoutGit(t *testing.T) {
 
 func TestReadSourceStateDetectsIgnoredMarkdownChanges(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, ".gitignore"), "ignored/\n")
+	writeFile(t, filepath.Join(dir, ".gitignore"), "ignored.md\n")
 	git(t, dir, "init")
 	git(t, dir, "config", "user.email", "test@example.invalid")
 	git(t, dir, "config", "user.name", "Content Index Test")
 	git(t, dir, "add", ".gitignore")
 	git(t, dir, "commit", "-m", "initial")
-	if err := os.Mkdir(filepath.Join(dir, "ignored"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeFile(t, filepath.Join(dir, "ignored", "post.md"), "one")
+	writeFile(t, filepath.Join(dir, "ignored.md"), "one")
 	first, err := Read(context.Background(), dir)
 	if err != nil || first.Dirty == nil || !*first.Dirty {
 		t.Fatalf("ignored source was not marked dirty: %#v, %v", first, err)
 	}
-	writeFile(t, filepath.Join(dir, "ignored", "post.md"), "two")
+	writeFile(t, filepath.Join(dir, "ignored.md"), "two")
 	second, err := Read(context.Background(), dir)
 	if err != nil || first.Equal(second) {
 		t.Fatalf("ignored source change was not detected: %#v -> %#v, %v", first, second, err)
