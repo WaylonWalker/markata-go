@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 )
 
 func TestMarkHTMLFontpackReplacesExactlyOneAttribute(t *testing.T) {
@@ -33,8 +35,12 @@ func TestMarkHTMLFontpackReplacesExactlyOneAttribute(t *testing.T) {
 
 func TestFontpackCacheKeyChangesWithRenderedContent(t *testing.T) {
 	names := []string{"system", "serif"}
-	first := fontpackCacheKey("<p>one</p>", names)
-	second := fontpackCacheKey("<p>two</p>", names)
+	catalog, err := fontpacks.BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := fontpackCacheKey("<p>one</p>", names, catalog.Catalog)
+	second := fontpackCacheKey("<p>two</p>", names, catalog.Catalog)
 	if first == second {
 		t.Fatal("fontpack cache key did not change with rendered content")
 	}
@@ -55,6 +61,12 @@ func TestFontpackOutputCachedRequiresMatchingKeyAndStylesheet(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(output, "css", "fonts.css"), []byte(""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(output, "assets", "fonts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(output, "assets", "fonts", ".markata-fonts.json"), []byte(`{"files":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if !fontpackOutputCached(output, "key") {
