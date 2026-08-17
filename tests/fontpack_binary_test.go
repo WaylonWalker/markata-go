@@ -19,6 +19,9 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	}
 	repo := filepath.Dir(filepath.Dir(thisFile))
 	binary := filepath.Join(t.TempDir(), "markata-go")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
 	build.Dir = repo
 	if output, err := build.CombinedOutput(); err != nil {
