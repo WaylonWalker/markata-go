@@ -50,6 +50,17 @@ type v1Document struct {
 	Description *string    `json:"description,omitempty"`
 	Feeds       []string   `json:"feeds,omitempty"`
 	Aliases     []string   `json:"aliases,omitempty"`
+	Image       *string    `json:"image,omitempty"`
+	Video       *string    `json:"video,omitempty"`
+	Avatar      *string    `json:"avatar,omitempty"`
+	Bio         *string    `json:"bio,omitempty"`
+	Thumbnail   *string    `json:"thumbnail,omitempty"`
+	Cover       *string    `json:"cover,omitempty"`
+	OGImage     *string    `json:"og_image,omitempty"`
+	Author      *string    `json:"author,omitempty"`
+	Authors     []string   `json:"authors,omitempty"`
+	Category    *string    `json:"category,omitempty"`
+	Categories  []string   `json:"categories,omitempty"`
 }
 
 func encodeV1(index Index) ([]byte, error) {
@@ -90,7 +101,7 @@ func encodeV1(index Index) ([]byte, error) {
 		d.Tags = sortedStrings(d.Tags)
 		d.Feeds = sortedStrings(d.Feeds)
 		d.Aliases = sortedStrings(d.Aliases)
-		docs[i] = v1Document{Path: d.Path, Slug: d.Slug, Href: d.Href, Title: d.Title, TitleText: d.TitleText, Date: d.Date, Modified: d.Modified, Published: d.Published, Draft: d.Draft, Private: d.Private, Template: d.Template, Tags: d.Tags, Description: d.Description, Feeds: d.Feeds, Aliases: d.Aliases}
+		docs[i] = v1Document{Path: d.Path, Slug: d.Slug, Href: d.Href, Title: d.Title, TitleText: d.TitleText, Date: d.Date, Modified: d.Modified, Published: d.Published, Draft: d.Draft, Private: d.Private, Template: d.Template, Tags: d.Tags, Description: d.Description, Feeds: d.Feeds, Aliases: d.Aliases, Image: d.Image, Video: d.Video, Avatar: d.Avatar, Bio: d.Bio, Thumbnail: d.Thumbnail, Cover: d.Cover, OGImage: d.OGImage, Author: d.Author, Authors: append([]string(nil), d.Authors...), Category: d.Category, Categories: sortedStrings(d.Categories)}
 	}
 	var commit *string
 	if index.Source.Commit != "" {
@@ -192,7 +203,7 @@ func decodeV1(data []byte) (Index, error) {
 				return Index{}, fmt.Errorf("documents[%d].%s must be a boolean", i, field)
 			}
 		}
-		for _, field := range []string{"tags", "feeds", "aliases"} {
+		for _, field := range []string{"tags", "feeds", "aliases", "authors", "categories"} {
 			if value, ok := document[field]; ok {
 				if isJSONNull(value) {
 					return Index{}, fmt.Errorf("documents[%d].%s must be an array of strings", i, field)
@@ -203,15 +214,15 @@ func decodeV1(data []byte) (Index, error) {
 				}
 			}
 		}
-		for _, field := range []string{"date", "modified", "template"} {
+		for _, field := range []string{"date", "modified", "template", "image", "video", "avatar", "bio", "thumbnail", "cover", "og_image", "author", "category"} {
 			if value, ok := document[field]; ok {
 				if isJSONNull(value) {
 					return Index{}, fmt.Errorf("documents[%d].%s must be a string", i, field)
 				}
-				if field == "template" {
+				if field != "date" && field != "modified" {
 					var text string
 					if err := json.Unmarshal(value, &text); err != nil {
-						return Index{}, fmt.Errorf("documents[%d].template must be a string", i)
+						return Index{}, fmt.Errorf("documents[%d].%s must be a string", i, field)
 					}
 				} else {
 					var date time.Time
@@ -266,7 +277,7 @@ func decodeV1(data []byte) (Index, error) {
 			return Index{}, fmt.Errorf("documents[%d].path is duplicated: %q", i, d.Path)
 		}
 		seenPaths[d.Path] = struct{}{}
-		result.Documents[i] = Document{d.Path, d.Slug, d.Href, d.Title, d.TitleText, d.Date, d.Modified, d.Published, d.Draft, d.Private, d.Template, append([]string(nil), d.Tags...), d.Description, append([]string(nil), d.Feeds...), append([]string(nil), d.Aliases...)}
+		result.Documents[i] = Document{Path: d.Path, Slug: d.Slug, Href: d.Href, Title: d.Title, TitleText: d.TitleText, Date: d.Date, Modified: d.Modified, Published: d.Published, Draft: d.Draft, Private: d.Private, Template: d.Template, Tags: append([]string(nil), d.Tags...), Description: d.Description, Feeds: append([]string(nil), d.Feeds...), Aliases: append([]string(nil), d.Aliases...), Image: d.Image, Video: d.Video, Avatar: d.Avatar, Bio: d.Bio, Thumbnail: d.Thumbnail, Cover: d.Cover, OGImage: d.OGImage, Author: d.Author, Authors: append([]string(nil), d.Authors...), Category: d.Category, Categories: append([]string(nil), d.Categories...)}
 	}
 	return result, nil
 }
