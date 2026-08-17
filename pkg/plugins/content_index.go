@@ -44,7 +44,7 @@ func (p *ContentIndexPlugin) Configure(m *lifecycle.Manager) error {
 	if !ok || !cfg.Enabled {
 		return nil
 	}
-	p.initialSource, p.initialSourceErr = sourcegit.Read(context.Background(), m.Config().ContentDir)
+	p.initialSource, p.initialSourceErr = sourcegit.ReadWithOptions(context.Background(), m.Config().ContentDir, sourceSnapshotOptions(m.Config()))
 	p.capturedSource = true
 	return nil
 }
@@ -68,7 +68,7 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	}
 	stateBefore, beforeErr := p.initialSource, p.initialSourceErr
 	if !p.capturedSource {
-		stateBefore, beforeErr = sourcegit.Read(context.Background(), m.Config().ContentDir)
+		stateBefore, beforeErr = sourcegit.ReadWithOptions(context.Background(), m.Config().ContentDir, sourceSnapshotOptions(m.Config()))
 	}
 
 	posts := m.Posts()
@@ -107,7 +107,7 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 		version = v
 	}
 	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: contentindex.CurrentVersion, Scope: contentindex.PublicScope, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
-	stateAfter, afterErr := sourcegit.Read(context.Background(), m.Config().ContentDir)
+	stateAfter, afterErr := sourcegit.ReadWithOptions(context.Background(), m.Config().ContentDir, sourceSnapshotOptions(m.Config()))
 	if beforeErr == nil && afterErr == nil {
 		if !stateBefore.Equal(stateAfter) {
 			return fmt.Errorf("source Git state changed during Content Index build")
@@ -148,6 +148,17 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 		return fmt.Errorf("write content index: %w", err)
 	}
 	return nil
+}
+
+func sourceSnapshotOptions(config *lifecycle.Config) sourcegit.ReadOptions {
+	// Git-ignore filtering defaults to enabled. The loader copies the effective
+	// value into Extra for plugins, so only an explicit false enables the more
+	// expensive ignored-input fingerprint.
+	useGitignore := true
+	if value, ok := config.Extra["use_gitignore"].(bool); ok {
+		useGitignore = value
+	}
+	return sourcegit.ReadOptions{IncludeIgnoredContent: !useGitignore}
 }
 
 func contentIndexDestination(outputDir, configured string) (string, error) {

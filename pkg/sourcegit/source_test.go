@@ -92,24 +92,64 @@ func TestReadSourceStateWithoutGit(t *testing.T) {
 
 func TestReadSourceStateDetectsIgnoredMarkdownChanges(t *testing.T) {
 	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, ".gitignore"), "ignored.md\n")
+	git(t, dir, "init")
+	git(t, dir, "config", "user.email", "test@example.invalid")
+	git(t, dir, "config", "user.name", "Content Index Test")
+	git(t, dir, "add", ".gitignore")
+	git(t, dir, "commit", "-m", "initial")
+	writeFile(t, filepath.Join(dir, "ignored.md"), "one")
+	first, err := Read(context.Background(), dir)
+	if err != nil || first.Dirty == nil || !*first.Dirty {
+		t.Fatalf("ignored source was not marked dirty: %#v, %v", first, err)
+	}
+	writeFile(t, filepath.Join(dir, "ignored.md"), "two")
+	second, err := Read(context.Background(), dir)
+	if err != nil || first.Equal(second) {
+		t.Fatalf("ignored source change was not detected: %#v -> %#v, %v", first, second, err)
+	}
+}
+
+func TestReadSourceStateIgnoredDirectoryDependsOnInputPolicy(t *testing.T) {
+	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, ".gitignore"), "ignored/\n")
 	git(t, dir, "init")
 	git(t, dir, "config", "user.email", "test@example.invalid")
 	git(t, dir, "config", "user.name", "Content Index Test")
 	git(t, dir, "add", ".gitignore")
 	git(t, dir, "commit", "-m", "initial")
-	if err := os.Mkdir(filepath.Join(dir, "ignored"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "ignored"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	writeFile(t, filepath.Join(dir, "ignored", "post.md"), "one")
-	first, err := Read(context.Background(), dir)
-	if err != nil || first.Dirty == nil || !*first.Dirty {
-		t.Fatalf("ignored source was not marked dirty: %#v, %v", first, err)
+
+	filtered, err := ReadWithOptions(context.Background(), dir, ReadOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filtered.Dirty == nil || *filtered.Dirty {
+		t.Fatalf("ignored generated directory marked filtered source dirty: %#v", filtered)
 	}
 	writeFile(t, filepath.Join(dir, "ignored", "post.md"), "two")
-	second, err := Read(context.Background(), dir)
-	if err != nil || first.Equal(second) {
-		t.Fatalf("ignored source change was not detected: %#v -> %#v, %v", first, second, err)
+	filteredAfter, err := ReadWithOptions(context.Background(), dir, ReadOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filtered.Equal(filteredAfter) {
+		t.Fatal("ignored directory changed a filtered source state")
+	}
+
+	inputs, err := ReadWithOptions(context.Background(), dir, ReadOptions{IncludeIgnoredContent: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(dir, "ignored", "post.md"), "three")
+	inputsAfter, err := ReadWithOptions(context.Background(), dir, ReadOptions{IncludeIgnoredContent: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inputs.Equal(inputsAfter) {
+		t.Fatal("ignored source input change was not detected")
 	}
 }
 
