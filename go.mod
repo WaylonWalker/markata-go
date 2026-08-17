@@ -22,7 +22,7 @@ require (
 	github.com/mangoumbrella/goldmark-figure v1.4.0
 	github.com/markusmobius/go-dateparser v1.2.4
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2
