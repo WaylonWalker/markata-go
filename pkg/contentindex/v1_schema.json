@@ -27,7 +27,11 @@
         "published": {"type": "boolean"}, "draft": {"type": "boolean"}, "private": {"type": "boolean"},
         "template": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}},
         "description": {"type": ["string", "null"]}, "feeds": {"type": "array", "items": {"type": "string"}},
-        "aliases": {"type": "array", "items": {"type": "string"}}
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "image": {"type": "string"}, "video": {"type": "string"}, "avatar": {"type": "string"},
+        "thumbnail": {"type": "string"}, "cover": {"type": "string"}, "og_image": {"type": "string"}, "bio": {"type": "string"},
+        "author": {"type": "string"}, "authors": {"type": "array", "items": {"type": "string"}},
+        "category": {"type": "string"}, "categories": {"type": "array", "items": {"type": "string"}}
       }
     }
   }

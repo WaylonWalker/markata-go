@@ -192,7 +192,68 @@ func (e *contentIndexWriteError) Unwrap() error    { return e.err }
 func (e *contentIndexWriteError) IsCritical() bool { return true }
 
 func documentFromPost(post *models.Post, feedNames []string) contentindex.Document {
-	return contentindex.Document{Path: post.Path, Slug: post.Slug, Href: post.Href, Title: post.Title, TitleText: titleText(post), Date: post.Date, Modified: post.Modified, Published: post.Published, Draft: post.Draft, Private: post.Private, Template: post.Template, Tags: sortedStrings(post.Tags), Description: post.Description, Feeds: append([]string(nil), feedNames...), Aliases: aliases(post)}
+	return contentindex.Document{Path: post.Path, Slug: post.Slug, Href: post.Href, Title: post.Title, TitleText: titleText(post), Date: post.Date, Modified: post.Modified, Published: post.Published, Draft: post.Draft, Private: post.Private, Template: post.Template, Tags: sortedStrings(post.Tags), Description: post.Description, Feeds: append([]string(nil), feedNames...), Aliases: aliases(post), Image: extraString(post, "image"), Video: extraString(post, "video"), Avatar: resolvedAvatar(post), Bio: resolvedBio(post), Thumbnail: extraString(post, "thumbnail"), Cover: firstExtraString(post, "cover", "cover_image"), OGImage: firstExtraString(post, "og_image", "social_image"), Author: post.Author, Authors: append([]string(nil), post.GetAuthors()...), Category: extraString(post, "category"), Categories: extraStrings(post, "categories")}
+}
+
+func firstExtraString(post *models.Post, keys ...string) *string {
+	for _, key := range keys {
+		if value := extraString(post, key); value != nil {
+			return value
+		}
+	}
+	return nil
+}
+
+func resolvedAvatar(post *models.Post) *string {
+	if value := extraString(post, "avatar"); value != nil {
+		return value
+	}
+	for index := range post.AuthorObjects {
+		author := &post.AuthorObjects[index]
+		if author.Avatar != nil && *author.Avatar != "" {
+			return author.Avatar
+		}
+	}
+	return nil
+}
+
+func resolvedBio(post *models.Post) *string {
+	if value := extraString(post, "bio"); value != nil {
+		return value
+	}
+	for index := range post.AuthorObjects {
+		author := &post.AuthorObjects[index]
+		if author.Bio != nil && *author.Bio != "" {
+			return author.Bio
+		}
+	}
+	return nil
+}
+
+func extraString(post *models.Post, key string) *string {
+	value, ok := post.Extra[key].(string)
+	if !ok || value == "" {
+		return nil
+	}
+	return &value
+}
+
+func extraStrings(post *models.Post, key string) []string {
+	value := post.Extra[key]
+	var result []string
+	switch values := value.(type) {
+	case []string:
+		result = append(result, values...)
+	case []interface{}:
+		for _, item := range values {
+			if value, ok := item.(string); ok {
+				result = append(result, value)
+			}
+		}
+	case string:
+		result = append(result, values)
+	}
+	return sortedStrings(result)
 }
 
 func titleText(post *models.Post) *string {

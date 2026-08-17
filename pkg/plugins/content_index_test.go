@@ -17,6 +17,18 @@ func TestContentIndexPlugin_WritesPublicMetadataAndFeeds(t *testing.T) {
 	m.SetConfig(&lifecycle.Config{ContentDir: dir, OutputDir: dir, Extra: map[string]interface{}{"content_index": map[string]interface{}{"enabled": true, "output": output}, "markata_version": "test"}})
 	public := models.NewPost("posts/public.md")
 	public.Slug, public.Href, public.Published, public.Tags = "public", "/public/", true, []string{"z", "a"}
+	public.Extra["image"] = "https://images.example.test/public.webp"
+	public.Extra["video"] = "https://videos.example.test/public.mp4"
+	public.Extra["bio"] = "Author biography"
+	public.Extra["thumbnail"] = "https://images.example.test/thumb.webp"
+	public.Extra["cover_image"] = "https://images.example.test/cover.webp"
+	public.Extra["og_image"] = "https://images.example.test/og.webp"
+	public.Extra["category"] = "notes"
+	public.Extra["categories"] = []interface{}{"writing", "personal"}
+	public.Author = contentIndexStringPtr("waylon")
+	public.Authors = []string{"waylon", "guest"}
+	authorAvatar, authorBio := "https://images.example.test/author.webp", "Author biography"
+	public.AuthorObjects = []models.Author{{ID: "waylon", Avatar: &authorAvatar, Bio: &authorBio}}
 	unpublished := models.NewPost("pages/unpublished.md")
 	unpublished.Slug, unpublished.Href = "unpublished", "/unpublished/"
 	private := models.NewPost("posts/private.md")
@@ -45,7 +57,16 @@ func TestContentIndexPlugin_WritesPublicMetadataAndFeeds(t *testing.T) {
 	if index.Documents[0].Published || len(index.Documents[0].Feeds) != 1 || index.Documents[0].Feeds[0] != "draft" {
 		t.Fatalf("unpublished direct page or draft feed was conflated: %#v", index.Documents[0])
 	}
+	document := index.Documents[1]
+	if document.Image == nil || *document.Image != "https://images.example.test/public.webp" || document.Video == nil || document.Avatar == nil || *document.Avatar != authorAvatar || document.Bio == nil || *document.Bio != authorBio || document.Thumbnail == nil || document.Cover == nil || *document.Cover != "https://images.example.test/cover.webp" || document.OGImage == nil {
+		t.Fatalf("media metadata = %#v", document)
+	}
+	if document.Author == nil || *document.Author != "waylon" || len(document.Authors) != 2 || document.Category == nil || *document.Category != "notes" || len(document.Categories) != 2 {
+		t.Fatalf("author/category metadata = %#v", document)
+	}
 }
+
+func contentIndexStringPtr(value string) *string { return &value }
 
 func TestContentIndexPlugin_DisabledByDefault(t *testing.T) {
 	dir := t.TempDir()

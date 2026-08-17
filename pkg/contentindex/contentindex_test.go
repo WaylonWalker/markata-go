@@ -15,7 +15,8 @@ func TestMarshalParseRoundTrip(t *testing.T) {
 	title := "Hello"
 	when := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
 	dirty := false
-	want := Index{Schema: Schema, SchemaVersion: 1, Scope: "public", Generator: Generator{Name: GeneratorName, Version: "test"}, Source: Source{Commit: "abc", Dirty: &dirty}, Documents: []Document{{Path: "posts/hello.md", Slug: "hello", Href: "/hello/", Title: &title, TitleText: &title, Date: &when, Published: true, Tags: []string{"go"}, Feeds: []string{"blog"}}}, DocumentCount: 1}
+	image, video, author, category := "https://example.test/image.webp", "https://example.test/video.mp4", "waylon", "notes"
+	want := Index{Schema: Schema, SchemaVersion: 1, Scope: "public", Generator: Generator{Name: GeneratorName, Version: "test"}, Source: Source{Commit: "abc", Dirty: &dirty}, Documents: []Document{{Path: "posts/hello.md", Slug: "hello", Href: "/hello/", Title: &title, TitleText: &title, Date: &when, Published: true, Tags: []string{"go"}, Feeds: []string{"blog"}, Image: &image, Video: &video, Author: &author, Authors: []string{"waylon", "guest"}, Category: &category, Categories: []string{"notes", "writing"}}}, DocumentCount: 1}
 	data, err := Marshal(want)
 	if err != nil {
 		t.Fatal(err)
@@ -26,6 +27,9 @@ func TestMarshalParseRoundTrip(t *testing.T) {
 	}
 	if got.DocumentCount != 1 || got.Scope != "public" || got.Documents[0].Path != want.Documents[0].Path || got.Source.Commit != "abc" || got.Source.Dirty == nil || *got.Source.Dirty || got.Documents[0].Date == nil || !got.Documents[0].Date.Equal(when) {
 		t.Fatalf("round trip lost data: %#v", got)
+	}
+	if got.Documents[0].Image == nil || *got.Documents[0].Image != image || got.Documents[0].Video == nil || *got.Documents[0].Video != video || got.Documents[0].Author == nil || *got.Documents[0].Author != author || len(got.Documents[0].Authors) != 2 || got.Documents[0].Category == nil || *got.Documents[0].Category != category {
+		t.Fatalf("optional media and author metadata was lost: %#v", got.Documents[0])
 	}
 	if !strings.Contains(string(data), `"$schema":"`+SchemaURL+`"`) {
 		t.Fatalf("missing canonical schema identity: %s", data)
