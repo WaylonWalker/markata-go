@@ -373,11 +373,6 @@ func compiledProfileContains(profile compiledSubsetProfile, r rune) bool {
 
 var unicodeRangeRE = regexp.MustCompile(`(?i)^U\+([0-9A-F]+)(?:-([0-9A-F]+))?$`)
 
-func unicodeRangeContains(s string, r rune) bool {
-	profiles := compileSubsetProfiles(map[string]SubsetProfile{"range": {Unicode: []string{s}}})
-	return compiledProfileContains(profiles["range"], r)
-}
-
 // VisibleText extracts text nodes while excluding markup, attributes, scripts,
 // and styles. It is deliberately site-level and never creates a page subset.
 func VisibleText(source string) string {
@@ -402,8 +397,9 @@ func VisibleText(source string) string {
 			if string(name) == skipElement {
 				skipElement = ""
 			}
+		case html.SelfClosingTagToken, html.CommentToken, html.DoctypeToken:
 		case html.ErrorToken:
-			if tokenizer.Err() == io.EOF {
+			if errors.Is(tokenizer.Err(), io.EOF) {
 				return b.String()
 			}
 			return stripTagsRE.ReplaceAllString(source, " ")
