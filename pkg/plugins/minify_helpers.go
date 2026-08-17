@@ -30,10 +30,34 @@ type minifyCache struct {
 	mu    sync.Mutex
 }
 
+func writeGeneratedFile(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".markata-minify-")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o644); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
+}
+
 func loadMinifyCache(path, root string) *minifyCache {
 	cache := &minifyCache{root: root, files: make(map[string]string)}
 	if data, err := os.ReadFile(path); err == nil {
 		if err := json.Unmarshal(data, &cache.files); err != nil {
+			cache.files = make(map[string]string)
+		}
+		if cache.files == nil {
 			cache.files = make(map[string]string)
 		}
 	}
@@ -73,7 +97,7 @@ func (c *minifyCache) save(path string) {
 	data, err := json.Marshal(c.files)
 	c.mu.Unlock()
 	if err == nil {
-		if err := os.WriteFile(path, data, 0o600); err != nil {
+		if err := writeGeneratedFile(path, data); err != nil {
 			return
 		}
 	}

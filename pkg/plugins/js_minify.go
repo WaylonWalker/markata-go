@@ -204,9 +204,8 @@ func (p *JSMinifyPlugin) minifyFile(filePath string) (original, minified int64, 
 
 	minified = int64(buf.Len())
 
-	// Write the minified content back
-	//nolint:gosec // G306: JS files need 0644 for web serving
-	if err := os.WriteFile(filePath, buf.Bytes(), 0o644); err != nil {
+	// Replace the file atomically so hard-linked live releases are not mutated.
+	if err := writeGeneratedFile(filePath, buf.Bytes()); err != nil {
 		return original, 0, fmt.Errorf("writing minified file: %w", err)
 	}
 

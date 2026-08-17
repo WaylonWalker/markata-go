@@ -31,3 +31,13 @@ func TestRunMinificationCachesUnchangedFiles(t *testing.T) {
 		t.Fatalf("minifier called %d times, want 1", calls)
 	}
 }
+
+func TestLoadMinifyCacheTreatsNullAsEmpty(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "cache")
+	if err := os.WriteFile(path, []byte("null"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cache := loadMinifyCache(path, root)
+	cache.files["css/site.css"] = "hash"
+}
