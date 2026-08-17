@@ -29,6 +29,13 @@ type Resolved struct {
 	Bytes  int64
 }
 
+// ResolveOptions controls validation performed while resolving bundled font
+// assets. Built-in assets are immutable application artifacts and can skip
+// checksum reads during normal builds; custom catalogs must keep validation.
+type ResolveOptions struct {
+	ValidateChecksums bool
+}
+
 const roleStyleProperty = "style"
 
 const managedFontsManifest = ".markata-fonts.json"
@@ -42,13 +49,18 @@ func (c *Catalog) ResolveMany(names []string, catalogRoot, renderedHTML string) 
 
 // ResolveManyFS resolves multiple packs from a portable filesystem source.
 func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
+	return c.ResolveManyFSWithOptions(names, assetFS, assetRoot, renderedHTML, ResolveOptions{ValidateChecksums: true})
+}
+
+// ResolveManyFSWithOptions resolves packs with explicit asset validation.
+func (c *Catalog) ResolveManyFSWithOptions(names []string, assetFS fs.FS, assetRoot, renderedHTML string, options ResolveOptions) (*Resolved, error) {
 	if len(names) == 0 {
 		names = []string{"system"}
 	}
 	result := &Resolved{Packs: map[string]FontPack{}}
 	seen := map[string]bool{}
 	for _, name := range names {
-		resolved, err := c.ResolveFS(name, assetFS, assetRoot, renderedHTML)
+		resolved, err := c.resolveFS(name, assetFS, assetRoot, renderedHTML, options.ValidateChecksums)
 		if err != nil {
 			return nil, err
 		}
@@ -81,6 +93,10 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 // ResolveFS resolves manifests and assets from an fs.FS. The filesystem is
 // rooted at the catalog's asset directory, so all catalog paths are portable.
 func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
+	return c.resolveFS(name, assetFS, assetRoot, renderedHTML, true)
+}
+
+func (c *Catalog) resolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string, validateChecksums bool) (*Resolved, error) {
 	resolvedName, pack, err := c.ResolvePack(name)
 	if err != nil {
 		return nil, err
@@ -119,7 +135,7 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 			if entry.Profile != "" && entry.Profile != tier {
 				return nil, fmt.Errorf("font tier %q for %s declares profile %q", tier, source, entry.Profile)
 			}
-			if entry.SHA256 != "" {
+			if validateChecksums && entry.SHA256 != "" {
 				hash, _, hashErr := AssetSHA256FS(assetFS, path)
 				if hashErr != nil || entry.SHA256 != hash {
 					return nil, fmt.Errorf("font tier %q for %s has checksum %q, want %s", tier, source, hash, entry.SHA256)
