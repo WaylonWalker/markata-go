@@ -70,6 +70,7 @@ type Contract struct {
 	Palettes                  []Palette                     `json:"palettes"`
 	Aliases                   map[string]string             `json:"aliases"`
 	MotifURLSchemes           []string                      `json:"motif_url_schemes"`
+	Presentation              map[string]any                `json:"presentation"`
 }
 
 // FinalRenderPalette is the semantic palette emitted by Markata's final CSS
