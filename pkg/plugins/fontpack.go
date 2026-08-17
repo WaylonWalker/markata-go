@@ -82,7 +82,7 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 	if err != nil {
 		return err
 	}
-	resolved, err := p.source.Catalog.ResolveManyFS(names, p.source.FS, p.source.Root, rendered.String())
+	resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
 	if err != nil {
 		return err
 	}
@@ -95,6 +95,13 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	return nil
+}
+
+func fontpackResolveOptions(source *fontpacks.CatalogSource) fontpacks.ResolveOptions {
+	// Bundled assets are immutable and already validated when the release is
+	// built. Re-hashing every WOFF2 file on every site build dominates warm
+	// builds, while custom catalogs must retain runtime checksum validation.
+	return fontpacks.ResolveOptions{ValidateChecksums: !source.Builtin}
 }
 
 func markPostFontpack(content, name string) string {
