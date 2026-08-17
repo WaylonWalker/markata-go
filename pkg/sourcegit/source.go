@@ -22,6 +22,14 @@ type State struct {
 	fingerprint string
 }
 
+// ReadOptions controls which ignored files contribute to the source
+// fingerprint. Ignored files are build inputs when Git-ignore filtering is
+// disabled, but generated ignored trees must not be walked when filtering is
+// enabled.
+type ReadOptions struct {
+	IncludeIgnoredContent bool
+}
+
 // Command creates a Git command rooted at sourceDir using the same safe
 // directory handling as the builder-admin source checkout.
 func Command(ctx context.Context, sourceDir string, args ...string) *exec.Cmd {
@@ -32,6 +40,12 @@ func Command(ctx context.Context, sourceDir string, args ...string) *exec.Cmd {
 // Read returns HEAD and whether Git reports any tracked, staged, deleted,
 // untracked, or ignored files in the source tree.
 func Read(ctx context.Context, sourceDir string) (State, error) {
+	return ReadWithOptions(ctx, sourceDir, ReadOptions{IncludeIgnoredContent: true})
+}
+
+// ReadWithOptions returns the source state using the requested ignored-file
+// policy.
+func ReadWithOptions(ctx context.Context, sourceDir string, options ReadOptions) (State, error) {
 	commit, err := Head(ctx, sourceDir)
 	if err != nil {
 		return State{}, err
@@ -43,15 +57,24 @@ func Read(ctx context.Context, sourceDir string) (State, error) {
 	dirty := strings.TrimSpace(string(statusOutput)) != ""
 	// A build may disable Markata's .gitignore filtering. Treat ignored files
 	// as dirty as well, because Git cannot prove that they are not inputs.
-	ignoredOutput, err := Command(ctx, sourceDir, "status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all").Output()
+	ignoredMode := "--ignored=matching"
+	if options.IncludeIgnoredContent {
+		ignoredMode = "--ignored"
+	}
+	ignoredOutput, err := Command(ctx, sourceDir, "status", "--porcelain=v1", "-z", ignoredMode, "--untracked-files=all").Output()
 	if err != nil {
 		return State{}, fmt.Errorf("read ignored git worktree status: %w", err)
 	}
 	ignoredSources := ignoredMarkdownFiles(ignoredOutput)
-	if strings.Contains(string(ignoredOutput), "!! ") {
+	if options.IncludeIgnoredContent && strings.Contains(string(ignoredOutput), "!! ") {
+		dirty = true
+	} else if !options.IncludeIgnoredContent && len(ignoredSources) > 0 {
+		// An ignored directory such as generated output is not a build input
+		// when Git-ignore filtering is enabled. Direct ignored Markdown files
+		// remain visible so the source contract can still report them.
 		dirty = true
 	}
-	fingerprint, err := snapshotFingerprint(ctx, sourceDir, statusOutput, ignoredSources)
+	fingerprint, err := snapshotFingerprint(ctx, sourceDir, statusOutput, ignoredSources, options)
 	if err != nil {
 		return State{}, err
 	}
@@ -96,7 +119,7 @@ func ignoredMarkdownFiles(status []byte) []string {
 	return result
 }
 
-func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []byte, ignoredSources []string) (string, error) {
+func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []byte, ignoredSources []string, options ReadOptions) (string, error) {
 	hash := sha256.New()
 	_, _ = hash.Write(statusOutput)
 	// Hash the changed paths and their current bytes instead of asking Git to
@@ -116,7 +139,7 @@ func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []b
 		if name == "" {
 			continue
 		}
-		if err := hashSourceFile(ctx, hash, sourceDir, name, "tracked"); err != nil {
+		if err := hashSourceFile(ctx, hash, sourceDir, name, "tracked", options); err != nil {
 			return "", err
 		}
 	}
@@ -128,19 +151,19 @@ func snapshotFingerprint(ctx context.Context, sourceDir string, statusOutput []b
 		if name == "" {
 			continue
 		}
-		if err := hashSourceFile(ctx, hash, sourceDir, name, "untracked"); err != nil {
+		if err := hashSourceFile(ctx, hash, sourceDir, name, "untracked", options); err != nil {
 			return "", err
 		}
 	}
 	for _, path := range ignoredSources {
-		if err := hashSourceFile(ctx, hash, sourceDir, path, "ignored"); err != nil {
+		if err := hashSourceFile(ctx, hash, sourceDir, path, "ignored", options); err != nil {
 			return "", err
 		}
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
-func hashSourceFile(ctx context.Context, hash io.Writer, sourceDir, name, kind string) error {
+func hashSourceFile(ctx context.Context, hash io.Writer, sourceDir, name, kind string, options ReadOptions) error {
 	if _, err := io.WriteString(hash, kind+"\x00"+name+"\x00"); err != nil {
 		return fmt.Errorf("hash %s source file %q: %w", kind, name, err)
 	}
@@ -166,7 +189,7 @@ func hashSourceFile(ctx context.Context, hash io.Writer, sourceDir, name, kind s
 		return nil
 	}
 	if lstatErr == nil && info.IsDir() {
-		return hashSubmodule(ctx, hash, path, name)
+		return hashSubmodule(ctx, hash, path, name, options)
 	}
 	if lstatErr == nil {
 		if _, err := fmt.Fprintf(hash, "mode\x00%#o\x00", info.Mode()); err != nil {
@@ -176,7 +199,7 @@ func hashSourceFile(ctx context.Context, hash io.Writer, sourceDir, name, kind s
 	return hashFileContents(hash, path, name, kind)
 }
 
-func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error {
+func hashSubmodule(ctx context.Context, hash io.Writer, path, name string, options ReadOptions) error {
 	head, err := Command(ctx, path, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return fmt.Errorf("read submodule HEAD %q: %w", name, err)
@@ -194,7 +217,11 @@ func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error
 			return fmt.Errorf("hash submodule %q: %w", name, err)
 		}
 	}
-	ignoredStatus, err := Command(ctx, path, "status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all").Output()
+	ignoredMode := "--ignored=matching"
+	if options.IncludeIgnoredContent {
+		ignoredMode = "--ignored"
+	}
+	ignoredStatus, err := Command(ctx, path, "status", "--porcelain=v1", "-z", ignoredMode, "--untracked-files=all").Output()
 	if err != nil {
 		return fmt.Errorf("read submodule ignored files %q: %w", name, err)
 	}
@@ -203,7 +230,7 @@ func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error
 		return fmt.Errorf("hash submodule ignored files %q: %w", name, err)
 	}
 	for _, child := range ignoredSources {
-		if err := hashSourceFile(ctx, hash, path, child, "submodule-ignored"); err != nil {
+		if err := hashSourceFile(ctx, hash, path, child, "submodule-ignored", options); err != nil {
 			return err
 		}
 	}
@@ -215,7 +242,7 @@ func hashSubmodule(ctx context.Context, hash io.Writer, path, name string) error
 		if child == "" {
 			continue
 		}
-		if err := hashSourceFile(ctx, hash, path, child, "submodule-untracked"); err != nil {
+		if err := hashSourceFile(ctx, hash, path, child, "submodule-untracked", options); err != nil {
 			return err
 		}
 	}

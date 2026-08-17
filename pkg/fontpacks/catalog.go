@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -255,17 +256,18 @@ func (c *Catalog) RequiredTiers(pack FontPack, renderedHTML string) map[string]m
 			result[r.Source][r.Tier] = true
 		}
 	}
+	compiledProfiles := compileSubsetProfiles(c.SubsetProfiles)
 	text := VisibleText(renderedHTML)
 	for source, tiers := range result {
 		for _, r := range text {
 			if r == utf8.RuneError {
 				continue
 			}
-			if inProfile(c.SubsetProfiles, "latin-ext", r) {
+			if compiledProfileContains(compiledProfiles["latin-ext"], r) {
 				tiers["latin-ext"] = true
 				continue
 			}
-			if !inAnyProfile(c.SubsetProfiles, tiers, r) {
+			if !inAnyCompiledProfile(compiledProfiles, tiers, r) {
 				tiers["full"] = true
 			}
 		}
@@ -311,21 +313,58 @@ func (c *Catalog) RequiredTiersForManifest(pack FontPack, renderedHTML string, m
 	return result
 }
 
-func inAnyProfile(profiles map[string]SubsetProfile, tiers map[string]bool, r rune) bool {
+type unicodeInterval struct {
+	start rune
+	end   rune
+}
+
+type compiledSubsetProfile struct {
+	passthrough bool
+	intervals   []unicodeInterval
+}
+
+func compileSubsetProfiles(profiles map[string]SubsetProfile) map[string]compiledSubsetProfile {
+	compiled := make(map[string]compiledSubsetProfile, len(profiles))
+	for name, profile := range profiles {
+		result := compiledSubsetProfile{passthrough: profile.Passthrough}
+		for _, value := range profile.Unicode {
+			matches := unicodeRangeRE.FindStringSubmatch(strings.TrimSpace(value))
+			if len(matches) == 0 {
+				continue
+			}
+			start, err := strconv.ParseInt(matches[1], 16, 32)
+			if err != nil {
+				continue
+			}
+			end := start
+			if matches[2] != "" {
+				end, err = strconv.ParseInt(matches[2], 16, 32)
+				if err != nil {
+					continue
+				}
+			}
+			result.intervals = append(result.intervals, unicodeInterval{start: rune(start), end: rune(end)})
+		}
+		compiled[name] = result
+	}
+	return compiled
+}
+
+func inAnyCompiledProfile(profiles map[string]compiledSubsetProfile, tiers map[string]bool, r rune) bool {
 	for tier := range tiers {
-		if inProfile(profiles, tier, r) {
+		if compiledProfileContains(profiles[tier], r) {
 			return true
 		}
 	}
 	return false
 }
-func inProfile(profiles map[string]SubsetProfile, name string, r rune) bool {
-	p, ok := profiles[name]
-	if !ok || p.Passthrough {
+
+func compiledProfileContains(profile compiledSubsetProfile, r rune) bool {
+	if profile.passthrough {
 		return false
 	}
-	for _, s := range p.Unicode {
-		if unicodeRangeContains(s, r) {
+	for _, interval := range profile.intervals {
+		if r >= interval.start && r <= interval.end {
 			return true
 		}
 	}
@@ -335,48 +374,44 @@ func inProfile(profiles map[string]SubsetProfile, name string, r rune) bool {
 var unicodeRangeRE = regexp.MustCompile(`(?i)^U\+([0-9A-F]+)(?:-([0-9A-F]+))?$`)
 
 func unicodeRangeContains(s string, r rune) bool {
-	m := unicodeRangeRE.FindStringSubmatch(strings.TrimSpace(s))
-	if len(m) == 0 {
-		return false
-	}
-	a, err := strconv.ParseInt(m[1], 16, 32)
-	if err != nil {
-		return false
-	}
-	b := a
-	if m[2] != "" {
-		b, err = strconv.ParseInt(m[2], 16, 32)
-		if err != nil {
-			return false
-		}
-	}
-	return int64(r) >= a && int64(r) <= b
+	profiles := compileSubsetProfiles(map[string]SubsetProfile{"range": {Unicode: []string{s}}})
+	return compiledProfileContains(profiles["range"], r)
 }
 
 // VisibleText extracts text nodes while excluding markup, attributes, scripts,
 // and styles. It is deliberately site-level and never creates a page subset.
 func VisibleText(source string) string {
-	doc, err := html.Parse(strings.NewReader(source))
-	if err != nil {
-		return regexp.MustCompile(`<[^>]*>`).ReplaceAllString(source, " ")
-	}
+	tokenizer := html.NewTokenizer(strings.NewReader(source))
 	var b strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			b.WriteString(n.Data)
-			b.WriteByte(' ')
-		}
-		if n.Type == html.ElementNode && (n.Data == "script" || n.Data == "style") {
-			return
-		}
-		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
-			walk(ch)
+	skipElement := ""
+	for {
+		tokenType := tokenizer.Next()
+		switch tokenType {
+		case html.TextToken:
+			if skipElement == "" {
+				b.WriteString(tokenizer.Token().Data)
+				b.WriteByte(' ')
+			}
+		case html.StartTagToken:
+			name, _ := tokenizer.TagName()
+			if string(name) == "script" || string(name) == "style" {
+				skipElement = string(name)
+			}
+		case html.EndTagToken:
+			name, _ := tokenizer.TagName()
+			if string(name) == skipElement {
+				skipElement = ""
+			}
+		case html.ErrorToken:
+			if tokenizer.Err() == io.EOF {
+				return b.String()
+			}
+			return stripTagsRE.ReplaceAllString(source, " ")
 		}
 	}
-	walk(doc)
-	return b.String()
 }
+
+var stripTagsRE = regexp.MustCompile(`<[^>]*>`)
 
 // AssetSHA256 returns the authoritative full SHA-256 hash for an asset.
 func AssetSHA256(path string) (hash string, bytes int64, err error) {
