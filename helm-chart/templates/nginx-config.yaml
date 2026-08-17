@@ -70,6 +70,15 @@ data:
           {{- end }}
         }
 
+        {{- if .Values.site.contentIndexPath }}
+        # The Content Index is public metadata and has no article bodies.
+        # Allow browser consumers such as Plaindown to read it cross-origin.
+        location = {{ .Values.site.contentIndexPath }} {
+          add_header Access-Control-Allow-Origin "*" always;
+          try_files $uri =404;
+        }
+        {{- end }}
+
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|avif|webp)$ {
           expires 365d;
           add_header Cache-Control "public, immutable";
