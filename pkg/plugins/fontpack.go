@@ -2,11 +2,19 @@ package plugins
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+)
+
+const (
+	fontpackCacheFile    = ".markata-fontpack-cache"
+	fontpackCacheVersion = "1"
 )
 
 // FontpackPlugin installs one site-wide typography stylesheet. It never calls
@@ -82,12 +90,20 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 	if err != nil {
 		return err
 	}
-	resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
-	if err != nil {
-		return err
-	}
-	if err := resolved.CopyFS(p.source.FS, p.source.Root, output); err != nil {
-		return err
+	cacheKey := fontpackCacheKey(rendered.String(), names)
+	if !p.source.Builtin || !fontpackOutputCached(output, cacheKey) {
+		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
+		if err != nil {
+			return err
+		}
+		if err := resolved.CopyFS(p.source.FS, p.source.Root, output); err != nil {
+			return err
+		}
+		if p.source.Builtin {
+			if err := os.WriteFile(filepath.Join(output, fontpackCacheFile), []byte(cacheKey), 0o600); err != nil {
+				return err
+			}
+		}
 	}
 	for _, post := range m.Posts() {
 		if name := pageNames[post.Path]; name != "" {
@@ -95,6 +111,19 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	return nil
+}
+
+func fontpackCacheKey(rendered string, names []string) string {
+	return buildcache.ContentHash(fontpackCacheVersion + "\x00" + rendered + "\x00" + strings.Join(names, "\x00"))
+}
+
+func fontpackOutputCached(output, key string) bool {
+	data, err := os.ReadFile(filepath.Join(output, fontpackCacheFile))
+	if err != nil || strings.TrimSpace(string(data)) != key {
+		return false
+	}
+	_, err = os.Stat(filepath.Join(output, "css", "fonts.css"))
+	return err == nil
 }
 
 func fontpackResolveOptions(source *fontpacks.CatalogSource) fontpacks.ResolveOptions {
