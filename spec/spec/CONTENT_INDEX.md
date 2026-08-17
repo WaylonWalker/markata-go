@@ -114,12 +114,6 @@ owned by this output. Deployments that disable the index SHOULD use a clean
 output directory or explicitly remove the old artifact so stale metadata is
 not published.
 
-When enabled, Markata also writes a Cloudflare Pages `_headers` sidecar with
-an `Access-Control-Allow-Origin: *` rule for the configured artifact path.
-The artifact contains public metadata and no article bodies or private
-documents. This narrow rule lets browser consumers read the artifact without
-enabling cross-origin reads for the rest of the site.
-
 ## Consumer behavior
 
 Consumers SHOULD inspect `schema` and `schema_version` before decoding, ignore
