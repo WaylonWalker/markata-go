@@ -123,6 +123,9 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	if err != nil {
 		return err
 	}
+	if strings.EqualFold(filepath.Clean(destination), filepath.Join(filepath.Clean(m.Config().OutputDir), "_headers")) {
+		return fmt.Errorf("content_index.output cannot be %q; it is reserved for static headers", cfg.Output)
+	}
 
 	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return fmt.Errorf("create content index directory: %w", err)
@@ -146,6 +149,93 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	}
 	if err := replaceContentIndex(temporaryName, destination); err != nil {
 		return fmt.Errorf("write content index: %w", err)
+	}
+	if err := writeContentIndexHeaders(m.Config().OutputDir, destination); err != nil {
+		return fmt.Errorf("write content index CORS headers: %w", err)
+	}
+	return nil
+}
+
+// writeContentIndexHeaders emits the Cloudflare Pages static-header sidecar
+// for the public artifact. The artifact contains public metadata only, so it
+// is safe and useful for browser consumers on any origin. Keep the rule
+// specific to the artifact instead of widening CORS for the complete site.
+func writeContentIndexHeaders(outputDir, destination string) error {
+	relative, err := filepath.Rel(outputDir, destination)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		// A Pages header file can only control files inside the deployed output.
+		// Absolute destinations outside it are supported for artifact generation,
+		// but must not receive a misleading rule in output/_headers.
+		return nil
+	}
+	route := "/" + filepath.ToSlash(relative)
+	if strings.ContainsAny(route, "*?[]{}:\r\n") {
+		// Cloudflare Pages treats these characters as route patterns. Do not
+		// turn a user-selected artifact name into a broader CORS grant.
+		return nil
+	}
+	headersPath := filepath.Join(outputDir, "_headers")
+	existing, err := os.ReadFile(headersPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read %s: %w", headersPath, err)
+	}
+	lines := strings.Split(strings.ReplaceAll(string(existing), "\r\n", "\n"), "\n")
+	for index, line := range lines {
+		if line != route {
+			continue
+		}
+		end := index + 1
+		for end < len(lines) && (lines[end] == "" || strings.HasPrefix(lines[end], " ") || strings.HasPrefix(lines[end], "\t")) {
+			end++
+		}
+		for _, header := range lines[index+1 : end] {
+			if strings.HasPrefix(strings.ToLower(strings.TrimSpace(header)), "access-control-allow-origin:") {
+				return nil // Preserve an explicitly configured restrictive policy.
+			}
+		}
+		lines = append(lines[:index+1], append([]string{"  Access-Control-Allow-Origin: *"}, lines[index+1:]...)...)
+		return writeHeadersFile(headersPath, strings.Join(lines, "\n"))
+	}
+	block := fmt.Sprintf("%s\n  Access-Control-Allow-Origin: *\n", route)
+	content := append([]byte(nil), existing...)
+	if len(content) > 0 && content[len(content)-1] != '\n' {
+		content = append(content, '\n')
+	}
+	content = append(content, []byte(block)...)
+	return writeHeadersFile(headersPath, string(content))
+}
+
+func writeHeadersFile(path, content string) error {
+	mode := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat %s: %w", path, err)
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".headers-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create temporary headers file: %w", err)
+	}
+	temporaryName := temporary.Name()
+	defer os.Remove(temporaryName)
+	if err := temporary.Chmod(mode); err != nil {
+		_ = temporary.Close()
+		return fmt.Errorf("set headers permissions: %w", err)
+	}
+	if _, err := temporary.WriteString(content); err != nil {
+		_ = temporary.Close()
+		return fmt.Errorf("write temporary headers file: %w", err)
+	}
+	if err := temporary.Close(); err != nil {
+		return fmt.Errorf("close temporary headers file: %w", err)
+	}
+	if runtime.GOOS == tailwindOSWindows {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove existing headers file: %w", err)
+		}
+	}
+	if err := os.Rename(temporaryName, path); err != nil {
+		return fmt.Errorf("replace headers file: %w", err)
 	}
 	return nil
 }
