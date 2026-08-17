@@ -112,6 +112,11 @@
     ]
   },
   "contract_version": 1,
+  "presentation": {
+    "canonical_document": {
+      "highlight_radius": 10.08
+    }
+  },
   "motif_url_schemes": ["http:", "https:", "data:image/svg+xml,"],
   "defaults": {
     "aesthetic": "minimal",

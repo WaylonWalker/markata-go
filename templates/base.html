@@ -13,8 +13,10 @@
 
   {% block head %}
   <script>
-    if (new URLSearchParams(location.search).get('specimen') === 'canonical-headings') {
+    var params = new URLSearchParams(location.search);
+    if (params.get('specimen') === 'canonical-headings') {
       document.documentElement.classList.add('canonical-specimen-route');
+      if (params.get('capture') === 'natural') document.documentElement.classList.add('canonical-natural-route');
     }
   </script>
   <script>
@@ -576,13 +578,27 @@
          max-width: 100% !important;
          margin-inline: auto;
        }
-       html.canonical-specimen-route [data-rendering-specimen="canonical-headings"] {
+       html.canonical-specimen-route:not(.canonical-natural-route) [data-rendering-specimen="canonical-headings"] {
          box-sizing: border-box !important;
          width: 1280px !important;
          height: 1000px !important;
          min-height: 1000px !important;
          max-height: 1000px !important;
          overflow: hidden !important;
+       }
+       html.canonical-natural-route,
+       html.canonical-natural-route body,
+       html.canonical-natural-route body .page-wrapper,
+       html.canonical-natural-route body [data-rendering-specimen="canonical-headings"] {
+         height: auto !important;
+         min-height: 0 !important;
+         max-height: none !important;
+         overflow: visible !important;
+       }
+       html.canonical-natural-route body { width: 1280px; }
+       html.canonical-natural-route body [data-rendering-specimen="canonical-headings"] {
+         width: 1280px !important;
+         max-width: none !important;
        }
    </style>
   {% endblock %}

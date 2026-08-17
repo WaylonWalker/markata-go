@@ -52,6 +52,37 @@ func TestCanonicalSpecimenCaptureGeometry(t *testing.T) {
 	}
 }
 
+func TestCanonicalTemplateTreesHaveEquivalentHeadingProfile(t *testing.T) {
+	paths := []string{filepath.Join("..", "..", "templates", "base.html"), filepath.Join("..", "..", "pkg", "themes", "default", "templates", "base.html")}
+	var signatures []string
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		if strings.Contains(text, "first-of-type") || strings.Contains(text, "font-size: 56px") {
+			t.Fatalf("stale H1 workaround remains in %s", path)
+		}
+		signature := []string{}
+		for _, selector := range []string{".post-content h1", ".post-content h2"} {
+			start := strings.Index(text, `[data-rendering-specimen="canonical-headings"] `+selector+" {")
+			if start < 0 {
+				t.Fatalf("%s missing %s rule", path, selector)
+			}
+			end := strings.Index(text[start:], "}")
+			if end < 0 {
+				t.Fatalf("%s has unterminated %s rule", path, selector)
+			}
+			signature = append(signature, strings.Join(strings.Fields(text[start:start+end]), " "))
+		}
+		signatures = append(signatures, strings.Join(signature, "|"))
+	}
+	if signatures[0] != signatures[1] {
+		t.Fatal("canonical H1/H2 presentation rules drifted between template trees")
+	}
+}
+
 func TestCanonicalDocumentProfileExists(t *testing.T) {
 	profilePath := filepath.Join("..", "..", "spec", "rendering-contract", "profiles", "canonical-document-v1.json")
 	profile, err := os.ReadFile(profilePath)

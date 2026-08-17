@@ -287,9 +287,15 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	}
 	motifZ := motifLayerZ(theme.Motif.Layer)
 	aestheticCSS := ""
+	canonicalHighlightRadius := "0px"
 	if contract, err := renderingcontract.Load(); err == nil {
 		if tokens, ok := contract.Aesthetics[theme.Aesthetic]; ok {
 			aestheticCSS = fmt.Sprintf("--radius: %v; --shadow: %v; --space: %v;", tokens["radius"], tokens["shadow"], tokens["spacing"])
+		}
+		if presentation, ok := contract.Presentation["canonical_document"].(map[string]any); ok {
+			if radius, ok := presentation["highlight_radius"].(float64); ok {
+				canonicalHighlightRadius = fmt.Sprintf("%.2fpx", radius)
+			}
 		}
 	}
 	underImage := "none"
@@ -305,6 +311,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 			aestheticCSS += fmt.Sprintf(" %s: %s;", name, value)
 		}
 	}
+	aestheticCSS += fmt.Sprintf(" --canonical-highlight-radius: %s;", canonicalHighlightRadius)
 	return fmt.Sprintf("\n@layer tokens {\n  :root {\n    %s\n    --theme-contract-version: %d;\n    --theme-texture-kind: %q; --theme-texture-color-mix: %.3f; --theme-texture-scale: %.3f; --theme-texture-scope: %q; --theme-texture-opacity: %.3f; --theme-texture-image: %s;\n    --theme-heading-texture-kind: %q; --theme-heading-texture-color-mix: %.3f; --theme-heading-texture-scale: %.3f; --theme-heading-texture-color: %s; --theme-heading-texture-mask: %s;\n    --theme-motif-kind: %q; --theme-motif-glyph: %q; --theme-motif-color-mix: %.3f; --theme-motif-layer: %q; --theme-motif-image: %s; --theme-motif-under-image: %s; --theme-motif-over-image: %s; --theme-motif-mask: %s; --theme-motif-paint: %s; --theme-motif-size: %q; --theme-motif-gap: %q; --theme-motif-row-offset: %.3f; --theme-motif-wobble: %.3f; --theme-motif-scatter: %.3f; --theme-motif-color: %q; --theme-motif-url: %q; --theme-motif-z: %s;\n  }\n  body { background-image: var(--theme-motif-under-image); background-size: var(--theme-motif-field-size); background-position: 0 0; }\n  body::before { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: -1; background-image: var(--theme-texture-image); background-size: calc(180px * var(--theme-texture-scale)); background-position: 0 0; opacity: var(--theme-texture-opacity); }\n  [data-theme-texture-scope=quiet] main, [data-theme-texture-scope=quiet] article, [data-theme-texture-scope=quiet] [data-reading-surface], [data-theme-texture-scope=quiet] .reading-surface { background-color: var(--color-background, #fff); }\n  h1, h2, h3, h4, h5, h6 { color: transparent; background-color: var(--color-text, #222); background-image: var(--theme-heading-texture-color); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }\n  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-color: var(--theme-motif-paint); background-image: var(--theme-motif-over-image); mask-image: var(--theme-motif-mask); -webkit-mask-image: var(--theme-motif-mask); background-size: var(--theme-motif-field-size); mask-size: var(--theme-motif-field-size); background-position: 0 0; mask-position: 0 0; background-repeat: repeat; mask-repeat: repeat; opacity: 1; transform: none; }\n}\n", aestheticCSS, theme.ContractVersion, textureKind, textureMix, theme.Texture.Scale, theme.Texture.Scope, textureOpacity, textureImage, headingTextureKind, headingMix, theme.HeadingTexture.Scale, headingColor, headingImage, theme.Motif.Kind, theme.Motif.Glyph, motifMix, theme.Motif.Layer, motifImage, underImage, overImage, motifMask, motifPaint, theme.Motif.Size, theme.Motif.Gap, theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter, theme.Motif.Color, theme.Motif.URL, motifZ)
 }
 

@@ -1739,6 +1739,11 @@
       "variant": "light"
     }
   ],
+  "presentation": {
+    "canonical_document": {
+      "highlight_radius": 10.08
+    }
+  },
   "textures": {
     "brush": {
       "curve": 0.96,

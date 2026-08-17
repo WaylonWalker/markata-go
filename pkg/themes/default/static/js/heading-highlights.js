@@ -3,7 +3,7 @@
   "use strict";
 
   // canonical-document-v1 contour input; never infer this from consumer CSS.
-  var canonicalHighlightRadius = 10.08;
+  var canonicalHighlightRadius = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--canonical-highlight-radius")) || 10.08;
 
   var selector = "html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) .heading-highlight";
   var scheduled = false;
