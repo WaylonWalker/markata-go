@@ -50,4 +50,15 @@ type Document struct {
 	Description *string
 	Feeds       []string
 	Aliases     []string
+	Image       *string
+	Video       *string
+	Avatar      *string
+	Bio         *string
+	Thumbnail   *string
+	Cover       *string
+	OGImage     *string
+	Author      *string
+	Authors     []string
+	Category    *string
+	Categories  []string
 }

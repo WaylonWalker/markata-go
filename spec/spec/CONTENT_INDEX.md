@@ -49,6 +49,15 @@ the resolved Markata URL identifiers. `title` is the authored/display value;
 are RFC 3339 date-time strings and absent dates are omitted. `description` is
 optional. Tags, aliases, and feeds are arrays of strings.
 
+The following optional document fields MAY be emitted when present in resolved
+frontmatter or author metadata: `image`, `video`, `avatar`, `thumbnail`,
+`cover`, `og_image`, `author`, `authors`, `bio`, `category`, and `categories`.
+Media fields are source references, not downloaded assets. `authors` and
+`categories` are arrays of strings; the other fields are strings. Author order
+is preserved because the first author can be semantically significant.
+Consumers
+MUST continue to ignore these fields when they do not need them.
+
 Documents are sorted by normalized source path. Tags, aliases, and feed names
 are sorted lexicographically. JSON object keys are emitted in a fixed Go
 struct order. These rules make equivalent builds byte-deterministic.

@@ -33,6 +33,13 @@ Use each document's repository-relative `path` to find its source file. The
 `feeds` array already contains resolved Markata feed membership. Consumers
 should not implement Markata's feed filter language again.
 
+Documents may also include optional resolved frontmatter and author metadata:
+`image`, `video`, `avatar`, `bio`, `thumbnail`, `cover`, `og_image`, `author`,
+`authors`, `category`, and `categories`. Media values are source references;
+Markata does not copy or download those assets into the index. Author order is
+preserved. `cover` uses `cover` first and `cover_image` as a compatibility
+fallback. `og_image` uses `og_image` first and `social_image` as a fallback.
+
 `source.commit` identifies the Git `HEAD` observed for the build.
 `source.dirty` is false when the working tree was observed clean at the Content
 Index source-state boundaries. It is true when Git reports tracked, staged,
