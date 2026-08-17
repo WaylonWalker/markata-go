@@ -447,7 +447,7 @@ func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
 			return err
 		}
 		// Generated web asset must remain world-readable for static hosting.
-		if err := os.WriteFile(filepath.Join(outputDir, "assets", "fonts", name), data, 0o644); err != nil { //nolint:gosec // public static asset
+		if err := writePublicFile(filepath.Join(outputDir, "assets", "fonts", name), data); err != nil {
 			return err
 		}
 	}
@@ -455,7 +455,29 @@ func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
 		return err
 	}
 	// Generated web asset must remain world-readable for static hosting.
-	return os.WriteFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS), 0o644) //nolint:gosec // public static asset
+	return writePublicFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS))
+}
+
+func writePublicFile(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".markata-write-")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o644); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }
 
 type managedFonts struct {
@@ -497,7 +519,7 @@ func updateManagedFonts(outputDir string, assets []Asset) error {
 	}
 	data = append(data, '\n')
 	// Generated web asset must remain world-readable for static hosting.
-	return os.WriteFile(manifestPath, data, 0o644) //nolint:gosec // public static asset
+	return writePublicFile(manifestPath, data)
 }
 
 // CleanManagedFonts removes only files named by the previous Markata manifest.
