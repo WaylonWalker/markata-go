@@ -6,6 +6,7 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 
 - use `markata-go build --fast` for faster development loops
 - use `markata-go serve --fast` for the normal live-edit loop
+- use `markata-go serve --incremental` for a production-style live-edit loop
 - use `markata-go reader update` when you only need fresh `/reader/` feed data for the next build
 - prefer `[markata-go.blogroll] refresh_on_build = false` when you want to keep blogroll pages but move remote refresh work out of the normal build
 - use `markata-go reader update --concurrency <n>` when reader refresh latency is dominated by many remote feeds
@@ -45,7 +46,7 @@ For `markata-go build --fast`, file discovery still rescans the content tree on 
 removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
 reuses in-memory and on-disk state for incremental rebuilds between change events.
 
-So `--fast` is good for content, template, and most styling iteration, but it is not a full partial build mode.
+So `--fast` is good for content, template, and most styling iteration, but it is not a full partial build mode. `serve --incremental` keeps the partial-build cache while retaining normal output processing.
 
 ## Guidance
 
