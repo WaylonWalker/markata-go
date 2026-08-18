@@ -35,6 +35,23 @@ Rules:
 - repeated includes are loaded once
 - cycles fail with a clear error
 
+## Content Index
+
+Enable the optional metadata artifact with a plugin table:
+
+```toml
+[markata-go.content_index]
+enabled = true
+output = "content-index.json"
+```
+
+The output path is relative to `output_dir` unless it is absolute. The index
+contains resolved public document metadata and feed membership, but never
+complete article bodies. See the [Content Index guide](/docs/guides/content-index/)
+for the versioned format and consumer rules. Environment overrides are also
+available for isolated builds: `MARKATA_GO_CONTENT_INDEX_ENABLED=true` and
+`MARKATA_GO_CONTENT_INDEX_OUTPUT=/tmp/content-index.json`.
+
 Precedence:
 
 1. built-in defaults

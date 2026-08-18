@@ -132,6 +132,23 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.Search.Backend = value
 	case "search_bleve_endpoint":
 		config.Search.Bleve.Endpoint = value
+	case "content_index_enabled", "contentindex_enabled", "content_index_output", "contentindex_output":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		contentIndex, contentIndexOK := config.Extra["content_index"].(map[string]interface{})
+		if !contentIndexOK {
+			contentIndex = nil
+		}
+		if contentIndex == nil {
+			contentIndex = make(map[string]interface{})
+		}
+		if strings.HasSuffix(keyLower, "enabled") {
+			contentIndex["enabled"] = parseBool(value)
+		} else {
+			contentIndex["output"] = value
+		}
+		config.Extra["content_index"] = contentIndex
 	// Pagefind search settings
 	case "search_pagefind_auto_install":
 		autoInstall := parseBool(value)

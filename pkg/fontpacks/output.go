@@ -29,6 +29,13 @@ type Resolved struct {
 	Bytes  int64
 }
 
+// ResolveOptions controls validation performed while resolving bundled font
+// assets. Built-in assets are immutable application artifacts and can skip
+// checksum reads during normal builds; custom catalogs must keep validation.
+type ResolveOptions struct {
+	ValidateChecksums bool
+}
+
 const roleStyleProperty = "style"
 
 const managedFontsManifest = ".markata-fonts.json"
@@ -42,13 +49,18 @@ func (c *Catalog) ResolveMany(names []string, catalogRoot, renderedHTML string) 
 
 // ResolveManyFS resolves multiple packs from a portable filesystem source.
 func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
+	return c.ResolveManyFSWithOptions(names, assetFS, assetRoot, renderedHTML, ResolveOptions{ValidateChecksums: true})
+}
+
+// ResolveManyFSWithOptions resolves packs with explicit asset validation.
+func (c *Catalog) ResolveManyFSWithOptions(names []string, assetFS fs.FS, assetRoot, renderedHTML string, options ResolveOptions) (*Resolved, error) {
 	if len(names) == 0 {
 		names = []string{"system"}
 	}
 	result := &Resolved{Packs: map[string]FontPack{}}
 	seen := map[string]bool{}
 	for _, name := range names {
-		resolved, err := c.ResolveFS(name, assetFS, assetRoot, renderedHTML)
+		resolved, err := c.resolveFS(name, assetFS, assetRoot, renderedHTML, options.ValidateChecksums)
 		if err != nil {
 			return nil, err
 		}
@@ -81,6 +93,10 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 // ResolveFS resolves manifests and assets from an fs.FS. The filesystem is
 // rooted at the catalog's asset directory, so all catalog paths are portable.
 func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
+	return c.resolveFS(name, assetFS, assetRoot, renderedHTML, true)
+}
+
+func (c *Catalog) resolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string, validateChecksums bool) (*Resolved, error) {
 	resolvedName, pack, err := c.ResolvePack(name)
 	if err != nil {
 		return nil, err
@@ -119,7 +135,7 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 			if entry.Profile != "" && entry.Profile != tier {
 				return nil, fmt.Errorf("font tier %q for %s declares profile %q", tier, source, entry.Profile)
 			}
-			if entry.SHA256 != "" {
+			if validateChecksums && entry.SHA256 != "" {
 				hash, _, hashErr := AssetSHA256FS(assetFS, path)
 				if hashErr != nil || entry.SHA256 != hash {
 					return nil, fmt.Errorf("font tier %q for %s has checksum %q, want %s", tier, source, hash, entry.SHA256)
@@ -435,7 +451,7 @@ func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
 			return err
 		}
 		// Generated web asset must remain world-readable for static hosting.
-		if err := os.WriteFile(filepath.Join(outputDir, "assets", "fonts", name), data, 0o644); err != nil { //nolint:gosec // public static asset
+		if err := writePublicFile(filepath.Join(outputDir, "assets", "fonts", name), data); err != nil {
 			return err
 		}
 	}
@@ -443,7 +459,29 @@ func (r *Resolved) CopyFS(assetFS fs.FS, assetRoot, outputDir string) error {
 		return err
 	}
 	// Generated web asset must remain world-readable for static hosting.
-	return os.WriteFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS), 0o644) //nolint:gosec // public static asset
+	return writePublicFile(filepath.Join(outputDir, "css", "fonts.css"), []byte(r.CSS))
+}
+
+func writePublicFile(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".markata-write-")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o644); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }
 
 type managedFonts struct {
@@ -485,7 +523,7 @@ func updateManagedFonts(outputDir string, assets []Asset) error {
 	}
 	data = append(data, '\n')
 	// Generated web asset must remain world-readable for static hosting.
-	return os.WriteFile(manifestPath, data, 0o644) //nolint:gosec // public static asset
+	return writePublicFile(manifestPath, data)
 }
 
 // CleanManagedFonts removes only files named by the previous Markata manifest.

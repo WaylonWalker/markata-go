@@ -34,8 +34,30 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube, webawesome |
 | Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
-| Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
+| Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, content_index, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build tasks | pagefind |
+
+---
+
+### content_index
+
+**Name:** `content_index`
+**Stage:** Write
+**Purpose:** Writes an optional, compact, versioned JSON artifact containing
+resolved public document metadata and feed membership.
+
+**Configuration:**
+
+```toml
+[markata-go.content_index]
+enabled = true
+output = "content-index.json"
+schema_version = 1
+```
+
+The output is disabled by default. Relative paths are below `output_dir`.
+Private, draft, and skipped documents are excluded. See the [Content Index
+guide](/docs/guides/content-index/) for the parser and compatibility contract.
 
 ---
 
