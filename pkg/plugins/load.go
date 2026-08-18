@@ -120,12 +120,12 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	// Get build cache for ModTime-based skipping
 	cache := GetBuildCache(m)
 	if lifecycle.IsServeFullRebuild(m) || cache == nil {
-		return p.loadAllFiles(m, files, baseDir, cache)
+		return p.loadAllFiles(m, files, baseDir, cache, false)
 	}
 
 	affected := lifecycle.GetServeAffectedPaths(m)
 	if len(affected) == 0 {
-		return p.loadAllFiles(m, files, baseDir, cache)
+		return p.loadAllFiles(m, files, baseDir, cache, true)
 	}
 
 	restored, _, err := p.restoreFromCacheOrLoadChanged(m, files, baseDir, cache, affected)
@@ -199,9 +199,21 @@ func (p *LoadPlugin) loadCachedPost(
 	return p.loadFile(m, file, baseDir, cache)
 }
 
-func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
+func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache, useCache bool) error {
 	if cache == nil {
 		return p.loadSequential(m, files, baseDir, cache)
+	}
+	if !useCache {
+		posts, err := p.loadFilesConcurrent(m, files, func(file string) (*models.Post, error) {
+			return p.loadFile(m, file, baseDir, cache)
+		})
+		if err != nil {
+			return err
+		}
+		for _, post := range posts {
+			m.AddPost(post)
+		}
+		return nil
 	}
 
 	affected := lifecycle.GetServeAffectedPaths(m)

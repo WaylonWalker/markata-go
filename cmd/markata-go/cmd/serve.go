@@ -1513,7 +1513,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
-	if serveFast {
+	if serveFast || serveIncremental {
 		if cached, ok := m.Cache().Get("build_cache"); ok {
 			if bc, ok := cached.(*buildcache.Cache); ok {
 				setServeCache(bc)
@@ -1591,6 +1591,9 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	}
 	if incrementalPathsRequireFullRebuild(normalized, normalizedRemoved) {
 		setFullServeRebuild(m)
+		if len(normalizedRemoved) > 0 {
+			lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
+		}
 		if verbose {
 			verbosef("[serve] incremental disabled: global input or removed content changed")
 		}

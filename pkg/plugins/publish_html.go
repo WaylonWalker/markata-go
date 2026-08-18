@@ -329,6 +329,14 @@ func safeOutputPath(outputDir, relative string) (string, error) {
 	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("refusing to remove output path outside %s: %q", root, relative)
 	}
+	resolvedRoot, rootErr := filepath.EvalSymlinks(root)
+	resolvedParent, parentErr := filepath.EvalSymlinks(filepath.Dir(target))
+	if rootErr == nil && parentErr == nil {
+		resolvedRel, relErr := filepath.Rel(resolvedRoot, resolvedParent)
+		if relErr != nil || resolvedRel == ".." || strings.HasPrefix(resolvedRel, ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("refusing symlinked output path outside %s: %q", root, relative)
+		}
+	}
 	return target, nil
 }
 
