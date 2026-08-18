@@ -466,7 +466,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		return true // Needs rendering
 	})
 
-	if lifecycle.IsServeFastMode(m) {
+	if lifecycle.IsServeIncremental(m) {
 		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
 			filtered := postsNeedingRender[:0]
 			for _, post := range postsNeedingRender {

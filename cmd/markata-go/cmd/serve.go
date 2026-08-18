@@ -59,6 +59,10 @@ var (
 	// for faster development iteration during serve.
 	serveFast bool
 
+	// serveIncremental reuses unchanged build results while retaining normal
+	// production output processing.
+	serveIncremental bool
+
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
 
@@ -89,9 +93,11 @@ var (
 )
 
 const (
-	buildStatusBuilding = "building"
-	buildStatusSuccess  = "success"
-	buildStatusError    = "error"
+	markdownExtension      = ".markdown"
+	markdownShortExtension = ".md"
+	buildStatusBuilding    = "building"
+	buildStatusSuccess     = "success"
+	buildStatusError       = "error"
 
 	buildStatusEventPrefix = "status:"
 )
@@ -164,6 +170,9 @@ Fast mode:
   --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
                Applied to both the initial build and all subsequent rebuilds.
 
+Incremental mode:
+  --incremental Reuse unchanged posts while retaining normal output processing.
+
 Example usage:
   markata-go serve              # Serve on localhost:8000 with file watching
   markata-go serve --fast       # Serve with fast mode (skip minification)
@@ -184,6 +193,7 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
+	serveCmd.Flags().BoolVar(&serveIncremental, "incremental", false, "reuse unchanged posts without skipping production output processing")
 }
 
 func runServeCommand(cmd *cobra.Command, _ []string) error {
@@ -206,8 +216,15 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 		applyFastMode(m)
 		m.Config().Extra["cache_cleanup_async"] = true
 	}
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["incremental_mode"] = true
+	}
 
-	if !serveFast {
+	if !serveFast && !serveIncremental {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
 		lifecycle.SetServeRemovedPaths(m, nil)
@@ -356,7 +373,7 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 	notifyBuildStatus()
 	verbosef("Running initial build...")
 
-	if serveFast {
+	if serveFast || serveIncremental {
 		lifecycle.SetServeFullRebuild(m, false)
 	} else {
 		lifecycle.SetServeFullRebuild(m, true)
@@ -391,7 +408,7 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		notifyBuildStatus()
 		infof("Built %d posts, %d feeds", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
-		if serveFast {
+		if serveFast || serveIncremental {
 			if cached, ok := m.Cache().Get("build_cache"); ok {
 				if bc, ok := cached.(*buildcache.Cache); ok {
 					setServeCache(bc)
@@ -1477,31 +1494,9 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 	configureLoggerForManager(m)
-
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
-
-	// Apply fast mode if requested (must re-apply on each rebuild since
-	// doRebuild creates a fresh manager via createManager)
-	if serveFast {
-		if m.Config().Extra == nil {
-			m.Config().Extra = make(map[string]any)
-		}
-		m.Config().Extra["feeds_async"] = true
-		applyFastMode(m)
-		m.Config().Extra["cache_cleanup_async"] = true
-	}
-
-	if serveFast {
-		if cached := getServeCache(); cached != nil {
-			m.Cache().Set("build_cache", cached)
-		}
-		if lifecycle.IsServeFullRebuild(m) {
-			setServePosts(nil)
-		} else if cachedPosts := getServePosts(); len(cachedPosts) > 0 {
-			lifecycle.SetServeCachedPosts(m, cachedPosts)
-		}
-	}
+	configureRebuildManager(m)
 
 	// Check for cancellation after creating manager
 	select {
@@ -1518,7 +1513,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
-	if serveFast {
+	if serveFast || serveIncremental {
 		if cached, ok := m.Cache().Get("build_cache"); ok {
 			if bc, ok := cached.(*buildcache.Cache); ok {
 				setServeCache(bc)
@@ -1544,12 +1539,38 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	notifyLiveReload()
 }
 
+func configureRebuildManager(m *lifecycle.Manager) {
+	if serveFast {
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["feeds_async"] = true
+		applyFastMode(m)
+		m.Config().Extra["cache_cleanup_async"] = true
+	}
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["incremental_mode"] = true
+	}
+	if !serveFast && !serveIncremental {
+		return
+	}
+	if cached := getServeCache(); cached != nil {
+		m.Cache().Set("build_cache", cached)
+	}
+	if lifecycle.IsServeFullRebuild(m) {
+		setServePosts(nil)
+	} else if cachedPosts := getServePosts(); len(cachedPosts) > 0 {
+		lifecycle.SetServeCachedPosts(m, cachedPosts)
+	}
+}
+
 func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths []string, forceFull, globDirty bool) {
-	if !serveFast {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
+	if !serveFast && !serveIncremental {
+		setFullServeRebuild(m)
 		return
 	}
 	contentDir := m.Config().ContentDir
@@ -1559,37 +1580,27 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	normalized, outside := normalizeServeChangedPaths(changedPaths, contentDir)
 	normalizedRemoved, outsideRemoved := normalizeServeChangedPaths(removedPaths, contentDir)
 	if (len(normalized) == 0 && len(normalizedRemoved) == 0) || forceFull || outside || outsideRemoved {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
+		setFullServeRebuild(m)
+		if len(normalizedRemoved) > 0 {
+			lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
+		}
 		if verbose {
 			verbosef("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
 		}
 		return
 	}
-
-	if !globDirty {
-		if cached := getServeCache(); cached != nil {
-			cachedFiles, _ := cached.GetGlobCache()
-			if len(cachedFiles) > 0 {
-				seen := make(map[string]struct{}, len(cachedFiles))
-				for _, file := range cachedFiles {
-					seen[file] = struct{}{}
-				}
-				for _, rel := range normalized {
-					if _, ok := seen[rel]; ok {
-						continue
-					}
-					fullPath := filepath.Join(contentDir, rel)
-					if _, err := os.Stat(fullPath); err == nil {
-						globDirty = true
-						break
-					}
-				}
-			}
+	if incrementalPathsRequireFullRebuild(normalized, normalizedRemoved) {
+		setFullServeRebuild(m)
+		if len(normalizedRemoved) > 0 {
+			lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
 		}
+		if verbose {
+			verbosef("[serve] incremental disabled: global input or removed content changed")
+		}
+		return
 	}
+
+	globDirty = serveGlobIsDirty(contentDir, normalized, globDirty)
 	lifecycle.SetServeFullRebuild(m, false)
 	lifecycle.SetServeChangedPaths(m, normalized)
 	lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
@@ -1597,6 +1608,50 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	if verbose {
 		verbosef("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s", len(normalized), len(normalizedRemoved), globDirty, contentDir)
 	}
+}
+
+func serveGlobIsDirty(contentDir string, changed []string, dirty bool) bool {
+	if dirty {
+		return true
+	}
+	cached := getServeCache()
+	if cached == nil {
+		return false
+	}
+	cachedFiles, _ := cached.GetGlobCache()
+	seen := make(map[string]struct{}, len(cachedFiles))
+	for _, file := range cachedFiles {
+		seen[file] = struct{}{}
+	}
+	for _, rel := range changed {
+		if _, ok := seen[rel]; ok {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(contentDir, rel)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func setFullServeRebuild(m *lifecycle.Manager) {
+	lifecycle.SetServeFullRebuild(m, true)
+	lifecycle.SetServeChangedPaths(m, nil)
+	lifecycle.SetServeRemovedPaths(m, nil)
+	lifecycle.SetServeGlobDirty(m, true)
+}
+
+func incrementalPathsRequireFullRebuild(changed, removed []string) bool {
+	if len(removed) > 0 {
+		return true
+	}
+	for _, path := range changed {
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != markdownShortExtension && ext != markdownExtension {
+			return true
+		}
+	}
+	return false
 }
 
 // addWatchPaths adds paths to the file watcher.

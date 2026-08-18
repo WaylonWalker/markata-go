@@ -18,6 +18,7 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go build -v --benchmark-detailed`
 - `markata-go serve` (dev server with live reload)
 - `markata-go serve --fast`
+- `markata-go serve --incremental` (reuse unchanged posts while retaining normal output processing)
 
 ### Config And Inspection
 
