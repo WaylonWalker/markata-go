@@ -83,7 +83,7 @@ func (p *HashtagTagsPlugin) Transform(m *lifecycle.Manager) error {
 		return !post.Skip && post.Content != ""
 	})
 
-	if lifecycle.IsServeFastMode(m) {
+	if lifecycle.IsServeIncremental(m) {
 		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
 			filtered := posts[:0]
 			for _, post := range posts {

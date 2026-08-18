@@ -286,7 +286,7 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	if cache == nil {
 		return nil
 	}
-	if !lifecycle.IsServeFastModeFromConfig(config) {
+	if !lifecycle.IsServeIncrementalFromConfig(config) {
 		return nil
 	}
 	postCache := cache.GetCachedPost(sourcePath)
@@ -296,29 +296,48 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 
 	slug := postCache.Slug
 	outputDir := config.OutputDir
-	postDir := filepath.Join(outputDir, slug)
-
-	if postFormats.IsHTMLEnabled() {
-		_ = os.RemoveAll(postDir)
-	} else {
-		_ = os.RemoveAll(filepath.Join(postDir, "index.md"))
-		_ = os.RemoveAll(filepath.Join(postDir, "index.txt"))
-		_ = os.RemoveAll(filepath.Join(postDir, "index.ansi"))
-		_ = os.RemoveAll(filepath.Join(postDir, "og"))
-		_ = os.Remove(filepath.Join(postDir, "index.html"))
+	postDir, err := safeOutputPath(outputDir, slug)
+	if err != nil {
+		return err
 	}
-	if postFormats.Markdown {
-		_ = os.Remove(filepath.Join(outputDir, slug+".md"))
+	_ = postFormats
+	_ = os.RemoveAll(postDir)
+	for _, extension := range []string{".md", ".txt", ".ansi"} {
+		path, err := safeOutputPath(outputDir, slug+extension)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(path)
 	}
-	if postFormats.Text {
-		_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
-	}
-	if postFormats.ANSI {
-		_ = os.Remove(filepath.Join(outputDir, slug+".ansi"))
-	}
-	_ = os.RemoveAll(filepath.Join(postDir, "og"))
 
 	return nil
+}
+
+func safeOutputPath(outputDir, relative string) (string, error) {
+	if filepath.IsAbs(relative) {
+		return "", fmt.Errorf("refusing absolute output path: %q", relative)
+	}
+	root, err := filepath.Abs(outputDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve output directory: %w", err)
+	}
+	target, err := filepath.Abs(filepath.Join(root, relative))
+	if err != nil {
+		return "", fmt.Errorf("resolve output path: %w", err)
+	}
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("refusing to remove output path outside %s: %q", root, relative)
+	}
+	resolvedRoot, rootErr := filepath.EvalSymlinks(root)
+	resolvedParent, parentErr := filepath.EvalSymlinks(filepath.Dir(target))
+	if rootErr == nil && parentErr == nil {
+		resolvedRel, relErr := filepath.Rel(resolvedRoot, resolvedParent)
+		if relErr != nil || resolvedRel == ".." || strings.HasPrefix(resolvedRel, ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("refusing symlinked output path outside %s: %q", root, relative)
+		}
+	}
+	return target, nil
 }
 
 // writeHTMLFormat writes the standard HTML output for a post.

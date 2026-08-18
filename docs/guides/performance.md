@@ -106,6 +106,7 @@ Use this flow when you want to answer "what feature is slowing this build down?"
 
 1. Run a build that matches the feature set you care about.
    - for the everyday dev loop, use `markata-go build --fast`
+   - for production-style live iteration, use `markata-go serve --incremental`
    - for real feature attribution, run the full build without `--fast`
 2. Read the footer in this order:
    - `Resource profile` tells you whether the build is mostly CPU, network, disk read, or disk write bound
