@@ -1495,8 +1495,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	}
 	configureLoggerForManager(m)
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
-	configureRebuildManager(m)
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
+	configureRebuildManager(m)
 
 	// Check for cancellation after creating manager
 	select {
@@ -1581,6 +1581,9 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	normalizedRemoved, outsideRemoved := normalizeServeChangedPaths(removedPaths, contentDir)
 	if (len(normalized) == 0 && len(normalizedRemoved) == 0) || forceFull || outside || outsideRemoved {
 		setFullServeRebuild(m)
+		if len(normalizedRemoved) > 0 {
+			lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
+		}
 		if verbose {
 			verbosef("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
 		}

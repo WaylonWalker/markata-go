@@ -297,26 +297,11 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	slug := postCache.Slug
 	outputDir := config.OutputDir
 	postDir := filepath.Join(outputDir, slug)
-
-	if postFormats.IsHTMLEnabled() {
-		_ = os.RemoveAll(postDir)
-	} else {
-		_ = os.RemoveAll(filepath.Join(postDir, "index.md"))
-		_ = os.RemoveAll(filepath.Join(postDir, "index.txt"))
-		_ = os.RemoveAll(filepath.Join(postDir, "index.ansi"))
-		_ = os.RemoveAll(filepath.Join(postDir, "og"))
-		_ = os.Remove(filepath.Join(postDir, "index.html"))
-	}
-	if postFormats.Markdown {
-		_ = os.Remove(filepath.Join(outputDir, slug+".md"))
-	}
-	if postFormats.Text {
-		_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
-	}
-	if postFormats.ANSI {
-		_ = os.Remove(filepath.Join(outputDir, slug+".ansi"))
-	}
-	_ = os.RemoveAll(filepath.Join(postDir, "og"))
+	_ = postFormats
+	_ = os.RemoveAll(postDir)
+	_ = os.Remove(filepath.Join(outputDir, slug+".md"))
+	_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
+	_ = os.Remove(filepath.Join(outputDir, slug+".ansi"))
 
 	return nil
 }

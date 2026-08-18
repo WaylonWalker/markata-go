@@ -159,7 +159,7 @@ func getCachedFeedConfigs(m *lifecycle.Manager) []models.FeedConfig {
 }
 
 func shouldPublishFeedsAsync(m *lifecycle.Manager) bool {
-	if !lifecycle.IsServeIncremental(m) {
+	if !lifecycle.IsServeFastMode(m) {
 		return false
 	}
 
