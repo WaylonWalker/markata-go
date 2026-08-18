@@ -169,7 +169,8 @@ func TestSafeOutputPath(t *testing.T) {
 	if want := filepath.Join(root, "nested", "slug"); path != want {
 		t.Fatalf("path = %q, want %q", path, want)
 	}
-	for _, traversal := range []string{"..", filepath.Join("..", "shared"), "/tmp/unsafe"} {
+	absolute := filepath.VolumeName(root) + string(filepath.Separator) + "tmp" + string(filepath.Separator) + "unsafe"
+	for _, traversal := range []string{"..", filepath.Join("..", "shared"), absolute} {
 		if _, err := safeOutputPath(root, traversal); err == nil {
 			t.Fatalf("safeOutputPath accepted traversal path %q", traversal)
 		}
