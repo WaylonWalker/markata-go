@@ -1513,7 +1513,6 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		if m.Config().Extra == nil {
 			m.Config().Extra = make(map[string]any)
 		}
-		m.Config().Extra["cache_cleanup_async"] = true
 		m.Config().Extra["incremental_mode"] = true
 	}
 
@@ -1593,6 +1592,16 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 		}
 		return
 	}
+	if incrementalPathsRequireFullRebuild(normalized, normalizedRemoved) {
+		lifecycle.SetServeFullRebuild(m, true)
+		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeRemovedPaths(m, nil)
+		lifecycle.SetServeGlobDirty(m, true)
+		if verbose {
+			verbosef("[serve] incremental disabled: global input or removed content changed")
+		}
+		return
+	}
 
 	if !globDirty {
 		if cached := getServeCache(); cached != nil {
@@ -1622,6 +1631,19 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	if verbose {
 		verbosef("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s", len(normalized), len(normalizedRemoved), globDirty, contentDir)
 	}
+}
+
+func incrementalPathsRequireFullRebuild(changed, removed []string) bool {
+	if len(removed) > 0 {
+		return true
+	}
+	for _, path := range changed {
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != ".md" && ext != ".markdown" {
+			return true
+		}
+	}
+	return false
 }
 
 // addWatchPaths adds paths to the file watcher.
