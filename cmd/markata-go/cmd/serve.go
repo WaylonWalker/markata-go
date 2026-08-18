@@ -93,9 +93,11 @@ var (
 )
 
 const (
-	buildStatusBuilding = "building"
-	buildStatusSuccess  = "success"
-	buildStatusError    = "error"
+	markdownExtension      = ".markdown"
+	markdownShortExtension = ".md"
+	buildStatusBuilding    = "building"
+	buildStatusSuccess     = "success"
+	buildStatusError       = "error"
 
 	buildStatusEventPrefix = "status:"
 )
@@ -1492,40 +1494,9 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 	configureLoggerForManager(m)
-	if serveIncremental {
-		lifecycle.SetServeIncremental(m, true)
-	}
-
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
+	configureRebuildManager(m)
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
-
-	// Apply fast mode if requested (must re-apply on each rebuild since
-	// doRebuild creates a fresh manager via createManager)
-	if serveFast {
-		if m.Config().Extra == nil {
-			m.Config().Extra = make(map[string]any)
-		}
-		m.Config().Extra["feeds_async"] = true
-		applyFastMode(m)
-		m.Config().Extra["cache_cleanup_async"] = true
-	}
-	if serveIncremental {
-		if m.Config().Extra == nil {
-			m.Config().Extra = make(map[string]any)
-		}
-		m.Config().Extra["incremental_mode"] = true
-	}
-
-	if serveFast || serveIncremental {
-		if cached := getServeCache(); cached != nil {
-			m.Cache().Set("build_cache", cached)
-		}
-		if lifecycle.IsServeFullRebuild(m) {
-			setServePosts(nil)
-		} else if cachedPosts := getServePosts(); len(cachedPosts) > 0 {
-			lifecycle.SetServeCachedPosts(m, cachedPosts)
-		}
-	}
 
 	// Check for cancellation after creating manager
 	select {
@@ -1568,12 +1539,38 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	notifyLiveReload()
 }
 
+func configureRebuildManager(m *lifecycle.Manager) {
+	if serveFast {
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["feeds_async"] = true
+		applyFastMode(m)
+		m.Config().Extra["cache_cleanup_async"] = true
+	}
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["incremental_mode"] = true
+	}
+	if !serveFast && !serveIncremental {
+		return
+	}
+	if cached := getServeCache(); cached != nil {
+		m.Cache().Set("build_cache", cached)
+	}
+	if lifecycle.IsServeFullRebuild(m) {
+		setServePosts(nil)
+	} else if cachedPosts := getServePosts(); len(cachedPosts) > 0 {
+		lifecycle.SetServeCachedPosts(m, cachedPosts)
+	}
+}
+
 func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths []string, forceFull, globDirty bool) {
 	if !serveFast && !serveIncremental {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
+		setFullServeRebuild(m)
 		return
 	}
 	contentDir := m.Config().ContentDir
@@ -1583,20 +1580,14 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	normalized, outside := normalizeServeChangedPaths(changedPaths, contentDir)
 	normalizedRemoved, outsideRemoved := normalizeServeChangedPaths(removedPaths, contentDir)
 	if (len(normalized) == 0 && len(normalizedRemoved) == 0) || forceFull || outside || outsideRemoved {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
+		setFullServeRebuild(m)
 		if verbose {
 			verbosef("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
 		}
 		return
 	}
 	if incrementalPathsRequireFullRebuild(normalized, normalizedRemoved) {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
+		setFullServeRebuild(m)
 		if verbose {
 			verbosef("[serve] incremental disabled: global input or removed content changed")
 		}
@@ -1633,13 +1624,20 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	}
 }
 
+func setFullServeRebuild(m *lifecycle.Manager) {
+	lifecycle.SetServeFullRebuild(m, true)
+	lifecycle.SetServeChangedPaths(m, nil)
+	lifecycle.SetServeRemovedPaths(m, nil)
+	lifecycle.SetServeGlobDirty(m, true)
+}
+
 func incrementalPathsRequireFullRebuild(changed, removed []string) bool {
 	if len(removed) > 0 {
 		return true
 	}
 	for _, path := range changed {
 		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".md" && ext != ".markdown" {
+		if ext != markdownShortExtension && ext != markdownExtension {
 			return true
 		}
 	}

@@ -236,7 +236,7 @@ func getFilesFromConfig() ([]string, error) {
 
 			// Only include markdown files
 			ext := filepath.Ext(match)
-			if ext != ".md" && ext != ".markdown" {
+			if ext != markdownShortExtension && ext != markdownExtension {
 				continue
 			}
 
@@ -350,7 +350,7 @@ func expandGlobPatterns(args []string) ([]string, error) {
 func processFile(file string, stats *lintStats) {
 	// Skip non-markdown files
 	ext := filepath.Ext(file)
-	if ext != ".md" && ext != ".markdown" {
+	if ext != markdownShortExtension && ext != markdownExtension {
 		return
 	}
 
