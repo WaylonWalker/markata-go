@@ -19,6 +19,9 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 	}
 	repo := filepath.Dir(filepath.Dir(thisFile))
 	binary := filepath.Join(t.TempDir(), "markata-go")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
 	build.Dir = repo
 	if output, err := build.CombinedOutput(); err != nil {
@@ -86,7 +89,11 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifyBuiltin := exec.Command(binary, "fonts", "verify")
-	verifyBuiltin.Dir = site
+	// Run the built-in verification without a site config. On Windows, the
+	// child process can otherwise discover the deliberately invalid config
+	// above through its working directory before it selects the embedded
+	// catalog.
+	verifyBuiltin.Dir = t.TempDir()
 	if output, err := verifyBuiltin.CombinedOutput(); err != nil {
 		t.Fatalf("bare fonts verify depended on invalid custom catalog: %v\n%s", err, output)
 	}

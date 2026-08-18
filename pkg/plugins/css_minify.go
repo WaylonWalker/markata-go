@@ -213,9 +213,8 @@ func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64,
 
 	minified = int64(result.Len())
 
-	// Write the minified content back
-	//nolint:gosec // G306: CSS files need 0644 for web serving
-	if err := os.WriteFile(filePath, result.Bytes(), 0o644); err != nil {
+	// Replace the file atomically so hard-linked live releases are not mutated.
+	if err := writeGeneratedFile(filePath, result.Bytes()); err != nil {
 		return original, 0, fmt.Errorf("writing minified file: %w", err)
 	}
 

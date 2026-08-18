@@ -45,6 +45,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["random_post"] = func() lifecycle.Plugin { return NewRandomPostPlugin() }
 	pluginRegistry.constructors["well_known"] = func() lifecycle.Plugin { return NewWellKnownPlugin() }
 	pluginRegistry.constructors["sitemap"] = func() lifecycle.Plugin { return NewSitemapPlugin() }
+	pluginRegistry.constructors["content_index"] = func() lifecycle.Plugin { return NewContentIndexPlugin() }
 	pluginRegistry.constructors["wikilinks"] = func() lifecycle.Plugin { return NewWikilinksPlugin() }
 	pluginRegistry.constructors["toc"] = func() lifecycle.Plugin { return NewTocPlugin() }
 	pluginRegistry.constructors["description"] = func() lifecycle.Plugin { return NewDescriptionPlugin() }
@@ -231,6 +232,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewGardenViewPlugin(),   // Generate knowledge graph + garden page
 		// NewResourceHintsPlugin(), // Inject resource hints (after HTML written) // DISABLED: Performance issue on large sites
 		NewSitemapPlugin(),
+		NewContentIndexPlugin(),
 
 		// Cleanup stage plugins
 		NewCSSMinifyPlugin(), // Minify CSS files (before purge for optimal results)

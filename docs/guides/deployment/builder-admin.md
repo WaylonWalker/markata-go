@@ -241,7 +241,9 @@ work, and completed builds, refreshes, and rollbacks in one list. Use **Enqueue 
 manual build, then inspect its row for status, queue wait, build duration, trigger, and release.
 
 Select **Details** on a build to see phase timings, changed paths, parsed performance lines, and
-the raw log. Raw IDs and filesystem paths are detail data rather than dashboard metrics. On narrow screens,
+the raw log. Release pruning runs asynchronously after publication, so a completed build can be live
+before old release files finish deleting; the recorded prune timing updates when cleanup completes.
+Raw IDs and filesystem paths are detail data rather than dashboard metrics. On narrow screens,
 each build and release reflows into a labeled record so operators do not need to read a clipped
 desktop table.
 

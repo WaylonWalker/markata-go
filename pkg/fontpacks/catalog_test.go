@@ -105,6 +105,13 @@ func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
 	}
 }
 
+func TestVisibleTextSkipsCodeAndDecodesEntities(t *testing.T) {
+	got := VisibleText(`<main>Hello &amp; <strong>world</strong><script>Ж</script><style>Ж</style></main>`)
+	if !strings.Contains(got, "Hello &") || !strings.Contains(got, "world") || strings.Contains(got, "Ж") {
+		t.Fatalf("VisibleText() = %q, want decoded visible text without script/style content", got)
+	}
+}
+
 func TestRequiredTiersUseFullWhenSourceLacksOptionalTier(t *testing.T) {
 	c := testCatalog(t)
 	_, pack, err := c.ResolvePack("bundled")
