@@ -1594,27 +1594,7 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 		return
 	}
 
-	if !globDirty {
-		if cached := getServeCache(); cached != nil {
-			cachedFiles, _ := cached.GetGlobCache()
-			if len(cachedFiles) > 0 {
-				seen := make(map[string]struct{}, len(cachedFiles))
-				for _, file := range cachedFiles {
-					seen[file] = struct{}{}
-				}
-				for _, rel := range normalized {
-					if _, ok := seen[rel]; ok {
-						continue
-					}
-					fullPath := filepath.Join(contentDir, rel)
-					if _, err := os.Stat(fullPath); err == nil {
-						globDirty = true
-						break
-					}
-				}
-			}
-		}
-	}
+	globDirty = serveGlobIsDirty(contentDir, normalized, globDirty)
 	lifecycle.SetServeFullRebuild(m, false)
 	lifecycle.SetServeChangedPaths(m, normalized)
 	lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
@@ -1622,6 +1602,30 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	if verbose {
 		verbosef("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s", len(normalized), len(normalizedRemoved), globDirty, contentDir)
 	}
+}
+
+func serveGlobIsDirty(contentDir string, changed []string, dirty bool) bool {
+	if dirty {
+		return true
+	}
+	cached := getServeCache()
+	if cached == nil {
+		return false
+	}
+	cachedFiles, _ := cached.GetGlobCache()
+	seen := make(map[string]struct{}, len(cachedFiles))
+	for _, file := range cachedFiles {
+		seen[file] = struct{}{}
+	}
+	for _, rel := range changed {
+		if _, ok := seen[rel]; ok {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(contentDir, rel)); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func setFullServeRebuild(m *lifecycle.Manager) {
