@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-fontpack="{{ config.theme.fontpack }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
