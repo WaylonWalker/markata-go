@@ -296,14 +296,40 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 
 	slug := postCache.Slug
 	outputDir := config.OutputDir
-	postDir := filepath.Join(outputDir, slug)
+	postDir, err := safeOutputPath(outputDir, slug)
+	if err != nil {
+		return err
+	}
 	_ = postFormats
 	_ = os.RemoveAll(postDir)
-	_ = os.Remove(filepath.Join(outputDir, slug+".md"))
-	_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
-	_ = os.Remove(filepath.Join(outputDir, slug+".ansi"))
+	for _, extension := range []string{".md", ".txt", ".ansi"} {
+		path, err := safeOutputPath(outputDir, slug+extension)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(path)
+	}
 
 	return nil
+}
+
+func safeOutputPath(outputDir, relative string) (string, error) {
+	if filepath.IsAbs(relative) {
+		return "", fmt.Errorf("refusing absolute output path: %q", relative)
+	}
+	root, err := filepath.Abs(outputDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve output directory: %w", err)
+	}
+	target, err := filepath.Abs(filepath.Join(root, relative))
+	if err != nil {
+		return "", fmt.Errorf("resolve output path: %w", err)
+	}
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("refusing to remove output path outside %s: %q", root, relative)
+	}
+	return target, nil
 }
 
 // writeHTMLFormat writes the standard HTML output for a post.
