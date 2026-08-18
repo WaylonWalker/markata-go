@@ -286,7 +286,7 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	if cache == nil {
 		return nil
 	}
-	if !lifecycle.IsServeFastModeFromConfig(config) {
+	if !lifecycle.IsServeIncrementalFromConfig(config) {
 		return nil
 	}
 	postCache := cache.GetCachedPost(sourcePath)

@@ -14,6 +14,7 @@ const (
 	CacheKeyServeCachedPosts  = "serve.cached_posts"
 	CacheKeyServeRemovedPaths = "serve.removed_paths"
 	CacheKeyServeGlobDirty    = "serve.glob_dirty"
+	CacheKeyServeIncremental  = "serve.incremental"
 )
 
 // SetServeChangedPaths stores normalized, relative content paths that changed.
@@ -39,6 +40,47 @@ func SetServeChangedPaths(m *Manager, paths []string) {
 		clean = append(clean, cp)
 	}
 	m.Cache().Set(CacheKeyServeChangedPaths, clean)
+}
+
+// SetServeIncremental stores whether the current rebuild may reuse unchanged
+// posts without enabling fast-mode output skips.
+func SetServeIncremental(m *Manager, enabled bool) {
+	if m == nil {
+		return
+	}
+	m.Cache().Set(CacheKeyServeIncremental, enabled)
+}
+
+// IsServeIncremental reports whether the current rebuild may reuse cached
+// post results. Fast mode also enables this behavior.
+func IsServeIncremental(m *Manager) bool {
+	if m == nil {
+		return false
+	}
+	if IsServeFastMode(m) {
+		return true
+	}
+	if raw, ok := m.Cache().Get(CacheKeyServeIncremental); ok {
+		if enabled, ok := raw.(bool); ok {
+			return enabled
+		}
+	}
+	return false
+}
+
+// IsServeIncrementalFromConfig is the config-only form used by plugins during
+// output cleanup.
+func IsServeIncrementalFromConfig(config *Config) bool {
+	if config == nil {
+		return false
+	}
+	if IsServeFastModeFromConfig(config) {
+		return true
+	}
+	if enabled, ok := config.Extra["incremental_mode"].(bool); ok {
+		return enabled
+	}
+	return false
 }
 
 // GetServeChangedPaths returns the changed content paths if present.

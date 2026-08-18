@@ -59,6 +59,10 @@ var (
 	// for faster development iteration during serve.
 	serveFast bool
 
+	// serveIncremental reuses unchanged build results while retaining normal
+	// production output processing.
+	serveIncremental bool
+
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
 
@@ -164,6 +168,9 @@ Fast mode:
   --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
                Applied to both the initial build and all subsequent rebuilds.
 
+Incremental mode:
+  --incremental Reuse unchanged posts while retaining normal output processing.
+
 Example usage:
   markata-go serve              # Serve on localhost:8000 with file watching
   markata-go serve --fast       # Serve with fast mode (skip minification)
@@ -184,6 +191,7 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
+	serveCmd.Flags().BoolVar(&serveIncremental, "incremental", false, "reuse unchanged posts without skipping production output processing")
 }
 
 func runServeCommand(cmd *cobra.Command, _ []string) error {
@@ -206,8 +214,15 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 		applyFastMode(m)
 		m.Config().Extra["cache_cleanup_async"] = true
 	}
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["incremental_mode"] = true
+	}
 
-	if !serveFast {
+	if !serveFast && !serveIncremental {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
 		lifecycle.SetServeRemovedPaths(m, nil)
@@ -356,7 +371,7 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 	notifyBuildStatus()
 	verbosef("Running initial build...")
 
-	if serveFast {
+	if serveFast || serveIncremental {
 		lifecycle.SetServeFullRebuild(m, false)
 	} else {
 		lifecycle.SetServeFullRebuild(m, true)
@@ -391,7 +406,7 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		notifyBuildStatus()
 		infof("Built %d posts, %d feeds", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
-		if serveFast {
+		if serveFast || serveIncremental {
 			if cached, ok := m.Cache().Get("build_cache"); ok {
 				if bc, ok := cached.(*buildcache.Cache); ok {
 					setServeCache(bc)
@@ -1477,6 +1492,9 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 	configureLoggerForManager(m)
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+	}
 
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
@@ -1491,8 +1509,15 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		applyFastMode(m)
 		m.Config().Extra["cache_cleanup_async"] = true
 	}
+	if serveIncremental {
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["cache_cleanup_async"] = true
+		m.Config().Extra["incremental_mode"] = true
+	}
 
-	if serveFast {
+	if serveFast || serveIncremental {
 		if cached := getServeCache(); cached != nil {
 			m.Cache().Set("build_cache", cached)
 		}
@@ -1545,7 +1570,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 }
 
 func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths []string, forceFull, globDirty bool) {
-	if !serveFast {
+	if !serveFast && !serveIncremental {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
 		lifecycle.SetServeRemovedPaths(m, nil)

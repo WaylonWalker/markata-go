@@ -146,7 +146,7 @@ func (p *LoadPlugin) loadFromCachedPosts(
 	cache := GetBuildCache(m)
 	posts := make([]*models.Post, 0, len(files))
 	affected := lifecycle.GetServeAffectedPaths(m)
-	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
+	useFastCache := lifecycle.IsServeIncremental(m) && len(affected) > 0
 	for _, file := range files {
 		post, err := p.loadCachedPost(m, file, baseDir, cachedPosts, cache, useFastCache, affected)
 		if err != nil {
@@ -205,7 +205,7 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 	}
 
 	affected := lifecycle.GetServeAffectedPaths(m)
-	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
+	useFastCache := lifecycle.IsServeIncremental(m) && len(affected) > 0
 	posts, err := p.loadFilesConcurrent(m, files, func(file string) (*models.Post, error) {
 		if useFastCache {
 			if len(affected) > 0 && affected[file] {
