@@ -789,7 +789,7 @@ func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte
 	// The texture is a transparent decoration. Its owning surface supplies the
 	// background; baking that color into the tile makes quiet scope opaque and
 	// leaks a second, incorrect surface through transparent chrome.
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><circle cx="%.3f" cy="%.3f" r="11" fill="%s"/><circle cx="%.3f" cy="%.3f" r="8" fill="%s"/></svg>\n`, source.ViewBox, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><circle cx="%.3f" cy="%.3f" r="11" fill="%s"/><circle cx="%.3f" cy="%.3f" r="8" fill="%s"/></svg>`, source.ViewBox, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
 }
 func headingSVG(mix float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)

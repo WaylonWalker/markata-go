@@ -98,7 +98,7 @@ func TestCanonicalBundle_AssetBytesAreAuthoritative(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"assets/surface-screenprint-v1.svg": "e17ce82e807c5bae2aadcf0cbe183a92ee10f7652092372b2be627272bd83edd",
+		"assets/surface-screenprint-v1.svg": "fcf71a2c6824bcf06dd0676061c04aec8104a5b86f2eed80f510aa582f61a228",
 		"assets/heading-splatter-v1.svg":    "bf22f7f0614df2edf5b23f0c3a5cbb94f25f03cfb3eb377554936a8eb7b1acad",
 	}
 	// The surface tile must remain transparent. The exact digest is asserted

@@ -453,7 +453,7 @@
   </style>
   <style id="markata-canonical-document-profile">
     /* Internal conformance profile; scoped so normal site documents are unchanged. */
-    [data-rendering-specimen="canonical-headings"] {
+     [data-rendering-specimen="canonical-headings"] {
       box-sizing: border-box;
        width: 1280px !important;
        height: 1000px !important;
@@ -499,6 +499,18 @@
       margin: 2.5rem 0 0.75rem;
       font-size: clamp(2rem, 5vw, 3.5rem);
        line-height: 1;
+     }
+     [data-rendering-specimen="canonical-headings"] > .markata-canonical-texture-layer {
+       position: absolute;
+       inset: 0;
+       width: 1280px;
+       height: 1000px;
+       pointer-events: none;
+       background-repeat: repeat;
+       background-image: var(--theme-texture-image, none);
+       background-size: calc(180px * var(--theme-texture-scale, 0.92));
+       opacity: var(--theme-texture-opacity, 0);
+       z-index: 20;
      }
     [data-rendering-specimen="canonical-headings"] .post-content h3 { margin: 2.5rem 0 0.75rem; font-size: 2rem; line-height: 1.05; }
     [data-rendering-specimen="canonical-headings"] .post-content h4 { margin: 2.5rem 0 0.75rem; font-size: 1.5rem; line-height: 1.1; }
@@ -627,8 +639,9 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
-     <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
-        {% block content %}{% endblock %}
+      <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+        {% if canonical_rendering_fixture %}<span class="markata-canonical-texture-layer" data-canonical-texture-owner="markata-go" aria-hidden="true" style="display:block;position:absolute;inset:0;width:1280px;height:1000px;"></span>{% endif %}
+         {% block content %}{% endblock %}
       </main>
 
       {# Right sidebar for document TOC (if enabled) #}
