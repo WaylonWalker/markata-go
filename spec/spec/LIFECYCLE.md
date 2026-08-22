@@ -1058,6 +1058,26 @@ change_detection = "hash"  # "hash", "mtime", or "both"
 
 ---
 
+## Production-Safe Incremental Mode
+
+Production-safe incremental mode is separate from fast mode. It MAY reuse
+unchanged posts, dependency results, and glob state, but it MUST continue to
+run output-quality and search steps that can affect the published site.
+
+Safe incremental mode MUST NOT imply any of the following fast-mode skips:
+
+- JavaScript or CSS minification
+- CSS purging or Tailwind generation
+- Pagefind indexing
+- redirect generation
+- encryption or other global output validation
+
+The implementation MUST fall back to a full rebuild when configuration,
+templates, global styles, redirects, search configuration, or other global
+inputs change. A changed content file MAY use the dependency graph to limit
+post rendering, but feed, search, and asset outputs MUST be refreshed when
+their inputs changed.
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification

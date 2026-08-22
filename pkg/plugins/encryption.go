@@ -430,7 +430,7 @@ func (p *EncryptionPlugin) validatePasswordPolicy(password string) error {
 }
 
 func filterEncryptedPostsForServe(m *lifecycle.Manager, posts []*models.Post) []*models.Post {
-	if !lifecycle.IsServeFastMode(m) {
+	if !lifecycle.IsServeIncremental(m) {
 		return posts
 	}
 	affected := lifecycle.GetServeAffectedPaths(m)

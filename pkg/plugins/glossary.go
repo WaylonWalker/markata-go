@@ -229,7 +229,7 @@ func (p *GlossaryPlugin) Render(m *lifecycle.Manager) error {
 		return true
 	})
 
-	if lifecycle.IsServeFastMode(m) {
+	if lifecycle.IsServeIncremental(m) {
 		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
 			filtered := postsToProcess[:0]
 			for _, post := range postsToProcess {
