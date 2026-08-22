@@ -263,7 +263,7 @@ func setGlobMetadata(m *lifecycle.Manager, info map[string]GlobFileInfo) {
 }
 
 func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
-	if !lifecycle.IsServeFastMode(m) || lifecycle.IsServeGlobDirty(m) {
+	if !lifecycle.IsServeIncremental(m) || lifecycle.IsServeGlobDirty(m) {
 		return false
 	}
 

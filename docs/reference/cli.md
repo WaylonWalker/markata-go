@@ -541,6 +541,7 @@ markata-go serve [flags]
 | `--watch` | | Enable file watching and auto-rebuild | `true` |
 | `--no-watch` | | Disable file watching (legacy, overrides --watch) | `false` |
 | `--fast` | | Skip minification/CSS purge, Tailwind rebuilds, Pagefind indexing, and disable blogroll/mentions | `false` |
+| `--incremental` | | Reuse unchanged posts and dependencies while keeping normal output processing | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 
 #### Examples
@@ -563,6 +564,9 @@ markata-go serve --watch
 markata-go serve --watch=false
 markata-go serve --no-watch
 
+# Serve with production-style incremental rebuilds
+markata-go serve --incremental
+
 # Serve with verbose logging
 markata-go serve -v
 
@@ -579,7 +583,8 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 - **Immediate serve**: Server starts before the initial build completes
 - **Build status banner**: Shows build progress and errors during serve
 - **Early 404**: Minimal 404 is served until the generated 404.html exists
-- **Incremental in fast mode**: `serve --fast` rebuilds only changed posts and dependents, skipping blogroll/mentions and avoiding feed recomputation when unchanged
+- **Incremental mode**: `serve --incremental` rebuilds only changed posts and dependents while retaining minification, CSS purging, Tailwind, redirects, and Pagefind processing
+- **Fast mode**: `serve --fast` rebuilds only changed posts and dependents, but skips production output steps for iteration speed
 
 #### Development Workflow
 
