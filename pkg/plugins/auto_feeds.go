@@ -357,7 +357,7 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		fc.ApplyDefaults(feedDefaults)
 
 		// Filter posts for this feed
-		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
+		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludesPrivate())
 		if err != nil {
 			return fmt.Errorf("auto feed %q: %w", fc.Slug, err)
 		}
@@ -381,7 +381,7 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			Title:          fc.Title,
 			Posts:          filteredPosts,
 			Path:           fc.Slug,
-			IncludePrivate: fc.IncludePrivate,
+			IncludePrivate: fc.IncludesPrivate(),
 			Automated:      true,
 		}
 

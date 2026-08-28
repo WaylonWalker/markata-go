@@ -26,13 +26,129 @@ func TestV1JSONSchemaValidatesFixturesAndWriter(t *testing.T) {
 			}
 		})
 	}
-	data, err := Marshal(Index{Scope: "public", Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "post.md", Slug: "post", Href: "/post/", Published: true}}})
+	data, err := Marshal(Index{SchemaVersion: 1, Scope: "public", Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "post.md", Slug: "post", Href: "/post/", Published: true}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	validateJSONSchema(t, schema, data)
 	if _, err := Parse(data); err != nil {
 		t.Fatalf("parser rejected schema-valid generated artifact: %v", err)
+	}
+}
+
+func TestV2JSONSchemaValidatesGeneratedPrivateArtifact(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	data, err := Marshal(Index{SchemaVersion: 2, Scope: PublicMetadataScope, Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "private.md", Slug: "private", Href: "/private/", Private: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateJSONSchema(t, schema, data)
+	index, err := Parse(data)
+	if err != nil {
+		t.Fatalf("parser rejected generated v2 artifact: %v", err)
+	}
+	if index.SchemaVersion != 2 || index.Scope != PublicMetadataScope || len(index.Documents) != 1 || !index.Documents[0].Private {
+		t.Fatalf("unexpected v2 artifact: %#v", index)
+	}
+}
+
+func TestV2JSONSchemaValidatesFixtures(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	fixtures, err := filepath.Glob("fixtures/v2-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fixture := range fixtures {
+		t.Run(filepath.Base(fixture), func(t *testing.T) {
+			data := readJSON(t, fixture)
+			validateJSONSchema(t, schema, data)
+			if _, err := Parse(data); err != nil {
+				t.Fatalf("parser rejected schema-valid fixture: %v", err)
+			}
+		})
+	}
+}
+
+func TestV2RejectsPrivateDocumentsInPublicScope(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	for _, scope := range []string{PublicScope, "workspace"} {
+		t.Run(scope, func(t *testing.T) {
+			data, err := Marshal(Index{SchemaVersion: 2, Scope: PublicMetadataScope, Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "private.md", Slug: "private", Href: "/private/", Private: true}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			data = []byte(strings.Replace(string(data), `"scope":"public-metadata"`, `"scope":"`+scope+`"`, 1))
+			if err := schema.Validate(mustJSON(t, data)); err == nil {
+				t.Fatalf("v2 schema accepted private documents in %q scope", scope)
+			}
+			if _, err := Parse(data); err == nil {
+				t.Fatalf("v2 parser accepted private documents in %q scope", scope)
+			}
+		})
+	}
+}
+
+func TestV2RejectsUnsupportedScope(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	data := v2TestArtifact(`"title":null`)
+	data = []byte(strings.Replace(string(data), `"scope":"public-metadata"`, `"scope":"workspace"`, 1))
+	if err := schema.Validate(mustJSON(t, data)); err == nil {
+		t.Fatal("v2 schema accepted unsupported scope")
+	}
+	if _, err := Parse(data); err == nil {
+		t.Fatal("v2 parser accepted unsupported scope")
+	}
+}
+
+func TestV2SchemaAndParserRejectForbiddenPrivateMetadata(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	for _, field := range []string{"image", "video", "bio", "thumbnail", "cover", "og_image"} {
+		t.Run(field, func(t *testing.T) {
+			data := v2TestArtifact(`"` + field + `":"private value"`)
+			if err := schema.Validate(mustJSON(t, data)); err == nil {
+				t.Fatalf("v2 schema accepted private %s metadata", field)
+			}
+			if _, err := Parse(data); err == nil {
+				t.Fatalf("v2 parser accepted private %s metadata", field)
+			}
+
+			data = v2TestArtifact(`"` + field + `":null`)
+			if err := schema.Validate(mustJSON(t, data)); err == nil {
+				t.Fatalf("v2 schema accepted null private %s metadata", field)
+			}
+			if _, err := Parse(data); err == nil {
+				t.Fatalf("v2 parser accepted null private %s metadata", field)
+			}
+		})
+	}
+}
+
+func TestV2SchemaAndParserAcceptNullableTextMetadata(t *testing.T) {
+	schema := loadSchema(t, "v2_schema.json")
+	for _, field := range []string{"title", "title_text", "description"} {
+		t.Run(field, func(t *testing.T) {
+			data := v2TestArtifact(`"` + field + `":null`)
+			validateJSONSchema(t, schema, data)
+			index, err := Parse(data)
+			if err != nil {
+				t.Fatalf("parser rejected nullable %s: %v", field, err)
+			}
+			document := index.Documents[0]
+			switch field {
+			case "title":
+				if document.Title != nil {
+					t.Fatalf("title = %v, want nil", document.Title)
+				}
+			case "title_text":
+				if document.TitleText != nil {
+					t.Fatalf("title_text = %v, want nil", document.TitleText)
+				}
+			case "description":
+				if document.Description != nil {
+					t.Fatalf("description = %v, want nil", document.Description)
+				}
+			}
+		})
 	}
 }
 
@@ -118,13 +234,22 @@ func TestV1JSONSchemaValidatesExternalArtifact(t *testing.T) {
 
 func loadV1Schema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
+	return loadSchema(t, "v1_schema.json")
+}
+
+func loadSchema(t *testing.T, filename string) *jsonschema.Schema {
+	t.Helper()
 	compiler := jsonschema.NewCompiler()
-	data := readJSON(t, "v1_schema.json")
+	data := readJSON(t, filename)
 	var document map[string]any
 	if err := json.Unmarshal(data, &document); err != nil {
 		t.Fatal(err)
 	}
-	if document["$id"] != SchemaURL || document["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
+	expectedID := SchemaURL
+	if filename == "v2_schema.json" {
+		expectedID = V2SchemaURL
+	}
+	if document["$id"] != expectedID || document["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
 		t.Fatalf("published schema metadata is not canonical: %#v", document)
 	}
 	// The validator cannot resolve Markata's intentionally internal markata://
@@ -174,4 +299,8 @@ func mustJSON(t *testing.T, data []byte) any {
 		t.Fatal(err)
 	}
 	return value
+}
+
+func v2TestArtifact(documentFields string) []byte {
+	return []byte(`{"$schema":"markata://schemas/content-index/v2","schema":"markata.content-index","schema_version":2,"scope":"public-metadata","generator":{"name":"markata-go","version":"test"},"source":{},"document_count":1,"documents":[{"path":"private.md","slug":"private","href":"/private/","published":true,"draft":false,"private":true,` + documentFields + `}]}`)
 }

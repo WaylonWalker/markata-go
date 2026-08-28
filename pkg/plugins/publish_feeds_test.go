@@ -620,6 +620,49 @@ func TestComputeFeedHash_PostContentChangeProducesDifferentHash(t *testing.T) {
 	}
 }
 
+func TestComputeFeedHash_PrivateEncryptedWrapperChangeProducesDifferentHash(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+	feed := &models.FeedConfig{
+		Slug:           "private",
+		IncludePrivate: true,
+		ItemsPerPage:   10,
+		Formats:        models.FeedFormats{HTML: true, RSS: true, JSON: true},
+		Posts: []*models.Post{{
+			Path:        "private.md",
+			Slug:        "private",
+			Href:        "/private/",
+			Private:     true,
+			Published:   true,
+			ArticleHTML: `<div class="encrypted-content" data-encrypted="ciphertext-one" data-key-name="private">locked</div>`,
+		}},
+	}
+
+	first := p.computeFeedHash(feed)
+	feed.Posts[0].ArticleHTML = `<div class="encrypted-content" data-encrypted="ciphertext-two" data-key-name="private">locked</div>`
+	second := p.computeFeedHash(feed)
+	if first == second {
+		t.Fatalf("private feed hash should change when encrypted content changes: %s", first)
+	}
+}
+
+func TestGetPostFeedItemHash_PrivateIgnoresStaleSemanticCache(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+	post := &models.Post{
+		Path:        "private.md",
+		Slug:        "private",
+		Href:        "/private/",
+		Private:     true,
+		ArticleHTML: `<div class="encrypted-content" data-encrypted="current" data-key-name="private">locked</div>`,
+	}
+	cache := buildcache.New(t.TempDir())
+	cache.UpdatePostSemanticHashes(post.Path, "stale-load-hash", "", "")
+
+	got := p.getPostFeedItemHash(post, cache)
+	if got == "stale-load-hash" {
+		t.Fatal("private feed hash should not use the stale load-stage semantic hash")
+	}
+}
+
 func TestFeedConfigWithRenderablePosts_KeepsTitleOnlyPosts(t *testing.T) {
 	title := "Gratitude"
 	feed := &models.FeedConfig{

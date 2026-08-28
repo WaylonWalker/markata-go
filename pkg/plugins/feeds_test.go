@@ -1018,6 +1018,30 @@ func TestFeedsPlugin_IncludePrivate(t *testing.T) {
 	}
 }
 
+func TestFeedsPlugin_PrivateAliasIncludesPrivate(t *testing.T) {
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{
+		{Path: "public.md", Slug: "public", Href: "/public/", Published: true},
+		{Path: "private.md", Slug: "private", Href: "/private/", Published: true, Private: true},
+	})
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{{Slug: "private", Private: true}},
+	}
+	m.SetConfig(config)
+
+	if err := NewFeedsPlugin().Collect(m); err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+	feeds := m.Feeds()
+	if len(feeds) != 1 || !feeds[0].IncludePrivate {
+		t.Fatalf("private feed alias was not normalized: %#v", feeds)
+	}
+	if len(feeds[0].Posts) != 2 {
+		t.Fatalf("private feed posts = %d, want 2", len(feeds[0].Posts))
+	}
+}
+
 func TestSortPosts(t *testing.T) {
 	date1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	date2 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)

@@ -690,6 +690,8 @@ type tomlFeedConfig struct {
 	Sort            string            `toml:"sort"`
 	Reverse         bool              `toml:"reverse"`
 	Primary         bool              `toml:"primary"`
+	IncludePrivate  bool              `toml:"include_private"`
+	Private         bool              `toml:"private"`
 	Sidebar         *bool             `toml:"sidebar"`
 	ItemsPerPage    int               `toml:"items_per_page"`
 	OrphanThreshold int               `toml:"orphan_threshold"`
@@ -2008,6 +2010,8 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Primary:         f.Primary,
+		IncludePrivate:  f.IncludePrivate,
+		Private:         f.Private,
 		Sidebar:         f.Sidebar,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
@@ -2182,6 +2186,8 @@ type yamlFeedConfig struct {
 	Sort            string            `yaml:"sort"`
 	Reverse         bool              `yaml:"reverse"`
 	Primary         bool              `yaml:"primary"`
+	IncludePrivate  bool              `yaml:"include_private"`
+	Private         bool              `yaml:"private"`
 	Sidebar         *bool             `yaml:"sidebar"`
 	ItemsPerPage    int               `yaml:"items_per_page"`
 	OrphanThreshold int               `yaml:"orphan_threshold"`
@@ -3549,6 +3555,8 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Primary:         f.Primary,
+		IncludePrivate:  f.IncludePrivate,
+		Private:         f.Private,
 		Sidebar:         f.Sidebar,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
@@ -3747,6 +3755,8 @@ type jsonFeedConfig struct {
 	Sort            string            `json:"sort"`
 	Reverse         bool              `json:"reverse"`
 	Primary         bool              `json:"primary"`
+	IncludePrivate  bool              `json:"include_private"`
+	Private         bool              `json:"private"`
 	Sidebar         *bool             `json:"sidebar"`
 	ItemsPerPage    int               `json:"items_per_page"`
 	OrphanThreshold int               `json:"orphan_threshold"`
@@ -5114,6 +5124,8 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Primary:         f.Primary,
+		IncludePrivate:  f.IncludePrivate,
+		Private:         f.Private,
 		Sidebar:         f.Sidebar,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,

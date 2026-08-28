@@ -37,8 +37,9 @@ Bare `markata-go config` behaves like `markata-go config show`.
 Most settings live under `[markata-go]` and nested namespaces like `[markata-go.glob]` and `[markata-go.theme]`.
 
 The optional Content Index is enabled with `[markata-go.content_index]`. It
-writes resolved public metadata and feed membership, not article bodies. Check
-the output path and privacy behavior before publishing it.
+writes resolved metadata and feed membership, including safe metadata-only
+records for private posts. It never writes article bodies or encryption keys.
+Check the output path and privacy behavior before publishing it.
 
 Example:
 

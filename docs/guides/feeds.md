@@ -204,6 +204,14 @@ atom = "atom.xml"                  # Template for Atom
 json = "feed.json"                 # Template for JSON
 ```
 
+Private posts are excluded unless a feed explicitly sets `include_private =
+true`. The compatibility setting `private = true` has the same effect. An
+opted-in feed may show safe post metadata and encrypted article HTML, but it
+never publishes raw Markdown, unencrypted content, encryption key names,
+content-derived descriptions, or private media references. Private feed
+definitions are hidden from `/feeds/` unless `feeds_page.show_private_feeds`
+lists them.
+
 ## Filtering Posts
 
 The `filter` field uses a Python-like expression syntax to select which posts appear in a feed.
@@ -888,6 +896,11 @@ include_private = true             # Include private posts in this feed
 html = true
 rss = false                        # Usually don't syndicate private posts
 ```
+
+If RSS, Atom, or JSON Feed is enabled for this feed, private entries contain
+only the encrypted article wrapper and safe metadata. The feed wrapper omits
+the encryption key name, so entries decrypt individually and do not share
+session storage. Public feeds continue to exclude private posts.
 
 ### Tag Pages (Manual)
 

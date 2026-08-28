@@ -31,6 +31,24 @@ Feeds are the core differentiator of this static site generator. A feed is a **f
 
 Feed collections MUST exclude posts that did not produce renderable page output. Posts with empty rendered HTML, skipped posts, and drafts MUST NOT appear in HTML, RSS, Atom, JSON, or derived feed collections.
 
+Private posts are excluded from every feed unless the feed sets
+`include_private = true` (the compatibility alias `private = true` has the same
+meaning). This rule applies before filtering, sorting, limits, offsets,
+pagination, and every output format. A public feed MUST never acquire a private
+post through a preset post list or an auto-generated feed.
+
+An opted-in private feed may list private post identity and authored metadata,
+but it MUST NOT publish raw Markdown, unencrypted rendered content, encryption
+key names, content-derived descriptions, private media references, or other
+secret values. If private article content is included in RSS, Atom, or JSON
+Feed, it MUST be the encrypted wrapper produced by the encryption plugin. HTML,
+Markdown, and text feed listings use the same safe metadata projection. Private
+feed entries remove the wrapper's key-selection attribute, so they decrypt only
+after manual password entry and do not support cross-entry password storage or
+unlocking. Private feed entries are not included in public sitemaps. The
+`/feeds/` directory hides private feed definitions unless
+`feeds_page.show_private_feeds` explicitly lists them.
+
 ---
 
 ## Reader Preview Hierarchy

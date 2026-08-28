@@ -63,23 +63,51 @@ type v1Document struct {
 	Categories  []string   `json:"categories,omitempty"`
 }
 
+var privateV2ForbiddenFields = [...]string{"image", "video", "bio", "thumbnail", "cover", "og_image"}
+
 func encodeV1(index Index) ([]byte, error) {
+	return encodeVersion(index, 1, SchemaURL, false)
+}
+
+func encodeV2(index Index) ([]byte, error) {
+	return encodeVersion(index, 2, V2SchemaURL, true)
+}
+
+//nolint:gocyclo // Versioned wire-format validation is intentionally isolated.
+func encodeVersion(index Index, version int, schemaURL string, allowPrivate bool) ([]byte, error) {
 	if index.Schema == "" {
 		index.Schema = Schema
 	}
 	if index.SchemaVersion == 0 {
-		index.SchemaVersion = CurrentVersion
+		index.SchemaVersion = version
+	}
+	if index.SchemaVersion != version {
+		return nil, fmt.Errorf("schema version %d encoder received index version %d", version, index.SchemaVersion)
 	}
 	if index.Scope == "" {
-		index.Scope = PublicScope
+		if allowPrivate {
+			index.Scope = PublicMetadataScope
+		} else {
+			index.Scope = PublicScope
+		}
 	}
-	if index.Scope != PublicScope {
-		return nil, fmt.Errorf("unsupported v1 scope %q", index.Scope)
+	if index.Scope != PublicScope && (index.Scope != PublicMetadataScope || !allowPrivate) {
+		return nil, fmt.Errorf("unsupported scope %q", index.Scope)
 	}
 	if index.DocumentCount != 0 && index.DocumentCount != len(index.Documents) {
 		return nil, fmt.Errorf("document_count %d does not match documents length %d", index.DocumentCount, len(index.Documents))
 	}
 	index.DocumentCount = len(index.Documents)
+	for i := range index.Documents {
+		if allowPrivate && index.Documents[i].Private && index.Scope == PublicScope {
+			return nil, fmt.Errorf("scope %q cannot contain private documents", PublicScope)
+		}
+		if allowPrivate && index.Documents[i].Private {
+			if field := forbiddenPrivateDocumentField(index.Documents[i]); field != "" {
+				return nil, fmt.Errorf("documents[%d].%s is forbidden for private v2 documents", i, field)
+			}
+		}
+	}
 	if index.Generator.Name == "" {
 		return nil, fmt.Errorf("generator.name is required")
 	}
@@ -113,14 +141,22 @@ func encodeV1(index Index) ([]byte, error) {
 	if index.Source.Commit != "" && index.Source.Dirty == nil {
 		return nil, fmt.Errorf("source.commit requires source.dirty")
 	}
-	return json.Marshal(v1Index{SchemaURL, index.Schema, json.Number(strconv.Itoa(index.SchemaVersion)), index.Scope, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit, index.Source.Dirty}, json.Number(strconv.Itoa(index.DocumentCount)), docs})
+	return json.Marshal(v1Index{schemaURL, index.Schema, json.Number(strconv.Itoa(index.SchemaVersion)), index.Scope, v1Generator{index.Generator.Name, index.Generator.Version}, v1Source{commit, index.Source.Dirty}, json.Number(strconv.Itoa(index.DocumentCount)), docs})
+}
+
+func decodeV1(data []byte) (Index, error) {
+	return decodeVersion(data, 1, SchemaURL, false)
+}
+
+func decodeV2(data []byte) (Index, error) {
+	return decodeVersion(data, 2, V2SchemaURL, true)
 }
 
 //nolint:gocyclo // Versioned wire-format validation is intentionally isolated.
-func decodeV1(data []byte) (Index, error) {
+func decodeVersion(data []byte, expectedVersion int, schemaURL string, allowPrivate bool) (Index, error) {
 	var wire v1Index
 	if err := json.Unmarshal(data, &wire); err != nil {
-		return Index{}, fmt.Errorf("decode v1 JSON: %w", err)
+		return Index{}, fmt.Errorf("decode content index v%d JSON: %w", expectedVersion, err)
 	}
 	var raw struct {
 		SchemaVersion json.RawMessage              `json:"schema_version"`
@@ -131,10 +167,10 @@ func decodeV1(data []byte) (Index, error) {
 		Documents     []map[string]json.RawMessage `json:"documents"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return Index{}, fmt.Errorf("validate v1 structure: %w", err)
+		return Index{}, fmt.Errorf("validate content index v%d structure: %w", expectedVersion, err)
 	}
 	if raw.Generator == nil || raw.Source == nil || raw.Scope == nil || raw.DocumentCount == nil || raw.Documents == nil {
-		return Index{}, fmt.Errorf("v1 requires generator, source, scope, document_count, and documents")
+		return Index{}, fmt.Errorf("content index v%d requires generator, source, scope, document_count, and documents", expectedVersion)
 	}
 	if string(raw.Source) == "null" || string(raw.Source) == "" {
 		return Index{}, fmt.Errorf("source must be an object")
@@ -203,6 +239,9 @@ func decodeV1(data []byte) (Index, error) {
 				return Index{}, fmt.Errorf("documents[%d].%s must be a boolean", i, field)
 			}
 		}
+		if err := validatePrivateDocumentWire(i, document, allowPrivate); err != nil {
+			return Index{}, err
+		}
 		for _, field := range []string{"tags", "feeds", "aliases", "authors", "categories"} {
 			if value, ok := document[field]; ok {
 				if isJSONNull(value) {
@@ -233,8 +272,8 @@ func decodeV1(data []byte) (Index, error) {
 			}
 		}
 	}
-	if wire.SchemaURL != SchemaURL {
-		return Index{}, fmt.Errorf("$schema must be %q", SchemaURL)
+	if wire.SchemaURL != schemaURL {
+		return Index{}, fmt.Errorf("$schema must be %q", schemaURL)
 	}
 	if wire.Schema != Schema {
 		return Index{}, fmt.Errorf("%w %q", ErrUnsupportedSchema, wire.Schema)
@@ -243,11 +282,22 @@ func decodeV1(data []byte) (Index, error) {
 	if err != nil {
 		return Index{}, fmt.Errorf("schema_version must be an integer: %w", err)
 	}
-	if version != 1 {
+	if version != expectedVersion {
 		return Index{}, fmt.Errorf("%w %d", ErrUnsupportedVersion, version)
 	}
 	if wire.Scope == "" {
 		return Index{}, fmt.Errorf("scope is required")
+	}
+	if allowPrivate && wire.Scope != PublicScope && wire.Scope != PublicMetadataScope {
+		return Index{}, fmt.Errorf("unsupported scope %q for content index v2", wire.Scope)
+	}
+	if allowPrivate && wire.Scope != PublicMetadataScope {
+		for i := range wire.Documents {
+			document := &wire.Documents[i]
+			if document.Private {
+				return Index{}, fmt.Errorf("documents[%d].private requires scope %q", i, PublicMetadataScope)
+			}
+		}
 	}
 	if wire.Generator.Name == "" {
 		return Index{}, fmt.Errorf("generator.name is required")
@@ -280,6 +330,43 @@ func decodeV1(data []byte) (Index, error) {
 		result.Documents[i] = Document{Path: d.Path, Slug: d.Slug, Href: d.Href, Title: d.Title, TitleText: d.TitleText, Date: d.Date, Modified: d.Modified, Published: d.Published, Draft: d.Draft, Private: d.Private, Template: d.Template, Tags: append([]string(nil), d.Tags...), Description: d.Description, Feeds: append([]string(nil), d.Feeds...), Aliases: append([]string(nil), d.Aliases...), Image: d.Image, Video: d.Video, Avatar: d.Avatar, Bio: d.Bio, Thumbnail: d.Thumbnail, Cover: d.Cover, OGImage: d.OGImage, Author: d.Author, Authors: append([]string(nil), d.Authors...), Category: d.Category, Categories: append([]string(nil), d.Categories...)}
 	}
 	return result, nil
+}
+
+func forbiddenPrivateDocumentField(document Document) string {
+	fields := map[string]*string{
+		"image":     document.Image,
+		"video":     document.Video,
+		"bio":       document.Bio,
+		"thumbnail": document.Thumbnail,
+		"cover":     document.Cover,
+		"og_image":  document.OGImage,
+	}
+	for _, field := range privateV2ForbiddenFields {
+		if fields[field] != nil {
+			return field
+		}
+	}
+	return ""
+}
+
+func validatePrivateDocumentWire(index int, document map[string]json.RawMessage, allowPrivate bool) error {
+	if !allowPrivate {
+		return nil
+	}
+	private, ok := document["private"]
+	if !ok {
+		return nil
+	}
+	var isPrivate bool
+	if err := json.Unmarshal(private, &isPrivate); err != nil || !isPrivate {
+		return nil
+	}
+	for _, field := range privateV2ForbiddenFields {
+		if _, ok := document[field]; ok {
+			return fmt.Errorf("documents[%d].%s is forbidden for private v2 documents", index, field)
+		}
+	}
+	return nil
 }
 
 func isJSONNull(value []byte) bool { return bytes.Equal(bytes.TrimSpace(value), []byte("null")) }

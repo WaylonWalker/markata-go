@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
@@ -1156,6 +1157,355 @@ func TestPublishHTMLPlugin_PrivatePostsNoAlternateFormats(t *testing.T) {
 	ogPath := filepath.Join(tempDir, "secret-post", "og", "index.html")
 	if _, err := os.Stat(ogPath); !os.IsNotExist(err) {
 		t.Error("Private post OG card should NOT be written (would leak metadata)")
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateTransitionRemovesExistingAlternateFormats(t *testing.T) {
+	tempDir := t.TempDir()
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url": "https://example.com",
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				ANSI:     true,
+				OG:       true,
+			},
+		},
+	}
+	plugin := NewPublishHTMLPlugin()
+	m := createTestManager(t, config)
+
+	post := &models.Post{
+		Path:        "transition.md",
+		Slug:        "transition",
+		Content:     "public body",
+		HTML:        "<p>public body</p>",
+		ArticleHTML: "<p>public body</p>",
+		Published:   true,
+	}
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("public writePost() error = %v", err)
+	}
+
+	post.Private = true
+	post.Content = ""
+	post.HTML = `<div class="encrypted-content" data-encrypted="ciphertext">Encrypted</div>`
+	post.ArticleHTML = post.HTML
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("private writePost() error = %v", err)
+	}
+
+	for _, path := range []string{
+		filepath.Join(tempDir, "transition.md"),
+		filepath.Join(tempDir, "transition.txt"),
+		filepath.Join(tempDir, "transition.ansi"),
+		filepath.Join(tempDir, "transition", "index.md"),
+		filepath.Join(tempDir, "transition", "index.txt"),
+		filepath.Join(tempDir, "transition", "index.ansi"),
+		filepath.Join(tempDir, "transition", "og"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("private transition retained alternate output %s: %v", path, err)
+		}
+	}
+	html, err := os.ReadFile(filepath.Join(tempDir, "transition", "index.html"))
+	if err != nil {
+		t.Fatalf("private HTML output was removed: %v", err)
+	}
+	if !strings.Contains(string(html), "encrypted-content") {
+		t.Fatalf("private HTML output did not contain encrypted content: %s", html)
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateDraftOrSkipRemovesExistingOutputs(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		draft bool
+		skip  bool
+	}{
+		{name: "draft", draft: true},
+		{name: "skip", skip: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			htmlEnabled := true
+			config := &lifecycle.Config{
+				OutputDir: tempDir,
+				Extra: map[string]interface{}{
+					"url": "https://example.com",
+					"post_formats": models.PostFormatsConfig{
+						HTML:     &htmlEnabled,
+						Markdown: true,
+						Text:     true,
+						ANSI:     true,
+						OG:       true,
+					},
+				},
+			}
+			plugin := NewPublishHTMLPlugin()
+			m := createTestManager(t, config)
+			post := &models.Post{
+				Path:        "private-transition.md",
+				Slug:        "private-transition",
+				Content:     "public body",
+				HTML:        "<p>public body</p>",
+				ArticleHTML: "<p>public body</p>",
+				Published:   true,
+			}
+			if err := plugin.writePost(post, config, nil, m); err != nil {
+				t.Fatalf("public writePost() error = %v", err)
+			}
+
+			post.Private = true
+			post.Draft = tt.draft
+			post.Skip = tt.skip
+			m.SetPosts([]*models.Post{post})
+			if err := plugin.Write(m); err != nil {
+				t.Fatalf("private %s Write() error = %v", tt.name, err)
+			}
+
+			for _, path := range []string{
+				filepath.Join(tempDir, "private-transition"),
+				filepath.Join(tempDir, "private-transition.md"),
+				filepath.Join(tempDir, "private-transition.txt"),
+				filepath.Join(tempDir, "private-transition.ansi"),
+			} {
+				if _, err := os.Stat(path); !os.IsNotExist(err) {
+					t.Errorf("private %s retained output %s: %v", tt.name, path, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateToDraftOrSkipRemovesExistingOutputs(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		draft bool
+		skip  bool
+	}{
+		{name: "draft", draft: true},
+		{name: "skip", skip: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			htmlEnabled := true
+			config := &lifecycle.Config{
+				OutputDir: tempDir,
+				Extra: map[string]interface{}{
+					"url": "https://example.com",
+					"post_formats": models.PostFormatsConfig{
+						HTML:     &htmlEnabled,
+						Markdown: true,
+						Text:     true,
+						ANSI:     true,
+						OG:       true,
+					},
+				},
+			}
+			plugin := NewPublishHTMLPlugin()
+			m := createTestManager(t, config)
+			post := &models.Post{
+				Path:        "private-to-draft.md",
+				Slug:        "private-to-draft",
+				Content:     "public body",
+				HTML:        "<p>public body</p>",
+				ArticleHTML: "<p>public body</p>",
+				Published:   true,
+			}
+			if err := plugin.writePost(post, config, nil, m); err != nil {
+				t.Fatalf("public writePost() error = %v", err)
+			}
+
+			post.Private = true
+			post.Content = ""
+			post.HTML = `<div class="encrypted-content" data-encrypted="ciphertext">Encrypted</div>`
+			post.ArticleHTML = post.HTML
+			if err := plugin.writePost(post, config, nil, m); err != nil {
+				t.Fatalf("private writePost() error = %v", err)
+			}
+
+			post.Private = false
+			post.Draft = tt.draft
+			post.Skip = tt.skip
+			m.SetPosts([]*models.Post{post})
+			if err := plugin.Write(m); err != nil {
+				t.Fatalf("public %s Write() error = %v", tt.name, err)
+			}
+
+			for _, path := range []string{
+				filepath.Join(tempDir, "private-to-draft"),
+				filepath.Join(tempDir, "private-to-draft.md"),
+				filepath.Join(tempDir, "private-to-draft.txt"),
+				filepath.Join(tempDir, "private-to-draft.ansi"),
+			} {
+				if _, err := os.Stat(path); !os.IsNotExist(err) {
+					t.Errorf("public %s retained output %s: %v", tt.name, path, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateSlugChangeRemovesOldOutputs(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := buildcache.New(filepath.Join(tempDir, "cache"))
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url": "https://example.com",
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				ANSI:     true,
+				OG:       true,
+			},
+		},
+	}
+	plugin := NewPublishHTMLPlugin()
+	m := createTestManager(t, config)
+	m.Cache().Set("build_cache", cache)
+	post := &models.Post{
+		Path:        "private-slug-change.md",
+		Slug:        "old-slug",
+		Content:     "public body",
+		HTML:        "<p>public body</p>",
+		ArticleHTML: "<p>public body</p>",
+		Published:   true,
+	}
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("public writePost() error = %v", err)
+	}
+	cache.Posts[post.Path] = &buildcache.PostCache{
+		Slug:       "old-slug",
+		OutputPath: filepath.Join(tempDir, "old-slug", "index.html"),
+	}
+
+	post.Private = true
+	post.Slug = "new-slug"
+	post.Content = ""
+	post.HTML = `<div class="encrypted-content" data-encrypted="ciphertext">Encrypted</div>`
+	post.ArticleHTML = post.HTML
+	m.SetPosts([]*models.Post{post})
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("private slug change Write() error = %v", err)
+	}
+
+	for _, path := range []string{
+		filepath.Join(tempDir, "old-slug"),
+		filepath.Join(tempDir, "old-slug.md"),
+		filepath.Join(tempDir, "old-slug.txt"),
+		filepath.Join(tempDir, "old-slug.ansi"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("private slug change retained old output %s: %v", path, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "new-slug", "index.html")); err != nil {
+		t.Fatalf("private slug change did not write new HTML: %v", err)
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateTraversalSlugFailsBeforeRemoval(t *testing.T) {
+	tempDir := t.TempDir()
+	victimPath := filepath.Join(tempDir, "..", "victim.md")
+	//nolint:gosec // The sentinel stays inside the test's temporary hierarchy.
+	if err := os.WriteFile(victimPath, []byte("sentinel"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(victimPath) })
+
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{HTML: boolPtr(true)},
+		},
+	}
+	m := createTestManager(t, config)
+	m.SetPosts([]*models.Post{{Path: "private.md", Slug: "../victim", Private: true, Published: true, HTML: "encrypted"}})
+	if err := NewPublishHTMLPlugin().Write(m); err == nil {
+		t.Fatal("expected traversal slug error")
+	}
+	data, err := os.ReadFile(victimPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "sentinel" {
+		t.Fatalf("traversal slug modified path outside output directory: %q", data)
+	}
+}
+
+func TestPublishHTMLPlugin_PrivateToPublicSlugChangeRemovesOldOutputs(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := buildcache.New(filepath.Join(tempDir, "cache"))
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url": "https://example.com",
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				ANSI:     true,
+				OG:       true,
+			},
+		},
+	}
+	plugin := NewPublishHTMLPlugin()
+	m := createTestManager(t, config)
+	m.Cache().Set("build_cache", cache)
+	post := &models.Post{
+		Path:        "private-to-public.md",
+		Slug:        "private-old",
+		Content:     "public body",
+		HTML:        "<p>public body</p>",
+		ArticleHTML: "<p>public body</p>",
+		Published:   true,
+	}
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("initial public writePost() error = %v", err)
+	}
+	post.Private = true
+	post.Content = ""
+	post.HTML = `<div class="encrypted-content" data-encrypted="ciphertext">Encrypted</div>`
+	post.ArticleHTML = post.HTML
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("private writePost() error = %v", err)
+	}
+	cache.Posts[post.Path] = &buildcache.PostCache{
+		Slug:       "private-old",
+		OutputPath: filepath.Join(tempDir, "private-old", "index.html"),
+	}
+
+	post.Private = false
+	post.Slug = "public-new"
+	post.Content = "new public body"
+	post.HTML = "<p>new public body</p>"
+	post.ArticleHTML = post.HTML
+	m.SetPosts([]*models.Post{post})
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("public slug change Write() error = %v", err)
+	}
+
+	for _, path := range []string{
+		filepath.Join(tempDir, "private-old"),
+		filepath.Join(tempDir, "private-old.md"),
+		filepath.Join(tempDir, "private-old.txt"),
+		filepath.Join(tempDir, "private-old.ansi"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("public slug change retained old private output %s: %v", path, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "public-new", "index.html")); err != nil {
+		t.Fatalf("public slug change did not write new HTML: %v", err)
 	}
 }
 

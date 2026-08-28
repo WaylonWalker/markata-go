@@ -250,7 +250,7 @@ func computeFeedsListingHash(
 		}
 		writeString(fc.Title)
 		writeString(fc.Description)
-		writeBool(fc.IncludePrivate)
+		writeBool(fc.IncludesPrivate())
 		writeBool(fc.Formats.HTML)
 		writeBool(fc.Formats.SimpleHTML)
 		writeBool(fc.Formats.RSS)
@@ -296,7 +296,7 @@ func expectedFeedsListingOutputPaths(config *lifecycle.Config, feedsPage *models
 	configuredSlugs := configuredFeedSlugs(config)
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.IncludePrivate && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
+		if fc.IncludesPrivate() && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
 			continue
 		}
 		if _, isConfigured := configuredSlugs[fc.Slug]; !isConfigured {
@@ -360,11 +360,11 @@ func (p *FeedsListingPlugin) collectFeedSections(
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.IncludePrivate && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
+		if fc.IncludesPrivate() && !feedsPageAllowsPrivateFeed(feedsPage, fc.Slug) {
 			continue
 		}
 
-		postCount, latestDate, latestTime := feedStats(fc.Posts, fc.IncludePrivate)
+		postCount, latestDate, latestTime := feedStats(fc.Posts, fc.IncludesPrivate())
 		display, primary, archive, utility := splitFeedVariants(fc, syndication)
 		_, isConfigured := configuredSlugs[fc.Slug]
 		info := FeedListingInfo{
@@ -381,10 +381,10 @@ func (p *FeedsListingPlugin) collectFeedSections(
 			PrimaryVariants:  primary,
 			ArchiveVariants:  archive,
 			UtilityVariants:  utility,
-			SparklinePoints:  buildFeedSparkline(fc.Posts, sparklineRange, fc.IncludePrivate),
-			SparklineData:    buildFeedSparklineData(fc.Posts, sparklineRange, fc.IncludePrivate),
-			SparklineTitle:   buildFeedSparklineTitle(fc.Posts, sparklineRange, fc.IncludePrivate),
-			SparklineSummary: buildFeedSparklineSummary(fc.Posts, sparklineRange, fc.IncludePrivate),
+			SparklinePoints:  buildFeedSparkline(fc.Posts, sparklineRange, fc.IncludesPrivate()),
+			SparklineData:    buildFeedSparklineData(fc.Posts, sparklineRange, fc.IncludesPrivate()),
+			SparklineTitle:   buildFeedSparklineTitle(fc.Posts, sparklineRange, fc.IncludesPrivate()),
+			SparklineSummary: buildFeedSparklineSummary(fc.Posts, sparklineRange, fc.IncludesPrivate()),
 			SparklineStart:   buildFeedSparklineStart(sparklineRange),
 			SparklineEnd:     buildFeedSparklineEnd(sparklineRange),
 			GeneratedBySite:  !isConfigured,

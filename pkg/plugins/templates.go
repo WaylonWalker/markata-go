@@ -297,7 +297,7 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 		feedCfg := &feedConfigs[i]
 		feedCfg.ApplyDefaults(feedDefaults)
 
-		filteredPosts, err := fc.FilterPosts(feedCfg.Filter, feedCfg.IncludePrivate)
+		filteredPosts, err := fc.FilterPosts(feedCfg.Filter, feedCfg.IncludesPrivate())
 		if err != nil {
 			continue
 		}
@@ -1021,7 +1021,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 	var feeds []sidebarFeedJSON
 
 	addFeed := func(fc *models.FeedConfig, posts []*models.Post, priority string) {
-		if fc == nil || fc.IncludePrivate || seen[fc.Slug] {
+		if fc == nil || fc.IncludesPrivate() || seen[fc.Slug] {
 			return
 		}
 		// Exclude feeds explicitly opted out of the sidebar picker
@@ -1309,7 +1309,7 @@ func (p *TemplatesPlugin) collectAutoDiscoveredFeeds(
 
 	for i := range configs {
 		fc := &configs[i]
-		if seen[fc.Slug] || fc.IncludePrivate || len(fc.Posts) > maxAutoFeedPosts {
+		if seen[fc.Slug] || fc.IncludesPrivate() || len(fc.Posts) > maxAutoFeedPosts {
 			continue
 		}
 		if hasAnyPrefix(fc.Slug, skipPrefixes) {
@@ -1425,7 +1425,7 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 	syndication := getSyndicationConfig(config)
 	for i := range configs {
 		fc := &configs[i]
-		if seen[fc.Slug] || fc.IncludePrivate {
+		if seen[fc.Slug] || fc.IncludesPrivate() {
 			continue
 		}
 		if fc.Sidebar != nil && !*fc.Sidebar {
@@ -1457,7 +1457,7 @@ func (p *TemplatesPlugin) buildRotationFeedSlugs(m *lifecycle.Manager, seen map[
 	// First pass: collect primary or sidebar=true feeds that appear in the sidebar candidate set
 	for i := range configs {
 		fc := &configs[i]
-		if fc.IncludePrivate || !seen[fc.Slug] {
+		if fc.IncludesPrivate() || !seen[fc.Slug] {
 			continue
 		}
 		sidebarExplicit := fc.Sidebar != nil && *fc.Sidebar

@@ -21,7 +21,9 @@ output = "content-index.json"
 
 The file is written below `output_dir` unless `output` is absolute. Its
 identity is `schema = "markata.content-index"` and its current generation is
-`schema_version = 1`. V1 emits `scope = "public"`.
+`schema_version = 2`. V2 emits `scope = "public-metadata"`. This means the file
+can contain safe metadata records for private posts; it never contains their
+article bodies or encryption keys.
 
 ## Reading the file
 
@@ -56,16 +58,25 @@ A source file can change and be restored between the two observations. Use Git
 commit/blob identity, or another exact source identity mechanism, when exact
 per-file synchronization is required.
 
-The public scope excludes private, draft, and skipped documents. A
+The index includes non-draft, non-skipped posts, including private posts. A
 `published: false` direct page may still appear. A feed named `draft` is feed
 membership only and does not mean that the document has `draft: true`.
+
+Private records contain only safe metadata. Titles and descriptions are present
+only when they were explicitly provided in frontmatter; content-derived values,
+article bodies, rendered HTML, key names, private media, and resolved author
+biographies are omitted. Tags, dates, slugs, aliases, author identifiers,
+categories, and an explicit avatar may remain. The `feeds` list for a private
+record contains only feeds configured with `include_private = true` (or
+`private = true`).
 
 Markata retains readers for every released generation and normalizes them into
 one current internal model. The index is not a source archive, rendered-body
 cache, access-control system, or guarantee that source files remain available.
-Private and draft documents are excluded from the public artifact.
 If you disable the output, use a clean output directory or remove the old
 artifact before deployment.
 
-The v1 schema and immutable interoperability fixtures are in
-`pkg/contentindex/v1_schema.json` and `pkg/contentindex/fixtures/`.
+The v1 and v2 schemas and immutable interoperability fixtures are in
+`pkg/contentindex/v1_schema.json`, `pkg/contentindex/v2_schema.json`, and
+`pkg/contentindex/fixtures/`. Set `schema_version = 1` when a consumer still
+requires the public-only v1 artifact.

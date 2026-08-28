@@ -143,6 +143,13 @@ To disable:
 subscription_feeds_disabled = true
 ```
 
+Private posts stay out of feeds unless a feed explicitly sets
+`include_private = true` (or the compatibility alias `private = true`).
+Opted-in feed outputs use encrypted article HTML and safe metadata only; they
+do not expose raw body text, key names, derived descriptions, or private media.
+Their encrypted wrappers omit the key name, so feed entries decrypt individually
+without shared session storage or cross-entry unlocking.
+
 ## Sitemap Generation
 
 Sitemaps are generated automatically:
