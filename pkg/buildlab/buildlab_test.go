@@ -199,12 +199,14 @@ func TestWorkspace_IsolationConfig(t *testing.T) {
 	if !ok || pagefind["cache_dir"] != filepath.Join(w.MarkataCache, "pagefind") {
 		t.Fatalf("isolation pagefind config = %v", search["pagefind"])
 	}
-	info, err := os.Stat(w.IsolationConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("isolation config mode = %o, want 600", info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(w.IsolationConfig)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("isolation config mode = %o, want 600", info.Mode().Perm())
+		}
 	}
 }
 
@@ -318,7 +320,8 @@ func TestWorkspace_ClearCacheClearsForcedCache(t *testing.T) {
 
 func TestScenario_PathSafetyAndPreconditions(t *testing.T) {
 	root := t.TempDir()
-	for _, op := range []Operation{{Type: OpWriteFile, Path: "../escape"}, {Type: OpWriteFile, Path: "/absolute"}} {
+	absolute := filepath.Join(filepath.VolumeName(root)+string(filepath.Separator), "absolute")
+	for _, op := range []Operation{{Type: OpWriteFile, Path: "../escape"}, {Type: OpWriteFile, Path: absolute}} {
 		if err := ApplyOperation(root, op); err == nil {
 			t.Errorf("unsafe path accepted: %q", op.Path)
 		}

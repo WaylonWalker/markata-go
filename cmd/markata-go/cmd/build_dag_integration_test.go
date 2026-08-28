@@ -15,6 +15,7 @@ import (
 
 func TestBuildCLI_DAGEquivalentAfterLinkedTargetMutations(t *testing.T) {
 	t.Helper()
+	requireLinuxBuildLab(t)
 	repoRoot := moduleRoot(t)
 	fixture := filepath.Join(repoRoot, "cmd", "markata-go", "cmd", "testdata", "dag-site")
 	if _, err := os.Stat(fixture); err != nil {
@@ -81,6 +82,7 @@ func TestBuildCLI_DAGEquivalentAfterLinkedTargetMutations(t *testing.T) {
 }
 
 func TestBuildLab_IgnoresAmbientSiteDirectory(t *testing.T) {
+	requireLinuxBuildLab(t)
 	repoRoot := moduleRoot(t)
 	fixture := filepath.Join(repoRoot, "cmd", "markata-go", "cmd", "testdata", "dag-site")
 	trap := t.TempDir()
@@ -115,6 +117,7 @@ func TestBuildLab_IgnoresAmbientSiteDirectory(t *testing.T) {
 }
 
 func TestBuildLab_IsolatesAbsoluteConfiguredCache(t *testing.T) {
+	requireLinuxBuildLab(t)
 	repoRoot := moduleRoot(t)
 	sourceFixture := filepath.Join(repoRoot, "cmd", "markata-go", "cmd", "testdata", "dag-site")
 	fixture := t.TempDir()
@@ -250,6 +253,13 @@ func buildTestBinary(t *testing.T) string {
 		t.Fatalf("build markata-go: %v\n%s", err, output)
 	}
 	return binary
+}
+
+func requireLinuxBuildLab(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("Build Lab process groups are implemented on Linux")
+	}
 }
 
 func moduleRoot(t *testing.T) string {

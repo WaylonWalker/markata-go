@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -110,13 +111,19 @@ func TestCanonicalDocumentProfileExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sha256Digest(shared) != sha256Digest(local) || sha256Digest(shared) != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
-		t.Fatalf("canonical fixture hash drifted: shared=%s local=%s", sha256Digest(shared), sha256Digest(local))
+	sharedDigest := canonicalFixtureDigest(shared)
+	localDigest := canonicalFixtureDigest(local)
+	if sharedDigest != localDigest || sharedDigest != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
+		t.Fatalf("canonical fixture hash drifted: shared=%s local=%s", sharedDigest, localDigest)
 	}
 	theme := readCanonicalFixture(t, "theme.toml")
-	if got := sha256Digest(theme); got != "c751df3b26ae476615d22107adfd5d00a4b76c661b613cbc44bd8499f7076806" {
+	if got := canonicalFixtureDigest(theme); got != "c751df3b26ae476615d22107adfd5d00a4b76c661b613cbc44bd8499f7076806" {
 		t.Fatalf("canonical theme fixture hash drifted: %s", got)
 	}
+}
+
+func canonicalFixtureDigest(data []byte) string {
+	return sha256Digest(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))
 }
 
 func sha256Digest(data []byte) string {

@@ -311,6 +311,16 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 
 	slug := postCache.Slug
 	outputDir := config.OutputDir
+	outputInfo, err := os.Stat(outputDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat output directory %q: %w", outputDir, err)
+	}
+	if !outputInfo.IsDir() {
+		return fmt.Errorf("output directory %q is not a directory", outputDir)
+	}
 	postDir, err := safeOutputPath(outputDir, slug)
 	if err != nil {
 		return err
