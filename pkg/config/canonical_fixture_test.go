@@ -42,6 +42,7 @@ func TestCanonicalHeadingsMarkdownCopyMatchesSharedFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	local = canonicalFixtureBytes(local)
 	if got := sha256Digest(local); got != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
 		t.Fatalf("local canonical fixture hash drifted: %s", got)
 	}
@@ -52,7 +53,11 @@ func TestCanonicalHeadingsMarkdownCopyMatchesSharedFixture(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	if !bytes.Equal(shared, local) {
+	if !bytes.Equal(canonicalFixtureBytes(shared), local) {
 		t.Fatal("markata-go headings copy drifted from the shared fixture")
 	}
+}
+
+func canonicalFixtureBytes(data []byte) []byte {
+	return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 }

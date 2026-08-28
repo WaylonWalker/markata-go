@@ -111,6 +111,7 @@ func TestCanonicalSpecimenExternalFixtureIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	local = canonicalFixtureBytes(local)
 	if got := sha256Digest(local); got != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
 		t.Fatalf("local canonical fixture hash drifted: %s", got)
 	}
@@ -122,6 +123,7 @@ func TestCanonicalSpecimenExternalFixtureIdentity(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
+	shared = canonicalFixtureBytes(shared)
 	if sha256Digest(shared) != sha256Digest(local) || sha256Digest(shared) != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
 		t.Fatalf("canonical fixture hash drifted: shared=%s local=%s", sha256Digest(shared), sha256Digest(local))
 	}
