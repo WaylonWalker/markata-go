@@ -274,6 +274,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	buildCache := GetBuildCache(m)
 	var skippedCount int
 	var rebuiltCount int
+	var countMu sync.Mutex
 
 	maxConcurrency := m.Concurrency()
 	if maxConcurrency < 8 {
@@ -309,14 +310,18 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 
 				skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 				if skip {
+					countMu.Lock()
 					skippedCount++
+					countMu.Unlock()
 					return
 				}
 				if err := p.publishFeed(fc, config, outputDir); err != nil {
 					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 					return
 				}
+				countMu.Lock()
 				rebuiltCount++
+				countMu.Unlock()
 				p.cacheFeedHash(fc, buildCache, hash)
 			}(fc)
 		}
@@ -993,6 +998,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 		p.addFeedStatsContext(&ctx, fc, renderCtx)
+		setEncryptedFeedContext(&ctx, page)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -1061,12 +1067,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		ctx.Set("needs_cards_css", true)
 
 		// If any post on this page has encrypted content, load decryption JS/CSS
-		for _, post := range page.Posts {
-			if v, ok := post.Extra["has_encrypted_content"].(bool); ok && v {
-				ctx.Set("has_encrypted_content", true)
-				break
-			}
-		}
+		setEncryptedFeedContext(&ctx, page)
 
 		// Render with pongo2 template
 		html, err := engine.Render(templateName, ctx)
@@ -1080,6 +1081,19 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 	// Fallback: Use built-in Go template
 	return p.generateFeedPageHTMLFallback(fc, page, config)
+}
+
+// setEncryptedFeedContext enables the assets required to unlock encrypted feed
+// entries. Keep this shared by the normal and simple feed page renderers.
+func setEncryptedFeedContext(ctx *templates.Context, page *models.FeedPage) {
+	for _, post := range page.Posts {
+		if post != nil {
+			if v, ok := post.Extra["has_encrypted_content"].(bool); ok && v {
+				ctx.Set("has_encrypted_content", true)
+				return
+			}
+		}
+	}
 }
 
 func buildFeedRenderContext(fc *models.FeedConfig) *feedRenderContext {

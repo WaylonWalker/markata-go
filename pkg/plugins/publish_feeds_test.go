@@ -69,6 +69,37 @@ func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
 	}
 }
 
+func TestGenerateSimpleFeedPageHTML_LoadsDecryptionAssets(t *testing.T) {
+	t.Parallel()
+
+	p := NewPublishFeedsPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Example Site",
+	}
+
+	fc := &models.FeedConfig{
+		Slug:  "private",
+		Title: "Private",
+		Posts: []*models.Post{{
+			Slug:  "private/entry",
+			Href:  "/private/entry/",
+			Extra: map[string]interface{}{"has_encrypted_content": true},
+		}},
+	}
+	page := &models.FeedPage{Posts: fc.Posts, TotalPages: 1}
+
+	html, err := p.generateSimpleFeedPageHTML(fc, page, config, nil, buildFeedRenderContext(fc))
+	if err != nil {
+		t.Fatalf("generateSimpleFeedPageHTML() error = %v", err)
+	}
+	if !strings.Contains(html, `js/decryption.js`) {
+		t.Fatalf("expected simple feed output to load decryption.js, got %q", html)
+	}
+}
+
 func TestCleanupPaginatedFeedDirs_RemovesStalePageDirectories(t *testing.T) {
 	t.Parallel()
 
