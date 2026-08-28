@@ -112,6 +112,13 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	if baseDir == "" {
 		baseDir = "."
 	}
+	if cache := GetBuildCache(m); cache != nil {
+		missing := cache.MarkMissingPaths(files)
+		if len(missing) > 0 {
+			removed := append(lifecycle.GetServeRemovedPaths(m), missing...)
+			lifecycle.SetServeRemovedPaths(m, removed)
+		}
+	}
 
 	if cachedPosts := lifecycle.GetServeCachedPosts(m); len(cachedPosts) > 0 {
 		return p.loadFromCachedPosts(m, files, baseDir, cachedPosts)
@@ -396,6 +403,7 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", file, err)
 	}
+	markChangedPost(cache, file, post)
 
 	// Cache the parsed post. Source-encrypted files intentionally skip parsed
 	// post and article caches because those would contain decrypted content.
@@ -420,6 +428,34 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	}
 
 	return post, nil
+}
+
+// markChangedPost seeds dependency invalidation as soon as a changed source is
+// parsed. Transform and render caches run before the write stage, so waiting
+// for PublishHTMLPlugin to discover the changed input leaves cached embeds and
+// other dependency-derived content stale for the current build.
+func markChangedPost(cache *buildcache.Cache, sourcePath string, post *models.Post) {
+	if cache == nil || post == nil || sourcePath == "" {
+		return
+	}
+
+	cached := cache.GetCachedPost(sourcePath)
+	if cached != nil && cached.InputHash == post.InputHash {
+		return
+	}
+
+	if cached != nil {
+		oldSlug := cached.Slug
+		if oldSlug == "" {
+			oldSlug = cache.Graph.SlugForPath(sourcePath)
+		}
+		if oldSlug != "" {
+			cache.MarkSlugChanged(oldSlug)
+		}
+	}
+	if post.Slug != "" {
+		cache.MarkSlugChanged(post.Slug)
+	}
 }
 
 func fullContentPath(file, baseDir string) string {

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -18,7 +17,7 @@ import (
 //  2. First H1 heading from markdown content
 //  3. Filename-based title (with date prefix stripping)
 //  4. Directory name (for index.md files)
-//  5. Generated fallback with timestamp
+//  5. Generated fallback with stable identifier
 type AutoTitlePlugin struct{}
 
 // dateRegex matches common date prefixes in filenames: YYYY-MM-DD with optional separator
@@ -72,7 +71,7 @@ func (p *AutoTitlePlugin) Transform(m *lifecycle.Manager) error {
 //  2. Date-stripped filename
 //  3. Directory name (for index.md files)
 //  4. Plain filename-based title
-//  5. Generated fallback with path identifier
+//  5. Generated fallback with a stable identifier
 func (p *AutoTitlePlugin) inferTitle(post *models.Post) string {
 	// Strategy 1: Extract from first H1 heading in content
 	if title := p.extractFromContent(post.Content); title != "" {
@@ -148,8 +147,8 @@ func (p *AutoTitlePlugin) stripDatePrefix(filename string) (string, bool) {
 	return filename, false
 }
 
-// generateFallback creates a fallback title when all other strategies fail.
-// Uses a combination of path info and timestamp to ensure uniqueness.
+// generateFallback creates a deterministic fallback title when all other
+// strategies fail.  A build must not depend on wall-clock time for metadata.
 func (p *AutoTitlePlugin) generateFallback(path string) string {
 	if path != "" {
 		// Try to create something from the path
@@ -159,8 +158,10 @@ func (p *AutoTitlePlugin) generateFallback(path string) string {
 			return "Untitled " + stem
 		}
 	}
-	// Last resort - use timestamp
-	return "Untitled " + time.Now().Format("2006-01-02-150405")
+	// A pathless post is an unusual manually-created value.  Keep the result
+	// stable; callers with a real source path get the path-derived identifier
+	// above.  The source path remains the identity used by the normal loader.
+	return "Untitled post"
 }
 
 // generateTitle creates a human-readable title from a file path.

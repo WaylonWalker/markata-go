@@ -41,11 +41,34 @@ func (p *BuildCachePlugin) Priority(stage lifecycle.Stage) int {
 		return lifecycle.PriorityEarly - 100 // Very early in configure
 	case lifecycle.StageTransform:
 		return lifecycle.PriorityLate + 100 // Very late in transform (after wikilinks/embeds)
+	case lifecycle.StageLoad:
+		return lifecycle.PriorityLate + 100 // Recompute affected paths after all posts are loaded
 	case lifecycle.StageCleanup:
 		return lifecycle.PriorityLate + 100 // Very late in cleanup
 	default:
 		return lifecycle.PriorityDefault
 	}
+}
+
+// Load refreshes dependency-derived serve paths after LoadPlugin has parsed
+// changed and newly discovered posts. This second pass is required because a
+// new post's slug is not available during Configure, when watcher changes are
+// first mapped to cached dependency edges.
+func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
+	if !p.enabled || p.cache == nil || lifecycle.IsServeFullRebuild(m) || !lifecycle.IsServeIncremental(m) {
+		return nil
+	}
+	if len(lifecycle.GetServeChangedPaths(m)) == 0 && len(lifecycle.GetServeRemovedPaths(m)) == 0 {
+		return nil
+	}
+
+	missing := p.cache.MarkMissingPaths(m.Files())
+	if len(missing) > 0 {
+		removed := append(lifecycle.GetServeRemovedPaths(m), missing...)
+		lifecycle.SetServeRemovedPaths(m, removed)
+	}
+	p.refreshServeAffectedPaths(m)
+	return nil
 }
 
 // Configure loads the build cache and checks for global invalidation.
@@ -58,19 +81,31 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Load existing cache. Default to content-dir-local .markata so incremental
-	// build state survives when output is redirected to a temp/workspace path.
-	cacheDir := filepath.Join(config.ContentDir, ".markata")
-	if config.Extra != nil {
-		if dir, ok := config.Extra["cache_dir"].(string); ok && dir != "" {
-			cacheDir = dir
+	// Rebuilds started by serve pre-seed the manager with the in-memory cache
+	// from the previous build. Keep that cache so serve remains correct even if
+	// the on-disk cache is unavailable between rebuilds.
+	var cache *buildcache.Cache
+	if cached, ok := m.Cache().Get("build_cache"); ok {
+		if preloaded, ok := cached.(*buildcache.Cache); ok {
+			cache = preloaded
 		}
 	}
+	if cache == nil {
+		// Load existing cache. Default to content-dir-local .markata so incremental
+		// build state survives when output is redirected to a temp/workspace path.
+		cacheDir := filepath.Join(config.ContentDir, ".markata")
+		if config.Extra != nil {
+			if dir, ok := config.Extra["cache_dir"].(string); ok && dir != "" {
+				cacheDir = dir
+			}
+		}
 
-	cache, err := buildcache.Load(cacheDir)
-	if err != nil {
-		// Non-fatal: start with empty cache
-		cache = buildcache.New(cacheDir)
+		var err error
+		cache, err = buildcache.Load(cacheDir)
+		if err != nil {
+			// Non-fatal: start with empty cache
+			cache = buildcache.New(cacheDir)
+		}
 	}
 	p.cache = cache
 
@@ -193,9 +228,8 @@ func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache
 	}
 
 	changedSlugs := cache.GetChangedSlugs()
-	cache.MarkAffectedDependents(changedSlugs)
-	changedSlugs = cache.GetChangedSlugs()
 	affectedPaths := cache.GetAffectedPosts(changedSlugs)
+	cache.MarkAffectedDependents(changedSlugs)
 
 	affected := make(map[string]bool, len(changedPaths)+len(affectedPaths))
 	for _, path := range changedPaths {
@@ -211,24 +245,58 @@ func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache
 	return nil
 }
 
+func (p *BuildCachePlugin) refreshServeAffectedPaths(m *lifecycle.Manager) {
+	changedPaths := lifecycle.GetServeChangedPaths(m)
+	removedPaths := lifecycle.GetServeRemovedPaths(m)
+	p.cache.MarkChangedPaths(changedPaths)
+	for _, path := range removedPaths {
+		p.cache.Graph.RemoveSource(path)
+	}
+
+	changedSlugs := p.cache.GetChangedSlugs()
+	affectedPaths := p.cache.GetAffectedPosts(changedSlugs)
+	p.cache.MarkAffectedDependents(changedSlugs)
+
+	affected := make(map[string]bool, len(changedPaths)+len(removedPaths)+len(affectedPaths))
+	for path := range lifecycle.GetServeAffectedPaths(m) {
+		affected[path] = true
+	}
+	for _, path := range changedPaths {
+		affected[path] = true
+	}
+	for _, path := range removedPaths {
+		affected[path] = true
+	}
+	for _, path := range affectedPaths {
+		affected[path] = true
+	}
+	lifecycle.SetServeAffectedPaths(m, affected)
+}
+
 // Cleanup saves the build cache to disk.
 func (p *BuildCachePlugin) Cleanup(m *lifecycle.Manager) error {
 	if !p.enabled || p.cache == nil {
 		return nil
 	}
 
-	if extra := m.Config().Extra; extra != nil {
-		if async, ok := extra["cache_cleanup_async"].(bool); ok && async {
-			go func() {
-				if err := p.cleanupCache(m); err != nil {
-					buildCacheLog.Phase("cleanup").Errorf("async cleanup failed: %v", err)
-				}
-			}()
-			return nil
-		}
+	if shouldCleanupCacheAsync(m) {
+		go func() {
+			if err := p.cleanupCache(m); err != nil {
+				buildCacheLog.Phase("cleanup").Errorf("async cleanup failed: %v", err)
+			}
+		}()
+		return nil
 	}
 
 	return p.cleanupCache(m)
+}
+
+func shouldCleanupCacheAsync(m *lifecycle.Manager) bool {
+	if m == nil || m.Config() == nil || m.Config().Extra == nil {
+		return false
+	}
+	async, ok := m.Config().Extra["cache_cleanup_async"].(bool)
+	return ok && async && !m.IsSerialBuild() && !lifecycle.IsServeIncremental(m)
 }
 
 func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
@@ -302,10 +370,10 @@ func (p *BuildCachePlugin) Transform(m *lifecycle.Manager) error {
 		if post.Skip {
 			continue
 		}
-		if len(post.Dependencies) > 0 {
-			p.cache.SetDependencies(post.Path, post.Slug, post.Dependencies)
-			depsRecorded++
-		}
+		// SetDependencies replaces the complete edge set. Calling it with an
+		// empty slice clears a removed wikilink/embed from the reverse index.
+		p.cache.SetDependencies(post.Path, post.Slug, post.Dependencies)
+		depsRecorded++
 	}
 
 	if depsRecorded > 0 {

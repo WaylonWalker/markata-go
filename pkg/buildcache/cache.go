@@ -41,10 +41,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // CacheVersion is incremented when the cache format changes.
-const CacheVersion = 2
+const CacheVersion = 3
 
 // DefaultCacheDir is the directory for cache files.
 const DefaultCacheDir = ".markata"
@@ -198,6 +200,10 @@ type PostCache struct {
 
 	// EmbedsContent is the cached Content output after embeds transform processing.
 	EmbedsContent string `json:"embeds_content,omitempty"`
+
+	// EmbedsDependencies restores the dynamic post edges discovered for the
+	// cached content. Cached output without these edges is not a safe cache hit.
+	EmbedsDependencies []string `json:"embeds_dependencies,omitempty"`
 
 	// GlossaryHash is a hash of the ArticleHTML input + glossary terms state used for caching.
 	GlossaryHash string `json:"glossary_hash,omitempty"`
@@ -530,7 +536,7 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 
 	// Track that this slug changed (for dependency invalidation)
 	if slug != "" {
-		c.changedSlugs[slug] = true
+		markSlugChangedLocked(c.changedSlugs, slug)
 	}
 }
 
@@ -788,24 +794,38 @@ func (c *Cache) CacheLinkAvatarsHTML(sourcePath, articleHash, html string) {
 // GetCachedEmbedsContent returns cached embeds transform output if the content hash matches.
 // Returns the cached content and true if valid, empty string and false otherwise.
 func (c *Cache) GetCachedEmbedsContent(sourcePath, contentHash string) (string, bool) {
+	content, _, ok := c.GetCachedEmbedsContentWithDependencies(sourcePath, contentHash)
+	return content, ok
+}
+
+// GetCachedEmbedsContentWithDependencies returns cached embed output and its
+// dynamic post dependencies when the content hash matches.
+func (c *Cache) GetCachedEmbedsContentWithDependencies(sourcePath, contentHash string) (content string, dependencies []string, ok bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	cached, ok := c.Posts[sourcePath]
 	if !ok {
-		return "", false
+		return "", nil, false
 	}
 	if cached.EmbedsHash == "" || cached.EmbedsHash != contentHash {
-		return "", false
+		return "", nil, false
 	}
-	return cached.EmbedsContent, true
+	return cached.EmbedsContent, append([]string(nil), cached.EmbedsDependencies...), true
 }
 
 // CacheEmbedsContent stores the embeds transform output keyed by content hash.
 func (c *Cache) CacheEmbedsContent(sourcePath, contentHash, content string) {
+	c.CacheEmbedsContentWithDependencies(sourcePath, contentHash, content, nil)
+}
+
+// CacheEmbedsContentWithDependencies stores transformed content together with
+// the dynamic post edges required to invalidate it correctly.
+func (c *Cache) CacheEmbedsContentWithDependencies(sourcePath, contentHash, content string, dependencies []string) {
 	if sourcePath == "" || contentHash == "" {
 		return
 	}
+	copyDependencies := append([]string(nil), dependencies...)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -813,10 +833,12 @@ func (c *Cache) CacheEmbedsContent(sourcePath, contentHash, content string) {
 	if cached, ok := c.Posts[sourcePath]; ok {
 		cached.EmbedsHash = contentHash
 		cached.EmbedsContent = content
+		cached.EmbedsDependencies = copyDependencies
 	} else {
 		c.Posts[sourcePath] = &PostCache{
-			EmbedsHash:    contentHash,
-			EmbedsContent: content,
+			EmbedsHash:         contentHash,
+			EmbedsContent:      content,
+			EmbedsDependencies: copyDependencies,
 		}
 	}
 	c.dirty = true
@@ -1294,11 +1316,41 @@ func (c *Cache) ClearChangedFeedSlugs() {
 }
 
 // MarkSlugChanged records that a slug changed this build.
-// Used for dependency invalidation.
+// Used for dependency invalidation. Explicit frontmatter slugs can preserve
+// case and punctuation, while unresolved dependency candidates also record
+// lowercase and slugified forms. Track all equivalent forms so a later target
+// creation, deletion, rename, or edit invalidates every representation.
 func (c *Cache) MarkSlugChanged(slug string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.changedSlugs[slug] = true
+	markSlugChangedLocked(c.changedSlugs, slug)
+}
+
+func markSlugChangedLocked(changed map[string]bool, slug string) {
+	for _, key := range dependencySlugForms(slug) {
+		changed[key] = true
+	}
+}
+
+func dependencySlugForms(slug string) []string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return nil
+	}
+	forms := []string{slug, strings.ToLower(slug), models.Slugify(slug)}
+	result := make([]string, 0, len(forms))
+	seen := make(map[string]struct{}, len(forms))
+	for _, form := range forms {
+		if form == "" {
+			continue
+		}
+		if _, ok := seen[form]; ok {
+			continue
+		}
+		seen[form] = struct{}{}
+		result = append(result, form)
+	}
+	return result
 }
 
 // MarkFeedSlugChanged records that a slug changed in feed-relevant ways.
@@ -1332,9 +1384,60 @@ func (c *Cache) MarkChangedPaths(paths []string) {
 			continue
 		}
 		if slug := c.Graph.PathToSlug[path]; slug != "" {
-			c.changedSlugs[slug] = true
+			markSlugChangedLocked(c.changedSlugs, slug)
 		}
 	}
+}
+
+// MarkMissingPaths records slugs for cached posts that are absent from the
+// current glob result. The stale entries remain available until cleanup so
+// transform plugins can invalidate dependents before rebuilding the graph.
+// It returns the missing source paths in stable order.
+func (c *Cache) MarkMissingPaths(currentPaths []string) []string {
+	if c == nil {
+		return nil
+	}
+
+	current := make(map[string]bool, len(currentPaths))
+	for _, path := range currentPaths {
+		if path != "" {
+			current[path] = true
+		}
+	}
+
+	type missingPost struct {
+		path string
+		slug string
+	}
+	c.mu.RLock()
+	missing := make([]missingPost, 0)
+	for path, post := range c.Posts {
+		if current[path] {
+			continue
+		}
+		slug := ""
+		if post != nil {
+			slug = post.Slug
+		}
+		missing = append(missing, missingPost{path: path, slug: slug})
+	}
+	c.mu.RUnlock()
+
+	for _, post := range missing {
+		if post.slug == "" {
+			post.slug = c.Graph.SlugForPath(post.path)
+		}
+		if post.slug != "" {
+			c.MarkSlugChanged(post.slug)
+		}
+	}
+
+	paths := make([]string, 0, len(missing))
+	for _, post := range missing {
+		paths = append(paths, post.path)
+	}
+	sort.Strings(paths)
+	return paths
 }
 
 // MarkAffectedDependents records all dependents (transitive) of changed slugs as changed.
@@ -1354,7 +1457,7 @@ func (c *Cache) MarkAffectedDependents(changedSlugs []string) {
 	defer c.mu.Unlock()
 	for _, path := range affectedPaths {
 		if slug := c.Graph.PathToSlug[path]; slug != "" {
-			c.changedSlugs[slug] = true
+			markSlugChangedLocked(c.changedSlugs, slug)
 		}
 	}
 }

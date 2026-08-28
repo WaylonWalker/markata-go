@@ -99,7 +99,7 @@ type WellKnownPlugin struct {
 
 // NewWellKnownPlugin creates a new WellKnownPlugin.
 func NewWellKnownPlugin() *WellKnownPlugin {
-	return &WellKnownPlugin{now: time.Now}
+	return &WellKnownPlugin{}
 }
 
 // Name returns the unique name of the plugin.
@@ -126,7 +126,11 @@ func (p *WellKnownPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	data := buildWellKnownData(config, wellKnownConfig, p.now())
+	buildTime := m.BuildClock().Now()
+	if p.now != nil {
+		buildTime = p.now()
+	}
+	data := buildWellKnownData(config, wellKnownConfig, buildTime)
 	data.Links = buildWellKnownLinks(m.Posts())
 	data.InternalLinks = buildWellKnownInternalLinks(m.Posts())
 	entries := resolveWellKnownEntries(wellKnownConfig)

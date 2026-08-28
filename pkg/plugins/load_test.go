@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -68,6 +69,35 @@ func TestResolveFileModTime_FallsBackToStat(t *testing.T) {
 	}
 	if got != info.ModTime().UnixNano() {
 		t.Fatalf("resolveFileModTime() = %d, want %d", got, info.ModTime().UnixNano())
+	}
+}
+
+func TestMarkChangedPostSeedsNewAndPreviousSlugs(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuiltWithSlug("content/target.md", "old-target", "old-hash", "target/index.html", "")
+	cache.UpdateModTime("content/target.md", 1, "old-target")
+	cache.ResetStats()
+
+	post := &models.Post{Path: "content/target.md", Slug: "new-target", InputHash: "new-hash"}
+	markChangedPost(cache, post.Path, post)
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 2 || changed[0] != "new-target" || changed[1] != "old-target" {
+		t.Fatalf("changed slugs = %v, want [new-target old-target]", changed)
+	}
+}
+
+func TestMarkChangedPostIgnoresTouchWithSameInput(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuiltWithSlug("content/target.md", "target", "same-hash", "target/index.html", "")
+	cache.UpdateModTime("content/target.md", 1, "target")
+	cache.ResetStats()
+
+	post := &models.Post{Path: "content/target.md", Slug: "target", InputHash: "same-hash"}
+	markChangedPost(cache, post.Path, post)
+
+	if changed := cache.GetChangedSlugs(); len(changed) != 0 {
+		t.Fatalf("changed slugs = %v, want none", changed)
 	}
 }
 

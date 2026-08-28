@@ -4,14 +4,13 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"html"
 	"math"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"sync/atomic"
-	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -22,7 +21,6 @@ import (
 // It runs at the render stage (after markdown conversion).
 type ContributionGraphPlugin struct {
 	config    models.ContributionGraphConfig
-	idCounter uint64
 	assetURLs map[string]string
 }
 
@@ -128,6 +126,7 @@ func (p *ContributionGraphPlugin) processPost(m *lifecycle.Manager, post *models
 	var initScripts []string
 
 	// Replace contribution-graph code blocks with div elements
+	graphOrdinal := 0
 	result := contributionGraphCodeBlockRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
 		// Extract the JSON content
 		submatches := contributionGraphCodeBlockRegex.FindStringSubmatch(match)
@@ -149,8 +148,10 @@ func (p *ContributionGraphPlugin) processPost(m *lifecycle.Manager, post *models
 </div>`, p.config.ContainerClass, html.EscapeString(err.Error()))
 		}
 
-		// Generate a unique ID for this graph
-		graphID := fmt.Sprintf("contribution-graph-%d", atomic.AddUint64(&p.idCounter, 1))
+		// Derive the ID from stable post identity, graph content, and its
+		// position. A process-global counter would make clean builds differ.
+		graphOrdinal++
+		graphID := stableContributionGraphID(post, jsonContent, graphOrdinal)
 
 		// Extract data and options from the config
 		options := graphConfig["options"]
@@ -320,13 +321,27 @@ func (p *ContributionGraphPlugin) processPost(m *lifecycle.Manager, post *models
 	return nil
 }
 
+func stableContributionGraphID(post *models.Post, graphJSON string, ordinal int) string {
+	h := fnv.New64a()
+	if post != nil {
+		_, _ = h.Write([]byte(post.Path))
+		_, _ = h.Write([]byte("|"))
+		_, _ = h.Write([]byte(post.Slug))
+	}
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(graphJSON))
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(strconv.Itoa(ordinal)))
+	return fmt.Sprintf("contribution-graph-%x", h.Sum64())
+}
+
 type contributionGraphDataPoint struct {
 	Date  string `json:"date"`
 	Value int    `json:"value"`
 }
 
 func (p *ContributionGraphPlugin) buildContributionData(m *lifecycle.Manager, options map[string]interface{}) interface{} {
-	year := time.Now().Year()
+	year := m.BuildClock().Now().Year()
 	if value, ok := options["year"].(float64); ok {
 		year = int(value)
 	} else {

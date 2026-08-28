@@ -56,7 +56,7 @@ func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
 	}
 	page := &models.FeedPage{Posts: fc.Posts, TotalPages: 1}
 
-	html, err := p.generateFeedPageHTML(fc, page, config, nil, buildFeedRenderContext(fc))
+	html, err := p.generateFeedPageHTML(fc, page, config, nil, buildFeedRenderContext(fc, time.Now()))
 	if err != nil {
 		t.Fatalf("generateFeedPageHTML() error = %v", err)
 	}
@@ -708,7 +708,7 @@ func TestPublishFeedsPlugin_ShouldSkipFeedWhenOutputsExist(t *testing.T) {
 		PageURLs:     []string{"/archive/"},
 	}}
 
-	if err := plugin.publishFeed(feed, config, outputDir); err != nil {
+	if err := plugin.publishFeed(feed, config, outputDir, time.Now()); err != nil {
 		t.Fatalf("publishFeed() error = %v", err)
 	}
 
@@ -834,7 +834,7 @@ func TestPublishFeedsPlugin_ShouldSkipFeed_UsesRenderableHTMLPagination(t *testi
 		{Number: 2, Posts: []*models.Post{feed.Posts[1]}, TotalPages: 2, TotalItems: 2, ItemsPerPage: 1, PageURLs: []string{"/published/", "/published/page/2/"}, HasPrev: true, PrevURL: "/published/"},
 	}
 
-	if err := plugin.publishFeed(feed, config, tempDir); err != nil {
+	if err := plugin.publishFeed(feed, config, tempDir, time.Now()); err != nil {
 		t.Fatalf("publishFeed() error = %v", err)
 	}
 

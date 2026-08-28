@@ -105,11 +105,7 @@ func TestCanonicalDocumentProfileExists(t *testing.T) {
 		t.Fatalf("unexpected canonical profile metadata: %+v", document)
 	}
 
-	fixture := filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "test-headings.md")
-	shared, err := os.ReadFile(fixture)
-	if err != nil {
-		t.Fatal(err)
-	}
+	shared := readCanonicalFixture(t, "test-headings.md")
 	local, err := os.ReadFile(filepath.Join("..", "..", "rendering-fixtures", "test-headings.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -117,10 +113,7 @@ func TestCanonicalDocumentProfileExists(t *testing.T) {
 	if sha256Digest(shared) != sha256Digest(local) || sha256Digest(shared) != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
 		t.Fatalf("canonical fixture hash drifted: shared=%s local=%s", sha256Digest(shared), sha256Digest(local))
 	}
-	theme, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "theme.toml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	theme := readCanonicalFixture(t, "theme.toml")
 	if got := sha256Digest(theme); got != "c751df3b26ae476615d22107adfd5d00a4b76c661b613cbc44bd8499f7076806" {
 		t.Fatalf("canonical theme fixture hash drifted: %s", got)
 	}

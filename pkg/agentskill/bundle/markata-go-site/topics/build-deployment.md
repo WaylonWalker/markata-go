@@ -7,13 +7,17 @@ Use this topic when the task involves local preview, CI, publishing, or hosting 
 - `markata-go serve --fast` for active editing
 - `markata-go build` for full output validation
 - `markata-go build --clean` only when you need to rule out stale output
+- `markata-go build --dag` to exercise the experimental serial task graph
 - `markata-go build -o dist` when CI or previews need an isolated artifact directory
+- `markata-go buildlab run --fixture . --baseline /path/to/baseline --candidate /path/to/candidate` to compare clean and incremental output in isolated workspaces
+- Build Lab ignores the fixture `.env`; pass non-secret comparison settings with its `--env` flag
 
 ## Production Build Basics
 
 - set the correct `url` before production builds
 - treat `output_dir` as the deploy artifact root
 - prefer clean builds for deployment validation
+- use Build Lab when changing build lifecycle behavior, cache invalidation, or the serial DAG; keep its structured result as CI evidence
 - validate config before deploy if the workflow can afford it
 - if the deploy target runs with limited or no internet egress, prefetch self-hosted CDN assets with `markata-go assets download` before shipping the repo or build input
 

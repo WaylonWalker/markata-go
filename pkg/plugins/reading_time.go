@@ -12,8 +12,10 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// ReadingTimePlugin calculates the word count and estimated reading time
-// for each post during the transform stage.
+// ReadingTimePlugin calculates the word count and estimated reading time for
+// each post during the transform stage. When StatsPlugin is registered, Stats
+// owns the overlapping template fields and this compatibility plugin does not
+// overwrite them.
 type ReadingTimePlugin struct {
 	// wordsPerMinute is the average reading speed (default: 200)
 	wordsPerMinute int
@@ -44,6 +46,9 @@ func (p *ReadingTimePlugin) Configure(m *lifecycle.Manager) error {
 
 // Transform calculates word count and reading time for each post.
 func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
+	if statsOwnsReadingFields(m) {
+		return nil
+	}
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
@@ -74,6 +79,17 @@ func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
 
 		return nil
 	})
+}
+
+func statsOwnsReadingFields(m *lifecycle.Manager) bool {
+	for _, plugin := range m.Plugins() {
+		if plugin.Name() != statsPluginName {
+			continue
+		}
+		_, ok := plugin.(lifecycle.TransformPlugin)
+		return ok
+	}
+	return false
 }
 
 // Regex patterns for word counting

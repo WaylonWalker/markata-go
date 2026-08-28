@@ -83,6 +83,7 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	result.MarkdownConfig = mergeMarkdownConfig(base.MarkdownConfig, override.MarkdownConfig)
 	result.FeedDefaults = mergeFeedDefaults(base.FeedDefaults, override.FeedDefaults)
 	result.Footer = mergeFooterConfig(base.Footer, override.Footer)
+	result.Assets = mergeAssetsConfig(base.Assets, override.Assets)
 
 	// Feeds array - replace if non-empty
 	if len(override.Feeds) > 0 {
@@ -146,6 +147,23 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
+	return result
+}
+
+func mergeAssetsConfig(base, override models.AssetsConfig) models.AssetsConfig {
+	result := base
+	if override.Mode != "" {
+		result.Mode = override.Mode
+	}
+	if override.CacheDir != "" {
+		result.CacheDir = override.CacheDir
+	}
+	if override.VerifyIntegrity != nil {
+		result.VerifyIntegrity = override.VerifyIntegrity
+	}
+	if override.OutputDir != "" {
+		result.OutputDir = override.OutputDir
+	}
 	return result
 }
 

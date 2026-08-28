@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestConfigFilesHash_ChangesWhenOverlayChanges(t *testing.T) {
@@ -145,6 +147,118 @@ func TestBuildCacheConfigure_DefaultsCacheDirToContentDir(t *testing.T) {
 	want := filepath.Join(contentDir, ".markata", buildcache.CacheFileName)
 	if cachePath := cachePathForTest(cache); cachePath != want {
 		t.Fatalf("cache path = %q, want %q", cachePath, want)
+	}
+}
+
+func TestBuildCachePlugin_TransformClearsRemovedDependencies(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{Path: "a.md", Slug: "a", Dependencies: []string{"b"}}})
+
+	if err := plugin.Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if got := cache.Graph.GetDependencies("a.md"); len(got) != 1 || got[0] != "b" {
+		t.Fatalf("initial dependencies = %v", got)
+	}
+
+	m.Posts()[0].Dependencies = nil
+	if err := plugin.Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if got := cache.Graph.GetDependencies("a.md"); len(got) != 0 {
+		t.Fatalf("dependencies after removal = %v, want empty", got)
+	}
+	if cache.Graph.HasDependents("b") {
+		t.Fatal("reverse dependency was not removed")
+	}
+}
+
+func TestBuildCachePlugin_LoadRefreshesAffectedPathsAfterNewSlug(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.SetDependencies("source.md", "source", []string{"future-target"})
+	cache.MarkSlugChanged("future-target")
+
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	m := lifecycle.NewManager()
+	targetTitle := "Future Target"
+	source := &models.Post{Path: "source.md", Slug: "source", Content: "See [[future target]]"}
+	target := &models.Post{Path: "future-target.md", Slug: "future-target", Title: &targetTitle, Href: "/future-target/"}
+	m.SetPosts([]*models.Post{target, source})
+	lifecycle.SetServeIncremental(m, true)
+	lifecycle.SetServeChangedPaths(m, []string{"future-target.md"})
+	m.SetFiles([]string{"source.md", "future-target.md"})
+
+	if err := plugin.Load(m); err != nil {
+		t.Fatal(err)
+	}
+	if affected := lifecycle.GetServeAffectedPaths(m); !affected["source.md"] {
+		t.Fatalf("affected paths = %v, want source.md", affected)
+	}
+	if err := NewWikilinksPlugin().Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(source.Content, `<a href="/future-target/" class="wikilink"`) {
+		t.Fatalf("newly resolvable wikilink was not rebuilt: %q", source.Content)
+	}
+}
+
+func TestBuildCachePlugin_LoadMatchesNormalizedExplicitSlug(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.SetDependencies("source.md", "source", []string{"my post", "my-post"})
+	cache.SetPostSlug("my-post.md", "My Post")
+
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{
+		{Path: "source.md", Slug: "source"},
+		{Path: "my-post.md", Slug: "My Post"},
+	})
+	lifecycle.SetServeIncremental(m, true)
+	lifecycle.SetServeChangedPaths(m, []string{"my-post.md"})
+	m.SetFiles([]string{"source.md", "my-post.md"})
+
+	if err := plugin.Load(m); err != nil {
+		t.Fatal(err)
+	}
+	if affected := lifecycle.GetServeAffectedPaths(m); !affected["source.md"] {
+		t.Fatalf("affected paths = %v, want source.md", affected)
+	}
+}
+
+func TestShouldCleanupCacheAsync_DisablesSharedServeCacheCleanup(t *testing.T) {
+	tests := []struct {
+		name        string
+		fast        bool
+		incremental bool
+		serial      bool
+		want        bool
+	}{
+		{name: "ordinary build", want: true},
+		{name: "fast serve", fast: true},
+		{name: "incremental serve", incremental: true},
+		{name: "serial DAG", serial: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := lifecycle.NewManager()
+			m.Config().Extra["cache_cleanup_async"] = true
+			if tt.fast {
+				m.Config().Extra["fast_mode"] = true
+			}
+			if tt.incremental {
+				lifecycle.SetServeIncremental(m, true)
+			}
+			m.SetSerialBuild(tt.serial)
+			if got := shouldCleanupCacheAsync(m); got != tt.want {
+				t.Fatalf("shouldCleanupCacheAsync() = %t, want %t", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -61,6 +61,40 @@ func TestMergeConfigs_StringFields(t *testing.T) {
 	}
 }
 
+func TestMergeConfigs_AssetsConfig(t *testing.T) {
+	baseVerify := true
+	overrideVerify := false
+	base := &models.Config{
+		Assets: models.AssetsConfig{
+			Mode:            "cdn",
+			CacheDir:        "/base/assets",
+			VerifyIntegrity: &baseVerify,
+			OutputDir:       "base/vendor",
+		},
+	}
+	override := &models.Config{
+		Assets: models.AssetsConfig{
+			Mode:            "self-hosted",
+			CacheDir:        "/override/assets",
+			VerifyIntegrity: &overrideVerify,
+		},
+	}
+
+	result := MergeConfigs(base, override)
+	if result.Assets.Mode != "self-hosted" {
+		t.Errorf("Assets.Mode = %q, want self-hosted", result.Assets.Mode)
+	}
+	if result.Assets.CacheDir != "/override/assets" {
+		t.Errorf("Assets.CacheDir = %q, want /override/assets", result.Assets.CacheDir)
+	}
+	if result.Assets.VerifyIntegrity == nil || *result.Assets.VerifyIntegrity {
+		t.Errorf("Assets.VerifyIntegrity = %v, want false", result.Assets.VerifyIntegrity)
+	}
+	if result.Assets.OutputDir != "base/vendor" {
+		t.Errorf("Assets.OutputDir = %q, want base/vendor", result.Assets.OutputDir)
+	}
+}
+
 func TestMergeConfigs_SEOConfig(t *testing.T) {
 	baseEnabled := true
 	overrideEnabled := false

@@ -7,6 +7,7 @@ import (
 
 const (
 	EnvOffline               = "MARKATA_GO_OFFLINE"
+	EnvDisableDotEnv         = "MARKATA_GO_DISABLE_DOTENV"
 	EnvBundledAssetsCacheDir = "MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR"
 	EnvBundledMermaidDir     = "MARKATA_GO_BUNDLED_MERMAID_DIR"
 )
@@ -14,6 +15,12 @@ const (
 // OfflineEnabled reports whether runtime network access should be treated as disabled.
 func OfflineEnabled() bool {
 	return parseBool(os.Getenv(EnvOffline))
+}
+
+// DotEnvDisabled reports whether automatic loading of the current directory's
+// .env file should be skipped.
+func DotEnvDisabled() bool {
+	return parseBool(os.Getenv(EnvDisableDotEnv))
 }
 
 // BundledAssetsCacheDir returns the bundled CDN asset cache directory, if configured.

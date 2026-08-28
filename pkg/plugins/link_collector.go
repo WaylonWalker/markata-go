@@ -97,17 +97,11 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		return !post.Skip && post.ArticleHTML != ""
 	})
 
-	if lifecycle.IsServeIncremental(m) {
-		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
-			filtered := postsToProcess[:0]
-			for _, post := range postsToProcess {
-				if affected[post.Path] {
-					filtered = append(filtered, post)
-				}
-			}
-			postsToProcess = filtered
-		}
-	}
+	// Link collection is a global reduction: assignLinksToPost clears and
+	// rebuilds every post's inlinks and outlinks, and a changed or renamed
+	// target can change resolution for an otherwise unchanged source. Process
+	// every post here rather than filtering to serve-affected paths. The href
+	// cache still avoids reparsing unchanged article HTML.
 
 	// Process each post to extract hrefs and create Link objects
 	err := m.ProcessPostsSliceConcurrently(postsToProcess, func(post *models.Post) error {

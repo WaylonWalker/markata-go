@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 // Supported config file names in discovery order
@@ -33,13 +34,16 @@ var ErrConfigNotFound = errors.New("no configuration file found")
 // Load loads configuration from the specified file path.
 // If configPath is empty, it will attempt to discover a config file.
 // Environment variable overrides are applied after loading the file.
-// A .env file in the current directory is loaded first (if present)
-// so that encryption keys and other settings can be stored there.
+// A .env file in the current directory is loaded first (if present), unless
+// MARKATA_GO_DISABLE_DOTENV is enabled, so encryption keys and other settings
+// can be stored there.
 func Load(configPath string) (*models.Config, error) {
 	// Load .env file before anything else so env vars are available
 	// for both config parsing and encryption key lookups.
 	// Errors loading .env are non-fatal (file may not exist).
-	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	if !runtimeenv.DotEnvDisabled() {
+		_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	}
 
 	var config *models.Config
 	var err error
@@ -133,7 +137,9 @@ func LoadWithDefaults() (*models.Config, error) {
 //	config, err := LoadWithMerge("markata-go.toml", "fast-markata-go.toml", "debug.toml")
 func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, error) {
 	// Load .env file first
-	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	if !runtimeenv.DotEnvDisabled() {
+		_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	}
 
 	// Load base config (or use empty config if no base path provided)
 	var err error

@@ -40,6 +40,17 @@ var (
 
 	// buildBenchmarkDetailed prints per-stage benchmark detail.
 	buildBenchmarkDetailed bool
+
+	// buildDAG enables the opt-in serial task/artifact graph migration.
+	buildDAG bool
+
+	// buildDAGSeed controls randomized selection among equally-ready serial
+	// tasks.  It has no effect unless --dag-random-ready is enabled.
+	buildDAGSeed int64
+
+	// buildDAGRandom enables seeded ready-task order testing while retaining a
+	// single worker.
+	buildDAGRandom bool
 )
 
 // buildCmd represents the build command.
@@ -76,6 +87,7 @@ Example usage:
   markata-go build --clean      # Clean build cache + output
   markata-go build --clean-all  # Also nuke external plugin caches
   markata-go build --fast       # Skip minification for faster builds
+  markata-go build --dag        # Use the experimental serial task graph
   markata-go build --dry-run    # Show what would be built
   markata-go build -v           # Build with verbose output`,
 	RunE: runBuildCommand,
@@ -91,6 +103,9 @@ func init() {
 	buildCmd.Flags().StringVar(&buildBenchmarkJSON, "benchmark-json", "", "write benchmark details as JSON (use '-' for stdout)")
 	buildCmd.Flags().Lookup("benchmark-json").NoOptDefVal = "-"
 	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
+	buildCmd.Flags().BoolVar(&buildDAG, "dag", false, "use the experimental serial task/artifact graph")
+	buildCmd.Flags().Int64Var(&buildDAGSeed, "dag-seed", 0, "seed for serial DAG ready-task randomization")
+	buildCmd.Flags().BoolVar(&buildDAGRandom, "dag-random-ready", false, "randomize equally-ready serial DAG tasks")
 }
 
 func runBuildCommand(_ *cobra.Command, _ []string) error {
@@ -286,6 +301,9 @@ func printBuildResult(result *BuildResult) {
 
 	// Show blogroll status if configured
 	printBlogrollStatus(result.BlogrollStatus)
+	if result.DAG != nil {
+		outlnf("  %s serial (tasks=%d, graph=%s)", buildLabel("DAG:"), result.DAG.TaskCount, result.DAG.GraphDigest)
+	}
 	printBuildBenchmarkSummary(result.Benchmark)
 
 	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
@@ -443,6 +461,7 @@ type benchmarkJSONOutput struct {
 	Warnings       []string           `json:"warnings,omitempty"`
 	Benchmark      buildstats.Summary `json:"benchmark"`
 	Blogroll       BlogrollStatus     `json:"blogroll"`
+	DAG            *DAGBuildInfo      `json:"dag,omitempty"`
 }
 
 func writeBenchmarkJSONFile(path string, result *BuildResult) error {
@@ -467,6 +486,7 @@ func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
 		Warnings:       result.Warnings,
 		Benchmark:      result.Benchmark,
 		Blogroll:       result.BlogrollStatus,
+		DAG:            result.DAG,
 	})
 }
 

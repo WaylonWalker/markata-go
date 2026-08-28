@@ -4,10 +4,10 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"html"
 	"regexp"
 	"strings"
-	"sync/atomic"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -16,8 +16,7 @@ import (
 // ChartJSPlugin converts Chart.js JSON code blocks into rendered charts.
 // It runs at the render stage (after markdown conversion).
 type ChartJSPlugin struct {
-	config    models.ChartJSConfig
-	idCounter uint64
+	config models.ChartJSConfig
 }
 
 // NewChartJSPlugin creates a new ChartJSPlugin with default settings.
@@ -111,6 +110,7 @@ func (p *ChartJSPlugin) processPost(post *models.Post) error {
 
 	// Track if we found any chartjs blocks and collect initialization scripts
 	var initScripts []string
+	chartOrdinal := 0
 
 	// Replace chartjs code blocks with canvas elements
 	result := chartjsCodeBlockRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
@@ -134,8 +134,10 @@ func (p *ChartJSPlugin) processPost(post *models.Post) error {
 </div>`, p.config.ContainerClass, html.EscapeString(err.Error()))
 		}
 
-		// Generate a unique ID for this chart
-		chartID := fmt.Sprintf("chartjs-%d", atomic.AddUint64(&p.idCounter, 1))
+		// Derive the ID from stable post identity, chart content, and its
+		// position. A process-global counter would make clean builds differ.
+		chartOrdinal++
+		chartID := stableChartID(post, jsonContent, chartOrdinal)
 
 		// Create the initialization script for this chart
 		initScript := fmt.Sprintf(`
@@ -158,6 +160,20 @@ func (p *ChartJSPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
+}
+
+func stableChartID(post *models.Post, chartJSON string, ordinal int) string {
+	h := fnv.New64a()
+	if post != nil {
+		_, _ = h.Write([]byte(post.Path))
+		_, _ = h.Write([]byte("|"))
+		_, _ = h.Write([]byte(post.Slug))
+	}
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(chartJSON))
+	_, _ = h.Write([]byte("|"))
+	_, _ = fmt.Fprintf(h, "%d", ordinal)
+	return fmt.Sprintf("chartjs-%x", h.Sum64())
 }
 
 // injectChartJSScripts adds the Chart.js library and initialization scripts to the HTML.

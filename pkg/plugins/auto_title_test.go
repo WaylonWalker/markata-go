@@ -479,7 +479,7 @@ func TestAutoTitlePlugin_generateFallback(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
-		contains string // Check contains because timestamp varies
+		contains string
 	}{
 		{
 			name:     "path with filename",
@@ -489,7 +489,7 @@ func TestAutoTitlePlugin_generateFallback(t *testing.T) {
 		{
 			name:     "empty path",
 			path:     "",
-			contains: "Untitled 20", // Will contain timestamp starting with year
+			contains: "Untitled post",
 		},
 		{
 			name:     "path with stem",
@@ -505,6 +505,9 @@ func TestAutoTitlePlugin_generateFallback(t *testing.T) {
 				t.Errorf("generateFallback(%q) = %q, want to contain %q", tt.path, got, tt.contains)
 			}
 		})
+	}
+	if first, second := plugin.generateFallback(""), plugin.generateFallback(""); first != second {
+		t.Fatalf("pathless fallback is not deterministic: %q != %q", first, second)
 	}
 }
 

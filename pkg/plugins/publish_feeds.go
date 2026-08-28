@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -137,12 +138,11 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	if shouldPublishFeedsAsync(m) {
-		go func() {
-			if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
-				publishFeedsLog.Errorf("async publish failed: %v", err)
-			}
-		}()
-		return nil
+		// The historical async mode returned before feed files were written.
+		// That violates lifecycle completion and races with later cleanup or
+		// manifest collection. Keep the option as a compatibility alias for the
+		// joined worker-pool implementation.
+		return p.publishFeedsAsync(m, feedConfigs)
 	}
 
 	return p.publishFeeds(m, config, feedConfigs)
@@ -188,13 +188,13 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 	// Process feeds concurrently with a worker pool
 	// Use lifecycle concurrency (auto-detected from CPU cores, capped at 16)
 	maxConcurrency := m.Concurrency()
-	if maxConcurrency < 8 {
+	if maxConcurrency < 8 && !m.IsSerialBuild() {
 		maxConcurrency = 8
 	}
 	numFeeds := len(feedConfigs)
 
 	// For small numbers of feeds, just process sequentially
-	if numFeeds <= 2 {
+	if numFeeds <= 2 || maxConcurrency <= 1 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
 			skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
@@ -202,7 +202,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 				skippedCount++
 				continue
 			}
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
+			if err := p.publishFeed(fc, config, outputDir, m.BuildClock().Now()); err != nil {
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
 			p.cacheFeedHash(fc, buildCache, hash)
@@ -230,7 +230,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
+			if err := p.publishFeed(fc, config, outputDir, m.BuildClock().Now()); err != nil {
 				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 				return
 			}
@@ -261,80 +261,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 }
 
 func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs []models.FeedConfig) error {
-	config := m.Config()
-	outputDir := config.OutputDir
-	if len(feedConfigs) == 0 {
-		return nil
-	}
-
-	if err := p.copyXSLStylesheets(config, outputDir); err != nil {
-		return fmt.Errorf("copying XSL stylesheets: %w", err)
-	}
-
-	buildCache := GetBuildCache(m)
-	var skippedCount int
-	var rebuiltCount int
-
-	maxConcurrency := m.Concurrency()
-	if maxConcurrency < 8 {
-		maxConcurrency = 8
-	}
-	numFeeds := len(feedConfigs)
-	if numFeeds <= 2 {
-		for i := range feedConfigs {
-			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
-			if skip {
-				skippedCount++
-				continue
-			}
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
-				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
-			}
-			rebuiltCount++
-			p.cacheFeedHash(fc, buildCache, hash)
-		}
-	} else {
-		sem := make(chan struct{}, maxConcurrency)
-		errChan := make(chan error, numFeeds)
-		var wg sync.WaitGroup
-
-		for i := range feedConfigs {
-			fc := &feedConfigs[i]
-			wg.Add(1)
-			go func(fc *models.FeedConfig) {
-				defer wg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
-
-				skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
-				if skip {
-					skippedCount++
-					return
-				}
-				if err := p.publishFeed(fc, config, outputDir); err != nil {
-					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
-					return
-				}
-				rebuiltCount++
-				p.cacheFeedHash(fc, buildCache, hash)
-			}(fc)
-		}
-
-		wg.Wait()
-		close(errChan)
-		for err := range errChan {
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if skippedCount > 0 || rebuiltCount > 0 {
-		publishFeedsLog.Printf("Async: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
-	}
-
-	return nil
+	return p.publishFeeds(m, m.Config(), feedConfigs)
 }
 
 // computeFeedHash computes a hash of the feed's content and configuration.
@@ -612,7 +539,7 @@ type feedRenderContext struct {
 }
 
 // publishFeed publishes a single feed in all configured formats.
-func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
+func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string, now time.Time) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)
 	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludePrivate)
@@ -632,7 +559,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 			baseURL = "/"
 		}
 		htmlFC.Paginate(baseURL)
-		renderCtx = buildFeedRenderContext(htmlFC)
+		renderCtx = buildFeedRenderContext(htmlFC, now)
 	}
 
 	if needsOutputPosts {
@@ -1062,12 +989,12 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	return p.generateFeedPageHTMLFallback(fc, page, config)
 }
 
-func buildFeedRenderContext(fc *models.FeedConfig) *feedRenderContext {
+func buildFeedRenderContext(fc *models.FeedConfig, now time.Time) *feedRenderContext {
 	if fc == nil {
 		return nil
 	}
 	totalPosts, latestPostDate, _ := feedStats(fc.Posts, fc.IncludePrivate)
-	window := computeSparklineWindow(fc.Posts, fc.IncludePrivate)
+	window := computeSparklineWindow(fc.Posts, fc.IncludePrivate, now)
 	return &feedRenderContext{
 		totalPosts:       totalPosts,
 		latestPostDate:   latestPostDate,

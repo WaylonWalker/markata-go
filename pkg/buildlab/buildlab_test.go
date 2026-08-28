@@ -1,0 +1,771 @@
+package buildlab
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/config"
+)
+
+func TestManifest_DeterministicAndDiff(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	for _, root := range []string{a, b} {
+		if err := os.WriteFile(filepath.Join(root, "z.txt"), []byte("same"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("one"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("z.txt", filepath.Join(root, "link")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m1, err := BuildManifest(a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m2, err := BuildManifest(b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j1, err := m1.CanonicalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	j2, err := m2.CanonicalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(j1, j2) {
+		t.Errorf("canonical manifests differ:\n%s\n%s", j1, j2)
+	}
+	d1, err := m1.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	d2, err := m2.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d1 != d2 {
+		t.Error("digest differs")
+	}
+	if got := CompareManifests(m1, m2, nil); !got.Equal() {
+		t.Fatalf("equal manifests differ: %+v", got)
+	}
+	if err := os.WriteFile(filepath.Join(b, "z.txt"), []byte("same!"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(b, "a.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(b, "extra"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m2, err = BuildManifest(b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := CompareManifests(m1, m2, nil)
+	if len(diff.Missing) != 1 || len(diff.Extra) != 1 || len(diff.Changed) != 1 {
+		t.Fatalf("unexpected diff: %+v", diff)
+	}
+}
+
+func TestManifest_ClassesPolicy(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	for _, root := range []string{a, b} {
+		if err := os.WriteFile(filepath.Join(root, "random"), []byte(root), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ma, err := BuildManifest(a, map[string]OutputClass{"random": ClassVolatile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mb, err := BuildManifest(b, map[string]OutputClass{"random": ClassVolatile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := CompareManifests(ma, mb, nil); !d.Equal() {
+		t.Fatalf("volatile output changed: %+v", d)
+	}
+	ma.Records[0].Class = ClassDeterministic
+	mb.Records[0].Class = ClassDeterministic
+	if d := CompareManifests(ma, mb, nil); d.Equal() {
+		t.Fatal("deterministic byte change was ignored")
+	}
+}
+
+func TestManifest_ExcludesBuildMetadata(t *testing.T) {
+	root := t.TempDir()
+	for _, path := range []string{
+		"page.html",
+		"assets/.markata-js_minify-cache",
+		"assets/.markata-css_minify-cache",
+		"assets/.markata-fontpack-cache",
+		"assets/.markata-fonts.json",
+		".markata-site-verification",
+		"assets/.markata-theme/manifest.json",
+	} {
+		fullPath := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(fullPath, []byte(path), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	manifest, err := BuildManifest(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{".markata-site-verification", "assets/.markata-theme/manifest.json", "page.html"}
+	if len(manifest.Records) != len(want) {
+		t.Fatalf("manifest records = %+v, want paths %v", manifest.Records, want)
+	}
+	for i, record := range manifest.Records {
+		if record.Path != want[i] {
+			t.Fatalf("manifest record %d = %+v, want path %q", i, record, want[i])
+		}
+	}
+}
+
+func TestWorkspace_IsolationConfig(t *testing.T) {
+	fixture := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fixture, "markata-go.toml"), []byte("[markata-go]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w, err := NewWorkspace(fixture, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := w.Remove(); err != nil {
+			t.Errorf("remove workspace: %v", err)
+		}
+	})
+
+	data, err := os.ReadFile(w.IsolationConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatal(err)
+	}
+	markataGo, ok := config["markata-go"].(map[string]any)
+	if !ok {
+		t.Fatalf("isolation config = %+v", config)
+	}
+	wantCacheDirs := map[string]string{
+		"cache_dir":          w.MarkataCache,
+		"assets":             filepath.Join(w.MarkataCache, "assets"),
+		"blogroll":           filepath.Join(w.MarkataCache, "blogroll"),
+		"embeds":             filepath.Join(w.MarkataCache, "embeds"),
+		"image_optimization": filepath.Join(w.MarkataCache, "image-optimization"),
+		"mentions":           filepath.Join(w.MarkataCache, "mentions"),
+		"tailwind":           filepath.Join(w.MarkataCache, "tailwind"),
+		"webmentions":        filepath.Join(w.MarkataCache, "webmentions"),
+	}
+	for section, want := range wantCacheDirs {
+		value := markataGo[section]
+		if section == "cache_dir" {
+			if value != want {
+				t.Fatalf("isolation %s = %v, want %q", section, value, want)
+			}
+			continue
+		}
+		sectionMap, ok := value.(map[string]any)
+		if !ok || sectionMap["cache_dir"] != want {
+			t.Fatalf("isolation %s = %v, want cache_dir %q", section, value, want)
+		}
+	}
+	search, ok := markataGo["search"].(map[string]any)
+	if !ok {
+		t.Fatalf("isolation search config = %v", markataGo["search"])
+	}
+	pagefind, ok := search["pagefind"].(map[string]any)
+	if !ok || pagefind["cache_dir"] != filepath.Join(w.MarkataCache, "pagefind") {
+		t.Fatalf("isolation pagefind config = %v", search["pagefind"])
+	}
+	info, err := os.Stat(w.IsolationConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("isolation config mode = %o, want 600", info.Mode().Perm())
+	}
+}
+
+func TestWorkspace_IsolationConfigOverridesBuiltInCacheSettings(t *testing.T) {
+	fixture := t.TempDir()
+	basePath := filepath.Join(fixture, "markata-go.json")
+	base := `{
+  "markata-go": {
+    "assets": {"mode": "self-hosted", "cache_dir": "/outside/assets"},
+    "blogroll": {"cache_dir": "/outside/blogroll"},
+    "embeds": {"cache_dir": "/outside/embeds"},
+    "image_optimization": {"cache_dir": "/outside/image-optimization"},
+    "mentions": {"cache_dir": "/outside/mentions"},
+    "search": {"pagefind": {"cache_dir": "/outside/pagefind"}},
+    "tailwind": {"cache_dir": "/outside/tailwind"},
+    "webmentions": {"cache_dir": "/outside/webmentions"}
+  }
+}`
+	if err := os.WriteFile(basePath, []byte(base), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w, err := NewWorkspace(fixture, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := w.Remove(); err != nil {
+			t.Errorf("remove workspace: %v", err)
+		}
+	})
+
+	loaded, err := config.LoadWithMerge(basePath, w.IsolationConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Assets.CacheDir != filepath.Join(w.MarkataCache, "assets") {
+		t.Fatalf("assets cache_dir = %q, want workspace path", loaded.Assets.CacheDir)
+	}
+	if loaded.Blogroll.CacheDir != filepath.Join(w.MarkataCache, "blogroll") {
+		t.Fatalf("blogroll cache_dir = %q, want workspace path", loaded.Blogroll.CacheDir)
+	}
+	if loaded.Mentions.CacheDir != filepath.Join(w.MarkataCache, "mentions") {
+		t.Fatalf("mentions cache_dir = %q, want workspace path", loaded.Mentions.CacheDir)
+	}
+	if loaded.Search.Pagefind.CacheDir != filepath.Join(w.MarkataCache, "pagefind") {
+		t.Fatalf("pagefind cache_dir = %q, want workspace path", loaded.Search.Pagefind.CacheDir)
+	}
+	for section, want := range map[string]string{
+		"embeds":             filepath.Join(w.MarkataCache, "embeds"),
+		"image_optimization": filepath.Join(w.MarkataCache, "image-optimization"),
+		"tailwind":           filepath.Join(w.MarkataCache, "tailwind"),
+		"webmentions":        filepath.Join(w.MarkataCache, "webmentions"),
+	} {
+		value, ok := loaded.Extra[section].(map[string]any)
+		if !ok || value["cache_dir"] != want {
+			t.Fatalf("%s cache config = %v, want cache_dir %q", section, loaded.Extra[section], want)
+		}
+	}
+}
+
+func TestBuildCommand_IsolationConfigFollowsMergeArgs(t *testing.T) {
+	w := Workspace{SiteDir: t.TempDir(), IsolationConfig: "/workspace/buildlab-isolation.json"}
+	args, err := (BuildCommand{Args: []string{"build", "-m", "user.toml"}, OutputDir: "output"}).args(w, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	isolationIndex := slices.Index(args, "--merge-config")
+	if isolationIndex < 0 || isolationIndex+1 >= len(args) || args[isolationIndex+1] != w.IsolationConfig {
+		t.Fatalf("args = %v, missing isolation config", args)
+	}
+	if userIndex := slices.Index(args, "user.toml"); userIndex > isolationIndex {
+		t.Fatalf("isolation config does not follow user merge config: %v", args)
+	}
+}
+
+func TestWorkspace_ClearCacheClearsForcedCache(t *testing.T) {
+	w := Workspace{SiteDir: t.TempDir(), MarkataCache: filepath.Join(t.TempDir(), "markata-cache"), HomeDir: filepath.Join(t.TempDir(), "home"), XDGCacheDir: filepath.Join(t.TempDir(), "xdg")}
+	for _, path := range []string{
+		filepath.Join(w.SiteDir, ".markata", "cache.json"),
+		filepath.Join(w.SiteDir, ".markata.cache", "cache.json"),
+		filepath.Join(w.SiteDir, ".markata-cache", "plugin.json"),
+		filepath.Join(w.SiteDir, "cache", "plugin.json"),
+		filepath.Join(w.MarkataCache, "build-cache.json"),
+		filepath.Join(w.HomeDir, "keep"),
+		filepath.Join(w.XDGCacheDir, "keep"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("state"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := applyWorkspaceOperation(w, Operation{Type: OpClearCache}, BuildCommand{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(w.SiteDir, ".markata"), filepath.Join(w.SiteDir, ".markata.cache"), filepath.Join(w.SiteDir, ".markata-cache"), filepath.Join(w.SiteDir, "cache"), filepath.Join(w.MarkataCache, "build-cache.json")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("cache path %q still exists: %v", path, err)
+		}
+	}
+	for _, path := range []string{filepath.Join(w.HomeDir, "keep"), filepath.Join(w.XDGCacheDir, "keep")} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("non-build cache path %q was removed: %v", path, err)
+		}
+	}
+	if _, err := os.Stat(w.MarkataCache); err != nil {
+		t.Fatalf("forced cache directory was not recreated: %v", err)
+	}
+}
+
+func TestScenario_PathSafetyAndPreconditions(t *testing.T) {
+	root := t.TempDir()
+	for _, op := range []Operation{{Type: OpWriteFile, Path: "../escape"}, {Type: OpWriteFile, Path: "/absolute"}} {
+		if err := ApplyOperation(root, op); err == nil {
+			t.Errorf("unsafe path accepted: %q", op.Path)
+		}
+	}
+	if err := ApplyOperation(root, Operation{Type: OpWriteFile, Path: "x.txt", Content: "aaa"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ApplyOperation(root, Operation{Type: OpReplaceExact, Path: "x.txt", Old: "aa", New: "b"}); err == nil || !strings.Contains(err.Error(), "precondition") {
+		t.Fatalf("overlap precondition error = %v", err)
+	}
+	if err := (Scenario{Operations: []Operation{{Type: OpReplaceExact, Path: "x.txt", Old: "aaa", New: "bbb"}}}).Apply(root); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "x.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "bbb" {
+		t.Fatalf("got %q", data)
+	}
+}
+
+func TestScenario_SetConfigAndDeterminism(t *testing.T) {
+	r1, r2 := t.TempDir(), t.TempDir()
+	s := Scenario{Operations: []Operation{{Type: OpSetConfig, Path: "config.toml", Key: "title", Value: `a"b`}, {Type: OpSetConfig, Path: "config.toml", Key: "title", Value: "updated"}}}
+	if err := s.Apply(r1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Apply(r2); err != nil {
+		t.Fatal(err)
+	}
+	a, err := os.ReadFile(filepath.Join(r1, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(r2, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(a, b) || strings.Count(string(a), "title =") != 1 {
+		t.Fatalf("config not deterministic: %q / %q", a, b)
+	}
+}
+
+func TestFixture_SameSeedAndStatefulSequence(t *testing.T) {
+	cfg := FixtureConfig{Seed: 42, Posts: 3, Feeds: 2, Tags: 2, Wikilinks: 1, Embeds: 1, DependencyDepth: 2, Assets: 2, TemplateVariations: 2}
+	a, b := t.TempDir(), t.TempDir()
+	if _, err := GenerateFixture(a, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateFixture(b, cfg); err != nil {
+		t.Fatal(err)
+	}
+	ma, err := BuildManifest(a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mb, err := BuildManifest(b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := CompareManifests(ma, mb, nil); !d.Equal() {
+		t.Fatal(d)
+	}
+	s := GeneratedMutationScenario(cfg, 8)
+	if err := s.Apply(a); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Operations) != 17 || s.Operations[0].Type != OpBuild {
+		t.Fatalf("missing build checkpoints: %v", s.Operations)
+	}
+}
+
+func TestCopyFixture_Isolated(t *testing.T) {
+	src, dst := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(src, "file"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("file", filepath.Join(src, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := CopyFixture(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "file"), []byte("changed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(src, "file"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "source" {
+		t.Fatal("source was modified")
+	}
+	if runtime.GOOS != "windows" {
+		if x, e := os.Readlink(filepath.Join(dst, "link")); e != nil || x != "file" {
+			t.Fatalf("link = %q, %v", x, e)
+		}
+	}
+	if runtime.GOOS != "windows" {
+		outside := filepath.Join(t.TempDir(), "outside")
+		if err := os.Symlink(outside, filepath.Join(src, "escape")); err != nil {
+			t.Fatal(err)
+		}
+		if err := CopyFixture(src, filepath.Join(t.TempDir(), "copy")); err == nil {
+			t.Fatal("escaping fixture symlink was accepted")
+		}
+	}
+}
+
+func TestCopyFixture_RewritesInternalAbsoluteSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation may require elevated permissions on Windows")
+	}
+	src := t.TempDir()
+	dst := filepath.Join(t.TempDir(), "copy")
+	if err := os.WriteFile(filepath.Join(src, "target"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(src, "target"), filepath.Join(src, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := CopyFixture(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	linkTarget, err := os.Readlink(filepath.Join(dst, "link"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.IsAbs(linkTarget) {
+		t.Fatalf("copied symlink remained absolute: %q", linkTarget)
+	}
+	resolved, err := filepath.EvalSymlinks(filepath.Join(dst, "link"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.EvalSymlinks(filepath.Join(dst, "target"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != want {
+		t.Fatalf("resolved symlink = %q, want %q", resolved, want)
+	}
+}
+
+func TestNewWorkspace_ExcludesBuildState(t *testing.T) {
+	fixture := t.TempDir()
+	for _, name := range []string{".markata", ".markata.cache", ".markata-cache", "cache", "output"} {
+		path := filepath.Join(fixture, name, "generated")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("generated"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(fixture, "source.md"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w, err := NewWorkspace(fixture, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := w.Remove(); err != nil {
+			t.Errorf("remove workspace: %v", err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(w.SiteDir, "source.md")); err != nil {
+		t.Fatalf("source input was not copied: %v", err)
+	}
+	for _, name := range []string{".markata", ".markata.cache", ".markata-cache", "cache", "output"} {
+		if _, err := os.Stat(filepath.Join(w.SiteDir, name)); !os.IsNotExist(err) {
+			t.Fatalf("build state %q was copied: %v", name, err)
+		}
+	}
+}
+
+func TestRun_ExplicitWorkingDirectoryAndTimeout(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Build Lab process groups are implemented on Linux")
+	}
+	root := t.TempDir()
+	r := Run(context.Background(), RunConfig{Command: "sh", Args: []string{"-c", "pwd; printf out; printf err >&2"}, CWD: root, Timeout: time.Second})
+	if !r.Successful() {
+		t.Fatalf("run failed: %+v", r)
+	}
+	if !strings.HasPrefix(string(r.Stdout), root+"\n") || !strings.HasSuffix(string(r.Stdout), "out") || string(r.Stderr) != "err" {
+		t.Fatalf("capture = %q/%q", r.Stdout, r.Stderr)
+	}
+	r = Run(context.Background(), RunConfig{Command: "sh", Args: []string{"-c", "sleep 2"}, CWD: root, Timeout: 20 * time.Millisecond})
+	if !r.TimedOut {
+		t.Fatalf("expected timeout: %+v", r)
+	}
+}
+
+func TestBuildCommand_OutputPathIsWorkspaceLocal(t *testing.T) {
+	w := Workspace{SiteDir: filepath.Join(t.TempDir(), "site")}
+	got, err := (BuildCommand{OutputDir: "output"}).outputPath(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(w.SiteDir, "output"); got != want {
+		t.Fatalf("output path = %q, want %q", got, want)
+	}
+
+	if _, err := (BuildCommand{OutputDir: filepath.Join(t.TempDir(), "outside")}).outputPath(w); err == nil {
+		t.Fatal("absolute output outside workspace was accepted")
+	}
+	if err := os.MkdirAll(filepath.Join(w.SiteDir, "links"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(w.SiteDir, "links", "output")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (BuildCommand{OutputDir: "links/output"}).outputPath(w); err == nil {
+		t.Fatal("symlink output path was accepted")
+	}
+}
+
+func TestBuildCommand_ArgsBindSiteDirAfterCallerFlags(t *testing.T) {
+	w := Workspace{SiteDir: filepath.Join(t.TempDir(), "site"), IsolationConfig: filepath.Join(t.TempDir(), "isolation.json")}
+	args, err := (BuildCommand{Args: []string{"build", "--site-dir", "/outside", "--output", "public"}, OutputDir: "public"}).args(w, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastSiteDir := -1
+	for i, arg := range args {
+		if arg == "--site-dir" {
+			if i+1 >= len(args) {
+				t.Fatalf("--site-dir has no value: %v", args)
+			}
+			lastSiteDir = i
+		}
+	}
+	if lastSiteDir < 0 || args[lastSiteDir+1] != w.SiteDir {
+		t.Fatalf("args = %v, final --site-dir does not bind workspace", args)
+	}
+}
+
+func TestWorkspace_ClearOutputUsesCommandOutputDir(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "public")
+	keep := filepath.Join(root, "output", "keep")
+	if err := os.MkdirAll(output, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(keep), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(output, "stale"), []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keep, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	w := Workspace{SiteDir: root}
+	if err := applyWorkspaceOperation(w, Operation{Type: OpClearOutput}, BuildCommand{OutputDir: "public"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("configured output still exists: %v", err)
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("default output was unexpectedly cleared: %v", err)
+	}
+}
+
+func TestWorkspace_EnvironmentPinsIsolationAndOmitsSecrets(t *testing.T) {
+	t.Setenv("BUILD_LAB_SECRET_TOKEN", "do-not-copy")
+	t.Setenv("MARKATA_GO_SITE_DIR", "/unsafe/site")
+	t.Setenv("MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR", "/unsafe/bundled-assets")
+	t.Setenv("MARKATA_GO_CACHE_DIR", "/unsafe/build-cache")
+	w := Workspace{
+		HomeDir: "/workspace/home", XDGCacheDir: "/workspace/cache", TempDir: "/workspace/tmp",
+	}
+	env := w.Environment([]string{"HOME=/unsafe", "CUSTOM=value", "CUSTOM_TOKEN=unsafe", "MARKATA_GO_CACHE_DIR=/unsafe", "MARKATA_GO_SITE_DIR=/unsafe/extra-site"}, 1)
+	values := make(map[string]string)
+	for _, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if ok {
+			values[key] = value
+		}
+	}
+	if values["HOME"] != w.HomeDir || values["XDG_CACHE_HOME"] != w.XDGCacheDir || values["TMPDIR"] != w.TempDir || values["SOURCE_DATE_EPOCH"] != "0" || values["MARKATA_GO_DISABLE_DOTENV"] != "1" {
+		t.Fatal("workspace environment was not pinned")
+	}
+	if values["CUSTOM"] != "value" || values["BUILD_LAB_SECRET_TOKEN"] != "" || values["CUSTOM_TOKEN"] != "" || values["MARKATA_GO_CACHE_DIR"] != "" || values["MARKATA_GO_BUNDLED_ASSETS_CACHE_DIR"] != "" || values["MARKATA_GO_SITE_DIR"] != "" {
+		t.Fatal("sensitive or isolated environment override was copied")
+	}
+}
+
+func TestManifestForRun_RequiresOutputDirectory(t *testing.T) {
+	w := Workspace{SiteDir: t.TempDir()}
+	if _, err := manifestForRun(w, BuildCommand{OutputDir: "missing"}, nil); err == nil {
+		t.Fatal("missing output directory was accepted")
+	}
+}
+
+func TestRunScenario_PrimeAndIncrementalCheckpoints(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Build Lab process groups are implemented on Linux")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "source.md"), []byte("source\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(root, "build.sh")
+	const script = `#!/bin/sh
+out=""
+clean=0
+ while [ "$#" -gt 0 ]; do
+   case "$1" in
+     --output) out="$2"; shift 2 ;;
+     --clean) clean=1; shift ;;
+     *) shift ;;
+   esac
+ done
+ if [ "$clean" -eq 1 ]; then rm -rf "$out"; fi
+ mkdir -p "$out"
+ printf '%s' deterministic > "$out/result.txt"
+`
+	//nolint:gosec // The test fixture must be executable as a build command.
+	if err := os.WriteFile(binary, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	result, err := RunScenario(context.Background(), ScenarioRunConfig{
+		Fixture: root,
+		Scenario: Scenario{ID: "prime-incremental", Operations: []Operation{
+			{Type: OpBuild}, {Type: OpBuild},
+		}},
+		Baseline:  BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+		Candidate: BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Verdict != "pass" || len(result.Checkpoints) != 2 {
+		t.Fatalf("result = %+v", result)
+	}
+	if result.Checkpoints[0].Correctness.IncrementalApplicable {
+		t.Fatal("priming build was marked incremental")
+	}
+	if !result.Checkpoints[1].Correctness.IncrementalApplicable ||
+		!result.Checkpoints[1].Correctness.IncrementalEqual {
+		t.Fatalf("incremental checkpoint = %+v", result.Checkpoints[1].Correctness)
+	}
+}
+
+func TestRunScenario_FailedDeterminismBuildFailsVerdict(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Build Lab process groups are implemented on Linux")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "source.md"), []byte("source\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(root, "build.sh")
+	const script = `#!/bin/sh
+counter="$(dirname "$0")/invocations"
+count=0
+if [ -f "$counter" ]; then count=$(cat "$counter"); fi
+count=$((count + 1))
+printf '%s' "$count" > "$counter"
+out=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output) out="$2"; shift 2 ;;
+    --clean) shift ;;
+    *) shift ;;
+  esac
+done
+if [ "$count" -eq 4 ]; then exit 23; fi
+mkdir -p "$out"
+printf '%s' deterministic > "$out/result.txt"
+`
+	//nolint:gosec // The test fixture must be executable as a build command.
+	if err := os.WriteFile(binary, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	result, err := RunScenario(context.Background(), ScenarioRunConfig{
+		Fixture:          root,
+		Scenario:         Scenario{ID: "failed-determinism", Operations: []Operation{{Type: OpBuild}}},
+		Baseline:         BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+		Candidate:        BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+		CheckDeterminism: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkpoint := result.Checkpoints[0]
+	if result.Verdict != "fail" || checkpoint.Correctness.DeterministicEqual {
+		t.Fatalf("failed determinism was accepted: verdict=%q correctness=%+v", result.Verdict, checkpoint.Correctness)
+	}
+	if checkpoint.CandidateDeterminism == nil || checkpoint.CandidateDeterminism.Successful {
+		t.Fatalf("determinism observation = %+v", checkpoint.CandidateDeterminism)
+	}
+}
+
+func TestRunScenario_RecordsDeterminismAfterFailedCandidateClean(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Build Lab process groups are implemented on Linux")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "source.md"), []byte("source\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(root, "build.sh")
+	const script = `#!/bin/sh
+counter="$(dirname "$0")/invocations"
+count=0
+if [ -f "$counter" ]; then count=$(cat "$counter"); fi
+count=$((count + 1))
+printf '%s' "$count" > "$counter"
+out=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output) out="$2"; shift 2 ;;
+    --clean) shift ;;
+    *) shift ;;
+  esac
+done
+if [ "$count" -eq 3 ]; then exit 23; fi
+mkdir -p "$out"
+printf '%s' deterministic > "$out/result.txt"
+`
+	//nolint:gosec // The test fixture must be executable as a build command.
+	if err := os.WriteFile(binary, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	result, err := RunScenario(context.Background(), ScenarioRunConfig{
+		Fixture:          root,
+		Scenario:         Scenario{ID: "failed-candidate-clean", Operations: []Operation{{Type: OpBuild}}},
+		Baseline:         BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+		Candidate:        BuildCommand{Binary: binary, OutputDir: "output", Timeout: time.Second},
+		CheckDeterminism: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkpoint := result.Checkpoints[0]
+	if result.Verdict != "fail" || checkpoint.CandidateClean.Successful || checkpoint.Correctness.DeterministicEqual {
+		t.Fatalf("failed candidate clean was accepted: verdict=%q checkpoint=%+v", result.Verdict, checkpoint)
+	}
+	if checkpoint.CandidateDeterminism == nil || !checkpoint.CandidateDeterminism.Successful {
+		t.Fatalf("determinism observation = %+v", checkpoint.CandidateDeterminism)
+	}
+}

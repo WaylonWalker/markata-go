@@ -32,15 +32,14 @@ import (
 //	end_date = "02-28"
 //	palette = "winter-frost"
 type ThemeCalendarPlugin struct {
-	// nowFunc allows injecting a custom time function for testing
+	// nowFunc allows injecting a custom time function for testing. When nil, the
+	// manager's BuildClock is used.
 	nowFunc func() time.Time
 }
 
 // NewThemeCalendarPlugin creates a new ThemeCalendarPlugin.
 func NewThemeCalendarPlugin() *ThemeCalendarPlugin {
-	return &ThemeCalendarPlugin{
-		nowFunc: time.Now,
-	}
+	return &ThemeCalendarPlugin{}
 }
 
 // Name returns the unique name of the plugin.
@@ -68,7 +67,10 @@ func (p *ThemeCalendarPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Get current date (or test date)
-	now := p.nowFunc()
+	now := m.BuildClock().Now()
+	if p.nowFunc != nil {
+		now = p.nowFunc()
+	}
 	currentMonth := int(now.Month())
 	currentDay := now.Day()
 

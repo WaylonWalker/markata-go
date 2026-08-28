@@ -133,7 +133,12 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		if cache != nil && post.InputHash != "" {
 			if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
 				outputPath := filepath.Join(config.OutputDir, post.Slug, "index.html")
-				if _, err := os.Stat(outputPath); err == nil {
+				// StaticAssetsPlugin runs before this writer. If a static file
+				// occupies the generated path, it may have replaced the previous
+				// generated page during this build. Rewrite the page even when its
+				// source inputs are unchanged so incremental output matches clean
+				// output.
+				if _, err := os.Stat(outputPath); err == nil && !isProjectStaticOutput(config.OutputDir, outputPath) {
 					cache.MarkSkipped()
 					return false
 				}
@@ -149,6 +154,20 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	})
 }
 
+func isProjectStaticOutput(outputDir, outputPath string) bool {
+	return isStaticOutput(StaticDir, outputDir, outputPath)
+}
+
+func isStaticOutput(staticDir, outputDir, outputPath string) bool {
+	relative, err := filepath.Rel(outputDir, outputPath)
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return false
+	}
+	staticPath := filepath.Join(staticDir, relative)
+	info, err := os.Stat(staticPath)
+	return err == nil && !info.IsDir()
+}
+
 func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecycle.Manager, config *lifecycle.Config) error {
 	if cache == nil || m == nil || config == nil {
 		return nil
@@ -156,7 +175,6 @@ func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecyc
 
 	posts := m.Posts()
 	removed := lifecycle.GetServeRemovedPaths(m)
-	postFormats := getPostFormatsConfig(config)
 
 	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
 	slugByPath := make(map[string]string, len(posts))
@@ -180,7 +198,7 @@ func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecyc
 		if slug := cache.Graph.SlugForPath(removedPath); slug != "" {
 			cache.MarkSlugChanged(slug)
 		}
-		if err := p.removePostOutputs(removedPath, config, postFormats, cache); err != nil {
+		if err := p.removePostOutputs(removedPath, config, cache); err != nil {
 			return err
 		}
 	}
@@ -279,14 +297,11 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	return nil
 }
 
-func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, postFormats models.PostFormatsConfig, cache *buildcache.Cache) error {
+func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, cache *buildcache.Cache) error {
 	if sourcePath == "" || config == nil {
 		return nil
 	}
 	if cache == nil {
-		return nil
-	}
-	if !lifecycle.IsServeIncrementalFromConfig(config) {
 		return nil
 	}
 	postCache := cache.GetCachedPost(sourcePath)
@@ -300,14 +315,17 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	if err != nil {
 		return err
 	}
-	_ = postFormats
-	_ = os.RemoveAll(postDir)
+	if err := os.RemoveAll(postDir); err != nil {
+		return fmt.Errorf("remove post output %q: %w", postDir, err)
+	}
 	for _, extension := range []string{".md", ".txt", ".ansi"} {
 		path, err := safeOutputPath(outputDir, slug+extension)
 		if err != nil {
 			return err
 		}
-		_ = os.Remove(path)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove post output %q: %w", path, err)
+		}
 	}
 
 	return nil

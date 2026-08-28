@@ -54,6 +54,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [AGENTS.md](./spec/AGENTS.md) | Agent skill packaging, install targets, and CLI |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
+| [BUILD_LAB_DAG.md](./spec/BUILD_LAB_DAG.md) | Reproducible Build Lab and serial task/artifact graph |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |

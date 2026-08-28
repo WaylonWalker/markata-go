@@ -257,6 +257,39 @@ func TestGlossaryPlugin_LinkTerms_MaxLinksPerTerm(t *testing.T) {
 	}
 }
 
+func TestGlossaryPlugin_LinkTerms_TieBreaksEqualLengthTerms(t *testing.T) {
+	p := NewGlossaryPlugin()
+	p.config.MaxLinksPerTerm = 1
+
+	selfHosted := "self hosted"
+	glossaryPost := &models.Post{
+		Title: &selfHosted,
+		Slug:  "self-host",
+		Href:  "/glossary/self-host/",
+		Extra: map[string]interface{}{
+			"templateKey": "glossary",
+			"aliases":     []interface{}{"self-hosted"},
+		},
+	}
+
+	if err := p.buildGlossary([]*models.Post{glossaryPost}); err != nil {
+		t.Fatalf("buildGlossary error: %v", err)
+	}
+
+	content := "<p>self-hosted appears first, then self hosted.</p>"
+	first := p.linkTerms(content, nil)
+	for i := 0; i < 20; i++ {
+		if got := p.linkTerms(content, nil); got != first {
+			t.Fatalf("linkTerms is not deterministic: first=%q, got=%q", first, got)
+		}
+	}
+
+	want := `<p>self-hosted appears first, then <a href="/glossary/self-host/" class="glossary-term">self hosted</a>.</p>`
+	if first != want {
+		t.Fatalf("linkTerms() = %q, want %q", first, want)
+	}
+}
+
 func TestGlossaryPlugin_LinkTerms_AllOccurrences(t *testing.T) {
 	p := NewGlossaryPlugin()
 	p.config.MaxLinksPerTerm = 0 // Link all occurrences

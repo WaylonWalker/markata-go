@@ -555,7 +555,10 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 		termList = append(termList, term)
 	}
 	sort.Slice(termList, func(i, j int) bool {
-		return len(termList[i]) > len(termList[j])
+		if len(termList[i]) != len(termList[j]) {
+			return len(termList[i]) > len(termList[j])
+		}
+		return termList[i] < termList[j]
 	})
 
 	// Process each term

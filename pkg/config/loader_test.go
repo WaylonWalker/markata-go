@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 func findFeedBySlug(t *testing.T, feeds []models.FeedConfig, slug string) models.FeedConfig {
@@ -134,6 +135,73 @@ func TestLoad_WithJSON(t *testing.T) {
 	}
 	if config.URL != "https://json-example.com" {
 		t.Errorf("URL = %q, want %q", config.URL, "https://json-example.com")
+	}
+}
+
+func TestLoadWithMerge_AssetsConfigIsTyped(t *testing.T) {
+	dir := t.TempDir()
+	basePath := filepath.Join(dir, "markata-go.toml")
+	overridePath := filepath.Join(dir, "buildlab-isolation.json")
+	base := `[markata-go]
+
+[markata-go.assets]
+mode = "self-hosted"
+cache_dir = "/outside/assets-cache"
+verify_integrity = false
+output_dir = "assets/vendor"
+`
+	override := `{"markata-go":{"assets":{"cache_dir":"/workspace/markata-cache/assets"}}}`
+	if err := os.WriteFile(basePath, []byte(base), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(overridePath, []byte(override), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := LoadWithMerge(basePath, overridePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Assets.Mode != "self-hosted" {
+		t.Fatalf("assets mode = %q, want self-hosted", config.Assets.Mode)
+	}
+	if config.Assets.CacheDir != "/workspace/markata-cache/assets" {
+		t.Fatalf("assets cache_dir = %q, want isolated override", config.Assets.CacheDir)
+	}
+	if config.Assets.VerifyIntegrity == nil || *config.Assets.VerifyIntegrity {
+		t.Fatalf("assets verify_integrity = %v, want false", config.Assets.VerifyIntegrity)
+	}
+	if config.Assets.OutputDir != "assets/vendor" {
+		t.Fatalf("assets output_dir = %q, want assets/vendor", config.Assets.OutputDir)
+	}
+}
+
+func TestLoadWithMerge_CanDisableDotEnv(t *testing.T) {
+	dir := t.TempDir()
+	basePath := filepath.Join(dir, "markata-go.toml")
+	if err := os.WriteFile(basePath, []byte("[markata-go]\ntitle = \"from-config\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("MARKATA_GO_TITLE=from-dotenv\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cleanup := chdir(t, dir)
+	defer cleanup()
+	t.Setenv(runtimeenv.EnvDisableDotEnv, "1")
+
+	config, err := LoadWithMerge(basePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Title != "from-config" {
+		t.Fatalf("title = %q, want .env to be ignored", config.Title)
+	}
+	loaded, err := Load(basePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Title != "from-config" {
+		t.Fatalf("Load title = %q, want .env to be ignored", loaded.Title)
 	}
 }
 

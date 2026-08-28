@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
@@ -174,6 +175,41 @@ func TestSafeOutputPath(t *testing.T) {
 		if _, err := safeOutputPath(root, traversal); err == nil {
 			t.Fatalf("safeOutputPath accepted traversal path %q", traversal)
 		}
+	}
+}
+
+func TestIsProjectStaticOutput(t *testing.T) {
+	root := t.TempDir()
+	staticDir := filepath.Join(root, "static")
+	outputDir := filepath.Join(root, "output")
+	staticOutput := filepath.Join(staticDir, "slides", "index.html")
+	if err := os.MkdirAll(filepath.Dir(staticOutput), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(staticOutput, []byte("static"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if !isStaticOutput(staticDir, outputDir, filepath.Join(outputDir, "slides", "index.html")) {
+		t.Fatal("expected static output path to be detected")
+	}
+	if isStaticOutput(staticDir, outputDir, filepath.Join(outputDir, "other", "index.html")) {
+		t.Fatal("unexpected static output path")
+	}
+}
+
+func TestPublishHTMLPlugin_RemovePostOutputsReturnsFilesystemError(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	if err := os.WriteFile(output, []byte("output is not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	cache.Posts["source.md"] = &buildcache.PostCache{Slug: "post"}
+
+	err := NewPublishHTMLPlugin().removePostOutputs("source.md", &lifecycle.Config{OutputDir: output}, cache)
+	if err == nil {
+		t.Fatal("expected output removal error")
 	}
 }
 

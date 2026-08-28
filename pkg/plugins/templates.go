@@ -317,9 +317,10 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 	m.Cache().Set("feed_configs", feedConfigs)
 }
 
-// Phase 1a: Quick single-threaded pass to classify posts (no disk I/O)
-// Phase 1b: No-op for unchanged posts; cached full-page HTML is restored lazily
-// only when a later stage truly needs it.
+// Phase 1a: Quick single-threaded pass to classify posts. Cache lookups are
+// normally in memory, but a disk-backed cache may load a missed entry here.
+// Phase 1b: Restore cached full-page HTML for unchanged posts.  Posts without
+// a readable cached page continue to Phase 2 and are rendered normally.
 // Phase 2: Concurrent rendering only for posts that need it
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
@@ -343,10 +344,11 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Pre-compute feed membership hashes once (O(N)) instead of per-post (O(N^2))
 	feedMembershipHashes := precomputeFeedMembershipHashes(config, m)
 
-	// Phase 1a: Classify posts into "cacheable" vs "needs rendering" without disk I/O.
+	// Phase 1a: Classify posts into "cacheable" vs "needs rendering". Cache
+	// lookups are normally in memory, but disk-backed misses may load here.
 	t0 := time.Now()
 	cacheableCount := 0
-	var postsNeedingRender []*models.Post
+	postsNeedingRender := make([]*models.Post, 0, len(m.Posts()))
 
 	for _, post := range m.Posts() {
 		// Skip posts marked to skip or without article HTML
@@ -354,18 +356,22 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			continue
 		}
 
-		// Check if we can use cached HTML (no disk I/O -- just map lookups)
+		// Check if we can use cached HTML before rendering the post.
 		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) {
-			cacheableCount++
-		} else {
-			postsNeedingRender = append(postsNeedingRender, post)
+			if html := cache.GetCachedFullHTML(post.Path); html != "" {
+				post.HTML = html
+				cacheableCount++
+				continue
+			}
 		}
+		postsNeedingRender = append(postsNeedingRender, post)
 	}
 	t1 := time.Now()
 	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", cacheableCount, len(postsNeedingRender), t1.Sub(t0))
 
-	// Phase 1b: Intentionally skip eager full-page HTML restore for unchanged posts.
-	// Later stages can use cached derivatives or restore lazily when truly needed.
+	// Phase 1b: Cached full-page HTML has already been restored above.  Keep the
+	// phase log so build profiles continue to distinguish classification from
+	// actual template rendering.
 	t2 := time.Now()
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 

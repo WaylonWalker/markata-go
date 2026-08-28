@@ -97,6 +97,50 @@ Issues: https://github.com/WaylonWalker/markata-go/issues
 
 ## Commands
 
+### buildlab
+
+Run real baseline and candidate builds in isolated workspaces and compare their
+output manifests.
+
+#### Usage
+
+```bash
+markata-go buildlab run --fixture /path/to/site --baseline /tmp/markata-go --candidate /tmp/markata-go
+```
+
+The candidate uses the serial DAG by default. The default scenario clears cache
+and output, then performs a priming build and a no-op incremental build. The
+command compares baseline clean, candidate clean, candidate incremental, and
+(by default) a second candidate clean build.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--fixture` | Site fixture directory | Required |
+| `--baseline` | Baseline binary | Current executable |
+| `--candidate` | Candidate binary | Current executable |
+| `--build-config` | Config path relative to the fixture | `markata-go.toml` |
+| `--merge-config` | Forward an additional config file to each build | None |
+| `--scenario` | Versioned scenario JSON file | Clean-build smoke scenario |
+| `--result` | Write structured result JSON to this path | Not written |
+| `--seed` | Scenario and DAG randomization seed | `1` |
+| `--timeout` | Timeout for each build process | `10m` |
+| `--gomaxprocs` | `GOMAXPROCS` for isolated builds | `1` |
+| `--check-determinism` | Compare two candidate clean builds | `true` |
+| `--volatile` | Comma-separated paths allowed to vary | `.well-known/time` |
+| `--tool-version` | Comma-separated `name=version` metadata | None |
+| `--env` | Comma-separated non-secret `KEY=value` entries | None |
+| `--candidate-dag` | Add `--dag` to candidate builds | `true` |
+| `--candidate-dag-random-ready` | Add seeded ready-task randomization | `false` |
+| `--fast` | Add `--fast` to both baseline and candidate builds | `false` |
+
+Build Lab writes its machine-readable result to standard output. It exits with
+an error when a process fails or any required correctness comparison fails.
+Builds run in full mode by default. Use `--fast` only for development smoke
+checks; fast-mode results do not validate production-only output steps.
+
+See [[build-lab|Build Lab]] for scenario files, mutation operations, and output
+classification.
+
 ### lsp
 
 Start the Markdown language server, check its local prerequisites, or print
@@ -340,12 +384,16 @@ markata-go build [flags]
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--clean` | | Remove output directory before building | `false` |
+| `--clean-all` | | Also remove external plugin caches before building | `false` |
 | `--dry-run` | | Show what would be built without writing files | `false` |
 | `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
 | `--benchmark-json` | | Write benchmark details as JSON; use `-` for stdout | `""` |
 | `--benchmark-detailed` | | Print per-stage benchmark resource summaries | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--output` | `-o` | Override output directory | from config |
+| `--dag` | | Use the experimental serial task/artifact graph | `false` |
+| `--dag-seed` | | Seed serial DAG ready-task randomization | `0` |
+| `--dag-random-ready` | | Randomize equally-ready serial DAG tasks | `false` |
 
 #### Examples
 
@@ -370,6 +418,9 @@ markata-go build -o dist
 
 # Build with a specific config file
 markata-go build -c production.toml
+
+# Build with the experimental serial DAG
+markata-go build --dag
 
 # Combine flags
 markata-go build --clean -v -o dist

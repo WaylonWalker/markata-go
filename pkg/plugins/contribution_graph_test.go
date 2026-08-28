@@ -3,7 +3,9 @@ package plugins
 import (
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -58,6 +60,39 @@ func TestContributionGraphPlugin_ProcessPost_ValidGraph(t *testing.T) {
 	}
 	if !strings.Contains(post.ArticleHTML, "window._contributionGraphFitters") {
 		t.Error("Expected built-in graph fitters")
+	}
+}
+
+func TestContributionGraphPlugin_GraphIDsAreDeterministic(t *testing.T) {
+	input := `<pre><code class="language-contribution-graph">{"data":[{"date":"2024-01-01","value":1}],"options":{}}</code></pre>`
+	first := &models.Post{Path: "posts/activity.md", ArticleHTML: input}
+	second := &models.Post{Path: "posts/activity.md", ArticleHTML: input}
+
+	if err := NewContributionGraphPlugin().processPost(nil, first); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewContributionGraphPlugin().processPost(nil, second); err != nil {
+		t.Fatal(err)
+	}
+	if first.ArticleHTML != second.ArticleHTML {
+		t.Fatalf("graph output is not deterministic:\nfirst:  %s\nsecond: %s", first.ArticleHTML, second.ArticleHTML)
+	}
+}
+
+func TestContributionGraphPlugin_UsesBuildClockForImplicitYear(t *testing.T) {
+	m := lifecycle.NewManager()
+	m.SetBuildClock(lifecycle.BuildClockFunc(func() time.Time {
+		return time.Date(2031, time.January, 1, 0, 0, 0, 0, time.UTC)
+	}))
+	p := NewContributionGraphPlugin()
+	options := map[string]interface{}{}
+	data := p.buildContributionData(m, options)
+
+	if options["year"] != float64(2031) {
+		t.Fatalf("implicit year = %v, want 2031", options["year"])
+	}
+	if data == nil {
+		t.Fatal("implicit contribution data is nil")
 	}
 }
 

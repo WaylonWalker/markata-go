@@ -7,10 +7,7 @@ import (
 )
 
 func TestCanonicalHeadingsFixtureLoadsWithContractValues(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "theme.toml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := readCanonicalFixture(t, "theme.toml")
 	cfg, err := LoadFromString(string(data), FormatTOML)
 	if err != nil {
 		t.Fatal(err)
@@ -34,10 +31,7 @@ func TestCanonicalHeadingsFixtureLoadsWithContractValues(t *testing.T) {
 }
 
 func TestCanonicalHeadingsMarkdownCopyMatchesSharedFixture(t *testing.T) {
-	shared, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "test-headings.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	shared := readCanonicalFixture(t, "test-headings.md")
 	local, err := os.ReadFile(filepath.Join("..", "..", "rendering-fixtures", "test-headings.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -45,4 +39,23 @@ func TestCanonicalHeadingsMarkdownCopyMatchesSharedFixture(t *testing.T) {
 	if string(shared) != string(local) {
 		t.Fatal("markata-go headings copy drifted from the shared fixture")
 	}
+}
+
+func readCanonicalFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	paths := []string{
+		filepath.Join("..", "..", "..", "fixtures", "canonical-headings", name),
+		filepath.Join("..", "..", "fixtures", "canonical-headings", name),
+	}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			return data
+		}
+		if !os.IsNotExist(err) {
+			t.Fatalf("read canonical fixture %s: %v", path, err)
+		}
+	}
+	t.Fatalf("canonical fixture %q not found in shared workspace or repository fixtures", name)
+	return nil
 }

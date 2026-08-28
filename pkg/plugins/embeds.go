@@ -200,6 +200,12 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	// Use the shared PostIndex from the lifecycle manager
 	idx := m.PostIndex()
 	cache := GetBuildCache(m)
+	changedSlugs := make(map[string]bool)
+	if cache != nil {
+		for _, slug := range cache.GetChangedSlugs() {
+			changedSlugs[slug] = true
+		}
+	}
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
@@ -212,8 +218,15 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	if cache != nil {
 		for _, post := range posts {
 			contentHash := buildcache.ContentHash(post.Content + cacheSignature)
-			if cached, ok := cache.GetCachedEmbedsContent(post.Path, contentHash); ok {
+			if cached, dependencies, ok := cache.GetCachedEmbedsContentWithDependencies(post.Path, contentHash); ok {
+				if embedDependencyChanged(dependencies, changedSlugs) {
+					needProcessing = append(needProcessing, post)
+					continue
+				}
 				post.Content = cached
+				for _, dependency := range dependencies {
+					post.AddDependency(dependency)
+				}
 				if !needsLiteYouTube && containsLiteYouTubeEmbed(post.Content) {
 					needsLiteYouTube = true
 				}
@@ -246,7 +259,7 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 		}
 
 		if cache != nil {
-			cache.CacheEmbedsContent(post.Path, contentHash, content)
+			cache.CacheEmbedsContentWithDependencies(post.Path, contentHash, content, dependencies)
 		}
 
 		return nil
@@ -268,6 +281,15 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+func embedDependencyChanged(dependencies []string, changedSlugs map[string]bool) bool {
+	for _, dependency := range dependencies {
+		if changedSlugs[dependency] {
+			return true
+		}
+	}
+	return false
 }
 
 func embedsCacheSignature(config models.EmbedsConfig, extra map[string]interface{}) string {
@@ -534,6 +556,7 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 		targetPost := idx.LookupBySlug(slug)
 
 		if targetPost == nil {
+			appendPostDependencyCandidates(dependencies, slug)
 			// Return a warning comment and keep original
 			return fmt.Sprintf("<!-- embed not found: %s -->\n%s", slug, match)
 		}

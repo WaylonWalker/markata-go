@@ -38,6 +38,25 @@ func TestCache_SetAndGetDependencies(t *testing.T) {
 	}
 }
 
+func TestCache_EmbedsDependenciesRoundTrip(t *testing.T) {
+	cache := New("")
+	cache.CacheEmbedsContentWithDependencies("pages/post-a.md", "hash", "rendered", []string{"post-b", "post-c"})
+
+	content, dependencies, ok := cache.GetCachedEmbedsContentWithDependencies("pages/post-a.md", "hash")
+	if !ok || content != "rendered" {
+		t.Fatalf("cached embeds = %q, %v, want rendered/true", content, ok)
+	}
+	if len(dependencies) != 2 || dependencies[0] != "post-b" || dependencies[1] != "post-c" {
+		t.Fatalf("cached dependencies = %v", dependencies)
+	}
+
+	dependencies[0] = "mutated"
+	_, restored, ok := cache.GetCachedEmbedsContentWithDependencies("pages/post-a.md", "hash")
+	if !ok || restored[0] != "post-b" {
+		t.Fatalf("cached dependencies were not copied: %v", restored)
+	}
+}
+
 func TestCache_GetAffectedPosts(t *testing.T) {
 	cache := New("")
 
@@ -120,6 +139,28 @@ func TestCache_GetChangedSlugs(t *testing.T) {
 	}
 }
 
+func TestCache_MarkSlugChangedIncludesEquivalentForms(t *testing.T) {
+	cache := New("")
+	cache.SetDependencies("source.md", "source", []string{"my post", "my-post"})
+
+	cache.MarkSlugChanged("My Post")
+
+	changed := cache.GetChangedSlugs()
+	want := map[string]bool{"My Post": true, "my post": true, "my-post": true}
+	if len(changed) != len(want) {
+		t.Fatalf("GetChangedSlugs = %v, want %v", changed, want)
+	}
+	for _, slug := range changed {
+		if !want[slug] {
+			t.Errorf("unexpected changed slug %q", slug)
+		}
+	}
+	affected := cache.GetAffectedPosts(changed)
+	if len(affected) != 1 || affected[0] != "source.md" {
+		t.Fatalf("GetAffectedPosts = %v, want [source.md]", affected)
+	}
+}
+
 func TestCache_ResetStats_ClearsChangedSlugs(t *testing.T) {
 	cache := New("")
 
@@ -176,6 +217,24 @@ func TestCache_MarkChangedPaths(t *testing.T) {
 	changed := cache.GetChangedSlugs()
 	if len(changed) != 1 || changed[0] != "post-a" {
 		t.Errorf("GetChangedSlugs = %v, want [post-a]", changed)
+	}
+}
+
+func TestCache_MarkMissingPaths(t *testing.T) {
+	cache := New("")
+	cache.SetDependencies("pages/source.md", "source", []string{"target"})
+	cache.MarkRebuiltWithSlug("pages/target.md", "target", "hash", "output/target/index.html", "post.html")
+	cache.UpdateModTime("pages/target.md", 1, "target")
+	cache.ResetStats()
+
+	missing := cache.MarkMissingPaths([]string{"pages/source.md"})
+	if len(missing) != 1 || missing[0] != "pages/target.md" {
+		t.Fatalf("missing paths = %v, want [pages/target.md]", missing)
+	}
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 1 || changed[0] != "target" {
+		t.Fatalf("GetChangedSlugs = %v, want [target]", changed)
 	}
 }
 

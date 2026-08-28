@@ -47,24 +47,22 @@ func (p *WikilinksPlugin) Configure(m *lifecycle.Manager) error {
 func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 	// Use the shared post index instead of building our own maps
 	postIndex := m.PostIndex()
-	postIndex.Refresh(m)
-	postIndex.Refresh(m)
+	// Native DAG builds provide a finalized PostIndex artifact explicitly.  The
+	// legacy path still refreshes once here, but never performs the old duplicate
+	// refresh.
+	if _, finalized := m.Cache().Get("native_post_index_finalized"); !finalized {
+		postIndex.Refresh(m)
+	}
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
 
-	if lifecycle.IsServeIncremental(m) {
-		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
-			filtered := posts[:0]
-			for _, post := range posts {
-				if affected[post.Path] {
-					filtered = append(filtered, post)
-				}
-			}
-			posts = filtered
-		}
-	}
+	// Cached parsed posts retain source Markdown, so wikilink resolution must
+	// run for every post. A target deletion or rename can change resolution for
+	// an otherwise unchanged source, and this plugin has no transformed-content
+	// cache to restore. Dependency tracking still lets later plugins avoid
+	// unnecessary work where their cached inputs remain valid.
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content, warnings, dependencies := p.processWikilinks(post.Content, postIndex)
@@ -95,7 +93,7 @@ var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\](\{[^}]+
 var wikilinksCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
-// Returns the processed content, any warnings about broken links, and a list of resolved slugs (dependencies).
+// Returns the processed content, warnings, and normalized resolved or unresolved dependency slugs.
 // Wikilinks inside fenced code blocks are preserved and not transformed.
 func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.PostIndex) (processed string, warnings, dependencies []string) {
 	// Split content by fenced code blocks to avoid transforming wikilinks inside them
@@ -176,6 +174,7 @@ func (p *WikilinksPlugin) renderWikilink(match, slug, displayText, attrBlock str
 	targetPost := postIndex.LookupBySlug(slug)
 
 	if targetPost == nil {
+		appendPostDependencyCandidates(dependencies, slug)
 		// Target post not found - warn and keep original syntax
 		*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
 		return match

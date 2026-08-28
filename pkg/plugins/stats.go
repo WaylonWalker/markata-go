@@ -26,6 +26,8 @@ type StatsPlugin struct {
 	trackCodeBlocks bool
 }
 
+const statsPluginName = "stats"
+
 // PostStats contains calculated statistics for a single post.
 type PostStats struct {
 	// WordCount is the number of words in the post
@@ -113,7 +115,7 @@ func NewStatsPlugin() *StatsPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *StatsPlugin) Name() string {
-	return "stats"
+	return statsPluginName
 }
 
 // Configure reads configuration options for the plugin.
@@ -124,7 +126,7 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Check for stats plugin config
-	if statsConfig, ok := config.Extra["stats"].(map[string]interface{}); ok {
+	if statsConfig, ok := config.Extra[statsPluginName].(map[string]interface{}); ok {
 		if wpm, ok := statsConfig["words_per_minute"].(int); ok && wpm > 0 {
 			p.wordsPerMinute = wpm
 		}
@@ -144,7 +146,9 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 	return nil
 }
 
-// Transform calculates statistics for each post.
+// Transform calculates statistics for each post. Stats owns the canonical
+// word_count, reading_time, and reading_time_text template fields; the
+// standalone ReadingTimePlugin defers to this plugin when both are present.
 func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
@@ -162,7 +166,7 @@ func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
 		post.Set("code_blocks", stats.CodeBlocks)
 
 		// Also store as a stats object
-		post.Set("stats", stats)
+		post.Set(statsPluginName, stats)
 
 		return nil
 	})
@@ -237,7 +241,7 @@ func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 	// Store stats helper object for template function access
 	statsHelper := NewStatsHelper(m)
 	m.Cache().Set("stats_helper", statsHelper)
-	config.Extra["stats"] = statsHelper
+	config.Extra[statsPluginName] = statsHelper
 
 	return nil
 }

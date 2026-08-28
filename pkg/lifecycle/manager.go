@@ -259,6 +259,14 @@ type Manager struct {
 	// assetHashes maps original asset paths to their content hashes for cache busting.
 	// Key: original path (e.g., "css/main.css"), Value: hash (first 8 chars of SHA-256).
 	assetHashes map[string]string
+
+	// buildClock supplies time-dependent build inputs without requiring plugins
+	// to call time.Now directly.
+	buildClock BuildClock
+
+	// serialBuild is set by the opt-in DAG migration. Legacy plugins can use it
+	// to disable escaped background work while they remain exclusive tasks.
+	serialBuild bool
 }
 
 // NewManager creates a new lifecycle Manager with default settings.
@@ -283,6 +291,7 @@ func NewManager() *Manager {
 		warnings:    make([]*HookError, 0),
 		concurrency: concurrency,
 		assetHashes: make(map[string]string),
+		buildClock:  newSystemBuildClock(),
 	}
 }
 
@@ -478,6 +487,42 @@ func (m *Manager) SetCache(cache Cache) {
 	m.cache = cache
 }
 
+// BuildClock returns the clock used by time-dependent build plugins.
+func (m *Manager) BuildClock() BuildClock {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.buildClock == nil {
+		return newSystemBuildClock()
+	}
+	return m.buildClock
+}
+
+// SetBuildClock injects a clock for reproducible builds and tests. A nil clock
+// restores the system clock.
+func (m *Manager) SetBuildClock(clock BuildClock) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if clock == nil {
+		clock = newSystemBuildClock()
+	}
+	m.buildClock = clock
+}
+
+// IsSerialBuild reports whether the manager is executing inside the serial DAG
+// migration boundary.
+func (m *Manager) IsSerialBuild() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.serialBuild
+}
+
+// SetSerialBuild enables or disables the serial DAG compatibility boundary.
+func (m *Manager) SetSerialBuild(enabled bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.serialBuild = enabled
+}
+
 // CurrentStage returns the currently executing stage.
 func (m *Manager) CurrentStage() Stage {
 	m.mu.RLock()
@@ -490,6 +535,44 @@ func (m *Manager) HasRun(stage Stage) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.stagesRun[stage]
+}
+
+// MarkStageComplete records that a stage was completed by an alternate
+// executor.  It is intentionally narrow: the serial DAG migration uses it
+// after it has run the selected hooks explicitly, so later legacy stages can
+// continue through RunTo without repeating the migrated work.
+func (m *Manager) MarkStageComplete(stage Stage) error {
+	if !IsValidStage(stage) {
+		return fmt.Errorf("invalid stage: %s", stage)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.stagesRun[stage] = true
+	m.currentStage = stage
+	return nil
+}
+
+// ResetPostDependencies clears derived dependency edges before a transform
+// pass.  Transform plugins record the edges they discover during the pass;
+// clearing them first prevents removed wikilinks or embeds from remaining in
+// the incremental cache graph.
+func (m *Manager) ResetPostDependencies() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, post := range m.posts {
+		if post != nil {
+			post.Dependencies = nil
+		}
+	}
+}
+
+func (m *Manager) recordHookWarning(err *HookError) {
+	if err == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.warnings = append(m.warnings, err)
 }
 
 // Warnings returns collected non-critical errors.
@@ -594,6 +677,7 @@ func (m *Manager) runStage(stage Stage) error {
 	case StageLoad:
 		hookErrors = runLoadHooks(m)
 	case StageTransform:
+		m.ResetPostDependencies()
 		hookErrors = runTransformHooks(m)
 	case StageRender:
 		hookErrors = runRenderHooks(m)

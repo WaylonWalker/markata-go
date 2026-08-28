@@ -142,7 +142,10 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 			}
 		}
 	}
-	sparklineRange := computeSparklineWindow(m.Posts(), false)
+	// Plausibility checks compare post dates with the real current date.  The
+	// build clock may be fixed to the Unix epoch for reproducible output, and
+	// must not make ordinary dated posts disappear from the feed listing.
+	sparklineRange := computeSparklineWindow(m.Posts(), false, time.Now())
 
 	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults, sparklineRange)
 	if len(sections) == 0 {
@@ -735,14 +738,17 @@ func monthlyPostBuckets(posts []*models.Post, window sparklineWindow, includePri
 	return buckets, months
 }
 
-func computeSparklineWindow(posts []*models.Post, includePrivate bool) sparklineWindow {
+func computeSparklineWindow(posts []*models.Post, includePrivate bool, now time.Time) sparklineWindow {
+	if now.IsZero() {
+		now = time.Now()
+	}
 	dates := make([]time.Time, 0, len(posts))
 	for _, post := range posts {
 		if post == nil || post.Skip || post.Draft || !post.Published || post.Date == nil || (post.Private && !includePrivate) {
 			continue
 		}
 		date := post.Date.UTC()
-		if !isSanePublishDate(date) {
+		if !isSanePublishDateAt(date, now) {
 			continue
 		}
 		dates = append(dates, firstOfMonth(date))
@@ -770,13 +776,17 @@ func computeSparklineWindow(posts []*models.Post, includePrivate bool) sparkline
 }
 
 func isSanePublishDate(date time.Time) bool {
+	return isSanePublishDateAt(date, time.Now())
+}
+
+func isSanePublishDateAt(date, now time.Time) bool {
 	if date.IsZero() {
 		return false
 	}
 	if date.Before(time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		return false
 	}
-	if date.After(time.Now().AddDate(1, 0, 0)) {
+	if date.After(now.AddDate(1, 0, 0)) {
 		return false
 	}
 	return true

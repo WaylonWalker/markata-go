@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
@@ -53,6 +55,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Create manager
 	m := lifecycle.NewManager()
+	configureBuildClockFromEnvironment(m)
 
 	// Convert models.Config to lifecycle.Config
 	lcConfig := &lifecycle.Config{
@@ -181,6 +184,19 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	return m, nil
 }
 
+func configureBuildClockFromEnvironment(m *lifecycle.Manager) {
+	value, ok := os.LookupEnv("SOURCE_DATE_EPOCH")
+	if !ok || value == "" {
+		return
+	}
+	seconds, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return
+	}
+	fixed := time.Unix(seconds, 0).UTC()
+	m.SetBuildClock(lifecycle.BuildClockFunc(func() time.Time { return fixed }))
+}
+
 func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
 	configPathUsed = cfgPath
 
@@ -288,6 +304,21 @@ type BuildResult struct {
 
 	// BlogrollStatus holds blogroll feature status
 	BlogrollStatus BlogrollStatus
+
+	// DAG contains diagnostics for the opt-in serial task graph build.
+	DAG *DAGBuildInfo `json:"dag,omitempty"`
+}
+
+// DAGBuildInfo describes graph execution without implying a speedup. The
+// first graph executor is intentionally serial.
+type DAGBuildInfo struct {
+	Enabled         bool    `json:"enabled"`
+	MaxParallel     int     `json:"max_parallel"`
+	Randomized      bool    `json:"randomized_ready_order"`
+	Seed            int64   `json:"seed"`
+	TaskCount       int     `json:"tasks"`
+	GraphDigest     string  `json:"graph_digest"`
+	DurationSeconds float64 `json:"duration_seconds"`
 }
 
 // BlogrollStatus holds information about the blogroll feature.
@@ -311,6 +342,10 @@ func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
 			result.Benchmark = summary
 		}
 	}()
+
+	if buildDAG {
+		return runSerialDAGBuild(m)
+	}
 
 	// Run all lifecycle stages with verbose output if enabled
 	stages := []lifecycle.Stage{

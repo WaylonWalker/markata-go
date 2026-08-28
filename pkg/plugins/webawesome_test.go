@@ -265,6 +265,22 @@ func TestWebAwesomePlugin_TooltipsUseUniqueAnchorIDs(t *testing.T) {
 	}
 }
 
+func TestWebAwesomePlugin_TooltipIDsAreDeterministic(t *testing.T) {
+	input := `<div class="webawesome tooltip" content="Static Site Generator"><p>SSG</p></div>`
+	first := &models.Post{Path: "posts/example.md", ArticleHTML: input}
+	second := &models.Post{Path: "posts/example.md", ArticleHTML: input}
+
+	if err := NewWebAwesomePlugin().processPost(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewWebAwesomePlugin().processPost(second); err != nil {
+		t.Fatal(err)
+	}
+	if first.ArticleHTML != second.ArticleHTML {
+		t.Fatalf("tooltip output is not deterministic:\nfirst:  %s\nsecond: %s", first.ArticleHTML, second.ArticleHTML)
+	}
+}
+
 func TestWebAwesomePlugin_RenderEnablesAssetsForRawComponent(t *testing.T) {
 	plugin := NewWebAwesomePlugin()
 	plugin.config.Source = "cdn"

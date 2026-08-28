@@ -215,6 +215,10 @@ markata-go:
   output_dir: public
   url: https://example.com
   title: Test Site
+  assets:
+    mode: self-hosted
+    cache_dir: .cache/assets
+    verify_integrity: false
   components:
     share:
       enabled: false
@@ -248,6 +252,9 @@ markata-go:
 	}
 	if config.URL != "https://example.com" {
 		t.Errorf("URL = %q, want %q", config.URL, "https://example.com")
+	}
+	if config.Assets.Mode != "self-hosted" || config.Assets.CacheDir != ".cache/assets" || config.Assets.VerifyIntegrity == nil || *config.Assets.VerifyIntegrity {
+		t.Errorf("Assets = %+v, want typed self-hosted settings", config.Assets)
 	}
 	if len(config.Feeds) != 1 {
 		t.Errorf("len(Feeds) = %d, want 1", len(config.Feeds))
@@ -304,6 +311,11 @@ func TestParseJSON(t *testing.T) {
     "output_dir": "public",
     "url": "https://example.com",
     "title": "Test Site",
+    "assets": {
+      "mode": "self-hosted",
+      "cache_dir": ".cache/assets",
+      "verify_integrity": false
+    },
     "components": {
       "share": {
         "enabled": false,
@@ -343,6 +355,9 @@ func TestParseJSON(t *testing.T) {
 	}
 	if config.URL != "https://example.com" {
 		t.Errorf("URL = %q, want %q", config.URL, "https://example.com")
+	}
+	if config.Assets.Mode != "self-hosted" || config.Assets.CacheDir != ".cache/assets" || config.Assets.VerifyIntegrity == nil || *config.Assets.VerifyIntegrity {
+		t.Errorf("Assets = %+v, want typed self-hosted settings", config.Assets)
 	}
 	if len(config.Feeds) != 1 {
 		t.Errorf("len(Feeds) = %d, want 1", len(config.Feeds))
@@ -946,6 +961,12 @@ hooks = ["markdown", "template"]
 disabled_hooks = ["seo"]
 concurrency = 4
 
+[markata-go.assets]
+mode = "self-hosted"
+cache_dir = ".cache/assets"
+verify_integrity = false
+output_dir = "assets/vendor"
+
 [markata-go.glob]
 patterns = ["**/*.md"]
 use_gitignore = true
@@ -996,6 +1017,12 @@ items_per_page = 15
 		if tt.got != tt.want {
 			t.Errorf("%s = %v, want %v", tt.field, tt.got, tt.want)
 		}
+	}
+	if config.Assets.Mode != "self-hosted" || config.Assets.CacheDir != ".cache/assets" || config.Assets.OutputDir != "assets/vendor" {
+		t.Fatalf("Assets = %+v, want parsed asset settings", config.Assets)
+	}
+	if config.Assets.VerifyIntegrity == nil || *config.Assets.VerifyIntegrity {
+		t.Fatalf("Assets.VerifyIntegrity = %v, want false", config.Assets.VerifyIntegrity)
 	}
 }
 

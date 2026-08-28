@@ -76,6 +76,22 @@ func TestChartJSPlugin_ProcessPost_ValidChart(t *testing.T) {
 	}
 }
 
+func TestChartJSPlugin_ChartIDsAreDeterministic(t *testing.T) {
+	input := `<pre><code class="language-chartjs">{"type":"bar","data":{"labels":["A"]}}</code></pre>`
+	first := &models.Post{Path: "posts/chart.md", ArticleHTML: input}
+	second := &models.Post{Path: "posts/chart.md", ArticleHTML: input}
+
+	if err := NewChartJSPlugin().processPost(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewChartJSPlugin().processPost(second); err != nil {
+		t.Fatal(err)
+	}
+	if first.ArticleHTML != second.ArticleHTML {
+		t.Fatalf("chart output is not deterministic:\nfirst:  %s\nsecond: %s", first.ArticleHTML, second.ArticleHTML)
+	}
+}
+
 func TestChartJSPlugin_ProcessPost_InvalidJSON(t *testing.T) {
 	p := NewChartJSPlugin()
 

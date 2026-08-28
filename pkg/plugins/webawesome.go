@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync/atomic"
 
 	"github.com/WaylonWalker/markata-go/pkg/assets"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -251,7 +250,11 @@ func (p *WebAwesomePlugin) processPost(post *models.Post) error {
 		return b.String()
 	})
 	post.ArticleHTML = p.processNestedTabs(post.ArticleHTML, &needsWebAwesome)
-	post.ArticleHTML = p.processGenericContainers(post.ArticleHTML, &needsWebAwesome)
+	postKey := post.Path
+	if postKey == "" {
+		postKey = post.Slug
+	}
+	post.ArticleHTML = p.processGenericContainers(post.ArticleHTML, &needsWebAwesome, postKey)
 	if strings.Contains(post.ArticleHTML, "<wa-") {
 		needsWebAwesome = true
 	}
@@ -385,8 +388,9 @@ func tabLabel(attrs map[string]string, index int) string {
 	return label
 }
 
-func (p *WebAwesomePlugin) processGenericContainers(content string, needsWebAwesome *bool) string {
+func (p *WebAwesomePlugin) processGenericContainers(content string, needsWebAwesome *bool, postKey string) string {
 	var b strings.Builder
+	tooltipOrdinal := 0
 	for {
 		loc := webAwesomeContainerOpenRegex.FindStringSubmatchIndex(content)
 		if loc == nil {
@@ -412,7 +416,10 @@ func (p *WebAwesomePlugin) processGenericContainers(content string, needsWebAwes
 		}
 
 		body := strings.TrimSpace(content[loc[1]:closeIndex])
-		rendered := renderWebAwesomeContainer(component, attrs, body)
+		if component == "tooltip" {
+			tooltipOrdinal++
+		}
+		rendered := renderWebAwesomeContainer(component, attrs, body, postKey, tooltipOrdinal)
 		if rendered == "" {
 			b.WriteString(fullMatch)
 			content = content[closeIndex+len("</div>"):]
@@ -439,7 +446,7 @@ func webAwesomeComponentName(classes []string) string {
 	return ""
 }
 
-func renderWebAwesomeContainer(component string, attrs map[string]string, body string) string {
+func renderWebAwesomeContainer(component string, attrs map[string]string, body, postKey string, tooltipOrdinal int) string {
 	switch component {
 	case "details":
 		return renderWebAwesomeDetails(attrs, body)
@@ -454,7 +461,7 @@ func renderWebAwesomeContainer(component string, attrs map[string]string, body s
 	case webAwesomeComponentTag:
 		return renderWebAwesomeSimpleComponent(webAwesomeComponentTag, attrs, body)
 	case "tooltip":
-		return renderWebAwesomeTooltip(attrs, body)
+		return renderWebAwesomeTooltip(attrs, body, postKey, tooltipOrdinal)
 	case "carousel":
 		return renderWebAwesomeCarousel(attrs, body)
 	case "animated-image":
@@ -603,7 +610,7 @@ func renderWebAwesomeSimpleComponent(name string, attrs map[string]string, body 
 	return b.String()
 }
 
-func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
+func renderWebAwesomeTooltip(attrs map[string]string, body, postKey string, ordinal int) string {
 	content := attrs["content"]
 	if content == "" {
 		content = attrs["text"]
@@ -631,7 +638,7 @@ func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
 	} else if seed := attrs["data-tooltip-id"]; seed != "" {
 		id = seed
 	} else {
-		id = uniqueWebAwesomeTooltipID(id, body, content)
+		id = uniqueWebAwesomeTooltipID(id, body, content, postKey, ordinal)
 	}
 	var b strings.Builder
 	b.WriteString(`<span class="markata-wa-tooltip-anchor" id="`)
@@ -648,7 +655,7 @@ func renderWebAwesomeTooltip(attrs map[string]string, body string) string {
 	return b.String()
 }
 
-func uniqueWebAwesomeTooltipID(base, body, content string) string {
+func uniqueWebAwesomeTooltipID(base, body, content, postKey string, ordinal int) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(base))
 	_, _ = h.Write([]byte("|"))
@@ -656,15 +663,11 @@ func uniqueWebAwesomeTooltipID(base, body, content string) string {
 	_, _ = h.Write([]byte("|"))
 	_, _ = h.Write([]byte(content))
 	_, _ = h.Write([]byte("|"))
-	_, _ = h.Write([]byte(strconv.FormatInt(nextWebAwesomeTooltipOrdinal(), 10)))
+	_, _ = h.Write([]byte(postKey))
+	_, _ = h.Write([]byte("|"))
+	_, _ = h.Write([]byte(strconv.Itoa(ordinal)))
 	sum := h.Sum(nil)
 	return "wa-tt-" + hex.EncodeToString(sum[:8])
-}
-
-var webAwesomeTooltipOrdinal int64
-
-func nextWebAwesomeTooltipOrdinal() int64 {
-	return atomic.AddInt64(&webAwesomeTooltipOrdinal, 1)
 }
 
 func renderWebAwesomeCarousel(attrs map[string]string, body string) string {

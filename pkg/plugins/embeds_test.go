@@ -31,6 +31,15 @@ func TestEmbedsPlugin_Priority(t *testing.T) {
 	}
 }
 
+func TestAppendPostDependencyCandidates(t *testing.T) {
+	var dependencies []string
+	appendPostDependencyCandidates(&dependencies, "Future Post#details")
+
+	if len(dependencies) != 2 || dependencies[0] != "future post" || dependencies[1] != "future-post" {
+		t.Fatalf("dependencies = %v, want [future post future-post]", dependencies)
+	}
+}
+
 func TestEmbedsPlugin_InternalEmbed(t *testing.T) {
 	p := NewEmbedsPlugin()
 
@@ -228,6 +237,9 @@ func TestEmbedsPlugin_InternalEmbed_NotFound(t *testing.T) {
 
 	if !containsString(result.Content, "![[nonexistent-post]]") {
 		t.Errorf("expected original syntax preserved")
+	}
+	if len(result.Dependencies) != 1 || result.Dependencies[0] != "nonexistent-post" {
+		t.Fatalf("unresolved embed dependencies = %v, want [nonexistent-post]", result.Dependencies)
 	}
 }
 

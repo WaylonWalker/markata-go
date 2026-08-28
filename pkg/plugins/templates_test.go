@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -497,6 +498,37 @@ func TestTemplatesPlugin_Render(t *testing.T) {
 	// Check that body is in output
 	if !contains(post.HTML, "<p>Hello World</p>") {
 		t.Error("Render() output does not contain body")
+	}
+}
+
+func TestTemplatesPlugin_Render_RestoresCachedFullHTML(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	post := &models.Post{
+		Path:        "post.md",
+		InputHash:   "input-hash",
+		Template:    "post.html",
+		ArticleHTML: "<p>current article</p>",
+	}
+	expected := "<!doctype html><html>cached</html>"
+	if err := cache.CacheFullHTML(post.Path, expected); err != nil {
+		t.Fatalf("CacheFullHTML() error = %v", err)
+	}
+	cache.MarkRebuilt(post.Path, post.InputHash, "post/index.html", post.Template)
+
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+	m.Cache().Set("build_cache", cache)
+	m.Config().Extra["templates_dir"] = "/nonexistent"
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	m.AddPost(post)
+
+	if err := p.Render(m); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if post.HTML != expected {
+		t.Fatalf("post.HTML = %q, want cached HTML %q", post.HTML, expected)
 	}
 }
 

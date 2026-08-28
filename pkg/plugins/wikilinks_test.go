@@ -170,6 +170,27 @@ func TestWikilinksPlugin_WikilinkToMissingPost(t *testing.T) {
 	} else if !strings.Contains(warnings[0], "broken wikilink") {
 		t.Errorf("expected broken wikilink warning, got %q", warnings[0])
 	}
+	if len(source.Dependencies) != 1 || source.Dependencies[0] != "nonexistent" {
+		t.Fatalf("unresolved wikilink dependencies = %v, want [nonexistent]", source.Dependencies)
+	}
+}
+
+func TestWikilinksPlugin_ServeIncrementalRebuildsWhenTargetBecomesResolvable(t *testing.T) {
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+	targetTitle := "Future Target"
+	target := &models.Post{Path: "future-target.md", Slug: "future-target", Title: &targetTitle, Href: "/future-target/"}
+	source := &models.Post{Path: "source.md", Slug: "source", Content: "See [[future target]]"}
+	m.SetPosts([]*models.Post{target, source})
+	lifecycle.SetServeIncremental(m, true)
+	lifecycle.SetServeAffectedPaths(m, map[string]bool{"source.md": true})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(source.Content, `<a href="/future-target/" class="wikilink"`) {
+		t.Fatalf("newly resolvable wikilink was not rebuilt: %q", source.Content)
+	}
 }
 
 func TestWikilinksPlugin_CaseInsensitiveLookup(t *testing.T) {

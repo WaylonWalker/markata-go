@@ -103,6 +103,13 @@ func sortPluginsByPriority(plugins []Plugin, stage Stage) []Plugin {
 	return sorted
 }
 
+// SortPluginsByPriority returns a stable copy of plugins ordered for a
+// lifecycle stage.  It is exported for compatibility adapters that need to
+// preserve legacy hook order while compiling hooks into another executor.
+func SortPluginsByPriority(plugins []Plugin, stage Stage) []Plugin {
+	return sortPluginsByPriority(plugins, stage)
+}
+
 // isCriticalStage returns true if errors in the given stage should halt execution.
 func isCriticalStage(stage Stage) bool {
 	switch stage {
@@ -140,14 +147,13 @@ func isCriticalError(err error) bool {
 // executeHooks runs all plugins that implement the given stage interface.
 // Returns collected errors. If any critical error occurs, execution stops.
 func executeHooks[T Plugin](
-	_ *Manager,
+	m *Manager,
 	stage Stage,
 	plugins []Plugin,
 	check func(Plugin) (T, bool),
 	execute func(T) error,
 ) *HookErrors {
 	hookErrors := &HookErrors{}
-	critical := isCriticalStage(stage)
 
 	// Sort plugins by priority
 	sorted := sortPluginsByPriority(plugins, stage)
@@ -158,27 +164,105 @@ func executeHooks[T Plugin](
 			continue
 		}
 
-		start := time.Now()
-		buildstats.SetActivePlugin(p.Name())
-		if err := execute(typed); err != nil {
-			buildstats.SetActivePlugin("")
-			// Check if the error itself is marked as critical
-			errIsCritical := critical || isCriticalError(err)
-			hookErrors.Add(stage, p.Name(), err, errIsCritical)
-			if errIsCritical {
+		hookError := executeSingleHook(m, stage, p, func() error {
+			return execute(typed)
+		})
+		if hookError != nil {
+			hookErrors.Errors = append(hookErrors.Errors, hookError)
+			if hookError.Critical {
 				// Stop on first critical error
 				return hookErrors
 			}
 		}
-		buildstats.SetActivePlugin("")
-		elapsed := time.Since(start)
-		buildstats.RecordPlugin(string(stage), p.Name(), elapsed)
-		if elapsed > 50*time.Millisecond {
-			logging.Component(p.Name()).Phase(string(stage)).Printf("took %v", elapsed)
-		}
 	}
 
 	return hookErrors
+}
+
+// ExecutePluginHook runs one lifecycle hook with the same error policy and
+// timing instrumentation as a normal lifecycle stage. Non-critical errors are
+// recorded as manager warnings and return nil. Critical errors return a
+// HookErrors value so graph adapters can stop execution consistently.
+//
+//nolint:gocyclo // Dispatching all nine lifecycle interfaces keeps adapter semantics centralized.
+func ExecutePluginHook(m *Manager, plugin Plugin, stage Stage) error {
+	if m == nil {
+		return fmt.Errorf("cannot execute %s hook with nil manager", stage)
+	}
+	if plugin == nil {
+		return fmt.Errorf("cannot execute %s hook for nil plugin", stage)
+	}
+	hookError := executeSingleHook(m, stage, plugin, func() error {
+		switch stage {
+		case StageConfigure:
+			if hook, ok := plugin.(ConfigurePlugin); ok {
+				return hook.Configure(m)
+			}
+		case StageValidate:
+			if hook, ok := plugin.(ValidatePlugin); ok {
+				return hook.Validate(m)
+			}
+		case StageGlob:
+			if hook, ok := plugin.(GlobPlugin); ok {
+				return hook.Glob(m)
+			}
+		case StageLoad:
+			if hook, ok := plugin.(LoadPlugin); ok {
+				return hook.Load(m)
+			}
+		case StageTransform:
+			if hook, ok := plugin.(TransformPlugin); ok {
+				return hook.Transform(m)
+			}
+		case StageRender:
+			if hook, ok := plugin.(RenderPlugin); ok {
+				return hook.Render(m)
+			}
+		case StageCollect:
+			if hook, ok := plugin.(CollectPlugin); ok {
+				return hook.Collect(m)
+			}
+		case StageWrite:
+			if hook, ok := plugin.(WritePlugin); ok {
+				return hook.Write(m)
+			}
+		case StageCleanup:
+			if hook, ok := plugin.(CleanupPlugin); ok {
+				return hook.Cleanup(m)
+			}
+		}
+		return fmt.Errorf("plugin %q does not implement %s hook", plugin.Name(), stage)
+	})
+	if hookError == nil {
+		return nil
+	}
+	if !hookError.Critical {
+		m.recordHookWarning(hookError)
+		return nil
+	}
+	return &HookErrors{Errors: []*HookError{hookError}}
+}
+
+func executeSingleHook(m *Manager, stage Stage, plugin Plugin, execute func() error) *HookError {
+	m.mu.Lock()
+	m.currentStage = stage
+	m.mu.Unlock()
+	start := time.Now()
+	buildstats.SetActivePlugin(plugin.Name())
+	err := execute()
+	buildstats.SetActivePlugin("")
+	elapsed := time.Since(start)
+	buildstats.RecordPlugin(string(stage), plugin.Name(), elapsed)
+	if elapsed > 50*time.Millisecond {
+		logging.Component(plugin.Name()).Phase(string(stage)).Printf("took %v", elapsed)
+	}
+	if err == nil {
+		return nil
+	}
+	return &HookError{
+		Stage: stage, Plugin: plugin.Name(), Err: err,
+		Critical: isCriticalStage(stage) || isCriticalError(err),
+	}
 }
 
 // runConfigureHooks executes all ConfigurePlugin hooks.
@@ -254,6 +338,7 @@ func RunTransformHooksSubset(m *Manager, posts []*models.Post) error {
 	}
 	original := m.Posts()
 	m.SetPosts(posts)
+	m.ResetPostDependencies()
 	defer m.SetPosts(original)
 	return runTransformHooks(m).ErrorOrNil()
 }

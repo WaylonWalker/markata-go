@@ -106,6 +106,29 @@ func TestAestheticCSSPlugin_PresentationPropagatesCanonicalContentWidth(t *testi
 	}
 }
 
+func TestAestheticCSSPlugin_PresentationVariablesAreDeterministic(t *testing.T) {
+	plugin := NewAestheticCSSPlugin()
+	config := lifecycle.NewConfig()
+	theme := models.NewThemeConfig()
+	theme.Variables = map[string]string{
+		"--z-last":   "z",
+		"--a-first":  "a",
+		"--m-middle": "m",
+	}
+	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
+
+	want := plugin.generatePresentationCSS(config)
+	for i := 0; i < 100; i++ {
+		if got := plugin.generatePresentationCSS(config); got != want {
+			t.Fatalf("presentation CSS changed between identical renders on iteration %d", i)
+		}
+	}
+
+	if first, middle, last := strings.Index(want, "--a-first: a;"), strings.Index(want, "--m-middle: m;"), strings.Index(want, "--z-last: z;"); first < 0 || middle < 0 || last < 0 || first > middle || middle > last {
+		t.Fatalf("presentation variables are not emitted in sorted order: %s", want)
+	}
+}
+
 func TestAestheticCSSPlugin_PresentationEmitsMotifLengthsAsCSSLengths(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()
 	config := lifecycle.NewConfig()

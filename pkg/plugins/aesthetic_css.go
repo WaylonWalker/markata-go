@@ -306,7 +306,13 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	if theme.Motif.Layer == "over" || theme.Motif.Layer == "sandwich" {
 		overImage = motifImage
 	}
-	for name, value := range theme.Variables {
+	variableNames := make([]string, 0, len(theme.Variables))
+	for name := range theme.Variables {
+		variableNames = append(variableNames, name)
+	}
+	sort.Strings(variableNames)
+	for _, name := range variableNames {
+		value := theme.Variables[name]
 		if strings.HasPrefix(name, "--") && !strings.ContainsAny(name+value, "{};\n\r") {
 			aestheticCSS += fmt.Sprintf(" %s: %s;", name, value)
 		}

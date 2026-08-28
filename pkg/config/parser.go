@@ -59,6 +59,7 @@ type baseConfigData struct {
 	Copyright      string
 	License        interface{}
 	AssetsDir      string
+	Assets         models.AssetsConfig
 	TemplatesDir   string
 	Hooks          []string
 	DisabledHooks  []string
@@ -194,6 +195,7 @@ func buildConfig(src configSource) *models.Config {
 		WebMaster:      base.WebMaster,
 		Copyright:      base.Copyright,
 		AssetsDir:      base.AssetsDir,
+		Assets:         base.Assets,
 		TemplatesDir:   base.TemplatesDir,
 		Hooks:          base.Hooks,
 		DisabledHooks:  base.DisabledHooks,
@@ -354,6 +356,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
 			"authors": true, "garden": true, "builder_admin": true, "include": true, "tailwind": false, "css_purge": false,
+			"assets": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -518,6 +521,7 @@ type tomlConfig struct {
 	Copyright       string                    `toml:"copyright"`
 	License         interface{}               `toml:"license"`
 	AssetsDir       string                    `toml:"assets_dir"`
+	Assets          models.AssetsConfig       `toml:"assets"`
 	TemplatesDir    string                    `toml:"templates_dir"`
 	Nav             []tomlNavItem             `toml:"nav"`
 	Footer          tomlFooterConfig          `toml:"footer"`
@@ -1860,6 +1864,7 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Copyright:      c.Copyright,
 		License:        c.License,
 		AssetsDir:      c.AssetsDir,
+		Assets:         c.Assets,
 		TemplatesDir:   c.TemplatesDir,
 		Hooks:          c.Hooks,
 		DisabledHooks:  c.DisabledHooks,
@@ -2093,6 +2098,7 @@ type yamlConfig struct {
 	Copyright       string                    `yaml:"copyright"`
 	License         interface{}               `yaml:"license"`
 	AssetsDir       string                    `yaml:"assets_dir"`
+	Assets          models.AssetsConfig       `yaml:"assets"`
 	TemplatesDir    string                    `yaml:"templates_dir"`
 	Nav             []yamlNavItem             `yaml:"nav"`
 	Footer          yamlFooterConfig          `yaml:"footer"`
@@ -3472,6 +3478,7 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Copyright:      c.Copyright,
 		License:        c.License,
 		AssetsDir:      c.AssetsDir,
+		Assets:         c.Assets,
 		TemplatesDir:   c.TemplatesDir,
 		Hooks:          c.Hooks,
 		DisabledHooks:  c.DisabledHooks,
@@ -3634,6 +3641,7 @@ type jsonConfig struct {
 	Copyright       string                    `json:"copyright"`
 	License         interface{}               `json:"license"`
 	AssetsDir       string                    `json:"assets_dir"`
+	Assets          models.AssetsConfig       `json:"assets"`
 	TemplatesDir    string                    `json:"templates_dir"`
 	Nav             []jsonNavItem             `json:"nav"`
 	Footer          jsonFooterConfig          `json:"footer"`
@@ -5037,6 +5045,7 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Copyright:      c.Copyright,
 		License:        c.License,
 		AssetsDir:      c.AssetsDir,
+		Assets:         c.Assets,
 		TemplatesDir:   c.TemplatesDir,
 		Hooks:          c.Hooks,
 		DisabledHooks:  c.DisabledHooks,
