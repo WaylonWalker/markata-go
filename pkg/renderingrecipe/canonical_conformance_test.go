@@ -1,6 +1,7 @@
 package renderingrecipe
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
@@ -39,12 +40,18 @@ func TestCanonicalBundle_AttachmentProbes(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "image/svg+xml")
-		_, _ = w.Write(data)
+		if _, err := w.Write(data); err != nil {
+			t.Fatalf("write asset: %v", err)
+		}
 	}))
 	defer server.Close()
 
 	for _, asset := range bundle.Manifest.Assets {
-		response, err := http.Get(server.URL + "/" + asset.Path)
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/"+asset.Path, http.NoBody)
+		if err != nil {
+			t.Fatalf("create probe %s: %v", asset.Path, err)
+		}
+		response, err := http.DefaultClient.Do(request)
 		if err != nil {
 			t.Fatalf("probe %s: %v", asset.Path, err)
 		}

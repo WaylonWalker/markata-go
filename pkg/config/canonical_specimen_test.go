@@ -54,7 +54,7 @@ func TestCanonicalSpecimenCaptureGeometry(t *testing.T) {
 
 func TestCanonicalTemplateTreesHaveEquivalentHeadingProfile(t *testing.T) {
 	paths := []string{filepath.Join("..", "..", "templates", "base.html"), filepath.Join("..", "..", "pkg", "themes", "default", "templates", "base.html")}
-	var signatures []string
+	signatures := make([]string, 0, len(paths))
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -104,19 +104,28 @@ func TestCanonicalDocumentProfileExists(t *testing.T) {
 	if document.SchemaVersion != "canonical-document-v1" || !document.Internal || document.Viewport.Width != 1280 || document.Viewport.Height != 1000 || document.ContentWidth != "68ch" {
 		t.Fatalf("unexpected canonical profile metadata: %+v", document)
 	}
+}
 
-	fixture := filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "test-headings.md")
-	shared, err := os.ReadFile(fixture)
+func TestCanonicalSpecimenExternalFixtureIdentity(t *testing.T) {
+	local, err := os.ReadFile(filepath.Join("..", "..", "rendering-fixtures", "test-headings.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	local, err := os.ReadFile(filepath.Join("..", "..", "rendering-fixtures", "test-headings.md"))
+	if got := sha256Digest(local); got != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
+		t.Fatalf("local canonical fixture hash drifted: %s", got)
+	}
+	fixture := filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "test-headings.md")
+	shared, err := os.ReadFile(fixture)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Skipf("shared canonical fixture is unavailable: %v", err)
+		}
 		t.Fatal(err)
 	}
 	if sha256Digest(shared) != sha256Digest(local) || sha256Digest(shared) != "58bc0ab1e501adbe498c2902f1e0ede5112c8deede94e8b3a278f16613e9cedb" {
 		t.Fatalf("canonical fixture hash drifted: shared=%s local=%s", sha256Digest(shared), sha256Digest(local))
 	}
+
 	theme, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "canonical-headings", "theme.toml"))
 	if err != nil {
 		t.Fatal(err)

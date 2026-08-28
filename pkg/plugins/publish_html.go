@@ -194,6 +194,8 @@ func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecyc
 // writePost writes a single post to its output location in all enabled formats.
 // Shadow pages: Unpublished posts are still rendered but not included in feeds.
 // This allows sharing draft content via direct URL while keeping it out of public listings.
+//
+//nolint:gocyclo // Format-specific output and privacy rules are kept in one transaction.
 func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config, engine *templates.Engine, m *lifecycle.Manager) error {
 	// Determine output path before early returns so stale output can be removed
 	// for private drafts and skipped posts as well.

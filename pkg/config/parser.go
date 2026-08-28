@@ -491,7 +491,9 @@ func normalizeParsedTheme(config *models.Config, wrapper map[string]any) {
 	theme, warnings := renderingcontract.NormalizeTheme(markata)
 	encoded, err := json.Marshal(theme)
 	if err == nil {
-		_ = json.Unmarshal(encoded, &config.Theme)
+		if err := json.Unmarshal(encoded, &config.Theme); err != nil {
+			return
+		}
 	}
 	config.Theme.MarkThemeNumericPresence(markata)
 	if len(warnings) > 0 {

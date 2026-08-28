@@ -22,13 +22,14 @@ var templatesLog = logging.Component("templates").Phase("render")
 
 // Output format constants.
 const (
-	formatHTML     = "html"
-	formatTxt      = "txt"
-	formatText     = "text"
-	formatANSI     = "ansi"
-	formatMarkdown = "markdown"
-	formatMD       = "md"
-	formatOG       = "og"
+	formatHTML          = "html"
+	formatTxt           = "txt"
+	formatText          = "text"
+	formatANSI          = "ansi"
+	formatMarkdown      = "markdown"
+	formatMD            = "md"
+	formatOG            = "og"
+	feedPriorityPrivate = "private"
 
 	// defaultTemplate is the default template name for posts.
 	defaultTemplate = "post.html"
@@ -131,6 +132,8 @@ func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
 // 4. Layout config (path/feed-based)
 // 5. Global default for format (default_templates.html, etc.)
 // 6. Hardcoded default (post.html, default.txt, etc.)
+//
+//nolint:gocyclo // Template precedence is intentionally explicit per format.
 func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
 	// The canonical specimen uses the post template preset. Keep its
 	// projection explicit so a preset resolved from frontmatter cannot fall
@@ -588,7 +591,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 // title and template as part of the identity so an ordinary post cannot
 // inherit the canonical projection accidentally.
 func isCanonicalRenderingFixture(post *models.Post) bool {
-	return post != nil && post.Slug == "test-headings" && post.PlainTitle() == "test headings" && post.Template == "post"
+	return post != nil && post.Slug == "test-headings" && post.PlainTitle() == "test headings" && post.Template == gardenNodeTypePost
 }
 
 // getFeedSidebarPosts returns the posts for the feed sidebar if the post belongs to a configured feed.
@@ -1393,7 +1396,7 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 func filterPublicSidebarFeeds(feeds []sidebarFeedJSON) []sidebarFeedJSON {
 	publicFeeds := feeds[:0]
 	for i := range feeds {
-		if feeds[i].Priority == "private" {
+		if feeds[i].Priority == feedPriorityPrivate {
 			continue
 		}
 		publicFeeds = append(publicFeeds, feeds[i])
