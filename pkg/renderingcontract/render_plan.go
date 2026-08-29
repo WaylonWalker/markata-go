@@ -97,7 +97,8 @@ func ValidateRenderPlanFixtures(f RenderPlanFixtures) error {
 	}
 	required := map[string]bool{"default": false, "variants": false, "mix-endpoints": false, "heading-modes": false, "scales": false, "motif-layers": false, "motif-geometry": false, "motif-url": false, "legacy": false, "zero": false, "stress": false}
 	seen := map[string]bool{}
-	for _, fixture := range f.Fixtures {
+	for i := range f.Fixtures {
+		fixture := &f.Fixtures[i]
 		if fixture.ID == "" || seen[fixture.ID] {
 			return fmt.Errorf("duplicate or empty fixture id %q", fixture.ID)
 		}
@@ -186,7 +187,13 @@ func ResolveFixture(fixture RenderPlanFixture) (SemanticState, RenderPlan, []str
 	return ResolveRenderPlan(fixture.Inputs)
 }
 
-func stringValue(v any) string { s, _ := v.(string); return s }
+func stringValue(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
 func intValue(v any) int {
 	switch n := v.(type) {
 	case float64:
@@ -207,10 +214,20 @@ func contains(values []string, want string) bool {
 	}
 	return false
 }
-func mapValue(v any) map[string]any { m, _ := v.(map[string]any); return m }
+func mapValue(v any) map[string]any {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return m
+}
 
+//nolint:gocyclo // Defaults are applied independently for each contract field.
 func applyDialDefaults(theme map[string]any, name string, defaults Dial) {
-	m, _ := theme[name].(map[string]any)
+	m, ok := theme[name].(map[string]any)
+	if !ok {
+		m = nil
+	}
 	if m == nil {
 		m = map[string]any{}
 		theme[name] = m
@@ -257,6 +274,9 @@ func applyDialDefaults(theme map[string]any, name string, defaults Dial) {
 }
 
 func dialValue(v any) Dial {
-	m, _ := v.(map[string]any)
+	m, ok := v.(map[string]any)
+	if !ok {
+		m = nil
+	}
 	return Dial{Kind: stringValue(m["kind"]), ColorMix: NormalizeMix(m["color_mix"], 0), Scale: NormalizeScale(m["scale"], 1), Scope: stringValue(m["scope"]), Glyph: stringValue(m["glyph"]), Size: stringValue(m["size"]), Gap: stringValue(m["gap"]), RowOffset: NormalizeMix(m["row_offset"], 0), Wobble: NormalizeMix(m["wobble"], 0), Scatter: NormalizeMix(m["scatter"], 0), Layer: stringValue(m["layer"]), Color: stringValue(m["color"]), URL: stringValue(m["url"])}
 }

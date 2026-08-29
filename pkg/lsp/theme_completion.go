@@ -6,6 +6,8 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
+const themePaletteDetail = "palette"
+
 // ThemeCompletionItems exposes canonical theme values to configuration-aware clients.
 // The values come from the versioned rendering contract, not a second enum list.
 func ThemeCompletionItems(prefix string) []CompletionItem {
@@ -19,7 +21,7 @@ func ThemeCompletionItems(prefix string) []CompletionItem {
 		if prefix != "" && !strings.HasPrefix(value, prefix) {
 			continue
 		}
-		detail := "palette"
+		detail := themePaletteDetail
 		for _, palette := range c.Palettes {
 			if palette.ID == value {
 				detail = palette.Family + "/" + palette.Variant
@@ -31,6 +33,7 @@ func ThemeCompletionItems(prefix string) []CompletionItem {
 	return items
 }
 
+//nolint:gocyclo // Completion context parsing covers the supported config syntaxes.
 func getThemeConfigCompletions(content string, lineNumber int, current string) []CompletionItem {
 	lines := strings.Split(content, "\n")
 	if lineNumber >= len(lines) {

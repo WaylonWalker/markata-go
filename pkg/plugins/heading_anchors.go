@@ -4,14 +4,14 @@ package plugins
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	stdhtml "html"
 	"regexp"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // HeadingAnchorsPlugin adds anchor links to headings in rendered HTML.
@@ -291,14 +291,16 @@ func wrapHeadingGlyphText(content string) string {
 	wearText(container, false)
 	var out bytes.Buffer
 	for child := container.FirstChild; child != nil; child = child.NextSibling {
-		_ = html.Render(&out, child)
+		if err := html.Render(&out, child); err != nil {
+			return ""
+		}
 	}
 	return out.String()
 }
 
 func hasClass(node *html.Node, class string) bool {
 	for _, attr := range node.Attr {
-		if attr.Key == "class" {
+		if attr.Key == htmlAttrClass {
 			for _, value := range strings.Fields(attr.Val) {
 				if value == class {
 					return true

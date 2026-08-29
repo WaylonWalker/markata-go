@@ -143,6 +143,7 @@ func ValidateConfig(config *models.Config) []error {
 	return errs
 }
 
+//nolint:gocyclo // Each contract dimension produces an independent validation diagnostic.
 func validateRenderingTheme(config *models.Config) []error {
 	c, err := renderingcontract.Load()
 	if err != nil {

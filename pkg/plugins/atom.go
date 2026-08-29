@@ -138,7 +138,7 @@ func GenerateAtomFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config)
 		Title:          fc.Title,
 		Description:    fc.Description,
 		Posts:          fc.Posts,
-		IncludePrivate: fc.IncludePrivate,
+		IncludePrivate: fc.IncludesPrivate(),
 		Path:           fc.Slug,
 	}
 	return GenerateAtom(feed, config)
@@ -146,6 +146,10 @@ func GenerateAtomFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config)
 
 // postToAtomEntry converts a Post to an AtomEntry.
 func postToAtomEntry(post *models.Post, meta siteMetadata, fallback time.Time) AtomEntry {
+	post = safeFeedPost(post)
+	if post == nil {
+		return AtomEntry{}
+	}
 	// Build permalink
 	permalink := meta.URL + post.Href
 
@@ -178,13 +182,13 @@ func postToAtomEntry(post *models.Post, meta siteMetadata, fallback time.Time) A
 		if author.URL != nil {
 			entry.Author.URI = *author.URL
 		}
-		if author.Email != nil {
+		if !post.Private && author.Email != nil {
 			entry.Author.Email = *author.Email
 		}
 	}
 
 	// Add summary
-	if !post.Private && post.Description != nil && *post.Description != "" {
+	if post.Description != nil && *post.Description != "" {
 		entry.Summary = &AtomContent{
 			Type:  "text",
 			Value: *post.Description,

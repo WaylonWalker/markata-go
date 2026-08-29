@@ -274,6 +274,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	buildCache := GetBuildCache(m)
 	var skippedCount int
 	var rebuiltCount int
+	var countMu sync.Mutex
 
 	maxConcurrency := m.Concurrency()
 	if maxConcurrency < 8 {
@@ -309,14 +310,18 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 
 				skip, hash := p.shouldSkipFeedWithConfig(fc, buildCache, outputDir, config)
 				if skip {
+					countMu.Lock()
 					skippedCount++
+					countMu.Unlock()
 					return
 				}
 				if err := p.publishFeed(fc, config, outputDir); err != nil {
 					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 					return
 				}
+				countMu.Lock()
 				rebuiltCount++
+				countMu.Unlock()
 				p.cacheFeedHash(fc, buildCache, hash)
 			}(fc)
 		}
@@ -395,7 +400,7 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfigAndCache(fc *models.FeedCo
 	writeIntField(fc.ItemsPerPage)
 	writeIntField(fc.OrphanThreshold)
 	writeStringField(string(fc.PaginationType))
-	writeBoolField(fc.IncludePrivate)
+	writeBoolField(fc.IncludesPrivate())
 	writeBoolField(fc.ArchiveDisabled)
 	writeIntField(syndication.MaxItems)
 	writeBoolField(syndication.IncludeContent)
@@ -440,6 +445,12 @@ func (p *PublishFeedsPlugin) getPostFeedItemHash(post *models.Post, cache *build
 	if post == nil {
 		return ""
 	}
+	// The load-stage semantic hash predates encryption and cannot detect a
+	// changed encrypted wrapper or key rotation. Private feed entries must use
+	// the current safe projection after encryption instead of that cached hash.
+	if post.Private {
+		return computePrivateFeedItemHash(post)
+	}
 	if post.Path == "" || cache == nil {
 		return computePostFeedItemHash(post)
 	}
@@ -462,6 +473,20 @@ func (p *PublishFeedsPlugin) getPostFeedItemHash(post *models.Post, cache *build
 	p.postFeedHashMu.Unlock()
 
 	return feedHash
+}
+
+func computePrivateFeedItemHash(post *models.Post) string {
+	safe := safeFeedPost(post)
+	if safe == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(computePostFeedItemHash(safe))
+	b.WriteByte('\x00')
+	b.WriteString(safe.ArticleHTML)
+	b.WriteByte('\x00')
+	b.WriteString("private")
+	return buildcache.ContentHash(b.String())
 }
 
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
@@ -615,7 +640,7 @@ type feedRenderContext struct {
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)
-	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludePrivate)
+	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludesPrivate())
 	needsHTML := fc.Formats.HTML || fc.Formats.SimpleHTML
 	needsOutputPosts := fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text || fc.Formats.Sitemap
 
@@ -684,7 +709,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 }
 
 func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
-	clone := cloneFeedConfigWithPosts(fc, filterFeedPagePosts(fc.Posts, fc.IncludePrivate))
+	clone := cloneFeedConfigWithPosts(fc, filterFeedPagePosts(fc.Posts, fc.IncludesPrivate()))
 	baseURL := "/" + clone.Slug
 	if clone.Slug == "" {
 		baseURL = "/"
@@ -694,7 +719,7 @@ func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
 }
 
 func feedConfigWithOutputPosts(fc *models.FeedConfig) *models.FeedConfig {
-	clone := cloneFeedConfigWithPosts(fc, filterFeedOutputPosts(fc.Posts, fc.IncludePrivate))
+	clone := cloneFeedConfigWithPosts(fc, filterFeedOutputPosts(fc.Posts, fc.IncludesPrivate()))
 	baseURL := "/" + clone.Slug
 	if clone.Slug == "" {
 		baseURL = "/"
@@ -973,6 +998,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 		p.addFeedStatsContext(&ctx, fc, renderCtx)
+		setEncryptedFeedContext(&ctx, page)
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -1041,12 +1067,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		ctx.Set("needs_cards_css", true)
 
 		// If any post on this page has encrypted content, load decryption JS/CSS
-		for _, post := range page.Posts {
-			if v, ok := post.Extra["has_encrypted_content"].(bool); ok && v {
-				ctx.Set("has_encrypted_content", true)
-				break
-			}
-		}
+		setEncryptedFeedContext(&ctx, page)
 
 		// Render with pongo2 template
 		html, err := engine.Render(templateName, ctx)
@@ -1062,19 +1083,32 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	return p.generateFeedPageHTMLFallback(fc, page, config)
 }
 
+// setEncryptedFeedContext enables the assets required to unlock encrypted feed
+// entries. Keep this shared by the normal and simple feed page renderers.
+func setEncryptedFeedContext(ctx *templates.Context, page *models.FeedPage) {
+	for _, post := range page.Posts {
+		if post != nil {
+			if v, ok := post.Extra["has_encrypted_content"].(bool); ok && v {
+				ctx.Set("has_encrypted_content", true)
+				return
+			}
+		}
+	}
+}
+
 func buildFeedRenderContext(fc *models.FeedConfig) *feedRenderContext {
 	if fc == nil {
 		return nil
 	}
-	totalPosts, latestPostDate, _ := feedStats(fc.Posts, fc.IncludePrivate)
-	window := computeSparklineWindow(fc.Posts, fc.IncludePrivate)
+	totalPosts, latestPostDate, _ := feedStats(fc.Posts, fc.IncludesPrivate())
+	window := computeSparklineWindow(fc.Posts, fc.IncludesPrivate())
 	return &feedRenderContext{
 		totalPosts:       totalPosts,
 		latestPostDate:   latestPostDate,
-		sparklinePoints:  buildFeedSparkline(fc.Posts, window, fc.IncludePrivate),
-		sparklineData:    buildFeedSparklineData(fc.Posts, window, fc.IncludePrivate),
-		sparklineTitle:   buildFeedSparklineTitle(fc.Posts, window, fc.IncludePrivate),
-		sparklineSummary: buildFeedSparklineSummary(fc.Posts, window, fc.IncludePrivate),
+		sparklinePoints:  buildFeedSparkline(fc.Posts, window, fc.IncludesPrivate()),
+		sparklineData:    buildFeedSparklineData(fc.Posts, window, fc.IncludesPrivate()),
+		sparklineTitle:   buildFeedSparklineTitle(fc.Posts, window, fc.IncludesPrivate()),
+		sparklineSummary: buildFeedSparklineSummary(fc.Posts, window, fc.IncludesPrivate()),
 		sparklineStart:   buildFeedSparklineStart(window),
 		sparklineEnd:     buildFeedSparklineEnd(window),
 	}

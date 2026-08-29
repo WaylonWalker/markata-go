@@ -37,6 +37,47 @@ func TestParsePostFromContent_InvalidPrivateValue(t *testing.T) {
 	}
 }
 
+func TestComputePostFeedItemHash_ChangesWithPrivateState(t *testing.T) {
+	post := &models.Post{
+		Slug:    "post",
+		Href:    "/post/",
+		Content: "same content",
+	}
+
+	publicHash := computePostFeedItemHash(post)
+	post.Private = true
+	privateHash := computePostFeedItemHash(post)
+
+	if publicHash == privateHash {
+		t.Fatal("feed item hash should change when private state changes")
+	}
+}
+
+func TestLoadPlugin_ReservesPrivateMetadataMarkers(t *testing.T) {
+	loader := NewLoadPlugin()
+	post := models.NewPost("post.md")
+	if err := loader.applyMetadata(post, map[string]interface{}{
+		"_title_explicit":       true,
+		"_description_explicit": true,
+	}); err != nil {
+		t.Fatalf("applyMetadata() error = %v", err)
+	}
+	if post.Has("_title_explicit") || post.Has("_description_explicit") {
+		t.Fatal("reserved metadata markers were copied from frontmatter")
+	}
+
+	post = models.NewPost("post.md")
+	if err := loader.applyMetadata(post, map[string]interface{}{
+		"title":       "Authored title",
+		"description": "Authored description",
+	}); err != nil {
+		t.Fatalf("applyMetadata() error = %v", err)
+	}
+	if post.Get("_title_explicit") != true || post.Get("_description_explicit") != true {
+		t.Fatal("authored metadata did not set internal provenance markers")
+	}
+}
+
 func TestResolveFileModTime_UsesGlobCachedModTime(t *testing.T) {
 	m := lifecycle.NewManager()
 	m.Cache().Set(cacheKeyGlobFileModTimes, map[string]int64{"post.md": 12345})

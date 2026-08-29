@@ -113,6 +113,12 @@ type FeedConfig struct {
 	Pages []FeedPage `json:"-" yaml:"-" toml:"-"`
 }
 
+// IncludesPrivate reports whether this feed explicitly opts into private posts.
+// Private is retained as a compatibility alias for IncludePrivate.
+func (f FeedConfig) IncludesPrivate() bool {
+	return f.IncludePrivate || f.Private
+}
+
 // GetSidebarTitle returns the effective title for sidebar navigation.
 // Returns SidebarTitle if set, otherwise returns Title.
 func (f *FeedConfig) GetSidebarTitle() string {
@@ -298,6 +304,9 @@ func NewFeedConfig(defaults FeedDefaults) *FeedConfig {
 // ApplyDefaults applies default values from FeedDefaults to a FeedConfig
 // for any fields that are not explicitly set.
 func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
+	if f.Private {
+		f.IncludePrivate = true
+	}
 	if f.ItemsPerPage == 0 {
 		f.ItemsPerPage = defaults.ItemsPerPage
 	}

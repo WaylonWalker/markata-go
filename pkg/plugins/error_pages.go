@@ -117,7 +117,8 @@ func (p *ErrorPagesPlugin) generatePostsIndex(m *lifecycle.Manager, cfg *models.
 		return fmt.Errorf("creating output directory for 404 index: %w", err)
 	}
 
-	if err := os.WriteFile(indexPath, data, 0o600); err != nil {
+	//nolint:gosec // Generated error pages must be readable by the web server.
+	if err := os.WriteFile(indexPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing 404 index: %w", err)
 	}
 
@@ -156,7 +157,7 @@ func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Con
 	// Determine template name - use post template for full site experience
 	templateName := cfg.ErrorPages.Custom404Template
 	if templateName == "" {
-		templateName = "post.html"
+		templateName = defaultTemplate
 	}
 
 	// Render the 404 template

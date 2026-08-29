@@ -150,6 +150,12 @@ Encryption runs during the Render stage at priority 50 -- after markdown renderi
    - The decryption hint (if configured)
    - A "Remember for this session" checkbox
 
+The canonical post wrapper retains `data-key-name` for same-key unlock and
+session storage. Before an encrypted wrapper is copied into an opted-in feed,
+the feed privacy projection removes that attribute. Feed entries can still be
+decrypted manually, but they do not disclose key names or support cross-entry
+unlocking and password storage.
+
 ### Cross-Plugin Privacy Protection
 
 The following plugins respect `post.Private` to prevent leaking private content through non-article output:
@@ -161,7 +167,7 @@ The following plugins respect `post.Private` to prevent leaking private content 
 | `embeds` | Private embed card | Shows a "Private Content" card instead of title/description/date |
 | `wikilinks` | Metadata attributes suppressed | `data-title`, `data-description`, `data-date` attributes are omitted for private targets |
 | `wikilink_hover` | Hover preview suppressed | No preview text or metadata shown for private targets |
-| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded unless explicitly opted in | Private posts are filtered out of public feed pages plus RSS, Atom, and JSON Feed outputs unless a feed explicitly opts into `include_private=true`; when included, private entries must render only encrypted HTML content and must not expose plaintext summaries or raw content |
+| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded unless explicitly opted in | Private posts are filtered out of public feed pages plus RSS, Atom, and JSON Feed outputs unless a feed explicitly opts into `include_private=true`; when included, private entries may expose explicitly authored metadata but must render only encrypted HTML content and must not expose body-derived summaries, raw content, key names, or private media |
 | `auto_feeds` | Private-tag feeds may opt in | Auto-generated tag feeds for tags listed in `private_tags` opt into private posts so encrypted post content can render in those feed outputs; other auto-generated feeds remain public-only |
 
 ### Error Handling

@@ -118,6 +118,9 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	// This enables dependency-based invalidation in FilterPosts below.
 	// Uses ShouldRebuildBatch to acquire the lock once instead of per-post.
 	cache := GetBuildCache(m)
+	if err := p.removeStalePostOutputs(m.Posts(), config, cache); err != nil {
+		return err
+	}
 	if err := p.markChangedPosts(cache, m, config); err != nil {
 		return err
 	}
@@ -191,14 +194,28 @@ func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecyc
 // writePost writes a single post to its output location in all enabled formats.
 // Shadow pages: Unpublished posts are still rendered but not included in feeds.
 // This allows sharing draft content via direct URL while keeping it out of public listings.
+//
+//nolint:gocyclo // Format-specific output and privacy rules are kept in one transaction.
 func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config, engine *templates.Engine, m *lifecycle.Manager) error {
+	// Determine output path before early returns so stale output can be removed
+	// for private drafts and skipped posts as well.
+	if !post.Has("_slug_explicit") && post.Slug == "" {
+		post.GenerateSlugWithMode(configuredSlugMode(config, post.Path))
+	}
+
 	// Skip posts marked as skip
 	if post.Skip {
+		if post.Private && post.Slug != "" {
+			return removeAllPostOutputs(config.OutputDir, post.Slug)
+		}
 		return nil
 	}
 
 	// Skip drafts - these are truly private work-in-progress content
 	if post.Draft {
+		if post.Private && post.Slug != "" {
+			return removeAllPostOutputs(config.OutputDir, post.Slug)
+		}
 		return nil
 	}
 
@@ -208,12 +225,11 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 
 	// Determine output path
 	// Use slug to create: output_dir/slug/index.html
-	if !post.Has("_slug_explicit") && post.Slug == "" {
-		post.GenerateSlugWithMode(configuredSlugMode(config, post.Path))
-	}
-
 	outputDir := config.OutputDir
-	postDir := filepath.Join(outputDir, post.Slug)
+	postDir, err := safeOutputPath(outputDir, post.Slug)
+	if err != nil {
+		return err
+	}
 
 	// Create post directory
 	if err := os.MkdirAll(postDir, 0o755); err != nil {
@@ -226,6 +242,11 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Get build cache for incremental builds
 	cache := GetBuildCache(m)
 	removeDisabledPostOutputs(config.OutputDir, post.Slug, postFormats)
+	if post.Private {
+		if err := removePrivatePostOutputs(config.OutputDir, post.Slug); err != nil {
+			return err
+		}
+	}
 
 	// Write HTML format (default)
 	if postFormats.IsHTMLEnabled() {
@@ -279,6 +300,71 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	return nil
 }
 
+func (p *PublishHTMLPlugin) removeStalePostOutputs(posts []*models.Post, config *lifecycle.Config, cache *buildcache.Cache) error {
+	if config == nil {
+		return nil
+	}
+
+	for _, post := range posts {
+		if post == nil {
+			continue
+		}
+		if !post.Has("_slug_explicit") && post.Slug == "" {
+			post.GenerateSlugWithMode(configuredSlugMode(config, post.Path))
+		}
+
+		if post.Slug != "" {
+			if post.Path != "" && (post.Skip || post.Draft) {
+				if err := removeAllPostOutputs(config.OutputDir, post.Slug); err != nil {
+					return err
+				}
+			} else if post.Private {
+				if err := removePrivatePostOutputs(config.OutputDir, post.Slug); err != nil {
+					return err
+				}
+			}
+		}
+
+		if cache == nil {
+			continue
+		}
+		cached := cache.GetCachedPost(post.Path)
+		if cached == nil {
+			continue
+		}
+		oldSlug := cachedOutputSlug(config.OutputDir, cached.OutputPath)
+		if oldSlug == "" {
+			oldSlug = cached.Slug
+		}
+		if oldSlug != "" && oldSlug != post.Slug {
+			if err := removeAllPostOutputs(config.OutputDir, oldSlug); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func cachedOutputSlug(outputDir, outputPath string) string {
+	if outputDir == "" || outputPath == "" {
+		return ""
+	}
+	root, err := filepath.Abs(outputDir)
+	if err != nil {
+		return ""
+	}
+	target, err := filepath.Abs(outputPath)
+	if err != nil {
+		return ""
+	}
+	relative, err := filepath.Rel(root, target)
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.Base(relative) != "index.html" {
+		return ""
+	}
+	return filepath.Dir(relative)
+}
+
 func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, postFormats models.PostFormatsConfig, cache *buildcache.Cache) error {
 	if sourcePath == "" || config == nil {
 		return nil
@@ -296,11 +382,15 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 
 	slug := postCache.Slug
 	outputDir := config.OutputDir
+	_ = postFormats
+	return removeAllPostOutputs(outputDir, slug)
+}
+
+func removeAllPostOutputs(outputDir, slug string) error {
 	postDir, err := safeOutputPath(outputDir, slug)
 	if err != nil {
 		return err
 	}
-	_ = postFormats
 	_ = os.RemoveAll(postDir)
 	for _, extension := range []string{".md", ".txt", ".ansi"} {
 		path, err := safeOutputPath(outputDir, slug+extension)
@@ -309,7 +399,6 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 		}
 		_ = os.Remove(path)
 	}
-
 	return nil
 }
 

@@ -14,6 +14,7 @@
  * - Detailed error messages for different failure modes
  * - Full keyboard accessibility with ARIA labels
  * - Multi-post unlock: one password unlocks all posts with the same encryption key
+ * - Anonymous feed wrappers decrypt manually without key grouping or storage
  */
 (function() {
   'use strict';
@@ -205,7 +206,10 @@
     container.dataset.decryptionInitialized = 'true';
 
     const encryptedData = container.dataset.encrypted;
-    const keyName = container.dataset.keyName || 'default';
+    // Feed projections remove the page-only key name. Anonymous wrappers can
+    // still be decrypted manually, but must not share storage or unlock other
+    // wrappers because their key grouping is intentionally undisclosed.
+    const keyName = container.dataset.keyName || '';
     const input = container.querySelector('.encrypted-content__input');
     const button = container.querySelector('.encrypted-content__button');
     const form = container.querySelector('.encrypted-content__form');
@@ -213,6 +217,15 @@
     const lockedEl = container.querySelector('.encrypted-content__locked');
     const decryptedEl = container.querySelector('.encrypted-content__decrypted');
     const rememberCheckbox = container.querySelector('.encrypted-content__remember');
+
+    if (!keyName && rememberCheckbox) {
+      rememberCheckbox.checked = false;
+      rememberCheckbox.disabled = true;
+      const rememberLabel = rememberCheckbox.closest('label');
+      if (rememberLabel) {
+        rememberLabel.hidden = true;
+      }
+    }
 
     if (!encryptedData || !input || !button || !lockedEl || !decryptedEl) {
       console.error('Encrypted content: missing required elements');
@@ -258,12 +271,14 @@
         announceToScreenReader('Content decrypted successfully');
 
         // Save password if user opted in
-        if (rememberCheckbox && rememberCheckbox.checked) {
+        if (keyName && rememberCheckbox && rememberCheckbox.checked) {
           savePassword(keyName, password);
         }
 
         // Try to unlock other containers with the same key
-        unlockOtherContainers(keyName, password, container, allContainers);
+        if (keyName) {
+          unlockOtherContainers(keyName, password, container, allContainers);
+        }
       } else {
         showError(result.errorType);
         input.disabled = false;
@@ -325,7 +340,7 @@
     });
 
     // Try to auto-decrypt from session storage
-    const savedPassword = getSavedPassword(keyName);
+    const savedPassword = keyName ? getSavedPassword(keyName) : null;
     if (savedPassword) {
       // Pre-fill and check the remember checkbox
       input.value = savedPassword;
@@ -343,6 +358,8 @@
    * Try to unlock other encrypted content blocks with the same key.
    */
   async function unlockOtherContainers(keyName, password, currentContainer, allContainers) {
+    if (!keyName) return;
+
     for (const container of allContainers) {
       // Skip the container we just unlocked
       if (container === currentContainer) continue;
@@ -352,7 +369,7 @@
       if (!lockedEl || lockedEl.style.display === 'none') continue;
 
       // Check if same key
-      const containerKeyName = container.dataset.keyName || 'default';
+      const containerKeyName = container.dataset.keyName || '';
       if (containerKeyName !== keyName) continue;
 
       // Try to decrypt

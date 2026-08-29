@@ -59,9 +59,10 @@ func (p *FontpackPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 func configuredFontpackName(extra map[string]any) string {
+	const brushPosterFontpack = "brush-poster"
 	canonicalize := func(name string) string {
-		if name == "brush-poster" {
-			return "brush"
+		if name == brushPosterFontpack {
+			return renderingFontpackBrush
 		}
 		return name
 	}
@@ -84,7 +85,7 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		name := p.name
 		if value, ok := post.Extra["fontpack"].(string); ok && value != "" {
 			if value == "brush-poster" {
-				value = "brush"
+				value = renderingFontpackBrush
 			}
 			name = value
 		}

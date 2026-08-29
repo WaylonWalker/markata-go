@@ -41,8 +41,9 @@ func main() {
 			panic(err)
 		}
 		results := make([]map[string]any, 0, len(fixtures.Fixtures))
-		for _, fixture := range fixtures.Fixtures {
-			state, plan, _, err := renderingcontract.ResolveFixture(fixture)
+		for i := range fixtures.Fixtures {
+			fixture := &fixtures.Fixtures[i]
+			state, plan, _, err := renderingcontract.ResolveFixture(*fixture)
 			if err != nil {
 				panic(err)
 			}
@@ -106,5 +107,6 @@ func project(path string, expected []byte, check bool) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	//nolint:gosec // Generated static assets must be readable by the web server.
 	return os.WriteFile(path, expected, 0o644)
 }

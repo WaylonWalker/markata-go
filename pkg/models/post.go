@@ -49,8 +49,9 @@ type Post struct {
 	// Draft indicates if the post is a draft
 	Draft bool `json:"draft" yaml:"draft" toml:"draft"`
 
-	// Private indicates if the post should be excluded from feeds and search
-	// Private posts are rendered but excluded from feeds, sitemaps, and add noindex meta tag
+	// Private indicates that the post requires the private-content boundary.
+	// Private posts are excluded from public feeds and sitemaps, but an explicitly
+	// opted-in feed may expose safe metadata and encrypted content.
 	Private bool `json:"private" yaml:"private" toml:"private"`
 
 	// PrivateOverride records whether private was explicitly set in frontmatter.

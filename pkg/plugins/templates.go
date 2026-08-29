@@ -22,13 +22,14 @@ var templatesLog = logging.Component("templates").Phase("render")
 
 // Output format constants.
 const (
-	formatHTML     = "html"
-	formatTxt      = "txt"
-	formatText     = "text"
-	formatANSI     = "ansi"
-	formatMarkdown = "markdown"
-	formatMD       = "md"
-	formatOG       = "og"
+	formatHTML          = "html"
+	formatTxt           = "txt"
+	formatText          = "text"
+	formatANSI          = "ansi"
+	formatMarkdown      = "markdown"
+	formatMD            = "md"
+	formatOG            = "og"
+	feedPriorityPrivate = "private"
 
 	// defaultTemplate is the default template name for posts.
 	defaultTemplate = "post.html"
@@ -131,6 +132,8 @@ func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
 // 4. Layout config (path/feed-based)
 // 5. Global default for format (default_templates.html, etc.)
 // 6. Hardcoded default (post.html, default.txt, etc.)
+//
+//nolint:gocyclo // Template precedence is intentionally explicit per format.
 func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
 	// The canonical specimen uses the post template preset. Keep its
 	// projection explicit so a preset resolved from frontmatter cannot fall
@@ -297,7 +300,7 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 		feedCfg := &feedConfigs[i]
 		feedCfg.ApplyDefaults(feedDefaults)
 
-		filteredPosts, err := fc.FilterPosts(feedCfg.Filter, feedCfg.IncludePrivate)
+		filteredPosts, err := fc.FilterPosts(feedCfg.Filter, feedCfg.IncludesPrivate())
 		if err != nil {
 			continue
 		}
@@ -588,7 +591,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 // title and template as part of the identity so an ordinary post cannot
 // inherit the canonical projection accidentally.
 func isCanonicalRenderingFixture(post *models.Post) bool {
-	return post != nil && post.Slug == "test-headings" && post.PlainTitle() == "test headings" && post.Template == "post"
+	return post != nil && post.Slug == "test-headings" && post.PlainTitle() == "test headings" && post.Template == gardenNodeTypePost
 }
 
 // getFeedSidebarPosts returns the posts for the feed sidebar if the post belongs to a configured feed.
@@ -1021,7 +1024,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 	var feeds []sidebarFeedJSON
 
 	addFeed := func(fc *models.FeedConfig, posts []*models.Post, priority string) {
-		if fc == nil || fc.IncludePrivate || seen[fc.Slug] {
+		if fc == nil || fc.IncludesPrivate() || seen[fc.Slug] {
 			return
 		}
 		// Exclude feeds explicitly opted out of the sidebar picker
@@ -1309,7 +1312,7 @@ func (p *TemplatesPlugin) collectAutoDiscoveredFeeds(
 
 	for i := range configs {
 		fc := &configs[i]
-		if seen[fc.Slug] || fc.IncludePrivate || len(fc.Posts) > maxAutoFeedPosts {
+		if seen[fc.Slug] || fc.IncludesPrivate() || len(fc.Posts) > maxAutoFeedPosts {
 			continue
 		}
 		if hasAnyPrefix(fc.Slug, skipPrefixes) {
@@ -1393,7 +1396,7 @@ func (p *TemplatesPlugin) buildSidebarFeedsJSON(
 func filterPublicSidebarFeeds(feeds []sidebarFeedJSON) []sidebarFeedJSON {
 	publicFeeds := feeds[:0]
 	for i := range feeds {
-		if feeds[i].Priority == "private" {
+		if feeds[i].Priority == feedPriorityPrivate {
 			continue
 		}
 		publicFeeds = append(publicFeeds, feeds[i])
@@ -1425,7 +1428,7 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 	syndication := getSyndicationConfig(config)
 	for i := range configs {
 		fc := &configs[i]
-		if seen[fc.Slug] || fc.IncludePrivate {
+		if seen[fc.Slug] || fc.IncludesPrivate() {
 			continue
 		}
 		if fc.Sidebar != nil && !*fc.Sidebar {
@@ -1457,7 +1460,7 @@ func (p *TemplatesPlugin) buildRotationFeedSlugs(m *lifecycle.Manager, seen map[
 	// First pass: collect primary or sidebar=true feeds that appear in the sidebar candidate set
 	for i := range configs {
 		fc := &configs[i]
-		if fc.IncludePrivate || !seen[fc.Slug] {
+		if fc.IncludesPrivate() || !seen[fc.Slug] {
 			continue
 		}
 		sidebarExplicit := fc.Sidebar != nil && *fc.Sidebar

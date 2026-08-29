@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/models"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -206,6 +208,68 @@ func TestParseTOML_EmptySection(t *testing.T) {
 	// Should return empty config
 	if config.OutputDir != "" {
 		t.Errorf("OutputDir = %q, want empty", config.OutputDir)
+	}
+}
+
+func TestParseFeedPrivacyOptions_AllFormats(t *testing.T) {
+	tests := []struct {
+		name  string
+		parse func([]byte) (*models.Config, error)
+		data  string
+	}{
+		{
+			name:  "toml",
+			parse: ParseTOML,
+			data: `[markata-go]
+
+[[markata-go.feeds]]
+slug = "include"
+include_private = true
+
+[[markata-go.feeds]]
+slug = "alias"
+private = true
+`,
+		},
+		{
+			name:  "yaml",
+			parse: ParseYAML,
+			data: `markata-go:
+  feeds:
+    - slug: include
+      include_private: true
+    - slug: alias
+      private: true
+`,
+		},
+		{
+			name:  "json",
+			parse: ParseJSON,
+			data:  `{"markata-go":{"feeds":[{"slug":"include","include_private":true},{"slug":"alias","private":true}]}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := tt.parse([]byte(tt.data))
+			if err != nil {
+				t.Fatalf("parse() error = %v", err)
+			}
+			assertFeedPrivacyOptions(t, config)
+		})
+	}
+}
+
+func assertFeedPrivacyOptions(t *testing.T, config *models.Config) {
+	t.Helper()
+	if len(config.Feeds) != 2 {
+		t.Fatalf("len(Feeds) = %d, want 2", len(config.Feeds))
+	}
+	if !config.Feeds[0].IncludePrivate || config.Feeds[0].Private {
+		t.Errorf("include feed privacy = (include_private=%v, private=%v), want (true, false)", config.Feeds[0].IncludePrivate, config.Feeds[0].Private)
+	}
+	if config.Feeds[1].IncludePrivate || !config.Feeds[1].Private {
+		t.Errorf("alias feed privacy = (include_private=%v, private=%v), want (false, true)", config.Feeds[1].IncludePrivate, config.Feeds[1].Private)
 	}
 }
 

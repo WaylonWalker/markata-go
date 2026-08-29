@@ -135,3 +135,26 @@ func removeDisabledPostOutputs(outputDir, slug string, postFormats models.PostFo
 		_ = os.RemoveAll(filepath.Join(postDir, "og"))
 	}
 }
+
+// removePrivatePostOutputs removes alternate formats that may have been
+// generated while a post was public. The encrypted HTML page is retained.
+func removePrivatePostOutputs(outputDir, slug string) error {
+	for _, extension := range []string{"md", "txt", "ansi"} {
+		path, err := safeOutputPath(outputDir, slug+"."+extension)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(path)
+		redirectPath, err := safeOutputPath(outputDir, filepath.Join(slug, "index."+extension))
+		if err != nil {
+			return err
+		}
+		_ = os.RemoveAll(redirectPath)
+	}
+	ogPath, err := safeOutputPath(outputDir, filepath.Join(slug, "og"))
+	if err != nil {
+		return err
+	}
+	_ = os.RemoveAll(ogPath)
+	return nil
+}

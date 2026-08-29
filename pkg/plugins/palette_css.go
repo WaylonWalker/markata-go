@@ -229,6 +229,7 @@ func canonicalPaletteName(name string) string {
 	}
 }
 
+//nolint:gocyclo // Palette projection has separate fallback and variant branches.
 func (p *PaletteCSSPlugin) generateContractPaletteCSS(config *lifecycle.Config) string {
 	modelsConfig, ok := config.Extra["models_config"].(*models.Config)
 	if !ok {
@@ -857,6 +858,8 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 
 // writeMarkColors generates CSS variables for mark/highlight elements.
 // If mark-bg/mark-text are not defined in the palette, computes them from the warning color.
+//
+//nolint:gocyclo // Mark colors require explicit fallback and contrast branches.
 func (p *PaletteCSSPlugin) writeMarkColors(buf *bytes.Buffer, palette *palettes.Palette, indent string) {
 	fmt.Fprintf(buf, "\n%s/* Mark/highlight colors */\n", indent)
 	// Highlight semantics are palette roles, not Web Awesome warning tokens.

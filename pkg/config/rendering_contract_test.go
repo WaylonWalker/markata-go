@@ -38,7 +38,8 @@ scope = "all"
 	if config.Theme.Fontpack != "brush-poster" {
 		t.Fatalf("fontpack = %q", config.Theme.Fontpack)
 	}
-	if len(config.Extra["theme_migration_warnings"].([]string)) == 0 {
+	warnings, ok := config.Extra["theme_migration_warnings"].([]string)
+	if !ok || len(warnings) == 0 {
 		t.Fatal("expected migration warning")
 	}
 }
