@@ -174,7 +174,8 @@ func TestAestheticCSSPlugin_InvalidTextureStillRejected(t *testing.T) {
 }
 
 func containsPass(passes []renderingrecipe.Pass, id string) bool {
-	for _, pass := range passes {
+	for i := range passes {
+		pass := &passes[i]
 		if pass.ID == id {
 			return true
 		}

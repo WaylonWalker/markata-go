@@ -141,7 +141,7 @@ func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) 
 		Title:          fc.Title,
 		Description:    fc.Description,
 		Posts:          fc.Posts,
-		IncludePrivate: fc.IncludePrivate,
+		IncludePrivate: fc.IncludesPrivate(),
 		Path:           fc.Slug,
 	}
 	return GenerateRSS(feed, config)
@@ -151,6 +151,10 @@ func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) 
 // Note: Do NOT manually escape XML here - xml.MarshalIndent handles escaping automatically.
 // Manually escaping would cause double-encoding (e.g., & becomes &amp; then &amp;amp;).
 func postToRSSItem(post *models.Post, meta siteMetadata) RSSItem {
+	post = safeFeedPost(post)
+	if post == nil {
+		return RSSItem{}
+	}
 	// Build permalink
 	permalink := meta.URL + post.Href
 
@@ -163,7 +167,7 @@ func postToRSSItem(post *models.Post, meta siteMetadata) RSSItem {
 	// Get description (use post description or truncated content)
 	var description string
 	switch {
-	case post.Private && post.ArticleHTML != "":
+	case post.Private && hasEncryptedFeedContent(post):
 		description = post.ArticleHTML
 	case post.Description != nil:
 		description = *post.Description
@@ -190,7 +194,7 @@ func postToRSSItem(post *models.Post, meta siteMetadata) RSSItem {
 			IsPermaLink: true,
 		},
 	}
-	if author := firstAuthorForPost(post, meta); author != nil && author.Email != nil {
+	if author := firstAuthorForPost(post, meta); author != nil && !post.Private && author.Email != nil {
 		item.Author = *author.Email
 	}
 	if len(post.Tags) > 0 {

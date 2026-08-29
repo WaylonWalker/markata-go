@@ -63,8 +63,12 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	if !ok || !cfg.Enabled {
 		return nil
 	}
-	if cfg.SchemaVersion != 0 && cfg.SchemaVersion != contentindex.CurrentVersion {
-		return fmt.Errorf("content_index.schema_version %d is unsupported; latest is %d", cfg.SchemaVersion, contentindex.CurrentVersion)
+	schemaVersion := cfg.SchemaVersion
+	if schemaVersion == 0 {
+		schemaVersion = contentindex.CurrentVersion
+	}
+	if schemaVersion != 1 && schemaVersion != contentindex.CurrentVersion {
+		return fmt.Errorf("content_index.schema_version %d is unsupported; latest is %d", schemaVersion, contentindex.CurrentVersion)
 	}
 	stateBefore, beforeErr := p.initialSource, p.initialSourceErr
 	if !p.capturedSource {
@@ -74,10 +78,10 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	posts := m.Posts()
 	posts = slices.DeleteFunc(posts, func(post *models.Post) bool { return post == nil })
 	sort.SliceStable(posts, func(i, j int) bool { return posts[i].Path < posts[j].Path })
-	public := make(map[string]bool, len(posts))
+	eligible := make(map[string]bool, len(posts))
 	for _, post := range posts {
-		if post != nil && !post.Private && !post.Draft && !post.Skip {
-			public[post.Path] = true
+		if post != nil && !post.Draft && !post.Skip && (schemaVersion == contentindex.CurrentVersion || !post.Private) {
+			eligible[post.Path] = true
 		}
 	}
 	feeds := make(map[string][]string)
@@ -86,7 +90,7 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 			continue
 		}
 		for _, post := range feed.Posts {
-			if post != nil && public[post.Path] {
+			if post != nil && eligible[post.Path] && (!post.Private || feed.IncludePrivate) {
 				feeds[post.Path] = append(feeds[post.Path], feed.Name)
 			}
 		}
@@ -95,9 +99,9 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 		sort.Strings(feeds[path])
 	}
 
-	docs := make([]contentindex.Document, 0, len(public))
+	docs := make([]contentindex.Document, 0, len(eligible))
 	for _, post := range posts {
-		if post == nil || !public[post.Path] {
+		if post == nil || !eligible[post.Path] {
 			continue
 		}
 		docs = append(docs, documentFromPost(post, feeds[post.Path]))
@@ -106,7 +110,11 @@ func (p *ContentIndexPlugin) Write(m *lifecycle.Manager) (err error) {
 	if v, ok := m.Config().Extra["markata_version"].(string); ok && v != "" {
 		version = v
 	}
-	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: contentindex.CurrentVersion, Scope: contentindex.PublicScope, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
+	scope := contentindex.PublicMetadataScope
+	if schemaVersion == 1 {
+		scope = contentindex.PublicScope
+	}
+	index := contentindex.Index{Schema: contentindex.Schema, SchemaVersion: schemaVersion, Scope: scope, Generator: contentindex.Generator{Name: contentindex.GeneratorName, Version: version}, DocumentCount: len(docs), Documents: docs}
 	stateAfter, afterErr := sourcegit.ReadWithOptions(context.Background(), m.Config().ContentDir, sourceSnapshotOptions(m.Config()))
 	if beforeErr == nil && afterErr == nil {
 		if !stateBefore.Equal(stateAfter) {
@@ -192,7 +200,30 @@ func (e *contentIndexWriteError) Unwrap() error    { return e.err }
 func (e *contentIndexWriteError) IsCritical() bool { return true }
 
 func documentFromPost(post *models.Post, feedNames []string) contentindex.Document {
-	return contentindex.Document{Path: post.Path, Slug: post.Slug, Href: post.Href, Title: post.Title, TitleText: titleText(post), Date: post.Date, Modified: post.Modified, Published: post.Published, Draft: post.Draft, Private: post.Private, Template: post.Template, Tags: sortedStrings(post.Tags), Description: post.Description, Feeds: append([]string(nil), feedNames...), Aliases: aliases(post), Image: extraString(post, "image"), Video: extraString(post, "video"), Avatar: resolvedAvatar(post), Bio: resolvedBio(post), Thumbnail: extraString(post, "thumbnail"), Cover: firstExtraString(post, "cover", "cover_image"), OGImage: firstExtraString(post, "og_image", "social_image"), Author: post.Author, Authors: append([]string(nil), post.GetAuthors()...), Category: extraString(post, "category"), Categories: extraStrings(post, "categories")}
+	document := contentindex.Document{Path: post.Path, Slug: post.Slug, Href: post.Href, Title: post.Title, TitleText: titleText(post), Date: post.Date, Modified: post.Modified, Published: post.Published, Draft: post.Draft, Private: post.Private, Template: post.Template, Tags: sortedStrings(post.Tags), Description: post.Description, Feeds: append([]string(nil), feedNames...), Aliases: aliases(post), Image: extraString(post, "image"), Video: extraString(post, "video"), Avatar: resolvedAvatar(post), Bio: resolvedBio(post), Thumbnail: extraString(post, "thumbnail"), Cover: firstExtraString(post, "cover", "cover_image"), OGImage: firstExtraString(post, "og_image", "social_image"), Author: post.Author, Authors: append([]string(nil), post.GetAuthors()...), Category: extraString(post, "category"), Categories: extraStrings(post, "categories")}
+	if !post.Private {
+		return document
+	}
+
+	// Private records are useful for metadata consumers, but they must not
+	// inherit values derived from the private body or sensitive media URLs.
+	if !postExtraBool(post, "_title_explicit") {
+		document.Title = nil
+		document.TitleText = nil
+	}
+	if !postExtraBool(post, "_description_explicit") {
+		document.Description = nil
+	}
+	document.Image = nil
+	document.Video = nil
+	document.Bio = nil
+	document.Thumbnail = nil
+	document.Cover = nil
+	document.OGImage = nil
+	if extraString(post, "avatar") == nil {
+		document.Avatar = nil
+	}
+	return document
 }
 
 func firstExtraString(post *models.Post, keys ...string) *string {

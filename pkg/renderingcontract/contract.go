@@ -10,6 +10,10 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
+const (
+	textureScopeQuiet = "quiet"
+)
+
 //go:embed contract-v1.json
 var contractFS embed.FS
 
@@ -137,8 +141,14 @@ func finalAccessibleColor(foreground, background string, required float64) strin
 	}
 	// Keep the final projection a real pass even for colors that cannot be
 	// adjusted by the legacy HSL helper due to 8-bit rounding.
-	black, _ := palettes.ParseHexColor("#000000")
-	white, _ := palettes.ParseHexColor("#ffffff")
+	black, err := palettes.ParseHexColor("#000000")
+	if err != nil {
+		return foreground
+	}
+	white, err := palettes.ParseHexColor("#ffffff")
+	if err != nil {
+		return foreground
+	}
 	if palettes.ContrastRatio(black, bg) >= required {
 		return black.Hex()
 	}
@@ -151,10 +161,15 @@ func finalAccessibleColor(foreground, background string, required float64) strin
 // NormalizeTheme migrates legacy flat settings into the canonical nested shape.
 // It intentionally accepts map data so TOML, YAML, JSON, and browser consumers
 // can share the same precedence rule.
-func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
+//
+//nolint:gocyclo // Legacy-key migration must preserve each field's precedence and warning.
+func NormalizeTheme(raw map[string]any) (normalized map[string]any, warnings []string) {
 	out := map[string]any{}
-	warnings := []string{}
-	nested, _ := raw["theme"].(map[string]any)
+	warnings = []string{}
+	nested, nestedOK := raw["theme"].(map[string]any)
+	if !nestedOK {
+		nested = nil
+	}
 	for key, value := range nested {
 		out[key] = value
 	}
@@ -192,13 +207,16 @@ func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
 		canonicalTextureScope, hasCanonicalTextureScope = texture["scope"].(string)
 	}
 	if value, ok := raw["texture_scope"]; ok {
-		texture, _ := out["texture"].(map[string]any)
+		texture, textureOK := out["texture"].(map[string]any)
+		if !textureOK {
+			texture = nil
+		}
 		if texture == nil {
 			texture = map[string]any{}
 			out["texture"] = texture
 		}
 		if scope, ok := value.(string); ok && scope == "headings" {
-			if hasCanonicalTextureScope && canonicalTextureScope != "quiet" {
+			if hasCanonicalTextureScope && canonicalTextureScope != textureScopeQuiet {
 				warnings = append(warnings, "texture_scope=headings conflicts with theme.texture.scope; canonical value wins")
 			}
 			// The legacy setting selected the heading-only projection of the
@@ -206,14 +224,18 @@ func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
 			if _, exists := out["heading_texture"]; !exists {
 				out["heading_texture"] = map[string]any{}
 			}
-			heading, _ := out["heading_texture"].(map[string]any)
+			heading, headingOK := out["heading_texture"].(map[string]any)
+			if !headingOK {
+				heading = map[string]any{}
+				out["heading_texture"] = heading
+			}
 			if _, exists := heading["kind"]; !exists {
 				if kind, ok := texture["kind"]; ok {
 					heading["kind"] = kind
 				}
 			}
 			if !hasCanonicalTextureScope {
-				texture["scope"] = "quiet"
+				texture["scope"] = textureScopeQuiet
 			}
 			// The old setting disabled the surface texture everywhere. Keep that
 			// visible effect in the dedicated heading-texture projection.
@@ -232,7 +254,10 @@ func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
 		}
 	}
 	resolveMix := func(table, field, legacy string, fallback float64) {
-		values, _ := out[table].(map[string]any)
+		values, valuesOK := out[table].(map[string]any)
+		if !valuesOK {
+			values = nil
+		}
 		if values == nil {
 			values = map[string]any{}
 			out[table] = values
@@ -252,7 +277,10 @@ func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
 	}
 	resolveMix("texture", "color_mix", "texture_strength", .35)
 	resolveScale := func(table, field, legacy string, fallback float64) {
-		values, _ := out[table].(map[string]any)
+		values, valuesOK := out[table].(map[string]any)
+		if !valuesOK {
+			values = nil
+		}
 		if values == nil {
 			values = map[string]any{}
 			out[table] = values
@@ -282,7 +310,10 @@ func NormalizeTheme(raw map[string]any) (map[string]any, []string) {
 	resolveMix("motif", "wobble", "motif_wobble", .18)
 	resolveMix("motif", "scatter", "motif_scatter", 0)
 	resolveLegacy := func(table, key, legacy string, fallback any) {
-		values, _ := out[table].(map[string]any)
+		values, valuesOK := out[table].(map[string]any)
+		if !valuesOK {
+			values = nil
+		}
 		if values == nil {
 			values = map[string]any{}
 			out[table] = values
@@ -323,7 +354,10 @@ func Load() (Contract, error) {
 	return c, err
 }
 func PaletteIDs() []string {
-	c, _ := Load()
+	c, err := Load()
+	if err != nil {
+		return nil
+	}
 	out := make([]string, len(c.Palettes))
 	for i := range c.Palettes {
 		out[i] = c.Palettes[i].ID
@@ -333,6 +367,10 @@ func PaletteIDs() []string {
 
 // NormalizeMix accepts canonical numbers and legacy percentage strings.
 func NormalizeMix(value any, fallback float64) float64 {
+	return normalizeBounded(value, fallback, 0, 1)
+}
+
+func normalizeBounded(value any, fallback, minimum, maximum float64) float64 {
 	var n float64
 	switch v := value.(type) {
 	case float64:
@@ -361,50 +399,16 @@ func NormalizeMix(value any, fallback float64) float64 {
 		if _, err := fmt.Sscanf(v, "%f", &n); err != nil {
 			return fallback
 		}
-		if len(v) > 0 && v[len(v)-1] == '%' {
+		if v != "" && v[len(v)-1] == '%' {
 			n /= 100
 		}
 	default:
 		return fallback
 	}
-	return math.Round(math.Max(0, math.Min(1, n))*1000) / 1000
+	return math.Round(math.Max(minimum, math.Min(maximum, n))*1000) / 1000
 }
 
 // NormalizeScale accepts canonical unitless scale values and legacy percentages.
 func NormalizeScale(value any, fallback float64) float64 {
-	var n float64
-	switch v := value.(type) {
-	case float64:
-		n = v
-	case int:
-		n = float64(v)
-	case int8:
-		n = float64(v)
-	case int16:
-		n = float64(v)
-	case int32:
-		n = float64(v)
-	case int64:
-		n = float64(v)
-	case uint:
-		n = float64(v)
-	case uint8:
-		n = float64(v)
-	case uint16:
-		n = float64(v)
-	case uint32:
-		n = float64(v)
-	case uint64:
-		n = float64(v)
-	case string:
-		if _, err := fmt.Sscanf(v, "%f", &n); err != nil {
-			return fallback
-		}
-		if len(v) > 0 && v[len(v)-1] == '%' {
-			n /= 100
-		}
-	default:
-		return fallback
-	}
-	return math.Round(math.Max(.25, math.Min(3, n))*1000) / 1000
+	return normalizeBounded(value, fallback, .25, 3)
 }

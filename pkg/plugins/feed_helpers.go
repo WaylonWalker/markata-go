@@ -171,7 +171,7 @@ func getFeedPosts(slug string, limit int, m *lifecycle.Manager) ([]*models.Post,
 		return nil, nil
 	}
 
-	posts := computeFeedPosts(fc, m)
+	posts := filterFeedPagePosts(computeFeedPosts(fc, m), fc.IncludesPrivate())
 
 	if limit > 0 && limit < len(posts) {
 		posts = posts[:limit]
@@ -196,7 +196,7 @@ func postsFromCache(slug string, limit int, m *lifecycle.Manager) ([]*models.Pos
 		return nil, nil, false
 	}
 
-	posts := cloneFeedPosts(fc.Posts)
+	posts := filterFeedPagePosts(fc.Posts, fc.IncludesPrivate())
 	if len(posts) == 0 {
 		return nil, fc, true
 	}
@@ -238,7 +238,7 @@ func computeFeedPosts(fc *models.FeedConfig, m *lifecycle.Manager) []*models.Pos
 func filterPostsForFeed(fc *models.FeedConfig, m *lifecycle.Manager) []*models.Post {
 	candidate := make([]*models.Post, 0, len(m.Posts()))
 	for _, post := range m.Posts() {
-		if fc.IncludePrivate || !post.Private {
+		if fc.IncludesPrivate() || !post.Private {
 			candidate = append(candidate, post)
 		}
 	}

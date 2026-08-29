@@ -125,7 +125,7 @@ func TestGenerateRSS_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.T
 		IncludePrivate: true,
 		Posts: []*models.Post{
 			{Slug: "public", Href: "/public/", Date: &older, Published: true, Title: testStringPtr("Public")},
-			{Slug: "private", Href: "/private/", Date: &privateDate, Published: true, Private: true, Title: testStringPtr("Private"), Description: testStringPtr("secret summary"), Content: "secret body", ArticleHTML: `<div class="encrypted-content">locked</div>`},
+			{Slug: "private", Href: "/private/", Date: &privateDate, Published: true, Private: true, Title: testStringPtr("Private"), Description: testStringPtr("secret summary"), Content: "secret body", ArticleHTML: `<div class="encrypted-content" data-encrypted="ciphertext" data-key-name="private-key">locked</div>`},
 		},
 	}
 
@@ -136,7 +136,7 @@ func TestGenerateRSS_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.T
 
 	checks := []string{
 		"<lastBuildDate>Fri, 02 Feb 2024 12:00:00 +0000</lastBuildDate>",
-		"&lt;div class=&#34;encrypted-content&#34;&gt;locked&lt;/div&gt;",
+		"&lt;div class=&#34;encrypted-content&#34; data-encrypted=&#34;ciphertext&#34;&gt;locked&lt;/div&gt;",
 	}
 	for _, want := range checks {
 		if !strings.Contains(rss, want) {
@@ -145,6 +145,9 @@ func TestGenerateRSS_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.T
 	}
 	if strings.Contains(rss, "secret summary") || strings.Contains(rss, "secret body") {
 		t.Fatalf("rss should not expose private plaintext\n%s", rss)
+	}
+	if strings.Contains(rss, "data-key-name") || strings.Contains(rss, "private-key") {
+		t.Fatalf("rss should not expose private key names\n%s", rss)
 	}
 }
 
@@ -162,7 +165,7 @@ func TestGenerateAtom_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.
 		IncludePrivate: true,
 		Posts: []*models.Post{
 			{Slug: "public", Href: "/public/", Date: &older, Published: true, Title: testStringPtr("Public")},
-			{Slug: "private", Href: "/private/", Date: &privateDate, Published: true, Private: true, Title: testStringPtr("Private"), Description: testStringPtr("secret summary"), Content: "secret body", ArticleHTML: `<div class="encrypted-content">locked</div>`},
+			{Slug: "private", Href: "/private/", Date: &privateDate, Published: true, Private: true, Title: testStringPtr("Private"), Description: testStringPtr("secret summary"), Content: "secret body", ArticleHTML: `<div class="encrypted-content" data-encrypted="ciphertext" data-key-name="private-key">locked</div>`},
 		},
 	}
 
@@ -173,7 +176,7 @@ func TestGenerateAtom_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.
 
 	checks := []string{
 		"<updated>2024-02-02T12:00:00Z</updated>",
-		"&lt;div class=&#34;encrypted-content&#34;&gt;locked&lt;/div&gt;",
+		"&lt;div class=&#34;encrypted-content&#34; data-encrypted=&#34;ciphertext&#34;&gt;locked&lt;/div&gt;",
 	}
 	for _, want := range checks {
 		if !strings.Contains(atom, want) {
@@ -182,5 +185,8 @@ func TestGenerateAtom_IncludePrivateUsesEncryptedHTMLAndPrivateDates(t *testing.
 	}
 	if strings.Contains(atom, "<summary>") || strings.Contains(atom, "secret body") || strings.Contains(atom, "secret summary") {
 		t.Fatalf("atom should not expose private plaintext\n%s", atom)
+	}
+	if strings.Contains(atom, "data-key-name") || strings.Contains(atom, "private-key") {
+		t.Fatalf("atom should not expose private key names\n%s", atom)
 	}
 }

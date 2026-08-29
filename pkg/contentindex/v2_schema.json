@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "markata://schemas/content-index/v2",
+  "title": "Markata Content Index v2",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["$schema", "schema", "schema_version", "scope", "generator", "source", "document_count", "documents"],
+  "allOf": [
+    {"if": {"properties": {"scope": {"const": "public"}}}, "then": {"properties": {"documents": {"items": {"properties": {"private": {"const": false}}}}}}},
+    {"if": {"properties": {"documents": {"contains": {"properties": {"private": {"const": true}}}}}}, "then": {"properties": {"scope": {"const": "public-metadata"}}}}
+  ],
+  "properties": {
+    "$schema": {"const": "markata://schemas/content-index/v2"},
+    "schema": {"const": "markata.content-index"},
+    "schema_version": {"const": 2},
+    "scope": {"enum": ["public", "public-metadata"]},
+    "generator": {"type": "object", "required": ["name", "version"], "additionalProperties": true, "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string"}}},
+    "source": {"type": "object", "additionalProperties": true, "properties": {"commit": {"type": "string", "minLength": 1}, "dirty": {"type": "boolean"}}, "allOf": [{"if": {"required": ["dirty"]}, "then": {"required": ["commit"]}}, {"if": {"required": ["commit"]}, "then": {"required": ["dirty"]}}]},
+    "document_count": {"type": "integer", "minimum": 0},
+    "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}}
+  },
+  "$defs": {
+    "document": {
+      "type": "object", "additionalProperties": true,
+      "required": ["path", "slug", "href", "published", "draft", "private"],
+      "anyOf": [{"properties": {"slug": {"minLength": 1}}}, {"properties": {"href": {"minLength": 1}}}],
+      "properties": {
+        "path": {"type": "string", "minLength": 1}, "slug": {"type": "string"}, "href": {"type": "string"},
+        "title": {"type": ["string", "null"]}, "title_text": {"type": ["string", "null"]},
+        "date": {"type": "string", "format": "date-time"}, "modified": {"type": "string", "format": "date-time"},
+        "published": {"type": "boolean"}, "draft": {"type": "boolean"}, "private": {"type": "boolean"},
+        "template": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}},
+        "description": {"type": ["string", "null"]}, "feeds": {"type": "array", "items": {"type": "string"}},
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "image": {"type": "string"}, "video": {"type": "string"}, "avatar": {"type": "string"},
+        "thumbnail": {"type": "string"}, "cover": {"type": "string"}, "og_image": {"type": "string"}, "bio": {"type": "string"},
+        "author": {"type": "string"}, "authors": {"type": "array", "items": {"type": "string"}},
+        "category": {"type": "string"}, "categories": {"type": "array", "items": {"type": "string"}}
+      },
+      "allOf": [{"if": {"properties": {"private": {"const": true}}}, "then": {"not": {"anyOf": [{"required": ["image"]}, {"required": ["video"]}, {"required": ["bio"]}, {"required": ["thumbnail"]}, {"required": ["cover"]}, {"required": ["og_image"]}]}}}]
+    }
+  }
+}

@@ -460,6 +460,10 @@ func (p *EncryptionPlugin) encryptPostWithCache(post *models.Post, cache *buildc
 	if cache != nil {
 		if cached := cache.GetCachedEncryptedHTML(post.Path, encryptedHash); cached != "" {
 			post.ArticleHTML = cached
+			// A warm build loads raw Content again before restoring the cached
+			// wrapper. Apply the same scrub as a cold build so feed/template
+			// consumers cannot observe the plaintext through the cache path.
+			p.scrubPrivateMetadata(post)
 			post.Set("has_encrypted_content", true)
 			if keyName != "" {
 				post.Set("encryption_key_name", keyName)

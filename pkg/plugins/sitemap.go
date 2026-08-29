@@ -140,7 +140,7 @@ func (p *SitemapPlugin) generatedIndexPages(m *lifecycle.Manager, siteURL string
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.Slug == "" || !fc.Formats.HTML || fc.IncludePrivate {
+		if fc.Slug == "" || !fc.Formats.HTML || fc.IncludesPrivate() {
 			continue
 		}
 
@@ -180,7 +180,7 @@ func hasGeneratedFeeds(feedConfigs []models.FeedConfig, config *lifecycle.Config
 	count := 0
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.IncludePrivate {
+		if fc.IncludesPrivate() {
 			continue
 		}
 		if _, ok := configured[fc.Slug]; !ok {
@@ -202,7 +202,7 @@ func (p *SitemapPlugin) buildSitemapIndex(m *lifecycle.Manager, siteURL string) 
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if fc.Formats.Sitemap && fc.Slug != "" && !fc.IncludePrivate {
+		if fc.Formats.Sitemap && fc.Slug != "" && !fc.IncludesPrivate() {
 			entries = append(entries, SitemapIndexEntry{
 				Loc:     siteURL + "/" + fc.Slug + "/sitemap.xml",
 				LastMod: sitemapLastMod(fc.Posts),

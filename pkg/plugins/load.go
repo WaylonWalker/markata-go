@@ -500,6 +500,8 @@ func computePostFeedItemHash(post *models.Post) string {
 	b.WriteByte('\x00')
 	b.WriteString(post.Href)
 	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Private))
+	b.WriteByte('\x00')
 	if post.Date != nil {
 		b.WriteString(post.Date.UTC().Format(time.RFC3339Nano))
 	}
@@ -881,31 +883,33 @@ var modifiedFieldAliases = []string{"lastmod", "modified", "updated", "updated_a
 func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interface{}) error {
 	// Known fields to extract
 	knownFields := map[string]bool{
-		"title":          true,
-		"date":           true,
-		"published":      true,
-		"draft":          true,
-		"private":        true,
-		"skip":           true,
-		"tags":           true,
-		"description":    true,
-		"template":       true,
-		"templates":      true,
-		"slug":           true,
-		"secret_key":     true,
-		"private_key":    true,
-		"encryption_key": true,
-		"author":         true,
-		"authors":        true,
-		"by":             true,
-		"writer":         true,
-		"modified":       true,
-		"lastmod":        true,
-		"updated":        true,
-		"last_modified":  true,
-		"updated_at":     true,
-		"publishdate":    true,
-		"pubdate":        true,
+		"title":                 true,
+		"date":                  true,
+		"published":             true,
+		"draft":                 true,
+		"private":               true,
+		"skip":                  true,
+		"tags":                  true,
+		"description":           true,
+		"template":              true,
+		"templates":             true,
+		"slug":                  true,
+		"secret_key":            true,
+		"private_key":           true,
+		"encryption_key":        true,
+		"author":                true,
+		"authors":               true,
+		"by":                    true,
+		"writer":                true,
+		"modified":              true,
+		"lastmod":               true,
+		"updated":               true,
+		"last_modified":         true,
+		"updated_at":            true,
+		"publishdate":           true,
+		"pubdate":               true,
+		"_title_explicit":       true,
+		"_description_explicit": true,
 	}
 
 	// Title

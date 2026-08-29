@@ -44,7 +44,8 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 **Name:** `content_index`
 **Stage:** Write
 **Purpose:** Writes an optional, compact, versioned JSON artifact containing
-resolved public document metadata and feed membership.
+resolved document metadata and feed membership. Private documents are included
+as safe metadata-only records.
 
 **Configuration:**
 
@@ -52,12 +53,17 @@ resolved public document metadata and feed membership.
 [markata-go.content_index]
 enabled = true
 output = "content-index.json"
-schema_version = 1
+schema_version = 2
 ```
 
 The output is disabled by default. Relative paths are below `output_dir`.
-Private, draft, and skipped documents are excluded. See the [Content Index
-guide](/docs/guides/content-index/) for the parser and compatibility contract.
+V2 is the default and includes non-draft, non-skipped documents, including
+private documents as safe metadata-only records. Private titles and
+descriptions are included only when explicitly authored; bodies, rendered HTML,
+encryption keys, private media, and derived biographies are excluded. Set
+`schema_version = 1` for the released public-only compatibility format. See the
+[Content Index guide](/docs/guides/content-index/) for the parser and
+compatibility contract.
 
 ---
 

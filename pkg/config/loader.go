@@ -199,11 +199,11 @@ func LoadSingleConfig(configPath string) (*models.Config, error) {
 	var config *models.Config
 	switch format {
 	case FormatTOML:
-		config, err = ParseTOML(data)
+		_, err = ParseTOML(data)
 	case FormatYAML:
-		config, err = ParseYAML(data)
+		_, err = ParseYAML(data)
 	case FormatJSON:
-		config, err = ParseJSON(data)
+		_, err = ParseJSON(data)
 	default:
 		return nil, fmt.Errorf("unsupported config format: %s", format)
 	}

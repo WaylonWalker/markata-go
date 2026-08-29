@@ -101,10 +101,90 @@ func TestMarshalIsDeterministicAndNormalizesOrdering(t *testing.T) {
 	}
 }
 
-func TestMarshalRejectsUnsupportedV1Scope(t *testing.T) {
+func TestMarshalRejectsUnsupportedScope(t *testing.T) {
 	_, err := Marshal(Index{Scope: "workspace", Generator: Generator{Name: GeneratorName, Version: "test"}})
 	if err == nil {
-		t.Fatal("expected unsupported v1 scope error")
+		t.Fatal("expected unsupported scope error")
+	}
+}
+
+func TestMarshalAcceptsPublicMetadataScope(t *testing.T) {
+	data, err := Marshal(Index{SchemaVersion: 2, Scope: PublicMetadataScope, Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{{Path: "private.md", Slug: "private", Href: "/private/", Private: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Scope != PublicMetadataScope {
+		t.Fatalf("scope = %q, want %q", parsed.Scope, PublicMetadataScope)
+	}
+}
+
+func TestV1CompatibilityAllowsPrivateRecords(t *testing.T) {
+	data, err := os.ReadFile("fixtures/v1-private-compat.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(data)
+	if err != nil {
+		t.Fatalf("Parse() rejected schema-valid v1 private record: %v", err)
+	}
+	if !parsed.Documents[0].Private {
+		t.Fatal("Parse() lost v1 private record")
+	}
+
+	roundTrip, err := Marshal(parsed)
+	if err != nil {
+		t.Fatalf("Marshal() rejected schema-valid v1 private record: %v", err)
+	}
+	if _, err := Parse(roundTrip); err != nil {
+		t.Fatalf("Parse() rejected v1 round trip: %v", err)
+	}
+	if !strings.Contains(string(roundTrip), `"private":true`) {
+		t.Fatalf("Marshal() dropped the v1 private record: %s", roundTrip)
+	}
+}
+
+func TestMarshalV2RejectsForbiddenPrivateMetadata(t *testing.T) {
+	fields := []struct {
+		name string
+		set  func(*Document, *string)
+	}{
+		{name: "image", set: func(document *Document, value *string) { document.Image = value }},
+		{name: "video", set: func(document *Document, value *string) { document.Video = value }},
+		{name: "bio", set: func(document *Document, value *string) { document.Bio = value }},
+		{name: "thumbnail", set: func(document *Document, value *string) { document.Thumbnail = value }},
+		{name: "cover", set: func(document *Document, value *string) { document.Cover = value }},
+		{name: "og_image", set: func(document *Document, value *string) { document.OGImage = value }},
+	}
+
+	for _, field := range fields {
+		t.Run(field.name, func(t *testing.T) {
+			value := "private value"
+			document := Document{Path: "private.md", Slug: "private", Href: "/private/", Private: true}
+			field.set(&document, &value)
+			data, err := Marshal(Index{SchemaVersion: 2, Scope: PublicMetadataScope, Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{document}})
+			if err == nil || !strings.Contains(err.Error(), "documents[0]."+field.name) {
+				t.Fatalf("Marshal() error = %v, want forbidden %s error", err, field.name)
+			}
+			if data != nil {
+				t.Fatalf("Marshal() returned data on error: %s", data)
+			}
+		})
+	}
+}
+
+func TestMarshalV2AllowsMediaOnPublicDocuments(t *testing.T) {
+	value := "public value"
+	document := Document{
+		Path: "public.md", Slug: "public", Href: "/public/",
+		Image: &value, Video: &value, Bio: &value, Thumbnail: &value,
+		Cover: &value, OGImage: &value,
+	}
+	if _, err := Marshal(Index{SchemaVersion: 2, Scope: PublicScope, Generator: Generator{Name: GeneratorName, Version: "test"}, Documents: []Document{document}}); err != nil {
+		t.Fatalf("Marshal() rejected public media metadata: %v", err)
 	}
 }
 
@@ -136,6 +216,31 @@ func TestReleasedFixturesParse(t *testing.T) {
 			}
 			if index.DocumentCount != len(index.Documents) {
 				t.Fatalf("count mismatch")
+			}
+		})
+	}
+}
+
+func TestV2FixturesParse(t *testing.T) {
+	fixtures, err := filepath.Glob("fixtures/v2-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fixtures) == 0 {
+		t.Fatal("expected v2 fixtures")
+	}
+	for _, fixture := range fixtures {
+		t.Run(filepath.Base(fixture), func(t *testing.T) {
+			data, err := os.ReadFile(fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			index, err := Parse(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if index.SchemaVersion != 2 || index.DocumentCount != len(index.Documents) {
+				t.Fatalf("invalid v2 fixture: %#v", index)
 			}
 		})
 	}

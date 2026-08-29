@@ -375,6 +375,10 @@ When the correct password is entered, JavaScript decrypts the content in-browser
 
 If "Remember for this session" is checked, the password is stored in sessionStorage (cleared when the browser tab closes). This allows navigating between encrypted posts without re-entering the password for posts using the same key.
 
+Opted-in private feed entries intentionally omit the key name. They can be
+decrypted after manual password entry, but they do not use session storage or
+unlock other feed entries.
+
 ## Privacy Boundary
 
 Encryption protects the **post body**, not metadata. Frontmatter fields like title, description, tags, and dates remain in cleartext by design.
@@ -411,8 +415,8 @@ When a post is marked private (by any method), markata-go suppresses it across a
 | HTML page | Content encrypted with password prompt |
 | `.md` / `.txt` alternates | Not generated for private posts |
 | OG image cards | Not generated for private posts |
-| RSS / Atom / JSON feeds | Private posts excluded entirely |
-| Feed pages | Private posts are excluded from public feed pages; only feeds that explicitly set `include_private = true` can include them |
+| RSS / Atom / JSON feeds | Private posts are excluded unless the feed explicitly sets `include_private = true`; included entries contain encrypted HTML and safe metadata only |
+| Feed pages | Private posts are excluded from public feed pages; only feeds that explicitly set `include_private = true` can include safe metadata and encrypted content |
 | Embed cards (`![[slug]]`) | Shows a "Private Content" card with no title, description, or date |
 | Wikilinks (`[[slug]]`) | Link text is rendered but `data-title`, `data-description`, `data-date` attributes are omitted |
 | Wikilink hover previews | No hover preview is shown for private posts |
@@ -426,9 +430,14 @@ The encrypted article HTML is the **only** representation of your private conten
 
 ### Feed pages and private tags
 
-`private_tags` marks matching posts as private and encrypted, but it does not make auto-generated tag feeds public-facing containers for those posts. Auto-generated tag, category, and archive feeds exclude private posts the same way other public feeds do.
+`private_tags` marks matching posts as private and encrypted. Auto-generated feeds
+for private tags opt into those posts so their encrypted entries can render;
+other auto-generated tag, category, and archive feeds exclude private posts.
 
-If you intentionally need a private-aware archive or admin page, create an explicit feed with `include_private = true` and restrict where you publish it. Subscription feeds (RSS, Atom, JSON Feed) still exclude private posts entirely.
+If you intentionally need a private-aware archive or admin page, create an
+explicit feed with `include_private = true` and restrict where you publish it.
+Private RSS, Atom, and JSON Feed entries still contain no raw body, key name,
+derived description, or private media reference.
 
 ## Security Notes
 

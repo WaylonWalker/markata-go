@@ -6,7 +6,9 @@ Markdown files and their repository remain the source of truth.
 
 ## Scope
 
-Markata MUST emit the newest supported generation when enabled. The artifact
+Markata MUST default to the newest supported generation when enabled. A
+configuration MAY explicitly select an older supported generation for
+compatibility. The artifact
 MUST NOT contain complete article bodies, rendered HTML, source backups, or
 Plaindown-specific data. Consumers MAY use it for metadata, search bootstrap,
 dashboards, and integrations.
@@ -14,8 +16,9 @@ dashboards, and integrations.
 The canonical identity is `markata.content-index`. `schema_version` is an
 integer wire-format generation. `generator.version` identifies the producer,
 and `source.commit` identifies the source Git tree. These values MUST NOT be
-used interchangeably. `$schema` is the internal canonical identifier
-`markata://schemas/content-index/v1`; it is not a promise that a public URL is
+used interchangeably. `$schema` is the internal canonical identifier for the
+selected generation (`markata://schemas/content-index/v1` or
+`markata://schemas/content-index/v2`); it is not a promise that a public URL is
 currently hosted.
 
 ## Compatibility
@@ -36,11 +39,12 @@ The required top-level fields are `$schema`, `schema`, `schema_version`,
 `scope`, `generator`, `source`, `document_count`, and `documents`. `documents`
 is a single array in v1; chunks and pagination are not implemented.
 
-V1 emits `scope: "public"`. Scope is an open, non-empty string so a future
-producer can define a workspace scope without changing the type or meaning of
-the public scope. Consumers MUST preserve unknown scope values at their
+V1 emits `scope: "public"` and contains only non-skipped, non-draft,
+non-private documents. Private documents MUST NOT be present in v1. Scope is an
+open, non-empty string so a producer can define a workspace scope without
+changing the wire type. Consumers MUST preserve unknown scope values at their
 normalization boundary and MUST NOT treat them as public unless they understand
-their definition. Markata's v1 writer emits only `public`.
+their definition.
 
 Each document is identified by its repository-relative `path`. A consumer
 MUST use `path` to map a record back to its source file. `slug` and `href` are
@@ -69,20 +73,49 @@ present. Feed names are sorted. There is no duplicated top-level feed map.
 
 `draft`, `published`, `private`, and `skip` are separate Markata concepts. A
 document with `draft: true` is source/workspace content and is excluded from
-the public artifact. `published: false` does not alone make a document private:
-a non-draft, non-private direct page MAY be included with no feed membership.
-A feed named `draft` is only a feed name and is not equivalent to
+the artifact. `published: false` does not alone make a document private: a
+non-draft, non-private direct page MAY be included with no feed membership. A
+feed named `draft` is only a feed name and is not equivalent to
 `document.draft`; feed membership always reports Markata's resolved result.
-The `draft` and `private` fields remain in v1 so future scope-aware models can
-normalize them without changing document shape.
+
+## v2 Artifact
+
+V2 retains the v1 document shape and adds the `public-metadata` scope. The
+`public-metadata` scope permits private documents, but only within the safe
+metadata boundary below. V2 is the default writer generation. V2 MAY use the
+`public` scope only when no private document is present.
 
 ## Privacy and revision
 
-The public artifact includes non-skipped, non-draft, non-private documents.
-Private and draft documents MUST NOT be present. A non-private unpublished
-shadow page MAY be present because Markata renders it as a direct page; its
-`published` value remains false and it is normally in no feeds. `robots` is
-not an access-control mechanism.
+The v2 public-metadata artifact includes every non-skipped, non-draft document,
+including private documents. A non-private unpublished shadow page MAY be
+present because Markata renders it as a direct page; its `published` value
+remains false and it is normally in no feeds. `robots` is not an access-control
+mechanism. The v1 public artifact retains its released exclusion of private
+documents.
+
+Private documents MUST contain no article body, rendered article HTML, source
+backup, encryption key name, or other secret. Their identity and routing fields
+(`path`, `slug`, `href`, `published`, `draft`, `private`, dates, and `template`)
+may be emitted. Tags, aliases, author identifiers, categories, and a
+frontmatter-provided avatar are metadata that may be emitted. `title` and
+`title_text` may be emitted only when the title was explicitly provided in
+frontmatter. `description` may be emitted only when it was explicitly provided
+in frontmatter. Content-derived title and description values MUST be omitted.
+Private media references (`image`, `video`, `thumbnail`, `cover`, and
+`og_image`) and resolved author biographies MUST be omitted. The writer MUST
+not copy arbitrary frontmatter or runtime `Extra` values into a private
+document. The v2 marshal API MUST reject a private document that supplies any
+of those forbidden fields rather than silently discarding them. The v2 schema
+and parser apply the same presence-based rule, including when a forbidden field
+has a `null` value. Optional text fields (`title`, `title_text`, and
+`description`) MAY be omitted or `null`; both forms normalize to an absent
+value.
+
+Feed membership follows the resolved feed result. A private document MAY list a
+feed only when that feed explicitly opts into private posts with
+`include_private = true` (or its `private = true` compatibility alias). A
+private document with no opted-in feed has no feed membership in the index.
 
 `source.commit` identifies the Git `HEAD` observed for the build when it can be
 read from the content directory. `source.dirty` is `false` when the working
@@ -116,12 +149,13 @@ enabled = true
 output = "content-index.json" # relative to output_dir
 ```
 
-An absolute `output` is allowed. `schema_version = 1` is accepted for
-explicitness; only v1 exists today. The default output is minified JSON at
-`output_dir/content-index.json`. The configured destination is treated as
-owned by this output. Deployments that disable the index SHOULD use a clean
-output directory or explicitly remove the old artifact so stale metadata is
-not published.
+An absolute `output` is allowed. `schema_version = 1` writes the compatibility
+v1 public-only artifact; `schema_version = 2` writes the v2 public-metadata
+artifact. The default output is v2 minified JSON at
+`output_dir/content-index.json`. The configured destination is treated as owned
+by this output. Deployments that disable the index SHOULD use a clean output
+directory or explicitly remove the old artifact so stale metadata is not
+published.
 
 ## Consumer behavior
 
@@ -131,4 +165,5 @@ boundary. They SHOULD fail clearly for an unsupported future generation and
 offer migration rather than guessing. The index does not guarantee source
 content, rendered output bytes, build success for every record, or access to
 private content. Canonical fixtures in `pkg/contentindex/fixtures/` are
-interoperability fixtures and MUST be treated as immutable after v1 release.
+interoperability fixtures and MUST be treated as immutable after their
+generation is released.

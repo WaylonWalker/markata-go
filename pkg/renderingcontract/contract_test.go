@@ -66,7 +66,10 @@ func TestNormalizeMix(t *testing.T) {
 
 func TestNormalizeTheme_CanonicalWinsLegacy(t *testing.T) {
 	got, warnings := NormalizeTheme(map[string]any{"texture_strength": "10%", "theme": map[string]any{"texture": map[string]any{"color_mix": 0.9}}})
-	texture := got["texture"].(map[string]any)
+	texture, ok := got["texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("texture has unexpected type: %#v", got["texture"])
+	}
 	if texture["color_mix"] != 0.9 || len(warnings) != 1 {
 		t.Fatalf("got %#v warnings %#v", got, warnings)
 	}
@@ -77,7 +80,10 @@ func TestNormalizeTheme_EquivalentLegacyMixDoesNotWarn(t *testing.T) {
 		"texture_strength": "35%",
 		"theme":            map[string]any{"texture": map[string]any{"color_mix": .35}},
 	})
-	texture := got["texture"].(map[string]any)
+	texture, ok := got["texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("texture has unexpected type: %#v", got["texture"])
+	}
 	if texture["color_mix"] != .35 || len(warnings) != 0 {
 		t.Fatalf("equivalent migration = %#v warnings %#v", got, warnings)
 	}
@@ -95,8 +101,14 @@ func TestNormalizeTheme_CanonicalScopeConflictsLegacy(t *testing.T) {
 
 func TestNormalizeTheme_HeadingTextureScope(t *testing.T) {
 	got, warnings := NormalizeTheme(map[string]any{"texture": "splatter", "texture_scope": "headings"})
-	texture := got["texture"].(map[string]any)
-	heading := got["heading_texture"].(map[string]any)
+	texture, ok := got["texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("texture has unexpected type: %#v", got["texture"])
+	}
+	heading, ok := got["heading_texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("heading texture has unexpected type: %#v", got["heading_texture"])
+	}
 	if texture["scope"] != "quiet" || texture["kind"] != "none" || heading["kind"] != "splatter" {
 		t.Fatalf("migration = %#v", got)
 	}
@@ -110,7 +122,10 @@ func TestNormalizeTheme_CanonicalTextureKindWinsLegacyHeadingScope(t *testing.T)
 		"texture_scope": "headings",
 		"theme":         map[string]any{"texture": map[string]any{"kind": "screenprint"}},
 	})
-	texture := got["texture"].(map[string]any)
+	texture, ok := got["texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("texture has unexpected type: %#v", got["texture"])
+	}
 	if texture["kind"] != "screenprint" || len(warnings) == 0 {
 		t.Fatalf("canonical kind was not preserved: %#v warnings %#v", got, warnings)
 	}
@@ -121,7 +136,10 @@ func TestNormalizeTheme_CanonicalTextureScopeWinsLegacyHeadingScope(t *testing.T
 		"texture_scope": "headings",
 		"theme":         map[string]any{"texture": map[string]any{"scope": "all"}},
 	})
-	texture := got["texture"].(map[string]any)
+	texture, ok := got["texture"].(map[string]any)
+	if !ok {
+		t.Fatalf("texture has unexpected type: %#v", got["texture"])
+	}
 	if texture["scope"] != "all" || len(warnings) == 0 {
 		t.Fatalf("canonical scope was not preserved: %#v warnings %#v", got, warnings)
 	}

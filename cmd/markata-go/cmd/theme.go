@@ -940,7 +940,9 @@ type ThemeCheckAllResult struct {
 // runThemeCheckAllCommand runs accessibility checks on all themes.
 func runThemeCheckAllCommand(_ *cobra.Command, _ []string) error {
 	contract, err := renderingcontract.Load()
-	if err != nil { return fmt.Errorf("failed to load rendering contract: %w", err) }
+	if err != nil {
+		return fmt.Errorf("failed to load rendering contract: %w", err)
+	}
 	if len(contract.Palettes) == 0 {
 		fmt.Println("No palettes found.")
 		return nil

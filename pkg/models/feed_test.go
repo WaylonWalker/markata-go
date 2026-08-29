@@ -197,6 +197,17 @@ func TestFeedConfig_ApplyDefaults(t *testing.T) {
 	}
 }
 
+func TestFeedConfig_PrivateAliasIncludesPrivate(t *testing.T) {
+	feed := &FeedConfig{Private: true}
+	if !feed.IncludesPrivate() {
+		t.Fatal("private alias should opt the feed into private posts")
+	}
+	feed.ApplyDefaults(FeedDefaults{})
+	if !feed.IncludePrivate {
+		t.Fatal("ApplyDefaults should normalize the private alias")
+	}
+}
+
 func TestFeedConfig_DoesNotOverrideExplicitValues(t *testing.T) {
 	defaults := FeedDefaults{
 		ItemsPerPage:    10,

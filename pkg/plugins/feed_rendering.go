@@ -16,11 +16,12 @@ func splitFeedRenderablePosts(posts []*models.Post, includePrivate bool) (pagePo
 			continue
 		}
 
-		pagePosts = append(pagePosts, post)
-		if post.Content == "" && post.ArticleHTML == "" {
+		safePost := safeFeedPost(post)
+		pagePosts = append(pagePosts, safePost)
+		if safePost.Content == "" && safePost.ArticleHTML == "" {
 			continue
 		}
-		outputPosts = append(outputPosts, post)
+		outputPosts = append(outputPosts, safePost)
 	}
 
 	return pagePosts, outputPosts

@@ -536,7 +536,8 @@ func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
 	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 		return fmt.Errorf("tailwind: creating output css directory: %w", err)
 	}
-	if err := os.WriteFile(destPath, data, 0o600); err != nil {
+	//nolint:gosec // Generated CSS must be readable by the web server.
+	if err := os.WriteFile(destPath, data, 0o644); err != nil {
 		return fmt.Errorf("tailwind: syncing built css to output: %w", err)
 	}
 	return p.writeHashedTailwindCopy(destPath, data)
@@ -555,7 +556,8 @@ func (p *TailwindPlugin) writeHashedTailwindCopy(destPath string, data []byte) e
 	if hashedPath == destPath {
 		return nil
 	}
-	if err := os.WriteFile(hashedPath, data, 0o600); err != nil {
+	//nolint:gosec // Generated CSS must be readable by the web server.
+	if err := os.WriteFile(hashedPath, data, 0o644); err != nil {
 		return fmt.Errorf("tailwind: writing hashed css copy: %w", err)
 	}
 	relPath := filepath.ToSlash(filepath.Base(destPath))

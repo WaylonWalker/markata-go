@@ -4,11 +4,17 @@ package contentindex
 import "time"
 
 const (
-	Schema         = "markata.content-index"
+	Schema = "markata.content-index"
+	// SchemaURL is retained as the v1 schema URL for callers that use the
+	// original exported constant. New artifacts use V2SchemaURL by default.
 	SchemaURL      = "markata://schemas/content-index/v1"
-	CurrentVersion = 1
+	V2SchemaURL    = "markata://schemas/content-index/v2"
+	CurrentVersion = 2
 	GeneratorName  = "markata-go"
 	PublicScope    = "public"
+	// PublicMetadataScope identifies an index that may contain safe metadata
+	// records for private posts. It never grants access to private content.
+	PublicMetadataScope = "public-metadata"
 )
 
 // Index is the normalized internal representation of a Content Index.

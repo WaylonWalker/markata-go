@@ -22,6 +22,13 @@ import (
 	jsoncanonicalizer "github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
 )
 
+const motifSourceID = "motif-block-w-v1"
+const (
+	recipeNone          = "none"
+	recipeSVGMediaType  = "image/svg+xml"
+	recipeLayerSandwich = "sandwich"
+)
+
 //go:embed testdata/*.json testdata/recipe-sources/*.json
 var testdata embed.FS
 
@@ -119,7 +126,7 @@ func loadRecipeSources() (map[string]recipeSource, error) {
 			return nil, fmt.Errorf("%s: %w", id, err)
 		}
 		allowed := []string{"schema_version", "id", "kind", "primitive", "view_box", "seed"}
-		if id == "motif-block-w-v1" {
+		if id == motifSourceID {
 			allowed = append(allowed, "columns", "rows", "path")
 		}
 		if err := rejectKeys(raw, allowed...); err != nil {
@@ -132,10 +139,10 @@ func loadRecipeSources() (map[string]recipeSource, error) {
 		if source.SchemaVersion != "rendering-recipe-source-v1" || source.ID != id {
 			return nil, fmt.Errorf("invalid recipe source %s", id)
 		}
-		if source.Seed < 0 || source.Primitive != "explicit-circles" && id != "motif-block-w-v1" || source.Primitive != "explicit-path" && id == "motif-block-w-v1" {
+		if source.Seed < 0 || source.Primitive != "explicit-circles" && id != motifSourceID || source.Primitive != "explicit-path" && id == motifSourceID {
 			return nil, fmt.Errorf("invalid recipe source geometry %s", id)
 		}
-		if id == "motif-block-w-v1" && (source.Columns <= 0 || source.Rows <= 0 || source.Columns > 64 || source.Rows > 64) {
+		if id == motifSourceID && (source.Columns <= 0 || source.Rows <= 0 || source.Columns > 64 || source.Rows > 64) {
 			return nil, fmt.Errorf("invalid motif source grid")
 		}
 		if source.ViewBox == "" {
@@ -158,6 +165,7 @@ func LoadCanonicalTheme() (Theme, error) {
 	return normalize(raw)
 }
 
+//nolint:gocyclo // Validation order is part of the canonical recipe contract.
 func normalize(raw map[string]any) (Theme, error) {
 	if raw == nil {
 		return Theme{}, errors.New("theme must be an object")
@@ -235,7 +243,7 @@ func normalize(raw map[string]any) (Theme, error) {
 	return theme, nil
 }
 
-func requiredString(raw map[string]any, key string, fallback string) (string, error) {
+func requiredString(raw map[string]any, key, fallback string) (string, error) {
 	value, ok := raw[key]
 	if !ok {
 		return fallback, nil
@@ -247,7 +255,13 @@ func requiredString(raw map[string]any, key string, fallback string) (string, er
 	return result, nil
 }
 
-func contractValue(v any) int { n, _ := strconv.Atoi(fmt.Sprint(v)); return n }
+func contractValue(v any) int {
+	n, err := strconv.Atoi(fmt.Sprint(v))
+	if err != nil {
+		return 0
+	}
+	return n
+}
 func isNumber(value any) bool {
 	switch value.(type) {
 	case json.Number, float64, int, int64:
@@ -342,11 +356,10 @@ func motifValue(raw map[string]any, fallback renderingcontract.Dial) (renderingc
 	return renderingcontract.MotifState{Kind: dial.Kind, ColorMix: dial.ColorMix, Glyph: dial.Glyph, Size: dial.Size, Gap: dial.Gap, RowOffset: fixed(dial.RowOffset, 0, 1), Wobble: fixed(dial.Wobble, 0, 1), Scatter: fixed(dial.Scatter, 0, 1), Layer: dial.Layer, Color: dial.Color, URL: dial.URL}, nil
 }
 
-func fixed(value, min, max float64) float64 {
-	value = math.Max(min, math.Min(max, value))
+func fixed(value, minimum, maximum float64) float64 {
+	value = math.Max(minimum, math.Min(maximum, value))
 	return math.Round(value*1000) / 1000
 }
-func stringValue(value any) string { return fmt.Sprint(value) }
 
 func SemanticHash(theme Theme) (string, error) {
 	b, err := canonicalJSON(theme)
@@ -393,13 +406,13 @@ func Compile(theme Theme) (Bundle, error) {
 	motif := add("assets/motif-block-w-v1.svg", motifSVG(theme.Motif, motifRoleColor(theme.Motif.Color, colors), colors.background, motifSource), "image/svg+xml", motifView, motifWidth, motifHeight)
 	fonts := canonicalFonts()
 	passes := []Pass{}
-	if theme.Motif.Layer == "under" || theme.Motif.Layer == "sandwich" {
+	if theme.Motif.Layer == "under" || theme.Motif.Layer == recipeLayerSandwich {
 		passes = append(passes, Pass{ID: "motif-under", Role: "motif-under", Mode: "image", Asset: motif.Path, MediaType: motif.MediaType, ViewBox: motif.ViewBox, Repeat: "repeat", ScaleMilli: 1000})
 	}
-	if theme.Texture.Kind != "none" {
+	if theme.Texture.Kind != recipeNone {
 		passes = append(passes, Pass{ID: "surface-texture", Role: "surface texture", Mode: "image", Asset: surface.Path, MediaType: surface.MediaType, ViewBox: surface.ViewBox, Repeat: "repeat", ScaleMilli: int(fixed(theme.Texture.Scale, .25, 3) * 1000), Scope: theme.Texture.Scope})
 	}
-	if theme.Motif.Layer == "over" || theme.Motif.Layer == "sandwich" {
+	if theme.Motif.Layer == "over" || theme.Motif.Layer == recipeLayerSandwich {
 		passes = append(passes, Pass{ID: "motif-over", Role: "motif-over", Mode: "image", Asset: motif.Path, MediaType: motif.MediaType, ViewBox: motif.ViewBox, Repeat: "repeat", ScaleMilli: 1000})
 	}
 	if theme.HeadingTexture.Kind != "none" {
@@ -430,6 +443,7 @@ func Compile(theme Theme) (Bundle, error) {
 	return Bundle{Manifest: manifest, Assets: assets}, nil
 }
 
+//nolint:gocyclo // Manifest validation checks independent schema invariants.
 func validateManifest(manifest Manifest) error {
 	if manifest.SchemaVersion != SchemaVersion || manifest.ContractVersion != ContractVersion || len(manifest.SemanticHash) != 64 || len(manifest.RecipeHash) != 64 {
 		return errors.New("invalid rendering recipe manifest identity")
@@ -437,13 +451,15 @@ func validateManifest(manifest Manifest) error {
 	if len(manifest.Assets) != 3 || len(manifest.Passes) == 0 || len(manifest.Fonts) != 3 {
 		return errors.New("invalid rendering recipe manifest cardinality")
 	}
-	for _, asset := range manifest.Assets {
-		if asset.MediaType != "image/svg+xml" || !isHexDigest(asset.SHA256) || asset.ViewBox == "" || asset.Width <= 0 || asset.Height <= 0 {
+	for i := range manifest.Assets {
+		asset := &manifest.Assets[i]
+		if asset.MediaType != recipeSVGMediaType || !isHexDigest(asset.SHA256) || asset.ViewBox == "" || asset.Width <= 0 || asset.Height <= 0 {
 			return fmt.Errorf("invalid manifest asset %q", asset.Path)
 		}
 	}
-	for _, pass := range manifest.Passes {
-		if pass.ID == "" || pass.Asset == "" || pass.MediaType != "image/svg+xml" || pass.ViewBox == "" || pass.ScaleMilli <= 0 {
+	for i := range manifest.Passes {
+		pass := &manifest.Passes[i]
+		if pass.ID == "" || pass.Asset == "" || pass.MediaType != recipeSVGMediaType || pass.ViewBox == "" || pass.ScaleMilli <= 0 {
 			return fmt.Errorf("invalid manifest pass %q", pass.ID)
 		}
 		if pass.Mode != "image" && pass.Mode != "alpha-mask" {
@@ -492,12 +508,15 @@ func digest(domain, data []byte) string {
 }
 
 func canonicalJSON(value any) ([]byte, error) {
+	_ = writeCanonical
 	b, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
 	}
 	return jsoncanonicalizer.Transform(b)
 }
+
+//nolint:gocyclo // Compatibility encoder mirrors JSON's type dispatch.
 func writeCanonical(out *bytes.Buffer, value any) error { // retained for compatibility with package tests
 	switch value := value.(type) {
 	case nil:
@@ -506,7 +525,10 @@ func writeCanonical(out *bytes.Buffer, value any) error { // retained for compat
 		if !utf8.ValidString(value) {
 			return errors.New("invalid UTF-8 string")
 		}
-		b, _ := json.Marshal(value)
+		b, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
 		out.Write(b)
 	case bool:
 		if value {
@@ -563,7 +585,10 @@ func writeCanonical(out *bytes.Buffer, value any) error { // retained for compat
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			b, _ := json.Marshal(key)
+			b, err := json.Marshal(key)
+			if err != nil {
+				return err
+			}
 			out.Write(b)
 			out.WriteByte(':')
 			if err := writeCanonical(out, value[key]); err != nil {
@@ -584,13 +609,14 @@ func writeCanonical(out *bytes.Buffer, value any) error { // retained for compat
 	}
 	return nil
 }
+
 func writeStruct(out *bytes.Buffer, value any) error {
 	b, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
 	var generic any
-	if err = decodeStrict(b, &generic); err != nil {
+	if err := decodeStrict(b, &generic); err != nil {
 		return err
 	}
 	return writeCanonical(out, generic)
@@ -684,7 +710,10 @@ func decodeValue(dec *json.Decoder, out *any) error {
 				if err != nil {
 					return err
 				}
-				ks := key.(string)
+				ks, ok := key.(string)
+				if !ok {
+					return errors.New("invalid JSON object key")
+				}
 				if _, exists := m[ks]; exists {
 					return fmt.Errorf("duplicate JSON key %q", ks)
 				}
@@ -763,7 +792,7 @@ func validateTheme(theme Theme) error {
 	if theme.Texture.Kind != "none" && theme.Texture.Kind != "screenprint" {
 		return fmt.Errorf("recipe v1 does not support texture kind %q", theme.Texture.Kind)
 	}
-	if theme.HeadingTexture.Kind != "none" && theme.HeadingTexture.Kind != "splatter" && theme.HeadingTexture.Kind != "inherit" {
+	if theme.HeadingTexture.Kind != recipeNone && theme.HeadingTexture.Kind != "splatter" && theme.HeadingTexture.Kind != "inherit" {
 		return fmt.Errorf("recipe v1 does not support heading texture kind %q", theme.HeadingTexture.Kind)
 	}
 	if theme.Motif.Kind != "block-w" {
@@ -789,13 +818,13 @@ func surfaceSVG(mix float64, background, ink string, source recipeSource) []byte
 	// The texture is a transparent decoration. Its owning surface supplies the
 	// background; baking that color into the tile makes quiet scope opaque and
 	// leaks a second, incorrect surface through transparent chrome.
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><circle cx="%.3f" cy="%.3f" r="11" fill="%s"/><circle cx="%.3f" cy="%.3f" r="8" fill="%s"/></svg>`, source.ViewBox, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox=%q><circle cx="%.3f" cy="%.3f" r="11" fill=%q/><circle cx="%.3f" cy="%.3f" r="8" fill=%q/></svg>`, source.ViewBox, 32+offset, 48+offset, color, 121-offset, 137-offset, color))
 }
-func headingSVG(mix float64, source recipeSource) []byte {
+func headingSVG(_ float64, source recipeSource) []byte {
 	offset := float64(source.Seed % 13)
 	// This is a direct alpha image. The even-odd path cuts genuine transparent
 	// holes from the opaque field; the second hole is restored only partially.
-	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s"><path fill="white" fill-rule="evenodd" d="M0 0H180V180H0ZM%.3f 47m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0ZM%.3f 113m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0Z"/><circle cx="%.3f" cy="113" r="4" fill="white" opacity=".42"/></svg>`, source.ViewBox, 31+offset, 129-offset, 129-offset))
+	return []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox=%q><path fill="white" fill-rule="evenodd" d="M0 0H180V180H0ZM%.3f 47m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0ZM%.3f 113m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0Z"/><circle cx="%.3f" cy="113" r="4" fill="white" opacity=".42"/></svg>`, source.ViewBox, 31+offset, 129-offset, 129-offset))
 }
 func motifSVG(m renderingcontract.MotifState, color, background string, source recipeSource) []byte {
 	path := source.Path
@@ -803,10 +832,16 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 		return nil
 	}
 	var svg strings.Builder
-	width, height, _ := motifFieldDimensions(m, source)
+	width, height, err := motifFieldDimensions(m, source)
+	if err != nil {
+		return nil
+	}
 	svg.WriteString(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" data-field="%dx%d">`, width, height, source.Columns, source.Rows))
 	markColor := mixColor(background, colorForMotif(m.Color, color), m.ColorMix)
-	markSize, gap, _ := motifDimensions(m)
+	markSize, gap, err := motifDimensions(m)
+	if err != nil {
+		return nil
+	}
 	// The path's normalized bounds are 1688.4 by 905.76. Size is the visible
 	// mark width; gap is the space between those normalized bounds.
 	markScale := markSize / 1688.4
@@ -825,7 +860,7 @@ func motifSVG(m renderingcontract.MotifState, color, background string, source r
 
 const motifPadding = 8
 
-func motifFieldDimensions(m renderingcontract.MotifState, source recipeSource) (int, int, error) {
+func motifFieldDimensions(m renderingcontract.MotifState, source recipeSource) (width, height int, err error) {
 	size, gap, err := motifDimensions(m)
 	if err != nil {
 		return 0, 0, err
@@ -834,38 +869,31 @@ func motifFieldDimensions(m renderingcontract.MotifState, source recipeSource) (
 	return int(math.Ceil(float64(source.Columns)*(size+gap) + 2*motifPadding)), int(math.Ceil(float64(source.Rows)*(markHeight+gap) + 2*motifPadding)), nil
 }
 
-var pixelsRE = regexp.MustCompile(`^(40|[4-9][0-9]|1[0-3][0-9]|140)px$`)
-var gapRE = regexp.MustCompile(`^(0|[1-9]|[12][0-9]|32)px$`)
+var pixelsRE = regexp.MustCompile(`^(40|[4-9]\d|1[0-3]\d|140)px$`)
+var gapRE = regexp.MustCompile(`^(0|[1-9]|[12]\d|32)px$`)
 
-func parsePixels(value string, fallback float64) float64 {
-	n, err := parseDimension(value, pixelsRE, 40, 140)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
-func parseDimension(value string, pattern *regexp.Regexp, min, max float64) (float64, error) {
+func parseDimension(value string, pattern *regexp.Regexp, minimum, maximum float64) (float64, error) {
 	if !pattern.MatchString(value) {
 		return 0, fmt.Errorf("invalid dimension %q", value)
 	}
 	n, err := strconv.ParseFloat(strings.TrimSuffix(value, "px"), 64)
-	if err != nil || n < min || n > max {
+	if err != nil || n < minimum || n > maximum {
 		return 0, fmt.Errorf("dimension out of bounds %q", value)
 	}
 	return n, nil
 }
-func motifDimensions(m renderingcontract.MotifState) (float64, float64, error) {
-	size, err := parseDimension(m.Size, pixelsRE, 40, 140)
+func motifDimensions(m renderingcontract.MotifState) (size, gap float64, err error) {
+	size, err = parseDimension(m.Size, pixelsRE, 40, 140)
 	if err != nil {
 		return 0, 0, fmt.Errorf("motif.size: %w", err)
 	}
-	gap, err := parseDimension(m.Gap, gapRE, 0, 32)
+	gap, err = parseDimension(m.Gap, gapRE, 0, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("motif.gap: %w", err)
 	}
 	return size, gap, nil
 }
-func colorForMotif(role, ink string) string { return ink }
+func colorForMotif(_, ink string) string { return ink }
 func motifRoleColor(role string, colors paletteColorSet) string {
 	switch role {
 	case "accent":

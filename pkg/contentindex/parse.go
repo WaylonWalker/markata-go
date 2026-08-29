@@ -39,6 +39,8 @@ func Parse(data []byte) (Index, error) {
 	switch version {
 	case 1:
 		return decodeV1(data)
+	case 2:
+		return decodeV2(data)
 	default:
 		return Index{}, fmt.Errorf("%w %d (latest supported: %d)", ErrUnsupportedVersion, version, CurrentVersion)
 	}
@@ -113,10 +115,18 @@ func Marshal(index Index) ([]byte, error) {
 	if index.Schema != "" && index.Schema != Schema {
 		return nil, fmt.Errorf("%w %q", ErrUnsupportedSchema, index.Schema)
 	}
-	if index.SchemaVersion != 0 && index.SchemaVersion != CurrentVersion {
-		return nil, fmt.Errorf("%w %d", ErrUnsupportedVersion, index.SchemaVersion)
+	version := index.SchemaVersion
+	if version == 0 {
+		version = CurrentVersion
 	}
-	return encodeV1(index)
+	switch version {
+	case 1:
+		return encodeV1(index)
+	case 2:
+		return encodeV2(index)
+	default:
+		return nil, fmt.Errorf("%w %d", ErrUnsupportedVersion, version)
+	}
 }
 
 // ValidJSON reports whether data is a valid supported Content Index artifact.

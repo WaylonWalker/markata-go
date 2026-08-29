@@ -26,6 +26,21 @@ import (
 // with the aesthetic's CSS custom properties.
 type AestheticCSSPlugin struct{}
 
+const (
+	renderingMotifOff           = "off"
+	renderingMotifBlockW        = "block-w"
+	renderingLayerUnder         = "under"
+	renderingLayerOver          = "over"
+	renderingLayerSandwich      = "sandwich"
+	renderingFontpackBrush      = "brush"
+	renderingTextureNone        = "none"
+	renderingTextureScreenprint = "screenprint"
+	renderingHeadingSplatter    = "splatter"
+	renderingScopeAll           = "all"
+	renderingHeadingInherit     = "inherit"
+	renderingMotifLetter        = "letter"
+)
+
 // NewAestheticCSSPlugin creates a new AestheticCSSPlugin.
 func NewAestheticCSSPlugin() *AestheticCSSPlugin {
 	return &AestheticCSSPlugin{}
@@ -114,7 +129,8 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 			if err := os.MkdirAll(filepath.Dir(assetPath), 0o755); err != nil {
 				return fmt.Errorf("creating compiled asset directory: %w", err)
 			}
-			if err := os.WriteFile(assetPath, data, 0o600); err != nil {
+			//nolint:gosec // Generated static assets must be readable by the web server.
+			if err := os.WriteFile(assetPath, data, 0o644); err != nil {
 				return fmt.Errorf("writing compiled asset: %w", err)
 			}
 		}
@@ -128,14 +144,16 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	if err := os.MkdirAll(cssDir, 0o755); err != nil {
 		return fmt.Errorf("creating css directory: %w", err)
 	}
-	if err := os.WriteFile(cssPath, []byte(css), 0o600); err != nil {
+	//nolint:gosec // Generated CSS must be readable by the web server.
+	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing aesthetic CSS: %w", err)
 	}
 
 	if hash := m.GetAssetHash("css/aesthetic.css"); hash != "" {
 		base := strings.TrimSuffix(filepath.Base(cssPath), filepath.Ext(cssPath))
 		hashedPath := filepath.Join(cssDir, fmt.Sprintf("%s.%s.css", base, hash))
-		if err := os.WriteFile(hashedPath, []byte(css), 0o600); err != nil {
+		//nolint:gosec // Generated CSS must be readable by the web server.
+		if err := os.WriteFile(hashedPath, []byte(css), 0o644); err != nil {
 			return fmt.Errorf("writing hashed aesthetic CSS: %w", err)
 		}
 	}
@@ -147,7 +165,10 @@ func (p *AestheticCSSPlugin) generatePresentationCSS(config *lifecycle.Config) s
 	body := p.generatePresentationCSSBody(config)
 	if config != nil {
 		if configured, ok := config.Extra["models_config"].(*models.Config); ok && configured.Theme.Motif.URL != "" {
-			contract, _ := renderingcontract.Load()
+			contract, err := renderingcontract.Load()
+			if err != nil {
+				return body
+			}
 			if !validMotifURL(contract, configured.Theme.Motif.URL) || strings.ContainsAny(configured.Theme.Motif.URL, "\"'()\n\r\t") {
 				body = strings.ReplaceAll(body, configured.Theme.Motif.URL, "")
 			}
@@ -193,6 +214,7 @@ func unquoteCSSLengthProperty(css, property string) string {
 	return css[:start] + property + ": " + css[valueStart:end] + css[end+1:]
 }
 
+//nolint:gocyclo // CSS projection keeps independent legacy and canonical paths together.
 func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Config) string {
 	if config == nil {
 		return ""
@@ -201,10 +223,13 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	if configured, ok := config.Extra["models_config"].(*models.Config); ok {
 		theme = configured.Theme
 	}
-	contract, _ := renderingcontract.Load()
+	contract, err := renderingcontract.Load()
+	if err != nil {
+		return ""
+	}
 	textureKind := theme.Texture.Kind
 	headingTextureKind := theme.HeadingTexture.Kind
-	if headingTextureKind == "inherit" {
+	if headingTextureKind == renderingHeadingInherit {
 		headingTextureKind = textureKind
 	}
 	// quiet keeps the texture on framing surfaces. The CSS projection below
@@ -216,10 +241,11 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	// text (the texture is background-equivalent); increasing the dial enables
 	// the same glyph-scoped mask used by the browser consumers.
 	headingColor := "var(--color-text, #222)"
-	textureImage := "none"
-	headingImage := "none"
+	textureImage := renderingTextureNone
+	headingImage := renderingTextureNone
 	if bundle, err := compileMotifBundle(config); err == nil {
-		for _, pass := range bundle.Manifest.Passes {
+		for i := range bundle.Manifest.Passes {
+			pass := &bundle.Manifest.Passes[i]
 			switch pass.ID {
 			case "surface-texture":
 				textureImage = `url("/` + pass.Asset + `")`
@@ -236,7 +262,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 				// the static endpoint builds materially distinct without changing
 				// glyph geometry or using span opacity.
 				if headingMix <= 0 {
-					headingImage = "none"
+					headingImage = renderingTextureNone
 				} else {
 					coverage := math.Max(0.25, 1-(headingMix*.75))
 					headingImage = fmt.Sprintf("linear-gradient(rgba(0,0,0,%.3f),rgba(0,0,0,%.3f)), %s", coverage, coverage, headingImage)
@@ -246,13 +272,13 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	} else {
 		log.Printf("[aesthetic_css] compiled texture/heading assets unavailable: %v", err)
 	}
-	motifImage := "none"
-	motifMask := "none"
-	motifPaint := "none"
-	if theme.Motif.Kind != "off" {
+	motifImage := renderingTextureNone
+	motifMask := renderingTextureNone
+	motifPaint := renderingTextureNone
+	if theme.Motif.Kind != renderingMotifOff {
 		motifColor := resolveMotifPaint(contract, theme, motifMix)
 		motifPaint = motifColor
-		if theme.Motif.Kind != "block-w" {
+		if theme.Motif.Kind != renderingMotifBlockW {
 			motifImage = motifImageFor(theme.Motif.Kind, motifColor, theme.Motif.Glyph)
 		}
 	}
@@ -282,7 +308,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 		log.Printf("[aesthetic_css] invalid-or-unsafe-custom-url: motif URL ignored")
 	}
 	textureOpacity := 1.0
-	if textureImage == "none" || textureMix == 0 {
+	if textureImage == renderingTextureNone || textureMix == 0 {
 		textureOpacity = 0
 	}
 	motifZ := motifLayerZ(theme.Motif.Layer)
@@ -298,12 +324,12 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 			}
 		}
 	}
-	underImage := "none"
-	if theme.Motif.Layer == "under" || theme.Motif.Layer == "sandwich" {
+	underImage := renderingTextureNone
+	if theme.Motif.Layer == renderingLayerUnder || theme.Motif.Layer == renderingLayerSandwich {
 		underImage = motifImage
 	}
-	overImage := "none"
-	if theme.Motif.Layer == "over" || theme.Motif.Layer == "sandwich" {
+	overImage := renderingTextureNone
+	if theme.Motif.Layer == renderingLayerOver || theme.Motif.Layer == renderingLayerSandwich {
 		overImage = motifImage
 	}
 	for name, value := range theme.Variables {
@@ -329,25 +355,25 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	theme := configured.Theme
 	// Recipe v1 is the canonical brush projection. Existing bundled fontpacks
 	// keep their legacy CSS projection until their recipes are compiled.
-	if theme.Fontpack != "" && theme.Fontpack != "brush" {
+	if theme.Fontpack != "" && theme.Fontpack != renderingFontpackBrush {
 		return renderingrecipe.Bundle{}, nil
 	}
 	if theme.Fontpack == "" {
-		theme.Fontpack = "brush"
+		theme.Fontpack = renderingFontpackBrush
 	}
 	// An omitted texture is the canonical no-op. Keep the other supported
 	// projections compilable: the heading wear and motif passes are independent
 	// of the surface texture pass.
 	if strings.TrimSpace(theme.Texture.Kind) == "" {
-		theme.Texture.Kind = "none"
+		theme.Texture.Kind = renderingTextureNone
 	}
 	if strings.TrimSpace(theme.Texture.Scope) == "" {
-		theme.Texture.Scope = "all"
+		theme.Texture.Scope = renderingScopeAll
 	}
-	if theme.HeadingTexture.Kind == "inherit" {
-		theme.HeadingTexture.Kind = "splatter"
+	if theme.HeadingTexture.Kind == renderingHeadingInherit {
+		theme.HeadingTexture.Kind = renderingHeadingSplatter
 	}
-	if (theme.Texture.Kind != "none" && theme.Texture.Kind != "screenprint") || theme.HeadingTexture.Kind != "splatter" || theme.Motif.Kind != "block-w" {
+	if (theme.Texture.Kind != renderingTextureNone && theme.Texture.Kind != renderingTextureScreenprint) || theme.HeadingTexture.Kind != renderingHeadingSplatter || theme.Motif.Kind != renderingMotifBlockW {
 		return renderingrecipe.Bundle{}, fmt.Errorf("unsupported rendering recipe: texture=%q heading_texture=%q motif=%q", theme.Texture.Kind, theme.HeadingTexture.Kind, theme.Motif.Kind)
 	}
 	if theme.Motif.URL != "" && theme.Motif.URL != "https://waylonwalker.com/w.svg" {
@@ -440,18 +466,19 @@ func validMotifURL(contract renderingcontract.Contract, value string) bool {
 
 func sharedColorMix(role string, mix float64) string {
 	color := "var(--color-text, #222)"
-	if role == "accent" {
+	switch role {
+	case "accent":
 		color = "var(--color-primary, #369)"
-	} else if role == "muted" {
+	case "muted":
 		color = "color-mix(in srgb, var(--color-text, #222) 55%, var(--color-background, #fff))"
-	} else if role == "shadow" {
+	case "shadow":
 		color = "color-mix(in srgb, var(--color-text, #222) 28%, var(--color-background, #fff))"
 	}
 	return fmt.Sprintf("color-mix(in srgb, var(--color-background, #fff) %.1f%%, %s %.1f%%)", (1-mix)*100, color, mix*100)
 }
 
 func motifImageFor(kind, color, glyph string) string {
-	if kind == "letter" {
+	if kind == renderingMotifLetter {
 		if glyph == "" {
 			glyph = "W"
 		}

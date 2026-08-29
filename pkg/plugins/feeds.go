@@ -58,11 +58,14 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 		var filteredPosts []*models.Post
 		if usePresetPosts {
-			filteredPosts = cloneFeedPosts(fc.Posts)
+			// Series feeds may provide an explicit post list. Apply the same
+			// privacy and renderability boundary as filter-based feeds before
+			// limits and pagination are calculated.
+			filteredPosts = filterFeedPagePosts(fc.Posts, fc.IncludesPrivate())
 		} else {
 			// Filter posts
 			var err error
-			filteredPosts, err = filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
+			filteredPosts, err = filterCache.FilterPosts(fc.Filter, fc.IncludesPrivate())
 			if err != nil {
 				return fmt.Errorf("feed %q: %w", fc.Slug, err)
 			}
@@ -114,7 +117,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			Title:          fc.Title,
 			Posts:          filteredPosts,
 			Path:           fc.Slug,
-			IncludePrivate: fc.IncludePrivate || fc.Private,
+			IncludePrivate: fc.IncludesPrivate(),
 			Hidden:         fc.Sidebar != nil && !*fc.Sidebar,
 		}
 

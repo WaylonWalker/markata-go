@@ -109,7 +109,7 @@ func GenerateJSONFeedFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Con
 		Title:          fc.Title,
 		Description:    fc.Description,
 		Posts:          fc.Posts,
-		IncludePrivate: fc.IncludePrivate,
+		IncludePrivate: fc.IncludesPrivate(),
 		Path:           fc.Slug,
 	}
 	return GenerateJSONFeed(feed, config)
@@ -117,6 +117,10 @@ func GenerateJSONFeedFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Con
 
 // postToJSONFeedItem converts a Post to a JSONFeedItem.
 func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
+	post = safeFeedPost(post)
+	if post == nil {
+		return JSONFeedItem{}
+	}
 	// Build permalink
 	permalink := meta.URL + post.Href
 
@@ -140,7 +144,7 @@ func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
 	}
 
 	// Add summary/description
-	if !post.Private && post.Description != nil && *post.Description != "" {
+	if post.Description != nil && *post.Description != "" {
 		item.Summary = *post.Description
 	}
 
@@ -159,7 +163,7 @@ func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
 	}
 
 	// Add image if present in Extra
-	if post.Extra != nil {
+	if !post.Private && post.Extra != nil {
 		if img, ok := post.Extra["image"].(string); ok {
 			item.Image = img
 		}

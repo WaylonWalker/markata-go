@@ -123,6 +123,16 @@ func firstAuthorForPost(post *models.Post, meta siteMetadata) *models.Author {
 	for _, id := range post.GetAuthors() {
 		author, ok := meta.Authors[id]
 		if ok {
+			if post.Private {
+				// Private feed entries may identify the author, but must not
+				// inherit profile URLs, biographies, social links, or avatars
+				// from the site-wide author registry. An explicitly authored
+				// avatar remains available through the safe post projection.
+				author = models.Author{ID: author.ID, Name: author.Name}
+				if avatar, ok := post.Extra["avatar"].(string); ok && strings.TrimSpace(avatar) != "" {
+					author.Avatar = &avatar
+				}
+			}
 			return &author
 		}
 	}

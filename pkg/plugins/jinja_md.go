@@ -162,7 +162,7 @@ func isJinjaEnabled(post *models.Post) bool {
 					return true
 				}
 			case string:
-				if v == "true" || v == "yes" || v == "1" {
+				if v == BoolTrue || v == "yes" || v == "1" {
 					return true
 				}
 			}

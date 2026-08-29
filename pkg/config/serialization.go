@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -13,8 +14,14 @@ func CanonicalJSON(config *models.Config) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	markata, _ := raw["markata-go"].(map[string]any)
-	theme, _ := markata["theme"].(map[string]any)
+	markata, ok := raw["markata-go"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("markata-go config section is missing")
+	}
+	theme, ok := markata["theme"].(map[string]any)
+	if !ok {
+		theme = map[string]any{}
+	}
 	for _, key := range []string{"aesthetic", "palette", "palette_light", "palette_dark", "fontpack", "texture", "texture_strength", "texture_scale", "texture_scope", "heading_texture", "heading_texture_strength", "heading_texture_scale", "motif", "motif_glyph", "motif_size", "motif_gap", "motif_row_offset", "motif_wobble", "motif_scatter", "motif_layer", "motif_color", "motif_color_distance"} {
 		delete(markata, key)
 	}
@@ -22,7 +29,10 @@ func CanonicalJSON(config *models.Config) ([]byte, error) {
 	// elsewhere for historical config compatibility, but zero is a meaningful
 	// contract value for every normalized color_mix/geometry dial.
 	canonical := func(value any) map[string]any {
-		result, _ := value.(map[string]any)
+		result, ok := value.(map[string]any)
+		if !ok {
+			result = nil
+		}
 		if result == nil {
 			result = map[string]any{}
 		}
