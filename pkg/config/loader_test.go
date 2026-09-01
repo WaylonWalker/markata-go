@@ -1055,6 +1055,60 @@ enabled = false
 }
 
 //nolint:gosec // Test file permissions are fine at 0644
+func TestLoadWithMergeOptions_DisablesAmbientSources(t *testing.T) {
+	dir := t.TempDir()
+	basePath := filepath.Join(dir, "base.toml")
+	if err := os.WriteFile(basePath, []byte("[markata-go]\ntitle = \"file-title\"\noutput_dir = \"file-output\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("MARKATA_GO_TITLE=dotenv-title\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	oldTitle, hadTitle := os.LookupEnv("MARKATA_GO_TITLE")
+	if err := os.Unsetenv("MARKATA_GO_TITLE"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if hadTitle {
+			_ = os.Setenv("MARKATA_GO_TITLE", oldTitle)
+		} else {
+			_ = os.Unsetenv("MARKATA_GO_TITLE")
+		}
+	})
+	t.Setenv("MARKATA_GO_OUTPUT_DIR", "ambient-output")
+
+	config, err := LoadWithMergeOptions(LoadOptions{DisableDotEnv: true, DisableEnvOverrides: true}, basePath)
+	if err != nil {
+		t.Fatalf("LoadWithMergeOptions() error = %v", err)
+	}
+	if config.Title != "file-title" || config.OutputDir != "file-output" {
+		t.Fatalf("isolated config = title %q, output %q", config.Title, config.OutputDir)
+	}
+	if _, ok := os.LookupEnv("MARKATA_GO_TITLE"); ok {
+		t.Fatal("isolated load read the .env file into the process environment")
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
+func TestLoadWithMergeOptions_DefaultsPreserveAmbientOverrides(t *testing.T) {
+	dir := t.TempDir()
+	basePath := filepath.Join(dir, "base.toml")
+	if err := os.WriteFile(basePath, []byte("[markata-go]\noutput_dir = \"file-output\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MARKATA_GO_OUTPUT_DIR", "ambient-output")
+
+	config, err := LoadWithMerge(basePath)
+	if err != nil {
+		t.Fatalf("LoadWithMerge() error = %v", err)
+	}
+	if config.OutputDir != "ambient-output" {
+		t.Fatalf("default merge output_dir = %q, want ambient-output", config.OutputDir)
+	}
+}
+
+//nolint:gosec // Test file permissions are fine at 0644
 func TestLoad_WithIncludeRelativePathAndFeedMerge(t *testing.T) {
 	dir := t.TempDir()
 	configDir := filepath.Join(dir, "config", "feeds")

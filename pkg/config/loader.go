@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/runtimeenv"
 )
 
 // Supported config file names in discovery order
@@ -39,7 +40,9 @@ func Load(configPath string) (*models.Config, error) {
 	// Load .env file before anything else so env vars are available
 	// for both config parsing and encryption key lookups.
 	// Errors loading .env are non-fatal (file may not exist).
-	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	if !runtimeenv.DotEnvDisabled() {
+		_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	}
 
 	var config *models.Config
 	var err error
@@ -132,8 +135,26 @@ func LoadWithDefaults() (*models.Config, error) {
 //	// Load with multiple overrides
 //	config, err := LoadWithMerge("markata-go.toml", "fast-markata-go.toml", "debug.toml")
 func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, error) {
+	return LoadWithMergeOptions(LoadOptions{}, basePath, overridePaths...)
+}
+
+// LoadOptions controls optional configuration-loading behavior.
+type LoadOptions struct {
+	// DisableDotEnv prevents loading a .env file before parsing configuration.
+	DisableDotEnv bool
+	// DisableEnvOverrides prevents ambient MARKATA_GO_* variables from changing
+	// the explicitly supplied configuration.
+	DisableEnvOverrides bool
+}
+
+// LoadWithMergeOptions loads and merges configuration with explicit options.
+// Isolated callers can use these options to avoid process-local configuration
+// sources while ordinary callers keep the existing defaults.
+func LoadWithMergeOptions(options LoadOptions, basePath string, overridePaths ...string) (*models.Config, error) {
 	// Load .env file first
-	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	if !options.DisableDotEnv && !runtimeenv.DotEnvDisabled() {
+		_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+	}
 
 	// Load base config (or use empty config if no base path provided)
 	var err error
@@ -175,9 +196,12 @@ func LoadWithMerge(basePath string, overridePaths ...string) (*models.Config, er
 		return nil, fmt.Errorf("failed to decode merged config: %w", err)
 	}
 
-	// Apply environment variable overrides last (highest precedence)
-	if err := ApplyEnvOverrides(baseConfig); err != nil {
-		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
+	// Apply environment variable overrides last (highest precedence), unless
+	// the caller needs a configuration identity independent of ambient state.
+	if !options.DisableEnvOverrides {
+		if err := ApplyEnvOverrides(baseConfig); err != nil {
+			return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
+		}
 	}
 
 	if len(warnings) > 0 {

@@ -1063,6 +1063,57 @@ items_per_page = 15
 	}
 }
 
+func TestParseAssetsConfigAcrossFormats(t *testing.T) {
+	tests := []struct {
+		name  string
+		data  []byte
+		parse func([]byte) (*models.Config, error)
+	}{
+		{
+			name: "TOML",
+			data: []byte(`[markata-go]
+[markata-go.assets]
+mode = "auto"
+cache_dir = "tmp/assets"
+output_dir = "vendor"
+verify_integrity = false
+`),
+			parse: ParseTOML,
+		},
+		{
+			name: "YAML",
+			data: []byte(`markata-go:
+  assets:
+    mode: auto
+    cache_dir: tmp/assets
+    output_dir: vendor
+    verify_integrity: false
+`),
+			parse: ParseYAML,
+		},
+		{
+			name:  "JSON",
+			data:  []byte(`{"markata-go":{"assets":{"mode":"auto","cache_dir":"tmp/assets","output_dir":"vendor","verify_integrity":false}}}`),
+			parse: ParseJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := tt.parse(tt.data)
+			if err != nil {
+				t.Fatalf("parse assets config: %v", err)
+			}
+			if config.Assets.Mode != "auto" || config.Assets.CacheDir != "tmp/assets" || config.Assets.OutputDir != "vendor" {
+				t.Fatalf("assets config = %+v", config.Assets)
+			}
+			if config.Assets.VerifyIntegrity == nil || *config.Assets.VerifyIntegrity {
+				t.Fatalf("assets verify_integrity = %v, want false", config.Assets.VerifyIntegrity)
+			}
+		})
+	}
+}
+
 func TestParseTOML_BlogrollExternalFeedFields(t *testing.T) {
 	maxEntries := 5
 	primary := true
