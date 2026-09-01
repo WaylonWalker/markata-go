@@ -23,6 +23,7 @@ This chart deploys a reusable markata-go notes workload that:
 - If your new namespace does not already have `aws-default`, enable `aws.sealedSecret` and provide sealed credentials in values.
 - By default the chart reuses a shared `markata-go-encryption` Secret name for `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`; override `markataEncryption.secretName` only if your established secret uses a different name.
 - If your notes contain private content, provide that Secret externally in the namespace or enable `markataEncryption.sealedSecret`.
+- The nginx site serves `site.contentIndexPath` with `Access-Control-Allow-Origin: *` by default. Set it to an empty string to disable this rule.
 
 ## Setting up the encryption secret
 

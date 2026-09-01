@@ -102,9 +102,11 @@ spec:
             - --watch={{ ternary "true" "false" .Values.builderAdmin.watch.enabled }}
             - --watch-debounce
             - {{ .Values.builderAdmin.watch.debounce | quote }}
-            - --webhook-enabled={{ ternary "true" "false" .Values.builderAdmin.webhook.enabled }}
+            {{- if .Values.builderAdmin.webhook.enabled }}
+            - --webhook-enabled
             - --webhook-branch
             - {{ .Values.builderAdmin.webhook.branch | quote }}
+            {{- end }}
             - --releases-keep
             - {{ .Values.builderAdmin.releases.keep | quote }}
             - --successful-builds-keep

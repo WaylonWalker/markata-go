@@ -70,6 +70,16 @@ data:
           {{- end }}
         }
 
+        {{- if .Values.site.contentIndexPath }}
+        {{- if not (regexMatch "^/[A-Za-z0-9._/-]+$" .Values.site.contentIndexPath) }}{{ fail "site.contentIndexPath must be an absolute URL path containing only letters, numbers, '.', '_', '-', or '/'" }}{{ end }}
+        # The Content Index is public metadata and has no article bodies.
+        # Allow browser consumers such as Plaindown to read it cross-origin.
+        location = {{ .Values.site.contentIndexPath }} {
+          add_header Access-Control-Allow-Origin "*" always;
+          try_files $uri =404;
+        }
+        {{- end }}
+
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|avif|webp)$ {
           expires 365d;
           add_header Cache-Control "public, immutable";

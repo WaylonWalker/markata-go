@@ -168,6 +168,9 @@ site:
     tag: "1.27.5-alpine"
     pullPolicy: IfNotPresent
   use404Page: false
+  # Public metadata artifact consumed by browser clients from other origins.
+  # Set this to an empty string to disable the exact-location CORS rule.
+  contentIndexPath: /content-index.json
   resources:
     requests:
       cpu: 20m
