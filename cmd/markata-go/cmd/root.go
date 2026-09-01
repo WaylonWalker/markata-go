@@ -88,8 +88,13 @@ Profiling:
 	Version:       Version,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
-		if err := activateSiteDir(); err != nil {
-			return err
+		// Build Lab resolves and binds every child to its copied workspace. Do
+		// not let the caller's site-directory selection change the parent
+		// process's fixture resolution or child command setup.
+		if !isBuildLabCommand(cmd) {
+			if err := activateSiteDir(); err != nil {
+				return err
+			}
 		}
 		if noColor && forceColor {
 			return fmt.Errorf("cannot use --color and --no-color together")
@@ -107,6 +112,7 @@ Profiling:
 			}
 			cpuProfileFile = f
 			if err := pprof.StartCPUProfile(f); err != nil {
+				cpuProfileFile = nil
 				f.Close()
 				return fmt.Errorf("failed to start CPU profile: %w", err)
 			}
@@ -117,12 +123,7 @@ Profiling:
 	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
 		// Stop CPU profiling
-		if cpuProfileFile != nil {
-			pprof.StopCPUProfile()
-			cpuProfileFile.Close()
-			cpuProfileFile = nil
-			verbosef("CPU profile written to %s", cpuProfile)
-		}
+		stopCPUProfile()
 
 		// Write memory profile if requested
 		if memProfile != "" {
@@ -145,7 +146,21 @@ Profiling:
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
+	// Cobra skips post-run hooks when a command returns an error. Keep CPU
+	// profiles valid for failed Build Lab/product runs as well as successful
+	// commands.
+	defer stopCPUProfile()
 	return rootCmd.Execute()
+}
+
+func stopCPUProfile() {
+	if cpuProfileFile == nil {
+		return
+	}
+	pprof.StopCPUProfile()
+	_ = cpuProfileFile.Close()
+	cpuProfileFile = nil
+	verbosef("CPU profile written to %s", cpuProfile)
 }
 
 func init() {
