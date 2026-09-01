@@ -373,6 +373,17 @@ The encrypted content includes:
 
 When the correct password is entered, JavaScript decrypts the content in-browser using the Web Crypto API with matching PBKDF2 parameters. The decrypted HTML replaces the password form.
 
+Encrypted controls do not autofocus when a page loads, so multiple encrypted
+blocks do not move the reader to the last password field. A remembered session
+password can decrypt content automatically without taking focus or changing
+the current scroll position. When a user submits a password, the revealed
+content may receive accessibility focus without moving the viewport.
+
+If decrypted HTML contains another encrypted block, markata-go initializes its
+controls immediately. Canonical wrappers that use the same key keep the
+existing same-key unlock behavior. Feed projections intentionally remove the
+key name, so feed entries remain isolated and require manual decryption.
+
 If "Remember for this session" is checked, the password is stored in sessionStorage (cleared when the browser tab closes). This allows navigating between encrypted posts without re-entering the password for posts using the same key.
 
 Opted-in private feed entries intentionally omit the key name. They can be
