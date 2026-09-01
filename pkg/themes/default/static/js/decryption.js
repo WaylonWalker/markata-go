@@ -139,6 +139,32 @@
     }
   }
 
+  const activeDecryptions = new WeakMap();
+
+  /**
+   * Run one decryption attempt for a container at a time.
+   */
+  function runDecryption(container, encryptedData, password, onResult) {
+    const existing = activeDecryptions.get(container);
+    if (existing) {
+      return existing;
+    }
+
+    const attempt = (async function() {
+      const result = await decrypt(encryptedData, password);
+      onResult(result);
+      return result;
+    })();
+
+    const trackedAttempt = attempt.finally(function() {
+      if (activeDecryptions.get(container) === trackedAttempt) {
+        activeDecryptions.delete(container);
+      }
+    });
+    activeDecryptions.set(container, trackedAttempt);
+    return trackedAttempt;
+  }
+
   /**
    * Generate a storage key for a given encryption key name.
    */
@@ -236,6 +262,11 @@
     let isDecrypting = false;
 
     async function attemptDecryption(passwordOverride, isAutomatic = false) {
+      const existing = activeDecryptions.get(container);
+      if (existing) {
+        return existing;
+      }
+
       if (isDecrypting) return;
 
       const password = passwordOverride || input.value.trim();
@@ -254,41 +285,43 @@
       button.textContent = 'Decrypting...';
       hideError();
 
-      const result = await decrypt(encryptedData, password);
+      try {
+        return await runDecryption(container, encryptedData, password, function(result) {
+          if (result.success) {
+            revealDecryptedContent(container, result.content, !isAutomatic);
 
-      if (result.success) {
-        revealDecryptedContent(container, result.content, !isAutomatic);
+            // Announce success to screen readers
+            announceToScreenReader('Content decrypted successfully');
 
-        // Announce success to screen readers
-        announceToScreenReader('Content decrypted successfully');
+            // Save password if user opted in
+            if (keyName && rememberCheckbox && rememberCheckbox.checked) {
+              savePassword(keyName, password);
+            }
 
-        // Save password if user opted in
-        if (keyName && rememberCheckbox && rememberCheckbox.checked) {
-          savePassword(keyName, password);
-        }
+            // Try to unlock other containers with the same key
+            if (keyName) {
+              unlockOtherContainers(keyName, password, container);
+            }
+          } else {
+            showError(result.errorType);
+            input.disabled = false;
+            button.disabled = false;
+            button.setAttribute('aria-busy', 'false');
+            button.textContent = originalButtonText;
+            if (!isAutomatic) {
+              input.focus();
+              input.select();
+            }
 
-        // Try to unlock other containers with the same key
-        if (keyName) {
-          unlockOtherContainers(keyName, password, container);
-        }
-      } else {
-        showError(result.errorType);
-        input.disabled = false;
-        button.disabled = false;
-        button.setAttribute('aria-busy', 'false');
-        button.textContent = originalButtonText;
-        if (!isAutomatic) {
-          input.focus();
-          input.select();
-        }
-
-        // If using saved password and it failed, clear it
-        if (isAutomatic) {
-          clearSavedPassword(keyName);
-        }
+            // If using saved password and it failed, clear it
+            if (isAutomatic) {
+              clearSavedPassword(keyName);
+            }
+          }
+        });
+      } finally {
+        isDecrypting = false;
       }
-
-      isDecrypting = false;
     }
 
     function showError(errorType) {
@@ -397,9 +430,15 @@
       const decryptedEl = nextContainer.querySelector('.encrypted-content__decrypted');
       if (!encryptedData || !decryptedEl) continue;
 
-      const result = await decrypt(encryptedData, password);
-      if (result.success) {
-        revealDecryptedContent(nextContainer, result.content, false);
+      const existing = activeDecryptions.get(nextContainer);
+      const reveal = function(result) {
+        if (result.success) {
+          revealDecryptedContent(nextContainer, result.content, false);
+        }
+      };
+      let result = await runDecryption(nextContainer, encryptedData, password, reveal);
+      if (existing && !result.success) {
+        result = await runDecryption(nextContainer, encryptedData, password, reveal);
       }
     }
   }
