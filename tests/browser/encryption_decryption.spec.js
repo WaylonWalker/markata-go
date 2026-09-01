@@ -206,3 +206,114 @@ test('same-key encrypted content revealed during decryption unlocks with the out
   await expect(nested.locator('.encrypted-content__decrypted')).toContainText('Same-key nested plaintext')
   await expect(nested.locator('.encrypted-content__locked')).toBeHidden()
 })
+
+test('nested same-key decryption shares a remembered-password attempt', async ({ page }) => {
+  const password = 'shared-password' // pragma: allowlist secret
+  const nestedCiphertext = await encrypt('<p>Shared nested plaintext</p>', password)
+  const outerCiphertext = await encrypt(
+    `<p>Shared outer plaintext</p>${encryptedBlock({ id: 'remembered-nested', ciphertext: nestedCiphertext, keyName: 'shared' })}`,
+    password,
+  )
+  const html = testPage(`
+    <div class="spacer"></div>
+    ${encryptedBlock({ id: 'remembered-outer', ciphertext: outerCiphertext, keyName: 'shared' })}
+  `)
+
+  await loadPage(page, html)
+  await initializeDecryption(page)
+  await page.evaluate((savedPassword) => {
+    sessionStorage.setItem('markata_decrypt_shared', savedPassword)
+    const subtle = crypto.subtle
+    const originalDeriveKey = subtle.deriveKey.bind(subtle)
+    window.__deriveKeyCalls = 0
+    Object.defineProperty(subtle, 'deriveKey', {
+      configurable: true,
+      value: (...args) => {
+        window.__deriveKeyCalls += 1
+        return originalDeriveKey(...args)
+      },
+    })
+  }, password)
+
+  const outer = page.locator('[data-test="remembered-outer"]')
+  await outer.locator('.encrypted-content__input').fill(password)
+  await outer.locator('.encrypted-content__button').click()
+
+  const nested = page.locator('[data-test="remembered-nested"]')
+  await expect(nested.locator('.encrypted-content__decrypted')).toContainText('Shared nested plaintext')
+  await expect(nested.locator('.encrypted-content__locked')).toBeHidden()
+  expect(await page.evaluate(() => window.__deriveKeyCalls)).toBe(2)
+})
+
+test('concurrent public decrypt calls reuse the active promise', async ({ page }) => {
+  const password = 'concurrent-password' // pragma: allowlist secret
+  const ciphertext = await encrypt('<p>Concurrent plaintext</p>', password)
+  const html = testPage(encryptedBlock({ id: 'concurrent', ciphertext, keyName: 'concurrent' }))
+
+  await loadPage(page, html)
+  await initializeDecryption(page)
+  await page.evaluate(() => {
+    window.__activePromiseHits = 0
+    const originalGet = WeakMap.prototype.get
+    WeakMap.prototype.get = function(key) {
+      const value = originalGet.call(this, key)
+      if (value) {
+        window.__activePromiseHits += 1
+        window.__reusedPromise = value
+      }
+      return value
+    }
+
+    const subtle = crypto.subtle
+    const originalDeriveKey = subtle.deriveKey.bind(subtle)
+    window.__deriveKeyCalls = 0
+    Object.defineProperty(subtle, 'deriveKey', {
+      configurable: true,
+      value: (...args) => {
+        window.__deriveKeyCalls += 1
+        return new Promise((resolve, reject) => {
+          setTimeout(() => originalDeriveKey(...args).then(resolve, reject), 100)
+        })
+      },
+    })
+  })
+
+  const block = page.locator('[data-test="concurrent"]')
+  await block.locator('.encrypted-content__input').fill(password)
+  const activePromiseHits = await page.evaluate(() => {
+    const button = document.querySelector('[data-test="concurrent"] .encrypted-content__button')
+    const click = () => button.dispatchEvent(new Event('click', { bubbles: true }))
+    // Dispatch directly because the first attempt disables the button.
+    click()
+    click()
+    return window.__activePromiseHits
+  })
+
+  expect(activePromiseHits).toBe(1)
+  await expect(block.locator('.encrypted-content__decrypted')).toContainText('Concurrent plaintext')
+  expect(await page.evaluate(() => window.__deriveKeyCalls)).toBe(1)
+  expect(
+    await page.evaluate(async () => {
+      const result = await window.__reusedPromise
+      return result.success && result.content.includes('Concurrent plaintext')
+    }),
+  ).toBe(true)
+})
+
+test('failed decryption can be retried', async ({ page }) => {
+  const password = 'retry-password' // pragma: allowlist secret
+  const ciphertext = await encrypt('<p>Retry plaintext</p>', password)
+  const html = testPage(encryptedBlock({ id: 'retry', ciphertext, keyName: 'retry' }))
+
+  await loadPage(page, html)
+  await initializeDecryption(page)
+
+  const block = page.locator('[data-test="retry"]')
+  await block.locator('.encrypted-content__input').fill('wrong-password') // pragma: allowlist secret
+  await block.locator('.encrypted-content__button').click()
+  await expect(block.locator('.encrypted-content__error')).toContainText('Incorrect password')
+
+  await block.locator('.encrypted-content__input').fill(password)
+  await block.locator('.encrypted-content__button').click()
+  await expect(block.locator('.encrypted-content__decrypted')).toContainText('Retry plaintext')
+})
