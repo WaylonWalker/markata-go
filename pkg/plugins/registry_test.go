@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestDefaultPlugins_HaveUniqueNames(t *testing.T) {
@@ -54,6 +55,39 @@ func TestDefaultPlugins_MultiStageCoverage(t *testing.T) {
 	assertPluginPriority(t, blogroll, lifecycle.StageConfigure, lifecycle.PriorityDefault)
 	assertPluginPriority(t, blogroll, lifecycle.StageCollect, lifecycle.PriorityLate+10)
 	assertPluginPriority(t, blogroll, lifecycle.StageWrite, lifecycle.PriorityLate+20)
+}
+
+func TestDefaultPlugins_StatsLifecycleExecution(t *testing.T) {
+	defaults := lifecycle.NewManager()
+	defaults.RegisterPlugins(DefaultPlugins()...)
+	stats, ok := defaultPluginByName(t, defaults, "stats").(*StatsPlugin)
+	if !ok {
+		t.Fatal("stats default registration is not a *StatsPlugin")
+	}
+
+	manager := lifecycle.NewManager()
+	manager.Config().Extra["stats"] = map[string]interface{}{"words_per_minute": 1}
+	post := models.NewPost("post.md")
+	post.Content = "one two"
+	manager.SetPosts([]*models.Post{post})
+	manager.SetFeeds([]*lifecycle.Feed{{Name: "posts", Posts: []*models.Post{post}}})
+	manager.RegisterPlugin(stats)
+
+	if err := manager.RunTo(lifecycle.StageCollect); err != nil {
+		t.Fatalf("RunTo(collect) error = %v", err)
+	}
+	if got := post.Get("word_count"); got != 2 {
+		t.Errorf("word_count = %v, want 2", got)
+	}
+	if got := post.Get("reading_time"); got != 2 {
+		t.Errorf("reading_time = %v, want 2 after Configure", got)
+	}
+	if _, ok := manager.Cache().Get("feed_stats.posts"); !ok {
+		t.Error("Collect did not store feed stats")
+	}
+	if _, ok := manager.Cache().Get("site_stats"); !ok {
+		t.Error("Collect did not store site stats")
+	}
 }
 
 func defaultPluginByName(t *testing.T, manager *lifecycle.Manager, name string) lifecycle.Plugin {
