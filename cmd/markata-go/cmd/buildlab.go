@@ -238,6 +238,10 @@ func absoluteBuildLabFixture(value string) (string, error) {
 }
 
 func buildLabRelativePath(root, value string) (string, error) {
+	root, err := canonicalBuildLabPath(root)
+	if err != nil {
+		return "", err
+	}
 	if value == "" {
 		return "", fmt.Errorf("path is empty")
 	}
@@ -245,7 +249,7 @@ func buildLabRelativePath(root, value string) (string, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
 	}
-	path, err := filepath.Abs(path)
+	path, err = canonicalBuildLabPath(path)
 	if err != nil {
 		return "", err
 	}
@@ -260,6 +264,11 @@ func buildLabRelativePath(root, value string) (string, error) {
 }
 
 func verifyBuildLabPath(root, path string) error {
+	resolvedRoot, err := canonicalBuildLabPath(root)
+	if err != nil {
+		return err
+	}
+	root = resolvedRoot
 	for current := path; ; current = filepath.Dir(current) {
 		resolved, err := filepath.EvalSymlinks(current)
 		if err == nil {
@@ -271,12 +280,54 @@ func verifyBuildLabPath(root, path string) error {
 		if !os.IsNotExist(err) {
 			return err
 		}
+		if info, statErr := os.Lstat(current); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("path %q contains unresolved symlink %q", path, current)
+		} else if statErr != nil && !os.IsNotExist(statErr) {
+			return statErr
+		}
 		parent := filepath.Dir(current)
 		if parent == current {
 			return nil
 		}
 	}
 }
+
+// canonicalBuildLabPath resolves the existing portion of path before
+// appending any missing components. This keeps containment checks correct
+// when a platform exposes the same directory through multiple path spellings,
+// such as /var and /private/var on macOS or short and long paths on Windows.
+func canonicalBuildLabPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	missing := make([]string, 0)
+	current := abs
+	for {
+		resolved, evalErr := filepath.EvalSymlinks(current)
+		if evalErr == nil {
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return filepath.Clean(resolved), nil
+		}
+		if !os.IsNotExist(evalErr) {
+			return "", evalErr
+		}
+		if info, statErr := os.Lstat(current); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("path contains unresolved symlink %q", current)
+		} else if statErr != nil && !os.IsNotExist(statErr) {
+			return "", statErr
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return abs, nil
+		}
+		missing = append(missing, filepath.Base(current))
+		current = parent
+	}
+}
+
 func buildLabPathWithin(root, path string) bool {
 	rel, err := filepath.Rel(root, path)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))

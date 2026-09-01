@@ -38,6 +38,50 @@ func TestParseBuildLabVolatileNormalizesPlatformSeparators(t *testing.T) {
 	}
 }
 
+func TestBuildLabRelativePathAcceptsAliasedAbsolutePath(t *testing.T) {
+	actualParent := t.TempDir()
+	fixture := filepath.Join(actualParent, "fixture")
+	if err := os.MkdirAll(fixture, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	aliasParent := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(actualParent, aliasParent); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	aliasedFixture := filepath.Join(aliasParent, "fixture")
+	configPath := filepath.Join(fixture, "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte("[markata-go]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := buildLabRelativePath(aliasedFixture, filepath.Join(aliasParent, "fixture", "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "markata-go.toml" {
+		t.Fatalf("relative path = %q, want markata-go.toml", got)
+	}
+	got, err = buildLabRelativePath(aliasedFixture, filepath.Join(aliasParent, "fixture", "output"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "output" {
+		t.Fatalf("relative missing path = %q, want output", got)
+	}
+}
+
+func TestBuildLabRelativePathRejectsDanglingSymlink(t *testing.T) {
+	fixture := t.TempDir()
+	dangling := filepath.Join(fixture, "link")
+	if err := os.Symlink(filepath.Join(t.TempDir(), "missing"), dangling); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	_, err := buildLabRelativePath(fixture, filepath.Join(dangling, "output"))
+	if err == nil || !strings.Contains(err.Error(), "unresolved symlink") {
+		t.Fatalf("dangling symlink path was accepted: %v", err)
+	}
+}
+
 func TestResolveBuildLabConfigUsesFixtureRelativeOutputAndRejectsEscape(t *testing.T) {
 	fixture := t.TempDir()
 	base := filepath.Join(fixture, "markata-go.toml")

@@ -285,7 +285,7 @@ func shouldExcludeFixturePath(path string, excluded []string) bool {
 }
 
 func validateFixtureSymlink(root, path, target string) error {
-	root, err := filepath.Abs(root)
+	root, err := canonicalFixturePath(root)
 	if err != nil {
 		return err
 	}
@@ -293,10 +293,9 @@ func validateFixtureSymlink(root, path, target string) error {
 	if err != nil {
 		return err
 	}
-	if evaluated, evalErr := filepath.EvalSymlinks(resolved); evalErr == nil {
-		resolved = evaluated
-	} else if !os.IsNotExist(evalErr) {
-		return evalErr
+	resolved, err = canonicalFixturePath(resolved)
+	if err != nil {
+		return err
 	}
 	rel, err := filepath.Rel(root, resolved)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
@@ -309,11 +308,15 @@ func rewriteFixtureSymlink(src, path, dst, relativePath, target string) (string,
 	if !filepath.IsAbs(target) {
 		return target, nil
 	}
-	root, err := filepath.Abs(src)
+	root, err := canonicalFixturePath(src)
 	if err != nil {
 		return "", err
 	}
 	resolved, err := resolveFixtureSymlink(path, target)
+	if err != nil {
+		return "", err
+	}
+	resolved, err = canonicalFixturePath(resolved)
 	if err != nil {
 		return "", err
 	}
@@ -331,4 +334,40 @@ func resolveFixtureSymlink(path, target string) (string, error) {
 		resolved = filepath.Join(filepath.Dir(path), resolved)
 	}
 	return filepath.Abs(resolved)
+}
+
+// canonicalFixturePath resolves the existing portion of path before appending
+// any missing components. This keeps containment checks correct when a
+// platform exposes the same directory through multiple path spellings, such
+// as /var and /private/var on macOS or short and long paths on Windows.
+func canonicalFixturePath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	missing := make([]string, 0)
+	current := abs
+	for {
+		resolved, evalErr := filepath.EvalSymlinks(current)
+		if evalErr == nil {
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return filepath.Clean(resolved), nil
+		}
+		if !os.IsNotExist(evalErr) {
+			return "", evalErr
+		}
+		if info, statErr := os.Lstat(current); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("path contains unresolved symlink %q", current)
+		} else if statErr != nil && !os.IsNotExist(statErr) {
+			return "", statErr
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return abs, nil
+		}
+		missing = append(missing, filepath.Base(current))
+		current = parent
+	}
 }

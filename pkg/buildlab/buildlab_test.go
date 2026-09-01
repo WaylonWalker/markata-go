@@ -361,6 +361,10 @@ func TestCopyFixturePreservesRegularFileModificationTime(t *testing.T) {
 	if err := os.Chtimes(path, want, want); err != nil {
 		t.Fatal(err)
 	}
+	sourceInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := CopyFixture(source, destination); err != nil {
 		t.Fatal(err)
 	}
@@ -368,8 +372,8 @@ func TestCopyFixturePreservesRegularFileModificationTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !info.ModTime().Equal(want) {
-		t.Fatalf("copied modification time = %v, want %v", info.ModTime(), want)
+	if !info.ModTime().Equal(sourceInfo.ModTime()) {
+		t.Fatalf("copied modification time = %v, want source time %v", info.ModTime(), sourceInfo.ModTime())
 	}
 }
 
@@ -595,6 +599,62 @@ func TestCopyFixture_Isolated(t *testing.T) {
 		if err := CopyFixture(src, filepath.Join(t.TempDir(), "copy")); err == nil {
 			t.Fatal("escaping fixture symlink was accepted")
 		}
+	}
+}
+
+func TestCopyFixture_AllowsSymlinkedParentPath(t *testing.T) {
+	if runtime.GOOS == buildLabWindowsOS {
+		t.Skip("symlink creation may require elevated permissions on Windows")
+	}
+	actualParent := t.TempDir()
+	source := filepath.Join(actualParent, "fixture")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "target"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	aliasParent := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(actualParent, aliasParent); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	aliasedSource := filepath.Join(aliasParent, "fixture")
+	if err := os.Symlink(filepath.Join(aliasedSource, "target"), filepath.Join(source, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	destination := filepath.Join(t.TempDir(), "copy")
+	if err := CopyFixture(aliasedSource, destination); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := filepath.EvalSymlinks(filepath.Join(destination, "link"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.EvalSymlinks(filepath.Join(destination, "target"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != want {
+		t.Fatalf("resolved symlink = %q, want %q", resolved, want)
+	}
+}
+
+func TestCopyFixture_RejectsRelativeEscapingSymlink(t *testing.T) {
+	if runtime.GOOS == buildLabWindowsOS {
+		t.Skip("symlink creation may require elevated permissions on Windows")
+	}
+	source := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside")
+	target, err := filepath.Rel(source, outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(source, "escape")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := CopyFixture(source, filepath.Join(t.TempDir(), "copy")); err == nil {
+		t.Fatal("relative escaping fixture symlink was accepted")
 	}
 }
 
