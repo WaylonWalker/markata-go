@@ -174,7 +174,7 @@ func runFontsReport(*cobra.Command, []string) error {
 		}
 	}
 	files, bytes := 0, int64(0)
-	outputDir := "output"
+	outputDir := defaultOutputDir
 	if path, discoverErr := config.Discover(); discoverErr == nil {
 		if cfg, loadErr := config.Load(path); loadErr == nil {
 			outputDir = cfg.OutputDir

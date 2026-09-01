@@ -663,7 +663,7 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 
 func runConfigInitCommand(_ *cobra.Command, args []string) error {
 	// Determine output filename
-	filename := "markata-go.toml"
+	filename := defaultConfigFilename
 	if len(args) > 0 {
 		filename = args[0]
 	}
