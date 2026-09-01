@@ -16,6 +16,8 @@ spec:
       labels:
         service: "{{ .Values.project_identifier }}-notes-site"
         {{- include "markata-notes.labels" . | nindent 8 }}
+      annotations:
+        checksum/nginx-config: {{ include (print $.Template.BasePath "/nginx-config.yaml") . | sha256sum }}
     spec:
       serviceAccountName: "{{ include "markata-notes.serviceAccountName" . }}"
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
