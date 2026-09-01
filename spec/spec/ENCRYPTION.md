@@ -156,6 +156,25 @@ the feed privacy projection removes that attribute. Feed entries can still be
 decrypted manually, but they do not disclose key names or support cross-entry
 unlocking and password storage.
 
+### Client initialization and focus
+
+The browser decryption initializer MUST be idempotent. It MUST initialize
+encrypted wrappers that are inserted into the DOM after an outer wrapper is
+decrypted, without adding duplicate event listeners to wrappers that were
+already initialized.
+
+Initialization on page load, and decryption started from a remembered session
+password, MUST NOT focus a password input or change the reader's scroll
+position. An explicit user submission MAY move focus to the revealed content
+for accessibility, but that focus operation MUST preserve the current scroll
+position.
+
+After decrypted HTML is inserted, same-key unlock MUST inspect the live DOM so
+newly revealed canonical wrappers can participate in the existing multi-post
+unlock behavior. Wrappers projected into feeds intentionally omit
+`data-key-name`; those wrappers remain manual, isolated decryption boundaries
+and MUST NOT gain implicit session storage or cross-entry unlocking.
+
 ### Cross-Plugin Privacy Protection
 
 The following plugins respect `post.Private` to prevent leaking private content through non-article output:

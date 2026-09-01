@@ -199,11 +199,10 @@
   /**
    * Handle decryption for a single encrypted content block.
    */
-  function handleDecryption(container, allContainers) {
+  function handleDecryption(container) {
     if (container.dataset.decryptionInitialized === 'true') {
       return;
     }
-    container.dataset.decryptionInitialized = 'true';
 
     const encryptedData = container.dataset.encrypted;
     // Feed projections remove the page-only key name. Anonymous wrappers can
@@ -231,11 +230,12 @@
       console.error('Encrypted content: missing required elements');
       return;
     }
+    container.dataset.decryptionInitialized = 'true';
 
     // Track decryption state
     let isDecrypting = false;
 
-    async function attemptDecryption(passwordOverride) {
+    async function attemptDecryption(passwordOverride, isAutomatic = false) {
       if (isDecrypting) return;
 
       const password = passwordOverride || input.value.trim();
@@ -257,15 +257,7 @@
       const result = await decrypt(encryptedData, password);
 
       if (result.success) {
-        // Show decrypted content
-        decryptedEl.innerHTML = result.content;
-        decryptedEl.style.display = 'block';
-        lockedEl.style.display = 'none';
-
-        // Update ARIA attributes
-        container.setAttribute('aria-label', 'Decrypted content');
-        decryptedEl.setAttribute('tabindex', '-1');
-        decryptedEl.focus();
+        revealDecryptedContent(container, result.content, !isAutomatic);
 
         // Announce success to screen readers
         announceToScreenReader('Content decrypted successfully');
@@ -277,7 +269,7 @@
 
         // Try to unlock other containers with the same key
         if (keyName) {
-          unlockOtherContainers(keyName, password, container, allContainers);
+          unlockOtherContainers(keyName, password, container);
         }
       } else {
         showError(result.errorType);
@@ -285,11 +277,13 @@
         button.disabled = false;
         button.setAttribute('aria-busy', 'false');
         button.textContent = originalButtonText;
-        input.focus();
-        input.select();
+        if (!isAutomatic) {
+          input.focus();
+          input.select();
+        }
 
         // If using saved password and it failed, clear it
-        if (passwordOverride) {
+        if (isAutomatic) {
           clearSavedPassword(keyName);
         }
       }
@@ -347,55 +341,87 @@
       if (rememberCheckbox) {
         rememberCheckbox.checked = true;
       }
-      attemptDecryption(savedPassword);
-    } else {
-      // Focus the input field
-      input.focus();
+      attemptDecryption(savedPassword, true);
+    }
+  }
+
+  /**
+   * Reveal decrypted content and initialize any encrypted blocks it contains.
+   */
+  function revealDecryptedContent(container, content, focus) {
+    const lockedEl = container.querySelector('.encrypted-content__locked');
+    const decryptedEl = container.querySelector('.encrypted-content__decrypted');
+    if (!lockedEl || !decryptedEl) return;
+
+    decryptedEl.innerHTML = content;
+    decryptedEl.style.display = 'block';
+    lockedEl.style.display = 'none';
+    container.setAttribute('aria-label', 'Decrypted content');
+    decryptedEl.setAttribute('tabindex', '-1');
+
+    // Initialize encrypted blocks revealed by this decryption before moving
+    // focus, so their setup cannot replace the explicit user's focus.
+    init(decryptedEl);
+    if (focus) {
+      decryptedEl.focus({ preventScroll: true });
     }
   }
 
   /**
    * Try to unlock other encrypted content blocks with the same key.
    */
-  async function unlockOtherContainers(keyName, password, currentContainer, allContainers) {
+  async function unlockOtherContainers(keyName, password, currentContainer) {
     if (!keyName) return;
 
-    for (const container of allContainers) {
-      // Skip the container we just unlocked
-      if (container === currentContainer) continue;
+    const processed = new Set([currentContainer]);
+    while (true) {
+      // Query the live DOM for each block. Decrypting one block can reveal
+      // another same-key block that was not present during initial setup.
+      const containers = getEncryptedContainers(document);
+      let nextContainer = null;
+      for (const container of containers) {
+        if (processed.has(container)) continue;
 
-      // Skip already decrypted containers
-      const lockedEl = container.querySelector('.encrypted-content__locked');
-      if (!lockedEl || lockedEl.style.display === 'none') continue;
+        const lockedEl = container.querySelector('.encrypted-content__locked');
+        if (!lockedEl || lockedEl.style.display === 'none') continue;
+        if ((container.dataset.keyName || '') !== keyName) continue;
 
-      // Check if same key
-      const containerKeyName = container.dataset.keyName || '';
-      if (containerKeyName !== keyName) continue;
+        processed.add(container);
+        nextContainer = container;
+        break;
+      }
 
-      // Try to decrypt
-      const encryptedData = container.dataset.encrypted;
-      const decryptedEl = container.querySelector('.encrypted-content__decrypted');
+      if (!nextContainer) return;
 
+      const encryptedData = nextContainer.dataset.encrypted;
+      const decryptedEl = nextContainer.querySelector('.encrypted-content__decrypted');
       if (!encryptedData || !decryptedEl) continue;
 
       const result = await decrypt(encryptedData, password);
       if (result.success) {
-        decryptedEl.innerHTML = result.content;
-        decryptedEl.style.display = 'block';
-        lockedEl.style.display = 'none';
-        container.setAttribute('aria-label', 'Decrypted content');
+        revealDecryptedContent(nextContainer, result.content, false);
       }
     }
+  }
+
+  function getEncryptedContainers(root) {
+    const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+    const containers = [];
+    if (typeof scope.matches === 'function' && scope.matches('.encrypted-content[data-encrypted]')) {
+      containers.push(scope);
+    }
+    containers.push(...scope.querySelectorAll('.encrypted-content[data-encrypted]'));
+    return containers;
   }
 
   /**
    * Initialize all encrypted content blocks on the page.
    */
-  function init() {
+  function init(root) {
     // Check if Web Crypto API is available
     if (!crypto || !crypto.subtle) {
       console.error('Web Crypto API is not available. Content cannot be decrypted.');
-      document.querySelectorAll('.encrypted-content').forEach(function(container) {
+      getEncryptedContainers(root).forEach(function(container) {
         const errorEl = container.querySelector('.encrypted-content__error');
         if (errorEl) {
           errorEl.textContent = ErrorMessages[ErrorType.BROWSER_UNSUPPORTED];
@@ -412,11 +438,12 @@
     }
 
     // Find all encrypted content blocks
-    const allContainers = Array.from(document.querySelectorAll('.encrypted-content[data-encrypted]'));
+    const allContainers = getEncryptedContainers(root);
 
-    // Initialize each one, passing reference to all containers for multi-unlock
+    // Initialize each one. Repeated calls are safe because each container is
+    // marked after its controls have been wired.
     allContainers.forEach(function(container) {
-      handleDecryption(container, allContainers);
+      handleDecryption(container);
     });
   }
 
