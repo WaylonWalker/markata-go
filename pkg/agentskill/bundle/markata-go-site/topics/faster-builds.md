@@ -14,6 +14,7 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - compare warm builds, not just cold builds
 - use `markata-go build --benchmark-json benchmark.json` for structured timing
 - use `markata-go build -v --benchmark-detailed` when you need stage detail
+- use `markata-go buildlab run --fixture <path>` to check clean, incremental, and deterministic build behavior
 - read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
 
 ## What `--fast` Skips

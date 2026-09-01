@@ -1,0 +1,28 @@
+[markata-go]
+title = "Build Lab equivalence fixture"
+description = "A small deterministic site for CLI equivalence checks."
+license = false
+output_dir = "output"
+
+[markata-go.glob]
+patterns = ["content/**/*.md"]
+use_gitignore = false
+
+[markata-go.search]
+enabled = false
+
+[markata-go.blogroll]
+enabled = false
+
+[markata-go.mentions]
+enabled = false
+
+[markata-go.webmention]
+enabled = false
+
+[markata-go.garden]
+enabled = false
+
+[markata-go.tailwind]
+include = false
+build = false

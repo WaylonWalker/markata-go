@@ -16,6 +16,7 @@ Use this topic for everyday site work and safe project inspection.
 - `MARKATA_GO_BLOGROLL_REFRESH_ON_BUILD=false markata-go build` (keep blogroll pages but skip remote refresh during the build)
 - `markata-go build --benchmark-json benchmark.json`
 - `markata-go build -v --benchmark-detailed`
+- `markata-go buildlab run --fixture /path/to/site` (compare clean and incremental builds)
 - `markata-go serve` (dev server with live reload)
 - `markata-go serve --fast`
 - `markata-go serve --incremental` (reuse unchanged posts while retaining normal output processing)
