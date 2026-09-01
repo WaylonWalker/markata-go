@@ -262,12 +262,12 @@
     let isDecrypting = false;
 
     async function attemptDecryption(passwordOverride, isAutomatic = false) {
-      if (isDecrypting) return;
-
       const existing = activeDecryptions.get(container);
       if (existing) {
         return existing;
       }
+
+      if (isDecrypting) return;
 
       const password = passwordOverride || input.value.trim();
       if (!password) {
