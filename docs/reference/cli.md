@@ -375,6 +375,47 @@ markata-go build -c production.toml
 markata-go build --clean -v -o dist
 ```
 
+### buildlab
+
+Compare baseline and candidate builds in isolated workspaces.
+
+#### Usage
+
+```bash
+markata-go buildlab run --fixture PATH [flags]
+```
+
+Build Lab runs ordinary `build` commands. It does not use a task graph or an
+experimental scheduler. Each checkpoint compares clean baseline output with
+clean candidate output, candidate incremental output when available, and a
+second clean candidate build when determinism checks are enabled.
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--fixture` | Site fixture directory | required |
+| `--baseline` | Baseline markata-go binary | current executable |
+| `--candidate` | Candidate markata-go binary | current executable |
+| `--build-config` | Config path relative to the fixture | `markata-go.toml` |
+| `--scenario` | Versioned scenario JSON file | clean/no-op scenario |
+| `--result` | Write the JSON result to this path | none |
+| `--seed` | Scenario seed | `1` |
+| `--timeout` | Per-build timeout | `10m` |
+| `--gomaxprocs` | GOMAXPROCS for child builds | `1` |
+| `--check-determinism` | Compare two clean candidate builds | `true` |
+| `--volatile` | Comma-separated volatile output paths | `.well-known/time` |
+| `--fast` | Add `--fast` to both child builds | `false` |
+| `--tool-version` | External tool metadata, such as `pagefind=1.5.2` | none |
+| `--env` | Allowed entries: `PATH`, `MARKATA_GO_ENCRYPTION_ENABLED`, or `MARKATA_GO_OFFLINE` | none |
+
+Build Lab copies the fixture, redirects cache and temporary paths, disables
+fixture `.env` loading, and pins children to UTC, `C.UTF-8`, and
+`SOURCE_DATE_EPOCH=0`. It rejects paths and environment entries that escape the
+workspace. Setup failures emit a versioned harness result to stdout and a
+concise diagnostic to stderr. See [[build-lab|Build Lab]] for scenario and
+output-class details.
+
 ### builder-admin
 
 Run the long-lived builder admin HTTP service for Kubernetes and authoring workflows.

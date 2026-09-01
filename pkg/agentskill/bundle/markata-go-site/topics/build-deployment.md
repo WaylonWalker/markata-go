@@ -8,6 +8,7 @@ Use this topic when the task involves local preview, CI, publishing, or hosting 
 - `markata-go build` for full output validation
 - `markata-go build --clean` only when you need to rule out stale output
 - `markata-go build -o dist` when CI or previews need an isolated artifact directory
+- `markata-go buildlab run --fixture /path/to/site` when you need clean, incremental, and deterministic build evidence
 
 ## Production Build Basics
 
@@ -24,6 +25,20 @@ markata-go config validate
 markata-go build --clean
 MARKATA_GO_URL=https://example.com markata-go build
 ```
+
+Use Build Lab to compare a baseline and candidate binary without changing the
+ordinary build command:
+
+```bash
+markata-go buildlab run \
+  --fixture /path/to/site \
+  --baseline /tmp/markata-go-baseline \
+  --candidate /tmp/markata-go-candidate
+```
+
+Build Lab runs child builds in isolated workspaces and checks clean output,
+incremental output, and deterministic rebuilds. See the Build Lab guide for
+scenario mutations and output classes.
 
 ## Recommended CI Shape
 
