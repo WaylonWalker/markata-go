@@ -100,6 +100,9 @@ func newWorkspace(fixture, parent string, excluded []string) (Workspace, error) 
 		MarkataCache:    filepath.Join(root, "markata-cache"),
 		IsolationConfig: filepath.Join(root, "buildlab-isolation.json"),
 	}
+	if err := validateFixtureCopyPaths(fixture, w.SiteDir); err != nil {
+		return fail(fmt.Errorf("validate workspace copy paths: %w", err))
+	}
 	if err := copyDir(fixture, w.SiteDir, excluded); err != nil {
 		return fail(fmt.Errorf("copy fixture: %w", err))
 	}

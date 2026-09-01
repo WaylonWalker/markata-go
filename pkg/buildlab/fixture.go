@@ -185,6 +185,9 @@ func CopyFixture(src, dst string) error {
 	if !sourceInfo.IsDir() {
 		return fmt.Errorf("source is not a directory: %q", src)
 	}
+	if err := validateFixtureCopyPaths(src, dst); err != nil {
+		return err
+	}
 	if info, err := os.Lstat(dst); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("destination is a symlink: %q", dst)
@@ -254,6 +257,34 @@ func copyDir(src, dst string, excluded []string) error {
 		}
 		return e
 	})
+}
+
+// validateFixtureCopyPaths rejects source/destination paths that refer to the
+// same tree, including aliases through symlinked parents. Without this check,
+// replacing an existing destination could delete the source, or copying into
+// the source could recursively copy the destination back into itself.
+func validateFixtureCopyPaths(src, dst string) error {
+	canonicalSource, err := canonicalFixturePath(src)
+	if err != nil {
+		return fmt.Errorf("canonicalize fixture source: %w", err)
+	}
+	canonicalDestination, err := canonicalFixturePath(dst)
+	if err != nil {
+		return fmt.Errorf("canonicalize fixture destination: %w", err)
+	}
+	if fixturePathsOverlap(canonicalSource, canonicalDestination) {
+		return fmt.Errorf("fixture source and destination overlap: %q and %q", src, dst)
+	}
+	return nil
+}
+
+func fixturePathsOverlap(first, second string) bool {
+	return fixturePathWithin(first, second) || fixturePathWithin(second, first)
+}
+
+func fixturePathWithin(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func shouldExcludeFixturePath(path string, excluded []string) bool {

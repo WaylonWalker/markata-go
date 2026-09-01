@@ -377,6 +377,50 @@ func TestCopyFixturePreservesRegularFileModificationTime(t *testing.T) {
 	}
 }
 
+func TestCopyFixtureRejectsOverlappingDestination(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "source.md"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, destination := range []string{filepath.Join(source, "nested"), filepath.Dir(source)} {
+		err := CopyFixture(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "overlap") {
+			t.Fatalf("destination %q was accepted: %v", destination, err)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(source, "source.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "source" {
+		t.Fatalf("source changed after rejected copies: %q", data)
+	}
+}
+
+func TestCopyFixtureRejectsAliasedDestination(t *testing.T) {
+	if runtime.GOOS == buildLabWindowsOS {
+		t.Skip("symlink creation may require elevated permissions on Windows")
+	}
+	actualParent := t.TempDir()
+	source := filepath.Join(actualParent, "fixture")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "source.md"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	aliasParent := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(actualParent, aliasParent); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := CopyFixture(source, filepath.Join(aliasParent, "fixture")); err == nil || !strings.Contains(err.Error(), "overlap") {
+		t.Fatalf("aliased destination was accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(source, "source.md")); err != nil {
+		t.Fatalf("source was removed by aliased destination: %v", err)
+	}
+}
+
 func TestWorkspace_IsolationConfigOverridesBuiltInCacheSettings(t *testing.T) {
 	fixture := t.TempDir()
 	basePath := filepath.Join(fixture, "markata-go.json")
@@ -741,6 +785,19 @@ func TestNewWorkspace_ExcludesBuildState(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(w.SiteDir, name)); !os.IsNotExist(err) {
 			t.Fatalf("build state %q was copied: %v", name, err)
 		}
+	}
+}
+
+func TestNewWorkspaceRejectsOverlappingParent(t *testing.T) {
+	fixture := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fixture, "source.md"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewWorkspace(fixture, fixture); err == nil || !strings.Contains(err.Error(), "overlap") {
+		t.Fatalf("overlapping workspace parent was accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "source.md")); err != nil {
+		t.Fatalf("fixture was changed by rejected workspace: %v", err)
 	}
 }
 
