@@ -1566,6 +1566,61 @@ Both `css_minify` and `js_minify` use shared helper functions in `minify_helpers
 
 ---
 
+## Reading-Time Field Ownership
+
+The `reading_time` and `stats` plugins both participate in the Transform stage
+and share one pure word-count, reading-time, and formatted-text calculator.
+They retain separate configuration and lifecycle contracts. `stats` runs at
+`PriorityEarly`; `reading_time` uses the default priority. Early content
+transforms such as `jinja_md` run before `reading_time`, so public reading-time
+fields count expanded content.
+
+### `reading_time`
+
+For each non-skipped post with non-empty content, `reading_time` writes these
+public fields to `Post.Extra`:
+
+- `word_count`
+- `reading_time`
+- `reading_time_text`
+
+The calculator excludes fenced code, inline code, image definitions, URLs, HTML tags, and Markdown formatting characters.
+It counts Unicode letters and digits, uses a default of 200 words per minute, rounds up, and returns zero for zero words.
+The plugin reads its words-per-minute value from `config.Extra["words_per_minute"]`.
+
+### `stats`
+
+During Transform, `stats` calculates and stores an independent `PostStats`
+value with the shared calculator and its Stats configuration. It also writes
+the reading-time fields so the plugin works when used alone. In a normal
+default build, `reading_time` runs later and overwrites only the public
+reading-time fields; it does not change `PostStats`.
+
+`include_code_in_count` applies to Stats' `PostStats` and to Stats feed/site
+aggregates in both standalone and normal default builds. It does not override
+the public fields written by `reading_time`.
+The plugin reads its Stats-specific settings from `config.Extra["stats"]` and
+keeps the top-level words-per-minute fallback.
+When both words-per-minute settings exist, the top-level value takes precedence for backward compatibility.
+
+Stats feed and site aggregates are derived from each post's `PostStats`, not
+from the public fields that `reading_time` may write later.
+
+This contract keeps one reading-time algorithm while preserving standalone use by callers such as list-cache transforms.
+
+---
+
+## Reading-Time Transform Order
+
+The default plugin registry lists `reading_time` before `stats`, but lifecycle
+priority sorting determines the effective Transform order. For these plugins,
+`stats` runs first at `PriorityEarly`, `jinja_md` runs next at
+`PriorityEarly`, and `reading_time` runs later at the default priority. This
+keeps Stats' independent `PostStats` based on pre-Jinja content while public
+ReadingTime fields use expanded content.
+
+---
+
 ## Plugin Load Order
 
 When `hooks = ["default"]`, plugins load in this order:

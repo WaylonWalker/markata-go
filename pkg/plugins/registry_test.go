@@ -38,6 +38,12 @@ func TestDefaultPlugins_MultiStageCoverage(t *testing.T) {
 	}
 	assertPluginPriority(t, stats, lifecycle.StageTransform, lifecycle.PriorityEarly)
 	assertPluginPriority(t, stats, lifecycle.StageCollect, lifecycle.PriorityLate)
+	readingTime := defaultPluginByName(t, manager, "reading_time")
+	if _, ok := readingTime.(lifecycle.PriorityPlugin); ok {
+		t.Error("reading_time should not add lifecycle ordering requirements")
+	}
+	jinja := defaultPluginByName(t, manager, "jinja_md")
+	assertPluginPriority(t, jinja, lifecycle.StageTransform, lifecycle.PriorityEarly)
 
 	blogroll := defaultPluginByName(t, manager, "blogroll")
 	if _, ok := blogroll.(*BlogrollPlugin); !ok {

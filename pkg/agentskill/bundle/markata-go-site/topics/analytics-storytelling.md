@@ -15,6 +15,14 @@ Use this topic when the user wants an `analytics.md` page, a metrics dashboard, 
 
 Prefer content, templates, and built-in stats over custom plugin work.
 
+## Reading-Time Configuration
+
+The `reading_time` plugin reads `words_per_minute` from the top-level
+`[markata-go]` section and excludes fenced and inline code. The `stats` plugin
+keeps its independent metrics in `[markata-go.stats]`; it supports
+`words_per_minute` and `include_code_in_count`. The top-level
+`words_per_minute` value takes precedence for Stats when both values exist.
+
 ## Built-In Data Surfaces
 
 This topic should distinguish between three categories:
@@ -35,7 +43,15 @@ Available on posts after the `stats` plugin runs:
 - `post.Extra.code_blocks`
 - `post.Extra.stats`
 
-These are good for post headers, feed cards, article footers, and "long read" badges.
+`post.Extra.stats` is Stats' authoritative `PostStats` value and supplies
+feed/site aggregates. In the default plugin registry, `reading_time` runs
+later and owns the public `word_count`, `reading_time`, and
+`reading_time_text` fields. It uses the top-level reading-time configuration
+and excludes code. When `stats` runs alone, it also populates those public
+fields from its own configuration.
+
+These fields are good for post headers, feed cards, article footers, and
+"long read" badges.
 
 ### Site-wide stats
 

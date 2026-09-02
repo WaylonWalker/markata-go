@@ -312,19 +312,24 @@ More content here.
 
 **Name:** `reading_time`  
 **Stage:** Transform  
-**Purpose:** Calculates word count and estimated reading time for each post.
+**Purpose:** Calculates the public word count and estimated reading time for each post.
 
 **Configuration (TOML):**
 ```toml
-[markata]
+[markata-go]
 words_per_minute = 200  # Average reading speed (default: 200)
 ```
+
+`reading_time` reads `words_per_minute` from the top-level `markata-go` section.
+`reading_time` always excludes code. It shares its word-count and reading-time
+calculator with the `stats` plugin, but the two plugins keep separate
+configuration contracts.
 
 **Behavior:**
 1. Counts words in content (excludes code blocks, URLs, HTML)
 2. Calculates reading time based on words per minute
 3. Rounds up to nearest minute (minimum 1 minute)
-4. Stores results in post's Extra map
+4. Stores the public results in the post's Extra map
 
 **Post fields added (in `Extra`):**
 | Field | Type | Description |
@@ -355,17 +360,29 @@ include_code_in_count = false  # Include code blocks in word count (default: fal
 track_code_blocks = true    # Count lines of code in code blocks (default: true)
 ```
 
+When both the top-level `words_per_minute` value and the nested Stats value exist, the top-level value takes precedence.
+Stats uses the nested value when the top-level compatibility value is absent.
+
+The `reading_time` and `stats` plugins share one word-count, reading-time,
+and formatted-text calculator. Their configuration remains separate: in a
+normal default build, `stats` calculates and stores its own `PostStats` during
+the early Transform stage, and `reading_time` later writes the public
+`word_count`, `reading_time`, and `reading_time_text` fields.
+
 **Behavior:**
 1. **Transform stage:** Calculates per-post statistics
-   - Word count (excluding code blocks by default)
+   - Calculates Stats' own `PostStats` using the Stats configuration
+   - Writes the same reading-time fields when `stats` runs alone
    - Character count (letters and digits only)
-   - Reading time estimate
-   - Code block count and lines of code
 2. **Collect stage:** Aggregates statistics
-   - Per-feed totals and averages
-   - Site-wide totals and averages
+   - Per-feed totals and averages derived from `PostStats`
+   - Site-wide totals and averages derived from `PostStats`
 
-**Post fields added (in `Extra`):**
+`include_code_in_count` applies to Stats' `PostStats` and its feed/site
+aggregates, including a normal default build. It does not change the public
+fields written by `reading_time`.
+
+**Post fields exposed (in `Extra`):**
 | Field | Type | Description |
 |-------|------|-------------|
 | `word_count` | int | Number of words |

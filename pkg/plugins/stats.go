@@ -3,16 +3,17 @@ package plugins
 
 import (
 	"fmt"
-	"math"
 	"strings"
-	"unicode"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // statsZeroMin is the default text for zero duration.
-const statsZeroMin = "0 min"
+const (
+	statsZeroMin    = "0 min"
+	statsPluginName = "stats"
+)
 
 // StatsPlugin calculates comprehensive content statistics for posts and feeds.
 // It provides word count, reading time, character count, and code block metrics
@@ -105,7 +106,7 @@ type SiteStats struct {
 // NewStatsPlugin creates a new StatsPlugin with default settings.
 func NewStatsPlugin() *StatsPlugin {
 	return &StatsPlugin{
-		wordsPerMinute:     200,
+		wordsPerMinute:     defaultWordsPerMinute,
 		includeCodeInCount: false,
 		trackCodeBlocks:    true,
 	}
@@ -113,7 +114,7 @@ func NewStatsPlugin() *StatsPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *StatsPlugin) Name() string {
-	return "stats"
+	return statsPluginName
 }
 
 // Configure reads configuration options for the plugin.
@@ -124,7 +125,7 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Check for stats plugin config
-	if statsConfig, ok := config.Extra["stats"].(map[string]interface{}); ok {
+	if statsConfig, ok := config.Extra[statsPluginName].(map[string]interface{}); ok {
 		if wpm, ok := statsConfig["words_per_minute"].(int); ok && wpm > 0 {
 			p.wordsPerMinute = wpm
 		}
@@ -153,7 +154,9 @@ func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		stats := p.calculatePostStats(post.Content)
 
-		// Store individual stats in Extra for template access
+		// Stats calculates and stores its own values. ReadingTimePlugin may run
+		// later and overwrite the public reading-time fields without changing the
+		// Stats-specific PostStats value.
 		post.Set("word_count", stats.WordCount)
 		post.Set("char_count", stats.CharCount)
 		post.Set("reading_time", stats.ReadingTime)
@@ -162,7 +165,7 @@ func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
 		post.Set("code_blocks", stats.CodeBlocks)
 
 		// Also store as a stats object
-		post.Set("stats", stats)
+		post.Set(statsPluginName, stats)
 
 		return nil
 	})
@@ -237,37 +240,30 @@ func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 	// Store stats helper object for template function access
 	statsHelper := NewStatsHelper(m)
 	m.Cache().Set("stats_helper", statsHelper)
-	config.Extra["stats"] = statsHelper
+	config.Extra[statsPluginName] = statsHelper
 
 	return nil
 }
 
-// statsMarkdownReplacer is a pre-allocated replacer for stripping markdown formatting.
-// Using a package-level replacer avoids allocation on each call.
-var statsMarkdownReplacer = strings.NewReplacer(
-	"#", " ",
-	"*", " ",
-	"_", " ",
-	"`", " ",
-	">", " ",
-	"-", " ",
-	"[", " ",
-	"]", " ",
-	"(", " ",
-	")", " ",
-)
-
 // calculatePostStats computes all statistics for a post's content.
 // This function is optimized for performance:
-// - Uses pre-compiled regex patterns for complex patterns only
-// - Uses fast string scanning for simpler patterns
-// - Uses a pre-allocated strings.Replacer
+// - Uses the shared normalized metrics for words, characters, and duration
+// - Uses fast string scanning for Stats-specific code metrics
 // - Minimizes string allocations where possible
 func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
-	stats := &PostStats{}
+	metrics := calculateReadingTimeMetrics(content, p.wordsPerMinute, p.includeCodeInCount)
+	stats := &PostStats{
+		WordCount:       metrics.WordCount,
+		CharCount:       metrics.CharCount,
+		ReadingTime:     metrics.ReadingTime,
+		ReadingTimeText: metrics.ReadingTimeText,
+	}
 
-	// Extract code blocks using fast string scanning instead of regex
-	codeBlocks, textWithoutCode := extractCodeBlocks(content)
+	// Keep Stats code metrics on their current-main calculation path. The
+	// track_code_blocks setting is parsed for compatibility, but its calculation
+	// behavior is intentionally outside this reading-time refactor.
+	// Extract code blocks using fast string scanning instead of regex.
+	codeBlocks := extractCodeBlocks(content)
 	stats.CodeBlocks = len(codeBlocks)
 
 	for _, block := range codeBlocks {
@@ -281,73 +277,14 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 		stats.CodeLines += codeLineCount
 	}
 
-	// Prepare text for word counting
-	var text string
-	if !p.includeCodeInCount {
-		// Use pre-extracted text without code blocks
-		text = textWithoutCode
-		// Remove inline code using fast scanner
-		text = removeInlineCode(text)
-	} else {
-		// When including code in count, use original content
-		// but with fence markers removed
-		text = content
-		for _, block := range codeBlocks {
-			lines := strings.Split(block, "\n")
-			if len(lines) > 2 {
-				replacement := strings.Join(lines[1:len(lines)-1], " ")
-				text = strings.Replace(text, block, replacement, 1)
-			} else {
-				text = strings.Replace(text, block, " ", 1)
-			}
-		}
-	}
-
-	// Remove images - use fast scanner
-	text = removeMarkdownImages(text)
-
-	// Remove link URLs but keep link text - use simple string replacement
-	// Look for ]( and remove everything until )
-	text = removeLinkURLs(text)
-
-	// Remove standalone URLs - fast scanner
-	text = removeURLs(text)
-
-	// Remove HTML tags - fast scanner
-	text = removeHTMLTags(text)
-
-	// Remove markdown formatting characters using pre-allocated replacer
-	text = statsMarkdownReplacer.Replace(text)
-
-	// Count words and characters - single pass
-	inWord := false
-	for _, r := range text {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			stats.CharCount++
-			if !inWord {
-				stats.WordCount++
-				inWord = true
-			}
-		} else {
-			inWord = false
-		}
-	}
-
-	// Calculate reading time
-	stats.ReadingTime = p.calculateReadingTime(stats.WordCount)
-	stats.ReadingTimeText = p.formatReadingTime(stats.ReadingTime)
-
 	return stats
 }
 
-// extractCodeBlocks finds all fenced code blocks (``` or ~~~) and returns them
-// along with the text with code blocks removed. This is much faster than regex.
+// extractCodeBlocks finds all fenced code blocks (``` or ~~~). This is much
+// faster than regex and is used for Stats-specific code metrics.
 //
 //nolint:gocyclo // Complexity is acceptable for this performance-critical string parsing
-func extractCodeBlocks(s string) (blocks []string, textWithoutCode string) {
-	var result strings.Builder
-	result.Grow(len(s))
-
+func extractCodeBlocks(s string) (blocks []string) {
 	blocks = make([]string, 0, 4) // Pre-allocate for typical number of code blocks
 
 	i := 0
@@ -357,6 +294,7 @@ func extractCodeBlocks(s string) (blocks []string, textWithoutCode string) {
 			s[i] == '~' && s[i+1] == '~' && s[i+2] == '~') {
 			fenceChar := s[i]
 			fenceStart := i
+			closed := false
 
 			// Find end of opening fence line
 			i += 3
@@ -384,7 +322,7 @@ func extractCodeBlocks(s string) (blocks []string, textWithoutCode string) {
 					// This matches the old regex behavior
 
 					blocks = append(blocks, s[fenceStart:fenceEnd])
-					result.WriteByte(' ') // Replace block with space
+					closed = true
 
 					// Skip past the newline for next iteration
 					if fenceEnd < len(s) && s[fenceEnd] == '\n' {
@@ -395,162 +333,16 @@ func extractCodeBlocks(s string) (blocks []string, textWithoutCode string) {
 				}
 				i++
 			}
-			if i >= len(s) {
-				// Unclosed fence - treat as regular text
-				result.WriteString(s[fenceStart:])
+			if !closed {
+				// Unclosed fence contains no complete code block.
 				break
 			}
 		} else {
-			result.WriteByte(s[i])
 			i++
 		}
 	}
 
-	return blocks, result.String()
-}
-
-// removeInlineCode removes `inline code` from text.
-func removeInlineCode(s string) string {
-	var result strings.Builder
-	result.Grow(len(s))
-
-	i := 0
-	for i < len(s) {
-		if s[i] == '`' {
-			// Found backtick, find closing one
-			j := i + 1
-			for j < len(s) && s[j] != '`' && s[j] != '\n' {
-				j++
-			}
-			if j < len(s) && s[j] == '`' {
-				// Found closing backtick
-				result.WriteByte(' ')
-				i = j + 1
-			} else {
-				// No closing backtick, keep the character
-				result.WriteByte(s[i])
-				i++
-			}
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-	return result.String()
-}
-
-// removeMarkdownImages removes ![alt](url) patterns from text.
-func removeMarkdownImages(s string) string {
-	var result strings.Builder
-	result.Grow(len(s))
-
-	i := 0
-	for i < len(s) {
-		if i+1 < len(s) && s[i] == '!' && s[i+1] == '[' {
-			// Found image start
-			j := i + 2
-			// Find closing ]
-			for j < len(s) && s[j] != ']' {
-				j++
-			}
-			if j < len(s) && j+1 < len(s) && s[j+1] == '(' {
-				// Find closing )
-				k := j + 2
-				for k < len(s) && s[k] != ')' {
-					k++
-				}
-				if k < len(s) {
-					// Complete image found, skip it
-					result.WriteByte(' ')
-					i = k + 1
-					continue
-				}
-			}
-		}
-		result.WriteByte(s[i])
-		i++
-	}
-	return result.String()
-}
-
-// removeURLs removes http:// and https:// URLs from text.
-func removeURLs(s string) string {
-	var result strings.Builder
-	result.Grow(len(s))
-
-	i := 0
-	for i < len(s) {
-		// Check for http:// or https://
-		if i+7 < len(s) && s[i:i+7] == "http://" ||
-			i+8 < len(s) && s[i:i+8] == "https://" {
-			// Skip until whitespace
-			for i < len(s) && !isWhitespace(s[i]) {
-				i++
-			}
-			result.WriteByte(' ')
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-	return result.String()
-}
-
-// removeHTMLTags removes <...> tags from text.
-func removeHTMLTags(s string) string {
-	var result strings.Builder
-	result.Grow(len(s))
-
-	i := 0
-	for i < len(s) {
-		if s[i] == '<' {
-			// Skip until >
-			for i < len(s) && s[i] != '>' {
-				i++
-			}
-			if i < len(s) {
-				i++ // Skip the >
-			}
-			result.WriteByte(' ')
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-	return result.String()
-}
-
-// isWhitespace checks if a byte is whitespace.
-func isWhitespace(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
-}
-
-// removeLinkURLs removes markdown link URLs while keeping the text.
-// This is faster than regex for this specific pattern.
-// Transforms "[text](url)" to "[text]"
-func removeLinkURLs(s string) string {
-	var result strings.Builder
-	result.Grow(len(s))
-
-	i := 0
-	for i < len(s) {
-		// Look for ](
-		if i+1 < len(s) && s[i] == ']' && s[i+1] == '(' {
-			result.WriteByte(']')
-			i += 2
-			// Skip until closing )
-			for i < len(s) && s[i] != ')' {
-				i++
-			}
-			if i < len(s) {
-				i++ // Skip the )
-			}
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-	return result.String()
+	return blocks
 }
 
 // calculateFeedStats aggregates stats for a feed's posts (models.FeedConfig).
@@ -610,52 +402,38 @@ func (p *StatsPlugin) aggregateFeedStats(posts []*models.Post) *FeedStats {
 func (p *StatsPlugin) getPostStats(post *models.Post) *PostStats {
 	stats := &PostStats{}
 
-	if post.Extra != nil {
-		if wc, ok := post.Extra["word_count"].(int); ok {
-			stats.WordCount = wc
-		}
-		if cc, ok := post.Extra["char_count"].(int); ok {
-			stats.CharCount = cc
-		}
-		if rt, ok := post.Extra["reading_time"].(int); ok {
-			stats.ReadingTime = rt
-		}
-		if cl, ok := post.Extra["code_lines"].(int); ok {
-			stats.CodeLines = cl
-		}
-		if cb, ok := post.Extra["code_blocks"].(int); ok {
-			stats.CodeBlocks = cb
-		}
+	if post == nil || post.Extra == nil {
+		return stats
+	}
+
+	// The structured Stats result is authoritative for Stats aggregates. The
+	// public reading-time fields may be overwritten later by ReadingTimePlugin.
+	if postStats, ok := post.Extra[statsPluginName].(*PostStats); ok && postStats != nil {
+		return postStats
+	}
+
+	if wc, ok := post.Extra["word_count"].(int); ok {
+		stats.WordCount = wc
+	}
+	if cc, ok := post.Extra["char_count"].(int); ok {
+		stats.CharCount = cc
+	}
+	if rt, ok := post.Extra["reading_time"].(int); ok {
+		stats.ReadingTime = rt
+	}
+	if cl, ok := post.Extra["code_lines"].(int); ok {
+		stats.CodeLines = cl
+	}
+	if cb, ok := post.Extra["code_blocks"].(int); ok {
+		stats.CodeBlocks = cb
 	}
 
 	return stats
 }
 
-// calculateReadingTime estimates reading time in minutes.
-func (p *StatsPlugin) calculateReadingTime(wordCount int) int {
-	if wordCount == 0 {
-		return 0
-	}
-
-	minutes := float64(wordCount) / float64(p.wordsPerMinute)
-	roundedMinutes := int(math.Ceil(minutes))
-
-	if roundedMinutes < 1 {
-		return 1
-	}
-
-	return roundedMinutes
-}
-
 // formatReadingTime creates a human-readable reading time string.
 func (p *StatsPlugin) formatReadingTime(minutes int) string {
-	if minutes == 0 {
-		return "< 1 min read"
-	}
-	if minutes == 1 {
-		return "1 min read"
-	}
-	return fmt.Sprintf("%d min read", minutes)
+	return formatReadingTimeText(minutes)
 }
 
 // formatDuration formats a duration in minutes as hours and minutes.
@@ -684,8 +462,8 @@ func (p *StatsPlugin) formatDuration(minutes int) string {
 }
 
 // Priority returns the plugin priority for the given stage.
-// Stats should run early in transform (after content is loaded)
-// and late in collect (after feeds are populated).
+// Stats runs early in transform (after content is loaded) and late during
+// collection (after feeds are populated).
 func (p *StatsPlugin) Priority(stage lifecycle.Stage) int {
 	switch stage {
 	case lifecycle.StageTransform:
