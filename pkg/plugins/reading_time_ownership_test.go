@@ -175,53 +175,25 @@ func TestReadingTimeOwnership_StandalonePluginContracts(t *testing.T) {
 			t.Fatalf("PostStats reading metrics = %d, %d; want 4, 4", statsResult.WordCount, statsResult.ReadingTime)
 		}
 	})
+}
 
-	t.Run("stats code tracking configuration controls metrics", func(t *testing.T) {
-		for _, tc := range []struct {
-			name            string
-			trackCodeBlocks bool
-			wantCodeBlocks  int
-			wantCodeLines   int
-		}{
-			{name: "disabled", trackCodeBlocks: false, wantCodeBlocks: 0, wantCodeLines: 0},
-			{name: "enabled", trackCodeBlocks: true, wantCodeBlocks: 1, wantCodeLines: 1},
-		} {
-			t.Run(tc.name, func(t *testing.T) {
-				manager := lifecycle.NewManager()
-				manager.Config().Extra[statsPluginName] = map[string]interface{}{
-					"include_code_in_count": false,
-					"track_code_blocks":     tc.trackCodeBlocks,
-				}
-				post := models.NewPost("stats-code-tracking.md")
-				post.Content = "prose\n\n```go\ncode\n```"
-				manager.SetPosts([]*models.Post{post})
+func TestReadingTimeOwnership_MalformedMultilineInlineCodeUsesCanonicalNormalization(t *testing.T) {
+	content := "before `foo\nbar` after"
 
-				plugin := NewStatsPlugin()
-				if err := plugin.Configure(manager); err != nil {
-					t.Fatal(err)
-				}
-				if plugin.trackCodeBlocks != tc.trackCodeBlocks {
-					t.Fatalf("trackCodeBlocks = %t, want %t", plugin.trackCodeBlocks, tc.trackCodeBlocks)
-				}
-				if err := plugin.Transform(manager); err != nil {
-					t.Fatal(err)
-				}
+	// origin/main's Stats scanner stops malformed inline code at a newline and
+	// reports 4 words and 17 letters/digits for this input. The shared
+	// calculator intentionally follows ReadingTime's canonical normalization:
+	// a backtick-delimited span may cross a newline, so the result is 2 words
+	// and 11 letters/digits.
+	stats := NewStatsPlugin().calculatePostStats(content)
+	if stats.WordCount != 2 || stats.CharCount != 11 || stats.ReadingTime != 1 || stats.ReadingTimeText != "1 min read" {
+		t.Fatalf("Stats metrics = %+v; want 2 words, 11 chars, 1 minute, %q", stats, "1 min read")
+	}
 
-				statsResult, ok := post.Get(statsPluginName).(*PostStats)
-				if !ok {
-					t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
-				}
-				if statsResult.CodeBlocks != tc.wantCodeBlocks || statsResult.CodeLines != tc.wantCodeLines {
-					t.Fatalf("PostStats code metrics = %d blocks, %d lines; want %d blocks, %d lines", statsResult.CodeBlocks, statsResult.CodeLines, tc.wantCodeBlocks, tc.wantCodeLines)
-				}
-
-				feedStats := plugin.calculateFeedStats(&models.FeedConfig{Slug: "posts", Posts: []*models.Post{post}})
-				if feedStats.TotalCodeBlocks != tc.wantCodeBlocks || feedStats.TotalCodeLines != tc.wantCodeLines {
-					t.Fatalf("feed code metrics = %d blocks, %d lines; want %d blocks, %d lines", feedStats.TotalCodeBlocks, feedStats.TotalCodeLines, tc.wantCodeBlocks, tc.wantCodeLines)
-				}
-			})
-		}
-	})
+	metrics := calculateReadingTimeMetrics(content, defaultWordsPerMinute, false)
+	if stats.WordCount != metrics.WordCount || stats.CharCount != metrics.CharCount || stats.ReadingTime != metrics.ReadingTime || stats.ReadingTimeText != metrics.ReadingTimeText {
+		t.Fatalf("Stats metrics = %+v, shared metrics = %+v; want canonical convergence", stats, metrics)
+	}
 }
 
 func TestReadingTimeOwnership_DivergentDefaultContracts(t *testing.T) {

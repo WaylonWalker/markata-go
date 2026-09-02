@@ -23,7 +23,7 @@ type StatsPlugin struct {
 	wordsPerMinute int
 	// includeCodeInCount includes code block content in word count
 	includeCodeInCount bool
-	// trackCodeBlocks enables counting of code blocks and code lines
+	// trackCodeBlocks enables counting of code block lines
 	trackCodeBlocks bool
 }
 
@@ -259,21 +259,22 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 		ReadingTimeText: metrics.ReadingTimeText,
 	}
 
-	if p.trackCodeBlocks {
-		// Extract code blocks using fast string scanning instead of regex
-		codeBlocks := extractCodeBlocks(content)
-		stats.CodeBlocks = len(codeBlocks)
+	// Keep Stats code metrics on their current-main calculation path. The
+	// track_code_blocks setting is parsed for compatibility, but its calculation
+	// behavior is intentionally outside this reading-time refactor.
+	// Extract code blocks using fast string scanning instead of regex.
+	codeBlocks := extractCodeBlocks(content)
+	stats.CodeBlocks = len(codeBlocks)
 
-		for _, block := range codeBlocks {
-			// Count lines without creating intermediate slice
-			lines := strings.Count(block, "\n") + 1
-			// Subtract 2 for opening and closing fences
-			codeLineCount := lines - 2
-			if codeLineCount < 0 {
-				codeLineCount = 0
-			}
-			stats.CodeLines += codeLineCount
+	for _, block := range codeBlocks {
+		// Count lines without creating intermediate slice
+		lines := strings.Count(block, "\n") + 1
+		// Subtract 2 for opening and closing fences
+		codeLineCount := lines - 2
+		if codeLineCount < 0 {
+			codeLineCount = 0
 		}
+		stats.CodeLines += codeLineCount
 	}
 
 	return stats

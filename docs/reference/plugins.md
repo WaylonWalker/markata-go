@@ -374,8 +374,6 @@ the early Transform stage, and `reading_time` later writes the public
    - Calculates Stats' own `PostStats` using the Stats configuration
    - Writes the same reading-time fields when `stats` runs alone
    - Character count (letters and digits only)
-   - Code block count and lines of code when `track_code_blocks` is enabled
-   - Code metrics are zero when `track_code_blocks` is disabled
 2. **Collect stage:** Aggregates statistics
    - Per-feed totals and averages derived from `PostStats`
    - Site-wide totals and averages derived from `PostStats`

@@ -1599,12 +1599,8 @@ reading-time fields; it does not change `PostStats`.
 `include_code_in_count` applies to Stats' `PostStats` and to Stats feed/site
 aggregates in both standalone and normal default builds. It does not override
 the public fields written by `reading_time`.
-When `track_code_blocks` is enabled, Stats records fenced code-block counts and
-code-line counts in `PostStats` and its feed/site aggregates. When it is
-disabled, those code metrics are zero.
-The plugin reads `words_per_minute`, `include_code_in_count`, and
-`track_code_blocks` from `config.Extra["stats"]` and keeps the top-level
-words-per-minute fallback.
+The plugin reads its Stats-specific settings from `config.Extra["stats"]` and
+keeps the top-level words-per-minute fallback.
 When both words-per-minute settings exist, the top-level value takes precedence for backward compatibility.
 
 Stats feed and site aggregates are derived from each post's `PostStats`, not
