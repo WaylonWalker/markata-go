@@ -381,6 +381,9 @@ the early Transform stage, and `reading_time` later writes the public
 `include_code_in_count` applies to Stats' `PostStats` and its feed/site
 aggregates, including a normal default build. It does not change the public
 fields written by `reading_time`.
+`track_code_blocks` controls the Stats code metrics independently. When it is
+false, `PostStats.CodeBlocks` and `PostStats.CodeLines`, and their feed/site
+aggregate totals, are zero.
 
 **Post fields exposed (in `Extra`):**
 | Field | Type | Description |

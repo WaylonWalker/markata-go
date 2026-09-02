@@ -259,9 +259,10 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 		ReadingTimeText: metrics.ReadingTimeText,
 	}
 
-	// Keep Stats code metrics on their current-main calculation path. The
-	// track_code_blocks setting is parsed for compatibility, but its calculation
-	// behavior is intentionally outside this reading-time refactor.
+	if !p.trackCodeBlocks {
+		return stats
+	}
+
 	// Extract code blocks using fast string scanning instead of regex.
 	codeBlocks := extractCodeBlocks(content)
 	stats.CodeBlocks = len(codeBlocks)

@@ -264,7 +264,225 @@ More text.
 	}
 }
 
+func TestStatsPlugin_TrackCodeBlocksDisabled(t *testing.T) {
+	manager := lifecycle.NewManager()
+	manager.SetConcurrency(1)
+	manager.Config().Extra = map[string]interface{}{
+		"stats": map[string]interface{}{
+			"track_code_blocks": false,
+		},
+	}
+	post := models.NewPost("track-code-blocks.md")
+	post.Content = "ordinary prose\n\n```go\nalpha\nbeta\ngamma\n```"
+	manager.SetPosts([]*models.Post{post})
+
+	plugin := NewStatsPlugin()
+	if err := plugin.Configure(manager); err != nil {
+		t.Fatalf("configure stats: %v", err)
+	}
+	if err := plugin.Transform(manager); err != nil {
+		t.Fatalf("transform stats: %v", err)
+	}
+
+	stats, ok := post.Get(statsPluginName).(*PostStats)
+	if !ok {
+		t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+	}
+	if stats.CodeBlocks != 0 || stats.CodeLines != 0 {
+		t.Fatalf("PostStats code metrics = (%d, %d), want (0, 0)", stats.CodeBlocks, stats.CodeLines)
+	}
+}
+
+func TestStatsPlugin_ConfigurationMatrix(t *testing.T) {
+	content := "ordinary prose\n\n```go\nalpha\nbeta\ngamma\n```"
+
+	tests := []struct {
+		name            string
+		includeCode     bool
+		trackCode       bool
+		wantWordCount   int
+		wantReadingTime int
+		wantCodeBlocks  int
+		wantCodeLines   int
+	}{
+		{
+			name:            "exclude code and track code",
+			includeCode:     false,
+			trackCode:       true,
+			wantWordCount:   2,
+			wantReadingTime: 1,
+			wantCodeBlocks:  1,
+			wantCodeLines:   3,
+		},
+		{
+			name:            "exclude code and do not track code",
+			includeCode:     false,
+			trackCode:       false,
+			wantWordCount:   2,
+			wantReadingTime: 1,
+			wantCodeBlocks:  0,
+			wantCodeLines:   0,
+		},
+		{
+			name:            "include code and track code",
+			includeCode:     true,
+			trackCode:       true,
+			wantWordCount:   5,
+			wantReadingTime: 3,
+			wantCodeBlocks:  1,
+			wantCodeLines:   3,
+		},
+		{
+			name:            "include code and do not track code",
+			includeCode:     true,
+			trackCode:       false,
+			wantWordCount:   5,
+			wantReadingTime: 3,
+			wantCodeBlocks:  0,
+			wantCodeLines:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			manager := lifecycle.NewManager()
+			manager.SetConcurrency(1)
+			manager.Config().Extra = map[string]interface{}{
+				"stats": map[string]interface{}{
+					"words_per_minute":      2,
+					"include_code_in_count": tt.includeCode,
+					"track_code_blocks":     tt.trackCode,
+				},
+			}
+			post := models.NewPost("configuration-matrix.md")
+			post.Content = content
+			manager.SetPosts([]*models.Post{post})
+
+			plugin := NewStatsPlugin()
+			if err := plugin.Configure(manager); err != nil {
+				t.Fatalf("configure stats: %v", err)
+			}
+			if err := plugin.Transform(manager); err != nil {
+				t.Fatalf("transform stats: %v", err)
+			}
+
+			stats, ok := post.Get(statsPluginName).(*PostStats)
+			if !ok {
+				t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+			}
+			if stats.WordCount != tt.wantWordCount {
+				t.Errorf("PostStats.WordCount = %d, want %d", stats.WordCount, tt.wantWordCount)
+			}
+			if stats.ReadingTime != tt.wantReadingTime {
+				t.Errorf("PostStats.ReadingTime = %d, want %d", stats.ReadingTime, tt.wantReadingTime)
+			}
+			if stats.CodeBlocks != tt.wantCodeBlocks {
+				t.Errorf("PostStats.CodeBlocks = %d, want %d", stats.CodeBlocks, tt.wantCodeBlocks)
+			}
+			if stats.CodeLines != tt.wantCodeLines {
+				t.Errorf("PostStats.CodeLines = %d, want %d", stats.CodeLines, tt.wantCodeLines)
+			}
+		})
+	}
+}
+
+func TestStatsPlugin_CollectCodeMetricsRespectTracking(t *testing.T) {
+	for _, trackCode := range []bool{true, false} {
+		name := "disabled"
+		if trackCode {
+			name = "enabled"
+		}
+		t.Run(name, func(t *testing.T) {
+			posts := []*models.Post{
+				newPostWithContent("one.md", "one\n\n```go\na\nb\n```"),
+				newPostWithContent("two.md", "two\n\n```go\nc\n```"),
+			}
+			manager := lifecycle.NewManager()
+			manager.SetConcurrency(1)
+			manager.Config().Extra = map[string]interface{}{
+				"stats": map[string]interface{}{
+					"include_code_in_count": true,
+					"track_code_blocks":     trackCode,
+				},
+			}
+			manager.SetPosts(posts)
+			manager.SetFeeds([]*lifecycle.Feed{{Name: "posts", Posts: posts}})
+
+			plugin := NewStatsPlugin()
+			if err := plugin.Configure(manager); err != nil {
+				t.Fatalf("configure stats: %v", err)
+			}
+			if err := plugin.Transform(manager); err != nil {
+				t.Fatalf("transform stats: %v", err)
+			}
+			if err := plugin.Collect(manager); err != nil {
+				t.Fatalf("collect stats: %v", err)
+			}
+
+			wantCodeBlocks, wantCodeLines := 0, 0
+			if trackCode {
+				wantCodeBlocks, wantCodeLines = 2, 3
+			}
+			for _, post := range posts {
+				stats, ok := post.Get(statsPluginName).(*PostStats)
+				if !ok {
+					t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+				}
+				wantPostCodeBlocks := 0
+				wantPostCodeLines := 0
+				if trackCode {
+					wantPostCodeBlocks = 1
+					wantPostCodeLines = map[string]int{"one.md": 2, "two.md": 1}[post.Path]
+				}
+				if stats.CodeBlocks != wantPostCodeBlocks {
+					t.Errorf("%s PostStats.CodeBlocks = %d, want %d", post.Path, stats.CodeBlocks, wantPostCodeBlocks)
+				}
+				if stats.CodeLines != wantPostCodeLines {
+					t.Errorf("%s PostStats.CodeLines = %d, want %d", post.Path, stats.CodeLines, wantPostCodeLines)
+				}
+			}
+
+			feedStats := GetFeedStats(manager, "posts")
+			if feedStats == nil {
+				t.Fatal("feed stats were not stored")
+			}
+			if feedStats.TotalWords != 5 {
+				t.Errorf("feed TotalWords = %d, want 5", feedStats.TotalWords)
+			}
+			if feedStats.TotalCodeBlocks != wantCodeBlocks || feedStats.TotalCodeLines != wantCodeLines {
+				t.Errorf("feed code metrics = (%d, %d), want (%d, %d)", feedStats.TotalCodeBlocks, feedStats.TotalCodeLines, wantCodeBlocks, wantCodeLines)
+			}
+
+			siteStats := GetSiteStats(manager)
+			if siteStats == nil {
+				t.Fatal("site stats were not stored")
+			}
+			if siteStats.TotalCodeBlocks != wantCodeBlocks || siteStats.TotalCodeLines != wantCodeLines {
+				t.Errorf("site code metrics = (%d, %d), want (%d, %d)", siteStats.TotalCodeBlocks, siteStats.TotalCodeLines, wantCodeBlocks, wantCodeLines)
+			}
+
+			helper := GetStatsHelper(manager)
+			if helper == nil {
+				t.Fatal("stats helper was not stored")
+			}
+			if helper.TotalCodeBlocks() != wantCodeBlocks || helper.TotalCodeLines() != wantCodeLines {
+				t.Errorf("StatsHelper code metrics = (%d, %d), want (%d, %d)", helper.TotalCodeBlocks(), helper.TotalCodeLines(), wantCodeBlocks, wantCodeLines)
+			}
+			feedHelper := helper.ForFeed("posts")
+			if feedHelper.TotalCodeBlocks() != wantCodeBlocks || feedHelper.TotalCodeLines() != wantCodeLines {
+				t.Errorf("FeedStatsHelper code metrics = (%d, %d), want (%d, %d)", feedHelper.TotalCodeBlocks(), feedHelper.TotalCodeLines(), wantCodeBlocks, wantCodeLines)
+			}
+		})
+	}
+}
+
 // Helper functions
+
+func newPostWithContent(path, content string) *models.Post {
+	post := models.NewPost(path)
+	post.Content = content
+	return post
+}
 
 func generateWords(count int) string {
 	words := make([]string, count)
