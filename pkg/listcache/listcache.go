@@ -629,9 +629,45 @@ func normalizeExtraMap(in map[string]any) map[string]any {
 	}
 	out := make(map[string]any, len(in))
 	for k, v := range in {
-		out[k] = normalizeValue(v)
+		normalized := normalizeValue(v)
+		if k == "stats" {
+			normalized = restorePostStats(normalized)
+		}
+		out[k] = normalized
 	}
 	return out
+}
+
+// restorePostStats restores the typed stats value after its JSON round trip.
+// Extra values are decoded through map[string]any, so the reserved stats entry
+// needs to be rehydrated before StatsPlugin consumes it as authoritative data.
+func restorePostStats(value any) any {
+	fields, ok := value.(map[string]any)
+	if !ok || len(fields) != 6 {
+		return value
+	}
+	for _, field := range []string{
+		"word_count",
+		"char_count",
+		"reading_time",
+		"reading_time_text",
+		"code_lines",
+		"code_blocks",
+	} {
+		if _, ok := fields[field]; !ok {
+			return value
+		}
+	}
+
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return value
+	}
+	var stats plugins.PostStats
+	if err := json.Unmarshal(encoded, &stats); err != nil {
+		return value
+	}
+	return &stats
 }
 
 func normalizeValue(value any) any {
