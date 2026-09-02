@@ -163,6 +163,46 @@ func TestCachedPost_PostStatsRoundTripPreservesAggregateAuthority(t *testing.T) 
 	}
 }
 
+func TestCachedPost_PostStatsRoundTripPreservesDisabledCodeMetrics(t *testing.T) {
+	t.Parallel()
+
+	manager := lifecycle.NewManager()
+	manager.SetConcurrency(1)
+	manager.Config().Extra = map[string]interface{}{
+		"stats": map[string]interface{}{
+			"track_code_blocks": false,
+		},
+	}
+	post := models.NewPost("no-code-metrics.md")
+	post.Content = "ordinary prose\n\n```go\nalpha\nbeta\ngamma\n```"
+	manager.SetPosts([]*models.Post{post})
+
+	statsPlugin := plugins.NewStatsPlugin()
+	if err := statsPlugin.Configure(manager); err != nil {
+		t.Fatalf("configure stats: %v", err)
+	}
+	if err := statsPlugin.Transform(manager); err != nil {
+		t.Fatalf("transform stats: %v", err)
+	}
+
+	before, ok := post.Get("stats").(*plugins.PostStats)
+	if !ok {
+		t.Fatalf("stats before round trip = %T, want *plugins.PostStats", post.Get("stats"))
+	}
+	if before.CodeBlocks != 0 || before.CodeLines != 0 {
+		t.Fatalf("stats before round trip code metrics = (%d, %d), want (0, 0)", before.CodeBlocks, before.CodeLines)
+	}
+
+	restored := roundTripCachedPost(t, post)
+	after, ok := restored.Get("stats").(*plugins.PostStats)
+	if !ok {
+		t.Fatalf("stats after round trip = %T, want *plugins.PostStats", restored.Get("stats"))
+	}
+	if after.CodeBlocks != 0 || after.CodeLines != 0 {
+		t.Fatalf("stats after round trip code metrics = (%d, %d), want (0, 0)", after.CodeBlocks, after.CodeLines)
+	}
+}
+
 func TestCachedPost_WithoutStatsRoundTripsNormally(t *testing.T) {
 	t.Parallel()
 
