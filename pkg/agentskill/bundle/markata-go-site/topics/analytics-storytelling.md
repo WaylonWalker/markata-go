@@ -43,7 +43,15 @@ Available on posts after the `stats` plugin runs:
 - `post.Extra.code_blocks`
 - `post.Extra.stats`
 
-These are good for post headers, feed cards, article footers, and "long read" badges.
+`post.Extra.stats` is Stats' authoritative `PostStats` value and supplies
+feed/site aggregates. In the default plugin registry, `reading_time` runs
+later and owns the public `word_count`, `reading_time`, and
+`reading_time_text` fields. It uses the top-level reading-time configuration
+and excludes code. When `stats` runs alone, it also populates those public
+fields from its own configuration.
+
+These fields are good for post headers, feed cards, article footers, and
+"long read" badges.
 
 ### Site-wide stats
 
