@@ -84,6 +84,9 @@ output_dir = "public"
 templates_dir = "templates"
 assets_dir = "static"
 
+# Reading time calculation
+words_per_minute = 200
+
 # Concurrency (0 = auto based on CPU cores)
 concurrency = 0
 
@@ -99,10 +102,6 @@ use_gitignore = true
 # Markdown extensions
 [markata-go.markdown]
 extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
-
-# Reading time calculation
-[markata-go.reading_time]
-words_per_minute = 200
 
 # Auto-generated descriptions
 [markata-go.description]

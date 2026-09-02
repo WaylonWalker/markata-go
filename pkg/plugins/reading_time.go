@@ -2,15 +2,11 @@
 package plugins
 
 import (
-	"fmt"
-	"math"
-	"regexp"
-	"strings"
-	"unicode"
-
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+const readingTimePluginName = "reading_time"
 
 // ReadingTimePlugin calculates the word count and estimated reading time
 // for each post during the transform stage.
@@ -22,13 +18,13 @@ type ReadingTimePlugin struct {
 // NewReadingTimePlugin creates a new ReadingTimePlugin with default settings.
 func NewReadingTimePlugin() *ReadingTimePlugin {
 	return &ReadingTimePlugin{
-		wordsPerMinute: 200,
+		wordsPerMinute: defaultWordsPerMinute,
 	}
 }
 
 // Name returns the unique name of the plugin.
 func (p *ReadingTimePlugin) Name() string {
-	return "reading_time"
+	return readingTimePluginName
 }
 
 // Configure reads configuration options for the plugin.
@@ -61,115 +57,30 @@ func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		// Count words
-		wordCount := p.countWords(post.Content)
-		post.Set("word_count", wordCount)
-
-		// Calculate reading time in minutes
-		readingTime := p.calculateReadingTime(wordCount)
-		post.Set("reading_time", readingTime)
-
-		// Also store a formatted string
-		post.Set("reading_time_text", p.formatReadingTime(readingTime))
+		metrics := calculateReadingTimeMetrics(post.Content, p.wordsPerMinute, false)
+		post.Set("word_count", metrics.WordCount)
+		post.Set("reading_time", metrics.ReadingTime)
+		post.Set("reading_time_text", metrics.ReadingTimeText)
 
 		return nil
 	})
 }
 
-// Regex patterns for word counting
-var (
-	// Match code blocks to exclude from word count
-	codeBlockPattern = regexp.MustCompile("(?s)```.*?```|~~~.*?~~~|`[^`]+`")
-
-	// Match HTML tags
-	htmlTagPattern = regexp.MustCompile(`<[^>]+>`)
-
-	// Match markdown link URLs (keep link text)
-	linkURLPattern = regexp.MustCompile(`\]\([^)]+\)`)
-
-	// Match markdown image definitions
-	imagePattern = regexp.MustCompile(`!\[[^\]]*\]\([^)]+\)`)
-
-	// Match URLs
-	urlPattern = regexp.MustCompile(`https?://\S+`)
-)
-
 // countWords counts the number of words in markdown content.
 // It excludes code blocks, URLs, and other non-prose elements.
 func (p *ReadingTimePlugin) countWords(content string) int {
-	// Remove code blocks
-	text := codeBlockPattern.ReplaceAllString(content, " ")
-
-	// Remove images
-	text = imagePattern.ReplaceAllString(text, " ")
-
-	// Remove link URLs but keep link text
-	text = linkURLPattern.ReplaceAllString(text, "]")
-
-	// Remove standalone URLs
-	text = urlPattern.ReplaceAllString(text, " ")
-
-	// Remove HTML tags
-	text = htmlTagPattern.ReplaceAllString(text, " ")
-
-	// Remove markdown formatting characters
-	text = strings.NewReplacer(
-		"#", " ",
-		"*", " ",
-		"_", " ",
-		"`", " ",
-		">", " ",
-		"-", " ",
-		"[", " ",
-		"]", " ",
-		"(", " ",
-		")", " ",
-	).Replace(text)
-
-	// Count words
-	words := 0
-	inWord := false
-
-	for _, r := range text {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			if !inWord {
-				words++
-				inWord = true
-			}
-		} else {
-			inWord = false
-		}
-	}
-
-	return words
+	return countReadingWords(content, false)
 }
 
 // calculateReadingTime estimates reading time in minutes based on word count.
 // Returns at least 1 minute for any non-empty content.
 func (p *ReadingTimePlugin) calculateReadingTime(wordCount int) int {
-	if wordCount == 0 {
-		return 0
-	}
-
-	minutes := float64(wordCount) / float64(p.wordsPerMinute)
-	roundedMinutes := int(math.Ceil(minutes))
-
-	if roundedMinutes < 1 {
-		return 1
-	}
-
-	return roundedMinutes
+	return calculateReadingMinutes(wordCount, p.wordsPerMinute)
 }
 
 // formatReadingTime creates a human-readable reading time string.
 func (p *ReadingTimePlugin) formatReadingTime(minutes int) string {
-	if minutes == 0 {
-		return "< 1 min read"
-	}
-	if minutes == 1 {
-		return "1 min read"
-	}
-	return fmt.Sprintf("%d min read", minutes)
+	return formatReadingTimeText(minutes)
 }
 
 // SetWordsPerMinute sets the average reading speed.
