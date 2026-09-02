@@ -15,6 +15,15 @@ Use this topic when the user wants an `analytics.md` page, a metrics dashboard, 
 
 Prefer content, templates, and built-in stats over custom plugin work.
 
+## Reading-Time Configuration
+
+The `reading_time` plugin reads `words_per_minute` from the top-level
+`[markata-go]` section and excludes fenced and inline code. The `stats` plugin
+keeps its independent metrics in `[markata-go.stats]`; it supports
+`words_per_minute`, `include_code_in_count`, and `track_code_blocks`. The
+top-level `words_per_minute` value takes precedence for Stats when both values
+exist.
+
 ## Built-In Data Surfaces
 
 This topic should distinguish between three categories:
