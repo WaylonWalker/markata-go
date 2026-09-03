@@ -99,6 +99,12 @@ type Cache struct {
 	// path to the cache file (not serialized)
 	path string
 
+	// stalePosts preserves output ownership while a global cache invalidation is
+	// being processed. The entries are intentionally not serialized: a
+	// successful build replaces them with current entries before the cache is
+	// saved.
+	stalePosts map[string]*PostCache
+
 	// dirty tracks whether cache needs saving
 	dirty bool
 
@@ -251,6 +257,7 @@ func New(cacheDir string) *Cache {
 		Feeds:            make(map[string]*FeedCache),
 		Graph:            NewDependencyGraph(),
 		path:             filepath.Join(cacheDir, CacheFileName),
+		stalePosts:       make(map[string]*PostCache),
 		changedSlugs:     make(map[string]bool),
 		changedFeedSlugs: make(map[string]bool),
 	}
@@ -298,6 +305,23 @@ func Load(cacheDir string) (*Cache, error) {
 	return cache, nil
 }
 
+// preservePostOwnershipLocked keeps the previous post metadata available to
+// cleanup code after a global invalidation clears Posts. The caller must hold
+// c.mu.
+func (c *Cache) preservePostOwnershipLocked() {
+	if len(c.Posts) == 0 {
+		return
+	}
+	if c.stalePosts == nil {
+		c.stalePosts = make(map[string]*PostCache, len(c.Posts))
+	}
+	for path, post := range c.Posts {
+		if post != nil {
+			c.stalePosts[path] = post
+		}
+	}
+}
+
 // Save writes the cache to disk.
 func (c *Cache) Save() error {
 	c.mu.Lock()
@@ -338,6 +362,7 @@ func (c *Cache) SetConfigHash(hash string) bool {
 
 	// Config changed - invalidate all posts
 	c.ConfigHash = hash
+	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
 	c.TailwindManifestHash = ""
@@ -357,6 +382,7 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 
 	// Templates changed - invalidate all posts
 	c.TemplatesHash = hash
+	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
 	c.TailwindManifestHash = ""
@@ -406,6 +432,7 @@ func (c *Cache) SetAssetsHash(hash string) bool {
 
 	// Assets changed - invalidate all posts
 	c.AssetsHash = hash
+	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
 	c.TailwindManifestHash = ""
@@ -492,6 +519,7 @@ func (c *Cache) ShouldRebuildWithSlug(sourcePath, _, inputHash, template string)
 func (c *Cache) MarkRebuilt(sourcePath, inputHash, outputPath, template string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	delete(c.stalePosts, sourcePath)
 
 	if cached, ok := c.Posts[sourcePath]; ok {
 		cached.InputHash = inputHash
@@ -513,6 +541,7 @@ func (c *Cache) MarkRebuilt(sourcePath, inputHash, outputPath, template string) 
 func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, template string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	delete(c.stalePosts, sourcePath)
 
 	if cached, ok := c.Posts[sourcePath]; ok {
 		cached.InputHash = inputHash
@@ -676,13 +705,16 @@ func (c *Cache) IsFileUnchanged(sourcePath string, modTime int64) bool {
 	return cached.ModTime == modTime && cached.ModTime != 0
 }
 
-// GetCachedPost returns the cached post metadata if the file hasn't changed.
-// Returns nil if file is not in cache or has changed.
+// GetCachedPost returns cached post metadata, including ownership metadata
+// preserved during a global invalidation. Returns nil if the source is unknown.
 func (c *Cache) GetCachedPost(sourcePath string) *PostCache {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return c.Posts[sourcePath]
+	if post := c.Posts[sourcePath]; post != nil {
+		return post
+	}
+	return c.stalePosts[sourcePath]
 }
 
 // UpdateModTime updates the ModTime for a post.
@@ -1061,6 +1093,16 @@ func (c *Cache) RemoveStale(currentPaths map[string]bool) int {
 			c.dirty = true
 		}
 	}
+	for path := range c.stalePosts {
+		if !currentPaths[path] {
+			c.Graph.RemoveSource(path)
+			removed++
+		}
+	}
+	if len(c.stalePosts) > 0 {
+		c.stalePosts = make(map[string]*PostCache)
+		c.dirty = true
+	}
 	return removed
 }
 
@@ -1335,6 +1377,72 @@ func (c *Cache) MarkChangedPaths(paths []string) {
 			c.changedSlugs[slug] = true
 		}
 	}
+}
+
+// MarkMissingPaths records slugs for cached posts that are absent from the
+// current glob result. The stale entries remain until cleanup so output
+// cleanup and dependent invalidation can use their cached ownership data.
+func (c *Cache) MarkMissingPaths(currentPaths []string) []string {
+	if c == nil {
+		return nil
+	}
+
+	current := make(map[string]struct{}, len(currentPaths))
+	for _, path := range currentPaths {
+		if path != "" {
+			current[path] = struct{}{}
+		}
+	}
+
+	type missingPost struct {
+		path string
+		slug string
+	}
+
+	c.mu.RLock()
+	missing := make([]missingPost, 0)
+	seen := make(map[string]struct{}, len(c.Posts)+len(c.stalePosts))
+	for path, post := range c.Posts {
+		if _, ok := current[path]; ok {
+			continue
+		}
+		slug := ""
+		if post != nil {
+			slug = post.Slug
+		}
+		missing = append(missing, missingPost{path: path, slug: slug})
+		seen[path] = struct{}{}
+	}
+	for path, post := range c.stalePosts {
+		if _, ok := current[path]; ok {
+			continue
+		}
+		if _, ok := seen[path]; ok {
+			continue
+		}
+		slug := ""
+		if post != nil {
+			slug = post.Slug
+		}
+		missing = append(missing, missingPost{path: path, slug: slug})
+	}
+	c.mu.RUnlock()
+
+	for i := range missing {
+		if missing[i].slug == "" && c.Graph != nil {
+			missing[i].slug = c.Graph.SlugForPath(missing[i].path)
+		}
+		if missing[i].slug != "" {
+			c.MarkSlugChanged(missing[i].slug)
+		}
+	}
+
+	paths := make([]string, 0, len(missing))
+	for _, post := range missing {
+		paths = append(paths, post.path)
+	}
+	sort.Strings(paths)
+	return paths
 }
 
 // MarkAffectedDependents records all dependents (transitive) of changed slugs as changed.

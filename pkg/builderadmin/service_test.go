@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -533,5 +534,144 @@ func TestDiscoverReleasesPrefersBuildFinishedAtAndCurrentFirst(t *testing.T) {
 	}
 	if got := views[0].CreatedAt.Format(time.RFC3339); got != "2026-07-11T20:34:04Z" {
 		t.Fatalf("views[0].CreatedAt=%s want 2026-07-11T20:34:04Z", got)
+	}
+}
+
+func TestBuilderAdminBuild_RemovesDeletedPostFromNewRelease(t *testing.T) {
+	sourceDir := t.TempDir()
+	contentDir := filepath.Join(sourceDir, "content")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	config := `[markata-go]
+title = "Builder Admin deletion fixture"
+description = "A small deletion fixture."
+license = false
+output_dir = "output"
+
+[markata-go.assets]
+mode = "cdn"
+
+[markata-go.glob]
+patterns = ["content/**/*.md"]
+use_gitignore = false
+
+[markata-go.post_formats]
+html = true
+markdown = true
+text = true
+ansi = true
+og = true
+`
+	if err := os.WriteFile(filepath.Join(sourceDir, "markata-go.toml"), []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, contents := range map[string]string{
+		"keep.md": `---
+title: Keep
+published: true
+---
+
+Keep this post.
+`,
+		"deleted.md": `---
+title: Deleted
+published: true
+---
+
+Delete this post.
+`,
+	} {
+		if err := os.WriteFile(filepath.Join(contentDir, name), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	binary := filepath.Join(t.TempDir(), "markata-go")
+	_, sourceFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller() failed")
+	}
+	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", ".."))
+	command := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
+	command.Dir = moduleRoot
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build markata-go: %v\n%s", err, output)
+	}
+
+	siteDir := t.TempDir()
+	svc, err := New(Config{
+		SourceDir:    sourceDir,
+		SiteDir:      siteDir,
+		ConfigPath:   "markata-go.toml",
+		ReleasesKeep: 10,
+		BuildTimeout: 5 * time.Minute,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+	svc.executable = binary
+
+	run := func(id string) BuildRecord {
+		t.Helper()
+		svc.runBuild(context.Background(), queueRequest{QueuedOperation: QueuedOperation{
+			ID:          id,
+			Kind:        "build",
+			Label:       "Build",
+			TriggerType: "test",
+			EnqueuedAt:  time.Now().UTC(),
+		}})
+		state := svc.snapshotState()
+		if len(state.Builds) == 0 {
+			t.Fatal("build did not record a result")
+		}
+		if state.Builds[0].Status != "success" {
+			t.Fatalf("build %s status = %q, error = %q", id, state.Builds[0].Status, state.Builds[0].Error)
+		}
+		return state.Builds[0]
+	}
+
+	first := run("build-first")
+	oldDeleted := filepath.Join(first.ReleasePath, "deleted", "index.html")
+	oldContents, err := os.ReadFile(oldDeleted)
+	if err != nil {
+		t.Fatalf("read first release deleted output: %v", err)
+	}
+	oldKeep := filepath.Join(first.ReleasePath, "keep", "index.html")
+	oldKeepContents, err := os.ReadFile(oldKeep)
+	if err != nil {
+		t.Fatalf("read first release keep output: %v", err)
+	}
+	if err := os.Remove(filepath.Join(contentDir, "deleted.md")); err != nil {
+		t.Fatal(err)
+	}
+	second := run("build-second")
+	if first.ReleasePath == second.ReleasePath {
+		t.Fatalf("release paths are identical: %q", first.ReleasePath)
+	}
+
+	for _, relative := range []string{
+		"deleted/index.html",
+		"deleted/index.md/index.html",
+		"deleted/index.txt/index.html",
+		"deleted/index.ansi/index.html",
+		"deleted/og/index.html",
+		"deleted.md",
+		"deleted.txt",
+		"deleted.ansi",
+	} {
+		if _, err := os.Stat(filepath.Join(second.ReleasePath, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("new release retained deleted output %s: %v", relative, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(second.ReleasePath, "keep", "index.html")); err != nil {
+		t.Fatalf("new release lost kept output: %v", err)
+	}
+	if got, err := os.ReadFile(oldDeleted); err != nil || string(got) != string(oldContents) {
+		t.Fatalf("historical deleted output changed: error = %v", err)
+	}
+	if got, err := os.ReadFile(oldKeep); err != nil || string(got) != string(oldKeepContents) {
+		t.Fatalf("historical kept output changed: error = %v", err)
 	}
 }
