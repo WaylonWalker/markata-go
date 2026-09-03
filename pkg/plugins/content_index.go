@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -349,7 +348,7 @@ func contentIndexConfig(extra map[string]interface{}) (contentIndexOptions, bool
 			result.Output = value
 		}
 		if value, exists := cfg["schema_version"]; exists {
-			version, valid := parseOptionalInt(value)
+			version, valid := parseIntFromInterface(value)
 			if !valid {
 				return contentIndexOptions{}, false, fmt.Errorf("content_index.schema_version must be an integer")
 			}
@@ -361,20 +360,4 @@ func contentIndexConfig(extra map[string]interface{}) (contentIndexOptions, bool
 		return contentIndexOptions{}, false, fmt.Errorf("content_index must be a table")
 	}
 	return result, true, nil
-}
-
-func parseOptionalInt(value interface{}) (int, bool) {
-	switch v := value.(type) {
-	case int:
-		return v, true
-	case int64:
-		return int(v), true
-	case float64:
-		if math.Trunc(v) != v {
-			return 0, false
-		}
-		return int(v), true
-	default:
-		return 0, false
-	}
 }

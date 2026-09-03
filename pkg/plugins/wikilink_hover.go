@@ -62,7 +62,7 @@ func (p *WikilinkHoverPlugin) Configure(m *lifecycle.Manager) error {
 		if enabled, ok := cfgMap["enabled"].(bool); ok {
 			p.config.Enabled = enabled
 		}
-		if previewLength, ok := cfgMap["preview_length"].(int); ok && previewLength > 0 {
+		if previewLength, ok := parseIntFromInterface(cfgMap["preview_length"]); ok && previewLength > 0 {
 			p.config.PreviewLength = previewLength
 		}
 		if includeImage, ok := cfgMap["include_image"].(bool); ok {

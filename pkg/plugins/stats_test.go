@@ -1,9 +1,12 @@
 package plugins
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -290,6 +293,177 @@ func TestStatsPlugin_TrackCodeBlocksDisabled(t *testing.T) {
 	}
 	if stats.CodeBlocks != 0 || stats.CodeLines != 0 {
 		t.Fatalf("PostStats code metrics = (%d, %d), want (0, 0)", stats.CodeBlocks, stats.CodeLines)
+	}
+}
+
+func TestStatsPlugin_LoadedTOMLWordsPerMinute(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "markata-go.toml")
+	//nolint:gosec // Test file uses an isolated temporary directory.
+	if err := os.WriteFile(configPath, []byte("[markata-go]\n[markata-go.stats]\nwords_per_minute = 100\n"), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	loaded, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	manager := lifecycle.NewManager()
+	manager.SetConcurrency(1)
+	manager.Config().Extra = loaded.Extra
+	post := models.NewPost("configured-wpm.md")
+	post.Content = generateWords(401)
+	manager.SetPosts([]*models.Post{post})
+
+	plugin := NewStatsPlugin()
+	if err := plugin.Configure(manager); err != nil {
+		t.Fatalf("configure stats: %v", err)
+	}
+	if err := plugin.Transform(manager); err != nil {
+		t.Fatalf("transform stats: %v", err)
+	}
+
+	stats, ok := post.Get(statsPluginName).(*PostStats)
+	if !ok {
+		t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+	}
+	if plugin.wordsPerMinute != 100 {
+		t.Errorf("wordsPerMinute = %d, want 100", plugin.wordsPerMinute)
+	}
+	if stats.WordCount != 401 {
+		t.Errorf("PostStats.WordCount = %d, want 401", stats.WordCount)
+	}
+	if stats.ReadingTime != 5 {
+		t.Errorf("PostStats.ReadingTime = %d, want 5 from configured WPM", stats.ReadingTime)
+	}
+}
+
+func TestStatsPlugin_LoadedConfigFormatsWordsPerMinute(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   string
+		format config.Format
+	}{
+		{
+			name:   "TOML",
+			data:   "[markata-go]\n[markata-go.stats]\nwords_per_minute = 100\n",
+			format: config.FormatTOML,
+		},
+		{
+			name:   "YAML",
+			data:   "markata-go:\n  stats:\n    words_per_minute: 100\n",
+			format: config.FormatYAML,
+		},
+		{
+			name:   "JSON",
+			data:   `{"markata-go":{"stats":{"words_per_minute":100}}}`,
+			format: config.FormatJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loaded, err := config.LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("load config: %v", err)
+			}
+
+			manager := lifecycle.NewManager()
+			manager.SetConcurrency(1)
+			manager.Config().Extra = loaded.Extra
+			post := models.NewPost("configured-wpm-" + tt.name + ".md")
+			post.Content = generateWords(401)
+			manager.SetPosts([]*models.Post{post})
+			manager.SetFeeds([]*lifecycle.Feed{{Name: "posts", Posts: []*models.Post{post}}})
+
+			plugin := NewStatsPlugin()
+			if err := plugin.Configure(manager); err != nil {
+				t.Fatalf("configure stats: %v", err)
+			}
+			if err := plugin.Transform(manager); err != nil {
+				t.Fatalf("transform stats: %v", err)
+			}
+
+			stats, ok := post.Get(statsPluginName).(*PostStats)
+			if !ok {
+				t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+			}
+			if plugin.wordsPerMinute != 100 {
+				t.Errorf("wordsPerMinute = %d, want 100", plugin.wordsPerMinute)
+			}
+			if stats.WordCount != 401 || stats.ReadingTime != 5 {
+				t.Errorf("PostStats = %+v, want 401 words and 5 minutes", stats)
+			}
+			if err := plugin.Collect(manager); err != nil {
+				t.Fatalf("collect stats: %v", err)
+			}
+			feedStats := GetFeedStats(manager, "posts")
+			if feedStats == nil || feedStats.TotalWords != 401 || feedStats.TotalReadingTime != 5 {
+				t.Errorf("feed stats = %+v, want 401 words and 5 minutes", feedStats)
+			}
+			siteStats := GetSiteStats(manager)
+			if siteStats == nil || siteStats.TotalWords != 401 || siteStats.TotalReadingTime != 5 {
+				t.Errorf("site stats = %+v, want 401 words and 5 minutes", siteStats)
+			}
+		})
+	}
+}
+
+func TestStatsPlugin_RejectsFractionalConfiguredWordsPerMinute(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   string
+		format config.Format
+	}{
+		{
+			name:   "TOML",
+			data:   "[markata-go]\n[markata-go.stats]\nwords_per_minute = 100.5\n",
+			format: config.FormatTOML,
+		},
+		{
+			name:   "YAML",
+			data:   "markata-go:\n  stats:\n    words_per_minute: 100.5\n",
+			format: config.FormatYAML,
+		},
+		{
+			name:   "JSON",
+			data:   `{"markata-go":{"stats":{"words_per_minute":100.5}}}`,
+			format: config.FormatJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loaded, err := config.LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("load config: %v", err)
+			}
+
+			manager := lifecycle.NewManager()
+			manager.SetConcurrency(1)
+			manager.Config().Extra = loaded.Extra
+			post := models.NewPost("fractional-wpm-" + tt.name + ".md")
+			post.Content = generateWords(401)
+			manager.SetPosts([]*models.Post{post})
+
+			plugin := NewStatsPlugin()
+			if err := plugin.Configure(manager); err != nil {
+				t.Fatalf("configure stats: %v", err)
+			}
+			if plugin.wordsPerMinute != defaultWordsPerMinute {
+				t.Errorf("wordsPerMinute = %d, want default %d", plugin.wordsPerMinute, defaultWordsPerMinute)
+			}
+			if err := plugin.Transform(manager); err != nil {
+				t.Fatalf("transform stats: %v", err)
+			}
+
+			stats, ok := post.Get(statsPluginName).(*PostStats)
+			if !ok {
+				t.Fatalf("stats field = %T, want *PostStats", post.Get(statsPluginName))
+			}
+			if stats.ReadingTime != 3 {
+				t.Errorf("PostStats.ReadingTime = %d, want 3 from the default WPM", stats.ReadingTime)
+			}
+		})
 	}
 }
 

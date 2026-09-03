@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -114,6 +115,14 @@ func TestReadingTimeOwnership_StatsWPMPrecedence(t *testing.T) {
 			},
 			want: 150,
 		},
+		{
+			name: "top-level overrides nested decoded types",
+			extra: map[string]interface{}{
+				"words_per_minute": int64(150),
+				"stats":            map[string]interface{}{"words_per_minute": float64(100)},
+			},
+			want: 150,
+		},
 	}
 
 	for _, tc := range cases {
@@ -127,6 +136,95 @@ func TestReadingTimeOwnership_StatsWPMPrecedence(t *testing.T) {
 			if plugin.wordsPerMinute != tc.want {
 				t.Fatalf("wordsPerMinute = %d, want %d", plugin.wordsPerMinute, tc.want)
 			}
+		})
+	}
+}
+
+func TestReadingTimeOwnership_WPMDefaultsForMissingAndNonPositiveValues(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra map[string]interface{}
+	}{
+		{name: "missing", extra: map[string]interface{}{}},
+		{name: "top-level zero", extra: map[string]interface{}{"words_per_minute": int64(0)}},
+		{name: "top-level negative", extra: map[string]interface{}{"words_per_minute": float64(-100)}},
+		{name: "nested zero", extra: map[string]interface{}{"stats": map[string]interface{}{"words_per_minute": int64(0)}}},
+		{name: "nested negative", extra: map[string]interface{}{"stats": map[string]interface{}{"words_per_minute": float64(-100)}}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			manager := lifecycle.NewManager()
+			manager.Config().Extra = tc.extra
+
+			stats := NewStatsPlugin()
+			if err := stats.Configure(manager); err != nil {
+				t.Fatal(err)
+			}
+			if stats.wordsPerMinute != defaultWordsPerMinute {
+				t.Errorf("Stats wordsPerMinute = %d, want default %d", stats.wordsPerMinute, defaultWordsPerMinute)
+			}
+
+			readingTime := NewReadingTimePlugin()
+			if err := readingTime.Configure(manager); err != nil {
+				t.Fatal(err)
+			}
+			if readingTime.wordsPerMinute != defaultWordsPerMinute {
+				t.Errorf("ReadingTime wordsPerMinute = %d, want default %d", readingTime.wordsPerMinute, defaultWordsPerMinute)
+			}
+		})
+	}
+}
+
+func TestReadingTimePlugin_LoadedConfigFormatsWordsPerMinute(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   string
+		format config.Format
+	}{
+		{
+			name:   "TOML",
+			data:   "[markata-go]\nwords_per_minute = 100\n",
+			format: config.FormatTOML,
+		},
+		{
+			name:   "YAML",
+			data:   "markata-go:\n  words_per_minute: 100\n",
+			format: config.FormatYAML,
+		},
+		{
+			name:   "JSON",
+			data:   `{"markata-go":{"words_per_minute":100}}`,
+			format: config.FormatJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loaded, err := config.LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("load config: %v", err)
+			}
+
+			manager := lifecycle.NewManager()
+			manager.SetConcurrency(1)
+			manager.Config().Extra = loaded.Extra
+			post := models.NewPost("reading-time-" + tt.name + ".md")
+			post.Content = strings.TrimSpace(strings.Repeat("word ", 401))
+			manager.SetPosts([]*models.Post{post})
+
+			plugin := NewReadingTimePlugin()
+			if err := plugin.Configure(manager); err != nil {
+				t.Fatalf("configure reading time: %v", err)
+			}
+			if err := plugin.Transform(manager); err != nil {
+				t.Fatalf("transform reading time: %v", err)
+			}
+
+			if plugin.wordsPerMinute != 100 {
+				t.Errorf("wordsPerMinute = %d, want 100", plugin.wordsPerMinute)
+			}
+			assertReadingTimeFields(t, post, 401, 5, "5 min read")
 		})
 	}
 }

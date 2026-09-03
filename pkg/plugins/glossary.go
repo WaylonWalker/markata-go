@@ -147,12 +147,8 @@ func (p *GlossaryPlugin) Configure(m *lifecycle.Manager) error {
 	if tooltip, ok := glossaryConfig["tooltip"].(bool); ok {
 		p.config.Tooltip = tooltip
 	}
-	if maxLinks, ok := glossaryConfig["max_links_per_term"].(int); ok {
+	if maxLinks, ok := parseIntFromInterface(glossaryConfig["max_links_per_term"]); ok {
 		p.config.MaxLinksPerTerm = maxLinks
-	}
-	// Handle float64 from JSON/YAML parsing
-	if maxLinks, ok := glossaryConfig["max_links_per_term"].(float64); ok {
-		p.config.MaxLinksPerTerm = int(maxLinks)
 	}
 	if exportJSON, ok := glossaryConfig["export_json"].(bool); ok {
 		p.config.ExportJSON = exportJSON

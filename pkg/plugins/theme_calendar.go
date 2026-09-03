@@ -208,11 +208,8 @@ func (p *ThemeCalendarPlugin) parseBackgroundConfig(m map[string]interface{}) *m
 				if html, ok := bgMap["html"].(string); ok {
 					elem.HTML = html
 				}
-				switch zVal := bgMap["z_index"].(type) {
-				case int64:
-					elem.ZIndex = int(zVal)
-				case int:
-					elem.ZIndex = zVal
+				if zIndex, ok := parseIntFromInterface(bgMap["z_index"]); ok {
+					elem.ZIndex = zIndex
 				}
 				bg.Backgrounds = append(bg.Backgrounds, elem)
 			}
