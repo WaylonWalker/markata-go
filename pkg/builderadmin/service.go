@@ -1336,7 +1336,7 @@ func (s *Service) switchCurrentRelease(releaseID string) error {
 	if err := os.Symlink(filepath.Join("releases", releaseID), currentNext); err != nil {
 		return err
 	}
-	return os.Rename(currentNext, filepath.Join(s.cfg.SiteDir, "current"))
+	return replaceCurrentRelease(currentNext, filepath.Join(s.cfg.SiteDir, "current"))
 }
 
 func (s *Service) pruneReleases() error {

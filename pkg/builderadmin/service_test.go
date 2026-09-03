@@ -671,6 +671,14 @@ Delete this post.
 	if _, err := os.Stat(filepath.Join(second.ReleasePath, "keep", "index.html")); err != nil {
 		t.Fatalf("new release lost kept output: %v", err)
 	}
+	currentTarget, err := os.Readlink(filepath.Join(siteDir, "current"))
+	if err != nil {
+		t.Fatalf("read current release link: %v", err)
+	}
+	wantCurrentTarget := filepath.Join("releases", filepath.Base(second.ReleasePath))
+	if currentTarget != wantCurrentTarget {
+		t.Fatalf("current release target = %q, want %q", currentTarget, wantCurrentTarget)
+	}
 	if got, err := os.ReadFile(oldDeleted); err != nil || string(got) != string(oldContents) {
 		t.Fatalf("historical deleted output changed: error = %v", err)
 	}
