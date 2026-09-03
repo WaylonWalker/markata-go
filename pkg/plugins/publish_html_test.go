@@ -1412,6 +1412,62 @@ func TestPublishHTMLPlugin_PrivateSlugChangeRemovesOldOutputs(t *testing.T) {
 	}
 }
 
+func TestPublishHTMLPlugin_RemovedPostRemovesOwnedOutputsOutsideServe(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := buildcache.New(filepath.Join(tempDir, "cache"))
+	cache.Posts["deleted.md"] = &buildcache.PostCache{
+		Slug:       "deleted",
+		OutputPath: filepath.Join(tempDir, "deleted", "index.html"),
+	}
+
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.NewPostFormatsConfig(),
+		},
+	}
+	m := createTestManager(t, config)
+	m.Cache().Set("build_cache", cache)
+	lifecycle.SetServeRemovedPaths(m, []string{"deleted.md"})
+
+	owned := []string{
+		"deleted/index.html",
+		"deleted/index.md/index.html",
+		"deleted/index.txt/index.html",
+		"deleted/index.ansi/index.html",
+		"deleted/og/index.html",
+		"deleted.md",
+		"deleted.txt",
+		"deleted.ansi",
+	}
+	for _, relative := range owned {
+		path := filepath.Join(tempDir, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("MkdirAll(%s) error = %v", relative, err)
+		}
+		if err := os.WriteFile(path, []byte("generated"), 0o600); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", relative, err)
+		}
+	}
+	unrelated := filepath.Join(tempDir, "deleted", "plugin-output.json")
+	if err := os.WriteFile(unrelated, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := NewPublishHTMLPlugin().Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	for _, relative := range owned {
+		if _, err := os.Stat(filepath.Join(tempDir, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("removed post retained generated output %s: %v", relative, err)
+		}
+	}
+	if data, err := os.ReadFile(unrelated); err != nil || string(data) != "keep" {
+		t.Fatalf("unrelated output = %q, error = %v; want keep", data, err)
+	}
+}
+
 func TestPublishHTMLPlugin_PrivateTraversalSlugFailsBeforeRemoval(t *testing.T) {
 	tempDir := t.TempDir()
 	victimPath := filepath.Join(tempDir, "..", "victim.md")

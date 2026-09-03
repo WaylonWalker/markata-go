@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -109,6 +110,38 @@ func TestResolveFileModTime_FallsBackToStat(t *testing.T) {
 	}
 	if got != info.ModTime().UnixNano() {
 		t.Fatalf("resolveFileModTime() = %d, want %d", got, info.ModTime().UnixNano())
+	}
+}
+
+func TestLoadPlugin_MarksCachedPostsMissing(t *testing.T) {
+	contentDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(contentDir, "keep.md"), []byte("---\ntitle: Keep\n---\nkeep\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "source.md"), []byte("---\ntitle: Source\n---\nsource\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = contentDir
+	m.Config().GlobPatterns = []string{"**/*.md"}
+	m.SetFiles([]string{"keep.md", "source.md"})
+	cache := buildcache.New(filepath.Join(t.TempDir(), ".markata"))
+	cache.UpdateModTime("keep.md", 1, "keep")
+	cache.UpdateModTime("source.md", 1, "source")
+	cache.UpdateModTime("deleted.md", 1, "deleted")
+	cache.SetDependencies("source.md", "source", []string{"deleted"})
+	m.Cache().Set("build_cache", cache)
+
+	if err := NewLoadPlugin().Load(m); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	removed := lifecycle.GetServeRemovedPaths(m)
+	if len(removed) != 1 || removed[0] != "deleted.md" {
+		t.Fatalf("removed paths = %v, want [deleted.md]", removed)
+	}
+	if affected := lifecycle.GetServeAffectedPaths(m); !affected["source.md"] {
+		t.Fatalf("affected paths = %v, want source.md", affected)
 	}
 }
 

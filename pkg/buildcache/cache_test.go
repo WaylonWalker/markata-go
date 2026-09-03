@@ -179,6 +179,55 @@ func TestCache_MarkChangedPaths(t *testing.T) {
 	}
 }
 
+func TestCache_MarkMissingPaths_PreservesOwnershipUntilCleanup(t *testing.T) {
+	cache := New("")
+	cache.UpdateModTime("pages/keep.md", 1, "keep")
+	cache.UpdateModTime("pages/deleted.md", 1, "deleted")
+
+	got := cache.MarkMissingPaths([]string{"pages/keep.md"})
+	if len(got) != 1 || got[0] != "pages/deleted.md" {
+		t.Fatalf("MarkMissingPaths() = %v, want [pages/deleted.md]", got)
+	}
+	if cache.GetCachedPost("pages/deleted.md") == nil {
+		t.Fatal("MarkMissingPaths removed the stale entry before cleanup")
+	}
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 1 || changed[0] != "deleted" {
+		t.Fatalf("GetChangedSlugs() = %v, want [deleted]", changed)
+	}
+}
+
+func TestCache_GlobalInvalidation_PreservesMissingPostOwnership(t *testing.T) {
+	cache := New("")
+	cache.AssetsHash = "old-assets"
+	cache.Posts["pages/deleted.md"] = &PostCache{
+		OutputPath: "output/deleted/index.html",
+		Slug:       "deleted",
+	}
+	cache.SetPostSlug("pages/deleted.md", "deleted")
+
+	if !cache.SetAssetsHash("new-assets") {
+		t.Fatal("SetAssetsHash() did not report an invalidation")
+	}
+	if len(cache.Posts) != 0 {
+		t.Fatalf("Posts after invalidation = %d, want 0", len(cache.Posts))
+	}
+	if cache.GetCachedPost("pages/deleted.md") == nil {
+		t.Fatal("global invalidation discarded deleted post ownership")
+	}
+
+	missing := cache.MarkMissingPaths(nil)
+	if len(missing) != 1 || missing[0] != "pages/deleted.md" {
+		t.Fatalf("MarkMissingPaths() = %v, want [pages/deleted.md]", missing)
+	}
+	if removed := cache.RemoveStale(map[string]bool{}); removed != 1 {
+		t.Fatalf("RemoveStale() = %d, want 1", removed)
+	}
+	if cache.GetCachedPost("pages/deleted.md") != nil {
+		t.Fatal("stale post ownership survived cleanup")
+	}
+}
+
 func TestCache_MarkAffectedDependents(t *testing.T) {
 	cache := New("")
 
