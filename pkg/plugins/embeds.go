@@ -204,6 +204,7 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
+	affected := lifecycle.GetServeAffectedPaths(m)
 
 	// Phase 1: Restore cached results for unchanged posts
 	var needProcessing []*models.Post
@@ -211,6 +212,10 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	cacheSignature := embedsCacheSignature(p.config, m.Config().Extra)
 	if cache != nil {
 		for _, post := range posts {
+			if affected[post.Path] {
+				needProcessing = append(needProcessing, post)
+				continue
+			}
 			contentHash := buildcache.ContentHash(post.Content + cacheSignature)
 			if cached, ok := cache.GetCachedEmbedsContent(post.Path, contentHash); ok {
 				post.Content = cached

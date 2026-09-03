@@ -1283,7 +1283,10 @@ func (s *Service) prepareBuild(log io.Writer) error {
 	current := filepath.Join(s.cfg.SiteDir, "current")
 	if _, err := os.Stat(current); err == nil {
 		_, _ = fmt.Fprintln(log, "seeding build work from current release")
-		return s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-al", current+"/.", buildWork+string(os.PathSeparator))
+		// Copy file contents instead of creating hard links. The build mutates
+		// files in .build-work, and hard links would mutate the historical
+		// release that is still available for rollback.
+		return s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-a", current+"/.", buildWork+string(os.PathSeparator))
 	}
 	return nil
 }
@@ -1333,7 +1336,7 @@ func (s *Service) switchCurrentRelease(releaseID string) error {
 	if err := os.Symlink(filepath.Join("releases", releaseID), currentNext); err != nil {
 		return err
 	}
-	return os.Rename(currentNext, filepath.Join(s.cfg.SiteDir, "current"))
+	return replaceCurrentRelease(currentNext, filepath.Join(s.cfg.SiteDir, "current"))
 }
 
 func (s *Service) pruneReleases() error {

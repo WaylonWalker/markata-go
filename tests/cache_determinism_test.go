@@ -699,10 +699,18 @@ Delete this post.`)
 	// Build 2 with hot cache
 	site.buildWithCache()
 
-	// The deleted post's output may still exist on disk (the cache plugin only
-	// removes stale cache entries, it doesn't delete output files).
-	// However, the post should NOT be in the manager's post list.
-	// This test verifies the cache properly removes the stale entry.
+	// The deleted post's generated output must be removed while the kept post
+	// remains available.
+	for _, path := range []string{
+		"delete-me/index.html",
+		"delete-me/og/index.html",
+		"delete-me.md",
+		"delete-me.txt",
+	} {
+		if site.outputContainsFile(path) {
+			t.Errorf("deleted post retained generated output %s", path)
+		}
+	}
 	if !site.outputContainsFile("keep/index.html") {
 		t.Error("kept post should still be in output")
 	}

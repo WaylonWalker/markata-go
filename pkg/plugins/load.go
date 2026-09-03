@@ -113,6 +113,32 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 		baseDir = "."
 	}
 
+	// A normal build rescans the content globs, so the cache is the source of
+	// ownership information for files that disappeared since the last build.
+	// Keep those entries alive until the write stage can remove their outputs.
+	if cache := GetBuildCache(m); cache != nil {
+		missing := cache.MarkMissingPaths(files)
+		if len(missing) > 0 {
+			removed := append(lifecycle.GetServeRemovedPaths(m), missing...)
+			lifecycle.SetServeRemovedPaths(m, removed)
+
+			// Normal builds discover removals after the cache configure hook has
+			// run. Compute dependent paths here so transform and write plugins
+			// do not restore stale output for posts that referenced a deletion.
+			changedSlugs := cache.GetChangedSlugs()
+			affectedPaths := cache.GetAffectedPosts(changedSlugs)
+			cache.MarkAffectedDependents(changedSlugs)
+			affected := lifecycle.GetServeAffectedPaths(m)
+			if affected == nil {
+				affected = make(map[string]bool)
+			}
+			for _, path := range affectedPaths {
+				affected[path] = true
+			}
+			lifecycle.SetServeAffectedPaths(m, affected)
+		}
+	}
+
 	if cachedPosts := lifecycle.GetServeCachedPosts(m); len(cachedPosts) > 0 {
 		return p.loadFromCachedPosts(m, files, baseDir, cachedPosts)
 	}
