@@ -233,13 +233,13 @@ func parseImageOptimizationConfig(cfg *lifecycle.Config) ImageOptimizationConfig
 	if formats, ok := m["formats"].([]any); ok {
 		result.Formats = parseImageOptimizationFormats(formats)
 	}
-	if quality, ok := intFromAny(m["quality"]); ok {
+	if quality, ok := parseIntFromInterface(m["quality"]); ok {
 		result.Quality = quality
 	}
-	if quality, ok := intFromAny(m["avif_quality"]); ok {
+	if quality, ok := parseIntFromInterface(m["avif_quality"]); ok {
 		result.AvifQuality = quality
 	}
-	if quality, ok := intFromAny(m["webp_quality"]); ok {
+	if quality, ok := parseIntFromInterface(m["webp_quality"]); ok {
 		result.WebpQuality = quality
 	}
 	if widths, ok := m["widths"].([]any); ok {
@@ -321,27 +321,10 @@ func parseImageOptimizationFormats(values []any) []string {
 	return result
 }
 
-func intFromAny(value any) (int, bool) {
-	switch v := value.(type) {
-	case int:
-		return v, true
-	case int64:
-		return int(v), true
-	case float64:
-		return int(v), true
-	case float32:
-		return int(v), true
-	case int32:
-		return int(v), true
-	default:
-		return 0, false
-	}
-}
-
 func parseIntSlice(values []any) []int {
 	result := make([]int, 0, len(values))
 	for _, raw := range values {
-		if value, ok := intFromAny(raw); ok {
+		if value, ok := parseIntFromInterface(raw); ok {
 			result = append(result, value)
 		}
 	}

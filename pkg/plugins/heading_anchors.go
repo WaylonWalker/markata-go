@@ -138,10 +138,10 @@ func (p *HeadingAnchorsPlugin) Configure(m *lifecycle.Manager) error {
 		if enabled, ok := cfgMap["enabled"].(bool); ok {
 			p.enabled = enabled
 		}
-		if minLevel, ok := cfgMap["min_level"].(int); ok && minLevel >= 1 && minLevel <= 6 {
+		if minLevel, ok := parseIntFromInterface(cfgMap["min_level"]); ok && minLevel >= 1 && minLevel <= 6 {
 			p.minLevel = minLevel
 		}
-		if maxLevel, ok := cfgMap["max_level"].(int); ok && maxLevel >= 1 && maxLevel <= 6 {
+		if maxLevel, ok := parseIntFromInterface(cfgMap["max_level"]); ok && maxLevel >= 1 && maxLevel <= 6 {
 			p.maxLevel = maxLevel
 		}
 		if position, ok := cfgMap["position"].(string); ok && (position == PositionStart || position == PositionEnd) {

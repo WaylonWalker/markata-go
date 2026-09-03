@@ -143,7 +143,7 @@ func applyInt(cfgMap map[string]interface{}, key string, target *int) {
 	if target == nil {
 		return
 	}
-	if value, ok := cfgMap[key].(int); ok && value > 0 {
+	if value, ok := parseIntFromInterface(cfgMap[key]); ok && value > 0 {
 		*target = value
 	}
 }

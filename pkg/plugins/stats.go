@@ -126,7 +126,7 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Check for stats plugin config
 	if statsConfig, ok := config.Extra[statsPluginName].(map[string]interface{}); ok {
-		if wpm, ok := statsConfig["words_per_minute"].(int); ok && wpm > 0 {
+		if wpm, ok := parseIntFromInterface(statsConfig["words_per_minute"]); ok && wpm > 0 {
 			p.wordsPerMinute = wpm
 		}
 		if includeCode, ok := statsConfig["include_code_in_count"].(bool); ok {
@@ -138,7 +138,7 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Also check top-level words_per_minute for backwards compatibility
-	if wpm, ok := config.Extra["words_per_minute"].(int); ok && wpm > 0 {
+	if wpm, ok := parseIntFromInterface(config.Extra["words_per_minute"]); ok && wpm > 0 {
 		p.wordsPerMinute = wpm
 	}
 

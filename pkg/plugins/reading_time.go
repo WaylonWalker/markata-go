@@ -31,7 +31,7 @@ func (p *ReadingTimePlugin) Name() string {
 func (p *ReadingTimePlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra != nil {
-		if wpm, ok := config.Extra["words_per_minute"].(int); ok && wpm > 0 {
+		if wpm, ok := parseIntFromInterface(config.Extra["words_per_minute"]); ok && wpm > 0 {
 			p.wordsPerMinute = wpm
 		}
 	}

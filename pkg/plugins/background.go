@@ -88,11 +88,8 @@ func (p *BackgroundPlugin) Configure(m *lifecycle.Manager) error {
 					if html, ok := bgMap["html"].(string); ok {
 						element.HTML = html
 					}
-					switch v := bgMap["z_index"].(type) {
-					case int64:
-						element.ZIndex = int(v)
-					case int:
-						element.ZIndex = v
+					if zIndex, ok := parseIntFromInterface(bgMap["z_index"]); ok {
+						element.ZIndex = zIndex
 					}
 					p.config.Backgrounds = append(p.config.Backgrounds, element)
 				}

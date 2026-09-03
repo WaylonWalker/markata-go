@@ -148,11 +148,11 @@ func (p *MermaidPlugin) parseChromiumConfig(cfgMap map[string]interface{}) {
 	if browserPath, ok := chromCfg["browser_path"].(string); ok && browserPath != "" {
 		p.config.ChromiumConfig.BrowserPath = browserPath
 	}
-	if timeout, ok := chromCfg["timeout"].(float64); ok && timeout > 0 {
-		p.config.ChromiumConfig.Timeout = int(timeout)
+	if timeout, ok := parseIntFromInterface(chromCfg["timeout"]); ok && timeout > 0 {
+		p.config.ChromiumConfig.Timeout = timeout
 	}
-	if maxConcurrent, ok := chromCfg["max_concurrent"].(float64); ok && maxConcurrent > 0 {
-		p.config.ChromiumConfig.MaxConcurrent = int(maxConcurrent)
+	if maxConcurrent, ok := parseIntFromInterface(chromCfg["max_concurrent"]); ok && maxConcurrent > 0 {
+		p.config.ChromiumConfig.MaxConcurrent = maxConcurrent
 	}
 	if noSandbox, ok := chromCfg["no_sandbox"].(bool); ok {
 		p.config.ChromiumConfig.NoSandbox = noSandbox

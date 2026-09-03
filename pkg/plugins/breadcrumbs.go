@@ -125,7 +125,7 @@ func (p *BreadcrumbsPlugin) configureFromMap(config map[string]interface{}) {
 	if separator, ok := config["separator"].(string); ok && separator != "" {
 		p.separator = separator
 	}
-	if maxDepth, ok := config["max_depth"].(int); ok && maxDepth >= 0 {
+	if maxDepth, ok := parseIntFromInterface(config["max_depth"]); ok && maxDepth >= 0 {
 		p.maxDepth = maxDepth
 	}
 	if sd, ok := config["structured_data"].(bool); ok {

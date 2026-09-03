@@ -97,8 +97,8 @@ func (p *WebmentionsFetchPlugin) Configure(m *lifecycle.Manager) error {
 			if userAgent, ok := wmMap["user_agent"].(string); ok {
 				p.config.UserAgent = userAgent
 			}
-			if concurrentRequests, ok := wmMap["concurrent_requests"].(int64); ok {
-				p.config.ConcurrentRequests = int(concurrentRequests)
+			if concurrentRequests, ok := parseIntFromInterface(wmMap["concurrent_requests"]); ok {
+				p.config.ConcurrentRequests = concurrentRequests
 			}
 		}
 	}

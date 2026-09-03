@@ -34,7 +34,7 @@ func (p *DescriptionPlugin) Name() string {
 func (p *DescriptionPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra != nil {
-		if maxLength, ok := config.Extra["description_max_length"].(int); ok && maxLength > 0 {
+		if maxLength, ok := parseIntFromInterface(config.Extra["description_max_length"]); ok && maxLength > 0 {
 			p.maxLength = maxLength
 		}
 	}
