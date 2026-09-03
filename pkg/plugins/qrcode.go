@@ -76,7 +76,7 @@ func (p *QRCodePlugin) Configure(m *lifecycle.Manager) error {
 		if format, ok := cfgMap["format"].(string); ok && (format == qrFormatSVG || format == qrFormatPNG) {
 			p.config.Format = format
 		}
-		if size, ok := cfgMap["size"].(int); ok && size > 0 {
+		if size, ok := parseIntFromInterface(cfgMap["size"]); ok && size > 0 {
 			p.config.Size = size
 		}
 		if outputDir, ok := cfgMap["output_dir"].(string); ok && outputDir != "" {

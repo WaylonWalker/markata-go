@@ -40,10 +40,10 @@ func (p *TocPlugin) Name() string {
 func (p *TocPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra != nil {
-		if minLevel, ok := config.Extra["toc_min_level"].(int); ok && minLevel >= 1 && minLevel <= 6 {
+		if minLevel, ok := parseIntFromInterface(config.Extra["toc_min_level"]); ok && minLevel >= 1 && minLevel <= 6 {
 			p.minLevel = minLevel
 		}
-		if maxLevel, ok := config.Extra["toc_max_level"].(int); ok && maxLevel >= 1 && maxLevel <= 6 {
+		if maxLevel, ok := parseIntFromInterface(config.Extra["toc_max_level"]); ok && maxLevel >= 1 && maxLevel <= 6 {
 			p.maxLevel = maxLevel
 		}
 

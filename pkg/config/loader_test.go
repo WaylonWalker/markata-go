@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -291,6 +292,137 @@ func TestLoadFromString_PreservesUnknownPluginConfig(t *testing.T) {
 	}
 	if label, ok := pluginConfig["label"].(string); !ok || label != "hello" {
 		t.Errorf("custom_plugin.label = %#v, want %q", pluginConfig["label"], "hello")
+	}
+}
+
+func TestLoadFromString_UnknownIntegerTypeMatrix(t *testing.T) {
+	tests := []struct {
+		name          string
+		data          string
+		format        Format
+		wantRawType   string
+		wantFinalType string
+	}{
+		{
+			name:          "TOML",
+			data:          "[markata-go]\n[markata-go.stats]\nwords_per_minute = 321\n",
+			format:        FormatTOML,
+			wantRawType:   "int64",
+			wantFinalType: "int64",
+		},
+		{
+			name:          "YAML",
+			data:          "markata-go:\n  stats:\n    words_per_minute: 321\n",
+			format:        FormatYAML,
+			wantRawType:   "int",
+			wantFinalType: "int",
+		},
+		{
+			name:          "JSON",
+			data:          `{"markata-go":{"stats":{"words_per_minute":321}}}`,
+			format:        FormatJSON,
+			wantRawType:   "float64",
+			wantFinalType: "float64",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, err := loadRawConfigData([]byte(tt.data), tt.format)
+			if err != nil {
+				t.Fatalf("loadRawConfigData() error = %v", err)
+			}
+			rawMarkataGo, ok := raw["markata-go"].(map[string]any)
+			if !ok {
+				t.Fatalf("raw markata-go = %T, want map[string]any", raw["markata-go"])
+			}
+			rawStats, ok := rawMarkataGo["stats"].(map[string]any)
+			if !ok {
+				t.Fatalf("raw stats = %T, want map[string]any", rawMarkataGo["stats"])
+			}
+			if got := fmt.Sprintf("%T", rawStats["words_per_minute"]); got != tt.wantRawType {
+				t.Errorf("raw words_per_minute type = %s, want %s", got, tt.wantRawType)
+			}
+
+			config, err := LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("LoadFromString() error = %v", err)
+			}
+			finalStats, ok := config.Extra["stats"].(map[string]any)
+			if !ok {
+				t.Fatalf("final stats = %T, want map[string]any", config.Extra["stats"])
+			}
+			if got := fmt.Sprintf("%T", finalStats["words_per_minute"]); got != tt.wantFinalType {
+				t.Errorf("final words_per_minute type = %s, want %s", got, tt.wantFinalType)
+			}
+		})
+	}
+}
+
+func TestLoadWithMerge_UnknownIntegerTypeFollowsOverrideFormat(t *testing.T) {
+	tests := []struct {
+		name          string
+		baseName      string
+		baseData      string
+		overrideName  string
+		overrideData  string
+		wantFinalType string
+	}{
+		{
+			name:          "YAML override replaces TOML integer",
+			baseName:      "base.toml",
+			baseData:      "[markata-go]\n[markata-go.stats]\nwords_per_minute = 100\n",
+			overrideName:  "override.yaml",
+			overrideData:  "markata-go:\n  stats:\n    words_per_minute: 200\n",
+			wantFinalType: "int",
+		},
+		{
+			name:          "TOML override replaces YAML integer",
+			baseName:      "base.yaml",
+			baseData:      "markata-go:\n  stats:\n    words_per_minute: 100\n",
+			overrideName:  "override.toml",
+			overrideData:  "[markata-go]\n[markata-go.stats]\nwords_per_minute = 200\n",
+			wantFinalType: "int64",
+		},
+		{
+			name:          "JSON override replaces TOML integer",
+			baseName:      "base.toml",
+			baseData:      "[markata-go]\n[markata-go.stats]\nwords_per_minute = 100\n",
+			overrideName:  "override.json",
+			overrideData:  `{"markata-go":{"stats":{"words_per_minute":200}}}`,
+			wantFinalType: "float64",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			basePath := filepath.Join(dir, tt.baseName)
+			overridePath := filepath.Join(dir, tt.overrideName)
+			//nolint:gosec // Test files use an isolated temporary directory.
+			if err := os.WriteFile(basePath, []byte(tt.baseData), 0o644); err != nil {
+				t.Fatalf("write base config: %v", err)
+			}
+			//nolint:gosec // Test files use an isolated temporary directory.
+			if err := os.WriteFile(overridePath, []byte(tt.overrideData), 0o644); err != nil {
+				t.Fatalf("write override config: %v", err)
+			}
+
+			config, err := LoadWithMergeOptions(LoadOptions{
+				DisableDotEnv:       true,
+				DisableEnvOverrides: true,
+			}, basePath, overridePath)
+			if err != nil {
+				t.Fatalf("LoadWithMergeOptions() error = %v", err)
+			}
+			stats, ok := config.Extra["stats"].(map[string]any)
+			if !ok {
+				t.Fatalf("stats = %T, want map[string]any", config.Extra["stats"])
+			}
+			if got := fmt.Sprintf("%T", stats["words_per_minute"]); got != tt.wantFinalType {
+				t.Errorf("merged words_per_minute type = %s, want %s", got, tt.wantFinalType)
+			}
+		})
 	}
 }
 

@@ -67,7 +67,7 @@ func (p *OneLineLinkPlugin) Configure(m *lifecycle.Manager) error {
 		if fallbackTitle, ok := cfgMap["fallback_title"].(string); ok && fallbackTitle != "" {
 			p.config.FallbackTitle = fallbackTitle
 		}
-		if timeout, ok := cfgMap["timeout"].(int); ok && timeout > 0 {
+		if timeout, ok := parseIntFromInterface(cfgMap["timeout"]); ok && timeout > 0 {
 			p.config.Timeout = timeout
 		}
 		if patterns, ok := cfgMap["exclude_patterns"].([]interface{}); ok {

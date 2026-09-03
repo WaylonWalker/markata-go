@@ -680,13 +680,8 @@ func applyLinkAvatarsIgnoreFields(dst *LinkAvatarsConfig, m map[string]any) {
 
 // applyLinkAvatarsSizeAndPosition applies size and position fields.
 func applyLinkAvatarsSizeAndPosition(dst *LinkAvatarsConfig, m map[string]any) {
-	// Size can come as int, int64, or float64 depending on the source
-	if v, ok := m["size"].(int); ok && v > 0 {
+	if v, ok := parseIntFromInterface(m["size"]); ok && v > 0 {
 		dst.Size = v
-	} else if v, ok := m["size"].(int64); ok && v > 0 {
-		dst.Size = int(v)
-	} else if v, ok := m["size"].(float64); ok && v > 0 {
-		dst.Size = int(v)
 	}
 
 	if v, ok := m["position"].(string); ok {
