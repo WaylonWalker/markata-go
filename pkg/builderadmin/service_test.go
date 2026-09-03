@@ -588,6 +588,9 @@ Delete this post.
 	}
 
 	binary := filepath.Join(t.TempDir(), "markata-go")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	_, sourceFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller() failed")
