@@ -116,8 +116,8 @@ type Feed struct {
 }
 
 // PostIndex provides efficient lookups for posts by various keys.
-// This is built once after the Load stage and shared across all plugins
-// to avoid each plugin building its own lookup maps.
+// It is built lazily from current posts and shared across all plugins to avoid
+// each plugin building its own lookup maps.
 type PostIndex struct {
 	// BySlug maps lowercase slug to post
 	BySlug map[string]*models.Post
@@ -140,7 +140,7 @@ func newPostIndex(capacity int) *PostIndex {
 }
 
 // Refresh rebuilds the index from the manager's current posts.
-// Safe to call multiple times; replaces all lookup maps.
+// Safe to call multiple times; call it after changing fields on an existing post.
 func (idx *PostIndex) Refresh(m *Manager) {
 	if idx == nil || m == nil {
 		return
@@ -353,7 +353,7 @@ func (m *Manager) AddPost(post *models.Post) {
 
 // PostIndex returns the shared post lookup index.
 // The index is built lazily on first access and cached.
-// It is automatically invalidated when posts are modified via SetPosts/AddPost.
+// SetPosts, AddPost, and Reset invalidate it; field changes require Refresh.
 func (m *Manager) PostIndex() *PostIndex {
 	m.mu.RLock()
 	if m.postIndex != nil {
@@ -635,6 +635,7 @@ func (m *Manager) Reset() {
 	defer m.mu.Unlock()
 
 	m.posts = make([]*models.Post, 0)
+	m.postIndex = nil
 	m.files = make([]string, 0)
 	m.feeds = make([]*Feed, 0)
 	m.stagesRun = make(map[Stage]bool)
