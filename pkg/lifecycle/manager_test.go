@@ -562,6 +562,31 @@ func TestManagerReset(t *testing.T) {
 	}
 }
 
+func TestManagerResetInvalidatesPostIndex(t *testing.T) {
+	m := NewManager()
+	post := &models.Post{Slug: "post-a", Href: "/post-a/", Path: "post-a.md"}
+	m.SetPosts([]*models.Post{post})
+
+	idx1 := m.PostIndex()
+	if got := idx1.LookupBySlug("post-a"); got != post {
+		t.Fatalf("PostIndex().LookupBySlug(%q) = %v, want post A", "post-a", got)
+	}
+
+	m.Reset()
+
+	if got := m.Posts(); len(got) != 0 {
+		t.Fatalf("Posts() after Reset() = %d posts, want empty", len(got))
+	}
+
+	idx2 := m.PostIndex()
+	if idx2 == idx1 {
+		t.Fatal("PostIndex() after Reset() returned the stale index")
+	}
+	if got := idx2.LookupBySlug("post-a"); got != nil {
+		t.Fatalf("PostIndex().LookupBySlug(%q) after Reset() = %v, want nil", "post-a", got)
+	}
+}
+
 func TestManagerConcurrentProcessing(t *testing.T) {
 	m := NewManager()
 	m.SetConcurrency(2)

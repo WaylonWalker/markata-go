@@ -192,6 +192,37 @@ leave an automatic fallback slug pending until this transform completes.
 | save | write |
 | teardown | cleanup |
 
+### Manager post lookup index
+
+The Go standard-lifecycle implementation exposes one shared `PostIndex` for
+post lookups. The index is lazy: `Manager.PostIndex()` builds it from the
+manager's current `Posts()` collection on first access and then returns the
+cached index. It is not limited to a call after `load`; callers can request it
+at any lifecycle stage.
+
+The index provides these keys:
+
+| Map | Key behavior |
+| --- | --- |
+| `BySlug` | Lowercase `Post.Slug` and lowercase string aliases |
+| `BySlugified` | Slugified `Post.Slug` when distinct from its lowercase key, plus slugified aliases |
+| `ByHref` | Exact, non-empty `Post.Href` |
+| `ByPath` | Exact, non-empty `Post.Path` |
+
+`LookupBySlug` checks the lowercase slug, then the slugified key, then the
+slugified key in `BySlug`. Main slug, slugified slug, href, and path entries use
+last-post-wins behavior when duplicate map keys occur. Alias entries do not
+replace an existing slug or slugified entry. A nil index or missing key returns
+nil.
+
+`SetPosts`, `AddPost`, and `Reset` invalidate the manager's cached index while
+holding the manager lock. Synthetic posts that are visible to later stages
+must therefore be added with `AddPost`. Mutating `Slug`, `Href`, `Path`, or
+alias data through an existing `*Post` cannot be observed by `Manager`; the
+caller must call `PostIndex().Refresh(m)` before using that index. The index is
+also not a replacement for filtered, cache-owned, validation, or aggregation
+maps whose source collection or duplicate semantics differ.
+
 ---
 
 ## Variant C: Minimal Lifecycle (6 Stages)

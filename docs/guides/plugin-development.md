@@ -349,6 +349,25 @@ m.AddPost(post)
 m.SetPosts(posts)
 ```
 
+### Post lookups
+
+Use the manager's shared index instead of building a slug, href, or path map
+inside a plugin:
+
+```go
+index := m.PostIndex()
+post := index.LookupBySlug("other-post")
+postByHref := index.ByHref["/other-post/"]
+postByPath := index.ByPath["posts/other-post.md"]
+```
+
+`LookupBySlug` accepts case-insensitive slugs, slugified slugs, and aliases.
+Href and path keys use exact strings. `SetPosts`, `AddPost`, and `Reset`
+invalidate the cached index automatically. If a plugin changes `Slug`, `Href`,
+`Path`, or aliases on an existing post, call `index.Refresh(m)` before the
+lookup. Keep a separate map when the plugin needs a filtered subset, cache
+snapshot, validation of duplicate keys, or different lookup semantics.
+
 ### Files
 
 ```go
