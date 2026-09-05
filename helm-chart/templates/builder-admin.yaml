@@ -96,7 +96,9 @@ spec:
             - {{ .Values.builderAdmin.port | quote }}
             - --source-dir
             - /data/source
-            - --site-dir
+            # This is builder-admin's release-root flag. It is distinct from
+            # markata-go's global --site-dir flag used by newer CLI commands.
+            - --release-dir
             - /data/site
             - --history-dir
             - {{ .Values.builderAdmin.historyDir | quote }}
