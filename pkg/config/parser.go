@@ -43,6 +43,14 @@ type configSource interface {
 	getBuilderAdmin() models.BuilderAdminConfig
 }
 
+type parsedThemeCalendar = models.ThemeCalendarConfig
+type parsedHead = models.HeadConfig
+type parsedTemplatePresets = map[string]models.TemplatePreset
+type parsedDefaultTemplates = map[string]string
+type parsedErrorPages = models.ErrorPagesConfig
+type parsedResourceHints = models.ResourceHintsConfig
+type parsedHighlight = models.HighlightConfig
+
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
 	Fontpack       string
@@ -70,6 +78,13 @@ type baseConfigData struct {
 	Extensions     []string
 	Concurrency    int
 	Theme          models.ThemeConfig
+	ThemeCalendar  parsedThemeCalendar
+	Head           parsedHead
+	Presets        parsedTemplatePresets
+	Defaults       parsedDefaultTemplates
+	ErrorPages     parsedErrorPages
+	ResourceHints  parsedResourceHints
+	Highlight      parsedHighlight
 	Footer         models.FooterConfig
 }
 
@@ -206,10 +221,19 @@ func buildConfig(src configSource) *models.Config {
 		},
 		MarkdownConfig: models.MarkdownConfig{
 			Extensions: base.Extensions,
+			Highlight:  base.Highlight,
 		},
 		Concurrency: base.Concurrency,
 		Theme:       base.Theme,
-		Footer:      base.Footer,
+
+		ThemeCalendar:    base.ThemeCalendar,
+		Head:             base.Head,
+		TemplatePresets:  base.Presets,
+		DefaultTemplates: base.Defaults,
+		ErrorPages:       base.ErrorPages,
+		ResourceHints:    base.ResourceHints,
+
+		Footer: base.Footer,
 	}
 	config.License = models.LicenseValue{Raw: base.License}
 
@@ -352,6 +376,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"blogroll": true, "mentions": true, "template_presets": true,
 			"slug_conflicts":    false,
 			"default_templates": true, "auto_feeds": true, "head": true,
+			"theme_calendar": true, "error_pages": true, "resource_hints": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
@@ -535,6 +560,12 @@ type tomlConfig struct {
 	FeedDefaults    tomlFeedDefaults          `toml:"feed_defaults"`
 	Concurrency     int                       `toml:"concurrency"`
 	Theme           tomlThemeConfig           `toml:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `toml:"theme_calendar"`
+	Head            parsedHead                `toml:"head"`
+	Presets         parsedTemplatePresets     `toml:"template_presets"`
+	Defaults        parsedDefaultTemplates    `toml:"default_templates"`
+	ErrorPages      parsedErrorPages          `toml:"error_pages"`
+	ResourceHints   parsedResourceHints       `toml:"resource_hints"`
 	PostFormats     tomlPostFormatsConfig     `toml:"post_formats"`
 	WellKnown       tomlWellKnownConfig       `toml:"well_known"`
 	SEO             tomlSEOConfig             `toml:"seo"`
@@ -684,7 +715,8 @@ type tomlSlugRule struct {
 }
 
 type tomlMarkdownConfig struct {
-	Extensions []string `toml:"extensions"`
+	Extensions []string        `toml:"extensions"`
+	Highlight  parsedHighlight `toml:"highlight"`
 }
 
 type tomlFeedConfig struct {
@@ -1879,6 +1911,13 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head,
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }
@@ -2116,6 +2155,12 @@ type yamlConfig struct {
 	FeedDefaults    yamlFeedDefaults          `yaml:"feed_defaults"`
 	Concurrency     int                       `yaml:"concurrency"`
 	Theme           yamlThemeConfig           `yaml:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `yaml:"theme_calendar"`
+	Head            parsedHead                `yaml:"head"`
+	Presets         parsedTemplatePresets     `yaml:"template_presets"`
+	Defaults        parsedDefaultTemplates    `yaml:"default_templates"`
+	ErrorPages      parsedErrorPages          `yaml:"error_pages"`
+	ResourceHints   parsedResourceHints       `yaml:"resource_hints"`
 	PostFormats     yamlPostFormatsConfig     `yaml:"post_formats"`
 	WellKnown       yamlWellKnownConfig       `yaml:"well_known"`
 	IndieAuth       yamlIndieAuthConfig       `yaml:"indieauth"`
@@ -2182,7 +2227,8 @@ type yamlSlugRule struct {
 }
 
 type yamlMarkdownConfig struct {
-	Extensions []string `yaml:"extensions"`
+	Extensions []string        `yaml:"extensions"`
+	Highlight  parsedHighlight `yaml:"highlight"`
 }
 
 type yamlFeedConfig struct {
@@ -3497,6 +3543,13 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head,
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }
@@ -3663,6 +3716,12 @@ type jsonConfig struct {
 	FeedDefaults    jsonFeedDefaults          `json:"feed_defaults"`
 	Concurrency     int                       `json:"concurrency"`
 	Theme           jsonThemeConfig           `json:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `json:"theme_calendar"`
+	Head            parsedHead                `json:"head"`
+	Presets         parsedTemplatePresets     `json:"template_presets"`
+	Defaults        parsedDefaultTemplates    `json:"default_templates"`
+	ErrorPages      parsedErrorPages          `json:"error_pages"`
+	ResourceHints   parsedResourceHints       `json:"resource_hints"`
 	PostFormats     jsonPostFormatsConfig     `json:"post_formats"`
 	WellKnown       jsonWellKnownConfig       `json:"well_known"`
 	IndieAuth       jsonIndieAuthConfig       `json:"indieauth"`
@@ -3729,7 +3788,8 @@ type jsonSlugRule struct {
 }
 
 type jsonMarkdownConfig struct {
-	Extensions []string `json:"extensions"`
+	Extensions []string        `json:"extensions"`
+	Highlight  parsedHighlight `json:"highlight"`
 }
 
 func (g tomlGlobConfig) toSlugRules() []models.SlugRule {
@@ -5068,6 +5128,13 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head,
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }

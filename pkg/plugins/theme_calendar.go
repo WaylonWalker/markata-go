@@ -98,8 +98,19 @@ func (p *ThemeCalendarPlugin) Configure(m *lifecycle.Manager) error {
 
 // getCalendarConfig retrieves the theme calendar configuration.
 func (p *ThemeCalendarPlugin) getCalendarConfig(config *lifecycle.Config) *models.ThemeCalendarConfig {
-	// First check the typed Config field via Extra conversion
-	if config.Extra == nil {
+	// Prefer the typed configuration projected by the CLI lifecycle setup.
+	if config != nil && config.Extra != nil {
+		switch calendar := config.Extra["theme_calendar"].(type) {
+		case models.ThemeCalendarConfig:
+			return &calendar
+		case *models.ThemeCalendarConfig:
+			if calendar != nil {
+				return calendar
+			}
+		}
+	}
+
+	if config == nil || config.Extra == nil {
 		return &models.ThemeCalendarConfig{}
 	}
 

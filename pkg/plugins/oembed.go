@@ -121,7 +121,7 @@ func (r *oembedResolver) setHTMLFetcher(fetcher func(rawURL string) (string, err
 func newEmbedMarkdownRenderer(extra map[string]interface{}) goldmark.Markdown {
 	chromaTheme, lineNumbers, enabled := resolveEmbedHighlightConfig(extra)
 	if !enabled {
-		chromaTheme = "monokailight"
+		chromaTheme = disabledHighlightTheme
 		lineNumbers = false
 	}
 	if chromaTheme == "" {
@@ -158,18 +158,10 @@ func newEmbedMarkdownRenderer(extra map[string]interface{}) goldmark.Markdown {
 func resolveEmbedHighlightConfig(extra map[string]interface{}) (chromaTheme string, lineNumbers, enabled bool) {
 	enabled = true
 
-	if markdownConfig, ok := extra["markdown"].(map[string]interface{}); ok {
-		if highlight, ok := markdownConfig["highlight"].(map[string]interface{}); ok {
-			if enabledValue, ok := highlight["enabled"].(bool); ok {
-				enabled = enabledValue
-			}
-			if theme, ok := highlight["theme"].(string); ok && theme != "" {
-				chromaTheme = theme
-			}
-			if ln, ok := highlight["line_numbers"].(bool); ok {
-				lineNumbers = ln
-			}
-		}
+	if highlight, ok := highlightConfigFromExtra(extra); ok {
+		enabled = highlight.IsEnabled()
+		chromaTheme = highlight.Theme
+		lineNumbers = highlight.LineNumbers
 	}
 
 	if chromaTheme == "" {

@@ -188,12 +188,8 @@ func (p *ChromaCSSPlugin) getExplicitHighlightTheme(extra map[string]interface{}
 		return "", false
 	}
 
-	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
-		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
-			if theme, ok := highlight["theme"].(string); ok && theme != "" {
-				return theme, true
-			}
-		}
+	if highlight, ok := highlightConfigFromExtra(extra); ok && highlight.Theme != "" {
+		return highlight.Theme, true
 	}
 
 	return "", false
