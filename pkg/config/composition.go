@@ -292,6 +292,9 @@ func configFromRawWrapper(rawWrapper map[string]any) (*models.Config, error) {
 	if err := json.Unmarshal(data, &wrapper); err != nil {
 		return nil, fmt.Errorf("failed to decode resolved config: %w", err)
 	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
+		return nil, fmt.Errorf("failed to decode resolved config: %w", err)
+	}
 
 	config := wrapper.MarkataGo.toConfig()
 	populateExtra(config, rawWrapper)

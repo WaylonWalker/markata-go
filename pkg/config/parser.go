@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -60,7 +61,7 @@ type parsedHighlight = models.HighlightConfig
 
 func (h parsedHead) toHeadConfig() models.HeadConfig {
 	return models.HeadConfig{
-		Text:           headTextString(h.Text),
+		Text:           normalizedHeadText(h.Text),
 		Meta:           h.Meta,
 		Link:           h.Link,
 		Script:         h.Script,
@@ -68,39 +69,80 @@ func (h parsedHead) toHeadConfig() models.HeadConfig {
 	}
 }
 
-// headTextString accepts both the current string form and the legacy list form
+func normalizedHeadText(value any) string {
+	text, err := parseHeadText(value)
+	if err != nil {
+		return ""
+	}
+	return text
+}
+
+func (h parsedHead) validate() error {
+	_, err := parseHeadText(h.Text)
+	return err
+}
+
+// parseHeadText accepts both the current string form and the legacy list form
 // documented by HEAD_STYLE.md. The list form is used by existing site config
 // files such as [[markata-go.head.text]] value = "...".
-func headTextString(value any) string {
+func parseHeadText(value any) (string, error) {
 	switch value := value.(type) {
 	case nil:
-		return ""
+		return "", nil
 	case string:
-		return value
+		return value, nil
 	case []any:
 		parts := make([]string, 0, len(value))
-		for _, item := range value {
-			if text := headTextString(item); text != "" {
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
 				parts = append(parts, text)
 			}
 		}
-		return strings.Join(parts, "\n")
+		return strings.Join(parts, "\n"), nil
 	case []map[string]any:
 		parts := make([]string, 0, len(value))
-		for _, item := range value {
-			if text := headTextString(item); text != "" {
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
 				parts = append(parts, text)
 			}
 		}
-		return strings.Join(parts, "\n")
+		return strings.Join(parts, "\n"), nil
 	case map[string]any:
-		return headTextString(value["value"])
+		text, ok := value["value"]
+		if !ok {
+			return "", fmt.Errorf("head.text block must contain a string value")
+		}
+		return parseHeadText(text)
 	case map[string]string:
-		return value["value"]
+		text, ok := value["value"]
+		if !ok {
+			return "", fmt.Errorf("head.text block must contain a string value")
+		}
+		return text, nil
 	case []string:
-		return strings.Join(value, "\n")
+		return strings.Join(value, "\n"), nil
+	case []map[string]string:
+		parts := make([]string, 0, len(value))
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n"), nil
 	default:
-		return ""
+		return "", fmt.Errorf("head.text must be a string or list of string-valued blocks, got %T", value)
 	}
 }
 
@@ -395,6 +437,9 @@ func ParseTOML(data []byte) (*models.Config, error) {
 	if err := toml.Unmarshal(data, &wrapper); err != nil {
 		return nil, err
 	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
+		return nil, err
+	}
 
 	config := wrapper.MarkataGo.toConfig()
 
@@ -534,6 +579,9 @@ func ParseYAML(data []byte) (*models.Config, error) {
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return nil, err
 	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
+		return nil, err
+	}
 
 	config := wrapper.MarkataGo.toConfig()
 	var raw map[string]any
@@ -552,6 +600,9 @@ func ParseJSON(data []byte) (*models.Config, error) {
 	}
 
 	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return nil, err
+	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
 		return nil, err
 	}
 
