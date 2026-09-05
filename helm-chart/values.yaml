@@ -199,6 +199,9 @@ search:
   port: 3001
   watchDebounce: 2s
   waitForSource:
+    # Gate source-backed search and builder-admin startup until the source
+    # population job writes its completion marker. This is independent of the
+    # scheduled build CronJob, so it also works when build.enabled is false.
     enabled: true
     timeoutSeconds: 900
     pollIntervalSeconds: 2
