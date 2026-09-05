@@ -139,6 +139,61 @@ html = "default.html"
 	}
 }
 
+func TestLoadFromStringNormalizesHeadTextBlocks(t *testing.T) {
+	tests := []struct {
+		name   string
+		format Format
+		data   string
+	}{
+		{
+			name:   "toml",
+			format: FormatTOML,
+			data: `[markata-go.head]
+[[markata-go.head.link]]
+rel = "webmention"
+href = "https://example.test/webmention"
+[[markata-go.head.text]]
+value = "<style>one</style>"
+[[markata-go.head.text]]
+value = "<script>two</script>"
+`,
+		},
+		{
+			name:   "yaml",
+			format: FormatYAML,
+			data: `markata-go:
+  head:
+    link:
+      - rel: webmention
+        href: https://example.test/webmention
+    text:
+      - value: <style>one</style>
+      - value: <script>two</script>
+`,
+		},
+		{
+			name:   "json",
+			format: FormatJSON,
+			data:   `{"markata-go":{"head":{"link":[{"rel":"webmention","href":"https://example.test/webmention"}],"text":[{"value":"<style>one</style>"},{"value":"<script>two</script>"}]}}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("LoadFromString() error = %v", err)
+			}
+			if config.Head.Text != "<style>one</style>\n<script>two</script>" {
+				t.Errorf("Head.Text = %q, want normalized text blocks", config.Head.Text)
+			}
+			if len(config.Head.Link) != 1 || config.Head.Link[0].Rel != "webmention" {
+				t.Errorf("Head.Link = %+v, want legacy head link preserved", config.Head.Link)
+			}
+		})
+	}
+}
+
 func TestLoadProjectsAffectedTypedFields(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "markata-go.toml")
 	data := `[markata-go]
