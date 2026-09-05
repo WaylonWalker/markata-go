@@ -56,7 +56,7 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
-      {{- if and .Values.build.enabled (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled }}
+      {{- if and (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled }}
       initContainers:
         - name: wait-for-source
           image: "{{ .Values.build.builderImage.name }}:{{ .Values.build.builderImage.tag }}"
@@ -67,7 +67,7 @@ spec:
           args:
             - |
               deadline=$(($(date +%s) + {{ .Values.search.waitForSource.timeoutSeconds }}))
-              until [ -f /data/source/.markata-notes-source-ready ] || [ -f /data/source/markata-go.toml ] || [ -f /data/source/markata.toml ] || [ -d /data/source/pages ] || [ -d /data/source/content ]; do
+              until [ -f /data/source/.markata-notes-source-ready ]; do
                 if [ "$(date +%s)" -ge "$deadline" ]; then
                   echo "timed out waiting for source content in /data/source" >&2
                   ls -la /data/source >&2
