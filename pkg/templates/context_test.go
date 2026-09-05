@@ -99,6 +99,28 @@ func TestSwitcherToMap_ModeToggleFromConfig(t *testing.T) {
 	}
 }
 
+func TestConfigToMap_ProjectsHeadConfig(t *testing.T) {
+	config := &models.Config{
+		Head: models.HeadConfig{
+			Text: "<meta name=\"fixture\">",
+			Meta: []models.MetaTag{{Name: "robots", Content: "noindex"}},
+		},
+	}
+
+	got := configToMap(config)
+	head, ok := got["head"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("head = %#v, want template map", got["head"])
+	}
+	if head["text"] != config.Head.Text {
+		t.Errorf("head.text = %#v, want %q", head["text"], config.Head.Text)
+	}
+	meta, ok := head["meta"].([]map[string]interface{})
+	if !ok || len(meta) != 1 || meta[0]["content"] != "noindex" {
+		t.Errorf("head.meta = %#v, want projected meta tag", head["meta"])
+	}
+}
+
 func TestComponentsToMap_PostConnectionsDefaults(t *testing.T) {
 	components := models.NewComponentsConfig()
 	m := componentsToMap(&components)

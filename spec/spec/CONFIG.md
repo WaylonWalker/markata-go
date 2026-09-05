@@ -74,6 +74,29 @@ Later values win over earlier values.
 
 For feeds, a new `slug` appends a new feed. A repeated `slug` merges into the existing feed, and later fragments win on conflicts.
 
+### Typed Projection Of Core Settings
+
+TOML, YAML, and JSON configuration must materialize these supported settings into
+their corresponding typed `models.Config` fields before lifecycle execution:
+
+| Configuration path | Typed field | Lifecycle consumer |
+|--------------------|-------------|--------------------|
+| `head` | `Head` | HTML template head rendering |
+| `template_presets` | `TemplatePresets` | Per-format template selection |
+| `default_templates` | `DefaultTemplates` | Global per-format template fallback |
+| `theme_calendar` | `ThemeCalendar` | Seasonal theme plugin |
+| `error_pages` | `ErrorPages` | Static 404 generation |
+| `resource_hints` | `ResourceHints` | Resource-hint generation when enabled |
+| `markdown.highlight` | `MarkdownConfig.Highlight` | Markdown and Chroma rendering |
+
+The same typed projection is used by `Load`, `LoadFromString`, and
+`LoadWithMerge`. Configuration maps are deep-merged and scalar arrays are
+replaced. Explicit `false`, `0`, and empty-string values remain overrides.
+
+The affected defaults are: markdown highlighting enabled, theme calendar
+disabled, 404 pages enabled, and resource hints enabled with auto-detection.
+Template maps and head elements have empty defaults.
+
 ### Format Examples
 
 **TOML (recommended):**
