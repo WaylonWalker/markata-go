@@ -67,7 +67,8 @@ spec:
           args:
             - |
               deadline=$(($(date +%s) + {{ .Values.search.waitForSource.timeoutSeconds }}))
-              until [ -f /data/source/.markata-notes-source-ready ]; do
+              until [ -f /data/source/.markata-notes-source-ready ] && \
+                [ ! -L /data/source/.markata-notes-source-ready ]; do
                 if [ "$(date +%s)" -ge "$deadline" ]; then
                   echo "timed out waiting for source content in /data/source" >&2
                   ls -la /data/source >&2
