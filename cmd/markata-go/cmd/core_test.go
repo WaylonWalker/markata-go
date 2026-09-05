@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -92,6 +93,48 @@ func TestCreateManagerPreservesAbsoluteFontpacksFile(t *testing.T) {
 	}
 	if got := manager.Config().Extra["fontpacks_file"]; got != catalogPath {
 		t.Fatalf("fontpacks_file = %q, want %q", got, catalogPath)
+	}
+}
+
+func TestCreateManagerProjectsAffectedConfig(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "markata-go.toml")
+	config := `[markata-go]
+[markata-go.head]
+text = "typed head"
+[markata-go.theme_calendar]
+enabled = false
+[markata-go.error_pages]
+enable_404 = false
+[markata-go.resource_hints]
+enabled = false
+[markata-go.markdown.highlight]
+enabled = false
+theme = "monokai"
+`
+	if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	manager, err := createManager(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	extra := manager.Config().Extra
+	if head, ok := extra["head"].(models.HeadConfig); !ok || head.Text != "typed head" {
+		t.Errorf("head extra = %#v, want typed head config", extra["head"])
+	}
+	if calendar, ok := extra["theme_calendar"].(models.ThemeCalendarConfig); !ok || calendar.IsEnabled() {
+		t.Errorf("theme_calendar extra = %#v, want disabled typed config", extra["theme_calendar"])
+	}
+	if errorPages, ok := extra["error_pages"].(models.ErrorPagesConfig); !ok || errorPages.Is404Enabled() {
+		t.Errorf("error_pages extra = %#v, want disabled typed config", extra["error_pages"])
+	}
+	if resourceHints, ok := extra["resource_hints"].(models.ResourceHintsConfig); !ok || resourceHints.IsEnabled() {
+		t.Errorf("resource_hints extra = %#v, want disabled typed config", extra["resource_hints"])
+	}
+	if markdown, ok := extra["markdown"].(models.MarkdownConfig); !ok || markdown.Highlight.IsEnabled() || markdown.Highlight.Theme != "monokai" {
+		t.Errorf("markdown extra = %#v, want typed highlight config", extra["markdown"])
 	}
 }
 

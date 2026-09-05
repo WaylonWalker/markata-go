@@ -1259,6 +1259,22 @@ func TestTemplatesPlugin_ResolveTemplateForFormat_WithPresets(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_ResolveTemplateForFormat_WithDefaultTemplates(t *testing.T) {
+	p := &TemplatesPlugin{
+		config: &lifecycle.Config{
+			Extra: map[string]interface{}{
+				"default_templates": map[string]string{
+					"html": "configured.html",
+				},
+			},
+		},
+	}
+
+	if got := p.resolveTemplateForFormat(&models.Post{}, "html"); got != "configured.html" {
+		t.Errorf("resolveTemplateForFormat() = %q, want configured.html", got)
+	}
+}
+
 func TestAdaptTemplateForFormat(t *testing.T) {
 	tests := []struct {
 		template string

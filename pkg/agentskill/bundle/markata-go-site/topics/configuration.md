@@ -36,6 +36,21 @@ Bare `markata-go config` behaves like `markata-go config show`.
 
 Most settings live under `[markata-go]` and nested namespaces like `[markata-go.glob]` and `[markata-go.theme]`.
 
+TOML, YAML, and JSON files support the same core configuration paths. Check
+these settings when a feature appears to ignore the site config:
+
+- `head`
+- `template_presets`
+- `default_templates`
+- `theme_calendar`
+- `error_pages`
+- `resource_hints`
+- `markdown.highlight`
+
+Use `markata-go config show` or `markata-go config get <key>` to inspect the
+resolved typed values. Explicit `false` values are valid settings and must not
+be replaced by defaults.
+
 The optional Content Index is enabled with `[markata-go.content_index]`. It
 writes resolved metadata and feed membership, including safe metadata-only
 records for private posts. It never writes article bodies or encryption keys.
@@ -82,6 +97,13 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `assets.mode`
 - `glob.patterns`
 - `theme.palette`
+- `head`
+- `template_presets`
+- `default_templates`
+- `theme_calendar`
+- `error_pages`
+- `resource_hints`
+- `markdown.highlight`
 - `layout.name`
 - feed definitions under `[[markata-go.feeds]]`
 - `templates.media.trusted_domains` when a site serves media from a CDN and needs trusted URLs normalized to `https`

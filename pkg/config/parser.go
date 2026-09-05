@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
@@ -43,6 +45,107 @@ type configSource interface {
 	getBuilderAdmin() models.BuilderAdminConfig
 }
 
+type parsedThemeCalendar = models.ThemeCalendarConfig
+type parsedHead struct {
+	Text           any                    `json:"text,omitempty" yaml:"text,omitempty" toml:"text,omitempty"`
+	Meta           []models.MetaTag       `json:"meta,omitempty" yaml:"meta,omitempty" toml:"meta,omitempty"`
+	Link           []models.LinkTag       `json:"link,omitempty" yaml:"link,omitempty" toml:"link,omitempty"`
+	Script         []models.ScriptTag     `json:"script,omitempty" yaml:"script,omitempty" toml:"script,omitempty"`
+	AlternateFeeds []models.AlternateFeed `json:"alternate_feeds,omitempty" yaml:"alternate_feeds,omitempty" toml:"alternate_feeds,omitempty"`
+}
+type parsedTemplatePresets = map[string]models.TemplatePreset
+type parsedDefaultTemplates = map[string]string
+type parsedErrorPages = models.ErrorPagesConfig
+type parsedResourceHints = models.ResourceHintsConfig
+type parsedHighlight = models.HighlightConfig
+
+func (h parsedHead) toHeadConfig() models.HeadConfig {
+	return models.HeadConfig{
+		Text:           normalizedHeadText(h.Text),
+		Meta:           h.Meta,
+		Link:           h.Link,
+		Script:         h.Script,
+		AlternateFeeds: h.AlternateFeeds,
+	}
+}
+
+func normalizedHeadText(value any) string {
+	text, err := parseHeadText(value)
+	if err != nil {
+		return ""
+	}
+	return text
+}
+
+func (h parsedHead) validate() error {
+	_, err := parseHeadText(h.Text)
+	return err
+}
+
+// parseHeadText accepts both the current string form and the legacy list form
+// documented by HEAD_STYLE.md. The list form is used by existing site config
+// files such as [[markata-go.head.text]] value = "...".
+func parseHeadText(value any) (string, error) {
+	switch value := value.(type) {
+	case nil:
+		return "", nil
+	case string:
+		return value, nil
+	case []any:
+		parts := make([]string, 0, len(value))
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n"), nil
+	case []map[string]any:
+		parts := make([]string, 0, len(value))
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n"), nil
+	case map[string]any:
+		text, ok := value["value"]
+		if !ok {
+			return "", fmt.Errorf("head.text block must contain a string value")
+		}
+		return parseHeadText(text)
+	case map[string]string:
+		text, ok := value["value"]
+		if !ok {
+			return "", fmt.Errorf("head.text block must contain a string value")
+		}
+		return text, nil
+	case []string:
+		return strings.Join(value, "\n"), nil
+	case []map[string]string:
+		parts := make([]string, 0, len(value))
+		for index, item := range value {
+			text, err := parseHeadText(item)
+			if err != nil {
+				return "", fmt.Errorf("head.text block %d: %w", index, err)
+			}
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n"), nil
+	default:
+		return "", fmt.Errorf("head.text must be a string or list of string-valued blocks, got %T", value)
+	}
+}
+
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
 	Fontpack       string
@@ -70,6 +173,13 @@ type baseConfigData struct {
 	Extensions     []string
 	Concurrency    int
 	Theme          models.ThemeConfig
+	ThemeCalendar  parsedThemeCalendar
+	Head           models.HeadConfig
+	Presets        parsedTemplatePresets
+	Defaults       parsedDefaultTemplates
+	ErrorPages     parsedErrorPages
+	ResourceHints  parsedResourceHints
+	Highlight      parsedHighlight
 	Footer         models.FooterConfig
 }
 
@@ -206,10 +316,19 @@ func buildConfig(src configSource) *models.Config {
 		},
 		MarkdownConfig: models.MarkdownConfig{
 			Extensions: base.Extensions,
+			Highlight:  base.Highlight,
 		},
 		Concurrency: base.Concurrency,
 		Theme:       base.Theme,
-		Footer:      base.Footer,
+
+		ThemeCalendar:    base.ThemeCalendar,
+		Head:             base.Head,
+		TemplatePresets:  base.Presets,
+		DefaultTemplates: base.Defaults,
+		ErrorPages:       base.ErrorPages,
+		ResourceHints:    base.ResourceHints,
+
+		Footer: base.Footer,
 	}
 	config.License = models.LicenseValue{Raw: base.License}
 
@@ -318,6 +437,9 @@ func ParseTOML(data []byte) (*models.Config, error) {
 	if err := toml.Unmarshal(data, &wrapper); err != nil {
 		return nil, err
 	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
+		return nil, err
+	}
 
 	config := wrapper.MarkataGo.toConfig()
 
@@ -352,6 +474,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"blogroll": true, "mentions": true, "template_presets": true,
 			"slug_conflicts":    false,
 			"default_templates": true, "auto_feeds": true, "head": true,
+			"theme_calendar": true, "error_pages": true, "resource_hints": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
@@ -456,6 +579,9 @@ func ParseYAML(data []byte) (*models.Config, error) {
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return nil, err
 	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
+		return nil, err
+	}
 
 	config := wrapper.MarkataGo.toConfig()
 	var raw map[string]any
@@ -474,6 +600,9 @@ func ParseJSON(data []byte) (*models.Config, error) {
 	}
 
 	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return nil, err
+	}
+	if err := wrapper.MarkataGo.Head.validate(); err != nil {
 		return nil, err
 	}
 
@@ -535,6 +664,12 @@ type tomlConfig struct {
 	FeedDefaults    tomlFeedDefaults          `toml:"feed_defaults"`
 	Concurrency     int                       `toml:"concurrency"`
 	Theme           tomlThemeConfig           `toml:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `toml:"theme_calendar"`
+	Head            parsedHead                `toml:"head"`
+	Presets         parsedTemplatePresets     `toml:"template_presets"`
+	Defaults        parsedDefaultTemplates    `toml:"default_templates"`
+	ErrorPages      parsedErrorPages          `toml:"error_pages"`
+	ResourceHints   parsedResourceHints       `toml:"resource_hints"`
 	PostFormats     tomlPostFormatsConfig     `toml:"post_formats"`
 	WellKnown       tomlWellKnownConfig       `toml:"well_known"`
 	SEO             tomlSEOConfig             `toml:"seo"`
@@ -684,7 +819,8 @@ type tomlSlugRule struct {
 }
 
 type tomlMarkdownConfig struct {
-	Extensions []string `toml:"extensions"`
+	Extensions []string        `toml:"extensions"`
+	Highlight  parsedHighlight `toml:"highlight"`
 }
 
 type tomlFeedConfig struct {
@@ -1879,6 +2015,13 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head.toHeadConfig(),
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }
@@ -2116,6 +2259,12 @@ type yamlConfig struct {
 	FeedDefaults    yamlFeedDefaults          `yaml:"feed_defaults"`
 	Concurrency     int                       `yaml:"concurrency"`
 	Theme           yamlThemeConfig           `yaml:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `yaml:"theme_calendar"`
+	Head            parsedHead                `yaml:"head"`
+	Presets         parsedTemplatePresets     `yaml:"template_presets"`
+	Defaults        parsedDefaultTemplates    `yaml:"default_templates"`
+	ErrorPages      parsedErrorPages          `yaml:"error_pages"`
+	ResourceHints   parsedResourceHints       `yaml:"resource_hints"`
 	PostFormats     yamlPostFormatsConfig     `yaml:"post_formats"`
 	WellKnown       yamlWellKnownConfig       `yaml:"well_known"`
 	IndieAuth       yamlIndieAuthConfig       `yaml:"indieauth"`
@@ -2182,7 +2331,8 @@ type yamlSlugRule struct {
 }
 
 type yamlMarkdownConfig struct {
-	Extensions []string `yaml:"extensions"`
+	Extensions []string        `yaml:"extensions"`
+	Highlight  parsedHighlight `yaml:"highlight"`
 }
 
 type yamlFeedConfig struct {
@@ -3497,6 +3647,13 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head.toHeadConfig(),
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }
@@ -3663,6 +3820,12 @@ type jsonConfig struct {
 	FeedDefaults    jsonFeedDefaults          `json:"feed_defaults"`
 	Concurrency     int                       `json:"concurrency"`
 	Theme           jsonThemeConfig           `json:"theme"`
+	ThemeCalendar   parsedThemeCalendar       `json:"theme_calendar"`
+	Head            parsedHead                `json:"head"`
+	Presets         parsedTemplatePresets     `json:"template_presets"`
+	Defaults        parsedDefaultTemplates    `json:"default_templates"`
+	ErrorPages      parsedErrorPages          `json:"error_pages"`
+	ResourceHints   parsedResourceHints       `json:"resource_hints"`
 	PostFormats     jsonPostFormatsConfig     `json:"post_formats"`
 	WellKnown       jsonWellKnownConfig       `json:"well_known"`
 	IndieAuth       jsonIndieAuthConfig       `json:"indieauth"`
@@ -3729,7 +3892,8 @@ type jsonSlugRule struct {
 }
 
 type jsonMarkdownConfig struct {
-	Extensions []string `json:"extensions"`
+	Extensions []string        `json:"extensions"`
+	Highlight  parsedHighlight `json:"highlight"`
 }
 
 func (g tomlGlobConfig) toSlugRules() []models.SlugRule {
@@ -5068,6 +5232,13 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Extensions:     c.Markdown.Extensions,
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
+		ThemeCalendar:  c.ThemeCalendar,
+		Head:           c.Head.toHeadConfig(),
+		Presets:        c.Presets,
+		Defaults:       c.Defaults,
+		ErrorPages:     c.ErrorPages,
+		ResourceHints:  c.ResourceHints,
+		Highlight:      c.Markdown.Highlight,
 		Footer:         c.Footer.toFooterConfig(),
 	}
 }
