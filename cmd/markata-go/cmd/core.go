@@ -73,6 +73,12 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["copyright"] = cfg.Copyright
 	lcConfig.Extra["templates_dir"] = cfg.TemplatesDir
 	lcConfig.Extra["assets_dir"] = cfg.AssetsDir
+	lcConfig.Extra["template_presets"] = cfg.TemplatePresets
+	lcConfig.Extra["default_templates"] = cfg.DefaultTemplates
+	lcConfig.Extra["theme_calendar"] = cfg.ThemeCalendar
+	lcConfig.Extra["error_pages"] = cfg.ErrorPages
+	lcConfig.Extra["resource_hints"] = cfg.ResourceHints
+	lcConfig.Extra["markdown"] = cfg.MarkdownConfig
 	lcConfig.Extra["feeds"] = cfg.Feeds
 	lcConfig.Extra["feed_defaults"] = cfg.FeedDefaults
 	lcConfig.Extra["use_gitignore"] = cfg.GlobConfig.UseGitignore

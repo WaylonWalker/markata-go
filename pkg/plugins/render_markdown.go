@@ -43,6 +43,8 @@ var figureBlockquoteCaptionParagraphRegex = regexp.MustCompile(`(?s)^<p>.*?</p>$
 // in the markdown pre-processing step, and detected in the post-processing step.
 const attributionMarker = "<!--markata-attribution-->"
 
+const disabledHighlightTheme = "monokailight"
+
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
 	md    goldmark.Markdown
@@ -235,25 +237,13 @@ func (p *RenderMarkdownPlugin) resolveHighlightConfig(extra map[string]interface
 	var lineNumbers bool
 	var paletteVariant = palettes.VariantDark
 
-	// Try to get explicit highlight config from markdown.highlight
-	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
-		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
-			// Check if highlighting is disabled
-			if enabled, ok := highlight["enabled"].(bool); ok && !enabled {
-				// Return empty theme to effectively disable highlighting
-				return "monokailight", false // Use a neutral theme, highlighting is still applied
-			}
-
-			// Get explicit theme
-			if theme, ok := highlight["theme"].(string); ok && theme != "" {
-				chromaTheme = theme
-			}
-
-			// Get line numbers setting
-			if ln, ok := highlight["line_numbers"].(bool); ok {
-				lineNumbers = ln
-			}
+	if highlight, ok := highlightConfigFromExtra(extra); ok {
+		if !highlight.IsEnabled() {
+			// Use a neutral theme while preserving the existing renderer path.
+			return disabledHighlightTheme, false
 		}
+		chromaTheme = highlight.Theme
+		lineNumbers = highlight.LineNumbers
 	}
 
 	// If no explicit theme, derive from palette
@@ -274,6 +264,46 @@ func (p *RenderMarkdownPlugin) resolveHighlightConfig(extra map[string]interface
 	}
 
 	return chromaTheme, lineNumbers
+}
+
+// highlightConfigFromExtra accepts the canonical typed config and the legacy
+// map representation used by direct plugin callers.
+func highlightConfigFromExtra(extra map[string]interface{}) (models.HighlightConfig, bool) {
+	if extra == nil {
+		return models.HighlightConfig{}, false
+	}
+
+	switch markdown := extra["markdown"].(type) {
+	case models.MarkdownConfig:
+		return markdown.Highlight, true
+	case *models.MarkdownConfig:
+		if markdown != nil {
+			return markdown.Highlight, true
+		}
+	case map[string]interface{}:
+		highlightValue, ok := markdown["highlight"]
+		if !ok {
+			return models.HighlightConfig{}, false
+		}
+		highlightMap, ok := highlightValue.(map[string]interface{})
+		if !ok {
+			return models.HighlightConfig{}, false
+		}
+
+		highlight := models.HighlightConfig{}
+		if enabled, ok := highlightMap["enabled"].(bool); ok {
+			highlight.Enabled = &enabled
+		}
+		if theme, ok := highlightMap["theme"].(string); ok {
+			highlight.Theme = theme
+		}
+		if lineNumbers, ok := highlightMap["line_numbers"].(bool); ok {
+			highlight.LineNumbers = lineNumbers
+		}
+		return highlight, true
+	}
+
+	return models.HighlightConfig{}, false
 }
 
 // getPaletteName extracts the palette name from config.Extra.

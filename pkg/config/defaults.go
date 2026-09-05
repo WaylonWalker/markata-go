@@ -19,6 +19,9 @@ func DefaultConfig() *models.Config {
 			SlugMode:     models.SlugModeFlat,
 			SlugRules:    nil,
 		},
+		MarkdownConfig: models.MarkdownConfig{
+			Highlight: models.NewHighlightConfig(),
+		},
 		Feeds: []models.FeedConfig{
 			{
 				Slug:        "archive",
@@ -29,9 +32,12 @@ func DefaultConfig() *models.Config {
 				Reverse:     true,
 			},
 		},
-		FeedDefaults: models.NewFeedDefaults(),
-		WellKnown:    models.NewWellKnownConfig(),
-		WebSub:       models.NewWebSubConfig(),
-		Encryption:   models.NewEncryptionConfig(),
+		FeedDefaults:  models.NewFeedDefaults(),
+		WellKnown:     models.NewWellKnownConfig(),
+		WebSub:        models.NewWebSubConfig(),
+		ThemeCalendar: models.NewThemeCalendarConfig(),
+		ErrorPages:    models.NewErrorPagesConfig(),
+		ResourceHints: models.NewResourceHintsConfig(),
+		Encryption:    models.NewEncryptionConfig(),
 	}
 }

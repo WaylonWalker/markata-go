@@ -981,6 +981,53 @@ theme = "github-dark"    # Or leave empty for auto-detection
 line_numbers = false
 ```
 
+### Template Selection
+
+Named presets and global per-format fallbacks are loaded from the
+`[markata-go]` namespace and work in TOML, YAML, and JSON configuration files.
+
+```toml
+[markata-go.template_presets.blog]
+html = "blog.html"
+txt = "blog.txt"
+markdown = "blog.md"
+og = "blog-og.html"
+
+[markata-go.default_templates]
+html = "post.html"
+txt = "default.txt"
+```
+
+When a post selects `template = "blog"`, the matching preset is used first.
+`default_templates` is used after post, preset, and layout selection when no
+earlier template supplies the requested format.
+
+### Error Pages
+
+Configure the generated 404 page with `[markata-go.error_pages]`:
+
+```toml
+[markata-go.error_pages]
+enable_404 = true
+custom_404_template = "404.html"
+max_suggestions = 5
+```
+
+### Resource Hints
+
+Resource-hint settings use `[markata-go.resource_hints]`:
+
+```toml
+[markata-go.resource_hints]
+enabled = true
+auto_detect = true
+exclude_domains = ["example.com"]
+```
+
+The feature is configured independently from plugin registration. Its default
+settings enable hints and automatic detection; set `enabled = false` to keep
+the typed setting disabled.
+
 ### Mermaid Settings (`[markata-go.mermaid]`)
 
 | Field | Type | Default | Description |
