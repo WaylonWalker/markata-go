@@ -701,6 +701,10 @@ The standalone search server MUST expose health behavior that distinguishes proc
 
 Recommended Kubernetes deployment ergonomics:
 
+- When source-backed search or builder-admin pods share a PVC with an external
+  source bootstrap job, the deployment SHOULD gate startup until the source
+  population job writes its completion marker. This readiness gate MUST be
+  independent of whether a scheduled build CronJob is enabled.
 - source-archive deployments SHOULD allow host-specific config overrides through environment variables so one content repo can safely drive preview and production hostnames
 - ingress configuration SHOULD support optional TLS termination with a configurable secret name and the primary host plus any configured aliases
 

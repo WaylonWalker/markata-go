@@ -13,7 +13,7 @@ This chart deploys a reusable markata-go notes workload that:
 - `work_notes/justfile` now uploads `source.tar.gz` from `git archive HEAD`.
 - Set `MARKATA_GO_SOURCE_ARCHIVE_ENCRYPT=true` when publishing if you want the uploaded archive encrypted with `MARKATA_GO_ENCRYPTION_KEY_DEFAULT`.
 - The search pod runs `markata-go search-server --mode watch-content --host 0.0.0.0` so bleve stays in sync when the source PVC changes.
-- The search pod now waits for the source PVC to be populated before starting, which avoids booting against an empty archive mount and indexing `0 posts`.
+- When `search.waitForSource.enabled` is true, source-backed search and builder-admin pods wait for the source-ready marker before starting. This also works when `build.enabled` is false and an external bootstrap job populates the source volume.
 - Site and search probes now check every 5s instead of every 10s, which trims rollout and restart latency without making the health checks brittle.
 - Runtime pods use a dedicated ServiceAccount with `automountServiceAccountToken: false`, disable service links, and apply `RuntimeDefault` seccomp with stricter container security settings where they are low risk.
 - A NetworkPolicy now limits runtime pod egress to cluster DNS, so the site and search pods cannot freely call other cluster services by default.
