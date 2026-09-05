@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
@@ -44,12 +45,64 @@ type configSource interface {
 }
 
 type parsedThemeCalendar = models.ThemeCalendarConfig
-type parsedHead = models.HeadConfig
+type parsedHead struct {
+	Text           any                    `json:"text,omitempty" yaml:"text,omitempty" toml:"text,omitempty"`
+	Meta           []models.MetaTag       `json:"meta,omitempty" yaml:"meta,omitempty" toml:"meta,omitempty"`
+	Link           []models.LinkTag       `json:"link,omitempty" yaml:"link,omitempty" toml:"link,omitempty"`
+	Script         []models.ScriptTag     `json:"script,omitempty" yaml:"script,omitempty" toml:"script,omitempty"`
+	AlternateFeeds []models.AlternateFeed `json:"alternate_feeds,omitempty" yaml:"alternate_feeds,omitempty" toml:"alternate_feeds,omitempty"`
+}
 type parsedTemplatePresets = map[string]models.TemplatePreset
 type parsedDefaultTemplates = map[string]string
 type parsedErrorPages = models.ErrorPagesConfig
 type parsedResourceHints = models.ResourceHintsConfig
 type parsedHighlight = models.HighlightConfig
+
+func (h parsedHead) toHeadConfig() models.HeadConfig {
+	return models.HeadConfig{
+		Text:           headTextString(h.Text),
+		Meta:           h.Meta,
+		Link:           h.Link,
+		Script:         h.Script,
+		AlternateFeeds: h.AlternateFeeds,
+	}
+}
+
+// headTextString accepts both the current string form and the legacy list form
+// documented by HEAD_STYLE.md. The list form is used by existing site config
+// files such as [[markata-go.head.text]] value = "...".
+func headTextString(value any) string {
+	switch value := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return value
+	case []any:
+		parts := make([]string, 0, len(value))
+		for _, item := range value {
+			if text := headTextString(item); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n")
+	case []map[string]any:
+		parts := make([]string, 0, len(value))
+		for _, item := range value {
+			if text := headTextString(item); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, "\n")
+	case map[string]any:
+		return headTextString(value["value"])
+	case map[string]string:
+		return value["value"]
+	case []string:
+		return strings.Join(value, "\n")
+	default:
+		return ""
+	}
+}
 
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
@@ -79,7 +132,7 @@ type baseConfigData struct {
 	Concurrency    int
 	Theme          models.ThemeConfig
 	ThemeCalendar  parsedThemeCalendar
-	Head           parsedHead
+	Head           models.HeadConfig
 	Presets        parsedTemplatePresets
 	Defaults       parsedDefaultTemplates
 	ErrorPages     parsedErrorPages
@@ -1912,7 +1965,7 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
 		ThemeCalendar:  c.ThemeCalendar,
-		Head:           c.Head,
+		Head:           c.Head.toHeadConfig(),
 		Presets:        c.Presets,
 		Defaults:       c.Defaults,
 		ErrorPages:     c.ErrorPages,
@@ -3544,7 +3597,7 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
 		ThemeCalendar:  c.ThemeCalendar,
-		Head:           c.Head,
+		Head:           c.Head.toHeadConfig(),
 		Presets:        c.Presets,
 		Defaults:       c.Defaults,
 		ErrorPages:     c.ErrorPages,
@@ -5129,7 +5182,7 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Concurrency:    c.Concurrency,
 		Theme:          c.Theme.toThemeConfig(),
 		ThemeCalendar:  c.ThemeCalendar,
-		Head:           c.Head,
+		Head:           c.Head.toHeadConfig(),
 		Presets:        c.Presets,
 		Defaults:       c.Defaults,
 		ErrorPages:     c.ErrorPages,
