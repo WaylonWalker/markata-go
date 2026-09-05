@@ -194,6 +194,38 @@ value = "<script>two</script>"
 	}
 }
 
+func TestLoadFromStringRejectsInvalidHeadText(t *testing.T) {
+	tests := []struct {
+		name   string
+		format Format
+		data   string
+	}{
+		{
+			name:   "toml",
+			format: FormatTOML,
+			data:   "[markata-go.head]\ntext = 42\n",
+		},
+		{
+			name:   "yaml",
+			format: FormatYAML,
+			data:   "markata-go:\n  head:\n    text: 42\n",
+		},
+		{
+			name:   "json",
+			format: FormatJSON,
+			data:   `{"markata-go":{"head":{"text":42}}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := LoadFromString(tt.data, tt.format); err == nil {
+				t.Fatal("LoadFromString() error = nil, want invalid head.text error")
+			}
+		})
+	}
+}
+
 func TestLoadProjectsAffectedTypedFields(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "markata-go.toml")
 	data := `[markata-go]
