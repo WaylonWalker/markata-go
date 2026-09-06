@@ -111,6 +111,11 @@ title: "Understanding Goroutines"
 
 If not provided, the slug is derived from the filename instead.
 
+Titles also accept HTML character references. markata-go decodes references
+before rendering, so `It&rsquo;s just the Carpet&hellip;` displays as
+`It’s just the Carpet…` instead of showing the entity names. Use
+`title_text` in custom templates when you need the plain-text title.
+
 ### slug (string)
 
 The URL-safe identifier for your post. Determines the URL path.
