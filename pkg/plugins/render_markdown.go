@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"bytes"
+	stdhtml "html"
 	"regexp"
 	"strings"
 	"sync"
@@ -282,6 +283,10 @@ func (p *RenderMarkdownPlugin) renderInline(source string) (InlineResult, error)
 	}
 	richHTML := strings.TrimPrefix(htmlBuffer.String(), "x ")
 	plainText := strings.TrimPrefix(plain.String(), "x ")
+	// Goldmark's typographer extension may represent smart punctuation as
+	// HTML character references in the AST. TitleText is plain text, so decode
+	// those references before exposing it to templates and metadata writers.
+	plainText = stdhtml.UnescapeString(plainText)
 	return InlineResult{HTML: richHTML, Text: strings.Join(strings.Fields(plainText), " ")}, nil
 }
 

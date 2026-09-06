@@ -27,6 +27,12 @@ two explicit representations:
 - `TitleText` is semantic plain text for browser titles, feeds, search,
   structured data, social metadata, slugs, and other non-visual consumers.
 
+HTML character references in authored titles are decoded before the title is
+exposed as plain text. For example, `It&rsquo;s just the Carpet&hellip;` becomes
+`It’s just the Carpet…` in `TitleText`, rather than exposing the entity names
+to feeds and metadata. References are decoded after Markdown parsing so code
+spans and escaped Markdown syntax keep their authored semantics.
+
 The shared inline renderer uses the configured Goldmark extensions, including
 GFM strikethrough, superscript/subscript, and Markata's `==mark==` extension. Mark is a delimiter
 container, so nested constructs such as `==**strong**==`, ``==`code`==``, and
