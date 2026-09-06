@@ -1110,6 +1110,14 @@ type ThemeConfig struct {
 	// Valid values: "dark", "light" (default: "dark").
 	FallbackMode string `json:"fallback_mode,omitempty" yaml:"fallback_mode,omitempty" toml:"fallback_mode,omitempty"`
 
+	// TextSize is the default reading-size preset for visitors without a saved
+	// preference. Valid values are "small", "medium", and "large".
+	TextSize string `json:"text_size,omitempty" yaml:"text_size,omitempty" toml:"text_size,omitempty"`
+
+	// ShowTextSizeControl controls whether the default theme renders the
+	// visitor-facing reading-size selector. It defaults to true.
+	ShowTextSizeControl *bool `json:"show_text_size_control,omitempty" yaml:"show_text_size_control,omitempty" toml:"show_text_size_control,omitempty"`
+
 	// SeedColor is the hex color used to generate a triadic palette if Palette == "generated"
 	SeedColor string `json:"seed_color,omitempty" yaml:"seed_color,omitempty" toml:"seed_color,omitempty"`
 
@@ -1130,6 +1138,36 @@ type ThemeConfig struct {
 	Texture        ThemeTextureConfig        `json:"texture,omitempty" yaml:"texture,omitempty" toml:"texture,omitempty"`
 	HeadingTexture ThemeHeadingTextureConfig `json:"heading_texture,omitempty" yaml:"heading_texture,omitempty" toml:"heading_texture,omitempty"`
 	Motif          ThemeMotifConfig          `json:"motif,omitempty" yaml:"motif,omitempty" toml:"motif,omitempty"`
+}
+
+const (
+	TextSizeSmall  = "small"
+	TextSizeMedium = "medium"
+	TextSizeLarge  = "large"
+)
+
+// EffectiveTextSize returns a supported reading-size preset, falling back to
+// the large preset when the configuration is empty or invalid.
+func (c *ThemeConfig) EffectiveTextSize() string {
+	if c == nil {
+		return TextSizeLarge
+	}
+
+	switch c.TextSize {
+	case TextSizeSmall, TextSizeMedium, TextSizeLarge:
+		return c.TextSize
+	default:
+		return TextSizeLarge
+	}
+}
+
+// IsTextSizeControlEnabled reports whether the visitor-facing reading-size
+// selector should be rendered. It defaults to true.
+func (c *ThemeConfig) IsTextSizeControlEnabled() bool {
+	if c == nil || c.ShowTextSizeControl == nil {
+		return true
+	}
+	return *c.ShowTextSizeControl
 }
 
 type ThemeTextureConfig struct {
@@ -3439,6 +3477,7 @@ func NewThemeConfig() ThemeConfig {
 		Palette:         "ayu-dark",
 		Aesthetic:       "minimal",
 		FallbackMode:    "dark",
+		TextSize:        TextSizeLarge,
 		Variables:       make(map[string]string),
 		Texture:         ThemeTextureConfig{Kind: "screenprint", ColorMix: 0.35, Scale: 1, Scope: "all"},
 		HeadingTexture:  ThemeHeadingTextureConfig{Kind: "inherit", ColorMix: 0.45, Scale: 1},

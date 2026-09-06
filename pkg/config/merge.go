@@ -206,6 +206,12 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.SeedColor != "" {
 		result.SeedColor = override.SeedColor
 	}
+	if override.TextSize != "" {
+		result.TextSize = override.TextSize
+	}
+	if override.ShowTextSizeControl != nil {
+		result.ShowTextSizeControl = override.ShowTextSizeControl
+	}
 	if override.CustomCSS != "" {
 		result.CustomCSS = override.CustomCSS
 	}

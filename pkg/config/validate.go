@@ -176,6 +176,9 @@ func validateRenderingTheme(config *models.Config) []error {
 		errs = append(errs, ValidationError{Field: "theme.palette", Message: fmt.Sprintf("unknown palette %q", config.Theme.Palette)})
 	}
 	valid("aesthetics", config.Theme.Aesthetic, "theme.aesthetic")
+	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {
+		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large"; using "large"`, IsWarn: true})
+	}
 	if config.Fontpack == "" || config.Fontpack != config.Theme.Fontpack {
 		valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
 	}
@@ -201,6 +204,15 @@ func validateRenderingTheme(config *models.Config) []error {
 		}
 	}
 	return errs
+}
+
+func isValidTextSize(value string) bool {
+	switch value {
+	case models.TextSizeSmall, models.TextSizeMedium, models.TextSizeLarge:
+		return true
+	default:
+		return false
+	}
 }
 
 // ValidateConfigWithPositions validates a configuration with file position tracking.

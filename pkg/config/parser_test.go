@@ -148,6 +148,64 @@ enabled = false
 	}
 }
 
+func TestParseThemeTextSize(t *testing.T) {
+	tests := []struct {
+		name  string
+		parse func([]byte) (*models.Config, error)
+		data  []byte
+	}{
+		{
+			name:  "toml",
+			parse: ParseTOML,
+			data: []byte(`
+[markata-go.theme]
+text_size = "medium"
+show_text_size_control = false
+`),
+		},
+		{
+			name:  "yaml",
+			parse: ParseYAML,
+			data:  []byte("markata-go:\n  theme:\n    text_size: medium\n    show_text_size_control: false\n"),
+		},
+		{
+			name:  "json",
+			parse: ParseJSON,
+			data:  []byte(`{"markata-go":{"theme":{"text_size":"medium","show_text_size_control":false}}}`),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := tt.parse(tt.data)
+			if err != nil {
+				t.Fatalf("parse error = %v", err)
+			}
+			if config.Theme.TextSize != models.TextSizeMedium {
+				t.Fatalf("TextSize = %q, want %q", config.Theme.TextSize, models.TextSizeMedium)
+			}
+			if config.Theme.EffectiveTextSize() != models.TextSizeMedium {
+				t.Errorf("EffectiveTextSize() = %q, want %q", config.Theme.EffectiveTextSize(), models.TextSizeMedium)
+			}
+			if config.Theme.ShowTextSizeControl == nil || *config.Theme.ShowTextSizeControl {
+				t.Errorf("ShowTextSizeControl = %v, want false", config.Theme.ShowTextSizeControl)
+			}
+			if config.Theme.IsTextSizeControlEnabled() {
+				t.Error("IsTextSizeControlEnabled() = true, want false")
+			}
+		})
+	}
+}
+
+func TestValidateThemeTextSize(t *testing.T) {
+	config := models.NewConfig()
+	config.Theme.TextSize = "gigantic"
+
+	if errs := ValidateConfig(config); len(errs) == 0 {
+		t.Fatal("ValidateConfig() returned no error for invalid theme.text_size")
+	}
+}
+
 func TestParseTOML_PostConnectionsComponent(t *testing.T) {
 	data := []byte(`
 [markata-go]

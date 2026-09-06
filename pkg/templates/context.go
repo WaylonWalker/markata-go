@@ -1029,16 +1029,18 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 	switcherMap := SwitcherToMap(&t.Switcher)
 
 	return map[string]interface{}{
-		"name":          t.Name,
-		"palette":       t.Palette,
-		"palette_light": t.PaletteLight,
-		"palette_dark":  t.PaletteDark,
-		"fallback_mode": t.FallbackMode,
-		"variables":     t.Variables,
-		"custom_css":    t.CustomCSS,
-		"background":    backgroundMap,
-		"font":          fontMap,
-		"switcher":      switcherMap,
+		"name":                   t.Name,
+		"palette":                t.Palette,
+		"palette_light":          t.PaletteLight,
+		"palette_dark":           t.PaletteDark,
+		"fallback_mode":          t.FallbackMode,
+		"text_size":              t.EffectiveTextSize(),
+		"show_text_size_control": t.IsTextSizeControlEnabled(),
+		"variables":              t.Variables,
+		"custom_css":             t.CustomCSS,
+		"background":             backgroundMap,
+		"font":                   fontMap,
+		"switcher":               switcherMap,
 	}
 }
 

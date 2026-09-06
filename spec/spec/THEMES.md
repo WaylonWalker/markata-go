@@ -14,6 +14,41 @@ Themes control the visual appearance of the generated site. The system supports:
 5. **Readable by default** - Typography, contrast, and spacing optimized for reading
 6. **Accessible first** - WCAG 2.1 AA compliant colors, focus states, and compact touch targets
 
+## Reading Size Preferences
+
+The default theme provides a visitor-controlled reading-size preference for
+long-form content. The default setting is `large`, which uses an 18px site
+base, 20px article text, a unitless 1.6 line height, and a 60ch article
+measure. The site base remains smaller than article text so navigation and
+controls do not become unnecessarily large.
+
+Sites configure the default and whether the control is visible:
+
+```toml
+[markata-go.theme]
+text_size = "large"              # small, medium, or large
+show_text_size_control = true    # show the visitor control (default: true)
+```
+
+The three presets are:
+
+| Preset | Site base | Article text | Article measure |
+|--------|-----------|--------------|-----------------|
+| `small` | 16px | 18px | 65ch |
+| `medium` | 17px | 19px | 62ch |
+| `large` | 18px | 20px | 60ch |
+
+The configured `text_size` is the fallback used when a visitor has no saved
+preference. When the control is enabled, the default theme renders an
+accessible Small/Medium/Large select in the header. A visitor's choice is
+stored in browser-local storage under `text-size` and takes precedence over
+the site default on later visits. Browser zoom remains independent and is
+always supported.
+
+Custom themes may reuse the `data-text-size` attribute and the typography
+custom properties, or omit the control while retaining the configured
+default. Invalid values fall back to `large` during rendering.
+
 ### Contrast Guarantees
 
 - Default theme text in compact UI surfaces such as home metadata, card metadata, and admonition titles MUST use text tokens that maintain WCAG 2.1 AA contrast at their rendered size.

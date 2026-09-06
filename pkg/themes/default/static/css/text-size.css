@@ -1,0 +1,21 @@
+/* Visitor-controlled reading-size presets. */
+
+@layer overrides {
+  html[data-text-size="small"] {
+    --text-base: 1rem;
+    --post-text-size: 1.125rem;
+    --content-width: 65ch;
+  }
+
+  html[data-text-size="medium"] {
+    --text-base: 1.0625rem;
+    --post-text-size: 1.1875rem;
+    --content-width: 62ch;
+  }
+
+  html[data-text-size="large"] {
+    --text-base: 1.125rem;
+    --post-text-size: 1.25rem;
+    --content-width: 60ch;
+  }
+}

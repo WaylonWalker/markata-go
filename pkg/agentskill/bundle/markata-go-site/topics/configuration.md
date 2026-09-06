@@ -97,6 +97,8 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `assets.mode`
 - `glob.patterns`
 - `theme.palette`
+- `theme.text_size`
+- `theme.show_text_size_control`
 - `head`
 - `template_presets`
 - `default_templates`

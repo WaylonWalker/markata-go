@@ -39,23 +39,24 @@ func TestCSSTypographyReadability(t *testing.T) {
 		t.Fatalf("Failed to read variables.css: %v", err)
 	}
 	vars := string(varsCSS)
+	textSizeCSS, err := ReadStatic("css/text-size.css")
+	if err != nil {
+		t.Fatalf("Failed to read text-size.css: %v", err)
+	}
+	textSizes := string(textSizeCSS)
 
-	t.Run("base font size is at least 16px", func(t *testing.T) {
-		// WCAG recommends 16px as minimum base font size
-		// Check html or :root font-size
-		re := regexp.MustCompile(`html\s*\{[^}]*font-size:\s*(\d+)px`)
-		match := re.FindStringSubmatch(css)
-		if match == nil {
-			t.Error("Missing explicit base font-size on html element")
-			return
+	t.Run("reading-size presets are available", func(t *testing.T) {
+		for _, preset := range []string{"small", "medium", "large"} {
+			if !strings.Contains(textSizes, `html[data-text-size="`+preset+`"]`) {
+				t.Errorf("text-size.css missing %s preset", preset)
+			}
 		}
-		size, err := strconv.Atoi(match[1])
-		if err != nil {
-			t.Errorf("Failed to parse font size: %v", err)
-			return
-		}
-		if size < 16 {
-			t.Errorf("Base font-size is %dpx, should be at least 16px for readability", size)
+	})
+
+	t.Run("root font size respects user preferences", func(t *testing.T) {
+		// A relative root size allows browser font-size preferences to work.
+		if !regexp.MustCompile(`html\s*\{[^}]*font-size:\s*100%`).MatchString(css) {
+			t.Error("html should use a relative 100% font-size")
 		}
 	})
 
@@ -166,10 +167,12 @@ func TestCSSFontSizeScale(t *testing.T) {
 		}
 	})
 
-	t.Run("base font size is 1rem", func(t *testing.T) {
-		// --text-base should be 1rem (16px at default browser settings)
-		if !strings.Contains(vars, "--text-base: 1rem") {
-			t.Error("--text-base should be 1rem for proper scaling")
+	t.Run("base font size uses the large reading default", func(t *testing.T) {
+		if !strings.Contains(vars, "--text-base: 1.125rem") {
+			t.Error("--text-base should be 1.125rem for the large reading default")
+		}
+		if !strings.Contains(vars, "--post-text-size: 1.25rem") {
+			t.Error("--post-text-size should be 1.25rem for the large reading default")
 		}
 	})
 

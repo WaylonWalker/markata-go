@@ -175,11 +175,13 @@ func TestReadStatic_ExistingFile(t *testing.T) {
 	}{
 		{"main CSS", "css/main.css"},
 		{"variables CSS", "css/variables.css"},
+		{"text-size CSS", "css/text-size.css"},
 		{"layouts CSS", "css/layouts.css"},
 		{"code CSS", "css/code.css"},
 		{"components CSS", "css/components.css"},
 		{"admonitions CSS", "css/admonitions.css"},
 		{"scroll spy JS", "js/scroll-spy.js"},
+		{"text-size JS", "js/text-size.js"},
 		{"pagination JS", "js/pagination.js"},
 	}
 
