@@ -43,6 +43,42 @@ func TestRenderInline_ParsesSuperscriptAndSubscript(t *testing.T) {
 	}
 }
 
+func TestRenderInline_DecodesHTMLCharacterReferences(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	result, err := p.renderInline("It&rsquo;s just the Carpet&hellip;")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Text != "It’s just the Carpet…" {
+		t.Fatalf("Text = %q, want decoded punctuation", result.Text)
+	}
+}
+
+func TestRenderInline_TypographerTextRemainsPlainText(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	result, err := p.renderInline("It's just the Carpet...")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Text != "It’s just the Carpet…" {
+		t.Fatalf("Text = %q, want plain typographic punctuation", result.Text)
+	}
+}
+
+func TestRenderInline_PreservesMarkdownSemanticsWhileDecodingText(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	result, err := p.renderInline("`&amp;` &lt;https://example.com&gt; &amp;ast;bold&amp;ast;")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result.HTML, "<code>&amp;amp;</code>") {
+		t.Fatalf("HTML = %q, want the code-span entity preserved", result.HTML)
+	}
+	if result.Text != "& <https://example.com> &ast;bold&ast;" {
+		t.Fatalf("Text = %q, want decoded plain text without activating Markdown", result.Text)
+	}
+}
+
 func TestRenderInline_SemanticsAndSafety(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	result, err := p.renderInline("<script>alert(1)</script> _quiet_ ==**loud**== [bad](javascript:alert(1)) ~~old~~ `literal ==mark==`")
