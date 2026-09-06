@@ -47,7 +47,7 @@
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
-  --text-base: 1rem;
+  --text-base: 1.125rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
@@ -57,7 +57,7 @@
   /* Line heights */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.75;
+  --leading-relaxed: 1.6;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -71,8 +71,9 @@
   --space-16: 4rem;
 
   /* Layout */
-  --content-width: 65ch;
+  --content-width: 60ch;
   --content-max-width: var(--content-width);
+  --post-text-size: 1.25rem;
   --page-width: 1200px;
   --grid-max-width: 1400px;
   --radius: 0.375rem;

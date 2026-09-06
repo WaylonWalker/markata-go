@@ -38,7 +38,7 @@ func TestViewTransitions_PreservesRuntimeStateAndBoundsPrefetch(t *testing.T) {
 	js := strings.ReplaceAll(string(content), "\r\n", "\n")
 	for _, needle := range []string{
 		"const MAX_PREFETCHED_DOCUMENTS = 8;",
-		"const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme']);",
+		"const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size']);",
 		"const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);",
 		"'data-shared-transition-'",
 		"'data-post-transition-'",
