@@ -4,7 +4,8 @@
 
 {% set show_mode_toggle = (config.theme.switcher.mode_toggle | default:true) and (config.header.show_theme_toggle | default:true) %}
 {% set show_full_switcher = config.theme.switcher.enabled %}
-{% if show_mode_toggle or show_full_switcher %}
+{% set show_text_size_control = config.theme.show_text_size_control | default:true %}
+{% if show_mode_toggle or show_full_switcher or show_text_size_control %}
 <div class="theme-switcher{% if not show_full_switcher %} theme-switcher--mode-only{% endif %}" data-pagefind-ignore>
   {# Dark/Light Mode Toggle #}
   {% if show_mode_toggle %}
@@ -15,6 +16,17 @@
       </svg>
     </span>
   </button>
+  {% endif %}
+
+  {% if show_text_size_control %}
+  <label class="text-size-control">
+    <span class="sr-only">Text size</span>
+    <select class="text-size-select" data-text-size-control aria-label="Text size">
+      <option value="small">Small</option>
+      <option value="medium">Medium</option>
+      <option value="large">Large</option>
+    </select>
+  </label>
   {% endif %}
 
   {# Palette Family Selector #}

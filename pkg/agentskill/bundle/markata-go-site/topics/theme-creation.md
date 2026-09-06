@@ -42,6 +42,8 @@ palette = "ayu-dark"
 aesthetic = "minimal"
 fontpack = "brush-poster"
 custom_css = "custom.css"
+text_size = "large"
+show_text_size_control = true
 
 [markata-go.theme.texture]
 kind = "screenprint"
@@ -76,6 +78,12 @@ The contract uses normalized numeric dials. `color_mix`, `row_offset`,
 `wobble`, and `scatter` use `0..1`. Texture scales use `0.25..3`. Use enum
 values from the contract for palettes, aesthetics, textures, heading textures,
 motifs, motif colors, motif layers, and scopes.
+
+The default theme's reading presets are `small`, `medium`, and `large`.
+`text_size = "large"` selects the default 18px site base and 20px article
+text. Set `show_text_size_control = false` to hide the visitor selector while
+keeping the configured default. Visitor selections are saved per site in
+browser-local storage.
 
 `heading_texture.kind = "inherit"` uses the surface texture kind while keeping
 the heading texture's own `color_mix` and `scale`.

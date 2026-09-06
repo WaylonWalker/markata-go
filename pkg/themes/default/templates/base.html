@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +18,26 @@
       document.documentElement.classList.add('canonical-specimen-route');
       if (params.get('capture') === 'natural') document.documentElement.classList.add('canonical-natural-route');
     }
+  </script>
+  <script>
+    (function() {
+      var root = document.documentElement;
+      var fallbackSize = root.dataset.textSize || 'large';
+      var allowed = { small: true, medium: true, large: true };
+      var size = allowed[fallbackSize] ? fallbackSize : 'large';
+      var allowVisitorSize = {% if config.theme.show_text_size_control | default:true %}true{% else %}false{% endif %};
+      if (allowVisitorSize) {
+        try {
+          var stored = localStorage.getItem('text-size');
+          if (stored && allowed[stored]) {
+            size = stored;
+          }
+        } catch (_) {
+          // ignore storage access failures
+        }
+      }
+      root.dataset.textSize = size;
+    })();
   </script>
   <script>
     (function() {
@@ -46,6 +66,7 @@
   {% endif %}
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/text-size.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/aesthetic.css' | theme_asset_hashed }}">
   {% if config.Extra.fontpack_css %}
   <link rel="stylesheet" href="{{ 'css/fonts.css' | theme_asset_hashed }}">
@@ -913,6 +934,9 @@
    {# Note: Must load AFTER shortcuts-registry for keyboard shortcut registration #}
    {% if config.theme.switcher.enabled or (config.theme.switcher.mode_toggle and config.header.show_theme_toggle) %}
    <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
+   {% endif %}
+   {% if config.theme.show_text_size_control | default:true %}
+   <script src="{{ 'js/text-size.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
    <script src="{{ 'js/heading-highlights.js' | theme_asset_hashed }}" defer></script>
 

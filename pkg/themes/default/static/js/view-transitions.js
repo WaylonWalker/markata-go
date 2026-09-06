@@ -39,7 +39,7 @@
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
   const MAX_PREFETCHED_DOCUMENTS = 8;
   const PREFETCH_DEBOUNCE_MS = 120;
-  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme']);
+  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size']);
   const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);
   const RUNTIME_HTML_ATTRIBUTE_PREFIXES = [
     'data-shared-transition-',

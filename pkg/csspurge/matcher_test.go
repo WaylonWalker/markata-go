@@ -290,7 +290,7 @@ func TestDefaultPreserveAttributes(t *testing.T) {
 	}
 
 	// Check expected theme attributes
-	expected := []string{"data-theme", "data-palette", "data-mode", "data-color-scheme"}
+	expected := []string{"data-theme", "data-palette", "data-text-size", "data-mode", "data-color-scheme"}
 	attrSet := make(map[string]bool)
 	for _, a := range attrs {
 		attrSet[a] = true

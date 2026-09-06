@@ -368,6 +368,7 @@ func DefaultPreserveAttributes() []string {
 		// Theme attribute selectors (e.g., [data-theme="dark"], [data-palette="blue"])
 		"data-theme",
 		"data-palette",
+		"data-text-size",
 		"data-mode",
 		"data-color-scheme",
 	}

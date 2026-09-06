@@ -448,6 +448,8 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `palette` | string | `"default-light"` | Color palette to use |
 | `palette_dark` | string | `""` | Dark mode palette |
 | `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
+| `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, or `"large"` |
+| `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
 
@@ -461,6 +463,10 @@ palette_dark = "catppuccin-mocha"
 
 # Optional: fallback when system preference is unavailable
 fallback_mode = "dark"  # or "light"
+
+# Optional: default reading size and visitor control
+text_size = "large"              # small, medium, or large
+show_text_size_control = true
 
 # Optional: override specific CSS variables
 [markata-go.theme.variables]
@@ -482,7 +488,7 @@ See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 enabled = false
 verbose = false
 preserve = ["js-*", "htmx-*", "theme-*", "palette-*"]
-preserve_attributes = ["data-theme", "data-palette"]
+preserve_attributes = ["data-theme", "data-palette", "data-text-size"]
 skip_files = ["vendor/*", "normalize.css"]
 warning_threshold = 0
 ```

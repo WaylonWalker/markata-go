@@ -304,6 +304,31 @@ include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 
 The mode toggle is also gated by `[markata-go.header].show_theme_toggle` for backward compatibility.
 
+### Reading-size control
+
+The default theme uses a large, comfortable reading size by default. Visitors
+can choose a smaller or larger preset from the header control, and their
+choice is saved for later visits on the same site.
+
+```toml
+[markata-go.theme]
+text_size = "large"              # small, medium, or large
+show_text_size_control = true    # default: true
+```
+
+`text_size` is used when the visitor has not made a choice. The available
+presets are:
+
+| Preset | Site base | Article text | Article measure |
+|--------|-----------|--------------|-----------------|
+| `small` | 16px | 18px | 65ch |
+| `medium` | 17px | 19px | 62ch |
+| `large` | 18px | 20px | 60ch |
+
+Set `show_text_size_control = false` when a site should keep the configured
+default without rendering the selector. Browser zoom remains available in
+all modes.
+
 ### How It Works
 
 1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).
