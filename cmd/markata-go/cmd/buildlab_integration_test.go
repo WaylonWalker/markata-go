@@ -102,6 +102,36 @@ func TestBuildLab_DeletePostPrunesGeneratedOutput(t *testing.T) {
 	}
 }
 
+func TestBuildLab_ConfigChangeRebuildsFeedsListing(t *testing.T) {
+	requireLinuxBuildLab(t)
+	fixture := filepath.Join(moduleRoot(t), "cmd", "markata-go", "cmd", "testdata", "buildlab-site")
+	binary := buildTestBinary(t)
+	result, runErr := buildlab.RunScenario(context.Background(), buildlab.ScenarioRunConfig{
+		Fixture: fixture,
+		Scenario: buildlab.Scenario{ID: "cli-config-change", Version: "1", Operations: []buildlab.Operation{
+			{Type: buildlab.OpClearCache},
+			{Type: buildlab.OpClearOutput},
+			{Type: buildlab.OpBuild},
+			{Type: buildlab.OpSetConfig, Path: "markata-go.toml", Key: "title", Value: "Changed by scenario"},
+			{Type: buildlab.OpBuild},
+		}},
+		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		CheckDeterminism: true,
+		GOMAXPROCS:       1,
+	})
+	if runErr != nil {
+		t.Fatalf("Build Lab run error = %v", runErr)
+	}
+	if result.Verdict != buildLabPassVerdict {
+		t.Fatalf("Build Lab verdict = %s, want %s; diagnostics = %+v", result.Verdict, buildLabPassVerdict, result.Diagnostics)
+	}
+	if len(result.Checkpoints) != 2 {
+		t.Fatalf("checkpoints = %d, want 2", len(result.Checkpoints))
+	}
+}
+
 func TestBuildLabCLI_EmitsMachineReadableResultAndUsesOrdinaryBuild(t *testing.T) {
 	requireLinuxBuildLab(t)
 	fixture := t.TempDir()
