@@ -365,6 +365,7 @@ func (c *Cache) SetConfigHash(hash string) bool {
 	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
+	c.FeedsListingHash = ""
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
 	c.dirty = true
