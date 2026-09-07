@@ -228,6 +228,19 @@ func TestCache_GlobalInvalidation_PreservesMissingPostOwnership(t *testing.T) {
 	}
 }
 
+func TestCache_SetConfigHash_InvalidatesFeedsListing(t *testing.T) {
+	cache := New("")
+	cache.ConfigHash = "old-config"
+	cache.SetFeedsListingHash("old-listing")
+
+	if !cache.SetConfigHash("new-config") {
+		t.Fatal("SetConfigHash() did not report an invalidation")
+	}
+	if got := cache.GetFeedsListingHash(); got != "" {
+		t.Fatalf("FeedsListingHash after config invalidation = %q, want empty", got)
+	}
+}
+
 func TestCache_MarkAffectedDependents(t *testing.T) {
 	cache := New("")
 
