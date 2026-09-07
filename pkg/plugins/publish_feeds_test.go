@@ -742,6 +742,36 @@ func TestComputeFeedHash_RenderDecorationsDoNotChangeHash(t *testing.T) {
 	}
 }
 
+func TestPublishFeedsPlugin_DoesNotSkipFeedContainingChangedDependent(t *testing.T) {
+	plugin := NewPublishFeedsPlugin()
+	outputDir := t.TempDir()
+	feed := &models.FeedConfig{
+		Slug:  "archive",
+		Posts: []*models.Post{{Path: "content/source.md", Slug: "source", Content: "same source"}},
+	}
+	cache := buildcache.New(t.TempDir())
+	hash := plugin.computeFeedHashWithConfigAndCache(feed, nil, cache)
+	cache.SetFeedHash(feed.Slug, hash)
+	if skip, _ := plugin.shouldSkipFeedWithConfigAndChanges(feed, cache, outputDir, nil, nil); !skip {
+		t.Fatal("unchanged feed was not eligible for skipping")
+	}
+	cache.MarkSlugChanged("source")
+
+	skip, gotHash := plugin.shouldSkipFeedWithConfigAndChanges(
+		feed,
+		cache,
+		outputDir,
+		nil,
+		getChangedSlugsMap(cache),
+	)
+	if skip {
+		t.Fatal("feed containing a changed dependent was skipped")
+	}
+	if gotHash != hash {
+		t.Fatalf("feed hash = %q, want unchanged semantic hash %q", gotHash, hash)
+	}
+}
+
 func TestPublishFeedsPlugin_ShouldSkipFeedWhenOutputsExist(t *testing.T) {
 	plugin := NewPublishFeedsPlugin()
 	outputDir := t.TempDir()

@@ -34,11 +34,14 @@ func (p *BuildCachePlugin) Name() string {
 }
 
 // Priority returns high priority so it runs early in configure and late in cleanup.
-// For transform, it runs late to collect dependencies after other plugins have processed links.
+// Load invalidation runs after posts are available but before transforms consume cached
+// derivatives. Transform runs late to collect dependencies after links are processed.
 func (p *BuildCachePlugin) Priority(stage lifecycle.Stage) int {
 	switch stage {
 	case lifecycle.StageConfigure:
 		return lifecycle.PriorityEarly - 100 // Very early in configure
+	case lifecycle.StageLoad:
+		return lifecycle.PriorityLate + 100 // After all posts and synthetic posts are loaded
 	case lifecycle.StageTransform:
 		return lifecycle.PriorityLate + 100 // Very late in transform (after wikilinks/embeds)
 	case lifecycle.StageCleanup:
@@ -122,6 +125,61 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	return p.configureIncrementalServe(m, cache)
+}
+
+// Load discovers changed post inputs and expands their persisted dependency
+// closure before transform and render plugins decide whether to restore caches.
+func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
+	if !p.enabled || p.cache == nil {
+		return nil
+	}
+
+	posts := m.Posts()
+	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
+	slugByPath := make(map[string]string, len(posts))
+	for _, post := range posts {
+		if post.Skip || post.Path == "" || post.InputHash == "" {
+			continue
+		}
+		batch = append(batch, struct{ Path, InputHash, Template string }{
+			Path:      post.Path,
+			InputHash: post.InputHash,
+			Template:  post.Template,
+		})
+		slugByPath[post.Path] = post.Slug
+	}
+
+	changedPaths := p.cache.ShouldRebuildBatch(batch)
+	affected := lifecycle.GetServeAffectedPaths(m)
+	if affected == nil {
+		affected = make(map[string]bool, len(changedPaths))
+	}
+	for path := range changedPaths {
+		if slug := slugByPath[path]; slug != "" {
+			p.cache.MarkSlugChanged(slug)
+		}
+		affected[path] = true
+	}
+
+	changedSlugs := p.cache.GetChangedSlugs()
+	dependentPaths := p.cache.GetAffectedPosts(changedSlugs)
+	p.cache.MarkAffectedDependents(changedSlugs)
+	for _, path := range dependentPaths {
+		affected[path] = true
+	}
+	if len(affected) > 0 {
+		lifecycle.SetServeAffectedPaths(m, affected)
+	}
+
+	if len(changedPaths) > 0 || len(dependentPaths) > 0 {
+		buildCacheLog.Phase("load").Printf(
+			"Invalidated %d changed posts and %d dependent posts",
+			len(changedPaths),
+			len(dependentPaths),
+		)
+	}
+
+	return nil
 }
 
 func (p *BuildCachePlugin) isEnabled(config *lifecycle.Config) bool {
@@ -340,6 +398,7 @@ func GetBuildCache(m *lifecycle.Manager) *buildcache.Cache {
 var (
 	_ lifecycle.Plugin          = (*BuildCachePlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*BuildCachePlugin)(nil)
+	_ lifecycle.LoadPlugin      = (*BuildCachePlugin)(nil)
 	_ lifecycle.TransformPlugin = (*BuildCachePlugin)(nil)
 	_ lifecycle.CleanupPlugin   = (*BuildCachePlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*BuildCachePlugin)(nil)
