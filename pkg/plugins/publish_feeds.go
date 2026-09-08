@@ -181,6 +181,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 
 	// Get build cache for incremental builds
 	buildCache := GetBuildCache(m)
+	affectedPaths := lifecycle.GetServeAffectedPaths(m)
 	// Track skipped feeds
 	var skippedCount int
 	var rebuiltCount int
@@ -195,10 +196,9 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 
 	// For small numbers of feeds, just process sequentially
 	if numFeeds <= 2 {
-		changedSlugs := getChangedSlugsMap(buildCache)
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, changedSlugs)
+			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 			if skip {
 				skippedCount++
 				continue
@@ -217,11 +217,9 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 	errChan := make(chan error, numFeeds)
 	var wg sync.WaitGroup
 	var countMu sync.Mutex
-	changedSlugs := getChangedSlugsMap(buildCache)
-
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, changedSlugs)
+		skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 		if skip {
 			skippedCount++
 			continue
@@ -274,6 +272,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	}
 
 	buildCache := GetBuildCache(m)
+	affectedPaths := lifecycle.GetServeAffectedPaths(m)
 	var skippedCount int
 	var rebuiltCount int
 	var countMu sync.Mutex
@@ -283,11 +282,10 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 		maxConcurrency = 8
 	}
 	numFeeds := len(feedConfigs)
-	changedSlugs := getChangedSlugsMap(buildCache)
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, changedSlugs)
+			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 			if skip {
 				skippedCount++
 				continue
@@ -311,7 +309,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
-				skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, changedSlugs)
+				skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 				if skip {
 					countMu.Lock()
 					skippedCount++
@@ -508,7 +506,7 @@ func (p *PublishFeedsPlugin) shouldSkipFeedWithConfigAndChanges(
 	cache interface{},
 	outputDir string,
 	config *lifecycle.Config,
-	changedSlugs map[string]bool,
+	affectedPaths map[string]bool,
 ) (skip bool, hash string) {
 	if cache == nil {
 		return false, p.computeFeedHashWithConfigAndCache(fc, config, nil)
@@ -522,7 +520,7 @@ func (p *PublishFeedsPlugin) shouldSkipFeedWithConfigAndChanges(
 	// Always compute hash since we return it for caching.
 	currentHash := p.computeFeedHashWithConfigAndCache(fc, config, bc)
 	for _, post := range fc.Posts {
-		if post != nil && changedSlugs[post.Slug] {
+		if post != nil && post.Path != "" && affectedPaths[post.Path] {
 			return false, currentHash
 		}
 	}

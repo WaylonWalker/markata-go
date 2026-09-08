@@ -173,6 +173,7 @@ func TestBuildCacheLoad_InvalidatesOnlyChangedPostsAndTransitiveDependents(t *te
 		{Path: "content/source.md", Slug: "source", InputHash: "source-hash", Template: "post.html"},
 		{Path: "content/downstream.md", Slug: "downstream", InputHash: "downstream-hash", Template: "post.html"},
 		{Path: "content/unrelated.md", Slug: "unrelated", InputHash: "unrelated-hash", Template: "post.html"},
+		{Path: "content/root.md", Slug: "", InputHash: "root-hash", Template: "home.html"},
 	})
 
 	plugin := NewBuildCachePlugin()
@@ -187,6 +188,9 @@ func TestBuildCacheLoad_InvalidatesOnlyChangedPostsAndTransitiveDependents(t *te
 	}
 	if len(affected) != 3 || affected["content/unrelated.md"] {
 		t.Fatalf("unrelated post was invalidated: %v", affected)
+	}
+	if affected["content/root.md"] {
+		t.Fatalf("empty-slug post was invalidated: %v", affected)
 	}
 
 	changedSlugs := cache.GetChangedSlugs()

@@ -564,6 +564,42 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 	}
 }
 
+// MarkInputProcessed records the input state after a post's enabled outputs
+// were processed successfully, without counting an HTML write. Posts without
+// HTML output can still be dependency targets, so their inputs must not appear
+// changed on every build. The method clears obsolete HTML ownership and reports
+// whether the cached state changed.
+func (c *Cache) MarkInputProcessed(sourcePath, slug, inputHash, template string) bool {
+	if sourcePath == "" || inputHash == "" {
+		return false
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		if cached.InputHash == inputHash && cached.Template == template && cached.OutputPath == "" && (slug == "" || cached.Slug == slug) {
+			return false
+		}
+		delete(c.stalePosts, sourcePath)
+		cached.InputHash = inputHash
+		cached.OutputPath = ""
+		cached.Template = template
+		if slug != "" {
+			cached.Slug = slug
+		}
+	} else {
+		delete(c.stalePosts, sourcePath)
+		c.Posts[sourcePath] = &PostCache{
+			InputHash: inputHash,
+			Slug:      slug,
+			Template:  template,
+		}
+	}
+	c.dirty = true
+	return true
+}
+
 // UpdatePostSemanticHashes updates cached per-post hashes for feed/tags/garden.
 // Returns which hashes changed compared to cache.
 func (c *Cache) UpdatePostSemanticHashes(sourcePath, feedHash, tagHash, gardenHash string) (feedChanged, tagChanged, gardenChanged bool) {
@@ -1339,6 +1375,9 @@ func (c *Cache) ClearChangedFeedSlugs() {
 // MarkSlugChanged records that a slug changed this build.
 // Used for dependency invalidation.
 func (c *Cache) MarkSlugChanged(slug string) {
+	if slug == "" {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedSlugs[slug] = true
@@ -1346,6 +1385,9 @@ func (c *Cache) MarkSlugChanged(slug string) {
 
 // MarkFeedSlugChanged records that a slug changed in feed-relevant ways.
 func (c *Cache) MarkFeedSlugChanged(slug string) {
+	if slug == "" {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedFeedSlugs[slug] = true

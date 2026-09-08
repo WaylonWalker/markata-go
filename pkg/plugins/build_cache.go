@@ -138,7 +138,9 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
 	slugByPath := make(map[string]string, len(posts))
 	for _, post := range posts {
-		if post.Skip || post.Path == "" || post.InputHash == "" {
+		// Empty slugs cannot participate in slug-based dependency expansion. They
+		// retain the existing per-plugin cache checks for their own output.
+		if post.Skip || post.Path == "" || post.Slug == "" || post.InputHash == "" {
 			continue
 		}
 		batch = append(batch, struct{ Path, InputHash, Template string }{

@@ -742,7 +742,7 @@ func TestComputeFeedHash_RenderDecorationsDoNotChangeHash(t *testing.T) {
 	}
 }
 
-func TestPublishFeedsPlugin_DoesNotSkipFeedContainingChangedDependent(t *testing.T) {
+func TestPublishFeedsPlugin_DoesNotSkipFeedContainingAffectedDependent(t *testing.T) {
 	plugin := NewPublishFeedsPlugin()
 	outputDir := t.TempDir()
 	feed := &models.FeedConfig{
@@ -756,13 +756,16 @@ func TestPublishFeedsPlugin_DoesNotSkipFeedContainingChangedDependent(t *testing
 		t.Fatal("unchanged feed was not eligible for skipping")
 	}
 	cache.MarkSlugChanged("source")
+	if skip, _ := plugin.shouldSkipFeedWithConfigAndChanges(feed, cache, outputDir, nil, nil); !skip {
+		t.Fatal("changed slug without an affected path unnecessarily rebuilt the feed")
+	}
 
 	skip, gotHash := plugin.shouldSkipFeedWithConfigAndChanges(
 		feed,
 		cache,
 		outputDir,
 		nil,
-		getChangedSlugsMap(cache),
+		map[string]bool{"content/source.md": true},
 	)
 	if skip {
 		t.Fatal("feed containing a changed dependent was skipped")
