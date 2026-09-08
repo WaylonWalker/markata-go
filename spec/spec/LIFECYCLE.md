@@ -987,6 +987,10 @@ Posts may depend on:
 4. **Static assets** - Images or files referenced in content
 
 When a dependency changes, all dependent posts are marked for rebuild.
+Change detection and transitive dependent expansion MUST finish after Load and
+before Transform. This ordering lets affected transforms and renderers reject
+stale cached derivatives. Feeds that contain an affected post MUST also be
+refreshed, even when that post's source file did not change.
 
 ### Rebuild Strategy
 
@@ -1016,6 +1020,7 @@ When a dependency changes, all dependent posts are marked for rebuild.
 | Change | Invalidation Scope |
 |--------|-------------------|
 | Single post content | That post only |
+| Linked post content | That post and its transitive dependents |
 | Post frontmatter (no template change) | That post only |
 | Post template assignment | That post only |
 | Template file | All posts using that template |

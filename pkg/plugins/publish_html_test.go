@@ -236,6 +236,195 @@ func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 	}
 }
 
+func TestPublishHTMLPlugin_RecordsEmptyPostInputWithoutHidingStaleHTML(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		createStaleHTML  bool
+		wantNeedsRebuild bool
+	}{
+		{name: "no prior HTML", wantNeedsRebuild: false},
+		{name: "stale HTML exists", createStaleHTML: true, wantNeedsRebuild: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			outputDir := t.TempDir()
+			config := &lifecycle.Config{OutputDir: outputDir, Extra: map[string]interface{}{}}
+			post := &models.Post{Path: "empty.md", Slug: "empty", InputHash: "empty-hash", Published: true}
+			postDir := filepath.Join(outputDir, post.Slug)
+			if test.createStaleHTML {
+				if err := os.MkdirAll(postDir, 0o755); err != nil {
+					t.Fatalf("create post directory: %v", err)
+				}
+				if err := os.WriteFile(filepath.Join(postDir, "index.html"), []byte("stale"), 0o600); err != nil {
+					t.Fatalf("write stale HTML: %v", err)
+				}
+			}
+
+			cache := buildcache.New(t.TempDir())
+			manager := createTestManager(t, config)
+			manager.Cache().Set("build_cache", cache)
+			if err := NewPublishHTMLPlugin().writePost(post, config, nil, manager); err != nil {
+				t.Fatalf("writePost() error = %v", err)
+			}
+
+			if got := cache.ShouldRebuild(post.Path, post.InputHash, post.Template); got != test.wantNeedsRebuild {
+				t.Fatalf("ShouldRebuild() = %t, want %t", got, test.wantNeedsRebuild)
+			}
+		})
+	}
+}
+
+func TestPublishHTMLPlugin_DoesNotCommitInputAfterPartialFormatFailure(t *testing.T) {
+	outputDir := t.TempDir()
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{Markdown: true},
+		},
+	}
+	post := &models.Post{
+		Path:        "post.md",
+		Slug:        "post",
+		InputHash:   "new-hash",
+		Published:   true,
+		ArticleHTML: "<p>new</p>",
+	}
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuilt(post.Path, "old-hash", filepath.Join(outputDir, post.Slug, "index.html"), post.Template)
+	manager := createTestManager(t, config)
+	manager.Cache().Set("build_cache", cache)
+
+	if err := os.Mkdir(filepath.Join(outputDir, post.Slug+".md"), 0o755); err != nil {
+		t.Fatalf("create Markdown output collision: %v", err)
+	}
+	if err := NewPublishHTMLPlugin().writePost(post, config, nil, manager); err == nil {
+		t.Fatal("writePost() unexpectedly succeeded")
+	}
+	if !cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+		t.Fatal("partial format failure committed the new input hash")
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, post.Slug, "index.html")); err != nil {
+		t.Fatalf("HTML format was not written before the induced later failure: %v", err)
+	}
+}
+
+func TestPublishHTMLPlugin_RecordsSlugForFormatOnlyPost(t *testing.T) {
+	outputDir := t.TempDir()
+	disabled := false
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{HTML: &disabled, Markdown: true},
+		},
+	}
+	post := &models.Post{Path: "post.md", Slug: "post", InputHash: "hash", Published: true, Content: "body"}
+	cache := buildcache.New(t.TempDir())
+	manager := createTestManager(t, config)
+	manager.Cache().Set("build_cache", cache)
+
+	if err := NewPublishHTMLPlugin().writePost(post, config, nil, manager); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+	if got := cache.Posts[post.Path].Slug; got != post.Slug {
+		t.Fatalf("cached slug = %q, want %q", got, post.Slug)
+	}
+	if got := cache.Posts[post.Path].OutputPath; got != "" {
+		t.Fatalf("cached HTML output path = %q, want empty for format-only post", got)
+	}
+}
+
+func TestPublishHTMLPlugin_SkipsUnchangedOGOnlyPost(t *testing.T) {
+	outputDir := t.TempDir()
+	disabled := false
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{HTML: &disabled, OG: true},
+		},
+	}
+	post := &models.Post{Path: "post.md", Slug: "post", InputHash: "hash", Published: true, Content: "body"}
+	cache := buildcache.New(t.TempDir())
+	manager := createTestManager(t, config)
+	manager.Cache().Set("build_cache", cache)
+	manager.SetPosts([]*models.Post{post})
+	plugin := NewPublishHTMLPlugin()
+
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("first Write() error = %v", err)
+	}
+	cache.ResetStats()
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+	if skipped, rebuilt := cache.Stats(); skipped != 1 || rebuilt != 0 {
+		t.Fatalf("stats = (%d skipped, %d rebuilt), want (1, 0)", skipped, rebuilt)
+	}
+}
+
+func TestPublishHTMLPlugin_RecreatesMissingFormatOnlyRedirect(t *testing.T) {
+	outputDir := t.TempDir()
+	disabled := false
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{HTML: &disabled, Markdown: true},
+		},
+	}
+	post := &models.Post{Path: "post.md", Slug: "post", InputHash: "hash", Published: true, Content: "body"}
+	cache := buildcache.New(t.TempDir())
+	manager := createTestManager(t, config)
+	manager.Cache().Set("build_cache", cache)
+	manager.SetPosts([]*models.Post{post})
+	plugin := NewPublishHTMLPlugin()
+
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("first Write() error = %v", err)
+	}
+	redirectPath := filepath.Join(outputDir, post.Slug, "index.html")
+	formatRedirectPath := filepath.Join(outputDir, post.Slug, "index.md", "index.html")
+	for _, path := range []string{redirectPath, formatRedirectPath} {
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove redirect %s: %v", path, err)
+		}
+	}
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+	if _, err := os.Stat(redirectPath); err != nil {
+		t.Fatalf("format-only redirect was not recreated: %v", err)
+	}
+	if _, err := os.Stat(formatRedirectPath); err != nil {
+		t.Fatalf("format-specific redirect was not recreated: %v", err)
+	}
+}
+
+func TestPublishHTMLPlugin_RecordsDraftInputAfterRemovingOutput(t *testing.T) {
+	outputDir := t.TempDir()
+	config := &lifecycle.Config{OutputDir: outputDir, Extra: map[string]interface{}{}}
+	post := &models.Post{Path: "draft.md", Slug: "draft", InputHash: "new-hash", Template: "post.html", Draft: true}
+	outputPath := filepath.Join(outputDir, post.Slug, "index.html")
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+		t.Fatalf("create output directory: %v", err)
+	}
+	if err := os.WriteFile(outputPath, []byte("stale"), 0o600); err != nil {
+		t.Fatalf("write stale output: %v", err)
+	}
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuiltWithSlug(post.Path, post.Slug, "old-hash", outputPath, post.Template)
+	manager := createTestManager(t, config)
+	manager.Cache().Set("build_cache", cache)
+	manager.SetPosts([]*models.Post{post})
+
+	if err := NewPublishHTMLPlugin().Write(manager); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+		t.Fatal("draft input was not recorded after stale output removal")
+	}
+	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
+		t.Fatalf("draft output still exists: %v", err)
+	}
+}
+
 func TestPublishHTMLPlugin_OGCardIncludesFrontmatterImage(t *testing.T) {
 	tests := []struct {
 		name     string
