@@ -87,6 +87,10 @@ The foundation covers clean, no-op, edit, add, delete, rename, linked-target,
 and configuration mutations. Add fixture-specific scenarios for other product
 surfaces.
 
+A linked-target checkpoint compares the dependent page and its feed outputs.
+The incremental build must rerender known dependents before feeds and pages are
+written. Unrelated posts must remain eligible for cache hits.
+
 ## Read failures correctly
 
 Build Lab is a measuring instrument. A result with `failure_class: "product"`

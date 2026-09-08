@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestConfigFilesHash_ChangesWhenOverlayChanges(t *testing.T) {
@@ -150,4 +152,49 @@ func TestBuildCacheConfigure_DefaultsCacheDirToContentDir(t *testing.T) {
 
 func cachePathForTest(c *buildcache.Cache) string {
 	return filepath.Clean(reflect.ValueOf(c).Elem().FieldByName("path").String())
+}
+
+func TestBuildCacheLoad_InvalidatesOnlyChangedPostsAndTransitiveDependents(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuilt("content/target.md", "old-target", "output/target/index.html", "post.html")
+	cache.MarkRebuilt("content/source.md", "source-hash", "output/source/index.html", "post.html")
+	cache.MarkRebuilt("content/downstream.md", "downstream-hash", "output/downstream/index.html", "post.html")
+	cache.MarkRebuilt("content/unrelated.md", "unrelated-hash", "output/unrelated/index.html", "post.html")
+	cache.SetDependencies("content/source.md", "source", []string{"target"})
+	cache.SetDependencies("content/downstream.md", "downstream", []string{"source"})
+	cache.SetPostSlug("content/target.md", "target")
+	cache.SetPostSlug("content/unrelated.md", "unrelated")
+	cache.ResetStats()
+
+	manager := lifecycle.NewManager()
+	manager.Cache().Set("build_cache", cache)
+	manager.SetPosts([]*models.Post{
+		{Path: "content/target.md", Slug: "target", InputHash: "new-target", Template: "post.html"},
+		{Path: "content/source.md", Slug: "source", InputHash: "source-hash", Template: "post.html"},
+		{Path: "content/downstream.md", Slug: "downstream", InputHash: "downstream-hash", Template: "post.html"},
+		{Path: "content/unrelated.md", Slug: "unrelated", InputHash: "unrelated-hash", Template: "post.html"},
+		{Path: "content/root.md", Slug: "", InputHash: "root-hash", Template: "home.html"},
+	})
+
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	if err := plugin.Load(manager); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	affected := lifecycle.GetServeAffectedPaths(manager)
+	if !affected["content/target.md"] || !affected["content/source.md"] || !affected["content/downstream.md"] {
+		t.Fatalf("affected paths = %v, want changed target and transitive dependents", affected)
+	}
+	if len(affected) != 3 || affected["content/unrelated.md"] {
+		t.Fatalf("unrelated post was invalidated: %v", affected)
+	}
+	if affected["content/root.md"] {
+		t.Fatalf("empty-slug post was invalidated: %v", affected)
+	}
+
+	changedSlugs := cache.GetChangedSlugs()
+	if want := []string{"downstream", "source", "target"}; !slices.Equal(changedSlugs, want) {
+		t.Fatalf("changed slugs = %v, want %v", changedSlugs, want)
+	}
 }

@@ -102,6 +102,114 @@ func TestBuildLab_DeletePostPrunesGeneratedOutput(t *testing.T) {
 	}
 }
 
+func TestBuildLab_LinkedTargetEditMatchesCleanPageAndFeeds(t *testing.T) {
+	requireLinuxBuildLab(t)
+	fixture := filepath.Join(moduleRoot(t), "cmd", "markata-go", "cmd", "testdata", "buildlab-site")
+	binary := buildTestBinary(t)
+	result, runErr := buildlab.RunScenario(context.Background(), buildlab.ScenarioRunConfig{
+		Fixture: fixture,
+		Scenario: buildlab.Scenario{ID: "cli-linked-target-edit", Version: "1", Operations: []buildlab.Operation{
+			{Type: buildlab.OpClearCache},
+			{Type: buildlab.OpClearOutput},
+			{Type: buildlab.OpBuild},
+			{Type: buildlab.OpReplaceExact, Path: "content/target.md", Old: "Original target content.", New: "Updated target content."},
+			{Type: buildlab.OpBuild},
+		}},
+		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		CheckDeterminism: true,
+		GOMAXPROCS:       1,
+	})
+	if runErr != nil {
+		t.Fatalf("Build Lab run error = %v", runErr)
+	}
+	if result.Verdict != buildLabPassVerdict {
+		t.Fatalf("Build Lab verdict = %s, want %s; diagnostics = %+v", result.Verdict, buildLabPassVerdict, result.Diagnostics)
+	}
+	if len(result.Checkpoints) != 2 {
+		t.Fatalf("checkpoints = %d, want 2", len(result.Checkpoints))
+	}
+	checkpoint := result.Checkpoints[1]
+	if !checkpoint.Correctness.IncrementalApplicable || !checkpoint.Correctness.IncrementalEqual {
+		t.Fatalf("linked-target incremental comparison = %+v", checkpoint.Correctness)
+	}
+
+	assertLinkedTargetIncrementalScope(t, fixture, binary)
+}
+
+func assertLinkedTargetIncrementalScope(t *testing.T, fixture, binary string) {
+	t.Helper()
+	workspace, err := buildlab.NewWorkspace(fixture, t.TempDir())
+	if err != nil {
+		t.Fatalf("create Build Lab workspace: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := workspace.Remove(); err != nil {
+			t.Errorf("remove Build Lab workspace: %v", err)
+		}
+	})
+	environment, err := workspace.Environment([]string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}, 1)
+	if err != nil {
+		t.Fatalf("create Build Lab environment: %v", err)
+	}
+	outputDir := filepath.Join(workspace.SiteDir, "output")
+	runBuild := func() []byte {
+		t.Helper()
+		//nolint:gosec // The test controls the freshly built binary and isolated workspace paths.
+		command := exec.Command(
+			binary,
+			"build", "-c", "markata-go.toml",
+			"--merge-config", workspace.IsolationConfig,
+			"--output", outputDir,
+			"--site-dir", workspace.SiteDir,
+		)
+		command.Dir = workspace.SiteDir
+		command.Env = environment
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("run fixture build: %v\n%s", err, output)
+		}
+		return output
+	}
+
+	runBuild()
+	targetPath := filepath.Join(workspace.SiteDir, "content", "target.md")
+	target, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("read target fixture: %v", err)
+	}
+	oldContent := []byte("Original target content.")
+	newContent := []byte("Updated target content.")
+	if bytes.Count(target, oldContent) != 1 {
+		t.Fatalf("target fixture occurrence count = %d, want 1", bytes.Count(target, oldContent))
+	}
+	if err := os.WriteFile(targetPath, bytes.Replace(target, oldContent, newContent, 1), 0o600); err != nil {
+		t.Fatalf("update target fixture: %v", err)
+	}
+
+	incrementalLog := runBuild()
+	if !bytes.Contains(incrementalLog, []byte("Invalidated 1 changed posts and 1 dependent posts")) {
+		t.Fatalf("incremental build did not report dependency-scoped invalidation:\n%s", incrementalLog)
+	}
+	if !bytes.Contains(incrementalLog, []byte("Phase 1a classify: 1 cacheable, 2 need render")) {
+		t.Fatalf("incremental build did not keep the unrelated post cacheable:\n%s", incrementalLog)
+	}
+	if !bytes.Contains(incrementalLog, []byte("Incremental build: 1 skipped, 2 rebuilt")) {
+		t.Fatalf("incremental build did not skip only the unrelated post:\n%s", incrementalLog)
+	}
+
+	for _, relativePath := range []string{"source/index.html", "archive/atom.xml", "archive/feed.json"} {
+		generated, err := os.ReadFile(filepath.Join(outputDir, relativePath))
+		if err != nil {
+			t.Fatalf("read generated %s: %v", relativePath, err)
+		}
+		if !bytes.Contains(generated, newContent) || bytes.Contains(generated, oldContent) {
+			t.Fatalf("generated %s did not contain only updated embedded content", relativePath)
+		}
+	}
+}
+
 func TestBuildLab_ConfigChangeRebuildsFeedsListing(t *testing.T) {
 	requireLinuxBuildLab(t)
 	fixture := filepath.Join(moduleRoot(t), "cmd", "markata-go", "cmd", "testdata", "buildlab-site")

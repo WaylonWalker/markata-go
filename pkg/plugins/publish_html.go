@@ -122,6 +122,7 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	if err := p.removeStalePostOutputs(m.Posts(), config, cache); err != nil {
 		return err
 	}
+	p.recordDraftInputs(m.Posts(), cache)
 	if err := p.markChangedPosts(cache, m, config); err != nil {
 		return err
 	}
@@ -139,8 +140,7 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		// For incremental builds, check if we can skip this post
 		if cache != nil && post.InputHash != "" {
 			if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
-				outputPath := filepath.Join(config.OutputDir, post.Slug, "index.html")
-				if _, err := os.Stat(outputPath); err == nil {
+				if p.expectedPostOutputsExist(post, config) {
 					cache.MarkSkipped()
 					return false
 				}
@@ -154,6 +154,58 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(postsNeedingWrite, func(post *models.Post) error {
 		return p.writePost(post, config, engine, m)
 	})
+}
+
+func (p *PublishHTMLPlugin) recordDraftInputs(posts []*models.Post, cache *buildcache.Cache) {
+	if cache == nil {
+		return
+	}
+	for _, post := range posts {
+		if post != nil && post.Draft && !post.Skip && post.Path != "" && post.InputHash != "" {
+			cache.MarkInputProcessed(post.Path, post.Slug, post.InputHash, post.Template)
+		}
+	}
+}
+
+func (p *PublishHTMLPlugin) expectedPostOutputsExist(post *models.Post, config *lifecycle.Config) bool {
+	formats := resolvePostFormats(post, config)
+	expected := make([]string, 0, 5)
+	if formats.IsHTMLEnabled() && (post.HTML != "" || post.ArticleHTML != "" || post.Content != "") {
+		expected = append(expected, filepath.Join(config.OutputDir, post.Slug, "index.html"))
+	}
+	if !post.Private {
+		hasReversedFormat := formats.Markdown || formats.Text || formats.ANSI
+		if !formats.IsHTMLEnabled() && hasReversedFormat {
+			expected = append(expected, filepath.Join(config.OutputDir, post.Slug, "index.html"))
+		}
+		if formats.Markdown {
+			expected = append(expected,
+				filepath.Join(config.OutputDir, post.Slug+".md"),
+				filepath.Join(config.OutputDir, post.Slug, "index.md", "index.html"),
+			)
+		}
+		if formats.Text {
+			expected = append(expected,
+				filepath.Join(config.OutputDir, post.Slug+".txt"),
+				filepath.Join(config.OutputDir, post.Slug, "index.txt", "index.html"),
+			)
+		}
+		if formats.ANSI {
+			expected = append(expected,
+				filepath.Join(config.OutputDir, post.Slug+".ansi"),
+				filepath.Join(config.OutputDir, post.Slug, "index.ansi", "index.html"),
+			)
+		}
+		if formats.OG {
+			expected = append(expected, filepath.Join(config.OutputDir, post.Slug, "og", "index.html"))
+		}
+	}
+	for _, path := range expected {
+		if _, err := os.Stat(path); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecycle.Manager, config *lifecycle.Config) error {
@@ -253,8 +305,10 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	}
 
 	// Write HTML format (default)
+	htmlOutputPath := ""
 	if postFormats.IsHTMLEnabled() {
-		if err := p.writeHTMLFormat(post, config, postDir, cache); err != nil {
+		htmlOutputPath, err = p.writeHTMLFormat(post, config, postDir)
+		if err != nil {
 			return err
 		}
 	}
@@ -301,7 +355,24 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		}
 	}
 
+	if cache != nil && post.InputHash != "" {
+		if htmlOutputPath != "" {
+			cache.MarkRebuiltWithSlug(post.Path, post.Slug, post.InputHash, htmlOutputPath, post.Template)
+		} else if p.canRecordProcessedInput(post, postFormats, postDir) {
+			cache.MarkInputProcessed(post.Path, post.Slug, post.InputHash, post.Template)
+		}
+	}
+
 	return nil
+}
+
+func (p *PublishHTMLPlugin) canRecordProcessedInput(post *models.Post, formats models.PostFormatsConfig, postDir string) bool {
+	if !formats.IsHTMLEnabled() || post.HTML != "" || post.ArticleHTML != "" {
+		return true
+	}
+
+	_, err := os.Stat(filepath.Join(postDir, "index.html"))
+	return os.IsNotExist(err)
 }
 
 func (p *PublishHTMLPlugin) removeStalePostOutputs(posts []*models.Post, config *lifecycle.Config, cache *buildcache.Cache) error {
@@ -476,7 +547,7 @@ func safeOutputPath(outputDir, relative string) (string, error) {
 
 // writeHTMLFormat writes the standard HTML output for a post.
 // If incremental build caching is enabled, skips posts that haven't changed.
-func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string, cache *buildcache.Cache) error {
+func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string) (string, error) {
 	// Determine HTML content to write
 	var htmlContent string
 	switch {
@@ -488,7 +559,7 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 		htmlContent = p.wrapInTemplate(post, config)
 	default:
 		// No HTML content available
-		return nil
+		return "", nil
 	}
 
 	// Write index.html
@@ -496,15 +567,10 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 
 	//nolint:gosec // G306: HTML output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(htmlContent), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", outputPath, err)
+		return "", fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 
-	// Mark as rebuilt in cache (also tracks that this slug changed)
-	if cache != nil && post.InputHash != "" {
-		cache.MarkRebuiltWithSlug(post.Path, post.Slug, post.InputHash, outputPath, post.Template)
-	}
-
-	return nil
+	return outputPath, nil
 }
 
 // buildFormatContent builds content for a specific output format.

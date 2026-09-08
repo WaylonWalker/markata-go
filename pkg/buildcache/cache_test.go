@@ -167,6 +167,48 @@ func TestCache_MarkRebuiltWithSlug_PreservesCachedHTMLPaths(t *testing.T) {
 	}
 }
 
+func TestCache_MarkInputProcessed_TracksInputsWithoutCountingWrite(t *testing.T) {
+	cache := New(t.TempDir())
+	cache.MarkRebuilt("pages/post-a.md", "old-hash", "output/post-a/index.html", "post.html")
+	cache.ResetStats()
+	cache.dirty = false
+
+	if !cache.MarkInputProcessed("pages/post-a.md", "post-a", "new-hash", "custom.html") {
+		t.Fatal("changed processed input was not recorded")
+	}
+
+	if cache.ShouldRebuild("pages/post-a.md", "new-hash", "custom.html") {
+		t.Fatal("processed input was still marked for rebuild")
+	}
+	if skipped, rebuilt := cache.Stats(); skipped != 0 || rebuilt != 0 {
+		t.Fatalf("stats = (%d skipped, %d rebuilt), want (0, 0)", skipped, rebuilt)
+	}
+	if got := cache.Posts["pages/post-a.md"].OutputPath; got != "" {
+		t.Fatalf("output path = %q, want cleared HTML ownership", got)
+	}
+
+	cache.dirty = false
+	if cache.MarkInputProcessed("pages/post-a.md", "post-a", "new-hash", "custom.html") {
+		t.Fatal("unchanged processed input was reported as changed")
+	}
+	if cache.dirty {
+		t.Fatal("unchanged processed input dirtied the cache")
+	}
+}
+
+func TestCache_MarkSlugChanged_IgnoresEmptySlug(t *testing.T) {
+	cache := New(t.TempDir())
+	cache.MarkSlugChanged("")
+	cache.MarkFeedSlugChanged("")
+
+	if changed := cache.GetChangedSlugs(); len(changed) != 0 {
+		t.Fatalf("changed slugs = %v, want empty", changed)
+	}
+	if changed := cache.GetChangedFeedSlugs(); len(changed) != 0 {
+		t.Fatalf("changed feed slugs = %v, want empty", changed)
+	}
+}
+
 func TestCache_MarkChangedPaths(t *testing.T) {
 	cache := New("")
 
