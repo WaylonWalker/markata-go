@@ -82,6 +82,19 @@ Set `MARKATA_GO_SITE_DIR` in an alias or wrapper when repeatedly using one site.
 - `markata-go lsp doctor --no-verify-editor` (detect installed editors without loading their configuration)
 - `markata-go lsp setup` (print setup guidance for each installed supported editor; use `--editor <editor>` for `generic`, `neovim`, `helix`, `emacs`, `zed`, or `vscode`)
 
+Every build prints a `Content:` summary. Use it to check the path from
+discovery to output: candidates, loaded sources, valid frontmatter, posts,
+eligible posts, rendered posts, emitted outputs, exclusions, warnings, and
+errors. Content diagnostics include the source path, line, stable reason code,
+and message. `-v` also lists excluded and shadow sources with their reasons.
+
+If a frontmatter block starts with `----` or has a malformed closing delimiter,
+fix the source delimiter. Do not assume the file was ignored. Inspect the
+content diagnostic before changing feed filters or templates. The
+`--benchmark-json` output includes the same sanitized snapshot under `content`.
+Malformed author content can be isolated to one source. Source stat, read, and
+other filesystem errors are operational failures and make the build fail.
+
 ### Encryption
 
 - `markata-go encryption generate-password` (generate a policy-compliant password)
@@ -204,6 +217,8 @@ markata-go encryption encrypt-posts --dry-run
 - use `-o dist` in CI or preview contexts when you want a temporary artifact path
 - use `--no-input` for automation or when the agent must avoid prompts
 - use `-v` when debugging plugin order, missing outputs, or config resolution issues
+- use `-v` when debugging why a source became excluded or a shadow page
+- inspect the `Content:` build summary before changing feed filters for a missing post
 - use `--dry-run` on build or lint to preview behavior without side effects
 - use `encryption encrypt-posts --dry-run` before rewriting private source files; make sure required `MARKATA_GO_ENCRYPTION_KEY_*` environment variables are set first
 - use `encryption decrypt-posts --dry-run` before decrypting; it is the inverse of `encrypt-posts` and needs the same `MARKATA_GO_ENCRYPTION_KEY_*` variables

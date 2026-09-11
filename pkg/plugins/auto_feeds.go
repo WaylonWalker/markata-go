@@ -365,9 +365,12 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 		// Sort posts by date, newest first
 		sortPosts(filteredPosts, "date", true)
+		matchedPosts := filteredPosts
+		filteredPosts = applyFeedLimitOffset(filteredPosts, fc)
 
 		// Store posts in feed config
 		fc.Posts = filteredPosts
+		recordFeedSelectionForPosts(m, fc.Slug, posts, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
 
 		// Get base URL for pagination
 		baseURL := "/" + fc.Slug

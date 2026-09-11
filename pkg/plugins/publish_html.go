@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -142,6 +143,7 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 			if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
 				if p.expectedPostOutputsExist(post, config) {
 					cache.MarkSkipped()
+					m.ContentLedger().MarkEmitted(post.Path)
 					return false
 				}
 			}
@@ -152,7 +154,14 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 
 	// Phase 2: Process only posts that need writing concurrently
 	return m.ProcessPostsSliceConcurrently(postsNeedingWrite, func(post *models.Post) error {
-		return p.writePost(post, config, engine, m)
+		if err := p.writePost(post, config, engine, m); err != nil {
+			m.ContentLedger().RecordError(post.Path, diagnostics.ReasonContentWriteError, "post output could not be written")
+			return err
+		}
+		if p.postOutputExists(post, config) {
+			m.ContentLedger().MarkEmitted(post.Path)
+		}
+		return nil
 	})
 }
 
@@ -200,12 +209,46 @@ func (p *PublishHTMLPlugin) expectedPostOutputsExist(post *models.Post, config *
 			expected = append(expected, filepath.Join(config.OutputDir, post.Slug, "og", "index.html"))
 		}
 	}
+	if len(expected) == 0 {
+		return false
+	}
 	for _, path := range expected {
 		if _, err := os.Stat(path); err != nil {
 			return false
 		}
 	}
 	return true
+}
+
+func (p *PublishHTMLPlugin) postOutputExists(post *models.Post, config *lifecycle.Config) bool {
+	if post == nil || config == nil || post.Skip || post.Draft {
+		return false
+	}
+	formats := resolvePostFormats(post, config)
+	paths := make([]string, 0, 5)
+	if formats.IsHTMLEnabled() && (post.HTML != "" || post.ArticleHTML != "") {
+		paths = append(paths, filepath.Join(config.OutputDir, post.Slug, "index.html"))
+	}
+	if !post.Private {
+		if formats.Markdown {
+			paths = append(paths, filepath.Join(config.OutputDir, post.Slug+".md"))
+		}
+		if formats.Text {
+			paths = append(paths, filepath.Join(config.OutputDir, post.Slug+".txt"))
+		}
+		if formats.ANSI {
+			paths = append(paths, filepath.Join(config.OutputDir, post.Slug+".ansi"))
+		}
+		if formats.OG {
+			paths = append(paths, filepath.Join(config.OutputDir, post.Slug, "og", "index.html"))
+		}
+	}
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecycle.Manager, config *lifecycle.Config) error {

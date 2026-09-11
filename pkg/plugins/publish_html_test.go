@@ -1604,7 +1604,7 @@ func TestPublishHTMLPlugin_PrivateSlugChangeRemovesOldOutputs(t *testing.T) {
 func TestPublishHTMLPlugin_RemovedPostRemovesOwnedOutputsOutsideServe(t *testing.T) {
 	tempDir := t.TempDir()
 	cache := buildcache.New(filepath.Join(tempDir, "cache"))
-	cache.Posts["deleted.md"] = &buildcache.PostCache{
+	cache.Posts["posts/deleted.md"] = &buildcache.PostCache{
 		Slug:       "deleted",
 		OutputPath: filepath.Join(tempDir, "deleted", "index.html"),
 	}
@@ -1617,7 +1617,7 @@ func TestPublishHTMLPlugin_RemovedPostRemovesOwnedOutputsOutsideServe(t *testing
 	}
 	m := createTestManager(t, config)
 	m.Cache().Set("build_cache", cache)
-	lifecycle.SetServeRemovedPaths(m, []string{"deleted.md"})
+	lifecycle.SetServeRemovedPaths(m, []string{"posts/deleted.md"})
 
 	owned := []string{
 		"deleted/index.html",

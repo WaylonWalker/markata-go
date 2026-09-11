@@ -60,6 +60,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
 | [CONTENT_INDEX.md](./spec/CONTENT_INDEX.md) | Versioned derived metadata artifact and parser contract |
 | [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
+| [CONTENT_DIAGNOSTICS.md](./spec/CONTENT_DIAGNOSTICS.md) | Deterministic content dispositions and frontmatter diagnostics |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |
 | [OPTIONAL_PLUGINS.md](./spec/OPTIONAL_PLUGINS.md) | Optional enhancement plugins |
 | [VERSIONING.md](./spec/VERSIONING.md) | Versioning scheme and release process |

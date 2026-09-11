@@ -1,12 +1,15 @@
 package plugins
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -77,6 +80,168 @@ func TestLoadPlugin_ReservesPrivateMetadataMarkers(t *testing.T) {
 	if post.Get("_title_explicit") != true || post.Get("_description_explicit") != true {
 		t.Fatal("authored metadata did not set internal provenance markers")
 	}
+}
+
+func TestLoadPlugin_RestoresCachedFrontmatterDiagnostics(t *testing.T) {
+	loader := NewLoadPlugin()
+	post := models.NewPost("post.md")
+	post.Published = true
+	post.Set("_frontmatter_present", true)
+	post.Set("_frontmatter_valid", true)
+	issue := diagnostics.Issue{
+		File:     "post.md",
+		Code:     diagnostics.ReasonFrontmatterSuspiciousDelimiter,
+		Severity: diagnostics.SeverityWarning,
+		Message:  "suspicious delimiter",
+	}
+
+	cached := loader.postToCachedData(post, []diagnostics.Issue{issue})
+	if len(cached.FrontmatterIssues) != 1 {
+		t.Fatalf("cached frontmatter issues = %d, want 1", len(cached.FrontmatterIssues))
+	}
+	encoded, err := json.Marshal(cached)
+	if err != nil {
+		t.Fatalf("marshal cached post = %v", err)
+	}
+	var decoded buildcache.CachedPostData
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatalf("unmarshal cached post = %v", err)
+	}
+
+	restored := loader.restorePostFromCache(&decoded, nil)
+	m := lifecycle.NewManager()
+	m.SetFiles([]string{"post.md"})
+	recordLoadedPost(m, restored)
+
+	snapshot := m.ContentDiagnostics()
+	if len(snapshot.Entries) != 1 || len(snapshot.Entries[0].Diagnostics) != 1 {
+		t.Fatalf("restored diagnostics = %+v, want one issue", snapshot.Entries)
+	}
+	if snapshot.Entries[0].Diagnostics[0].Code != diagnostics.ReasonFrontmatterSuspiciousDelimiter {
+		t.Fatalf("restored diagnostics = %+v", snapshot.Entries[0].Diagnostics)
+	}
+}
+
+func TestLoadPlugin_ContinuesForRecoverableFrontmatterErrors(t *testing.T) {
+	contentDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(contentDir, "good.md"), []byte("---\ntitle: Good\npublished: true\n---\nGood"), 0o600); err != nil {
+		t.Fatalf("write good.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "broken.md"), []byte("---\ntitle: [broken\npublished: true\n---\nBroken"), 0o600); err != nil {
+		t.Fatalf("write broken.md: %v", err)
+	}
+
+	loader := NewLoadPlugin()
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = contentDir
+	m.SetFiles([]string{"broken.md", "good.md"})
+
+	if _, err := loader.parseFile("broken.md", "---\ntitle: [broken\npublished: true\n---\nBroken"); !errors.Is(err, ErrRecoverableContent) {
+		t.Fatalf("parseFile() error = %v, want ErrRecoverableContent", err)
+	}
+	if _, err := loader.parseFile("broken.md", "---\ntitle: [broken\npublished: true\n---\nBroken"); !errors.Is(err, ErrInvalidFrontmatter) {
+		t.Fatalf("parseFile() error = %v, want ErrInvalidFrontmatter", err)
+	}
+
+	if err := loader.Load(m); err != nil {
+		t.Fatalf("Load() error = %v, want nil for recoverable content error", err)
+	}
+	posts := m.Posts()
+	if len(posts) != 1 || posts[0].Path != "good.md" {
+		t.Fatalf("loaded posts = %+v, want only good.md", posts)
+	}
+
+	snapshot := m.ContentDiagnostics()
+	entry := snapshot.Entries[0]
+	if entry.Path != "broken.md" || !entry.FrontmatterPresent || entry.FrontmatterValid {
+		t.Fatalf("broken frontmatter state = %+v", entry)
+	}
+	if !containsDiagnosticCode(entry.Diagnostics, diagnostics.ReasonFrontmatterParseError) {
+		t.Fatalf("broken diagnostics = %+v", entry.Diagnostics)
+	}
+	if containsReason(entry.Reasons, diagnostics.ReasonContentLoadError) {
+		t.Fatalf("recoverable content received load error: %v", entry.Reasons)
+	}
+}
+
+func TestLoadPlugin_PropagatesOperationalSourceErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		brokenPath string
+		makeBroken func(t *testing.T, path string)
+	}{
+		{
+			name:       "stat failure",
+			brokenPath: "missing.md",
+			makeBroken: func(*testing.T, string) {},
+		},
+		{
+			name:       "read failure",
+			brokenPath: "directory.md",
+			makeBroken: func(t *testing.T, path string) {
+				t.Helper()
+				if err := os.Mkdir(path, 0o700); err != nil {
+					t.Fatalf("mkdir directory.md: %v", err)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contentDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(contentDir, "good.md"), []byte("---\ntitle: Good\npublished: true\n---\nGood"), 0o600); err != nil {
+				t.Fatalf("write good.md: %v", err)
+			}
+			tt.makeBroken(t, filepath.Join(contentDir, tt.brokenPath))
+
+			m := lifecycle.NewManager()
+			m.Config().ContentDir = contentDir
+			m.SetFiles([]string{"good.md", tt.brokenPath})
+
+			if err := NewLoadPlugin().Load(m); err == nil {
+				t.Fatal("Load() returned nil for operational source failure")
+			}
+			if posts := m.Posts(); len(posts) != 1 || posts[0].Path != "good.md" {
+				t.Fatalf("loaded posts = %+v, want valid sibling retained", posts)
+			}
+
+			entry := findContentDisposition(m.ContentDiagnostics(), tt.brokenPath)
+			if entry == nil {
+				t.Fatalf("missing ledger entry for %s", tt.brokenPath)
+			}
+			if !containsDiagnosticCode(entry.Diagnostics, diagnostics.ReasonContentLoadError) {
+				t.Fatalf("operational diagnostics = %+v", entry.Diagnostics)
+			}
+		})
+	}
+}
+
+func containsDiagnosticCode(issues []diagnostics.Issue, code string) bool {
+	for _, issue := range issues {
+		if issue.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+func containsReason(reasons []string, want string) bool {
+	for _, reason := range reasons {
+		if reason == want {
+			return true
+		}
+	}
+	return false
+}
+
+func findContentDisposition(snapshot diagnostics.ContentLedgerSnapshot, path string) *diagnostics.ContentDisposition {
+	for index := range snapshot.Entries {
+		if snapshot.Entries[index].Path == path {
+			return &snapshot.Entries[index]
+		}
+	}
+	return nil
 }
 
 func TestResolveFileModTime_UsesGlobCachedModTime(t *testing.T) {

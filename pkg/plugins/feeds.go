@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -47,12 +48,13 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if useIncremental && p.shouldSkipFeedCollect(fc, m) {
+		// Apply defaults before the incremental decision so the diagnostic
+		// window matches the same effective feed configuration used below.
+		fc.ApplyDefaults(feedDefaults)
+		if useIncremental && !hasFeedLimitOffset(fc) && p.shouldSkipFeedCollect(fc, m) {
+			recordFeedSelection(m, fc.Slug, fc.Posts, fc.Filter, fc.IncludesPrivate())
 			continue
 		}
-
-		// Apply defaults
-		fc.ApplyDefaults(feedDefaults)
 
 		usePresetPosts := fc.Type == models.FeedTypeSeries && len(fc.Posts) > 0
 
@@ -98,9 +100,16 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			}
 		}
 
+		consideredPosts := posts
+		if usePresetPosts {
+			consideredPosts = fc.Posts
+		}
+		matchedPosts := filteredPosts
+
 		// Store posts in feed config
 		filteredPosts = applyFeedLimitOffset(filteredPosts, fc)
 		fc.Posts = filteredPosts
+		recordFeedSelectionForPosts(m, fc.Slug, consideredPosts, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
 
 		// Get base URL for pagination
 		baseURL := "/" + fc.Slug
@@ -130,6 +139,137 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+func hasFeedLimitOffset(fc *models.FeedConfig) bool {
+	return fc != nil && (fc.Offset > 0 || fc.Limit > 0)
+}
+
+func recordFeedSelection(m *lifecycle.Manager, feedName string, selected []*models.Post, filterExpr string, includePrivate bool) {
+	if m == nil {
+		return
+	}
+	recordFeedSelectionForPosts(m, feedName, m.Posts(), selected, selected, filterExpr, includePrivate, 0, 0)
+}
+
+func recordFeedSelectionForPosts(
+	m *lifecycle.Manager,
+	feedName string,
+	considered, matched, selected []*models.Post,
+	filterExpr string,
+	includePrivate bool,
+	offset, limit int,
+) {
+	if m == nil || m.ContentLedger() == nil {
+		return
+	}
+
+	matchedPaths := make(map[string]int, len(matched))
+	for index, post := range matched {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		if _, exists := matchedPaths[post.Path]; !exists {
+			matchedPaths[post.Path] = index
+		}
+	}
+
+	selectedPaths := make(map[string]struct{}, len(selected))
+	for _, post := range selected {
+		if post != nil && post.Path != "" {
+			selectedPaths[post.Path] = struct{}{}
+		}
+	}
+
+	for _, post := range considered {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		recordFeedSelectionForPost(m.ContentLedger(), post, feedName, matchedPaths, len(matched), selectedPaths, filterExpr, includePrivate, offset, limit)
+	}
+}
+
+func recordFeedSelectionForPost(
+	ledger *diagnostics.ContentLedger,
+	post *models.Post,
+	feedName string,
+	matchedPaths map[string]int,
+	matchedCount int,
+	selectedPaths map[string]struct{},
+	filterExpr string,
+	includePrivate bool,
+	offset, limit int,
+) {
+	reasons := feedEligibilityReasons(post, includePrivate)
+	matchedIndex, matchedInFeed := matchedPaths[post.Path]
+	_, included := selectedPaths[post.Path]
+
+	if !matchedInFeed {
+		reasons = feedUnmatchedReasons(reasons, filterExpr)
+		ledger.RecordFeed(post.Path, feedName, false, reasons...)
+		return
+	}
+
+	if !included {
+		reasons = feedWindowExcludedReasons(reasons, matchedIndex, matchedCount, offset, limit)
+		ledger.RecordFeed(post.Path, feedName, false, reasons...)
+		return
+	}
+
+	ledger.RecordFeed(post.Path, feedName, len(reasons) == 0, reasons...)
+}
+
+func feedUnmatchedReasons(reasons []string, filterExpr string) []string {
+	if filterExpr != "" && len(reasons) == 0 {
+		reasons = append(reasons, diagnostics.ReasonContentFiltered)
+	}
+	if len(reasons) == 0 {
+		reasons = append(reasons, diagnostics.ReasonContentNoOutput)
+	}
+	return reasons
+}
+
+func feedWindowExcludedReasons(reasons []string, index, matchedCount, offset, limit int) []string {
+	if reason := feedWindowReason(index, matchedCount, offset, limit); reason != "" {
+		reasons = append(reasons, reason)
+	}
+	if len(reasons) == 0 {
+		reasons = append(reasons, diagnostics.ReasonContentNoOutput)
+	}
+	return reasons
+}
+
+func feedEligibilityReasons(post *models.Post, includePrivate bool) []string {
+	reasons := make([]string, 0, 4)
+	if !post.Published {
+		reasons = append(reasons, diagnostics.ReasonContentPublishedFalse)
+	}
+	if post.Skip {
+		reasons = append(reasons, diagnostics.ReasonContentSkip)
+	}
+	if post.Draft {
+		reasons = append(reasons, diagnostics.ReasonContentDraft)
+	}
+	if post.Private && !includePrivate {
+		reasons = append(reasons, diagnostics.ReasonContentPrivate)
+	}
+	return reasons
+}
+
+func feedWindowReason(index, matchedCount, offset, limit int) string {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 0 {
+		limit = 0
+	}
+	if index < offset || offset >= matchedCount {
+		return diagnostics.ReasonFeedOffset
+	}
+	if limit > 0 && index >= offset+limit {
+		return diagnostics.ReasonFeedLimit
+	}
+	return ""
 }
 
 func applyFeedLimitOffset(posts []*models.Post, fc *models.FeedConfig) []*models.Post {
@@ -177,7 +317,11 @@ func (p *FeedsPlugin) shouldSkipFeedCollect(fc *models.FeedConfig, m *lifecycle.
 		return false
 	}
 	if len(fc.Posts) == 0 {
-		return true
+		// Feed membership is runtime state and is not serialized in the site
+		// configuration. A fresh incremental manager therefore cannot safely
+		// skip collection when Posts is empty: doing so would replace a cached
+		// feed with an empty one and would make feed diagnostics incorrect.
+		return false
 	}
 
 	for _, post := range fc.Posts {

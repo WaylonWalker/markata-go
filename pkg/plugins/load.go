@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -140,26 +142,38 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	}
 
 	if cachedPosts := lifecycle.GetServeCachedPosts(m); len(cachedPosts) > 0 {
-		return p.loadFromCachedPosts(m, files, baseDir, cachedPosts)
+		if err := p.loadFromCachedPosts(m, files, baseDir, cachedPosts); err != nil {
+			return err
+		}
+		recordDuplicateSlugReasons(m)
+		return nil
 	}
 
 	// Get build cache for ModTime-based skipping
 	cache := GetBuildCache(m)
 	if lifecycle.IsServeFullRebuild(m) || cache == nil {
-		return p.loadAllFiles(m, files, baseDir, cache, false)
+		if err := p.loadAllFiles(m, files, baseDir, cache, false); err != nil {
+			return err
+		}
+		recordDuplicateSlugReasons(m)
+		return nil
 	}
 
 	affected := lifecycle.GetServeAffectedPaths(m)
 	if len(affected) == 0 {
-		return p.loadAllFiles(m, files, baseDir, cache, true)
+		if err := p.loadAllFiles(m, files, baseDir, cache, true); err != nil {
+			return err
+		}
+		recordDuplicateSlugReasons(m)
+		return nil
 	}
 
 	restored, _, err := p.restoreFromCacheOrLoadChanged(m, files, baseDir, cache, affected)
+	m.SetPosts(restored)
+	recordDuplicateSlugReasons(m)
 	if err != nil {
 		return err
 	}
-
-	m.SetPosts(restored)
 	return nil
 }
 
@@ -173,17 +187,24 @@ func (p *LoadPlugin) loadFromCachedPosts(
 	posts := make([]*models.Post, 0, len(files))
 	affected := lifecycle.GetServeAffectedPaths(m)
 	useFastCache := lifecycle.IsServeIncremental(m) && len(affected) > 0
+	var firstOperationalErr error
 	for _, file := range files {
 		post, err := p.loadCachedPost(m, file, baseDir, cachedPosts, cache, useFastCache, affected)
 		if err != nil {
-			return err
+			if !isRecoverableContentError(err) {
+				recordLoadError(m, file, err)
+				if firstOperationalErr == nil {
+					firstOperationalErr = err
+				}
+			}
+			continue
 		}
 		if post != nil {
 			posts = append(posts, post)
 		}
 	}
 	m.SetPosts(posts)
-	return nil
+	return firstOperationalErr
 }
 
 func (p *LoadPlugin) loadCachedPost(
@@ -198,16 +219,16 @@ func (p *LoadPlugin) loadCachedPost(
 	if existing, ok := cachedPosts[file]; ok && !useFastCache {
 		modTime, err := resolveFileModTime(m, file, baseDir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				return nil, nil
-			}
 			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 		}
 		if cache != nil {
 			if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
-				return p.restorePostFromCache(cachedData, cache), nil
+				post := p.restorePostFromCache(cachedData, cache)
+				recordLoadedPost(m, post)
+				return post, nil
 			}
 		}
+		recordLoadedPost(m, existing)
 		return existing, nil
 	}
 
@@ -217,7 +238,9 @@ func (p *LoadPlugin) loadCachedPost(
 		}
 		if cache != nil {
 			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
-				return p.restorePostFromCache(cachedData, cache), nil
+				post := p.restorePostFromCache(cachedData, cache)
+				recordLoadedPost(m, post)
+				return post, nil
 			}
 		}
 	}
@@ -233,13 +256,10 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 		posts, err := p.loadFilesConcurrent(m, files, func(file string) (*models.Post, error) {
 			return p.loadFile(m, file, baseDir, cache)
 		})
-		if err != nil {
-			return err
-		}
 		for _, post := range posts {
 			m.AddPost(post)
 		}
-		return nil
+		return err
 	}
 
 	affected := lifecycle.GetServeAffectedPaths(m)
@@ -250,7 +270,9 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 				return p.loadFile(m, file, baseDir, cache)
 			}
 			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
-				return p.restorePostFromCache(cachedData, cache), nil
+				post := p.restorePostFromCache(cachedData, cache)
+				recordLoadedPost(m, post)
+				return post, nil
 			}
 		}
 
@@ -259,17 +281,16 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
 		}
 		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
-			return p.restorePostFromCache(cachedData, cache), nil
+			post := p.restorePostFromCache(cachedData, cache)
+			recordLoadedPost(m, post)
+			return post, nil
 		}
 		return p.loadFile(m, file, baseDir, cache)
 	})
-	if err != nil {
-		return err
-	}
 	for _, post := range posts {
 		m.AddPost(post)
 	}
-	return nil
+	return err
 }
 
 func (p *LoadPlugin) loadFilesConcurrent(m *lifecycle.Manager, files []string, fn func(string) (*models.Post, error)) ([]*models.Post, error) {
@@ -312,18 +333,23 @@ func (p *LoadPlugin) loadFilesConcurrent(m *lifecycle.Manager, files []string, f
 	}()
 
 	ordered := make([]*models.Post, len(files))
-	var firstErr error
+	orderedErrors := make([]error, len(files))
+	var firstOperationalErr error
 	for res := range results {
 		if res.err != nil {
-			if firstErr == nil {
-				firstErr = res.err
-			}
+			orderedErrors[res.index] = res.err
 			continue
 		}
 		ordered[res.index] = res.post
 	}
-	if firstErr != nil {
-		return nil, firstErr
+	for index, err := range orderedErrors {
+		if err == nil || isRecoverableContentError(err) {
+			continue
+		}
+		recordLoadError(m, files[index], err)
+		if firstOperationalErr == nil {
+			firstOperationalErr = err
+		}
 	}
 
 	posts := make([]*models.Post, 0, len(ordered))
@@ -332,7 +358,7 @@ func (p *LoadPlugin) loadFilesConcurrent(m *lifecycle.Manager, files []string, f
 			posts = append(posts, post)
 		}
 	}
-	return posts, nil
+	return posts, firstOperationalErr
 }
 
 func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
@@ -347,14 +373,17 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 	}
 
 	posts = make([]*models.Post, 0, len(files))
-	var firstErr error
+	var firstOperationalErr error
 
 	for _, file := range files {
 		if affected[file] {
 			post, err := p.loadFile(m, file, baseDir, cache)
 			if err != nil {
-				if firstErr == nil {
-					firstErr = err
+				if !isRecoverableContentError(err) {
+					recordLoadError(m, file, err)
+					if firstOperationalErr == nil {
+						firstOperationalErr = err
+					}
 				}
 				continue
 			}
@@ -365,8 +394,10 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 
 		modTime, err := resolveFileModTime(m, file, baseDir)
 		if err != nil {
-			if firstErr == nil {
-				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
+			statErr := fmt.Errorf("failed to stat %s: %w", file, err)
+			recordLoadError(m, file, statErr)
+			if firstOperationalErr == nil {
+				firstOperationalErr = statErr
 			}
 			continue
 		}
@@ -374,22 +405,23 @@ func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
 		if cachedData == nil {
 			post, err := p.loadFile(m, file, baseDir, cache)
 			if err != nil {
-				if firstErr == nil {
-					firstErr = err
+				if !isRecoverableContentError(err) {
+					recordLoadError(m, file, err)
+					if firstOperationalErr == nil {
+						firstOperationalErr = err
+					}
 				}
 				continue
 			}
 			posts = append(posts, post)
 			continue
 		}
-		posts = append(posts, p.restorePostFromCache(cachedData, cache))
+		post := p.restorePostFromCache(cachedData, cache)
+		recordLoadedPost(m, post)
+		posts = append(posts, post)
 	}
 
-	if firstErr != nil {
-		return nil, nil, firstErr
-	}
-
-	return posts, changedPosts, nil
+	return posts, changedPosts, firstOperationalErr
 }
 
 // loadFile loads a single file, using cache if ModTime is unchanged.
@@ -406,6 +438,7 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", file, err)
 	}
+	frontmatterAnalysis := recordSourceDiagnostics(m, file, string(content))
 	sourceEncrypted := encryption.IsSourceEncrypted(sourceBodyForContent(string(content)))
 
 	// Check cache for unchanged plaintext files. Source-encrypted files are
@@ -413,6 +446,7 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	if cache != nil && !sourceEncrypted {
 		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
 			post := p.restorePostFromCache(cachedData, cache)
+			recordLoadedPost(m, post)
 			return post, nil
 		}
 	}
@@ -426,7 +460,7 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	// Cache the parsed post. Source-encrypted files intentionally skip parsed
 	// post and article caches because those would contain decrypted content.
 	if cache != nil && !isSourceEncryptedPost(post) {
-		postData := p.postToCachedData(post)
+		postData := p.postToCachedData(post, frontmatterAnalysis.Issues)
 		//nolint:errcheck // caching is best-effort
 		cache.CachePostData(file, modTime, postData)
 		contentHash := buildcache.ContentHash(post.Content)
@@ -444,8 +478,123 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 			cache.MarkFeedSlugChanged(post.Slug)
 		}
 	}
+	recordLoadedPost(m, post)
 
 	return post, nil
+}
+
+func recordSourceDiagnostics(m *lifecycle.Manager, path, content string) diagnostics.FrontmatterAnalysis {
+	analysis := diagnostics.AnalyzeFrontmatter(path, content)
+	if m == nil || m.ContentLedger() == nil {
+		return analysis
+	}
+
+	ledger := m.ContentLedger()
+	ledger.MarkLoaded(path)
+	ledger.MarkFrontmatter(path, analysis.Inspection.HasFrontmatter, analysis.Valid)
+	for _, issue := range analysis.Issues {
+		ledger.AddIssue(issue)
+	}
+	return analysis
+}
+
+func recordLoadedPost(m *lifecycle.Manager, post *models.Post) {
+	if m == nil || post == nil || post.Path == "" || m.ContentLedger() == nil {
+		return
+	}
+
+	ledger := m.ContentLedger()
+	ledger.MarkLoaded(post.Path)
+	for _, issue := range cachedFrontmatterDiagnostics(post) {
+		ledger.AddIssue(issue)
+	}
+	present, valid := cachedFrontmatterState(post)
+	ledger.MarkFrontmatter(post.Path, present, valid)
+	eligible := post.Published && !post.Draft && !post.Skip
+	ledger.MarkPost(post.Path, eligible)
+	if !post.Published {
+		ledger.AddReason(post.Path, diagnostics.ReasonContentPublishedFalse)
+	}
+	if post.Draft {
+		ledger.AddReason(post.Path, diagnostics.ReasonContentDraft)
+	}
+	if post.Skip {
+		ledger.AddReason(post.Path, diagnostics.ReasonContentSkip)
+	}
+	if post.Private {
+		ledger.AddReason(post.Path, diagnostics.ReasonContentPrivate)
+	}
+}
+
+func cachedFrontmatterDiagnostics(post *models.Post) []diagnostics.Issue {
+	if post == nil {
+		return nil
+	}
+	issues, ok := post.Get("_frontmatter_issues").([]diagnostics.Issue)
+	if !ok {
+		return nil
+	}
+	return issues
+}
+
+func cachedFrontmatterState(post *models.Post) (present, valid bool) {
+	if post == nil {
+		return false, false
+	}
+	if value, ok := post.Get("_frontmatter_present").(bool); ok {
+		present = value
+	} else {
+		present = post.RawFrontmatter != ""
+	}
+	if value, ok := post.Get("_frontmatter_valid").(bool); ok {
+		valid = value
+	} else {
+		valid = present
+	}
+	return present, valid
+}
+
+func recordLoadError(m *lifecycle.Manager, path string, err error) {
+	if m == nil || m.ContentLedger() == nil {
+		return
+	}
+	if isRecoverableContentError(err) {
+		return
+	}
+	ledger := m.ContentLedger()
+	if ledger.HasIssueCode(path, diagnostics.ReasonContentLoadError) {
+		return
+	}
+	// Keep source diagnostics safe for machine-readable output. In particular,
+	// do not copy wrapped errors that can contain environment-derived values.
+	ledger.RecordError(path, diagnostics.ReasonContentLoadError, "content could not be loaded")
+}
+
+func isRecoverableContentError(err error) bool {
+	return errors.Is(err, ErrRecoverableContent)
+}
+
+func recordDuplicateSlugReasons(m *lifecycle.Manager) {
+	if m == nil || m.ContentLedger() == nil {
+		return
+	}
+
+	bySlug := make(map[string][]string)
+	for _, post := range m.Posts() {
+		if post == nil || post.Path == "" || post.Skip || post.Draft {
+			continue
+		}
+		slug := strings.ToLower(post.Slug)
+		bySlug[slug] = append(bySlug[slug], post.Path)
+	}
+	for _, paths := range bySlug {
+		if len(paths) < 2 {
+			continue
+		}
+		for _, path := range paths {
+			m.ContentLedger().AddReason(path, diagnostics.ReasonContentDuplicateSlug)
+		}
+	}
 }
 
 func fullContentPath(file, baseDir string) string {
@@ -494,6 +643,14 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache
 	post.Template = data.Template
 	post.Templates = data.Templates
 	post.RawFrontmatter = data.RawFrontmatter
+	present := data.FrontmatterPresent
+	valid := data.FrontmatterValid
+	// Older cache entries did not store explicit frontmatter state. Infer the
+	// state for them from the retained raw frontmatter when possible.
+	if !present && data.RawFrontmatter != "" {
+		present = true
+		valid = true
+	}
 	post.InputHash = data.InputHash
 	post.Authors = data.Authors
 	post.Author = data.Author
@@ -503,6 +660,11 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache
 			post.Set(k, v)
 		}
 	}
+	// Set internal state after restoring Extra so older or hand-authored cache
+	// entries cannot override the typed frontmatter state above.
+	post.Set("_frontmatter_present", present)
+	post.Set("_frontmatter_valid", valid)
+	post.Set("_frontmatter_issues", append([]diagnostics.Issue{}, data.FrontmatterIssues...))
 
 	if cache != nil {
 		contentHash := buildcache.ContentHash(data.Content)
@@ -640,44 +802,56 @@ func computePostGardenHash(post *models.Post) string {
 }
 
 // postToCachedData converts a Post to cacheable data.
-func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostData {
+func (p *LoadPlugin) postToCachedData(post *models.Post, frontmatterIssues []diagnostics.Issue) *buildcache.CachedPostData {
 	return &buildcache.CachedPostData{
-		Path:            post.Path,
-		Content:         post.Content,
-		Slug:            post.Slug,
-		Href:            post.Href,
-		Title:           post.Title,
-		Date:            post.Date,
-		Modified:        post.Modified,
-		Published:       post.Published,
-		Draft:           post.Draft,
-		Private:         post.Private,
-		PrivateOverride: post.PrivateOverride,
-		Skip:            post.Skip,
-		Tags:            post.Tags,
-		Description:     post.Description,
-		Template:        post.Template,
-		Templates:       post.Templates,
-		RawFrontmatter:  post.RawFrontmatter,
-		InputHash:       post.InputHash,
-		Authors:         post.Authors,
-		Author:          post.Author,
-		SecretKey:       post.SecretKey, // pragma: allowlist secret
-		Extra:           post.Extra,
+		Path:               post.Path,
+		Content:            post.Content,
+		Slug:               post.Slug,
+		Href:               post.Href,
+		Title:              post.Title,
+		Date:               post.Date,
+		Modified:           post.Modified,
+		Published:          post.Published,
+		Draft:              post.Draft,
+		Private:            post.Private,
+		PrivateOverride:    post.PrivateOverride,
+		Skip:               post.Skip,
+		Tags:               post.Tags,
+		Description:        post.Description,
+		Template:           post.Template,
+		Templates:          post.Templates,
+		RawFrontmatter:     post.RawFrontmatter,
+		FrontmatterPresent: post.Has("_frontmatter_present") && post.Get("_frontmatter_present") == true,
+		FrontmatterValid:   post.Has("_frontmatter_valid") && post.Get("_frontmatter_valid") == true,
+		FrontmatterIssues:  append([]diagnostics.Issue{}, frontmatterIssues...),
+		InputHash:          post.InputHash,
+		Authors:            post.Authors,
+		Author:             post.Author,
+		SecretKey:          post.SecretKey, // pragma: allowlist secret
+		Extra:              post.Extra,
 	}
 }
 
 // loadSequential loads files one at a time (used for small file counts).
 func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
+	var firstOperationalErr error
 	for _, file := range files {
 		post, err := p.loadFile(m, file, baseDir, cache)
 		if err != nil {
-			return err
+			if !isRecoverableContentError(err) {
+				recordLoadError(m, file, err)
+				if firstOperationalErr == nil {
+					firstOperationalErr = err
+				}
+			}
+			continue
 		}
-		m.AddPost(post)
+		if post != nil {
+			m.AddPost(post)
+		}
 	}
 
-	return nil
+	return firstOperationalErr
 }
 
 // ParsePostFromContent parses a markdown file content into a Post.
@@ -743,20 +917,24 @@ func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*
 
 // parseFile parses a markdown file's content into a Post object.
 func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
+	inspection := diagnostics.InspectFrontmatter(content)
+
 	// Parse frontmatter and get raw frontmatter for hashing
 	metadata, body, rawFrontmatter, err := ParseFrontmatterWithRaw(content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrRecoverableContent, err)
 	}
 
 	// Create post with defaults
 	post := models.NewPost(path)
 	post.Content = body
 	post.RawFrontmatter = rawFrontmatter
+	post.Set("_frontmatter_present", inspection.HasFrontmatter)
+	post.Set("_frontmatter_valid", inspection.HasFrontmatter)
 
 	// Apply metadata to post
 	if err := p.applyMetadata(post, metadata); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrRecoverableContent, err)
 	}
 
 	decryptedBody, err := p.decryptSourceBody(post, body)

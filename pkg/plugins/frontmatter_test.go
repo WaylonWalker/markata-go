@@ -293,6 +293,20 @@ func TestExtractFrontmatter_CRLFLineEndings(t *testing.T) {
 	}
 }
 
+func TestExtractFrontmatter_StrictDelimiterAndBOM(t *testing.T) {
+	frontmatter, body, err := ExtractFrontmatter("\ufeff---\ntitle: Test\n---\nBody")
+	if err != nil {
+		t.Fatalf("BOM frontmatter returned error: %v", err)
+	}
+	if frontmatter != "title: Test" || body != "Body" {
+		t.Fatalf("BOM result = (%q, %q), want (%q, %q)", frontmatter, body, "title: Test", "Body")
+	}
+
+	if _, _, err := ExtractFrontmatter("---\ntitle: Test\n--- \nBody"); err == nil {
+		t.Fatal("malformed closing delimiter returned nil error")
+	}
+}
+
 // =============================================================================
 // Helper Function Tests
 // =============================================================================

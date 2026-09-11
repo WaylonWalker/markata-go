@@ -128,6 +128,19 @@ date: 2020-1-15T00:00:00
 	}
 }
 
+func TestCheck_H1Heading_PreservesBlankLineAfterFrontmatter(t *testing.T) {
+	issues := Check("test.md", "---\ntitle: Test\n---\n\n# Heading", nil)
+	for _, issue := range issues {
+		if issue.Code == "h1-in-content" {
+			if issue.Range.StartLine != 4 {
+				t.Fatalf("H1 line = %d, want 4", issue.Range.StartLine)
+			}
+			return
+		}
+	}
+	t.Fatal("missing h1-in-content issue")
+}
+
 func TestCheck_MissingAltText(t *testing.T) {
 	tests := []struct {
 		name    string

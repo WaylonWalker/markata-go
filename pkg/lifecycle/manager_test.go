@@ -2,7 +2,9 @@ package lifecycle
 
 import (
 	"errors"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -562,6 +564,42 @@ func TestManagerReset(t *testing.T) {
 	}
 }
 
+func TestManagerSetFilesNormalizesAbsoluteContentPaths(t *testing.T) {
+	contentDir := t.TempDir()
+	absolutePath := filepath.Join(contentDir, "posts", "entry.md")
+
+	m := NewManager()
+	m.Config().ContentDir = contentDir
+	m.SetFiles([]string{absolutePath})
+
+	if got := m.Files(); len(got) != 1 || got[0] != filepath.ToSlash(filepath.Join("posts", "entry.md")) {
+		t.Fatalf("Files() = %v, want [posts/entry.md]", got)
+	}
+	snapshot := m.ContentDiagnostics()
+	if len(snapshot.Entries) != 1 || snapshot.Entries[0].Path != "posts/entry.md" {
+		t.Fatalf("content entries = %+v, want relative source path", snapshot.Entries)
+	}
+}
+
+func TestManagerSetFilesRedactsAbsolutePathsOutsideContentRoot(t *testing.T) {
+	contentDir := t.TempDir()
+	outsideDir := t.TempDir()
+	absolutePath := filepath.Join(outsideDir, "entry.md")
+
+	m := NewManager()
+	m.Config().ContentDir = contentDir
+	m.SetFiles([]string{absolutePath})
+
+	snapshot := m.ContentDiagnostics()
+	if len(snapshot.Entries) != 1 {
+		t.Fatalf("content entries = %+v, want one entry", snapshot.Entries)
+	}
+	path := snapshot.Entries[0].Path
+	if filepath.IsAbs(path) || strings.HasPrefix(path, "../") || strings.Contains(path, outsideDir) {
+		t.Fatalf("content path exposes outside root: %q", path)
+	}
+}
+
 func TestManagerResetInvalidatesPostIndex(t *testing.T) {
 	m := NewManager()
 	post := &models.Post{Slug: "post-a", Href: "/post-a/", Path: "post-a.md"}
@@ -651,6 +689,39 @@ func TestManagerConcurrentProcessingErrorHandling(t *testing.T) {
 	finalCount := atomic.LoadInt64(&callCount)
 	if finalCount != 10 {
 		t.Errorf("Expected 10 posts processed, got %d", finalCount)
+	}
+}
+
+func TestManagerConcurrentProcessingErrorOrderIsDeterministic(t *testing.T) {
+	m := NewManager()
+	m.SetConcurrency(2)
+	m.SetPosts([]*models.Post{
+		{Path: "first.md"},
+		{Path: "second.md"},
+	})
+
+	firstStarted := make(chan struct{})
+	secondFinished := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- m.ProcessPostsConcurrently(func(post *models.Post) error {
+			if post.Path == "first.md" {
+				close(firstStarted)
+				<-releaseFirst
+				return errors.New("first failure")
+			}
+			close(secondFinished)
+			return errors.New("second failure")
+		})
+	}()
+
+	<-firstStarted
+	<-secondFinished
+	close(releaseFirst)
+	err := <-done
+	if err == nil || !strings.Contains(err.Error(), "first.md") {
+		t.Fatalf("ProcessPostsConcurrently() error = %v, want first input error", err)
 	}
 }
 

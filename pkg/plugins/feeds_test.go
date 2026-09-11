@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -275,6 +277,162 @@ func TestFeedsPlugin_LimitOffset(t *testing.T) {
 	}
 	if posts[1].Slug != "post3" {
 		t.Errorf("second post should be post3 after limit, got %q", posts[1].Slug)
+	}
+}
+
+func TestFeedsPlugin_RecordsDistinctFeedSelectionReasons(t *testing.T) {
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	posts := []*models.Post{
+		{Path: "included.md", Slug: "included", Tags: []string{"keep"}, Published: true, Date: &date},
+		{Path: "filtered.md", Slug: "filtered", Tags: []string{"other"}, Published: true, Date: &date},
+		{Path: "private.md", Slug: "private", Tags: []string{"keep"}, Published: true, Private: true, Date: &date},
+		{Path: "draft.md", Slug: "draft", Tags: []string{"keep"}, Published: true, Draft: true, Date: &date},
+		{Path: "skipped.md", Slug: "skipped", Tags: []string{"keep"}, Published: true, Skip: true, Date: &date},
+		{Path: "unpublished.md", Slug: "unpublished", Tags: []string{"keep"}, Published: false, Date: &date},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetPosts(posts)
+	m.SetFiles([]string{"included.md", "filtered.md", "private.md", "draft.md", "skipped.md", "unpublished.md"})
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{{
+			Slug:   "diagnostics",
+			Filter: "published == true and 'keep' in tags",
+		}},
+	}
+	m.SetConfig(config)
+
+	if err := NewFeedsPlugin().Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+
+	assertFeedReason := func(path, reason string, included bool) {
+		t.Helper()
+		entry := findContentDisposition(m.ContentDiagnostics(), path)
+		if entry == nil {
+			t.Fatalf("missing content entry for %s", path)
+		}
+		var feed *diagnostics.ContentFeedDisposition
+		for index := range entry.Feeds {
+			if entry.Feeds[index].Feed == "diagnostics" {
+				feed = &entry.Feeds[index]
+				break
+			}
+		}
+		if feed == nil {
+			t.Fatalf("missing diagnostics feed entry for %s: %+v", path, entry.Feeds)
+		}
+		if feed.Included != included {
+			t.Errorf("%s included = %t, want %t (%v)", path, feed.Included, included, feed.Reasons)
+		}
+		if reason != "" && !containsReason(feed.Reasons, reason) {
+			t.Errorf("%s feed reasons = %v, want %q", path, feed.Reasons, reason)
+		}
+	}
+
+	assertFeedReason("included.md", "", true)
+	assertFeedReason("filtered.md", diagnostics.ReasonContentFiltered, false)
+	assertFeedReason("private.md", diagnostics.ReasonContentPrivate, false)
+	assertFeedReason("draft.md", diagnostics.ReasonContentDraft, false)
+	assertFeedReason("skipped.md", diagnostics.ReasonContentSkip, false)
+	assertFeedReason("unpublished.md", diagnostics.ReasonContentPublishedFalse, false)
+
+	filtered := findContentDisposition(m.ContentDiagnostics(), "filtered.md")
+	if filtered == nil || !containsReason(filtered.Feeds[0].Reasons, diagnostics.ReasonContentFiltered) {
+		t.Fatalf("filtered feed disposition = %+v", filtered)
+	}
+	private := findContentDisposition(m.ContentDiagnostics(), "private.md")
+	if private == nil || containsReason(private.Feeds[0].Reasons, diagnostics.ReasonContentFiltered) {
+		t.Fatalf("private feed disposition was mislabeled as filtered: %+v", private)
+	}
+	unpublished := findContentDisposition(m.ContentDiagnostics(), "unpublished.md")
+	if unpublished == nil || containsReason(unpublished.Feeds[0].Reasons, diagnostics.ReasonContentFiltered) {
+		t.Fatalf("unpublished feed disposition was mislabeled as filtered: %+v", unpublished)
+	}
+}
+
+func TestFeedsPlugin_RecordsOffsetAndLimitReasonsAfterFilteringAndSorting(t *testing.T) {
+	dates := []time.Time{
+		time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC),
+	}
+	posts := []*models.Post{
+		{Path: "first.md", Slug: "first", Tags: []string{"keep"}, Published: true, Date: &dates[0]},
+		{Path: "second.md", Slug: "second", Tags: []string{"keep"}, Published: true, Date: &dates[1]},
+		{Path: "third.md", Slug: "third", Tags: []string{"keep"}, Published: true, Date: &dates[2]},
+		{Path: "fourth.md", Slug: "fourth", Tags: []string{"keep"}, Published: true, Date: &dates[3]},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetPosts(posts)
+	m.SetFiles([]string{"first.md", "second.md", "third.md", "fourth.md"})
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{{
+			Slug:   "window",
+			Filter: "'keep' in tags",
+			Offset: 1,
+			Limit:  2,
+		}},
+	}
+	m.SetConfig(config)
+
+	if err := NewFeedsPlugin().Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	feeds := m.Feeds()
+	if len(feeds) != 1 || len(feeds[0].Posts) != 2 || feeds[0].Posts[0].Slug != "second" || feeds[0].Posts[1].Slug != "third" {
+		t.Fatalf("window feed posts = %+v", feeds)
+	}
+
+	for path, reason := range map[string]string{
+		"first.md":  diagnostics.ReasonFeedOffset,
+		"fourth.md": diagnostics.ReasonFeedLimit,
+	} {
+		entry := findContentDisposition(m.ContentDiagnostics(), path)
+		if entry == nil || len(entry.Feeds) != 1 {
+			t.Fatalf("%s feed disposition = %+v", path, entry)
+		}
+		feed := entry.Feeds[0]
+		if feed.Included || !containsReason(feed.Reasons, reason) {
+			t.Errorf("%s feed disposition = %+v, want excluded for %s", path, feed, reason)
+		}
+		if containsReason(feed.Reasons, diagnostics.ReasonContentFiltered) {
+			t.Errorf("%s feed disposition = %+v, must not be labeled filtered", path, feed)
+		}
+	}
+	for _, path := range []string{"second.md", "third.md"} {
+		entry := findContentDisposition(m.ContentDiagnostics(), path)
+		if entry == nil || len(entry.Feeds) != 1 || !entry.Feeds[0].Included {
+			t.Errorf("%s feed disposition = %+v, want included", path, entry)
+		}
+	}
+}
+
+func TestFeedsPlugin_IncrementalRebuildsWithoutSerializedFeedPosts(t *testing.T) {
+	post := &models.Post{Path: "post.md", Slug: "post", Published: true, Content: "body"}
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{post})
+	m.SetFiles([]string{"post.md"})
+	m.Config().Extra = map[string]interface{}{
+		"feeds_incremental": true,
+		"feeds":             []models.FeedConfig{{Slug: "archive"}},
+	}
+	m.Cache().Set("build_cache", buildcache.New(t.TempDir()))
+
+	if err := NewFeedsPlugin().Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	feeds := m.Feeds()
+	if len(feeds) != 1 || len(feeds[0].Posts) != 1 || feeds[0].Posts[0].Path != post.Path {
+		t.Fatalf("incremental feeds = %+v, want runtime feed membership restored", feeds)
+	}
+	entry := findContentDisposition(m.ContentDiagnostics(), post.Path)
+	if entry == nil || len(entry.Feeds) != 1 || !entry.Feeds[0].Included {
+		t.Fatalf("incremental feed diagnostics = %+v, want included post", entry)
 	}
 }
 

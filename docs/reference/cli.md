@@ -375,6 +375,31 @@ markata-go build -c production.toml
 markata-go build --clean -v -o dist
 ```
 
+#### Content diagnostics
+
+Every build prints a `Content:` summary. It counts discovered files, content
+candidates, loaded sources, valid frontmatter, posts, eligible posts, rendered
+posts, emitted outputs, exclusions, warnings, and errors.
+
+Content diagnostics identify the source path, line, stable reason code, and a
+short message. For example, a frontmatter opening of `----` reports
+`frontmatter.suspicious_delimiter`; it does not silently discard the file.
+Malformed author content is isolated to that source, but source stat, read, and
+other filesystem errors still fail the build.
+
+Use `-v` to show the final disposition and reason codes for every excluded or
+shadow source:
+
+```text
+Content dispositions:
+  posts/draft.md [excluded]: content.draft
+  posts/review.md [shadow]: content.published_false
+```
+
+The JSON written by `--benchmark-json` includes the same sanitized content
+snapshot under `content`. It does not include raw frontmatter, environment
+values, secrets, or build logs.
+
 ### buildlab
 
 Compare baseline and candidate builds in isolated workspaces.

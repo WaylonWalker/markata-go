@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 )
 
 // Severity indicates the severity of a diagnostic issue.
@@ -32,20 +31,20 @@ func (s Severity) String() string {
 
 // Range represents a position range in a document.
 type Range struct {
-	StartLine int // 0-based line number
-	StartCol  int // 0-based column (character offset)
-	EndLine   int // 0-based line number
-	EndCol    int // 0-based column
+	StartLine int `json:"start_line"` // 0-based line number
+	StartCol  int `json:"start_col"`  // 0-based column (character offset)
+	EndLine   int `json:"end_line"`   // 0-based line number
+	EndCol    int `json:"end_col"`    // 0-based column
 }
 
 // Issue represents a diagnostic issue found in a file.
 type Issue struct {
-	File     string   // File path
-	Range    Range    // Position in the file
-	Code     string   // Issue code (e.g., "duplicate-key", "broken-wikilink")
-	Severity Severity // Severity level
-	Message  string   // Human-readable message
-	Fixable  bool     // Whether this issue can be automatically fixed
+	File     string   `json:"file"`     // File path
+	Range    Range    `json:"range"`    // Position in the file
+	Code     string   `json:"code"`     // Issue code (e.g., "duplicate-key", "broken-wikilink")
+	Severity Severity `json:"severity"` // Severity level
+	Message  string   `json:"message"`  // Human-readable message
+	Fixable  bool     `json:"fixable"`  // Whether this issue can be automatically fixed
 }
 
 // Resolver provides lookup functionality for wikilinks and mentions.
@@ -61,15 +60,11 @@ type Resolver interface {
 // Check runs all diagnostic checks on the content and returns any issues found.
 // The resolver is optional; if nil, wikilink and mention checks are skipped.
 func Check(filePath, content string, resolver Resolver) []Issue {
-	var issues []Issue
-
-	// Extract frontmatter for YAML-specific checks
-	frontmatter, body, hasFrontmatter := extractFrontmatter(content)
-
-	if hasFrontmatter {
-		issues = append(issues, checkDuplicateKeys(filePath, frontmatter)...)
-		issues = append(issues, checkDateFormats(filePath, frontmatter)...)
-	}
+	analysis := AnalyzeFrontmatter(filePath, content)
+	issues := append([]Issue{}, analysis.Issues...)
+	frontmatter := analysis.Inspection.Frontmatter
+	body := analysis.Inspection.Body
+	hasFrontmatter := analysis.Inspection.HasFrontmatter
 
 	// Body checks
 	issues = append(issues, checkImageLinks(filePath, body, hasFrontmatter, frontmatter)...)
@@ -84,20 +79,6 @@ func Check(filePath, content string, resolver Resolver) []Issue {
 	}
 
 	return issues
-}
-
-// extractFrontmatter extracts frontmatter from content.
-func extractFrontmatter(content string) (frontmatter, body string, hasFrontmatter bool) {
-	if !strings.HasPrefix(content, "---") {
-		return "", content, false
-	}
-
-	parts := strings.SplitN(content[3:], "---", 2)
-	if len(parts) < 2 {
-		return "", content, false
-	}
-
-	return parts[0], parts[1], true
 }
 
 // checkDuplicateKeys finds duplicate YAML keys in frontmatter.
@@ -145,58 +126,46 @@ func checkDateFormats(filePath, frontmatter string) []Issue {
 	scanner := bufio.NewScanner(strings.NewReader(frontmatter))
 	lineNum := 1
 
-	// Regex to match date-like fields
-	dateKeyRegex := regexp.MustCompile(`^(date|published_date|created|modified|updated)\s*:\s*(.+)$`)
-
-	// Common invalid date patterns
-	invalidDatePatterns := []struct {
-		pattern *regexp.Regexp
-		desc    string
-	}{
-		{regexp.MustCompile(`\d{4}-\d{1,2}-\d{1,2}T\d{2}:\d{2}:\d{2}`), "single-digit month/day"},
-		{regexp.MustCompile(`\d{4}/\d{2}/\d{2}`), "slash separator"},
-	}
-
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineNum++
 
-		if match := dateKeyRegex.FindStringSubmatch(line); match != nil {
-			key := match[1]
-			value := strings.TrimSpace(match[2])
-			value = strings.Trim(value, "\"'")
-
-			// Try to parse as valid ISO 8601
-			_, err := time.Parse(time.RFC3339, value)
-			if err != nil {
-				// Try other valid formats
-				_, err2 := time.Parse("2006-01-02", value)
-				if err2 != nil {
-					// Check for specific invalid patterns
-					for _, p := range invalidDatePatterns {
-						if p.pattern.MatchString(value) {
-							issues = append(issues, Issue{
-								File: filePath,
-								Range: Range{
-									StartLine: lineNum - 1,
-									StartCol:  0,
-									EndLine:   lineNum - 1,
-									EndCol:    len(line),
-								},
-								Code:     "invalid-date",
-								Severity: SeverityWarning,
-								Message:  fmt.Sprintf("invalid date format for '%s': %s (%s)", key, value, p.desc),
-								Fixable:  true,
-							})
-							break
-						}
-					}
-				}
+		if match := frontmatterDateLineRegex.FindStringSubmatch(line); match != nil {
+			key := strings.ToLower(match[1])
+			if !dateKeyRegex.MatchString(key) {
+				continue
 			}
+			value := strings.TrimSpace(match[2])
+			if isNullDateValue(value) || isSupportedDateString(value) {
+				continue
+			}
+			issues = append(issues, Issue{
+				File: filePath,
+				Range: Range{
+					StartLine: lineNum - 1,
+					StartCol:  0,
+					EndLine:   lineNum - 1,
+					EndCol:    len(line),
+				},
+				Code:     "invalid-date",
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("invalid date format for '%s'", key),
+				Fixable:  true,
+			})
 		}
 	}
 
 	return issues
+}
+
+func isNullDateValue(value string) bool {
+	value = strings.ToLower(strings.Trim(strings.TrimSpace(value), "\"'"))
+	switch value {
+	case "", "null", "nil", "~":
+		return true
+	default:
+		return false
+	}
 }
 
 // checkImageLinks finds malformed image links.
@@ -209,7 +178,7 @@ func checkImageLinks(filePath, body string, hasFrontmatter bool, frontmatter str
 	// Calculate line offset for body
 	lineOffset := 0
 	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 2 // +2 for both --- lines
+		lineOffset = frontmatterLineOffset(frontmatter)
 	}
 
 	scanner := bufio.NewScanner(strings.NewReader(body))
@@ -283,8 +252,9 @@ func checkH1Headings(filePath, body string, hasFrontmatter bool, frontmatter str
 
 	lineOffset := 0
 	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 1
-		body = strings.TrimPrefix(body, "\n")
+		// InspectFrontmatter returns only the YAML body, without the newline
+		// surrounding the opening and closing delimiters.
+		lineOffset = frontmatterLineOffset(frontmatter)
 	}
 
 	inCodeBlock := false
@@ -332,8 +302,7 @@ func checkAdmonitionFencedCode(filePath, body string, hasFrontmatter bool, front
 
 	lineOffset := 0
 	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 1
-		body = strings.TrimPrefix(body, "\n")
+		lineOffset = frontmatterLineOffset(frontmatter)
 	}
 
 	lines := strings.Split(body, "\n")
@@ -384,7 +353,7 @@ func checkWikilinks(filePath, body string, hasFrontmatter bool, frontmatter stri
 
 	lineOffset := 0
 	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 2 // +2 for both --- lines
+		lineOffset = frontmatterLineOffset(frontmatter)
 	}
 
 	lines := strings.Split(body, "\n")
@@ -441,7 +410,7 @@ func checkMentions(filePath, body string, hasFrontmatter bool, frontmatter strin
 
 	lineOffset := 0
 	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 2
+		lineOffset = frontmatterLineOffset(frontmatter)
 	}
 
 	lines := strings.Split(body, "\n")

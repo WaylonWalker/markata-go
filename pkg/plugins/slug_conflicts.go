@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -90,6 +91,16 @@ func (p *SlugConflictsPlugin) Collect(m *lifecycle.Manager) error {
 	sort.Slice(p.conflicts, func(i, j int) bool {
 		return p.conflicts[i].Slug < p.conflicts[j].Slug
 	})
+	if m.ContentLedger() != nil {
+		for _, conflict := range p.conflicts {
+			for _, source := range conflict.Sources {
+				path, ok := strings.CutPrefix(source, "post:")
+				if ok {
+					m.ContentLedger().AddReason(path, diagnostics.ReasonContentDuplicateSlug)
+				}
+			}
+		}
+	}
 
 	if len(p.conflicts) == 0 {
 		return nil
@@ -106,7 +117,8 @@ func (p *SlugConflictsPlugin) collectPostSlugs(m *lifecycle.Manager) map[string]
 		if post.Skip || post.Draft {
 			continue
 		}
-		postSlugs[post.Slug] = append(postSlugs[post.Slug], post.Path)
+		normalizedSlug := strings.ToLower(post.Slug)
+		postSlugs[normalizedSlug] = append(postSlugs[normalizedSlug], post.Path)
 	}
 	return postSlugs
 }
@@ -126,7 +138,7 @@ func (p *SlugConflictsPlugin) collectFeedSlugs(m *lifecycle.Manager) map[string]
 		}
 		// Only check feeds that generate HTML (which would conflict with post index.html)
 		if fc.Formats.HTML {
-			feedSlugs[fc.Slug] = fmt.Sprintf("feed:%s", fc.Slug)
+			feedSlugs[strings.ToLower(fc.Slug)] = fmt.Sprintf("feed:%s", fc.Slug)
 		}
 	}
 	return feedSlugs

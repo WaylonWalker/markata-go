@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -17,6 +18,125 @@ func TestPublishFeedsPlugin_Name(t *testing.T) {
 	p := NewPublishFeedsPlugin()
 	if got := p.Name(); got != "publish_feeds" {
 		t.Errorf("Name() = %q, want %q", got, "publish_feeds")
+	}
+}
+
+func TestPublishFeedsPlugin_FastFeedPublishingWaitsForErrors(t *testing.T) {
+	outputDir := t.TempDir()
+	blockedFeedPath := filepath.Join(outputDir, "blocked")
+	if err := os.WriteFile(blockedFeedPath, []byte("not a directory"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().OutputDir = outputDir
+	m.Config().Extra = map[string]interface{}{
+		"fast_mode":   true,
+		"feeds_async": true,
+	}
+	post := &models.Post{Path: "post.md", Slug: "post", Published: true, Content: "body"}
+	m.SetFiles([]string{"post.md"})
+	m.Cache().Set("feed_configs", []models.FeedConfig{{
+		Slug:    "blocked",
+		Formats: models.FeedFormats{RSS: true},
+		Posts:   []*models.Post{post},
+	}})
+
+	if err := NewPublishFeedsPlugin().Write(m); err == nil {
+		t.Fatal("Write() error = nil, want feed publication error")
+	}
+	entry := findContentDisposition(m.ContentDiagnostics(), post.Path)
+	if entry == nil || !containsDiagnosticCode(entry.Diagnostics, diagnostics.ReasonContentWriteError) {
+		t.Fatalf("feed write diagnostics = %+v, want content.write_error", entry)
+	}
+}
+
+func TestPublishFeedsPlugin_FastFeedPublishingCompletesBeforeReturn(t *testing.T) {
+	outputDir := t.TempDir()
+	m := lifecycle.NewManager()
+	m.Config().OutputDir = outputDir
+	m.Config().Extra = map[string]interface{}{
+		"fast_mode":   true,
+		"feeds_async": true,
+		"title":       "Test Site",
+		"url":         "https://example.com",
+	}
+	post := &models.Post{Path: "post.md", Slug: "post", Published: true, Content: "body"}
+	m.SetFiles([]string{"post.md"})
+	cache := buildcache.New(t.TempDir())
+	m.Cache().Set("build_cache", cache)
+	m.Cache().Set("feed_configs", []models.FeedConfig{{
+		Slug:    "recent",
+		Formats: models.FeedFormats{RSS: true},
+		Posts:   []*models.Post{post},
+	}})
+
+	if err := NewPublishFeedsPlugin().Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, "recent", "rss.xml")); err != nil {
+		t.Fatalf("feed output missing after Write() returned: %v", err)
+	}
+	if cache.GetFeedHash("recent") == "" {
+		t.Fatal("feed hash missing after Write() returned")
+	}
+	entry := findContentDisposition(m.ContentDiagnostics(), post.Path)
+	if entry == nil || !entry.Emitted || len(entry.Feeds) != 1 || !entry.Feeds[0].Included {
+		t.Fatalf("feed output diagnostics = %+v, want emitted and included", entry)
+	}
+}
+
+func TestRecordFeedOutput_OnlyMarksEnabledFormatOutputs(t *testing.T) {
+	title := "Title only"
+	posts := []*models.Post{
+		{Path: "title-only.md", Slug: "title-only", Title: &title, Published: true},
+		{Path: "article.md", Slug: "article", Published: true, Content: "article body"},
+	}
+	m := lifecycle.NewManager()
+	m.SetFiles([]string{"title-only.md", "article.md"})
+
+	recordFeedOutput(m, &models.FeedConfig{
+		Slug:    "rss-only",
+		Formats: models.FeedFormats{RSS: true},
+		Posts:   posts,
+	})
+
+	snapshot := m.ContentDiagnostics()
+	titleOnly := findContentDisposition(snapshot, "title-only.md")
+	article := findContentDisposition(snapshot, "article.md")
+	if titleOnly == nil || titleOnly.Emitted {
+		t.Fatalf("title-only disposition = %+v, want not emitted", titleOnly)
+	}
+	if article == nil || !article.Emitted {
+		t.Fatalf("article disposition = %+v, want emitted", article)
+	}
+	if len(titleOnly.Feeds) != 1 || titleOnly.Feeds[0].Included || !containsReason(titleOnly.Feeds[0].Reasons, diagnostics.ReasonContentNoOutput) {
+		t.Fatalf("title-only feed disposition = %+v", titleOnly.Feeds)
+	}
+}
+
+func TestRecordFeedOutput_UnpublishedShadowRemainsExcludedFromFeed(t *testing.T) {
+	m := lifecycle.NewManager()
+	m.SetFiles([]string{"unpublished.md"})
+	post := &models.Post{
+		Path:        "unpublished.md",
+		Slug:        "unpublished",
+		Published:   false,
+		ArticleHTML: "<p>shadow</p>",
+	}
+
+	recordFeedOutput(m, &models.FeedConfig{
+		Slug:    "public",
+		Formats: models.FeedFormats{HTML: true},
+		Posts:   []*models.Post{post},
+	})
+
+	entry := findContentDisposition(m.ContentDiagnostics(), post.Path)
+	if entry == nil || !entry.Emitted || entry.Disposition != diagnostics.DispositionShadow {
+		t.Fatalf("unpublished shadow disposition = %+v, want emitted shadow", entry)
+	}
+	if len(entry.Feeds) != 1 || entry.Feeds[0].Included || !containsReason(entry.Feeds[0].Reasons, diagnostics.ReasonContentPublishedFalse) {
+		t.Fatalf("unpublished feed disposition = %+v, want excluded for published_false", entry.Feeds)
 	}
 }
 
