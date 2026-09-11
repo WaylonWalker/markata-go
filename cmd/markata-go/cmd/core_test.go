@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
 )
@@ -173,6 +175,7 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 		"Build completed successfully!",
 		"Posts processed: 12",
 		"Feeds generated: 3",
+		"Content:",
 		"Resource profile: estimated wall time",
 		"CPU",
 		"Network wait",
@@ -189,5 +192,35 @@ func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output missing %q:\n%s", want, output)
 		}
+	}
+}
+
+func TestWriteBenchmarkJSON_IncludesContentDiagnostics(t *testing.T) {
+	var output bytes.Buffer
+	result := &BuildResult{
+		Content: diagnostics.ContentLedgerSnapshot{
+			Summary: diagnostics.ContentSummary{Discovered: 1, Candidates: 1, Warnings: 1},
+			Entries: []diagnostics.ContentDisposition{{
+				Path:        "post.md",
+				Candidate:   true,
+				Disposition: diagnostics.DispositionShadow,
+				Reasons:     []string{diagnostics.ReasonContentPublishedFalse},
+			}},
+		},
+	}
+
+	if err := writeBenchmarkJSON(&output, result); err != nil {
+		t.Fatalf("writeBenchmarkJSON() error = %v", err)
+	}
+
+	var decoded benchmarkJSONOutput
+	if err := json.Unmarshal(output.Bytes(), &decoded); err != nil {
+		t.Fatalf("benchmark JSON = %v", err)
+	}
+	if decoded.Content.Summary != result.Content.Summary {
+		t.Fatalf("content summary = %+v, want %+v", decoded.Content.Summary, result.Content.Summary)
+	}
+	if len(decoded.Content.Entries) != 1 || decoded.Content.Entries[0].Path != "post.md" {
+		t.Fatalf("content entries = %+v", decoded.Content.Entries)
 	}
 }

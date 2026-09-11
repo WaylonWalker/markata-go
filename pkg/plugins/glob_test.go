@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -127,5 +128,26 @@ func TestGlobPlugin_SkipsIgnoredDirectoriesDuringWalk(t *testing.T) {
 	want := []string{"post.md"}
 	if got := m.Files(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Files() = %v, want %v", got, want)
+	}
+}
+
+func TestGlobPlugin_PropagatesContentDirectoryErrors(t *testing.T) {
+	m := lifecycle.NewManager()
+	m.Config().ContentDir = filepath.Join(t.TempDir(), "missing")
+	m.Config().GlobPatterns = []string{"**/*.md"}
+
+	plugin := NewGlobPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	err := plugin.Glob(m)
+	if err == nil {
+		t.Fatal("Glob() error = nil, want missing content directory error")
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Glob() error = %v, want wrapped os.ErrNotExist", err)
+	}
+	if filepath.IsAbs(err.Error()) {
+		t.Fatalf("Glob() error exposes absolute path: %v", err)
 	}
 }

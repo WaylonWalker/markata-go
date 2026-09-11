@@ -6,6 +6,10 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+func normalizeServePath(path string) string {
+	return filepath.ToSlash(filepath.Clean(path))
+}
+
 // Serve incremental rebuild cache keys.
 const (
 	CacheKeyServeChangedPaths = "serve.changed_paths"
@@ -32,7 +36,7 @@ func SetServeChangedPaths(m *Manager, paths []string) {
 		if p == "" {
 			continue
 		}
-		cp := filepath.Clean(p)
+		cp := normalizeServePath(p)
 		if _, ok := seen[cp]; ok {
 			continue
 		}
@@ -157,7 +161,7 @@ func SetServeRemovedPaths(m *Manager, paths []string) {
 		if p == "" {
 			continue
 		}
-		cp := filepath.Clean(p)
+		cp := normalizeServePath(p)
 		if _, ok := seen[cp]; ok {
 			continue
 		}

@@ -12,6 +12,7 @@ import (
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
@@ -484,6 +485,9 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		// Skip posts with no content
 		if post.Content == "" {
 			post.ArticleHTML = ""
+			if post.HTML != "" {
+				m.ContentLedger().MarkRendered(post.Path)
+			}
 			return false
 		}
 
@@ -494,6 +498,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 				post.ArticleHTML = wrapHeadingMarkHighlights(cachedHTML)
 				// Detect CSS requirements from cached HTML
 				p.detectCSSRequirements(post)
+				m.ContentLedger().MarkRendered(post.Path)
 				return false // Already handled, no concurrent processing needed
 			}
 		}
@@ -514,7 +519,16 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 	}
 
 	// Phase 2: Process only posts that need rendering concurrently
-	return m.ProcessPostsSliceConcurrently(postsNeedingRender, p.renderPost)
+	return m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
+		if err := p.renderPost(post); err != nil {
+			m.ContentLedger().RecordError(post.Path, diagnostics.ReasonContentRenderError, "Markdown rendering failed")
+			return err
+		}
+		if post.ArticleHTML != "" {
+			m.ContentLedger().MarkRendered(post.Path)
+		}
+		return nil
+	})
 }
 
 // renderPost renders a single post's markdown content to HTML.

@@ -41,6 +41,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
 
 // CacheVersion is incremented when the cache format changes.
@@ -1870,28 +1872,31 @@ const PostCacheDir = "post-cache"
 // CachedPostData holds the serializable parts of a Post for caching.
 // This excludes rendered HTML which is cached separately.
 type CachedPostData struct {
-	Path            string            `json:"path"`
-	Content         string            `json:"content"`
-	Slug            string            `json:"slug"`
-	Href            string            `json:"href"`
-	Title           *string           `json:"title,omitempty"`
-	Date            *time.Time        `json:"date,omitempty"`
-	Modified        *time.Time        `json:"modified,omitempty"`
-	Published       bool              `json:"published"`
-	Draft           bool              `json:"draft"`
-	Private         bool              `json:"private"`
-	PrivateOverride *bool             `json:"private_override,omitempty"`
-	Skip            bool              `json:"skip"`
-	SecretKey       string            `json:"secret_key,omitempty"`
-	Tags            []string          `json:"tags,omitempty"`
-	Description     *string           `json:"description,omitempty"`
-	Template        string            `json:"template"`
-	Templates       map[string]string `json:"templates,omitempty"`
-	RawFrontmatter  string            `json:"raw_frontmatter"`
-	InputHash       string            `json:"input_hash"`
-	Authors         []string          `json:"authors,omitempty"`
-	Author          *string           `json:"author,omitempty"`
-	Extra           map[string]any    `json:"extra,omitempty"`
+	Path               string              `json:"path"`
+	Content            string              `json:"content"`
+	Slug               string              `json:"slug"`
+	Href               string              `json:"href"`
+	Title              *string             `json:"title,omitempty"`
+	Date               *time.Time          `json:"date,omitempty"`
+	Modified           *time.Time          `json:"modified,omitempty"`
+	Published          bool                `json:"published"`
+	Draft              bool                `json:"draft"`
+	Private            bool                `json:"private"`
+	PrivateOverride    *bool               `json:"private_override,omitempty"`
+	Skip               bool                `json:"skip"`
+	SecretKey          string              `json:"secret_key,omitempty"`
+	Tags               []string            `json:"tags,omitempty"`
+	Description        *string             `json:"description,omitempty"`
+	Template           string              `json:"template"`
+	Templates          map[string]string   `json:"templates,omitempty"`
+	FrontmatterPresent bool                `json:"frontmatter_present"`
+	FrontmatterValid   bool                `json:"frontmatter_valid"`
+	FrontmatterIssues  []diagnostics.Issue `json:"frontmatter_issues,omitempty"`
+	RawFrontmatter     string              `json:"raw_frontmatter"`
+	InputHash          string              `json:"input_hash"`
+	Authors            []string            `json:"authors,omitempty"`
+	Author             *string             `json:"author,omitempty"`
+	Extra              map[string]any      `json:"extra,omitempty"`
 }
 
 // GetCachedPostData returns cached post data if ModTime matches.

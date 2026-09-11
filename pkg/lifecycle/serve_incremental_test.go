@@ -23,3 +23,17 @@ func TestServeFastModeImpliesIncremental(t *testing.T) {
 		t.Fatal("fast mode did not enable incremental behavior")
 	}
 }
+
+func TestServePathsUsePortableSeparators(t *testing.T) {
+	m := NewManager()
+
+	SetServeChangedPaths(m, []string{"posts/deleted.md"})
+	if got := GetServeChangedPaths(m); len(got) != 1 || got[0] != "posts/deleted.md" {
+		t.Fatalf("changed paths = %v, want [posts/deleted.md]", got)
+	}
+
+	SetServeRemovedPaths(m, []string{"posts/deleted.md"})
+	if got := GetServeRemovedPaths(m); len(got) != 1 || got[0] != "posts/deleted.md" {
+		t.Fatalf("removed paths = %v, want [posts/deleted.md]", got)
+	}
+}

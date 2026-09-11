@@ -102,6 +102,27 @@ func TestSlugConflictsPlugin_PostPostConflict(t *testing.T) {
 	}
 }
 
+func TestSlugConflictsPlugin_TreatsSlugCaseInsensitively(t *testing.T) {
+	p := NewSlugConflictsPlugin()
+	m := lifecycle.NewManager()
+
+	first := models.NewPost("posts/first.md")
+	first.Slug = "Same-Slug"
+	first.Published = true
+	second := models.NewPost("posts/second.md")
+	second.Slug = "same-slug"
+	second.Published = true
+	m.AddPost(first)
+	m.AddPost(second)
+
+	if err := p.Collect(m); err == nil {
+		t.Fatal("Collect() error = nil, want case-insensitive slug conflict")
+	}
+	if len(p.Conflicts()) != 1 {
+		t.Fatalf("Conflicts() = %d, want 1", len(p.Conflicts()))
+	}
+}
+
 func TestSlugConflictsPlugin_PostFeedConflict(t *testing.T) {
 	p := NewSlugConflictsPlugin()
 	m := lifecycle.NewManager()

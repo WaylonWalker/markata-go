@@ -8,6 +8,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
@@ -289,6 +290,7 @@ type BuildResult struct {
 	Warnings       []string
 	Duration       float64
 	Benchmark      buildstats.Summary
+	Content        diagnostics.ContentLedgerSnapshot
 
 	// BlogrollStatus holds blogroll feature status
 	BlogrollStatus BlogrollStatus
@@ -360,6 +362,7 @@ func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
 	result = &BuildResult{
 		PostsProcessed: len(m.Posts()),
 		FeedsGenerated: len(m.Feeds()),
+		Content:        m.ContentDiagnostics(),
 	}
 
 	// Collect blogroll status

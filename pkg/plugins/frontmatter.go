@@ -6,14 +6,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"gopkg.in/yaml.v3"
 )
 
-// ErrInvalidFrontmatter indicates the frontmatter could not be parsed.
-var ErrInvalidFrontmatter = errors.New("invalid frontmatter")
+var (
+	// ErrInvalidFrontmatter indicates the frontmatter could not be parsed.
+	ErrInvalidFrontmatter = errors.New("invalid frontmatter")
 
-// frontmatterDelimiter is the standard YAML frontmatter delimiter.
-const frontmatterDelimiter = "---"
+	// ErrRecoverableContent marks a source parsing error that can be isolated to
+	// one content file. The load stage uses it to keep valid sibling files while
+	// still propagating operational source errors.
+	ErrRecoverableContent = errors.New("recoverable content error")
+)
 
 // ExtractFrontmatter splits content into frontmatter YAML string and body content.
 // Returns:
@@ -22,62 +27,18 @@ const frontmatterDelimiter = "---"
 //   - err: error if frontmatter is malformed
 //
 // Edge cases:
-//   - No frontmatter (doesn't start with ---): returns empty frontmatter, full content as body
+//   - No frontmatter (first line is not exactly ---): returns empty frontmatter, full content as body
 //   - Empty frontmatter (---, then ---): returns empty frontmatter, content after second ---
 //   - Unclosed frontmatter: returns error
 func ExtractFrontmatter(content string) (frontmatter, body string, err error) {
-	// Normalize line endings
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	content = strings.ReplaceAll(content, "\r", "\n")
-
-	// Check if content starts with frontmatter delimiter
-	if !strings.HasPrefix(content, frontmatterDelimiter) {
-		// No frontmatter - entire content is body
-		return "", content, nil
+	inspection := diagnostics.InspectFrontmatter(content)
+	if inspection.Problem != "" {
+		return "", "", fmt.Errorf("%w: invalid frontmatter delimiters", ErrInvalidFrontmatter)
 	}
-
-	// Find the end of the opening delimiter line
-	afterOpening := content[len(frontmatterDelimiter):]
-
-	// The opening delimiter must be on its own line
-	if afterOpening != "" && afterOpening[0] != '\n' {
-		// Not a valid frontmatter start (e.g., "---something")
-		return "", content, nil
+	if !inspection.HasFrontmatter {
+		return "", inspection.Body, nil
 	}
-
-	// Skip the newline after opening delimiter
-	afterOpening = strings.TrimPrefix(afterOpening, "\n")
-
-	// Handle empty frontmatter case (--- immediately follows)
-	if strings.HasPrefix(afterOpening, frontmatterDelimiter) {
-		// Empty frontmatter
-		remaining := afterOpening[len(frontmatterDelimiter):]
-		remaining = strings.TrimPrefix(remaining, "\n")
-		return "", remaining, nil
-	}
-
-	// Find the closing delimiter (must be on its own line)
-	closingIdx := strings.Index(afterOpening, "\n"+frontmatterDelimiter)
-	if closingIdx == -1 {
-		// Check if content ends with the delimiter on its own line
-		if strings.HasSuffix(afterOpening, "\n"+frontmatterDelimiter) {
-			closingIdx = len(afterOpening) - len(frontmatterDelimiter) - 1
-		} else {
-			// Unclosed frontmatter
-			return "", "", fmt.Errorf("%w: unclosed frontmatter delimiter", ErrInvalidFrontmatter)
-		}
-	}
-
-	// Extract frontmatter content (everything before the closing delimiter line)
-	frontmatter = afterOpening[:closingIdx]
-
-	// Extract body (skip the newline, the closing delimiter, and optional trailing newline)
-	remaining := afterOpening[closingIdx+1:] // Skip the newline before ---
-	remaining = strings.TrimPrefix(remaining, frontmatterDelimiter)
-	remaining = strings.TrimPrefix(remaining, "\n")
-	body = remaining
-
-	return frontmatter, body, nil
+	return inspection.Frontmatter, inspection.Body, nil
 }
 
 // ParseFrontmatter parses content containing optional YAML frontmatter.
