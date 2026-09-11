@@ -389,7 +389,6 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	}
 
 	lcConfig.Extra["url"] = cfg.URL
-	lcConfig.Extra["markata_version"] = Version
 	lcConfig.Extra["title"] = cfg.Title
 	lcConfig.Extra["description"] = cfg.Description
 	lcConfig.Extra["author"] = cfg.Author
@@ -429,6 +428,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	for key, value := range cfg.Extra {
 		lcConfig.Extra[key] = value
 	}
+	// Build identity is supplied by the binary, not by benchmark site configuration.
+	lcConfig.Extra["markata_version"] = Version
+	lcConfig.Extra["markata_commit"] = Commit
 
 	m.SetConfig(lcConfig)
 

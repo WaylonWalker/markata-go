@@ -100,6 +100,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
 	pluginRegistry.constructors["js_minify"] = func() lifecycle.Plugin { return NewJSMinifyPlugin() }
 	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
+	pluginRegistry.constructors["diagnostics_artifact"] = func() lifecycle.Plugin { return NewDiagnosticsArtifactPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 	pluginRegistry.constructors["garden_view"] = func() lifecycle.Plugin { return NewGardenViewPlugin() }
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
@@ -234,10 +235,11 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewContentIndexPlugin(),
 
 		// Cleanup stage plugins
-		NewCSSMinifyPlugin(), // Minify CSS files (before purge for optimal results)
-		NewJSMinifyPlugin(),  // Minify JS files (reduces ~50% file size)
-		NewCSSPurgePlugin(),  // Remove unused CSS (before search index)
-		NewPagefindPlugin(),  // Generate search index (requires all HTML written first)
+		NewCSSMinifyPlugin(),           // Minify CSS files (before purge for optimal results)
+		NewJSMinifyPlugin(),            // Minify JS files (reduces ~50% file size)
+		NewCSSPurgePlugin(),            // Remove unused CSS (before search index)
+		NewPagefindPlugin(),            // Generate search index (requires all HTML written first)
+		NewDiagnosticsArtifactPlugin(), // Persist the final content diagnostics snapshot
 	}
 }
 
@@ -252,6 +254,7 @@ func MinimalPlugins() []lifecycle.Plugin {
 		NewRenderMarkdownPlugin(),
 		NewTemplatesPlugin(),
 		NewPublishHTMLPlugin(),
+		NewDiagnosticsArtifactPlugin(),
 	}
 }
 

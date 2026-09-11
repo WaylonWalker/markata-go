@@ -35,7 +35,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
 | Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, content_index, rss, atom, jsonfeed, static_assets, redirects |
-| Cleanup | Post-build tasks | pagefind |
+| Cleanup | Post-build tasks | pagefind, diagnostics_artifact |
 
 ---
 
@@ -4489,6 +4489,29 @@ enabled = false
 Pagefind CSS and JS are loaded on user interaction (hover on search, press `/`, press `Ctrl+K`) rather than eagerly on page load. This saves ~30-50KB on initial page load for pages where search is not used.
 
 See [[search|Search Guide]] for detailed usage and customization.
+
+---
+
+### diagnostics_artifact
+
+**Name:** `diagnostics_artifact`
+**Stage:** Cleanup
+**Priority:** `PriorityLast + 100`
+**Purpose:** Persists the manager-owned content diagnostics snapshot for a
+successful full build.
+
+This plugin is enabled by default and has no configuration entry. It writes:
+
+```text
+<output_dir>/.markata/diagnostics.json
+```
+
+The versioned JSON contains summary counts, per-source dispositions, stable
+reason codes, diagnostics, feed-level selection details, and build identity
+metadata. It contains no raw content, frontmatter, rendered HTML, secrets, or
+absolute paths. Failed, dry-run, fast, incremental, and incomplete builds do not
+publish a new artifact. See the [Content Diagnostics guide](/docs/guides/content-diagnostics/)
+for the wire format and privacy contract.
 
 ---
 

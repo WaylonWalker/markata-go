@@ -400,6 +400,21 @@ The JSON written by `--benchmark-json` includes the same sanitized content
 snapshot under `content`. It does not include raw frontmatter, environment
 values, secrets, or build logs.
 
+A successful full build writes the sanitized
+content diagnostics artifact to `<output_dir>/.markata/diagnostics.json`. It includes a versioned schema,
+summary counts, per-source dispositions, stable reason codes, and feed-level
+selection details. Inspect it with a JSON tool such as:
+
+```bash
+jq . public/.markata/diagnostics.json
+```
+
+Use the configured output directory instead of `public` when it differs. The
+artifact is not written by `build --dry-run`, `build --fast`, fast or incremental
+`serve`, or an incomplete or failed build. A normal `serve` build can write the
+artifact after a successful full lifecycle. See [[content-diagnostics|Content Diagnostics]]
+for the field and privacy contract.
+
 ### buildlab
 
 Compare baseline and candidate builds in isolated workspaces.

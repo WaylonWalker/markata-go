@@ -7,6 +7,17 @@ import (
 	"strings"
 )
 
+const (
+	diagnosticCodeDuplicateKey    = "duplicate-key"
+	diagnosticCodeInvalidDate     = "invalid-date"
+	diagnosticCodeH1InContent     = "h1-in-content"
+	diagnosticCodeMissingAltText  = "missing-alt-text"
+	diagnosticCodeProtocolLessURL = "protocol-less-url"
+	diagnosticCodeAdmonitionFence = "admonition-fenced-code"
+	diagnosticCodeBrokenWikilink  = "broken-wikilink"
+	diagnosticCodeUnknownMention  = "unknown-mention"
+)
+
 // Severity indicates the severity of a diagnostic issue.
 type Severity int
 
@@ -106,7 +117,7 @@ func checkDuplicateKeys(filePath, frontmatter string) []Issue {
 						EndLine:   lineNum - 1,
 						EndCol:    len(line),
 					},
-					Code:     "duplicate-key",
+					Code:     diagnosticCodeDuplicateKey,
 					Severity: SeverityError,
 					Message:  fmt.Sprintf("duplicate key '%s' (first occurrence at line %d)", key, firstLine),
 					Fixable:  true,
@@ -147,7 +158,7 @@ func checkDateFormats(filePath, frontmatter string) []Issue {
 					EndLine:   lineNum - 1,
 					EndCol:    len(line),
 				},
-				Code:     "invalid-date",
+				Code:     diagnosticCodeInvalidDate,
 				Severity: SeverityWarning,
 				Message:  fmt.Sprintf("invalid date format for '%s'", key),
 				Fixable:  true,
@@ -198,7 +209,7 @@ func checkImageLinks(filePath, body string, hasFrontmatter bool, frontmatter str
 						EndLine:   lineNum + lineOffset - 1,
 						EndCol:    match[1],
 					},
-					Code:     "missing-alt-text",
+					Code:     diagnosticCodeMissingAltText,
 					Severity: SeverityWarning,
 					Message:  "image link missing alt text",
 					Fixable:  true,
@@ -234,7 +245,7 @@ func checkProtocollessURLs(filePath, content string) []Issue {
 						EndLine:   lineNum - 1,
 						EndCol:    match[1],
 					},
-					Code:     "protocol-less-url",
+					Code:     diagnosticCodeProtocolLessURL,
 					Severity: SeverityWarning,
 					Message:  "protocol-less URL found (should use https://)",
 					Fixable:  true,
@@ -284,7 +295,7 @@ func checkH1Headings(filePath, body string, hasFrontmatter bool, frontmatter str
 					EndLine:   lineNum + lineOffset - 1,
 					EndCol:    len(line),
 				},
-				Code:     "h1-in-content",
+				Code:     diagnosticCodeH1InContent,
 				Severity: SeverityWarning,
 				Message:  "H1 heading found in content. Templates already add an H1 from frontmatter title. Use H2 (##) or deeper instead.",
 				Fixable:  false,
@@ -331,7 +342,7 @@ func checkAdmonitionFencedCode(filePath, body string, hasFrontmatter bool, front
 							EndLine:   lineNum - 1,
 							EndCol:    len(line),
 						},
-						Code:     "admonition-fenced-code",
+						Code:     diagnosticCodeAdmonitionFence,
 						Severity: SeverityWarning,
 						Message:  "fenced code block immediately follows admonition without blank line - this may not render correctly due to goldmark limitation",
 						Fixable:  true,
@@ -389,7 +400,7 @@ func checkWikilinks(filePath, body string, hasFrontmatter bool, frontmatter stri
 						EndLine:   lineNum + lineOffset,
 						EndCol:    match[1],
 					},
-					Code:     "broken-wikilink",
+					Code:     diagnosticCodeBrokenWikilink,
 					Severity: SeverityWarning,
 					Message:  fmt.Sprintf("broken wikilink: target post %q not found", slug),
 					Fixable:  false,
@@ -457,7 +468,7 @@ func checkMentions(filePath, body string, hasFrontmatter bool, frontmatter strin
 						EndLine:   lineNum + lineOffset,
 						EndCol:    match[1],
 					},
-					Code:     "unknown-mention",
+					Code:     diagnosticCodeUnknownMention,
 					Severity: SeverityWarning,
 					Message:  fmt.Sprintf("unknown mention: @%s not found in blogroll", handle),
 					Fixable:  false,

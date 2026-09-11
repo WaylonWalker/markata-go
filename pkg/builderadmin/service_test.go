@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
 
 func TestBuilderAdminWebhook_RejectsInvalidSignatureAndIgnoresOtherBranches(t *testing.T) {
@@ -636,6 +638,22 @@ Delete this post.
 	}
 
 	first := run("build-first")
+	readArtifact := func(releasePath string) diagnostics.Artifact {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(releasePath, diagnostics.DefaultArtifactPath))
+		if err != nil {
+			t.Fatalf("read diagnostics artifact from release: %v", err)
+		}
+		artifact, err := diagnostics.ParseArtifact(data)
+		if err != nil {
+			t.Fatalf("parse diagnostics artifact from release: %v", err)
+		}
+		return artifact
+	}
+	firstArtifact := readArtifact(first.ReleasePath)
+	if firstArtifact.Summary.Discovered != 2 {
+		t.Fatalf("first release diagnostics summary = %+v, want two discovered files", firstArtifact.Summary)
+	}
 	oldDeleted := filepath.Join(first.ReleasePath, "deleted", "index.html")
 	oldContents, err := os.ReadFile(oldDeleted)
 	if err != nil {
@@ -650,6 +668,10 @@ Delete this post.
 		t.Fatal(err)
 	}
 	second := run("build-second")
+	secondArtifact := readArtifact(second.ReleasePath)
+	if secondArtifact.Summary.Discovered != 1 {
+		t.Fatalf("second release diagnostics summary = %+v, want one discovered file", secondArtifact.Summary)
+	}
 	if first.ReleasePath == second.ReleasePath {
 		t.Fatalf("release paths are identical: %q", first.ReleasePath)
 	}

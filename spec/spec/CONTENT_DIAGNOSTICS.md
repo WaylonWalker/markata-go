@@ -13,10 +13,12 @@ requiring raw build logs. It MUST:
 - assign stable reason codes to content that is not eligible or is not emitted;
 - retain one deterministic final disposition for every discovered content
   candidate; and
-- be safe to consume from human and machine-readable reporting surfaces.
+- be safe to consume from human and machine-readable reporting surfaces; and
+- publish a safe, versioned diagnostics artifact after a successful full build.
 
-The ledger is an in-memory build result in Phase 1. A persisted production
-diagnostics artifact is deferred to a later phase.
+The ledger is the in-memory build result. The normal full build also persists a
+sanitized production artifact at `.markata/diagnostics.json` below the resolved
+output directory.
 
 ## Ownership and Data Flow
 
@@ -29,6 +31,7 @@ load       -> bytes loaded, frontmatter state, diagnostics, posts
 collect    -> feed selection and filter reasons
 render     -> rendered posts and render errors
 write      -> emitted posts and output errors
+cleanup    -> successful-build diagnostics artifact
 ```
 
 Plugins MUST update this ledger rather than create another content inventory.
@@ -196,5 +199,73 @@ show feed-level exclusions. The mode MUST NOT print raw configuration,
 environment values, secrets, absolute source paths, or raw build logs.
 
 The existing `--benchmark-json` machine-readable build output includes the
-sanitized content snapshot. No separate diagnostics command or public HTML
-page is added in Phase 1.
+sanitized content snapshot. No separate diagnostics command or public HTML page
+is added.
+
+## Production Diagnostics Artifact
+
+The normal full build MUST write the diagnostics artifact to:
+
+```text
+<output_dir>/.markata/diagnostics.json
+```
+
+The artifact is enabled by default and does not require a configuration entry.
+It is part of the generated output, so Builder Admin carries it into each
+successful release automatically.
+
+### Versioned wire format
+
+The artifact uses this top-level shape:
+
+```json
+{
+  "$schema": "markata://schemas/content-diagnostics/v1",
+  "schema": "markata.content-diagnostics",
+  "schema_version": 1,
+  "generator": {
+    "name": "markata-go",
+    "version": "0.0.0",
+    "commit": "..."
+  },
+  "source": {
+    "commit": "..."
+  },
+  "built_at": "2026-09-10T12:00:00Z",
+  "summary": {},
+  "entries": []
+}
+```
+
+`schema`, `schema_version`, `generator`, `built_at`, `summary`, and `entries`
+are required. `generator.commit` is omitted when the binary does not provide a
+reliable build commit. `source` is omitted when the source directory is not a
+Git checkout or its `HEAD` cannot be read. `built_at` is an RFC 3339 timestamp
+and is recorded in UTC.
+
+`summary` and `entries` are the manager's `ContentLedgerSnapshot` copied
+without recomputing counts or making a second content inventory. Entries,
+reasons, feed names, and diagnostics retain the deterministic ordering defined
+above. Consumers MUST dispatch on `schema` and `schema_version`; future
+versions MUST NOT be interpreted as version 1.
+
+### Privacy and failure behavior
+
+The artifact MUST contain only the sanitized ledger fields. It MUST NOT contain
+raw configuration, environment values, secrets, absolute paths, raw logs,
+frontmatter, Markdown bodies, rendered HTML, decrypted private content, or
+encryption key names. Persisted diagnostic messages MUST be concise canonical
+messages for approved diagnostic codes; arbitrary producer-provided message
+text MUST NOT be copied into the artifact.
+
+The artifact is written after all normal write and cleanup hooks complete. The
+writer MUST use a temporary file in the artifact directory and replace the
+destination only after the complete JSON document has been written. A failed
+build MUST leave an existing artifact unchanged; a first failed build MUST NOT
+leave a partial artifact. A run that completes all stages with non-critical
+lifecycle warnings may publish the artifact; an artifact write failure is a
+build failure.
+
+Dry runs, fast or incremental builds, partial lifecycle calls that stop before
+cleanup, and development server requests that do not complete a full build MUST
+NOT publish a new artifact.

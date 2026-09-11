@@ -123,6 +123,9 @@ theme = "monokai"
 	}
 
 	extra := manager.Config().Extra
+	if extra["markata_version"] != Version || extra["markata_commit"] != Commit {
+		t.Errorf("build identity = (%v, %v), want (%q, %q)", extra["markata_version"], extra["markata_commit"], Version, Commit)
+	}
 	if head, ok := extra["head"].(models.HeadConfig); !ok || head.Text != "typed head" {
 		t.Errorf("head extra = %#v, want typed head config", extra["head"])
 	}
