@@ -3,6 +3,7 @@ package tests
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
@@ -82,6 +83,53 @@ func TestContentDiagnostics_LifecycleKeepsValidSiblings(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(outputDir, "good", "index.html")); err != nil {
 		t.Fatalf("valid sibling output is missing: %v", err)
+	}
+}
+
+func TestContentDiagnostics_FullLifecyclePublishesSanitizedArtifact(t *testing.T) {
+	contentDir := t.TempDir()
+	outputDir := t.TempDir()
+	writeDiagnosticFixture(t, contentDir, "good.md", "---\ntitle: Good\npublished: true\n---\n# Good\n\nprivate body marker")
+
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		ContentDir:   contentDir,
+		OutputDir:    outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra: map[string]interface{}{
+			"markata_version": "integration-test",
+			"markata_commit":  "integration-commit",
+		},
+	})
+	m.RegisterPlugins(
+		plugins.NewGlobPlugin(),
+		plugins.NewLoadPlugin(),
+		plugins.NewRenderMarkdownPlugin(),
+		plugins.NewPublishHTMLPlugin(),
+		plugins.NewDiagnosticsArtifactPlugin(),
+	)
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	artifactPath := filepath.Join(outputDir, diagnostics.DefaultArtifactPath)
+	data, err := os.ReadFile(artifactPath)
+	if err != nil {
+		t.Fatalf("read diagnostics artifact: %v", err)
+	}
+	artifact, err := diagnostics.ParseArtifact(data)
+	if err != nil {
+		t.Fatalf("ParseArtifact() error = %v", err)
+	}
+	if artifact.Generator.Version != "integration-test" || artifact.Generator.Commit != "integration-commit" {
+		t.Fatalf("generator = %#v", artifact.Generator)
+	}
+	if len(artifact.Entries) != 1 || artifact.Entries[0].Path != "good.md" {
+		t.Fatalf("entries = %#v", artifact.Entries)
+	}
+	if strings.Contains(string(data), "private body marker") {
+		t.Fatal("diagnostics artifact contains raw content")
 	}
 }
 

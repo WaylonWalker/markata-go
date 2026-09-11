@@ -19,6 +19,26 @@ func TestDefaultPlugins_HaveUniqueNames(t *testing.T) {
 	}
 }
 
+func TestDiagnosticsArtifactPlugin_IsRegisteredByDefault(t *testing.T) {
+	defaultManager := lifecycle.NewManager()
+	defaultManager.RegisterPlugins(DefaultPlugins()...)
+	plugin := defaultPluginByName(t, defaultManager, "diagnostics_artifact")
+	if _, ok := plugin.(*DiagnosticsArtifactPlugin); !ok {
+		t.Fatalf("default diagnostics artifact plugin = %T, want *DiagnosticsArtifactPlugin", plugin)
+	}
+
+	foundMinimal := false
+	for _, plugin := range MinimalPlugins() {
+		if plugin.Name() == "diagnostics_artifact" {
+			foundMinimal = true
+			break
+		}
+	}
+	if !foundMinimal {
+		t.Fatal("MinimalPlugins() does not include diagnostics_artifact")
+	}
+}
+
 func TestDefaultPlugins_MultiStageCoverage(t *testing.T) {
 	manager := lifecycle.NewManager()
 	manager.RegisterPlugins(DefaultPlugins()...)

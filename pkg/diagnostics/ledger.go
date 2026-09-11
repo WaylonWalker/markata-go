@@ -409,9 +409,9 @@ func finalizeContentDisposition(summary *ContentSummary, disposition *ContentDis
 // ReasonForDiagnosticCode maps shared diagnostic codes to content reason codes.
 func ReasonForDiagnosticCode(code string) string {
 	switch code {
-	case "duplicate-key":
+	case diagnosticCodeDuplicateKey:
 		return ReasonFrontmatterDuplicateKey
-	case "invalid-date":
+	case diagnosticCodeInvalidDate:
 		return ReasonFrontmatterInvalidDate
 	case ReasonFrontmatterSuspiciousDelimiter,
 		ReasonFrontmatterLeadingWhitespace,
@@ -585,8 +585,20 @@ func sortedIssues(issues []Issue) []Issue {
 		if left.Range.StartCol != right.Range.StartCol {
 			return left.Range.StartCol < right.Range.StartCol
 		}
+		if left.Range.EndLine != right.Range.EndLine {
+			return left.Range.EndLine < right.Range.EndLine
+		}
+		if left.Range.EndCol != right.Range.EndCol {
+			return left.Range.EndCol < right.Range.EndCol
+		}
 		if left.Code != right.Code {
 			return left.Code < right.Code
+		}
+		if left.Severity != right.Severity {
+			return left.Severity < right.Severity
+		}
+		if left.Fixable != right.Fixable {
+			return !left.Fixable
 		}
 		return left.Message < right.Message
 	})

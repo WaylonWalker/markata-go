@@ -51,6 +51,14 @@ For most hosts, the safe build flow is:
 5. run `markata-go build --clean`
 6. publish the build artifact from `public/` or the chosen output dir
 
+A successful full build also includes `.markata/diagnostics.json`
+below the chosen output directory. Preserve this file when publishing a release
+if build disposition and content-quality data will be inspected after deployment.
+It is sanitized and does not contain raw content, secrets, or absolute paths. Dry
+runs, fast or incremental development-server builds, failed builds, or incomplete
+builds do not publish a new diagnostics artifact. A normal `serve` build can
+publish it after a successful full lifecycle.
+
 Minimal GitHub Actions shape:
 
 ```yaml

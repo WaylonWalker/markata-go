@@ -65,7 +65,6 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Copy config values to Extra for plugins to access
 	lcConfig.Extra["url"] = cfg.URL
-	lcConfig.Extra["markata_version"] = Version
 	lcConfig.Extra["title"] = cfg.Title
 	lcConfig.Extra["description"] = cfg.Description
 	lcConfig.Extra["author"] = cfg.Author
@@ -150,6 +149,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 			lcConfig.Extra[key] = value
 		}
 	}
+	// Build identity is supplied by the binary, not by site configuration.
+	lcConfig.Extra["markata_version"] = Version
+	lcConfig.Extra["markata_commit"] = Commit
 	// Canonical nested theme values remain authoritative after arbitrary plugin
 	// extras are copied. Legacy root keys are compatibility inputs only.
 	lcConfig.Extra["fontpack"] = fontpack
