@@ -185,6 +185,11 @@ func replaceDiagnosticsArtifact(source, destination string) error {
 	// temporary sibling first, then restore it if installing the new artifact
 	// fails. The new file is complete before this replacement begins.
 	directory := filepath.Dir(destination)
+	if info, err := os.Lstat(destination); err == nil && info.IsDir() {
+		return fmt.Errorf("diagnostics artifact destination is a directory")
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	backup, err := os.CreateTemp(directory, ".diagnostics-backup-*")
 	if err != nil {
 		return fmt.Errorf("create diagnostics artifact backup: %w", err)
