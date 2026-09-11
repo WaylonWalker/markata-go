@@ -133,6 +133,22 @@ func TestMarshalArtifact_RedactsExternalPathsAndUnreliableCommits(t *testing.T) 
 	}
 }
 
+func TestNormalizeContentPath_RedactsAbsolutePathsAcrossPlatforms(t *testing.T) {
+	for _, externalPath := range []string{
+		"/private/secret.md",
+		`C:\private\secret.md`,
+		`\\server\share\secret.md`,
+		`..\outside\secret.md`,
+	} {
+		t.Run(externalPath, func(t *testing.T) {
+			got := normalizeContentPath(externalPath)
+			if !strings.HasPrefix(got, "__outside_content_root__/") {
+				t.Fatalf("normalizeContentPath(%q) = %q, want redacted path", externalPath, got)
+			}
+		})
+	}
+}
+
 func TestParseArtifact_RejectsUnsupportedVersion(t *testing.T) {
 	data := []byte(`{"$schema":"markata://schemas/content-diagnostics/v1","schema":"markata.content-diagnostics","schema_version":2,"generator":{"name":"markata-go","version":"test"},"built_at":"2026-09-10T12:00:00Z","summary":{},"entries":[]}`)
 	if _, err := ParseArtifact(data); err == nil {
