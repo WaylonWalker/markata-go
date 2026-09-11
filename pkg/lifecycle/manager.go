@@ -2,12 +2,14 @@ package lifecycle
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -259,6 +261,9 @@ type Manager struct {
 	// assetHashes maps original asset paths to their content hashes for cache busting.
 	// Key: original path (e.g., "css/main.css"), Value: hash (first 8 chars of SHA-256).
 	assetHashes map[string]string
+
+	// contentLedger records the source-to-output state for discovered content.
+	contentLedger *diagnostics.ContentLedger
 }
 
 // NewManager creates a new lifecycle Manager with default settings.
@@ -273,16 +278,17 @@ func NewManager() *Manager {
 	}
 
 	return &Manager{
-		plugins:     make([]Plugin, 0),
-		config:      NewConfig(),
-		posts:       make([]*models.Post, 0),
-		files:       make([]string, 0),
-		feeds:       make([]*Feed, 0),
-		stagesRun:   make(map[Stage]bool),
-		cache:       newMemoryCache(),
-		warnings:    make([]*HookError, 0),
-		concurrency: concurrency,
-		assetHashes: make(map[string]string),
+		plugins:       make([]Plugin, 0),
+		config:        NewConfig(),
+		posts:         make([]*models.Post, 0),
+		files:         make([]string, 0),
+		feeds:         make([]*Feed, 0),
+		stagesRun:     make(map[Stage]bool),
+		cache:         newMemoryCache(),
+		warnings:      make([]*HookError, 0),
+		concurrency:   concurrency,
+		assetHashes:   make(map[string]string),
+		contentLedger: diagnostics.NewContentLedger(),
 	}
 }
 
@@ -431,16 +437,89 @@ func (m *Manager) Files() []string {
 
 // SetFiles sets the discovered file paths.
 func (m *Manager) SetFiles(files []string) {
+	normalized := m.normalizeContentFiles(files)
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.files = files
+	m.files = normalized
+	m.mu.Unlock()
+	if m.contentLedger != nil {
+		m.contentLedger.Discover(normalized)
+	}
 }
 
 // AddFile adds a file path to the files slice.
 func (m *Manager) AddFile(file string) {
+	file = m.normalizeContentFile(file)
+	if file == "" {
+		return
+	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.files = append(m.files, file)
+	m.mu.Unlock()
+	if m.contentLedger != nil {
+		m.contentLedger.AddDiscovered(file)
+	}
+}
+
+func (m *Manager) normalizeContentFiles(files []string) []string {
+	normalized := make([]string, 0, len(files))
+	for _, file := range files {
+		if file = m.normalizeContentFile(file); file != "" {
+			normalized = append(normalized, file)
+		}
+	}
+	return normalized
+}
+
+// normalizeContentFile keeps source paths portable for the lifecycle. Paths
+// inside the configured content directory are made relative to that directory;
+// paths outside it remain relative traversal paths for source loading and are
+// redacted by the diagnostics ledger.
+func (m *Manager) normalizeContentFile(file string) string {
+	if file == "" {
+		return ""
+	}
+	file = filepath.Clean(file)
+	if !filepath.IsAbs(file) {
+		return filepath.ToSlash(file)
+	}
+
+	contentDir := "."
+	if m != nil {
+		m.mu.RLock()
+		if m.config != nil && m.config.ContentDir != "" {
+			contentDir = m.config.ContentDir
+		}
+		m.mu.RUnlock()
+	}
+	baseDir, err := filepath.Abs(contentDir)
+	if err != nil {
+		return filepath.ToSlash(filepath.Base(file))
+	}
+	relative, err := filepath.Rel(baseDir, file)
+	if err != nil {
+		return filepath.ToSlash(filepath.Base(file))
+	}
+	if relative == "." {
+		return ""
+	}
+	return filepath.ToSlash(relative)
+}
+
+// ContentLedger returns the manager-owned source-to-output diagnostics ledger.
+// The ledger is concurrency-safe and is reset with the manager.
+func (m *Manager) ContentLedger() *diagnostics.ContentLedger {
+	if m == nil {
+		return nil
+	}
+	return m.contentLedger
+}
+
+// ContentDiagnostics returns a deterministic snapshot of content diagnostics.
+func (m *Manager) ContentDiagnostics() diagnostics.ContentLedgerSnapshot {
+	if m == nil || m.contentLedger == nil {
+		return diagnostics.ContentLedgerSnapshot{Entries: []diagnostics.ContentDisposition{}}
+	}
+	return m.contentLedger.Snapshot()
 }
 
 // Feeds returns a copy of the feeds slice.
@@ -642,6 +721,9 @@ func (m *Manager) Reset() {
 	m.warnings = make([]*HookError, 0)
 	m.currentStage = ""
 	m.cache.Clear()
+	if m.contentLedger != nil {
+		m.contentLedger.Reset()
+	}
 }
 
 // Filter returns posts matching the given expression.
@@ -769,6 +851,11 @@ func compareValues(a, b interface{}) int {
 	return strings.Compare(fmt.Sprintf("%v", a), fmt.Sprintf("%v", b))
 }
 
+type indexedPostError struct {
+	index int
+	err   error
+}
+
 // ProcessPostsConcurrently processes posts concurrently using a bounded worker pool.
 // The worker pool is sized to Concurrency(), ensuring that regardless of post count,
 // only a fixed number of goroutines are spawned. This eliminates scheduler overhead
@@ -776,7 +863,7 @@ func compareValues(a, b interface{}) int {
 //
 // Error handling: If any post fails to process, the function continues processing
 // remaining posts and returns an aggregated error containing the count of failures
-// and the first error encountered.
+// and the first error in input order.
 func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 	posts := m.Posts()
 	if len(posts) == 0 {
@@ -788,8 +875,8 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 		numWorkers = len(posts)
 	}
 
-	jobs := make(chan *models.Post, len(posts))
-	errCh := make(chan error, len(posts))
+	jobs := make(chan int, len(posts))
+	errCh := make(chan indexedPostError, len(posts))
 
 	var wg sync.WaitGroup
 
@@ -798,17 +885,18 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for post := range jobs {
+			for index := range jobs {
+				post := posts[index]
 				if err := fn(post); err != nil {
-					errCh <- fmt.Errorf("processing %s: %w", post.Path, err)
+					errCh <- indexedPostError{index: index, err: err}
 				}
 			}
 		}()
 	}
 
 	// Send all posts to the jobs channel
-	for _, post := range posts {
-		jobs <- post
+	for index := range posts {
+		jobs <- index
 	}
 	close(jobs)
 
@@ -816,14 +904,25 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 	wg.Wait()
 	close(errCh)
 
-	// Collect errors
-	errs := make([]error, 0)
-	for err := range errCh {
-		errs = append(errs, err)
+	// Collect errors by input index so concurrent completion order cannot change
+	// the returned error or its wrapped source path.
+	errs := make([]error, len(posts))
+	for result := range errCh {
+		errs[result.index] = fmt.Errorf("processing %s: %w", posts[result.index].Path, result.err)
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("%d posts failed to process; first error: %w", len(errs), errs[0])
+	failed := 0
+	for _, err := range errs {
+		if err != nil {
+			failed++
+		}
+	}
+	if failed > 0 {
+		for _, err := range errs {
+			if err != nil {
+				return fmt.Errorf("%d posts failed to process; first error: %w", failed, err)
+			}
+		}
 	}
 
 	return nil
@@ -847,8 +946,8 @@ func (m *Manager) ProcessPostsSliceConcurrently(posts []*models.Post, fn func(*m
 		numWorkers = len(posts)
 	}
 
-	jobs := make(chan *models.Post, len(posts))
-	errCh := make(chan error, len(posts))
+	jobs := make(chan int, len(posts))
+	errCh := make(chan indexedPostError, len(posts))
 
 	var wg sync.WaitGroup
 
@@ -857,17 +956,18 @@ func (m *Manager) ProcessPostsSliceConcurrently(posts []*models.Post, fn func(*m
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for post := range jobs {
+			for index := range jobs {
+				post := posts[index]
 				if err := fn(post); err != nil {
-					errCh <- fmt.Errorf("processing %s: %w", post.Path, err)
+					errCh <- indexedPostError{index: index, err: err}
 				}
 			}
 		}()
 	}
 
 	// Send posts to the jobs channel
-	for _, post := range posts {
-		jobs <- post
+	for index := range posts {
+		jobs <- index
 	}
 	close(jobs)
 
@@ -875,14 +975,25 @@ func (m *Manager) ProcessPostsSliceConcurrently(posts []*models.Post, fn func(*m
 	wg.Wait()
 	close(errCh)
 
-	// Collect errors
-	errs := make([]error, 0)
-	for err := range errCh {
-		errs = append(errs, err)
+	// Collect errors by input index so concurrent completion order cannot change
+	// the returned error or its wrapped source path.
+	errs := make([]error, len(posts))
+	for result := range errCh {
+		errs[result.index] = fmt.Errorf("processing %s: %w", posts[result.index].Path, result.err)
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("%d posts failed to process; first error: %w", len(errs), errs[0])
+	failed := 0
+	for _, err := range errs {
+		if err != nil {
+			failed++
+		}
+	}
+	if failed > 0 {
+		for _, err := range errs {
+			if err != nil {
+				return fmt.Errorf("%d posts failed to process; first error: %w", failed, err)
+			}
+		}
 	}
 
 	return nil

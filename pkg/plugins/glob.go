@@ -223,7 +223,10 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	patternHash := buildcache.HashContent(strings.Join(p.patterns, "\n"))
 
 	if lifecycle.IsServeFullRebuild(m) {
-		files, modTimes := p.scanFiles(absBaseDir)
+		files, modTimes, err := p.scanFiles(absBaseDir)
+		if err != nil {
+			return &contentDiscoveryError{err: err}
+		}
 		if cache != nil && len(files) > 0 {
 			cache.SetGlobCache(files, patternHash)
 		}
@@ -241,7 +244,10 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	}
 
 	// Full scan
-	files, modTimes := p.scanFiles(absBaseDir)
+	files, modTimes, err := p.scanFiles(absBaseDir)
+	if err != nil {
+		return &contentDiscoveryError{err: err}
+	}
 
 	// Cache for next build
 	if cache != nil && len(files) > 0 {
@@ -251,6 +257,20 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	setGlobMetadata(m, modTimes)
 	m.SetFiles(files)
 	return nil
+}
+
+// contentDiscoveryError preserves the underlying filesystem error for
+// callers while keeping absolute discovery paths out of CLI error output.
+type contentDiscoveryError struct {
+	err error
+}
+
+func (e *contentDiscoveryError) Error() string {
+	return "content discovery failed"
+}
+
+func (e *contentDiscoveryError) Unwrap() error {
+	return e.err
 }
 
 func setGlobMetadata(m *lifecycle.Manager, info map[string]GlobFileInfo) {
@@ -273,7 +293,7 @@ func shouldReuseCachedGlobFiles(m *lifecycle.Manager) bool {
 }
 
 // scanFiles performs full glob scan and records file modtimes for later stages.
-func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFileInfo) {
+func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFileInfo, error) {
 	for _, pattern := range p.patterns {
 		if filepath.IsAbs(pattern) {
 			return p.scanFilesWithGlob(absBaseDir)
@@ -310,14 +330,14 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFile
 
 		info, err := entry.Info()
 		if err != nil {
-			return nil
+			return err
 		}
 		fileSet[relPath] = struct{}{}
 		modTimes[relPath] = GlobFileInfo{ModTime: info.ModTime().UnixNano(), Size: info.Size()}
 		return nil
 	})
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 
 	files := make([]string, 0, len(fileSet))
@@ -325,10 +345,10 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) ([]string, map[string]GlobFile
 		files = append(files, file)
 	}
 	sort.Strings(files)
-	return files, modTimes
+	return files, modTimes, nil
 }
 
-func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]GlobFileInfo) {
+func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]GlobFileInfo, error) {
 	fileSet := make(map[string]struct{})
 	modTimes := make(map[string]GlobFileInfo)
 
@@ -340,7 +360,7 @@ func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]
 
 		matches, err := doublestar.FilepathGlob(fullPattern)
 		if err != nil {
-			continue
+			return nil, nil, err
 		}
 
 		for _, match := range matches {
@@ -353,7 +373,10 @@ func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]
 			}
 
 			info, err := os.Stat(match)
-			if err != nil || info.IsDir() {
+			if err != nil {
+				return nil, nil, err
+			}
+			if info.IsDir() {
 				continue
 			}
 			fileSet[relPath] = struct{}{}
@@ -361,7 +384,7 @@ func (p *GlobPlugin) scanFilesWithGlob(absBaseDir string) ([]string, map[string]
 		}
 	}
 
-	return sortedGlobFiles(fileSet), modTimes
+	return sortedGlobFiles(fileSet), modTimes, nil
 }
 
 func (p *GlobPlugin) matchesAnyPattern(path string) bool {

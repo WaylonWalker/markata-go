@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
@@ -237,6 +238,7 @@ func runDryBuild(m *lifecycle.Manager) error {
 	outlnf("Files discovered: %d", len(m.Files()))
 	outlnf("Posts to process: %d", len(m.Posts()))
 	outlnf("Feeds to generate: %d", len(m.Feeds()))
+	printContentSummary(m.ContentDiagnostics())
 
 	if verbose {
 		errln("\nFiles that would be processed:")
@@ -286,9 +288,43 @@ func printBuildResult(result *BuildResult) {
 
 	// Show blogroll status if configured
 	printBlogrollStatus(result.BlogrollStatus)
+	printContentSummary(result.Content)
 	printBuildBenchmarkSummary(result.Benchmark)
 
 	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
+}
+
+func printContentSummary(snapshot diagnostics.ContentLedgerSnapshot) {
+	summary := snapshot.Summary
+	outln("  Content:")
+	outlnf("    Discovered: %d  Candidates: %d  Loaded: %d", summary.Discovered, summary.Candidates, summary.Loaded)
+	outlnf("    Frontmatter valid: %d  Posts: %d  Eligible: %d", summary.FrontmatterValid, summary.Posts, summary.Eligible)
+	outlnf("    Rendered: %d  Emitted: %d  Excluded: %d", summary.Rendered, summary.Emitted, summary.Excluded)
+	outlnf("    Warnings: %d  Errors: %d", summary.Warnings, summary.Errors)
+
+	for _, entry := range snapshot.Entries {
+		for _, issue := range entry.Diagnostics {
+			if issue.Severity != diagnostics.SeverityWarning && issue.Severity != diagnostics.SeverityError {
+				continue
+			}
+			errlnf("Content %s: %s:%d %s: %s", issue.Severity.String(), issue.File, issue.Range.StartLine+1, issue.Code, issue.Message)
+		}
+	}
+	if !verbose {
+		return
+	}
+
+	errln("\nContent dispositions:")
+	for _, entry := range snapshot.Entries {
+		if entry.Disposition != diagnostics.DispositionExcluded && entry.Disposition != diagnostics.DispositionShadow {
+			continue
+		}
+		reasons := strings.Join(entry.Reasons, ", ")
+		if reasons == "" {
+			reasons = "none"
+		}
+		errlnf("  %s [%s]: %s", entry.Path, entry.Disposition, reasons)
+	}
 }
 
 func printBuildBenchmarkSummary(summary buildstats.Summary) {
@@ -437,12 +473,13 @@ func stageThemeColor(stage string) string {
 }
 
 type benchmarkJSONOutput struct {
-	PostsProcessed int                `json:"posts_processed"`
-	FeedsGenerated int                `json:"feeds_generated"`
-	Duration       float64            `json:"duration_seconds"`
-	Warnings       []string           `json:"warnings,omitempty"`
-	Benchmark      buildstats.Summary `json:"benchmark"`
-	Blogroll       BlogrollStatus     `json:"blogroll"`
+	PostsProcessed int                               `json:"posts_processed"`
+	FeedsGenerated int                               `json:"feeds_generated"`
+	Duration       float64                           `json:"duration_seconds"`
+	Warnings       []string                          `json:"warnings,omitempty"`
+	Benchmark      buildstats.Summary                `json:"benchmark"`
+	Blogroll       BlogrollStatus                    `json:"blogroll"`
+	Content        diagnostics.ContentLedgerSnapshot `json:"content"`
 }
 
 func writeBenchmarkJSONFile(path string, result *BuildResult) error {
@@ -467,6 +504,7 @@ func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
 		Warnings:       result.Warnings,
 		Benchmark:      result.Benchmark,
 		Blogroll:       result.BlogrollStatus,
+		Content:        result.Content,
 	})
 }
 

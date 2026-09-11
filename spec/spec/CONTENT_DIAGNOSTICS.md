@@ -58,7 +58,7 @@ For candidate entries, the summary fields mean:
 | `emitted` | Posts for which at least one post or feed output was produced or confirmed by the write stage. |
 | `excluded` | Candidates that are not eligible or have no emitted output. An unpublished shadow page can therefore be both emitted and excluded from public eligibility. |
 | `warnings` | Warning-severity content diagnostics. |
-| `errors` | Error-severity content diagnostics. Content errors do not hide valid sibling files from the build. |
+| `errors` | Error-severity content diagnostics. Recoverable authoring errors do not hide valid sibling files; operational source errors fail the build. |
 
 Counts are derived from ledger entries. They MUST NOT be assembled by adding
 plugin-local counters.
@@ -128,6 +128,8 @@ changing the code.
 | `content.load_error` | Source bytes or source-backed post state could not be loaded. |
 | `content.render_error` | Markdown rendering failed for the post. |
 | `content.write_error` | An output write failed. |
+| `feed.offset` | The post matched the feed's privacy and filter selection, but was removed by the configured offset. |
+| `feed.limit` | The post matched the feed's privacy and filter selection and offset window, but was removed by the configured limit. |
 
 The implementation MAY add codes in a namespace, but existing codes MUST retain
 their meaning.
@@ -154,15 +156,27 @@ The following rules apply:
 6. Markdown that has no frontmatter remains valid and produces no frontmatter
    warning merely because YAML-shaped text appears later in the body.
 
-Malformed content diagnostics do not cause a valid sibling file to disappear.
-The loader records the affected candidate and continues the content lifecycle.
-Direct parser APIs continue to return parsing errors to their callers.
+Malformed frontmatter, invalid YAML, and invalid frontmatter metadata are
+source-local authoring errors. They do not cause a valid sibling file to
+disappear. The loader records the affected candidate and continues the content
+lifecycle. Direct parser APIs continue to return parsing errors to their
+callers.
+
+Operational source errors are different. Stat failures, read failures,
+permission errors, unexpected missing sources, and other filesystem or source
+I/O errors are recorded as `content.load_error` and propagated from the load
+stage. They MUST fail the build instead of producing a successful partial
+build.
 
 ## Feed and Output Semantics
 
 Feed selection is recorded per feed. A post can be emitted as a direct shadow
 page while being excluded from a public feed because `published` is false,
-because it is private, or because its feed filter does not match.
+because it is private, because its feed filter does not match, or because it
+falls outside the feed's offset or limit window. `content.filtered` is used
+only for filter rejection; `feed.offset` and `feed.limit` identify posts that
+matched the feed before windowing. Feed-level reasons do not change the
+source's single global final disposition.
 
 The absence of an automatically generated tag feed is explained by the ledger
 through the metadata and feed state that led to it. A tag that was lost because

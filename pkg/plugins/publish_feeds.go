@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -137,12 +138,10 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	if shouldPublishFeedsAsync(m) {
-		go func() {
-			if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
-				publishFeedsLog.Errorf("async publish failed: %v", err)
-			}
-		}()
-		return nil
+		// The implementation uses bounded concurrency internally, but the write
+		// hook must wait so cleanup, diagnostics, and live reload observe a
+		// completed feed publication.
+		return p.publishFeedsAsync(m, feedConfigs)
 	}
 
 	return p.publishFeeds(m, config, feedConfigs)
@@ -201,11 +200,14 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 			if skip {
 				skippedCount++
+				recordFeedOutput(m, fc)
 				continue
 			}
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				recordFeedWriteError(m, fc)
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
+			recordFeedOutput(m, fc)
 			p.cacheFeedHash(fc, buildCache, hash)
 			rebuiltCount++
 		}
@@ -222,6 +224,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 		skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 		if skip {
 			skippedCount++
+			recordFeedOutput(m, fc)
 			continue
 		}
 		wg.Add(1)
@@ -231,9 +234,11 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 			defer func() { <-semaphore }() // Release
 
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				recordFeedWriteError(m, fc)
 				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 				return
 			}
+			recordFeedOutput(m, fc)
 			p.cacheFeedHash(fc, buildCache, hash)
 			countMu.Lock()
 			rebuiltCount++
@@ -288,11 +293,14 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 			skip, hash := p.shouldSkipFeedWithConfigAndChanges(fc, buildCache, outputDir, config, affectedPaths)
 			if skip {
 				skippedCount++
+				recordFeedOutput(m, fc)
 				continue
 			}
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				recordFeedWriteError(m, fc)
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
+			recordFeedOutput(m, fc)
 			rebuiltCount++
 			p.cacheFeedHash(fc, buildCache, hash)
 		}
@@ -314,12 +322,15 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 					countMu.Lock()
 					skippedCount++
 					countMu.Unlock()
+					recordFeedOutput(m, fc)
 					return
 				}
 				if err := p.publishFeed(fc, config, outputDir); err != nil {
+					recordFeedWriteError(m, fc)
 					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 					return
 				}
+				recordFeedOutput(m, fc)
 				countMu.Lock()
 				rebuiltCount++
 				countMu.Unlock()
@@ -722,6 +733,74 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	}
 
 	return nil
+}
+
+func recordFeedOutput(m *lifecycle.Manager, fc *models.FeedConfig) {
+	if m == nil || fc == nil || m.ContentLedger() == nil {
+		return
+	}
+
+	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludesPrivate())
+	emittedPaths := feedEmittedPaths(fc, pagePosts, outputPosts)
+
+	for _, post := range fc.Posts {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		reasons := feedEligibilityReasons(post, fc.IncludesPrivate())
+		if _, emitted := emittedPaths[post.Path]; emitted {
+			m.ContentLedger().RecordFeed(post.Path, fc.Slug, len(reasons) == 0, reasons...)
+			m.ContentLedger().MarkEmitted(post.Path)
+			continue
+		}
+
+		if len(reasons) == 0 {
+			reasons = append(reasons, diagnostics.ReasonContentNoOutput)
+		}
+		m.ContentLedger().RecordFeed(post.Path, fc.Slug, false, reasons...)
+	}
+}
+
+func feedEmittedPaths(fc *models.FeedConfig, pagePosts, outputPosts []*models.Post) map[string]struct{} {
+	emittedPaths := make(map[string]struct{}, len(pagePosts)+len(outputPosts))
+	addPosts := func(posts []*models.Post) {
+		for _, post := range posts {
+			if post != nil && post.Path != "" {
+				emittedPaths[post.Path] = struct{}{}
+			}
+		}
+	}
+
+	if fc.Formats.HTML || fc.Formats.SimpleHTML {
+		addPosts(pagePosts)
+	}
+	if fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text {
+		addPosts(outputPosts)
+	}
+	if fc.Formats.Sitemap {
+		for _, post := range outputPosts {
+			if post == nil || !post.Published || post.Private {
+				continue
+			}
+			if post.Path != "" {
+				emittedPaths[post.Path] = struct{}{}
+			}
+		}
+	}
+
+	return emittedPaths
+}
+
+func recordFeedWriteError(m *lifecycle.Manager, fc *models.FeedConfig) {
+	if m == nil || fc == nil || m.ContentLedger() == nil {
+		return
+	}
+	for _, post := range fc.Posts {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		m.ContentLedger().RecordError(post.Path, diagnostics.ReasonContentWriteError, "feed output could not be written")
+	}
 }
 
 func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
