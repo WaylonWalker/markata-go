@@ -34,7 +34,7 @@ func TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct(t *testing.T) {
 		}},
 		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
 		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		Classes:          map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
 		CheckDeterminism: true, GOMAXPROCS: 1,
 	})
 	for checkpointIndex := range result.Checkpoints {
@@ -87,7 +87,7 @@ func TestBuildLab_DeletePostPrunesGeneratedOutput(t *testing.T) {
 		}},
 		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
 		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		Classes:          map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
 		CheckDeterminism: true,
 		GOMAXPROCS:       1,
 	})
@@ -117,7 +117,7 @@ func TestBuildLab_LinkedTargetEditMatchesCleanPageAndFeeds(t *testing.T) {
 		}},
 		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
 		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		Classes:          map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
 		CheckDeterminism: true,
 		GOMAXPROCS:       1,
 	})
@@ -225,7 +225,7 @@ func TestBuildLab_ConfigChangeRebuildsFeedsListing(t *testing.T) {
 		}},
 		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
 		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Classes:          map[string]buildlab.OutputClass{".well-known/time": buildlab.ClassVolatile},
+		Classes:          map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
 		CheckDeterminism: true,
 		GOMAXPROCS:       1,
 	})

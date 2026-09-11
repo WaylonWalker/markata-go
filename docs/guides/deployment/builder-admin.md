@@ -20,6 +20,7 @@ Instead of starting a new Kubernetes Job for every authoring build, it keeps one
 - file watching that enqueues builds
 - build history and full raw logs
 - release history and current live release
+- the sanitized content diagnostics artifact from successful full builds
 - rollback by promoting an older rendered release
 - scheduled refresh tasks for reader, blogroll, or other remote-content commands
 - signed GitHub and Forgejo push webhooks that pull and build matching branches

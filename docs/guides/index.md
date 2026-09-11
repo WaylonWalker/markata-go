@@ -112,6 +112,7 @@ For developers who want full control and customization.
 
 ### Features
 - [Search](/docs/guides/search/) - Pagefind integration for site search
+- [Content Diagnostics](/docs/guides/content-diagnostics/) - Inspect build dispositions and reason codes
 - [View Transitions](/docs/guides/view-transitions/) - Smooth page navigation animations
 - [Resource Hints](/docs/guides/resource-hints/) - Auto-generate dns-prefetch and preconnect
 - [YouTube Embeds](/docs/guides/youtube/) - Embedding YouTube videos

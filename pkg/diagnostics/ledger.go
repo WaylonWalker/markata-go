@@ -3,6 +3,7 @@ package diagnostics
 import (
 	"crypto/sha256"
 	"fmt"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -409,9 +410,9 @@ func finalizeContentDisposition(summary *ContentSummary, disposition *ContentDis
 // ReasonForDiagnosticCode maps shared diagnostic codes to content reason codes.
 func ReasonForDiagnosticCode(code string) string {
 	switch code {
-	case "duplicate-key":
+	case diagnosticCodeDuplicateKey:
 		return ReasonFrontmatterDuplicateKey
-	case "invalid-date":
+	case diagnosticCodeInvalidDate:
 		return ReasonFrontmatterInvalidDate
 	case ReasonFrontmatterSuspiciousDelimiter,
 		ReasonFrontmatterLeadingWhitespace,
@@ -536,24 +537,34 @@ func issueIdentity(issue Issue) string {
 	return fmt.Sprintf("%s:%d:%d:%d:%d:%s:%s", issue.Code, issue.Range.StartLine, issue.Range.StartCol, issue.Range.EndLine, issue.Range.EndCol, issue.Severity.String(), issue.Message)
 }
 
-func normalizeContentPath(path string) string {
-	path = filepath.ToSlash(filepath.Clean(path))
-	if path == "." {
+func normalizeContentPath(value string) string {
+	original := value
+	value = path.Clean(strings.ReplaceAll(value, "\\", "/"))
+	if value == "." {
 		return ""
 	}
-	if filepath.IsAbs(path) || path == ".." || strings.HasPrefix(path, "../") {
-		return redactedExternalPath(path)
+	if isAbsoluteContentPath(original, value) || value == ".." || strings.HasPrefix(value, "../") {
+		return redactedExternalPath(value)
 	}
-	return path
+	return value
 }
 
-func redactedExternalPath(path string) string {
-	base := filepath.Base(path)
-	if base == "." || base == string(filepath.Separator) || base == "" {
+func isAbsoluteContentPath(original, normalized string) bool {
+	if filepath.IsAbs(original) || strings.HasPrefix(normalized, "/") {
+		return true
+	}
+	return len(normalized) >= 3 &&
+		((normalized[0] >= 'a' && normalized[0] <= 'z') || (normalized[0] >= 'A' && normalized[0] <= 'Z')) &&
+		normalized[1] == ':' && normalized[2] == '/'
+}
+
+func redactedExternalPath(value string) string {
+	base := path.Base(value)
+	if base == "." || base == "/" || base == "" {
 		base = "source"
 	}
-	digest := sha256.Sum256([]byte(path))
-	return filepath.ToSlash(filepath.Join("__outside_content_root__", fmt.Sprintf("%s-%x", base, digest[:4])))
+	digest := sha256.Sum256([]byte(value))
+	return path.Join("__outside_content_root__", fmt.Sprintf("%s-%x", base, digest[:4]))
 }
 
 func sortedUnique(values []string) []string {
@@ -585,8 +596,20 @@ func sortedIssues(issues []Issue) []Issue {
 		if left.Range.StartCol != right.Range.StartCol {
 			return left.Range.StartCol < right.Range.StartCol
 		}
+		if left.Range.EndLine != right.Range.EndLine {
+			return left.Range.EndLine < right.Range.EndLine
+		}
+		if left.Range.EndCol != right.Range.EndCol {
+			return left.Range.EndCol < right.Range.EndCol
+		}
 		if left.Code != right.Code {
 			return left.Code < right.Code
+		}
+		if left.Severity != right.Severity {
+			return left.Severity < right.Severity
+		}
+		if left.Fixable != right.Fixable {
+			return !left.Fixable
 		}
 		return left.Message < right.Message
 	})

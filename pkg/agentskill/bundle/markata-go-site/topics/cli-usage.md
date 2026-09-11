@@ -95,6 +95,22 @@ content diagnostic before changing feed filters or templates. The
 Malformed author content can be isolated to one source. Source stat, read, and
 other filesystem errors are operational failures and make the build fail.
 
+After a successful full build, inspect the persisted snapshot at
+`<output_dir>/.markata/diagnostics.json`:
+
+```bash
+jq . public/.markata/diagnostics.json
+```
+
+The artifact has versioned summary and entry fields, stable reason codes, and
+feed-level dispositions. It is sanitized: it does not include raw configuration,
+secrets, frontmatter, Markdown bodies, rendered HTML, or absolute paths. Replace
+`public` when the site uses another output directory. `build --dry-run`,
+`build --fast`, fast or incremental `serve`, failed, or incomplete builds do not
+publish a new artifact. A normal `serve` build can publish it after a successful
+full lifecycle. See the Content Diagnostics guide when the site
+repository includes the markata-go documentation.
+
 ### Encryption
 
 - `markata-go encryption generate-password` (generate a policy-compliant password)
