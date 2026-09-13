@@ -160,7 +160,7 @@ Use `human_date` for visible HTML dates in cards, post bylines, archive views, a
 - `asset_url`
 - `slides_reveal`
 
-For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs. When the card intentionally uses a cinematic crop, use matching width-and-height sizing such as `with_size:"1200,500"` with CSS `object-fit: cover`. When the source aspect ratio must be preserved, use width-only sizing such as `with_size:"1200"` and let CSS use `height: auto`.
+For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs. When the card intentionally uses a cinematic crop, use width-only sizing such as `with_size:"1200"` so the CDN preserves the source proportions, then use CSS `object-fit: cover` to crop the displayed frame. When the source aspect ratio must be preserved, use width-only sizing and let CSS use `height: auto`.
 
 ## Common Patterns
 

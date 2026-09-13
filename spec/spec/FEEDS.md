@@ -185,8 +185,8 @@ The built-in default card may render media from the `image`, `cover`,
 to images with different aspect ratios, the default card MUST render media in a
 cinematic 12:5 frame:
 
-- request a matching width-and-height media variant (for example,
-  `with_size:"1200,500"`)
+- request a width-only media variant (for example, `with_size:"1200"`) so the
+  source image keeps its natural proportions
 - use matching `width` and `height` attributes on the image
 - crop the image with `object-fit: cover`
 

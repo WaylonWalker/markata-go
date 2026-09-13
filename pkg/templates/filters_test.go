@@ -215,11 +215,11 @@ func TestTemplateTrees_UseCinematicMediaSizingForDefaultCards(t *testing.T) {
 			}
 			text := string(content)
 
-			if !strings.Contains(text, `|with_size:"1200,500"`) {
-				t.Fatalf("default card %q must use cinematic media sizing", file)
+			if !strings.Contains(text, `|with_size:"1200"`) {
+				t.Fatalf("default card %q must use width-only source sizing", file)
 			}
-			if strings.Contains(text, `|with_size:"1200"`) {
-				t.Fatalf("default card %q must not use width-only media sizing", file)
+			if strings.Contains(text, `|with_size:"1200,500"`) {
+				t.Fatalf("default card %q must not request a distorted fixed-size source", file)
 			}
 			if !strings.Contains(text, `width="1200" height="500"`) {
 				t.Fatalf("default card %q must declare cinematic media dimensions", file)

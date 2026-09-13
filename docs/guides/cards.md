@@ -99,8 +99,9 @@ Each card type has different visual elements:
 
 Posts without a mapped `template` use the default card. If the frontmatter
 contains `image`, `cover`, `cover_image`, or `og_image`, the card displays that
-media in a cinematic 12:5 frame. The image is cropped with `object-fit: cover`
-so portrait images do not make daily note cards too tall.
+media in a cinematic 12:5 frame. The source uses width-only sizing so the CDN
+does not distort the image; CSS crops it with `object-fit: cover` so portrait
+images do not make daily note cards too tall.
 
 ## Examples
 
