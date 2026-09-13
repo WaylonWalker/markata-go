@@ -95,6 +95,14 @@ Each card type has different visual elements:
 - External site link (from `url` frontmatter field, if set)
 - Tags
 
+### Default Card Images
+
+Posts without a mapped `template` use the default card. If the frontmatter
+contains `image`, `cover`, `cover_image`, or `og_image`, the card displays that
+media while preserving its natural aspect ratio. The built-in card requests a
+width-only image variant, so portrait images are not stretched into a
+landscape rectangle.
+
 ## Examples
 
 ### Blog Post (article card)
