@@ -178,6 +178,22 @@ html = "feed-photo-grid.html"
 
 The built-in `feed-photo-grid.html` template renders a dense photo-first grid with square cards by default and hover/focus overlays for title and description. It MUST preserve `post.card_classes` frontmatter hooks such as `col-span-2` and `row-span-2` so selected cards can expand across the grid.
 
+### Default Card Media Sizing
+
+The built-in default card may render media from the `image`, `cover`,
+`cover_image`, or `og_image` frontmatter fields. Because these fields can point
+to images with different aspect ratios, the default card MUST render media in a
+cinematic 12:5 frame:
+
+- request a width-only media variant (for example, `with_size:"1200"`) so the
+  source image keeps its natural proportions
+- use matching `width` and `height` attributes on the image
+- crop the image with `object-fit: cover`
+
+The default theme MUST keep this media within the card width. The fixed-ratio
+crop is intentional for compact archive and daily note cards. Other card types
+may use different fixed-ratio treatments when their design calls for them.
+
 ### Split Feed Definitions Across Files
 
 Feed definitions may be split across composed config files. Repeated feed slugs merge into one resolved feed.

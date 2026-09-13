@@ -201,6 +201,33 @@ func TestTemplateTrees_PreserveSizedMediaDimensions(t *testing.T) {
 	}
 }
 
+func TestTemplateTrees_UseCinematicMediaSizingForDefaultCards(t *testing.T) {
+	files := []string{
+		"../../templates/partials/cards/default-card.html",
+		"../../pkg/themes/default/templates/partials/cards/default-card.html",
+	}
+
+	for _, file := range files {
+		t.Run(file, func(t *testing.T) {
+			content, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatalf("ReadFile(%q) error: %v", file, err)
+			}
+			text := string(content)
+
+			if !strings.Contains(text, `|with_size:"1200"`) {
+				t.Fatalf("default card %q must use width-only source sizing", file)
+			}
+			if strings.Contains(text, `|with_size:"1200,500"`) {
+				t.Fatalf("default card %q must not request a distorted fixed-size source", file)
+			}
+			if !strings.Contains(text, `width="1200" height="500"`) {
+				t.Fatalf("default card %q must declare cinematic media dimensions", file)
+			}
+		})
+	}
+}
+
 func TestFilterSlugify(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -879,6 +906,14 @@ func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
 	}
 	if !strings.HasPrefix(trustedHTTP, "https://dropper.wayl.one/image.jpg?") || !strings.Contains(trustedHTTP, "w=1200") || !strings.Contains(trustedHTTP, "h=675") {
 		t.Errorf("with_size should normalize trusted http URLs to https, got %q", trustedHTTP)
+	}
+
+	widthOnly, err := engine.RenderString("{{ 'https://dropper.wayl.one/image.jpg?h=675' | with_size:\"1200\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if !strings.Contains(widthOnly, "w=1200") || strings.Contains(widthOnly, "h=675") {
+		t.Errorf("width-only with_size should remove fixed height, got %q", widthOnly)
 	}
 
 	relative, err := engine.RenderString("{{ '/media/image.png' | with_size:\"1200,675\" }}", ctx)
