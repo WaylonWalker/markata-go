@@ -201,7 +201,7 @@ func TestTemplateTrees_PreserveSizedMediaDimensions(t *testing.T) {
 	}
 }
 
-func TestTemplateTrees_PreserveNaturalMediaAspectRatioForDefaultCards(t *testing.T) {
+func TestTemplateTrees_UseCinematicMediaSizingForDefaultCards(t *testing.T) {
 	files := []string{
 		"../../templates/partials/cards/default-card.html",
 		"../../pkg/themes/default/templates/partials/cards/default-card.html",
@@ -215,14 +215,14 @@ func TestTemplateTrees_PreserveNaturalMediaAspectRatioForDefaultCards(t *testing
 			}
 			text := string(content)
 
-			if !strings.Contains(text, `|with_size:"1200"`) {
-				t.Fatalf("default card %q must use width-only media sizing", file)
+			if !strings.Contains(text, `|with_size:"1200,500"`) {
+				t.Fatalf("default card %q must use cinematic media sizing", file)
 			}
-			if strings.Contains(text, `|with_size:"1200,675"`) {
-				t.Fatalf("default card %q must not request a fixed 16:9 media variant", file)
+			if strings.Contains(text, `|with_size:"1200"`) {
+				t.Fatalf("default card %q must not use width-only media sizing", file)
 			}
-			if strings.Contains(text, `height="675"`) {
-				t.Fatalf("default card %q must not force a fixed media height", file)
+			if !strings.Contains(text, `width="1200" height="500"`) {
+				t.Fatalf("default card %q must declare cinematic media dimensions", file)
 			}
 		})
 	}

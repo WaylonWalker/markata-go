@@ -160,7 +160,7 @@ Use `human_date` for visible HTML dates in cards, post bylines, archive views, a
 - `asset_url`
 - `slides_reveal`
 
-For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs. When the source aspect ratio is not known, use width-only sizing such as `with_size:"1200"` and let CSS use `height: auto`; do not pair it with a fixed height unless the card intentionally crops the image. Use width-and-height sizing only for deliberate fixed-ratio treatments such as thumbnails or photo grids.
+For media cards, remember that `media_url` normalizes trusted media URLs to `https`, while `with_size` and `poster_url` only decorate relative or trusted CDN URLs. When the card intentionally uses a cinematic crop, use matching width-and-height sizing such as `with_size:"1200,500"` with CSS `object-fit: cover`. When the source aspect ratio must be preserved, use width-only sizing such as `with_size:"1200"` and let CSS use `height: auto`.
 
 ## Common Patterns
 

@@ -182,17 +182,17 @@ The built-in `feed-photo-grid.html` template renders a dense photo-first grid wi
 
 The built-in default card may render media from the `image`, `cover`,
 `cover_image`, or `og_image` frontmatter fields. Because these fields can point
-to images with different aspect ratios, the default card MUST:
+to images with different aspect ratios, the default card MUST render media in a
+cinematic 12:5 frame:
 
-- request a width-only media variant (for example, `with_size:"1200"`)
-- allow the image's natural height to determine its rendered aspect ratio
-- avoid fixed `height` attributes or width-and-height CDN requests unless the
-  card intentionally crops media
+- request a matching width-and-height media variant (for example,
+  `with_size:"1200,500"`)
+- use matching `width` and `height` attributes on the image
+- crop the image with `object-fit: cover`
 
-The default theme's global image rules MUST keep this media within the card
-width with `height: auto`. Fixed-ratio crops remain appropriate for card types
-whose design explicitly calls for them, such as video thumbnails and photo
-grids.
+The default theme MUST keep this media within the card width. The fixed-ratio
+crop is intentional for compact archive and daily note cards. Other card types
+may use different fixed-ratio treatments when their design calls for them.
 
 ### Split Feed Definitions Across Files
 
