@@ -125,9 +125,15 @@ Image cards expose `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` in addition
 regular image fields. Custom templates should render `IsVideo` cards with a
 `<video>` and `<source>` rather than an `<img>`.
 
+The bundled page keeps video URLs out of active `src`, `poster`, and
+`<source src>` attributes in the initial HTML. Its JavaScript loads each video
+when its card enters the viewport, so an image-library page with many videos
+does not fetch every video at once.
+Without JavaScript, the card still links to the canonical media URL.
+
 The server-rendered page remains useful when JavaScript is unavailable. The
-bundled JavaScript only enhances filtering, sorting, usage expansion, and copy
-feedback.
+bundled JavaScript only enhances filtering, sorting, usage expansion, copy
+feedback, and video loading.
 
 See the [configuration reference](/docs/guides/configuration/) and [built-in
 plugin reference](/docs/reference/plugins/) for related settings.

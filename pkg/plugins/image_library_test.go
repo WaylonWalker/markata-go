@@ -165,7 +165,7 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	if !strings.Contains(string(page), "Copy Markdown") || !strings.Contains(string(page), "hello.webp") || !strings.Contains(string(page), "data-image-filter=\"used\"") {
 		t.Fatalf("generated page missing image-library controls/content: %s", page)
 	}
-	if !strings.Contains(string(page), "<video") || !strings.Contains(string(page), `<source src="https://dropper.wayl.one/file/video.mp4?w=640" type="video/mp4">`) || !strings.Contains(string(page), `poster="https://dropper.wayl.one/file/video.webp?w=640"`) || !strings.Contains(string(page), ">Video</span>") || !strings.Contains(string(page), `data-last-used="1768046400"`) || !strings.Contains(string(page), ">Latest used</option>") || strings.Contains(string(page), `<img src="https://dropper.wayl.one/file/video.mp4`) {
+	if !strings.Contains(string(page), "<video") || !strings.Contains(string(page), `preload="none"`) || !strings.Contains(string(page), `data-video-src="https://dropper.wayl.one/file/video.mp4?w=640"`) || !strings.Contains(string(page), `data-video-type="video/mp4"`) || !strings.Contains(string(page), `data-video-poster="https://dropper.wayl.one/file/video.webp?w=640"`) || !strings.Contains(string(page), ">Video</span>") || !strings.Contains(string(page), `data-last-used="1768046400"`) || !strings.Contains(string(page), ">Latest used</option>") || strings.Contains(string(page), `<source src="`) || strings.Contains(string(page), `<img src="https://dropper.wayl.one/file/video.mp4`) {
 		t.Fatalf("generated page missing video presentation: %s", page)
 	}
 	data, err := os.ReadFile(jsonPath)

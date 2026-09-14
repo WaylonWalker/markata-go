@@ -67,6 +67,50 @@
       return compareNames(left, right);
     }
 
+    function loadVideo(video) {
+      if (video.getAttribute("data-video-loaded") === "true") return;
+      var sourceURL = video.getAttribute("data-video-src");
+      if (!sourceURL) return;
+
+      var poster = video.getAttribute("data-video-poster");
+      if (poster) video.setAttribute("poster", poster);
+      var source = document.createElement("source");
+      source.src = sourceURL;
+      var type = video.getAttribute("data-video-type");
+      if (type) source.type = type;
+      video.appendChild(source);
+      video.setAttribute("data-video-loaded", "true");
+      video.load();
+    }
+
+    function setupLazyVideos() {
+      var videos = Array.prototype.slice.call(root.querySelectorAll("[data-video-src]"));
+      if (!videos.length) return;
+
+      if (typeof window.IntersectionObserver === "function") {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting && !(entry.intersectionRatio > 0)) return;
+            loadVideo(entry.target);
+            observer.unobserve(entry.target);
+          });
+        });
+        videos.forEach(function (video) {
+          observer.observe(video);
+        });
+        return;
+      }
+
+      videos.forEach(function (video) {
+        var card = video.closest("[data-image-card]") || video;
+        ["pointerenter", "focusin", "touchstart"].forEach(function (eventName) {
+          card.addEventListener(eventName, function () {
+            loadVideo(video);
+          }, { once: true, passive: eventName === "touchstart" });
+        });
+      });
+    }
+
     function apply() {
       var query = text(search && search.value);
       var visible = [];
@@ -172,6 +216,7 @@
       });
     });
 
+    setupLazyVideos();
     apply();
   });
 }());

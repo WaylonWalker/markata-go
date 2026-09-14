@@ -183,6 +183,8 @@ The default page MUST:
 - show up to three usage links inline and a compact `+N more` disclosure;
 - render video sources with a `<video>` element, a `<source>` element, and a
   poster when available;
+- defer video source and poster URLs until the card enters the viewport, so
+  an inventory page does not fetch every video during initial load;
 - label external embed images and video sources with an `Embed` badge;
 - provide Copy Markdown and Copy URL actions using the canonical `src`;
 - provide visible success and failure feedback for copy actions;
@@ -191,7 +193,12 @@ The default page MUST:
 
 The page MUST remain useful if JavaScript fails: images, titles, and usage
 links still render in the server-generated HTML. JavaScript only enhances
-filtering, sorting, usage expansion, and copy feedback.
+filtering, sorting, usage expansion, copy feedback, and video loading. The
+bundled video cards MUST keep their media source and poster URLs in data
+attributes until an `IntersectionObserver` reports that the card is visible.
+When that API is unavailable, the page MUST load a video only after pointer,
+focus, or touch interaction. The card link MUST still expose the canonical
+media URL without JavaScript.
 
 ## Incremental builds
 

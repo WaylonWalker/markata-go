@@ -106,6 +106,9 @@ plugin renders its page:
 Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` alongside the
 regular image fields. Render video cards with a `<video>` element and a nested
 `<source>` element; use `poster_src` when it is non-empty.
+The bundled image-library template defers video source and poster URLs until a
+card enters the viewport. Keep that lazy-loading behavior in custom templates
+when the page can contain many videos.
 
 Keep `image_index` sources canonical in copy actions. Trusted Dropper derivatives
 are for previews only. Override `images.html` in the site's `templates/`
