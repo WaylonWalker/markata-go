@@ -905,6 +905,17 @@ result = evaluate_ast(ast, context={"post": post, "today": today})
 - Use incremental builds
 - Stream large files instead of loading into memory
 
+### 6. Benchmark Toolchain Compatibility
+
+- Scheduled benchmark workflows MUST use the Go version declared by `go.mod`.
+- Tools installed by a benchmark workflow MUST be buildable with that toolchain.
+- Benchmark-only tool versions SHOULD be pinned to keep scheduled results
+  reproducible when upstream releases change.
+- A branch-comparison job MUST use the current checkout's module toolchain for
+  both checkouts; the comparison branch must remain compatible with it.
+- When a benchmark tool raises its minimum Go version, update the workflow
+  toolchain before the next scheduled run.
+
 ---
 
 ## Example: Minimal Working Implementation
