@@ -390,6 +390,7 @@ const (
 	embedOptionImage     = "image"
 	embedOptionVideo     = "video"
 	embedOptionLink      = "link"
+	templateTypeGallery  = "gallery"
 
 	oembedProviderYouTube = "youtube"
 
@@ -592,7 +593,7 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == "gallery"
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == templateTypeGallery
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource := ""
 	posterURL := ""

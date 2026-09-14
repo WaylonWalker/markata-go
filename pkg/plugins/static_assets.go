@@ -215,16 +215,6 @@ func (p *StaticAssetsPlugin) findThemeStaticDir(themeName string) string {
 	return ""
 }
 
-// copyEmbeddedStatic copies embedded static files to the output directory.
-func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
-	outputFS, err := openOutputRoot(outputDir)
-	if err != nil {
-		return err
-	}
-	defer outputFS.Close()
-	return p.copyEmbeddedStaticWithRoot(outputDir, outputFS)
-}
-
 func (p *StaticAssetsPlugin) copyEmbeddedStaticWithRoot(outputDir string, outputFS *os.Root) error {
 	staticFS := themes.DefaultStatic()
 	if staticFS == nil {

@@ -88,7 +88,7 @@ func (p *ImageLibraryPlugin) Write(m *lifecycle.Manager) error {
 	assetsDir := imageLibraryAssetsDir(m.Config(), contentDir)
 	outputDir := m.Config().OutputDir
 	if outputDir == "" {
-		outputDir = "output"
+		outputDir = defaultOutputDir
 	}
 	outputRoot, err := filepath.Abs(outputDir)
 	if err != nil {
@@ -120,7 +120,7 @@ func (p *ImageLibraryPlugin) Write(m *lifecycle.Manager) error {
 func imageLibraryOutputConflict(m *lifecycle.Manager, contentRoot, outputRoot, pagePath, jsonPath, assetsDir, pathPrefix string, exportJSON bool) error {
 	outputDir := m.Config().OutputDir
 	if outputDir == "" {
-		outputDir = "output"
+		outputDir = defaultOutputDir
 	}
 	if err := imageLibraryPostOutputConflict(m, outputDir, pagePath); err != nil {
 		return err

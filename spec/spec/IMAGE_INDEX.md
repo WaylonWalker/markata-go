@@ -183,3 +183,5 @@ match the recorded output hash. A recorded path with modified contents, or an
 existing unowned path, MUST be preserved and reported as a collision rather
 than silently left behind. The output root and every existing component below
 it MUST be checked for symlinks before the writer creates or removes files.
+Platform-managed symlink ancestors above the output root MAY be present; the
+writer MUST still reject a symlink at the output root or below it.

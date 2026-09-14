@@ -95,7 +95,8 @@ writes. It does not overwrite an existing site file. When you disable the
 library or change its path, cleanup removes only files previously recorded as
 image-library outputs whose contents are unchanged. A modified or unowned
 stale JSON file is preserved and reported as a collision. Output paths that
-traverse symlinks are rejected for safety.
+traverse symlinks below the configured output root are rejected for safety.
+Platform-managed ancestors above that root are allowed.
 
 ## Custom templates
 

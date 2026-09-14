@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -316,44 +317,64 @@ func (l *searchPathLoader) Get(path string) (io.Reader, error) {
 	if strings.HasPrefix(path, embeddedFilePrefix) {
 		embeddedPath := path[len(embeddedFilePrefix):]
 		if l.embeddedFS != nil {
-			file, err := l.embeddedFS.Open(embeddedPath)
+			content, err := fs.ReadFile(l.embeddedFS, embeddedPath)
 			if err == nil {
-				return file, nil
+				return bytes.NewReader(content), nil
 			}
 		}
 	}
 
 	// If path is already absolute, just try to open it
 	if filepath.IsAbs(path) {
-		file, err := os.Open(path)
+		reader, err := readTemplateFile(path)
 		if err == nil {
-			return file, nil
+			return reader, nil
 		}
 	}
 
 	// Search through all search paths
 	for _, dir := range l.searchPaths {
 		candidate := filepath.Join(dir, path)
-		file, err := os.Open(candidate)
+		reader, err := readTemplateFile(candidate)
 		if err == nil {
-			return file, nil
+			return reader, nil
 		}
 	}
 
 	// Try embedded filesystem
 	if l.embeddedFS != nil {
-		file, err := l.embeddedFS.Open(path)
+		content, err := fs.ReadFile(l.embeddedFS, path)
 		if err == nil {
-			return file, nil
+			return bytes.NewReader(content), nil
 		}
 	}
 
 	// Last resort: try to open path as-is
-	file, err := os.Open(path)
+	reader, err := readTemplateFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("template %q not found in search paths or embedded", path)
 	}
-	return file, nil
+	return reader, nil
+}
+
+// readTemplateFile reads and closes a filesystem template before returning it.
+// Pongo2 consumes the returned reader but does not close it, so returning an
+// in-memory reader prevents file-handle leaks and allows template replacement
+// on platforms that lock open files.
+func readTemplateFile(path string) (io.Reader, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	content, readErr := io.ReadAll(file)
+	closeErr := file.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+	return bytes.NewReader(content), nil
 }
 
 // TemplateExists checks if a template file exists in any search path or embedded templates.
