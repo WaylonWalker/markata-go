@@ -57,14 +57,15 @@ records for private posts. It never writes article bodies or encryption keys.
 Check the output path and privacy behavior before publishing it.
 
 The Image Library is enabled by default with `[markata-go.images]`. It writes a
-searchable `/images/` page and `/images/index.json` below `output_dir` without
-fetching remote images. Check `images.path`, `images.export_json`, and
-`images.include_unreferenced` when an image is missing or an inventory should
+searchable `/images/` page plus `/images/index.json` and `/images.json` below
+`output_dir` without
+fetching remote images or videos. Check `images.path`, `images.export_json`, and
+`images.include_unreferenced` when media is missing or an inventory should
 not be public. Private, draft, skipped, and unpublished posts must not create
 public usage relationships.
-Static images referenced only by private posts are omitted from the inventory,
-but media below `assets_dir` is still public static output; keep truly private
-files outside that directory.
+Static media referenced only by private posts is omitted from the inventory, but
+media below `assets_dir` is still public static output; keep truly private files
+outside that directory.
 
 Example:
 

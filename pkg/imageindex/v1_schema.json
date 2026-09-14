@@ -29,8 +29,11 @@
         "height": {"type": "integer", "minimum": 0},
         "alt": {"type": "string"},
         "mime_type": {"type": "string"},
+        "poster_src": {"type": "string"},
         "added_at": {"type": "string", "format": "date-time"},
+        "last_used_at": {"type": "string", "format": "date-time"},
         "cover": {"type": "boolean"},
+        "embed": {"type": "boolean"},
         "uses": {
           "type": "array",
           "items": {
@@ -41,7 +44,8 @@
               "post": {"type": "string"},
               "href": {"type": "string"},
               "title": {"type": "string"},
-              "cover": {"type": "boolean"}
+              "cover": {"type": "boolean"},
+              "embed": {"type": "boolean"}
             }
           }
         }

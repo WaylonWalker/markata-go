@@ -17,9 +17,10 @@ by your site. The default output is:
 
 - `/images/` — a responsive, searchable image library
 - `/images/index.json` — a versioned machine-readable inventory
+- `/images.json` — the same inventory at the site root for other tools
 
 The plugin runs by default. It reads public posts and the configured static
-asset directory. It does not fetch remote images.
+asset directory. It does not fetch remote images or videos.
 
 ## Configure the output
 
@@ -40,8 +41,8 @@ include_unreferenced = true
 | `enabled` | `true` | Generate the image library page and inventory. |
 | `path` | `"images"` | Relative output directory below `output_dir`. |
 | `template` | `"images.html"` | Template used for the HTML page. |
-| `export_json` | `true` | Write `path/index.json`. |
-| `include_unreferenced` | `true` | Include image files found in `assets_dir` even when no public post uses them. |
+| `export_json` | `true` | Write `path/index.json` and `/images.json`. |
+| `include_unreferenced` | `true` | Include image and video files found in `assets_dir` even when no public post uses them. |
 
 The output path must stay inside `output_dir`. The same options work in YAML
 and JSON configuration files. Environment overrides use these names:
@@ -74,10 +75,21 @@ never replace the canonical URL in the JSON artifact or copied Markdown.
 
 The inventory includes:
 
-- Markdown image syntax and supported raw HTML `<img>` elements
-- `image`, `cover`, `cover_image`, `og_image`, `social_image`, `thumbnail`,
+- Markdown image syntax, supported raw HTML `<img>` elements, and referenced
+  `<video>`/`<source>` elements
+- `image`, `video`, `cover`, `cover_image`, `og_image`, `social_image`, `thumbnail`,
   `featured_image`, `hero_image`, `avatar`, and `author_image` frontmatter
-- Image files below `assets_dir`
+- Image and video files below `assets_dir`
+
+The `image` frontmatter field is a cover fallback. If `cover` or `cover_image`
+has a non-empty value, that field remains the first cover choice. Video URLs
+are kept as video media with their video MIME type. The library renders them
+with a `<video>` element and uses an explicit poster field or the same derived
+poster convention used by feed and video cards.
+
+Images supplied by an external `![embed](...)` card are still inventoried, but
+they are marked with an **Embed** label. This distinguishes a remote OG image
+from an image authored directly in a post.
 
 Skipped, draft, private, and unpublished posts do not create usage
 relationships. Local files are mapped from the asset root to site-root URLs;
@@ -88,7 +100,9 @@ even when `include_unreferenced` is enabled. Keep private media outside
 
 The JSON artifact is deterministic. Images are sorted by source URL and usage
 links are sorted by post path and then href. A missing local dimension is
-reported as `0`.
+reported as `0`. Each used image includes `last_used_at` when a public post has
+a publication date; it is the latest such date in UTC. Tools can sort this
+field descending to show the latest-used media first. Missing values sort last.
 
 The writer checks for collisions with posts, feeds, and static files before it
 writes. It does not overwrite an existing site file. When you disable the
@@ -106,6 +120,10 @@ page. The template receives:
 - `image_library` — page counts and presentation-ready image cards
 - `image_index` — the canonical `imageindex.Index`
 - `image_library_config` — the resolved image configuration
+
+Image cards expose `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` in addition to the
+regular image fields. Custom templates should render `IsVideo` cards with a
+`<video>` and `<source>` rather than an `<img>`.
 
 The server-rendered page remains useful when JavaScript is unavailable. The
 bundled JavaScript only enhances filtering, sorting, usage expansion, and copy

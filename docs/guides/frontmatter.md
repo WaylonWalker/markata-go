@@ -839,11 +839,11 @@ In the previous part, we set up our project structure...
 
 ## Media Fields
 
-The `image` and `video` frontmatter fields can be used **interchangeably** in photo and video card templates. The system auto-detects whether a URL points to a video or image based on the file extension.
+The `image` and `video` frontmatter fields can be used **interchangeably** in photo and video card templates. The system auto-detects whether a URL points to a video or image based on the file extension. The image library also indexes both fields; `image` and `video` are cover fallbacks when no explicit `cover` or `cover_image` is set.
 
 ### Recognized Video Extensions
 
-`.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`, `.ogg` (case-insensitive)
+`.avi`, `.mkv`, `.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`, `.ogg` (case-insensitive)
 
 Any other extension (or no extension) is treated as an image.
 

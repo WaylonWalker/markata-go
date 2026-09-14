@@ -13,8 +13,8 @@ func TestMarshal_SortsImagesAndUses(t *testing.T) {
 	index := Index{
 		Generator: Generator{Name: GeneratorName, Version: "test"},
 		Images: []Image{
-			{Src: "/z.png", Uses: []Use{{Post: "z.md", Href: "/z/"}}},
-			{Src: "/a.png", AddedAt: parseTime(t, timeValue), Uses: []Use{
+			{Src: "/z.png", Embed: true, Uses: []Use{{Post: "z.md", Href: "/z/", Embed: true}}},
+			{Src: "/a.png", AddedAt: parseTime(t, timeValue), LastUsedAt: parseTime(t, timeValue), Uses: []Use{
 				{Post: "z.md", Href: "/z/"},
 				{Post: "a.md", Href: "/a/"},
 			}},
@@ -39,6 +39,12 @@ func TestMarshal_SortsImagesAndUses(t *testing.T) {
 	}
 	if len(parsed.Images) != 2 || parsed.Images[0].Uses[0].Post != "a.md" {
 		t.Fatalf("Parse() = %#v", parsed)
+	}
+	if !parsed.Images[1].Embed || !parsed.Images[1].Uses[0].Embed {
+		t.Fatalf("Parse() lost embed metadata: %#v", parsed.Images[1])
+	}
+	if parsed.Images[0].LastUsedAt == nil || parsed.Images[1].LastUsedAt != nil || parsed.Images[0].LastUsedAt.Format(time.RFC3339) != timeValue {
+		t.Fatalf("Parse() lost last-used metadata: %#v", parsed.Images)
 	}
 }
 

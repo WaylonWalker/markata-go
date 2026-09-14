@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/imageindex"
@@ -26,7 +28,7 @@ import (
 // ImageLibraryConfig controls the generated image library.
 type ImageLibraryConfig = models.ImagesConfig
 
-// ImageLibraryPlugin writes an image inventory JSON artifact and an accessible
+// ImageLibraryPlugin writes image inventory JSON artifacts and an accessible
 // browser-based image library page.
 type ImageLibraryPlugin struct {
 	engineMu    sync.RWMutex
@@ -96,71 +98,76 @@ func (p *ImageLibraryPlugin) Write(m *lifecycle.Manager) error {
 	}
 	pagePath := filepath.Join(outputDir, filepath.FromSlash(pathPrefix), "index.html")
 	jsonPath := filepath.Join(outputDir, filepath.FromSlash(pathPrefix), "index.json")
+	flatJSONPath := filepath.Join(outputDir, "images.json")
 	if !config.IsEnabled() {
 		return removeImageLibraryOutputs(contentRoot, GetBuildCache(m))
 	}
-	for _, path := range []string{pagePath, jsonPath} {
+	for _, path := range []string{pagePath, jsonPath, flatJSONPath} {
 		if err := imageLibraryValidateOutputPath(outputRoot, path); err != nil {
 			return err
 		}
 	}
-	if err := imageLibraryOutputConflict(m, contentRoot, outputRoot, pagePath, jsonPath, assetsDir, pathPrefix, config.ShouldExportJSON()); err != nil {
+	if err := imageLibraryOutputConflict(m, contentRoot, outputRoot, pagePath, jsonPath, flatJSONPath, assetsDir, pathPrefix, config.ShouldExportJSON()); err != nil {
 		return err
 	}
 	if !config.ShouldExportJSON() {
-		if imageLibraryOutputMatches(GetBuildCache(m), contentRoot, outputRoot, jsonPath) {
-			if err := removeImageLibraryFile(outputRoot, jsonPath); err != nil {
-				return fmt.Errorf("remove disabled image index export: %w", err)
+		for _, path := range []string{jsonPath, flatJSONPath} {
+			if imageLibraryOutputMatches(GetBuildCache(m), contentRoot, outputRoot, path) {
+				if err := removeImageLibraryFile(outputRoot, path); err != nil {
+					return fmt.Errorf("remove disabled image index export: %w", err)
+				}
 			}
 		}
 	}
-	return p.writeImageLibrary(m, &config, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath)
+	return p.writeImageLibrary(m, &config, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath, flatJSONPath)
 }
 
-func imageLibraryOutputConflict(m *lifecycle.Manager, contentRoot, outputRoot, pagePath, jsonPath, assetsDir, pathPrefix string, exportJSON bool) error {
+func imageLibraryOutputConflict(m *lifecycle.Manager, contentRoot, outputRoot, pagePath, jsonPath, flatJSONPath, assetsDir, pathPrefix string, exportJSON bool) error {
+	if exportJSON && imageLibraryPathsOverlap(pagePath, flatJSONPath) {
+		return fmt.Errorf("image library path %q conflicts with root images.json", pathPrefix)
+	}
 	outputDir := m.Config().OutputDir
 	if outputDir == "" {
 		outputDir = defaultOutputDir
 	}
-	if err := imageLibraryPostOutputConflict(m, outputDir, pagePath); err != nil {
+	if err := imageLibraryPostOutputConflict(m, outputDir, pagePath, flatJSONPath, exportJSON); err != nil {
 		return err
 	}
-	if err := imageLibraryFeedOutputConflict(m, outputDir, pagePath, jsonPath, exportJSON); err != nil {
+	if err := imageLibraryFeedOutputConflict(m, outputDir, pagePath, jsonPath, flatJSONPath, exportJSON); err != nil {
 		return err
 	}
 	if err := imageLibraryStaticOutputConflict(assetsDir, pathPrefix, exportJSON); err != nil {
 		return err
 	}
 	cache := GetBuildCache(m)
-	if err := imageLibraryExistingOutputConflict(cache, contentRoot, outputRoot, pagePath, true); err != nil {
-		return err
+	for _, path := range []string{pagePath, jsonPath, flatJSONPath} {
+		if err := imageLibraryExistingOutputConflict(cache, contentRoot, outputRoot, path, true); err != nil {
+			return err
+		}
 	}
-	if err := imageLibraryExistingOutputConflict(cache, contentRoot, outputRoot, jsonPath, true); err != nil {
-		return err
-	}
-	return imageLibraryStaleOutputConflict(cache, contentRoot, pagePath, jsonPath)
+	return imageLibraryStaleOutputConflict(cache, contentRoot, pagePath, jsonPath, flatJSONPath)
 }
 
-func imageLibraryPostOutputConflict(m *lifecycle.Manager, outputDir, pagePath string) error {
+func imageLibraryPostOutputConflict(m *lifecycle.Manager, outputDir, pagePath, flatJSONPath string, exportJSON bool) error {
 	for _, post := range m.Posts() {
 		if post == nil || post.Skip || post.Draft {
 			continue
 		}
 		postOutput := filepath.Join(outputDir, post.Slug, "index.html")
-		if filepath.Clean(postOutput) == filepath.Clean(pagePath) {
+		if imageLibraryPathsOverlap(postOutput, pagePath) || (exportJSON && imageLibraryPathsOverlap(postOutput, flatJSONPath)) {
 			return fmt.Errorf("image library output conflicts with post %q at %s", post.Path, pagePath)
 		}
 	}
 	return nil
 }
 
-func imageLibraryFeedOutputConflict(m *lifecycle.Manager, outputDir, pagePath, jsonPath string, exportJSON bool) error {
+func imageLibraryFeedOutputConflict(m *lifecycle.Manager, outputDir, pagePath, jsonPath, flatJSONPath string, exportJSON bool) error {
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
 		if feedConfigs, ok := cached.([]models.FeedConfig); ok {
 			checker := NewOverwriteCheckPlugin()
 			for index := range feedConfigs {
 				for _, feedOutput := range checker.getFeedOutputPaths(outputDir, &feedConfigs[index]) {
-					if filepath.Clean(feedOutput) == filepath.Clean(pagePath) || (exportJSON && filepath.Clean(feedOutput) == filepath.Clean(jsonPath)) {
+					if filepath.Clean(feedOutput) == filepath.Clean(pagePath) || (exportJSON && (filepath.Clean(feedOutput) == filepath.Clean(jsonPath) || filepath.Clean(feedOutput) == filepath.Clean(flatJSONPath))) {
 						return fmt.Errorf("image library output conflicts with feed %q at %s", feedConfigs[index].Slug, feedOutput)
 					}
 				}
@@ -179,6 +186,10 @@ func imageLibraryStaticOutputConflict(assetsDir, pathPrefix string, exportJSON b
 		staticJSON := filepath.Join(assetsDir, filepath.FromSlash(pathPrefix), "index.json")
 		if imageLibraryPathExists(staticJSON) {
 			return fmt.Errorf("image library output conflicts with static file %s", staticJSON)
+		}
+		flatJSON := filepath.Join(assetsDir, "images.json")
+		if imageLibraryPathExists(flatJSON) {
+			return fmt.Errorf("image library output conflicts with static file %s", flatJSON)
 		}
 	}
 	return nil
@@ -200,7 +211,7 @@ func imageLibraryExistingOutputConflict(cache *buildcache.Cache, contentRoot, ou
 	return nil
 }
 
-func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *ImageLibraryConfig, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath string) error {
+func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *ImageLibraryConfig, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath, flatJSONPath string) error {
 	cache := GetBuildCache(m)
 	inputHash, err := p.imageLibraryInputHash(m, config, contentDir, assetsDir, pathPrefix)
 	if err != nil {
@@ -212,8 +223,8 @@ func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *Ima
 	if cache != nil {
 		previousContentRoot, previousRoot, previousOutputs = cache.GetImageLibraryOutputs()
 	}
-	if cache != nil && cache.GetImageLibraryHash() == inputHash && imageLibraryOutputsExist(pagePath, jsonPath, config.ShouldExportJSON()) {
-		outputHashes, err := imageLibraryOutputHashes(pagePath, jsonPath, config.ShouldExportJSON())
+	if cache != nil && cache.GetImageLibraryHash() == inputHash && imageLibraryOutputsExist(pagePath, jsonPath, flatJSONPath, config.ShouldExportJSON()) {
+		outputHashes, err := imageLibraryOutputHashes(pagePath, jsonPath, flatJSONPath, config.ShouldExportJSON())
 		if err != nil {
 			return fmt.Errorf("hash cached image library outputs: %w", err)
 		}
@@ -244,16 +255,19 @@ func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *Ima
 		if err := writeImageLibraryFile(outputFS, outputRoot, jsonPath, data); err != nil {
 			return fmt.Errorf("write image index: %w", err)
 		}
+		if err := writeImageLibraryFile(outputFS, outputRoot, flatJSONPath, data); err != nil {
+			return fmt.Errorf("write root image index: %w", err)
+		}
 	}
 
 	if err := p.renderPage(m, config, pathPrefix, index, outputFS, outputRoot, pagePath); err != nil {
 		return err
 	}
 	if cache != nil {
-		if err := removeStaleImageLibraryOutputs(previousContentRoot, previousRoot, previousOutputs, contentRoot, pagePath, jsonPath); err != nil {
+		if err := removeStaleImageLibraryOutputs(previousContentRoot, previousRoot, previousOutputs, contentRoot, pagePath, jsonPath, flatJSONPath); err != nil {
 			return fmt.Errorf("remove stale image library outputs: %w", err)
 		}
-		outputHashes, err := imageLibraryOutputHashes(pagePath, jsonPath, config.ShouldExportJSON())
+		outputHashes, err := imageLibraryOutputHashes(pagePath, jsonPath, flatJSONPath, config.ShouldExportJSON())
 		if err != nil {
 			return fmt.Errorf("hash image library outputs: %w", err)
 		}
@@ -498,6 +512,10 @@ func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config 
 		input.WriteByte('\x00')
 		input.WriteString(post.PlainTitle())
 		input.WriteByte('\x00')
+		if post.Date != nil {
+			input.WriteString(post.Date.UTC().Format(time.RFC3339Nano))
+		}
+		input.WriteByte('\x00')
 		input.WriteString(buildcache.ContentHash(strings.Join([]string{
 			post.InputHash,
 			post.Content,
@@ -566,7 +584,7 @@ func frontmatterImageHash(post *models.Post) string {
 	}
 	keys := make([]string, 0, len(post.Extra))
 	for key := range post.Extra {
-		for _, field := range []string{"image", "cover", "cover_image", "og_image", "social_image", "thumbnail", "featured_image", "hero_image", "avatar", "author_image", "image_alt", "cover_alt", "cover_image_alt", "alt"} {
+		for _, field := range []string{"image", "video", "cover", "cover_image", "og_image", "social_image", "thumbnail", "featured_image", "hero_image", "avatar", "author_image", "poster_image", "poster", "video_poster", "video_thumbnail", "thumb", "image_alt", "video_alt", "cover_alt", "cover_image_alt", "alt"} {
 			if key == field {
 				keys = append(keys, key)
 				break
@@ -586,24 +604,24 @@ func frontmatterImageHash(post *models.Post) string {
 
 func imageHashExtensions() []string {
 	return []string{
-		".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp",
-		".AVIF", ".BMP", ".GIF", ".HEIC", ".HEIF", ".ICO", ".JPEG", ".JPG", ".PNG", ".SVG", ".TIF", ".TIFF", ".WEBP",
+		".avif", ".avi", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".m4v", ".mkv", ".mov", ".mp4", ".ogv", ".ogg", ".png", ".svg", ".tif", ".tiff", ".webm", ".webp",
+		".AVIF", ".AVI", ".BMP", ".GIF", ".HEIC", ".HEIF", ".ICO", ".JPEG", ".JPG", ".M4V", ".MKV", ".MOV", ".MP4", ".OGV", ".OGG", ".PNG", ".SVG", ".TIF", ".TIFF", ".WEBM", ".WEBP",
 	}
 }
 
-// hashImageDirectory fingerprints regular image files while ignoring symbolic
-// links. Image discovery intentionally skips symlinks, so the cache hash must
-// not fail on a dangling or unreadable image link in content or assets.
+// hashImageDirectory fingerprints regular image and video files while ignoring
+// symbolic links. Media discovery intentionally skips symlinks, so the cache
+// hash must not fail on a dangling or unreadable media link in content or assets.
 func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash string, err error) {
 	extensionsByName := make(map[string]struct{}, len(extensions))
 	for _, extension := range extensions {
 		extensionsByName[extension] = struct{}{}
 	}
 	type imageFile struct {
-		path    string
-		content []byte
-		size    int64
-		modTime int64
+		path     string
+		fullPath string
+		size     int64
+		modTime  int64
 	}
 	files := make([]imageFile, 0, 32)
 	err = filepath.WalkDir(dir, func(path string, entry os.DirEntry, walkErr error) error {
@@ -613,7 +631,7 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 		if entry.Type()&os.ModeSymlink != 0 || entry.IsDir() {
 			return nil
 		}
-		if _, ok := extensionsByName[filepath.Ext(path)]; !ok {
+		if _, ok := extensionsByName[strings.ToLower(filepath.Ext(path))]; !ok {
 			return nil
 		}
 		info, infoErr := entry.Info()
@@ -623,19 +641,15 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		content, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
 		relative, relativeErr := filepath.Rel(dir, path)
 		if relativeErr != nil {
 			relative = path
 		}
 		files = append(files, imageFile{
-			path:    relative,
-			content: content,
-			size:    info.Size(),
-			modTime: info.ModTime().UnixNano(),
+			path:     relative,
+			fullPath: path,
+			size:     info.Size(),
+			modTime:  info.ModTime().UnixNano(),
 		})
 		return nil
 	})
@@ -651,7 +665,17 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 	stateHasher := sha256.New()
 	for _, file := range files {
 		contentHasher.Write([]byte(file.path))
-		contentHasher.Write(file.content)
+		media, err := os.Open(file.fullPath)
+		if err != nil {
+			return "", "", err
+		}
+		if _, err := io.Copy(contentHasher, media); err != nil {
+			_ = media.Close()
+			return "", "", fmt.Errorf("hash media file %s: %w", file.fullPath, err)
+		}
+		if err := media.Close(); err != nil {
+			return "", "", fmt.Errorf("close media file %s: %w", file.fullPath, err)
+		}
 		stateHasher.Write([]byte(file.path))
 		stateHasher.Write([]byte{0})
 		stateHasher.Write([]byte(strconv.FormatInt(file.size, 10)))
@@ -662,12 +686,12 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 	return hex.EncodeToString(contentHasher.Sum(nil)), hex.EncodeToString(stateHasher.Sum(nil)), nil
 }
 
-func imageLibraryOutputsExist(pagePath, jsonPath string, exportJSON bool) bool {
+func imageLibraryOutputsExist(pagePath, jsonPath, flatJSONPath string, exportJSON bool) bool {
 	if !isRegularImageLibraryFile(pagePath) {
 		return false
 	}
 	if exportJSON {
-		if !isRegularImageLibraryFile(jsonPath) {
+		if !isRegularImageLibraryFile(jsonPath) || !isRegularImageLibraryFile(flatJSONPath) {
 			return false
 		}
 	}
@@ -682,6 +706,22 @@ func isRegularImageLibraryFile(path string) bool {
 func imageLibraryPathExists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
+}
+
+func imageLibraryPathsOverlap(left, right string) bool {
+	left = filepath.Clean(left)
+	right = filepath.Clean(right)
+	if left == right {
+		return true
+	}
+	for _, pair := range [][2]string{{left, right}, {right, left}} {
+		relative, err := filepath.Rel(pair[1], pair[0])
+		if err != nil || relative == "." || relative == ".." || filepath.IsAbs(relative) || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func imageLibraryOwnsOutput(cache *buildcache.Cache, contentRoot, outputRoot, path string) bool {
@@ -700,10 +740,10 @@ func imageLibraryOutputMatches(cache *buildcache.Cache, contentRoot, outputRoot,
 	return err == nil && actual == expected
 }
 
-func imageLibraryOutputHashes(pagePath, jsonPath string, exportJSON bool) (map[string]string, error) {
+func imageLibraryOutputHashes(pagePath, jsonPath, flatJSONPath string, exportJSON bool) (map[string]string, error) {
 	paths := []string{pagePath}
 	if exportJSON {
-		paths = append(paths, jsonPath)
+		paths = append(paths, jsonPath, flatJSONPath)
 	}
 	hashes := make(map[string]string, len(paths))
 	for _, path := range paths {
@@ -719,7 +759,7 @@ func imageLibraryOutputHashes(pagePath, jsonPath string, exportJSON bool) (map[s
 	return hashes, nil
 }
 
-func imageLibraryStaleOutputConflict(cache *buildcache.Cache, contentRoot, pagePath, jsonPath string) error {
+func imageLibraryStaleOutputConflict(cache *buildcache.Cache, contentRoot, pagePath, jsonPath, flatJSONPath string) error {
 	if cache == nil {
 		return nil
 	}
@@ -743,9 +783,14 @@ func imageLibraryStaleOutputConflict(cache *buildcache.Cache, contentRoot, pageP
 	if err != nil {
 		return err
 	}
+	currentFlatJSON, err := filepath.Abs(flatJSONPath)
+	if err != nil {
+		return err
+	}
 	current := map[string]struct{}{
-		filepath.Clean(currentPage): {},
-		filepath.Clean(currentJSON): {},
+		filepath.Clean(currentPage):     {},
+		filepath.Clean(currentJSON):     {},
+		filepath.Clean(currentFlatJSON): {},
 	}
 	for relative, expected := range outputHashes {
 		path, err := imageLibraryOutputPath(previousRoot, relative)
@@ -791,7 +836,7 @@ func (p *ImageLibraryPlugin) renderPage(m *lifecycle.Manager, config *ImageLibra
 		page.JSONHref = "/" + strings.Trim(pathPrefix, "/") + "/index.json"
 	}
 	title := "Image Library"
-	description := "Browse the images used by this site."
+	description := "Browse the images and videos used by this site."
 	syntheticPost := &models.Post{Slug: pathPrefix, Href: "/" + pathPrefix + "/", Published: true, Extra: make(map[string]interface{})}
 	syntheticPost.Title = &title
 	syntheticPost.Description = &description
@@ -868,34 +913,46 @@ type ImageLibraryPage struct {
 
 // ImageCard contains the presentation-only values derived from one image.
 type ImageCard struct {
-	Src         string
-	PreviewSrc  string
-	Srcset      string
-	Name        string
-	Alt         string
-	MIMEType    string
-	Width       int
-	Height      int
-	AspectRatio string
-	AddedAt     string
-	AddedAtUnix int64
-	Markdown    string
-	SearchText  string
-	Cover       bool
-	Used        bool
-	Uses        []imageindex.Use
-	MoreUses    []imageindex.Use
-	MoreCount   int
-	UseCount    int
+	Src            string
+	PreviewSrc     string
+	PosterSrc      string
+	Srcset         string
+	Name           string
+	Alt            string
+	MIMEType       string
+	Width          int
+	Height         int
+	AspectRatio    string
+	AddedAt        string
+	AddedAtUnix    int64
+	LastUsedAt     string
+	LastUsedAtUnix int64
+	Markdown       string
+	SearchText     string
+	Cover          bool
+	Embed          bool
+	IsVideo        bool
+	Used           bool
+	Uses           []imageindex.Use
+	MoreUses       []imageindex.Use
+	MoreCount      int
+	UseCount       int
 }
 
 func newImageLibraryPage(index imageindex.Index) ImageLibraryPage {
 	page := ImageLibraryPage{Images: make([]ImageCard, 0, len(index.Images)), Count: len(index.Images)}
-	for _, image := range index.Images {
+	for i := range index.Images {
+		image := &index.Images[i]
+		isVideo := imageIsVideo(*image)
+		srcset := ""
+		if !isVideo {
+			srcset = imageSrcset(image.Src)
+		}
 		card := ImageCard{
 			Src:         image.Src,
 			PreviewSrc:  imagePreviewURL(image.Src),
-			Srcset:      imageSrcset(image.Src),
+			PosterSrc:   imagePosterURL(*image, isVideo),
+			Srcset:      srcset,
 			Name:        imageName(image.Src),
 			Alt:         image.Alt,
 			MIMEType:    image.MIMEType,
@@ -903,14 +960,20 @@ func newImageLibraryPage(index imageindex.Index) ImageLibraryPage {
 			Height:      image.Height,
 			AspectRatio: imageAspectRatio(image.Width, image.Height),
 			Markdown:    markdownForImage(image.Src, image.Alt),
-			SearchText:  imageSearchText(image),
+			SearchText:  imageSearchText(*image),
 			Cover:       image.Cover,
+			Embed:       image.Embed,
+			IsVideo:     isVideo,
 			Used:        len(image.Uses) > 0,
 			UseCount:    len(image.Uses),
 		}
 		if image.AddedAt != nil {
 			card.AddedAt = image.AddedAt.UTC().Format("Jan 2, 2006")
 			card.AddedAtUnix = image.AddedAt.Unix()
+		}
+		if image.LastUsedAt != nil {
+			card.LastUsedAt = image.LastUsedAt.UTC().Format("Jan 2, 2006")
+			card.LastUsedAtUnix = image.LastUsedAt.Unix()
 		}
 		if len(image.Uses) > 3 {
 			card.Uses = append([]imageindex.Use(nil), image.Uses[:3]...)
@@ -940,7 +1003,28 @@ func imagePreviewURL(src string) string {
 	return templates.WithSize(src, 640, 0)
 }
 
+func imageIsVideo(image imageindex.Image) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(image.MIMEType)), "video/") || templates.IsVideoURL(image.Src)
+}
+
+func imagePosterURL(image imageindex.Image, isVideo bool) string {
+	if !isVideo {
+		return ""
+	}
+	poster := strings.TrimSpace(image.PosterSrc)
+	if poster == "" {
+		poster = templates.PosterURLFromMap(map[string]interface{}{}, image.Src)
+	}
+	if poster == "" {
+		return ""
+	}
+	return templates.WithSize(poster, 640, 0)
+}
+
 func imageSrcset(src string) string {
+	if templates.IsVideoURL(src) {
+		return ""
+	}
 	parsed, err := url.Parse(src)
 	if err != nil || parsed.Host == "" || !templates.IsTrustedMediaURL(src) {
 		return ""
@@ -979,6 +1063,12 @@ func markdownForImage(src, alt string) string {
 
 func imageSearchText(image imageindex.Image) string {
 	values := []string{image.Src, image.Alt}
+	if imageIsVideo(image) {
+		values = append(values, "video")
+	}
+	if image.Embed {
+		values = append(values, "embed")
+	}
 	for _, use := range image.Uses {
 		values = append(values, use.Post, use.Href, use.Title)
 	}
@@ -1138,7 +1228,7 @@ func imageLibraryValidateOutputPath(outputRoot, path string) error {
 	return validateOutputPath(outputRoot, path)
 }
 
-func removeStaleImageLibraryOutputs(previousContentRoot, previousRoot string, previous map[string]string, contentRoot, pagePath, jsonPath string) error {
+func removeStaleImageLibraryOutputs(previousContentRoot, previousRoot string, previous map[string]string, contentRoot, pagePath, jsonPath, flatJSONPath string) error {
 	activeContentRoot, err := filepath.Abs(contentRoot)
 	if err != nil {
 		return err
@@ -1169,9 +1259,14 @@ func removeStaleImageLibraryOutputs(previousContentRoot, previousRoot string, pr
 	if err != nil {
 		return err
 	}
+	currentFlatJSON, err := filepath.Abs(flatJSONPath)
+	if err != nil {
+		return err
+	}
 	current := map[string]struct{}{
-		filepath.Clean(currentPage): {},
-		filepath.Clean(currentJSON): {},
+		filepath.Clean(currentPage):     {},
+		filepath.Clean(currentJSON):     {},
+		filepath.Clean(currentFlatJSON): {},
 	}
 	for relative, expected := range previous {
 		path, err := imageLibraryOutputPath(previousRoot, relative)

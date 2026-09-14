@@ -32,7 +32,7 @@ type BuildOptions struct {
 	IncludeUnreferenced bool
 }
 
-// Build discovers public image references and local asset files.
+// Build discovers public media references and local asset files.
 func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 	contentDir := options.ContentDir
 	if contentDir == "" {
@@ -69,15 +69,15 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 			continue
 		}
 		for _, reference := range extractMarkdownImages(post.Content) {
-			catalog.addReference(reference.src, reference.alt, post, false)
+			catalog.addReference(reference, post, false)
 		}
-		for _, reference := range extractHTMLImages(post.ArticleHTML) {
-			catalog.addReference(reference.src, reference.alt, post, false)
+		for _, reference := range extractHTMLMedia(post.ArticleHTML) {
+			catalog.addReference(reference, post, false)
 		}
 		// This fallback covers direct callers that have not run Render yet and
-		// raw HTML that Goldmark represents as an HTML node.
-		for _, reference := range extractHTMLImages(post.Content) {
-			catalog.addReference(reference.src, reference.alt, post, false)
+		// raw HTML or video elements that Goldmark represents as HTML nodes.
+		for _, reference := range extractHTMLMedia(post.Content) {
+			catalog.addReference(reference, post, false)
 		}
 		catalog.addFrontmatterImages(post)
 	}
@@ -92,8 +92,12 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 }
 
 type imageReference struct {
-	src string
-	alt string
+	src      string
+	alt      string
+	poster   string
+	mimeType string
+	embed    bool
+	video    bool
 }
 
 type catalog struct {
@@ -105,10 +109,11 @@ type catalog struct {
 }
 
 type catalogImage struct {
-	image   Image
-	local   string
-	altRank int
-	uses    map[string]Use
+	image      Image
+	local      string
+	altRank    int
+	posterRank int
+	uses       map[string]Use
 }
 
 func newCatalog(contentDir, assetsDir string) *catalog {
@@ -126,7 +131,7 @@ func (c *catalog) scanAssets() error {
 		if err != nil {
 			return err
 		}
-		if entry.Type()&os.ModeSymlink != 0 || entry.IsDir() || !isImagePath(path) {
+		if entry.Type()&os.ModeSymlink != 0 || entry.IsDir() || !isMediaPath(path) {
 			return nil
 		}
 
@@ -154,8 +159,8 @@ func (c *catalog) scanAssets() error {
 	return nil
 }
 
-func (c *catalog) addReference(rawSrc, alt string, post *models.Post, cover bool) {
-	rawSrc = strings.TrimSpace(rawSrc)
+func (c *catalog) addReference(reference imageReference, post *models.Post, cover bool) {
+	rawSrc := strings.TrimSpace(reference.src)
 	if rawSrc == "" || ignoredSource(rawSrc) {
 		return
 	}
@@ -183,28 +188,53 @@ func (c *catalog) addReference(rawSrc, alt string, post *models.Post, cover bool
 				imageRecord.image.Height = height
 			}
 		}
-		if imageRecord.image.MIMEType == "" {
-			imageRecord.image.MIMEType = mimeType(rawSrc)
+	}
+
+	if imageRecord.image.MIMEType == "" {
+		imageRecord.image.MIMEType = strings.TrimSpace(reference.mimeType)
+	}
+	if imageRecord.image.MIMEType == "" {
+		imageRecord.image.MIMEType = mimeType(rawSrc)
+	}
+	if reference.video || isVideoSource(rawSrc, reference.mimeType) || strings.HasPrefix(strings.ToLower(imageRecord.image.MIMEType), "video/") {
+		if poster, rank := videoPoster(reference, post, rawSrc); poster != "" && rank > imageRecord.posterRank {
+			imageRecord.image.PosterSrc = poster
+			imageRecord.posterRank = rank
 		}
 	}
 
-	if alt == "" {
-		alt = fallbackAlt(rawSrc)
-		c.setAlt(imageRecord, alt, 1)
+	if reference.alt == "" {
+		c.setAlt(imageRecord, fallbackAlt(rawSrc), 1)
 	} else {
-		c.setAlt(imageRecord, alt, 2)
+		c.setAlt(imageRecord, reference.alt, 2)
 	}
-	c.addUse(imageRecord, post, cover)
+	c.addUse(imageRecord, post, cover, reference.embed)
+}
+
+func isVideoSource(rawSrc, declaredMIME string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(declaredMIME)), "video/") || templates.IsVideoURL(rawSrc)
+}
+
+func videoPoster(reference imageReference, post *models.Post, mediaURL string) (poster string, rank int) {
+	if post != nil && post.Extra != nil {
+		if poster := templates.PosterURLFromMap(post.Extra, ""); poster != "" {
+			return poster, 3
+		}
+	}
+	if strings.TrimSpace(reference.poster) != "" {
+		return templates.PosterURLFromMap(map[string]interface{}{"poster": reference.poster}, ""), 2
+	}
+	return templates.PosterURLFromMap(map[string]interface{}{}, mediaURL), 1
 }
 
 func (c *catalog) markPrivatePost(post *models.Post) {
 	for _, reference := range extractMarkdownImages(post.Content) {
 		c.markPrivateSource(reference.src, post)
 	}
-	for _, reference := range extractHTMLImages(post.ArticleHTML) {
+	for _, reference := range extractHTMLMedia(post.ArticleHTML) {
 		c.markPrivateSource(reference.src, post)
 	}
-	for _, reference := range extractHTMLImages(post.Content) {
+	for _, reference := range extractHTMLMedia(post.Content) {
 		c.markPrivateSource(reference.src, post)
 	}
 	if post.Extra == nil {
@@ -265,7 +295,7 @@ func (c *catalog) addFrontmatterImages(post *models.Post) {
 			coverFound = true
 		}
 		alt := frontmatterAlt(post.Extra, field.altKeys...)
-		c.addReference(src, alt, post, isCover)
+		c.addReference(imageReference{src: src, alt: alt}, post, isCover)
 	}
 }
 
@@ -278,7 +308,8 @@ type frontmatterImageField struct {
 var frontmatterImageFields = []frontmatterImageField{
 	{name: "cover", cover: true, altKeys: []string{"cover_alt", "image_alt", "alt"}},
 	{name: "cover_image", cover: true, altKeys: []string{"cover_image_alt", "cover_alt", "image_alt", "alt"}},
-	{name: "image", altKeys: []string{"image_alt", "alt"}},
+	{name: "image", cover: true, altKeys: []string{"image_alt", "alt"}},
+	{name: "video", cover: true, altKeys: []string{"video_alt", "image_alt", "alt"}},
 	{name: "og_image", altKeys: []string{"og_image_alt", "image_alt", "alt"}},
 	{name: "social_image", altKeys: []string{"social_image_alt", "image_alt", "alt"}},
 	{name: "thumbnail", altKeys: []string{"thumbnail_alt", "image_alt", "alt"}},
@@ -379,9 +410,15 @@ func (c *catalog) setAlt(imageRecord *catalogImage, alt string, rank int) {
 	imageRecord.altRank = rank
 }
 
-func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover bool) {
+func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, embed bool) {
 	if imageRecord == nil || post == nil {
 		return
+	}
+	if post.Date != nil {
+		lastUsedAt := post.Date.UTC()
+		if imageRecord.image.LastUsedAt == nil || imageRecord.image.LastUsedAt.Before(lastUsedAt) {
+			imageRecord.image.LastUsedAt = &lastUsedAt
+		}
 	}
 	href := strings.TrimSpace(post.Href)
 	if href == "" && post.Slug != "" {
@@ -395,10 +432,11 @@ func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover boo
 	if title == "" {
 		title = post.Slug
 	}
-	use := Use{Post: postPath, Href: href, Title: title, Cover: cover}
+	use := Use{Post: postPath, Href: href, Title: title, Cover: cover, Embed: embed}
 	key := postPath + "\x00" + href
 	if existing, ok := imageRecord.uses[key]; ok {
 		existing.Cover = existing.Cover || cover
+		existing.Embed = existing.Embed || embed
 		if existing.Title == "" {
 			existing.Title = title
 		}
@@ -408,6 +446,9 @@ func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover boo
 	}
 	if cover {
 		imageRecord.image.Cover = true
+	}
+	if embed {
+		imageRecord.image.Embed = true
 	}
 }
 
@@ -440,7 +481,7 @@ func (c *catalog) resolveLocalPath(rawSrc string, post *models.Post) string {
 			continue
 		}
 		info, err := os.Lstat(candidate)
-		if err == nil && info.Mode().IsRegular() && isImagePath(candidate) {
+		if err == nil && info.Mode().IsRegular() && isMediaPath(candidate) {
 			return candidate
 		}
 	}
@@ -582,7 +623,7 @@ func ignoredSource(rawSrc string) bool {
 }
 
 func isImagePath(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
+	ext := mediaExtension(path)
 	switch ext {
 	case ".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp":
 		return true
@@ -591,8 +632,15 @@ func isImagePath(path string) bool {
 	}
 }
 
+func isMediaPath(path string) bool {
+	return isImagePath(path) || templates.IsVideoURL(path)
+}
+
 func mimeType(path string) string {
-	switch strings.ToLower(filepath.Ext(path)) {
+	if video := templates.VideoMIMEType(path); video != "" {
+		return video
+	}
+	switch mediaExtension(path) {
 	case ".avif":
 		return "image/avif"
 	case ".bmp":
@@ -618,6 +666,14 @@ func mimeType(path string) string {
 	default:
 		return ""
 	}
+}
+
+func mediaExtension(path string) string {
+	u, err := url.Parse(path)
+	if err == nil && u.Path != "" {
+		return strings.ToLower(filepath.Ext(u.Path))
+	}
+	return strings.ToLower(filepath.Ext(path))
 }
 
 func dimensions(path string) (width, height int) {
@@ -680,7 +736,7 @@ func inlineText(node ast.Node, source []byte) string {
 	return strings.Join(strings.Fields(result.String()), " ")
 }
 
-func extractHTMLImages(source string) []imageReference {
+func extractHTMLMedia(source string) []imageReference {
 	if strings.TrimSpace(source) == "" {
 		return nil
 	}
@@ -688,21 +744,53 @@ func extractHTMLImages(source string) []imageReference {
 	if err != nil {
 		return nil
 	}
-	result := make([]imageReference, 0, 2)
+	result := make([]imageReference, 0, 4)
 	var walk func(*html.Node)
 	walk = func(node *html.Node) {
-		if node.Type == html.ElementNode && strings.EqualFold(node.Data, "img") {
-			var src, alt string
-			for _, attribute := range node.Attr {
-				switch strings.ToLower(attribute.Key) {
-				case "src":
-					src = attribute.Val
-				case "alt":
-					alt = attribute.Val
+		if node.Type == html.ElementNode {
+			switch strings.ToLower(node.Data) {
+			case "img":
+				src := htmlAttribute(node, "src")
+				if strings.TrimSpace(src) != "" {
+					video := isVideoSource(src, "")
+					result = append(result, imageReference{
+						src:   src,
+						alt:   htmlMediaAlt(node),
+						video: video,
+						embed: htmlNodeIsEmbed(node),
+					})
 				}
-			}
-			if strings.TrimSpace(src) != "" {
-				result = append(result, imageReference{src: src, alt: strings.TrimSpace(alt)})
+			case "video":
+				src := htmlAttribute(node, "src")
+				if strings.TrimSpace(src) != "" {
+					result = append(result, imageReference{
+						src:      src,
+						alt:      htmlMediaAlt(node),
+						poster:   htmlAttribute(node, "poster"),
+						mimeType: htmlAttribute(node, "type"),
+						video:    true,
+						embed:    htmlNodeIsEmbed(node),
+					})
+				}
+			case "source":
+				videoNode := nearestVideoAncestor(node)
+				if videoNode != nil {
+					src := htmlAttribute(node, "src")
+					if strings.TrimSpace(src) != "" {
+						mime := htmlAttribute(node, "type")
+						if mime == "" {
+							mime = htmlAttribute(videoNode, "type")
+						}
+						result = append(result, imageReference{
+							src:      src,
+							alt:      htmlMediaAlt(videoNode),
+							poster:   htmlAttribute(videoNode, "poster"),
+							mimeType: mime,
+							video:    true,
+							embed:    htmlNodeIsEmbed(node),
+						})
+					}
+				}
 			}
 		}
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
@@ -711,6 +799,53 @@ func extractHTMLImages(source string) []imageReference {
 	}
 	walk(document)
 	return result
+}
+
+func htmlAttribute(node *html.Node, key string) string {
+	if node == nil {
+		return ""
+	}
+	for _, attribute := range node.Attr {
+		if strings.EqualFold(attribute.Key, key) {
+			return strings.TrimSpace(attribute.Val)
+		}
+	}
+	return ""
+}
+
+func htmlMediaAlt(node *html.Node) string {
+	for _, key := range []string{"alt", "aria-label", "title"} {
+		if value := htmlAttribute(node, key); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func nearestVideoAncestor(node *html.Node) *html.Node {
+	for parent := node.Parent; parent != nil; parent = parent.Parent {
+		if parent.Type == html.ElementNode && strings.EqualFold(parent.Data, "video") {
+			return parent
+		}
+	}
+	return nil
+}
+
+func htmlNodeIsEmbed(node *html.Node) bool {
+	for current := node; current != nil; current = current.Parent {
+		if current.Type != html.ElementNode {
+			continue
+		}
+		for _, attribute := range current.Attr {
+			if strings.EqualFold(attribute.Key, "data-markata-embed") {
+				value := strings.ToLower(strings.TrimSpace(attribute.Val))
+				if value == "true" || value == "external" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func fallbackAlt(rawSrc string) string {

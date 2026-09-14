@@ -3090,11 +3090,11 @@ type ImagesConfig struct {
 	// Template is the template used for the authoring page.
 	Template string `json:"template,omitempty" yaml:"template,omitempty" toml:"template,omitempty"`
 
-	// ExportJSON controls whether path/index.json is written.
+	// ExportJSON controls whether path/index.json and output_dir/images.json are written.
 	ExportJSON *bool `json:"export_json,omitempty" yaml:"export_json,omitempty" toml:"export_json,omitempty"`
 
-	// IncludeUnreferenced includes image files found in the static asset directory
-	// even when no public post references them.
+	// IncludeUnreferenced includes image and video files found in the static asset
+	// directory even when no public post references them.
 	IncludeUnreferenced *bool `json:"include_unreferenced,omitempty" yaml:"include_unreferenced,omitempty" toml:"include_unreferenced,omitempty"`
 }
 

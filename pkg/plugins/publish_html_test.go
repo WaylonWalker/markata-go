@@ -178,6 +178,34 @@ func TestSafeOutputPath(t *testing.T) {
 	}
 }
 
+func TestPublishHTMLPlugin_WritesExplicitHomepageAtOutputRoot(t *testing.T) {
+	outputDir := t.TempDir()
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra:     make(map[string]interface{}),
+	}
+	post := &models.Post{
+		Path:        "pages/post/index.md",
+		Slug:        "",
+		HTML:        "<html><body>Homepage</body></html>",
+		ArticleHTML: "<p>Homepage</p>",
+		Published:   true,
+	}
+	post.Set("_slug_explicit", true)
+
+	if err := NewPublishHTMLPlugin().writePost(post, config, nil, createTestManager(t, config)); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(outputDir, "index.html"))
+	if err != nil {
+		t.Fatalf("read homepage output: %v", err)
+	}
+	if string(content) != post.HTML {
+		t.Fatalf("homepage output = %q, want %q", content, post.HTML)
+	}
+}
+
 // TestPublishHTMLPlugin_OGCardCanonicalURL tests that OG cards include canonical URL and robots meta.
 func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 	tempDir := t.TempDir()

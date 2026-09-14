@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -105,6 +106,144 @@ func TestBuild_OnlyReferencedImagesWhenUnreferencedDisabled(t *testing.T) {
 	}
 	if index.ImageCount != 1 || index.Images[0].Src != "https://example.test/remote.jpg" {
 		t.Fatalf("Build() = %#v", index.Images)
+	}
+}
+
+func TestBuild_ScansUnreferencedVideoAssets(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static", "videos")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	videoPath := filepath.Join(assets, "clip.mp4")
+	if err := os.WriteFile(videoPath, []byte("test video"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	index, err := Build(nil, BuildOptions{
+		ContentDir:          root,
+		AssetsDir:           filepath.Join(root, "static"),
+		IncludeUnreferenced: true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	video := imageBySrc(t, index, "/videos/clip.mp4")
+	if video.MIMEType != "video/mp4" || video.Cover || len(video.Uses) != 0 {
+		t.Fatalf("unreferenced video = %#v", video)
+	}
+}
+
+func TestBuild_ClassifiesCoversEmbedsAndVideos(t *testing.T) {
+	root := t.TempDir()
+	post := models.NewPost(filepath.Join(root, "posts", "media.md"))
+	post.Path = "posts/media.md"
+	post.Slug = "media"
+	post.Href = "/media/"
+	post.Published = true
+	post.Title = stringPointer("Media")
+	postDate := time.Date(2026, time.January, 15, 12, 0, 0, 0, time.FixedZone("test", 2*60*60))
+	post.Date = &postDate
+	post.Extra["image"] = "https://dropper.wayl.one/file/clip.mp4?token=keep"
+	post.Extra["poster_image"] = "http://dropper.wayl.one/file/clip.webp"
+	post.Content = `![Inline video](https://dropper.wayl.one/file/inline.mp4)
+
+<div class="custom-external-card" data-markata-embed="true"><img src="https://example.test/og-image.jpg" alt="External OG image"></div>`
+	post.ArticleHTML = `<video poster="https://dropper.wayl.one/file/body.webp"><source src="https://dropper.wayl.one/file/body.webm" type="video/webm"></video>`
+
+	index, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if index.ImageCount != 4 {
+		t.Fatalf("ImageCount = %d, want 4 (%#v)", index.ImageCount, index.Images)
+	}
+
+	coverVideo := imageBySrc(t, index, "https://dropper.wayl.one/file/clip.mp4?token=keep")
+	if coverVideo.MIMEType != "video/mp4" || !coverVideo.Cover || coverVideo.PosterSrc != "https://dropper.wayl.one/file/clip.webp" || coverVideo.LastUsedAt == nil || !coverVideo.LastUsedAt.Equal(postDate.UTC()) {
+		t.Fatalf("frontmatter video = %#v", coverVideo)
+	}
+	if len(coverVideo.Uses) != 1 || !coverVideo.Uses[0].Cover || coverVideo.Uses[0].Embed {
+		t.Fatalf("frontmatter video uses = %#v", coverVideo.Uses)
+	}
+
+	bodyVideo := imageBySrc(t, index, "https://dropper.wayl.one/file/body.webm")
+	if bodyVideo.MIMEType != "video/webm" || bodyVideo.PosterSrc != "https://dropper.wayl.one/file/clip.webp" {
+		t.Fatalf("HTML video = %#v", bodyVideo)
+	}
+
+	inlineVideo := imageBySrc(t, index, "https://dropper.wayl.one/file/inline.mp4")
+	if inlineVideo.MIMEType != "video/mp4" || inlineVideo.PosterSrc != "https://dropper.wayl.one/file/clip.webp" {
+		t.Fatalf("Markdown video = %#v", inlineVideo)
+	}
+
+	embedImage := imageBySrc(t, index, "https://example.test/og-image.jpg")
+	if !embedImage.Embed || embedImage.Cover || len(embedImage.Uses) != 1 || !embedImage.Uses[0].Embed {
+		t.Fatalf("embedded OG image = %#v", embedImage)
+	}
+}
+
+func TestBuild_DoesNotMarkInternalEmbedMediaAsExternal(t *testing.T) {
+	post := models.NewPost("posts/internal.md")
+	post.Path = "posts/internal.md"
+	post.Slug = "internal"
+	post.Href = "/internal/"
+	post.Published = true
+	post.Content = `<div class="embed-card"><img src="https://example.test/internal.jpg" alt="Internal image"></div>`
+
+	index, err := Build([]*models.Post{post}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	image := imageBySrc(t, index, "https://example.test/internal.jpg")
+	if image.Embed || len(image.Uses) != 1 || image.Uses[0].Embed {
+		t.Fatalf("internal embed media = %#v", image)
+	}
+}
+
+func TestBuild_ClassifiesDirectHTMLVideoWithPoster(t *testing.T) {
+	post := models.NewPost("posts/direct-video.md")
+	post.Path = "posts/direct-video.md"
+	post.Slug = "direct-video"
+	post.Href = "/direct-video/"
+	post.Published = true
+	post.ArticleHTML = `<video src="https://example.test/direct.mp4" type="video/mp4" poster="https://example.test/direct-poster.jpg"></video>`
+
+	index, err := Build([]*models.Post{post}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	video := imageBySrc(t, index, "https://example.test/direct.mp4")
+	if video.MIMEType != "video/mp4" || video.PosterSrc != "https://example.test/direct-poster.jpg" {
+		t.Fatalf("direct HTML video = %#v", video)
+	}
+}
+
+func TestBuild_TracksLatestPublicUse(t *testing.T) {
+	olderDate := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	newerDate := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
+	older := models.NewPost("posts/older.md")
+	older.Path = "posts/older.md"
+	older.Slug = "older"
+	older.Href = "/older/"
+	older.Published = true
+	older.Date = &olderDate
+	older.Content = "![Shared](https://example.test/shared.jpg)"
+	newer := models.NewPost("posts/newer.md")
+	newer.Path = "posts/newer.md"
+	newer.Slug = "newer"
+	newer.Href = "/newer/"
+	newer.Published = true
+	newer.Date = &newerDate
+	newer.Content = "![Shared](https://example.test/shared.jpg)"
+
+	index, err := Build([]*models.Post{older, newer}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	shared := imageBySrc(t, index, "https://example.test/shared.jpg")
+	if shared.LastUsedAt == nil || !shared.LastUsedAt.Equal(newerDate) {
+		t.Fatalf("latest use = %#v, want %s", shared.LastUsedAt, newerDate.Format(time.RFC3339))
 	}
 }
 
@@ -219,9 +358,10 @@ func imageBySrc(t *testing.T, index Index, src string) Image {
 }
 
 func findImage(index Index, src string) (Image, bool) {
-	for _, image := range index.Images {
+	for i := range index.Images {
+		image := &index.Images[i]
 		if image.Src == src {
-			return image, true
+			return *image, true
 		}
 	}
 	return Image{}, false

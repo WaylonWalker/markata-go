@@ -103,6 +103,10 @@ plugin renders its page:
 - `image_index` — the canonical image inventory
 - `image_library_config` — the resolved `[markata-go.images]` settings
 
+Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` alongside the
+regular image fields. Render video cards with a `<video>` element and a nested
+`<source>` element; use `poster_src` when it is non-empty.
+
 Keep `image_index` sources canonical in copy actions. Trusted Dropper derivatives
 are for previews only. Override `images.html` in the site's `templates/`
 directory when the default authoring page needs a different layout.

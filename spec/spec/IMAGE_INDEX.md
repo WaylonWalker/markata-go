@@ -1,28 +1,37 @@
 # Markata Image Index and Library Specification
 
-The image library is a build-time inventory of images that a public Markata
-site can use. It provides an authoring page at `/images/` and a stable JSON
-artifact at `/images/index.json`. Markdown and frontmatter remain the source
-of truth; the index contains derived metadata only.
+The image library is a build-time inventory of images and referenced videos
+that a public Markata site can use. It provides an authoring page at `/images/`,
+a stable JSON artifact at `/images/index.json`, and a root-level copy at
+`/images.json` for tools that discover site data without knowing the page path.
+Markdown and frontmatter remain the source of truth; the index contains derived
+metadata only.
 
 ## Scope
 
 The image library MUST:
 
-- discover image files in the configured static asset directory;
+- discover image and video files in the configured static asset directory;
 - discover images in supported Markdown image syntax through the Goldmark AST;
 - discover images emitted by supported raw HTML image elements through an HTML
   parser, not Markdown regular expressions;
-- discover image-valued post frontmatter, including `image`, `cover`,
-  `cover_image`, `og_image`, `social_image`, `thumbnail`, `featured_image`,
-  `hero_image`, `avatar`, and `author_image`;
+- discover referenced HTML video elements and video sources without treating
+  them as image elements;
+- discover media-valued post frontmatter, including `image`, `cover`,
+  `cover_image`, `video`, `og_image`, `social_image`, `thumbnail`,
+  `featured_image`, `hero_image`, `avatar`, and `author_image`;
 - exclude skipped, draft, private, and unpublished posts from public usage
   relationships;
-- omit a local static image when its only discovered post references are from
+- omit a local static media file when its only discovered post references are from
   private posts;
 - deduplicate an image within a post while retaining whether any usage is a
   cover usage;
 - preserve the canonical source URL in the index and in copy actions;
+- write the same canonical JSON bytes to `path/index.json` and
+  `output_dir/images.json` when JSON export is enabled;
+- identify video sources by their MIME type or supported video extension and
+  retain a poster source when one is available;
+- mark images emitted inside external embed cards with `embed: true`;
 - use trusted Dropper derivatives only for presentation URLs;
 - avoid network requests while building the index; and
 - produce deterministic output for the same source tree.
@@ -52,6 +61,7 @@ The JSON artifact uses the following top-level shape:
       "alt": "keyboard",
       "mime_type": "image/webp",
       "added_at": "2026-01-15T12:00:00Z",
+      "last_used_at": "2026-01-15T12:00:00Z",
       "cover": true,
       "uses": [
         {
@@ -67,13 +77,20 @@ The JSON artifact uses the following top-level shape:
 ```
 
 `src`, `width`, `height`, `alt`, `mime_type`, `cover`, and `uses` are stable
-fields. Unknown fields MUST be ignored by readers. A dimension of `0` means
-that the source dimensions are not available locally. `added_at` is emitted
-for local files from their filesystem modification time and is omitted for
-remote-only references.
+fields. `poster_src` is the canonical poster source for a video, when one is
+available. `last_used_at` is the latest publication date of a public post that
+uses the source. It is omitted when no public use has a publication date.
+`embed` identifies an image emitted by an external embed card;
+`uses[].embed` identifies the corresponding post relationship. Unknown fields
+MUST be ignored by readers. These four media fields are optional and omitted
+when empty or false. A dimension of `0` means that the source dimensions are
+not available locally. `added_at` is emitted for local files from their
+filesystem modification time and is omitted for remote-only references.
 
-Images are sorted by `src`. Uses are sorted by post path, then href. JSON is
-encoded with fixed struct field order and no insignificant whitespace.
+Images are sorted by `src`. Uses are sorted by post path, then href. Consumers
+that need recency MUST sort by `last_used_at` descending, place missing values
+last, and use `src` ascending as the deterministic tie-breaker. JSON is encoded
+with fixed struct field order and no insignificant whitespace.
 
 The `cover` field on an image is true when at least one use marks it as a
 cover. A repeated body reference does not create a repeated use. If a post
@@ -108,16 +125,24 @@ canonical `src` MUST NOT be replaced by a derivative URL.
 
 ## Frontmatter and Markdown
 
-The effective cover convention is `cover` first, then `cover_image`. If both
-are present, both images may be inventoried, but only the first non-empty value
-is marked as the cover. Other supported image frontmatter is inventoried as a
-non-cover relationship.
+The effective cover convention is `cover` first, then `cover_image`, then
+`image`, then `video`. If multiple fields are present, all values may be
+inventoried, but only the first non-empty cover field is marked as the cover.
+This makes the common `image` frontmatter field a cover fallback. Other
+supported media frontmatter is inventoried as a non-cover relationship.
 
 Body images MUST be extracted from a Goldmark AST using the site's supported
 image syntax. Inline attributes and figure captions MUST not prevent image
 discovery. Raw HTML `<img>` elements MAY be used as a fallback for content
-that Goldmark represents as raw HTML. Obsidian attachment embeds are discovered
-after `EmbedsPlugin` has transformed them into standard Markdown.
+that Goldmark represents as raw HTML. Referenced `<video>` and `<source>`
+elements MUST be inventoried as video media, not image media. Obsidian
+attachment embeds are discovered after `EmbedsPlugin` has transformed them
+into standard Markdown.
+
+External embed cards MUST expose `data-markata-embed="true"` on their generated
+HTML so the library can label their OG images as embeds without fetching remote
+pages. An image used by both an embed and ordinary content remains one
+canonical record and is marked as an embed if any public use is an embed.
 
 Alt text uses authored Markdown or frontmatter alt metadata when available.
 When no authored alt text exists, the library derives a readable fallback from
@@ -138,9 +163,10 @@ include_unreferenced = true
 ```
 
 `path` is a relative output directory and defaults to `images`. The HTML page
-is written to `path/index.html`; the JSON artifact is written to
-`path/index.json`. `template` defaults to `images.html`. Relative paths MUST
-stay inside `output_dir`.
+is written to `path/index.html`; when `export_json` is enabled, identical JSON
+artifacts are written to `path/index.json` and `output_dir/images.json`.
+`template` defaults to `images.html`. Relative paths MUST stay inside
+`output_dir`.
 
 ## Authoring page
 
@@ -153,8 +179,11 @@ The default page MUST:
 - provide a sticky, mobile-friendly toolbar;
 - provide client-side search over filename, path, alt text, and post titles;
 - provide `All`, `Used`, `Unused`, `Cover`, and `Recently added` views;
-- provide deterministic sorting controls;
+- provide deterministic sorting controls, including `Latest used`;
 - show up to three usage links inline and a compact `+N more` disclosure;
+- render video sources with a `<video>` element, a `<source>` element, and a
+  poster when available;
+- label external embed images and video sources with an `Embed` badge;
 - provide Copy Markdown and Copy URL actions using the canonical `src`;
 - provide visible success and failure feedback for copy actions;
 - expose labels, focus states, and accessible names for all controls; and
@@ -167,10 +196,11 @@ filtering, sorting, usage expansion, and copy feedback.
 ## Incremental builds
 
 The image index writer MUST compute an aggregate input hash from image-related
-configuration, eligible post input hashes, and the configured asset image
-files. When the hash matches the cached value and both generated outputs
-exist, it MUST skip reparsing posts and rewriting the artifacts. A changed,
-added, removed, or renamed image MUST invalidate the aggregate output.
+configuration, eligible post input hashes and publication dates, and the
+configured asset image and video files. When the hash matches the cached value
+and all enabled generated outputs exist, it MUST skip reparsing posts and
+rewriting the artifacts. A changed, added, removed, or renamed media file, or
+a changed public post publication date, MUST invalidate the aggregate output.
 
 The cache field is an optimization only. A missing output file MUST force a
 rewrite even when the cached hash matches.

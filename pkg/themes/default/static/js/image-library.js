@@ -33,6 +33,10 @@
       return text(card.getAttribute("data-search")).indexOf(query) !== -1;
     }
 
+    function compareNames(left, right) {
+      return text(left.getAttribute("data-name")).localeCompare(text(right.getAttribute("data-name"))) || text(left.getAttribute("data-src")).localeCompare(text(right.getAttribute("data-src")));
+    }
+
     function filterMatches(card) {
       if (activeFilter === "used") return card.getAttribute("data-used") === "true";
       if (activeFilter === "unused") return card.getAttribute("data-used") !== "true";
@@ -48,14 +52,19 @@
       if (mode === "recent") {
         leftValue = Number(left.getAttribute("data-added") || 0);
         rightValue = Number(right.getAttribute("data-added") || 0);
-        return rightValue - leftValue || text(left.getAttribute("data-name")).localeCompare(text(right.getAttribute("data-name")));
+        return rightValue - leftValue || compareNames(left, right);
       }
       if (mode === "used") {
         leftValue = Number(left.getAttribute("data-uses") || 0);
         rightValue = Number(right.getAttribute("data-uses") || 0);
-        return rightValue - leftValue || text(left.getAttribute("data-name")).localeCompare(text(right.getAttribute("data-name")));
+        return rightValue - leftValue || compareNames(left, right);
       }
-      return text(left.getAttribute("data-name")).localeCompare(text(right.getAttribute("data-name")));
+      if (mode === "latest-used") {
+        leftValue = Number(left.getAttribute("data-last-used") || 0);
+        rightValue = Number(right.getAttribute("data-last-used") || 0);
+        return rightValue - leftValue || compareNames(left, right);
+      }
+      return compareNames(left, right);
     }
 
     function apply() {
@@ -72,7 +81,7 @@
       });
 
       if (count) {
-        count.textContent = visible.length + " of " + cards.length + " images";
+        count.textContent = visible.length + " of " + cards.length + " media items";
       }
       if (empty) {
         empty.hidden = visible.length !== 0;

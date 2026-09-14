@@ -372,6 +372,9 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	if !containsString(result.Content, `src="https://example.com/image.jpg"`) {
 		t.Errorf("expected OG image in content")
 	}
+	if !containsString(result.Content, `data-markata-embed="true"`) {
+		t.Errorf("expected external embed marker in content")
+	}
 }
 
 func TestEmbedsPlugin_ExternalEmbed_ReusesFetchedHTMLForDiscoveryAndOG(t *testing.T) {

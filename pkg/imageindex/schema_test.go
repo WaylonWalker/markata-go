@@ -14,12 +14,15 @@ func TestV1SchemaValidatesGeneratedArtifact(t *testing.T) {
 	data, err := Marshal(Index{
 		Generator: Generator{Name: GeneratorName, Version: "test"},
 		Images: []Image{{
-			Src:    "/images/photo.png",
-			Width:  3,
-			Height: 2,
-			Alt:    "Photo",
-			Cover:  true,
-			Uses:   []Use{{Post: "posts/photo.md", Href: "/photo/", Title: "Photo", Cover: true}},
+			Src:        "/images/photo.png",
+			Width:      3,
+			Height:     2,
+			Alt:        "Photo",
+			PosterSrc:  "/images/poster.webp",
+			LastUsedAt: parseTime(t, "2026-01-15T12:00:00Z"),
+			Cover:      true,
+			Embed:      true,
+			Uses:       []Use{{Post: "posts/photo.md", Href: "/photo/", Title: "Photo", Cover: true, Embed: true}},
 		}},
 	})
 	if err != nil {

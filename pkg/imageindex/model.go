@@ -36,24 +36,28 @@ type Generator struct {
 	Version string
 }
 
-// Image describes one deduplicated canonical image source.
+// Image describes one deduplicated canonical image or video source.
 type Image struct {
-	Src      string
-	Width    int
-	Height   int
-	Alt      string
-	MIMEType string
-	AddedAt  *time.Time
-	Cover    bool
-	Uses     []Use
+	Src        string
+	Width      int
+	Height     int
+	Alt        string
+	MIMEType   string
+	PosterSrc  string
+	AddedAt    *time.Time
+	LastUsedAt *time.Time
+	Cover      bool
+	Embed      bool
+	Uses       []Use
 }
 
-// Use describes one public post relationship for an image.
+// Use describes one public post relationship for a media source.
 type Use struct {
 	Post  string
 	Href  string
 	Title string
 	Cover bool
+	Embed bool
 }
 
 type wireIndex struct {
@@ -71,14 +75,17 @@ type wireGenerator struct {
 }
 
 type wireImage struct {
-	Src      string     `json:"src"`
-	Width    int        `json:"width"`
-	Height   int        `json:"height"`
-	Alt      string     `json:"alt,omitempty"`
-	MIMEType string     `json:"mime_type,omitempty"`
-	AddedAt  *time.Time `json:"added_at,omitempty"`
-	Cover    bool       `json:"cover"`
-	Uses     []wireUse  `json:"uses,omitempty"`
+	Src        string     `json:"src"`
+	Width      int        `json:"width"`
+	Height     int        `json:"height"`
+	Alt        string     `json:"alt,omitempty"`
+	MIMEType   string     `json:"mime_type,omitempty"`
+	PosterSrc  string     `json:"poster_src,omitempty"`
+	AddedAt    *time.Time `json:"added_at,omitempty"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	Cover      bool       `json:"cover"`
+	Embed      bool       `json:"embed,omitempty"`
+	Uses       []wireUse  `json:"uses,omitempty"`
 }
 
 type wireUse struct {
@@ -86,6 +93,7 @@ type wireUse struct {
 	Href  string `json:"href"`
 	Title string `json:"title,omitempty"`
 	Cover bool   `json:"cover"`
+	Embed bool   `json:"embed,omitempty"`
 }
 
 // Marshal encodes an image index as deterministic, compact JSON.
@@ -96,20 +104,24 @@ func Marshal(index Index) ([]byte, error) {
 	}
 
 	wireImages := make([]wireImage, len(normalized.Images))
-	for i, image := range normalized.Images {
+	for i := range normalized.Images {
+		image := &normalized.Images[i]
 		wireUses := make([]wireUse, len(image.Uses))
 		for j, use := range image.Uses {
 			wireUses[j] = wireUse(use)
 		}
 		wireImages[i] = wireImage{
-			Src:      image.Src,
-			Width:    image.Width,
-			Height:   image.Height,
-			Alt:      image.Alt,
-			MIMEType: image.MIMEType,
-			AddedAt:  image.AddedAt,
-			Cover:    image.Cover,
-			Uses:     wireUses,
+			Src:        image.Src,
+			Width:      image.Width,
+			Height:     image.Height,
+			Alt:        image.Alt,
+			MIMEType:   image.MIMEType,
+			PosterSrc:  image.PosterSrc,
+			AddedAt:    image.AddedAt,
+			LastUsedAt: image.LastUsedAt,
+			Cover:      image.Cover,
+			Embed:      image.Embed,
+			Uses:       wireUses,
 		}
 	}
 
@@ -175,16 +187,20 @@ func Parse(data []byte) (Index, error) {
 		ImageCount:    wire.ImageCount,
 		Images:        make([]Image, len(images)),
 	}
-	for i, image := range images {
+	for i := range images {
+		image := &images[i]
 		index.Images[i] = Image{
-			Src:      image.Src,
-			Width:    image.Width,
-			Height:   image.Height,
-			Alt:      image.Alt,
-			MIMEType: image.MIMEType,
-			AddedAt:  image.AddedAt,
-			Cover:    image.Cover,
-			Uses:     make([]Use, len(image.Uses)),
+			Src:        image.Src,
+			Width:      image.Width,
+			Height:     image.Height,
+			Alt:        image.Alt,
+			MIMEType:   image.MIMEType,
+			PosterSrc:  image.PosterSrc,
+			AddedAt:    image.AddedAt,
+			LastUsedAt: image.LastUsedAt,
+			Cover:      image.Cover,
+			Embed:      image.Embed,
+			Uses:       make([]Use, len(image.Uses)),
 		}
 		for j, use := range image.Uses {
 			index.Images[i].Uses[j] = Use(use)
@@ -231,6 +247,10 @@ func normalize(index Index) (Index, error) {
 			return Index{}, fmt.Errorf("images[%d].src is duplicated: %q", i, image.Src)
 		}
 		seen[image.Src] = struct{}{}
+		if image.LastUsedAt != nil {
+			lastUsedAt := image.LastUsedAt.UTC()
+			image.LastUsedAt = &lastUsedAt
+		}
 
 		image.Uses = append([]Use(nil), image.Uses...)
 		sort.SliceStable(image.Uses, func(a, b int) bool {
@@ -245,6 +265,9 @@ func normalize(index Index) (Index, error) {
 			}
 			if use.Cover {
 				image.Cover = true
+			}
+			if use.Embed {
+				image.Embed = true
 			}
 		}
 	}

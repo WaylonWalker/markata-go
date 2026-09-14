@@ -71,11 +71,12 @@ compatibility contract.
 
 **Name:** `images`<br>
 **Stage:** Write<br>
-**Purpose:** Builds a public image inventory and a searchable authoring page.
+**Purpose:** Builds a public image and video inventory and a searchable authoring page.
 
-The plugin is enabled by default. It writes `images/index.html` and
-`images/index.json` below `output_dir`. See the [Image Library guide](/docs/guides/image-library/)
-for configuration, discovery rules, and the template context.
+The plugin is enabled by default. It writes `images/index.html`,
+`images/index.json`, and the root-level `images.json` below `output_dir`. See
+the [Image Library guide](/docs/guides/image-library/) for configuration,
+discovery rules, and the template context.
 
 ```toml
 [markata-go.images]

@@ -52,6 +52,21 @@ func validateOutputRoot(outputRoot string) error {
 	}
 }
 
+// safeOutputRoot resolves and validates the configured output root without
+// requiring a path below it. This is used for the homepage, whose post
+// directory is the output root itself.
+func safeOutputRoot(outputDir string) (string, error) {
+	root, err := filepath.Abs(outputDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve output directory: %w", err)
+	}
+	root = filepath.Clean(root)
+	if err := validateOutputRoot(root); err != nil {
+		return "", err
+	}
+	return root, nil
+}
+
 // openOutputRoot creates the configured output directory when needed and
 // returns a descriptor-backed root for race-resistant output operations.
 func openOutputRoot(outputRoot string) (*os.Root, error) {

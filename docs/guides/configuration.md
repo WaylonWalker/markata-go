@@ -75,8 +75,8 @@ That last rule makes feed-heavy sites much easier to manage.
 ## Image Library
 
 The image library plugin is enabled by default. It writes a searchable page to
-`images/index.html` and a versioned JSON inventory to `images/index.json`,
-relative to `output_dir`.
+`images/index.html` and versioned JSON inventories to `images/index.json` and
+`images.json`, relative to `output_dir`.
 
 ```toml
 [markata-go.images]
@@ -92,8 +92,8 @@ include_unreferenced = true
 | `enabled` | bool | `true` | Generate the image page and inventory |
 | `path` | string | `"images"` | Relative output directory below `output_dir` |
 | `template` | string | `"images.html"` | HTML template name |
-| `export_json` | bool | `true` | Write `path/index.json` |
-| `include_unreferenced` | bool | `true` | Include image files found below `assets_dir` without public post usage |
+| `export_json` | bool | `true` | Write `path/index.json` and `images.json` |
+| `include_unreferenced` | bool | `true` | Include image and video files found below `assets_dir` without public post usage |
 
 The path must remain inside `output_dir`. Environment variables use the
 `MARKATA_GO_IMAGES_` prefix. See the [Image Library guide](/docs/guides/image-library/)

@@ -470,6 +470,13 @@ def write(core):
         output_path.write_text(post.html)
 ```
 
+An explicitly empty post slug is the homepage. The writer MUST resolve its
+post directory to `output_dir` and write `output_dir/index.html`; path-safety
+checks MUST allow the configured output root as this page's destination while
+cleanup operations MUST NOT remove the output root itself. Non-empty slugs
+remain below the output root and continue to use the normal containment and
+symlink checks.
+
 ### Step 3.2: Feed System
 
 **Feed Configuration:**
