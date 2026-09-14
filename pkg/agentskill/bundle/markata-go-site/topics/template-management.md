@@ -96,6 +96,17 @@ Convenience aliases are also injected:
 - `site_description`
 - `site_author`
 
+Image-library templates receive these extra values when the built-in `images`
+plugin renders its page:
+
+- `image_library` — page counts and presentation-ready image cards
+- `image_index` — the canonical image inventory
+- `image_library_config` — the resolved `[markata-go.images]` settings
+
+Keep `image_index` sources canonical in copy actions. Trusted Dropper derivatives
+are for previews only. Override `images.html` in the site's `templates/`
+directory when the default authoring page needs a different layout.
+
 ## Common Post Fields In Templates
 
 Typical `post` keys used in templates:

@@ -1,6 +1,6 @@
 # Configuration
 
-Use this topic when the task involves `markata-go.toml`, environment overrides, feed setup, content index output, theme settings, or figuring out which config value is active.
+Use this topic when the task involves `markata-go.toml`, environment overrides, feed setup, content index output, image-library output, theme settings, or figuring out which config value is active.
 
 ## Preferred File
 
@@ -56,6 +56,16 @@ writes resolved metadata and feed membership, including safe metadata-only
 records for private posts. It never writes article bodies or encryption keys.
 Check the output path and privacy behavior before publishing it.
 
+The Image Library is enabled by default with `[markata-go.images]`. It writes a
+searchable `/images/` page and `/images/index.json` below `output_dir` without
+fetching remote images. Check `images.path`, `images.export_json`, and
+`images.include_unreferenced` when an image is missing or an inventory should
+not be public. Private, draft, skipped, and unpublished posts must not create
+public usage relationships.
+Static images referenced only by private posts are omitted from the inventory,
+but media below `assets_dir` is still public static output; keep truly private
+files outside that directory.
+
 Example:
 
 ```toml
@@ -106,6 +116,11 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `error_pages`
 - `resource_hints`
 - `markdown.highlight`
+- `images.enabled`
+- `images.path`
+- `images.template`
+- `images.export_json`
+- `images.include_unreferenced`
 - `layout.name`
 - feed definitions under `[[markata-go.feeds]]`
 - `templates.media.trusted_domains` when a site serves media from a CDN and needs trusted URLs normalized to `https`

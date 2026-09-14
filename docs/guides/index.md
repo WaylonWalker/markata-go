@@ -97,6 +97,7 @@ For developers who want full control and customization.
 ### Content Creation
 - [Frontmatter](/docs/guides/frontmatter/) - Post metadata and custom fields
 - [Markdown Features](/docs/guides/markdown/) - Tables, code blocks, admonitions, wikilinks
+- [Image Library](/docs/guides/image-library/) - Search and reuse site images
 - [Web Awesome Components](/docs/guides/webawesome/) - Image comparisons and raw Web Awesome components
 - [Post Formats](/docs/guides/post-formats/) - HTML, Markdown, and OG card outputs
 

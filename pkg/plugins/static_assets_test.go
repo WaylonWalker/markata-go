@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -59,5 +60,80 @@ func TestStaticAssets_CreateHashedCopies_UsesRegistryHash(t *testing.T) {
 		} else if !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("stat unexpected hash: %v", err)
 		}
+	}
+}
+
+func TestStaticAssets_CopyDirSkipsSymbolicLinks(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "static")
+	destination := filepath.Join(root, "output")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, "private.png")
+	if err := os.WriteFile(target, []byte("private"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(source, "private.png")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	if err := NewStaticAssetsPlugin().copyDir(source, destination); err != nil {
+		t.Fatalf("copyDir() error = %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(destination, "private.png")); !os.IsNotExist(err) {
+		t.Fatalf("symbolic link was copied, stat error = %v", err)
+	}
+}
+
+func TestStaticAssets_RejectsSymlinkedOutputRoot(t *testing.T) {
+	root := t.TempDir()
+	realOutput := filepath.Join(root, "real-output")
+	output := filepath.Join(root, "output")
+	if err := os.MkdirAll(realOutput, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(realOutput, output); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	manager := lifecycle.NewManager()
+	config := lifecycle.NewConfig()
+	config.ContentDir = filepath.Join(root, "content")
+	config.OutputDir = output
+	manager.SetConfig(config)
+
+	if err := NewStaticAssetsPlugin().Write(manager); err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("Write() error = %v, want symlink-output-root error", err)
+	}
+}
+
+func TestStaticAssets_RejectsSymlinkedDestinationComponent(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "static")
+	destination := filepath.Join(root, "output")
+	outside := filepath.Join(root, "outside")
+	if err := os.MkdirAll(filepath.Join(source, "css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(destination, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(destination, "css")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "css", "site.css"), []byte("body{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := NewStaticAssetsPlugin().copyDir(source, destination); err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("copyDir() error = %v, want symlink-destination error", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "site.css")); !os.IsNotExist(err) {
+		t.Fatalf("symlink target was written, stat error = %v", err)
 	}
 }

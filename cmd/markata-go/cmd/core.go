@@ -134,6 +134,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass garden configuration
 	lcConfig.Extra["garden"] = cfg.Garden
 
+	// Pass image library configuration
+	lcConfig.Extra["images"] = cfg.Images
+
 	// Pass search configuration with verbose flag override from CLI
 	searchConfig := cfg.Search
 	if verbose {

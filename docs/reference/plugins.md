@@ -34,7 +34,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube, webawesome |
 | Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
-| Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, content_index, rss, atom, jsonfeed, static_assets, redirects |
+| Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, content_index, images, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build tasks | pagefind, diagnostics_artifact |
 
 ---
@@ -64,6 +64,32 @@ encryption keys, private media, and derived biographies are excluded. Set
 `schema_version = 1` for the released public-only compatibility format. See the
 [Content Index guide](/docs/guides/content-index/) for the parser and
 compatibility contract.
+
+---
+
+### images
+
+**Name:** `images`<br>
+**Stage:** Write<br>
+**Purpose:** Builds a public image inventory and a searchable authoring page.
+
+The plugin is enabled by default. It writes `images/index.html` and
+`images/index.json` below `output_dir`. See the [Image Library guide](/docs/guides/image-library/)
+for configuration, discovery rules, and the template context.
+
+```toml
+[markata-go.images]
+enabled = true
+path = "images"
+template = "images.html"
+export_json = true
+include_unreferenced = true
+```
+
+The inventory contains image metadata and public usage relationships. Draft,
+private, skipped, and unpublished posts do not create usage relationships.
+Remote images are recorded without network requests. Trusted Dropper hosts use
+resized URLs only for page previews; canonical sources remain unchanged.
 
 ---
 

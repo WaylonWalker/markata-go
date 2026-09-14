@@ -46,6 +46,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["well_known"] = func() lifecycle.Plugin { return NewWellKnownPlugin() }
 	pluginRegistry.constructors["sitemap"] = func() lifecycle.Plugin { return NewSitemapPlugin() }
 	pluginRegistry.constructors["content_index"] = func() lifecycle.Plugin { return NewContentIndexPlugin() }
+	pluginRegistry.constructors["images"] = func() lifecycle.Plugin { return NewImageLibraryPlugin() }
 	pluginRegistry.constructors["wikilinks"] = func() lifecycle.Plugin { return NewWikilinksPlugin() }
 	pluginRegistry.constructors["toc"] = func() lifecycle.Plugin { return NewTocPlugin() }
 	pluginRegistry.constructors["description"] = func() lifecycle.Plugin { return NewDescriptionPlugin() }
@@ -224,6 +225,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewPublishFeedsPlugin(),
 		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
+		NewImageLibraryPlugin(), // Generate /images/ image inventory and authoring page
 		NewRandomPostPlugin(),   // Generate /random/ client-side redirect endpoint
 		NewRedirectsPlugin(),    // Generate redirect pages
 		NewErrorPagesPlugin(),   // Generate static 404 page

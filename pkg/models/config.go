@@ -636,6 +636,9 @@ type Config struct {
 	// Garden configures the garden view plugin for knowledge graph export and visualization
 	Garden GardenConfig `json:"garden" yaml:"garden" toml:"garden"`
 
+	// Images configures the generated image inventory and authoring page.
+	Images ImagesConfig `json:"images" yaml:"images" toml:"images"`
+
 	// TagAggregator configures tag normalization and hierarchical expansion
 	TagAggregator TagAggregatorConfig `json:"tag_aggregator" yaml:"tag_aggregator" toml:"tag_aggregator"`
 
@@ -3075,6 +3078,56 @@ type GardenConfig struct {
 	Description string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
 }
 
+// ImagesConfig configures the generated image inventory and authoring page.
+// The image library is enabled by default and writes to /images/.
+type ImagesConfig struct {
+	// Enabled controls whether the image index and authoring page are generated.
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Path is the output path prefix, relative to output_dir.
+	Path string `json:"path,omitempty" yaml:"path,omitempty" toml:"path,omitempty"`
+
+	// Template is the template used for the authoring page.
+	Template string `json:"template,omitempty" yaml:"template,omitempty" toml:"template,omitempty"`
+
+	// ExportJSON controls whether path/index.json is written.
+	ExportJSON *bool `json:"export_json,omitempty" yaml:"export_json,omitempty" toml:"export_json,omitempty"`
+
+	// IncludeUnreferenced includes image files found in the static asset directory
+	// even when no public post references them.
+	IncludeUnreferenced *bool `json:"include_unreferenced,omitempty" yaml:"include_unreferenced,omitempty" toml:"include_unreferenced,omitempty"`
+}
+
+// NewImagesConfig returns the default image-library configuration.
+func NewImagesConfig() ImagesConfig {
+	enabled := true
+	exportJSON := true
+	includeUnreferenced := true
+	return ImagesConfig{
+		Enabled:             &enabled,
+		Path:                "images",
+		Template:            "images.html",
+		ExportJSON:          &exportJSON,
+		IncludeUnreferenced: &includeUnreferenced,
+	}
+}
+
+// IsEnabled reports whether the image library is enabled.
+func (c *ImagesConfig) IsEnabled() bool {
+	return c == nil || c.Enabled == nil || *c.Enabled
+}
+
+// ShouldExportJSON reports whether the JSON artifact should be written.
+func (c *ImagesConfig) ShouldExportJSON() bool {
+	return c == nil || c.ExportJSON == nil || *c.ExportJSON
+}
+
+// ShouldIncludeUnreferenced reports whether unreferenced static image files are
+// included in the inventory.
+func (c *ImagesConfig) ShouldIncludeUnreferenced() bool {
+	return c == nil || c.IncludeUnreferenced == nil || *c.IncludeUnreferenced
+}
+
 // NewGardenConfig creates a new GardenConfig with default values.
 func NewGardenConfig() GardenConfig {
 	enabled := true
@@ -3440,6 +3493,7 @@ func NewConfig() *Config {
 		Tags:             NewTagsConfig(),
 		FeedsPage:        NewFeedsPageConfig(),
 		Garden:           NewGardenConfig(),
+		Images:           NewImagesConfig(),
 		Assets:           NewAssetsConfig(),
 	}
 }
