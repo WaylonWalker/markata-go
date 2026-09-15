@@ -25,3 +25,17 @@ func TestMediaDimensionsFromURL(t *testing.T) {
 		})
 	}
 }
+
+func TestVideoMediaHelpers_HandleWindowsPaths(t *testing.T) {
+	for _, path := range []string{`C:\Users\runner\static\clip.Mp4`, `C:/Users/runner/static/clip.Mp4`} {
+		if !IsVideoURL(path) {
+			t.Errorf("IsVideoURL(%q) = false, want true", path)
+		}
+		if got := VideoMIMEType(path); got != "video/mp4" {
+			t.Errorf("VideoMIMEType(%q) = %q, want video/mp4", path, got)
+		}
+	}
+	if IsVideoURL("javascript:clip.mp4") {
+		t.Fatal("IsVideoURL classified an opaque javascript URL as video")
+	}
+}

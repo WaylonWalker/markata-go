@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "markata://schemas/image-index/v1",
+  "title": "Markata Image Index v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["$schema", "schema", "schema_version", "generator", "image_count", "images"],
+  "properties": {
+    "$schema": {"const": "markata://schemas/image-index/v1"},
+    "schema": {"const": "markata.image-index"},
+    "schema_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": true,
+      "properties": {"name": {"type": "string", "minLength": 1}, "version": {"type": "string"}}
+    },
+    "image_count": {"type": "integer", "minimum": 0},
+    "images": {"type": "array", "items": {"$ref": "#/$defs/image"}}
+  },
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["src", "width", "height", "cover"],
+      "properties": {
+        "src": {"type": "string", "minLength": 1},
+        "width": {"type": "integer", "minimum": 0},
+        "height": {"type": "integer", "minimum": 0},
+        "alt": {"type": "string"},
+        "mime_type": {"type": "string"},
+        "poster_src": {"type": "string"},
+        "added_at": {"type": "string", "format": "date-time"},
+        "last_used_at": {"type": "string", "format": "date-time"},
+        "cover": {"type": "boolean"},
+        "embed": {"type": "boolean"},
+        "uses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["post", "href", "cover"],
+            "additionalProperties": true,
+            "properties": {
+              "post": {"type": "string"},
+              "href": {"type": "string"},
+              "title": {"type": "string"},
+              "caption": {"type": "string"},
+              "cover": {"type": "boolean"},
+              "embed": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

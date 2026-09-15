@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -199,6 +200,36 @@ func TestAddDirRecursive_SkipsOutputDir(t *testing.T) {
 	received := <-eventReceived
 	if received {
 		t.Error("Should not receive events for files in output directory")
+	}
+}
+
+func TestServeSearchPostsSnapshotCopiesMutablePostState(t *testing.T) {
+	post := models.NewPost("posts/example.md")
+	post.Path = "posts/example.md"
+	title := "Before"
+	post.Title = &title
+	post.Tags = []string{"before"}
+	post.Extra["image"] = "https://example.test/before.jpg"
+	setServeSearchPosts([]*models.Post{post})
+	t.Cleanup(func() { setServeSearchPosts(nil) })
+
+	snapshot := getServeSearchPostsSnapshot()
+	if len(snapshot) != 1 || snapshot[0] == post {
+		t.Fatalf("snapshot = %#v, want an independent post", snapshot)
+	}
+
+	*post.Title = "After"
+	post.Tags[0] = "after"
+	post.Extra["image"] = "https://example.test/after.jpg"
+
+	if got := snapshot[0].PlainTitle(); got != "Before" {
+		t.Fatalf("snapshot title = %q, want Before", got)
+	}
+	if got := snapshot[0].Tags[0]; got != "before" {
+		t.Fatalf("snapshot tag = %q, want before", got)
+	}
+	if got := snapshot[0].Extra["image"]; got != "https://example.test/before.jpg" {
+		t.Fatalf("snapshot image = %v, want before URL", got)
 	}
 }
 

@@ -274,12 +274,91 @@ func TestCache_SetConfigHash_InvalidatesFeedsListing(t *testing.T) {
 	cache := New("")
 	cache.ConfigHash = "old-config"
 	cache.SetFeedsListingHash("old-listing")
+	cache.SetImageLibraryHash("old-images")
 
 	if !cache.SetConfigHash("new-config") {
 		t.Fatal("SetConfigHash() did not report an invalidation")
 	}
 	if got := cache.GetFeedsListingHash(); got != "" {
 		t.Fatalf("FeedsListingHash after config invalidation = %q, want empty", got)
+	}
+	if got := cache.GetImageLibraryHash(); got != "" {
+		t.Fatalf("ImageLibraryHash after config invalidation = %q, want empty", got)
+	}
+}
+
+func TestCache_ImageLibraryHash_PersistsAndTemplateInvalidates(t *testing.T) {
+	dir := t.TempDir()
+	cache := New(dir)
+	cache.SetImageLibraryHash("image-hash")
+	pagePath := filepath.Join(dir, "output", "images", "index.html")
+	jsonPath := filepath.Join(dir, "output", "images", "index.json")
+	cache.SetImageLibraryOutputs(dir, dir, map[string]string{
+		pagePath: "page-hash",
+		jsonPath: "json-hash",
+	})
+	if got := cache.GetImageLibraryHash(); got != "image-hash" {
+		t.Fatalf("GetImageLibraryHash() = %q, want image-hash", got)
+	}
+	if err := cache.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	loaded, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if got := loaded.GetImageLibraryHash(); got != "image-hash" {
+		t.Fatalf("loaded ImageLibraryHash = %q, want image-hash", got)
+	}
+	if !loaded.OwnsImageLibraryOutput(dir, dir, pagePath) || !loaded.OwnsImageLibraryOutput(dir, dir, jsonPath) {
+		contentRoot, outputRoot, outputs := loaded.GetImageLibraryOutputs()
+		t.Fatalf("loaded image-library output ownership = (%q, %q, %v), want both paths", contentRoot, outputRoot, outputs)
+	}
+
+	loaded.TemplatesHash = "old-templates"
+	if !loaded.SetTemplatesHash("new-templates") {
+		t.Fatal("SetTemplatesHash() did not report an invalidation")
+	}
+	if got := loaded.GetImageLibraryHash(); got != "" {
+		t.Fatalf("ImageLibraryHash after template invalidation = %q, want empty", got)
+	}
+	if !loaded.OwnsImageLibraryOutput(dir, dir, pagePath) {
+		t.Fatal("template invalidation discarded image-library output ownership")
+	}
+}
+
+func TestCache_SetAssetsHash_InvalidatesImageLibrary(t *testing.T) {
+	cache := New("")
+	cache.AssetsHash = "old-assets"
+	cache.SetImageLibraryHash("old-images")
+
+	if !cache.SetAssetsHash("new-assets") {
+		t.Fatal("SetAssetsHash() did not report an invalidation")
+	}
+	if got := cache.GetImageLibraryHash(); got != "" {
+		t.Fatalf("ImageLibraryHash after asset invalidation = %q, want empty", got)
+	}
+}
+
+func TestCache_ImageLibraryOutputs_AreScopedToOutputRoot(t *testing.T) {
+	root := t.TempDir()
+	otherRoot := t.TempDir()
+	outside := filepath.Join(root, "..", "outside.html")
+	cache := New("")
+	cache.SetImageLibraryOutputs(root, root, map[string]string{
+		filepath.Join(root, "images", "index.html"): "page-hash",
+		outside: "outside-hash",
+	})
+
+	if !cache.OwnsImageLibraryOutput(root, root, filepath.Join(root, "images", "index.html")) {
+		t.Fatal("recorded output was not owned")
+	}
+	if cache.OwnsImageLibraryOutput(otherRoot, otherRoot, filepath.Join(otherRoot, "images", "index.html")) {
+		t.Fatal("output ownership crossed output roots")
+	}
+	_, _, outputs := cache.GetImageLibraryOutputs()
+	if len(outputs) != 1 {
+		t.Fatalf("outputs = %v, want only paths inside root", outputs)
 	}
 }
 

@@ -338,6 +338,7 @@ func populateExtra(config *models.Config, rawWrapper map[string]any) {
 		"encryption": true, "authors": true, "garden": true, "feeds_page": true,
 		"assets": true, "resource_hints": true, "error_pages": true, "theme_calendar": true,
 		"builder_admin": true, "include": true, "fontpack": true, "fontpacks_file": true,
+		"images": true,
 	}
 
 	if config.Extra == nil {

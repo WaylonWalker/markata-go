@@ -70,7 +70,7 @@ func (p *StaticAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// 3. Hash project assets (highest priority, overrides theme)
-	projectStaticDir := StaticDir
+	projectStaticDir := p.projectStaticDir(config)
 	if _, err := os.Stat(projectStaticDir); err == nil {
 		if err := p.hashDirectoryAssets(projectStaticDir, "", assetHashes); err != nil {
 			return fmt.Errorf("hashing project assets: %w", err)
@@ -106,6 +106,11 @@ func (p *StaticAssetsPlugin) Configure(m *lifecycle.Manager) error {
 func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
+	outputFS, err := openOutputRoot(outputDir)
+	if err != nil {
+		return fmt.Errorf("open static asset output directory: %w", err)
+	}
+	defer outputFS.Close()
 
 	// Get theme name from config (default to "default")
 	themeName := ThemeDefault
@@ -124,7 +129,7 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	// Layer 1: Copy embedded static files for default theme (base layer)
 	// This ensures all default assets are present even if filesystem theme is incomplete
 	if themeName == ThemeDefault {
-		if err := p.copyEmbeddedStatic(outputDir); err != nil {
+		if err := p.copyEmbeddedStaticWithRoot(outputDir, outputFS); err != nil {
 			return fmt.Errorf("copying embedded static files: %w", err)
 		}
 	}
@@ -132,15 +137,15 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	// Layer 2: Copy filesystem theme static files (overrides embedded)
 	themeStaticDir := p.findThemeStaticDir(themeName)
 	if themeStaticDir != "" {
-		if err := p.copyDir(themeStaticDir, outputDir); err != nil {
+		if err := p.copyDirWithRoot(themeStaticDir, outputDir, outputFS); err != nil {
 			return fmt.Errorf("copying theme static files: %w", err)
 		}
 	}
 
 	// Layer 3: Copy project static files (highest priority, overrides theme files)
-	projectStaticDir := StaticDir
+	projectStaticDir := p.projectStaticDir(config)
 	if _, err := os.Stat(projectStaticDir); err == nil {
-		if err := p.copyDir(projectStaticDir, outputDir); err != nil {
+		if err := p.copyDirWithRoot(projectStaticDir, outputDir, outputFS); err != nil {
 			return fmt.Errorf("copying project static files: %w", err)
 		}
 	}
@@ -148,13 +153,33 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
+func (p *StaticAssetsPlugin) projectStaticDir(config *lifecycle.Config) string {
+	if config != nil && config.Extra != nil {
+		if configured, ok := config.Extra["assets_dir"].(string); ok && configured != "" {
+			if filepath.IsAbs(configured) || config.ContentDir == "" {
+				return filepath.Clean(configured)
+			}
+			return filepath.Clean(filepath.Join(config.ContentDir, configured))
+		}
+	}
+	if config != nil && config.ContentDir != "" {
+		return filepath.Join(config.ContentDir, StaticDir)
+	}
+	return StaticDir
+}
+
 // Cleanup creates hashed copies of JS/CSS files after all Write plugins have run.
 // This ensures the hashes match the final transformed content (after palette_css, minifiers, etc.)
 func (p *StaticAssetsPlugin) Cleanup(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
+	outputFS, err := openOutputRoot(outputDir)
+	if err != nil {
+		return fmt.Errorf("open static asset output directory: %w", err)
+	}
+	defer outputFS.Close()
 
-	if err := p.createHashedCopies(m, outputDir); err != nil {
+	if err := p.createHashedCopiesWithRoot(m, outputDir, outputFS); err != nil {
 		return fmt.Errorf("creating hashed asset copies: %w", err)
 	}
 
@@ -190,8 +215,7 @@ func (p *StaticAssetsPlugin) findThemeStaticDir(themeName string) string {
 	return ""
 }
 
-// copyEmbeddedStatic copies embedded static files to the output directory.
-func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
+func (p *StaticAssetsPlugin) copyEmbeddedStaticWithRoot(outputDir string, outputFS *os.Root) error {
 	staticFS := themes.DefaultStatic()
 	if staticFS == nil {
 		return nil // No embedded static files
@@ -208,9 +232,13 @@ func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
 		}
 
 		dstPath := filepath.Join(outputDir, path)
+		relative, err := outputRelativePath(outputDir, dstPath)
+		if err != nil {
+			return err
+		}
 
 		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0o755)
+			return outputFS.MkdirAll(relative, 0o755)
 		}
 
 		// Read embedded file
@@ -220,12 +248,14 @@ func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
 		}
 
 		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
-			return fmt.Errorf("creating parent directory: %w", err)
+		if directory := filepath.Dir(relative); directory != "." {
+			if err := outputFS.MkdirAll(directory, 0o755); err != nil {
+				return fmt.Errorf("creating parent directory: %w", err)
+			}
 		}
 
 		// Write file
-		if err := os.WriteFile(dstPath, content, 0o644); err != nil { //nolint:gosec // static assets need world-readable permissions for web serving
+		if err := outputFS.WriteFile(relative, content, 0o644); err != nil {
 			return fmt.Errorf("writing file %s: %w", dstPath, err)
 		}
 
@@ -235,9 +265,22 @@ func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
 
 // copyDir recursively copies a directory to the destination.
 func (p *StaticAssetsPlugin) copyDir(src, dst string) error {
+	outputFS, err := openOutputRoot(dst)
+	if err != nil {
+		return err
+	}
+	defer outputFS.Close()
+	return p.copyDirWithRoot(src, dst, outputFS)
+}
+
+func (p *StaticAssetsPlugin) copyDirWithRoot(src, dst string, outputFS *os.Root) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			log.Printf("[static_assets] Skipping symbolic link %s", path)
+			return nil
 		}
 
 		// Calculate relative path from source
@@ -246,35 +289,58 @@ func (p *StaticAssetsPlugin) copyDir(src, dst string) error {
 			return fmt.Errorf("calculating relative path: %w", err)
 		}
 
+		// The source root maps to the already-open output root.
+		if relPath == "." {
+			return nil
+		}
+
 		// Calculate destination path
 		dstPath := filepath.Join(dst, relPath)
-
+		if err := validateOutputPath(dst, dstPath); err != nil {
+			return err
+		}
 		if info.IsDir() {
 			// Create directory
-			return os.MkdirAll(dstPath, 0o755)
+			destination, err := outputRelativePath(dst, dstPath)
+			if err != nil {
+				return err
+			}
+			return outputFS.MkdirAll(destination, 0o755)
 		}
 
 		// Copy file
-		return p.copyFile(path, dstPath)
+		return p.copyFileWithRoot(path, "", dst, dstPath, outputFS)
 	})
 }
 
-// copyFile copies a single file from src to dst.
-func (p *StaticAssetsPlugin) copyFile(src, dst string) error {
-	// Ensure parent directory exists
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("creating parent directory: %w", err)
+func (p *StaticAssetsPlugin) copyFileWithRoot(src, sourceRelative, outputRoot, dst string, outputFS *os.Root) error {
+	relative, err := outputRelativePath(outputRoot, dst)
+	if err != nil {
+		return err
+	}
+	directory := filepath.Dir(relative)
+	if directory != "." {
+		if err := outputFS.MkdirAll(directory, 0o755); err != nil {
+			return fmt.Errorf("creating parent directory: %w", err)
+		}
 	}
 
-	// Open source file
-	srcFile, err := os.Open(src)
+	// Open source file. Hashed copies read their source through the same
+	// descriptor-backed root as the destination so a path replacement cannot
+	// redirect the read between validation and copying.
+	var srcFile *os.File
+	if sourceRelative != "" {
+		srcFile, err = outputFS.Open(sourceRelative)
+	} else {
+		srcFile, err = os.Open(src)
+	}
 	if err != nil {
 		return fmt.Errorf("opening source file: %w", err)
 	}
 	defer srcFile.Close()
 
-	// Create destination file
-	dstFile, err := os.Create(dst)
+	// Create destination file below the descriptor-backed output root.
+	dstFile, err := outputFS.OpenFile(relative, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating destination file: %w", err)
 	}
@@ -286,11 +352,11 @@ func (p *StaticAssetsPlugin) copyFile(src, dst string) error {
 	}
 
 	// Preserve file permissions
-	srcInfo, err := os.Stat(src)
+	srcInfo, err := srcFile.Stat()
 	if err != nil {
 		return nil // Non-critical, continue without preserving permissions
 	}
-	return os.Chmod(dst, srcInfo.Mode())
+	return dstFile.Chmod(srcInfo.Mode())
 }
 
 // shouldHashAsset returns true if the file should be content-hashed for cache busting.
@@ -337,6 +403,9 @@ func (p *StaticAssetsPlugin) hashDirectoryAssets(dir, prefix string, hashes map[
 		if err != nil || info.IsDir() {
 			return err
 		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
 
 		if !p.shouldHashAsset(path) {
 			return nil
@@ -370,15 +439,35 @@ func (p *StaticAssetsPlugin) hashDirectoryAssets(dir, prefix string, hashes map[
 // createHashedCopies creates hashed copies of JS/CSS files in the output directory.
 // For each file with a hash, creates a copy like main.js -> main.abc12345.js
 func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir string) error {
+	outputFS, err := openOutputRoot(outputDir)
+	if err != nil {
+		return err
+	}
+	defer outputFS.Close()
+	return p.createHashedCopiesWithRoot(m, outputDir, outputFS)
+}
+
+func (p *StaticAssetsPlugin) createHashedCopiesWithRoot(m *lifecycle.Manager, outputDir string, outputFS *os.Root) error {
 	assetHashes := m.AssetHashes()
 
 	for path, hash := range assetHashes {
 		// Original file location in output
 		origPath := filepath.Join(outputDir, path)
+		origRelative, err := outputRelativePath(outputDir, origPath)
+		if err != nil {
+			return err
+		}
 
 		// Check if file exists (might not if overridden)
-		if _, err := os.Stat(origPath); os.IsNotExist(err) {
+		info, err := outputFS.Lstat(origRelative)
+		if os.IsNotExist(err) {
 			continue
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("hashed asset source is a symlink: %s", origPath)
 		}
 
 		// Compute hashed filename: main.js -> main.abc12345.js
@@ -386,9 +475,12 @@ func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir 
 		base := strings.TrimSuffix(path, ext)
 		hashedPath := base + "." + hash + ext
 		hashedFullPath := filepath.Join(outputDir, hashedPath)
+		if err := validateOutputPath(outputDir, hashedFullPath); err != nil {
+			return err
+		}
 
 		// Create hashed copy
-		if err := p.copyFile(origPath, hashedFullPath); err != nil {
+		if err := p.copyFileWithRoot(origPath, origRelative, outputDir, hashedFullPath, outputFS); err != nil {
 			return fmt.Errorf("creating hashed copy %s: %w", hashedPath, err)
 		}
 	}

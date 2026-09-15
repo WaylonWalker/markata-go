@@ -325,7 +325,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Determine output path
 	// Use slug to create: output_dir/slug/index.html
 	outputDir := config.OutputDir
-	postDir, err := safeOutputPath(outputDir, post.Slug)
+	postDir, err := safePostOutputPath(outputDir, post.Slug)
 	if err != nil {
 		return err
 	}
@@ -586,6 +586,16 @@ func safeOutputPath(outputDir, relative string) (string, error) {
 		}
 	}
 	return target, nil
+}
+
+// safePostOutputPath resolves the directory used for a post's HTML output.
+// An explicitly empty slug is the homepage and writes directly beneath the
+// configured output root; all other slugs must resolve below that root.
+func safePostOutputPath(outputDir, slug string) (string, error) {
+	if slug == "" {
+		return safeOutputRoot(outputDir)
+	}
+	return safeOutputPath(outputDir, slug)
 }
 
 // writeHTMLFormat writes the standard HTML output for a post.

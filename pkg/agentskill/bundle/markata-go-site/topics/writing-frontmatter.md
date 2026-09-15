@@ -94,9 +94,22 @@ Media fields are not typed on the Post model. They live in `post.Extra` and are 
 - `featured_image` (wikilink hover previews)
 - `thumbnail` (wikilink hover previews)
 - `cover` (feed card helpers)
+- `social_image` (social metadata and image-library usage)
+- `hero_image` (hero image and image-library usage)
+- `avatar` and `author_image` (profile media and image-library usage)
 - `video` (video URL for OG cards)
+- `poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, and
+  `thumb` (video poster candidates)
 
 For OG card generation, the first non-empty value from `image`, `cover_image`, `og_image` is used.
+The generated Image Library also records the supported image fields above for
+public posts, while private, draft, skipped, and unpublished posts do not
+create public usage relationships.
+
+The Image Library treats `cover`, `cover_image`, `image`, and `video` as cover
+fallbacks in that order. It detects video media from the URL extension or MIME
+type and exposes poster metadata for custom library templates. Render a video
+media card with `<video>` and `<source>` instead of `<img>`.
 
 ## Extended Authors Format
 

@@ -40,5 +40,6 @@ func DefaultConfig() *models.Config {
 		ErrorPages:    models.NewErrorPagesConfig(),
 		ResourceHints: models.NewResourceHintsConfig(),
 		Encryption:    models.NewEncryptionConfig(),
+		Images:        models.NewImagesConfig(),
 	}
 }

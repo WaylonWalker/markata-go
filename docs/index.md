@@ -27,6 +27,7 @@ A comprehensive, extendable static site generator written in Go.
 
 - [[frontmatter-guide|Frontmatter]] - Post metadata and fields
 - [[markdown-features|Markdown Features]] - Supported syntax and extensions
+- [[image-library|Image Library]] - Search and reuse site images
 - [[dynamic-content|Dynamic Content]] - Using Jinja templates in Markdown
 
 ### Feeds & Output

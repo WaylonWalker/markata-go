@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Image Library" }}{% endblock %}
+{% block description %}{{ description | default:"Browse the images and videos used by this site." }}{% endblock %}
+{% block body_class %}page-images{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ 'css/image-library.css' | theme_asset_hashed }}">
+<script src="{{ 'js/image-library.js' | theme_asset_hashed }}" defer></script>
+
+<section class="image-library" data-image-library aria-labelledby="image-library-title">
+  <header class="image-library__intro">
+    <div>
+      <p class="image-library__eyebrow">Asset index</p>
+      <h1 id="image-library-title">{{ title | default:"Image Library" }}</h1>
+      {% if description %}<p class="image-library__description">{{ description }}</p>{% endif %}
+    </div>
+    {% if image_library.JSONHref %}
+    <p class="image-library__export"><a href="{{ image_library.JSONHref }}">Download JSON index</a></p>
+    {% endif %}
+  </header>
+
+  <div class="image-library__toolbar" role="search" aria-label="Filter media library">
+    <div class="image-library__search">
+      <label for="image-library-search">Search images and videos</label>
+      <input id="image-library-search" type="search" data-image-search placeholder="Search filename, alt text, caption, or post title" autocomplete="off">
+    </div>
+
+    <div class="image-library__filters" role="group" aria-label="Media views">
+      <button type="button" data-image-filter="all" aria-pressed="true">All <span>({{ image_library.Count }})</span></button>
+      <button type="button" data-image-filter="used" aria-pressed="false">Used <span>({{ image_library.UsedCount }})</span></button>
+      <button type="button" data-image-filter="unused" aria-pressed="false">Unused <span>({{ image_library.UnusedCount }})</span></button>
+      <button type="button" data-image-filter="cover" aria-pressed="false">Cover <span>({{ image_library.CoverCount }})</span></button>
+      <button type="button" data-image-filter="recent" aria-pressed="false">Recently added</button>
+    </div>
+
+    <label class="image-library__sort" for="image-library-sort">
+      <span class="sr-only">Sort media</span>
+      <select id="image-library-sort" data-image-sort aria-label="Sort media">
+        <option value="name">Name, A–Z</option>
+        <option value="recent">Recently added</option>
+        <option value="used">Most used</option>
+        <option value="latest-used">Latest used</option>
+      </select>
+    </label>
+    <output class="image-library__count" data-image-count aria-live="polite">{{ image_library.Count }} of {{ image_library.Count }} media items</output>
+  </div>
+
+  <div class="image-library__grid" data-image-grid>
+    {% for image in image_library.Images %}
+    <article class="image-card" data-image-card
+      data-src="{{ image.Src }}"
+      data-name="{{ image.Name }}"
+      data-search="{{ image.SearchText }}"
+      data-added="{{ image.AddedAtUnix }}"
+      data-last-used="{{ image.LastUsedAtUnix }}"
+      data-uses="{{ image.UseCount }}"
+      data-used="{% if image.Used %}true{% else %}false{% endif %}"
+      data-cover="{% if image.Cover %}true{% else %}false{% endif %}"
+      data-video="{% if image.IsVideo %}true{% else %}false{% endif %}">
+      <div class="image-card__media" style="--image-ratio: {{ image.AspectRatio }}">
+        <a href="{{ image.Src }}" aria-label="Open {{ image.Name }}">
+          {% if image.IsVideo %}<video{% if image.PosterSrc %} poster="{{ image.PosterSrc }}"{% endif %}{% if image.Width %} width="{{ image.Width }}"{% endif %}{% if image.Height %} height="{{ image.Height }}"{% endif %} controls playsinline preload="none" aria-label="{{ image.Alt }}" data-video-src="{{ image.PreviewSrc }}"{% if image.MIMEType %} data-video-type="{{ image.MIMEType }}"{% endif %}>Your browser does not support the video tag.</video>
+          {% else %}<img src="{{ image.PreviewSrc }}"{% if image.Srcset %} srcset="{{ image.Srcset }}" sizes="(max-width: 700px) 50vw, (max-width: 1200px) 33vw, 280px"{% endif %} alt="{{ image.Alt }}"{% if image.Width %} width="{{ image.Width }}"{% endif %}{% if image.Height %} height="{{ image.Height }}"{% endif %} loading="lazy" decoding="async">
+          {% endif %}
+        </a>
+        <div class="image-card__badges">
+          {% if image.Cover %}<span class="image-card__badge image-card__badge--cover">Cover</span>{% endif %}
+          {% if image.Embed %}<span class="image-card__badge image-card__badge--embed">Embed</span>{% endif %}
+          {% if image.IsVideo %}<span class="image-card__badge image-card__badge--video">Video</span>{% endif %}
+          {% if not image.Used %}<span class="image-card__badge">Unused</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="image-card__body">
+        <div class="image-card__name" title="{{ image.Src }}"><a href="{{ image.Src }}">{{ image.Name }}</a></div>
+        <p class="image-card__meta">
+          {% if image.Width and image.Height %}{{ image.Width }}×{{ image.Height }}{% else %}Size unknown{% endif %}
+          {% if image.MIMEType %} · {{ image.MIMEType }}{% endif %}
+          {% if image.LastUsedAt %} · Last used {{ image.LastUsedAt }}{% endif %}
+        </p>
+        {% if image.AddedAt %}<p class="image-card__added">Added {{ image.AddedAt }}</p>{% endif %}
+
+        <div class="image-card__uses">
+          <span class="image-card__uses-label">{% if image.Used %}Used in {{ image.UseCount }} post{{ image.UseCount|pluralize }}{% else %}Public usage{% endif %}</span>
+          {% if image.Uses %}
+            {% for use in image.Uses %}
+            <a href="{{ use.Href }}" title="{{ use.Post }}{% if use.Cover %} · cover{% endif %}">{{ use.Title }}{% if use.Cover %} <span aria-label="cover">· cover</span>{% endif %}</a>
+            {% if use.Caption %}<span class="image-card__caption">{{ use.Caption }}</span>{% endif %}
+            {% endfor %}
+          {% else %}
+            <p class="image-card__empty">Not referenced by a public post.</p>
+          {% endif %}
+          {% if image.MoreUses %}
+          <details class="image-card__more">
+            <summary>+{{ image.MoreCount }} more</summary>
+            <ul>
+              {% for use in image.MoreUses %}<li><a href="{{ use.Href }}">{{ use.Title }}</a>{% if use.Caption %}<span class="image-card__caption">{{ use.Caption }}</span>{% endif %}</li>{% endfor %}
+            </ul>
+          </details>
+          {% endif %}
+        </div>
+
+        <div class="image-card__actions">
+          <button type="button" data-copy-value="{{ image.Markdown }}">Copy Markdown</button>
+          <button type="button" data-copy-value="{{ image.Src }}">Copy URL</button>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="image-library__empty" data-image-empty{% if image_library.Images %} hidden{% endif %}>
+    <strong>No media found</strong>
+    <span>Images and videos referenced by public content and files in the static asset directory will appear here.</span>
+  </div>
+  <p class="image-library__status" data-image-status role="status" aria-live="polite"></p>
+</section>
+{% endblock %}

@@ -143,9 +143,32 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Feeds page - merge
 	result.FeedsPage = mergeFeedsPageConfig(base.FeedsPage, override.FeedsPage)
 
+	// Images - merge
+	result.Images = mergeImagesConfig(base.Images, override.Images)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
+	return result
+}
+
+func mergeImagesConfig(base, override models.ImagesConfig) models.ImagesConfig {
+	result := base
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Path != "" {
+		result.Path = override.Path
+	}
+	if override.Template != "" {
+		result.Template = override.Template
+	}
+	if override.ExportJSON != nil {
+		result.ExportJSON = override.ExportJSON
+	}
+	if override.IncludeUnreferenced != nil {
+		result.IncludeUnreferenced = override.IncludeUnreferenced
+	}
 	return result
 }
 
