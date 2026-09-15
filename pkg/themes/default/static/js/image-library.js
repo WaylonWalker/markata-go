@@ -72,8 +72,6 @@
       var sourceURL = video.getAttribute("data-video-src");
       if (!sourceURL) return;
 
-      var poster = video.getAttribute("data-video-poster");
-      if (poster) video.setAttribute("poster", poster);
       var source = document.createElement("source");
       source.src = sourceURL;
       var type = video.getAttribute("data-video-type");
