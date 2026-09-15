@@ -23,7 +23,7 @@
   <div class="image-library__toolbar" role="search" aria-label="Filter media library">
     <div class="image-library__search">
       <label for="image-library-search">Search images and videos</label>
-      <input id="image-library-search" type="search" data-image-search placeholder="Search filename, alt text, or post title" autocomplete="off">
+      <input id="image-library-search" type="search" data-image-search placeholder="Search filename, alt text, caption, or post title" autocomplete="off">
     </div>
 
     <div class="image-library__filters" role="group" aria-label="Media views">
@@ -86,6 +86,7 @@
           {% if image.Uses %}
             {% for use in image.Uses %}
             <a href="{{ use.Href }}" title="{{ use.Post }}{% if use.Cover %} · cover{% endif %}">{{ use.Title }}{% if use.Cover %} <span aria-label="cover">· cover</span>{% endif %}</a>
+            {% if use.Caption %}<span class="image-card__caption">{{ use.Caption }}</span>{% endif %}
             {% endfor %}
           {% else %}
             <p class="image-card__empty">Not referenced by a public post.</p>
@@ -94,7 +95,7 @@
           <details class="image-card__more">
             <summary>+{{ image.MoreCount }} more</summary>
             <ul>
-              {% for use in image.MoreUses %}<li><a href="{{ use.Href }}">{{ use.Title }}</a></li>{% endfor %}
+              {% for use in image.MoreUses %}<li><a href="{{ use.Href }}">{{ use.Title }}</a>{% if use.Caption %}<span class="image-card__caption">{{ use.Caption }}</span>{% endif %}</li>{% endfor %}
             </ul>
           </details>
           {% endif %}

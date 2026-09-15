@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	figure "github.com/mangoumbrella/goldmark-figure"
+	figureast "github.com/mangoumbrella/goldmark-figure/ast"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -94,6 +95,7 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 type imageReference struct {
 	src      string
 	alt      string
+	caption  string
 	poster   string
 	mimeType string
 	embed    bool
@@ -208,7 +210,7 @@ func (c *catalog) addReference(reference imageReference, post *models.Post, cove
 	} else {
 		c.setAlt(imageRecord, reference.alt, 2)
 	}
-	c.addUse(imageRecord, post, cover, reference.embed)
+	c.addUse(imageRecord, post, cover, reference.embed, reference.caption)
 }
 
 func isVideoSource(rawSrc, declaredMIME string) bool {
@@ -410,7 +412,7 @@ func (c *catalog) setAlt(imageRecord *catalogImage, alt string, rank int) {
 	imageRecord.altRank = rank
 }
 
-func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, embed bool) {
+func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, embed bool, caption string) {
 	if imageRecord == nil || post == nil {
 		return
 	}
@@ -432,13 +434,16 @@ func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, em
 	if title == "" {
 		title = post.Slug
 	}
-	use := Use{Post: postPath, Href: href, Title: title, Cover: cover, Embed: embed}
+	use := Use{Post: postPath, Href: href, Title: title, Caption: strings.TrimSpace(caption), Cover: cover, Embed: embed}
 	key := postPath + "\x00" + href
 	if existing, ok := imageRecord.uses[key]; ok {
 		existing.Cover = existing.Cover || cover
 		existing.Embed = existing.Embed || embed
 		if existing.Title == "" {
 			existing.Title = title
+		}
+		if existing.Caption == "" {
+			existing.Caption = use.Caption
 		}
 		imageRecord.uses[key] = existing
 	} else {
@@ -709,7 +714,11 @@ func extractMarkdownImages(content string) []imageReference {
 		if !ok || len(imageNode.Destination) == 0 {
 			return ast.WalkContinue, nil
 		}
-		result = append(result, imageReference{src: string(imageNode.Destination), alt: inlineText(imageNode, source)})
+		result = append(result, imageReference{
+			src:     string(imageNode.Destination),
+			alt:     inlineText(imageNode, source),
+			caption: markdownFigureCaption(imageNode, source),
+		})
 		return ast.WalkContinue, nil
 	}); err != nil {
 		return nil
@@ -736,6 +745,23 @@ func inlineText(node ast.Node, source []byte) string {
 	return strings.Join(strings.Fields(result.String()), " ")
 }
 
+func markdownFigureCaption(node ast.Node, source []byte) string {
+	for parent := node.Parent(); parent != nil; parent = parent.Parent() {
+		figureNode, ok := parent.(*figureast.Figure)
+		if !ok {
+			continue
+		}
+		for child := figureNode.FirstChild(); child != nil; child = child.NextSibling() {
+			captionNode, ok := child.(*figureast.FigureCaption)
+			if ok {
+				return inlineText(captionNode, source)
+			}
+		}
+		return ""
+	}
+	return ""
+}
+
 func extractHTMLMedia(source string) []imageReference {
 	if strings.TrimSpace(source) == "" {
 		return nil
@@ -754,10 +780,11 @@ func extractHTMLMedia(source string) []imageReference {
 				if strings.TrimSpace(src) != "" {
 					video := isVideoSource(src, "")
 					result = append(result, imageReference{
-						src:   src,
-						alt:   htmlMediaAlt(node),
-						video: video,
-						embed: htmlNodeIsEmbed(node),
+						src:     src,
+						alt:     htmlMediaAlt(node),
+						caption: htmlMediaCaption(node),
+						video:   video,
+						embed:   htmlNodeIsEmbed(node),
 					})
 				}
 			case "video":
@@ -766,6 +793,7 @@ func extractHTMLMedia(source string) []imageReference {
 					result = append(result, imageReference{
 						src:      src,
 						alt:      htmlMediaAlt(node),
+						caption:  htmlMediaCaption(node),
 						poster:   htmlAttribute(node, "poster"),
 						mimeType: htmlAttribute(node, "type"),
 						video:    true,
@@ -784,6 +812,7 @@ func extractHTMLMedia(source string) []imageReference {
 						result = append(result, imageReference{
 							src:      src,
 							alt:      htmlMediaAlt(videoNode),
+							caption:  htmlMediaCaption(node),
 							poster:   htmlAttribute(videoNode, "poster"),
 							mimeType: mime,
 							video:    true,
@@ -820,6 +849,54 @@ func htmlMediaAlt(node *html.Node) string {
 		}
 	}
 	return ""
+}
+
+func htmlMediaCaption(node *html.Node) string {
+	for current := node; current != nil; current = current.Parent {
+		if current.Type != html.ElementNode || !strings.EqualFold(current.Data, "figure") {
+			continue
+		}
+		caption := htmlDescendantElement(current, "figcaption")
+		if caption == nil {
+			return ""
+		}
+		return htmlNodeText(caption)
+	}
+	return ""
+}
+
+func htmlDescendantElement(node *html.Node, name string) *html.Node {
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode && strings.EqualFold(child.Data, name) {
+			return child
+		}
+		if child.Type == html.ElementNode && strings.EqualFold(child.Data, "figure") {
+			continue
+		}
+		if descendant := htmlDescendantElement(child, name); descendant != nil {
+			return descendant
+		}
+	}
+	return nil
+}
+
+func htmlNodeText(node *html.Node) string {
+	var result strings.Builder
+	var walk func(*html.Node)
+	walk = func(current *html.Node) {
+		if current.Type == html.TextNode {
+			result.WriteString(current.Data)
+			return
+		}
+		if current.Type == html.ElementNode && (strings.EqualFold(current.Data, "script") || strings.EqualFold(current.Data, "style")) {
+			return
+		}
+		for child := current.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	walk(node)
+	return strings.Join(strings.Fields(result.String()), " ")
 }
 
 func nearestVideoAncestor(node *html.Node) *html.Node {

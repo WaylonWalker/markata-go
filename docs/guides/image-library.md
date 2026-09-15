@@ -57,9 +57,9 @@ MARKATA_GO_IMAGES_INCLUDE_UNREFERENCED
 
 ## Find and copy an image
 
-The library searches image filenames, paths, alt text, and public post titles.
-Use the `All`, `Used`, `Unused`, `Cover`, and `Recently added` views, or choose
-a sort order from the toolbar.
+The library searches image filenames, paths, alt text, figure captions, and
+public post titles. Use the `All`, `Used`, `Unused`, `Cover`, and `Recently
+added` views, or choose a sort order from the toolbar.
 
 Each card includes **Copy Markdown** and **Copy URL** actions. Both actions use
 the canonical `src` value from the inventory. For example:
@@ -77,6 +77,8 @@ The inventory includes:
 
 - Markdown image syntax, supported raw HTML `<img>` elements, and referenced
   `<video>`/`<source>` elements
+- normalized visible text from associated Markdown or HTML `<figcaption>`
+  elements, including captions shared by multiple media elements in one figure
 - `image`, `video`, `cover`, `cover_image`, `og_image`, `social_image`, `thumbnail`,
   `featured_image`, `hero_image`, `avatar`, and `author_image` frontmatter
 - Image and video files below `assets_dir`
@@ -103,6 +105,9 @@ links are sorted by post path and then href. A missing local dimension is
 reported as `0`. Each used image includes `last_used_at` when a public post has
 a publication date; it is the latest such date in UTC. Tools can sort this
 field descending to show the latest-used media first. Missing values sort last.
+Each usage relationship can also include its figure caption. Captions stay with
+the usage relationship because one media source can have different captions in
+different posts.
 
 The writer checks for collisions with posts, feeds, and static files before it
 writes. It does not overwrite an existing site file. When you disable the
@@ -122,8 +127,9 @@ page. The template receives:
 - `image_library_config` — the resolved image configuration
 
 Image cards expose `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` in addition to the
-regular image fields. Custom templates should render `IsVideo` cards with a
-`<video>` and `<source>` rather than an `<img>`.
+regular image fields. Each item in `Uses` can also expose `Caption` when the
+media appears inside a figure. Custom templates should render `IsVideo` cards
+with a `<video>` and `<source>` rather than an `<img>`.
 
 The bundled page keeps video URLs out of active `src` and `<source src>`
 attributes in the initial HTML while keeping the poster active as the card's

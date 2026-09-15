@@ -61,8 +61,9 @@ searchable `/images/` page plus `/images/index.json` and `/images.json` below
 `output_dir` without
 fetching remote images or videos. Check `images.path`, `images.export_json`, and
 `images.include_unreferenced` when media is missing or an inventory should
-not be public. Private, draft, skipped, and unpublished posts must not create
-public usage relationships.
+not be public. The page searches filenames, alt text, figure captions, and
+public post titles. Private, draft, skipped, and unpublished posts must not
+create public usage relationships.
 Static media referenced only by private posts is omitted from the inventory, but
 media below `assets_dir` is still public static output; keep truly private files
 outside that directory.

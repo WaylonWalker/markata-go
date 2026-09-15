@@ -1070,7 +1070,7 @@ func imageSearchText(image imageindex.Image) string {
 		values = append(values, "embed")
 	}
 	for _, use := range image.Uses {
-		values = append(values, use.Post, use.Href, use.Title)
+		values = append(values, use.Post, use.Href, use.Title, use.Caption)
 	}
 	return strings.ToLower(strings.Join(values, " "))
 }

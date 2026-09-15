@@ -68,6 +68,7 @@ The JSON artifact uses the following top-level shape:
           "post": "posts/build.md",
           "href": "/build/",
           "title": "Build notes",
+          "caption": "The finished build",
           "cover": true
         }
       ]
@@ -77,14 +78,19 @@ The JSON artifact uses the following top-level shape:
 ```
 
 `src`, `width`, `height`, `alt`, `mime_type`, `cover`, and `uses` are stable
-fields. `poster_src` is the canonical poster source for a video, when one is
-available. `last_used_at` is the latest publication date of a public post that
-uses the source. It is omitted when no public use has a publication date.
+fields. A `uses[].caption` value contains the normalized visible text of the
+`<figcaption>` associated with that media use, when one exists. Captions belong
+to uses rather than the canonical media record because the same source may have
+different captions in different posts. `poster_src` is the canonical poster
+source for a video, when one is available. `last_used_at` is the latest
+publication date of a public post that uses the source. It is omitted when no
+public use has a publication date.
 `embed` identifies an image emitted by an external embed card;
 `uses[].embed` identifies the corresponding post relationship. Unknown fields
-MUST be ignored by readers. These four media fields are optional and omitted
-when empty or false. A dimension of `0` means that the source dimensions are
-not available locally. `added_at` is emitted for local files from their
+MUST be ignored by readers. Optional media and relationship fields
+(`poster_src`, `last_used_at`, `embed`, `uses[].embed`, and `uses[].caption`) are
+omitted when empty or false. A dimension of `0` means that the source dimensions
+are not available locally. `added_at` is emitted for local files from their
 filesystem modification time and is omitted for remote-only references.
 
 Images are sorted by `src`. Uses are sorted by post path, then href. Consumers
@@ -133,11 +139,15 @@ supported media frontmatter is inventoried as a non-cover relationship.
 
 Body images MUST be extracted from a Goldmark AST using the site's supported
 image syntax. Inline attributes and figure captions MUST not prevent image
-discovery. Raw HTML `<img>` elements MAY be used as a fallback for content
-that Goldmark represents as raw HTML. Referenced `<video>` and `<source>`
-elements MUST be inventoried as video media, not image media. Obsidian
-attachment embeds are discovered after `EmbedsPlugin` has transformed them
-into standard Markdown.
+discovery. When a Markdown image is inside a figure with a caption, the
+normalized caption text MUST be retained on its usage relationship. A shared
+figure caption MUST be retained for every image in that figure. Raw HTML
+`<img>` elements MAY be used as a fallback for content that Goldmark represents
+as raw HTML. Referenced `<video>` and `<source>` elements MUST be inventoried as
+video media, not image media. A media element inside a `<figure>` MUST retain
+the normalized visible text of its associated `<figcaption>`, including for
+video sources. Obsidian attachment embeds are discovered after `EmbedsPlugin`
+has transformed them into standard Markdown.
 
 External embed cards MUST expose `data-markata-embed="true"` on their generated
 HTML so the library can label their OG images as embeds without fetching remote
@@ -177,10 +187,12 @@ The default page MUST:
 - reserve media aspect-ratio space before images load;
 - use lazy loading and `decoding="async"` for non-critical thumbnails;
 - provide a sticky, mobile-friendly toolbar;
-- provide client-side search over filename, path, alt text, and post titles;
+- provide client-side search over filename, path, alt text, figure captions,
+  and post titles;
 - provide `All`, `Used`, `Unused`, `Cover`, and `Recently added` views;
 - provide deterministic sorting controls, including `Latest used`;
 - show up to three usage links inline and a compact `+N more` disclosure;
+- show available figure captions with their usage links;
 - render video sources with a `<video>` element, a `<source>` element, and a
   poster when available;
 - defer video source URLs until the card enters the viewport while keeping an

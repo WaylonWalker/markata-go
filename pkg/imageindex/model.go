@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -53,11 +54,12 @@ type Image struct {
 
 // Use describes one public post relationship for a media source.
 type Use struct {
-	Post  string
-	Href  string
-	Title string
-	Cover bool
-	Embed bool
+	Post    string
+	Href    string
+	Title   string
+	Caption string
+	Cover   bool
+	Embed   bool
 }
 
 type wireIndex struct {
@@ -89,11 +91,12 @@ type wireImage struct {
 }
 
 type wireUse struct {
-	Post  string `json:"post"`
-	Href  string `json:"href"`
-	Title string `json:"title,omitempty"`
-	Cover bool   `json:"cover"`
-	Embed bool   `json:"embed,omitempty"`
+	Post    string `json:"post"`
+	Href    string `json:"href"`
+	Title   string `json:"title,omitempty"`
+	Caption string `json:"caption,omitempty"`
+	Cover   bool   `json:"cover"`
+	Embed   bool   `json:"embed,omitempty"`
 }
 
 // Marshal encodes an image index as deterministic, compact JSON.
@@ -259,7 +262,9 @@ func normalize(index Index) (Index, error) {
 			}
 			return image.Uses[a].Href < image.Uses[b].Href
 		})
-		for _, use := range image.Uses {
+		for useIndex := range image.Uses {
+			use := &image.Uses[useIndex]
+			use.Caption = strings.TrimSpace(use.Caption)
 			if use.Post == "" && use.Href == "" {
 				return Index{}, fmt.Errorf("images[%d].uses contains an empty relationship", i)
 			}

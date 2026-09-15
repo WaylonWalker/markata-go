@@ -304,6 +304,16 @@
   text-decoration: underline;
 }
 
+.image-card__caption {
+  color: var(--image-muted);
+  display: -webkit-box;
+  font-size: .7rem;
+  line-height: 1.35;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .image-card__more summary {
   cursor: pointer;
   list-style: none;
@@ -317,6 +327,12 @@
   list-style: none;
   margin: .35rem 0 0;
   padding: 0;
+}
+
+.image-card__more li {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
 }
 
 .image-card__actions {

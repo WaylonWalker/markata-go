@@ -69,7 +69,7 @@ func TestImageLibraryPage_RendersVideoMetadataAndEmbedLabel(t *testing.T) {
 		MIMEType:  "video/mp4",
 		PosterSrc: "http://dropper.wayl.one/file/clip.webp",
 		Embed:     true,
-		Uses:      []imageindex.Use{{Post: "posts/clip.md", Href: "/clip/", Embed: true}},
+		Uses:      []imageindex.Use{{Post: "posts/clip.md", Href: "/clip/", Title: "Clip post", Caption: "A useful clip", Embed: true}},
 	}}}
 
 	page := newImageLibraryPage(index)
@@ -88,6 +88,9 @@ func TestImageLibraryPage_RendersVideoMetadataAndEmbedLabel(t *testing.T) {
 	}
 	if !strings.Contains(card.SearchText, "video") || !strings.Contains(card.SearchText, "embed") {
 		t.Fatalf("video search text = %q", card.SearchText)
+	}
+	if !strings.Contains(card.SearchText, "a useful clip") || !strings.Contains(card.SearchText, "clip post") {
+		t.Fatalf("video search text does not include caption and title = %q", card.SearchText)
 	}
 }
 
@@ -123,7 +126,7 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	post.Href = "/hello/"
 	post.Published = true
 	post.Title = stringPointerImages("Hello")
-	post.Content = "![Hello image](https://dropper.wayl.one/file/hello.webp)"
+	post.Content = "![Hello image](https://dropper.wayl.one/file/hello.webp)\nHello figure caption"
 	videoPost := models.NewPost("posts/video.md")
 	videoPost.Slug = "video"
 	videoPost.Href = "/video/"
@@ -162,7 +165,7 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read generated page: %v", err)
 	}
-	if !strings.Contains(string(page), "Copy Markdown") || !strings.Contains(string(page), "hello.webp") || !strings.Contains(string(page), "data-image-filter=\"used\"") {
+	if !strings.Contains(string(page), "Copy Markdown") || !strings.Contains(string(page), "hello.webp") || !strings.Contains(string(page), "Hello figure caption") || !strings.Contains(string(page), "data-image-filter=\"used\"") {
 		t.Fatalf("generated page missing image-library controls/content: %s", page)
 	}
 	if !strings.Contains(string(page), "<video") || !strings.Contains(string(page), `preload="none"`) || !strings.Contains(string(page), `poster="https://dropper.wayl.one/file/video.webp?w=640"`) || !strings.Contains(string(page), `data-video-src="https://dropper.wayl.one/file/video.mp4?w=640"`) || !strings.Contains(string(page), `data-video-type="video/mp4"`) || !strings.Contains(string(page), ">Video</span>") || !strings.Contains(string(page), `data-last-used="1768046400"`) || !strings.Contains(string(page), ">Latest used</option>") || strings.Contains(string(page), `<source src="`) || strings.Contains(string(page), `<img src="https://dropper.wayl.one/file/video.mp4`) {
@@ -178,6 +181,9 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	}
 	if artifact["image_count"] != float64(2) {
 		t.Fatalf("generated image_count = %#v", artifact["image_count"])
+	}
+	if !strings.Contains(string(data), `"caption":"Hello figure caption"`) {
+		t.Fatalf("generated JSON missing figure caption: %s", data)
 	}
 	flatData, err := os.ReadFile(flatJSONPath)
 	if err != nil {

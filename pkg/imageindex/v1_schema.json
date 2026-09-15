@@ -44,6 +44,7 @@
               "post": {"type": "string"},
               "href": {"type": "string"},
               "title": {"type": "string"},
+              "caption": {"type": "string"},
               "cover": {"type": "boolean"},
               "embed": {"type": "boolean"}
             }

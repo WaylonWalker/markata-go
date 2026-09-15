@@ -87,10 +87,12 @@ export_json = true
 include_unreferenced = true
 ```
 
-The inventory contains image metadata and public usage relationships. Draft,
-private, skipped, and unpublished posts do not create usage relationships.
-Remote images are recorded without network requests. Trusted Dropper hosts use
-resized URLs only for page previews; canonical sources remain unchanged.
+The inventory contains image metadata and public usage relationships. Usage
+relationships include normalized figure captions when the source appears in a
+`<figure>`. Draft, private, skipped, and unpublished posts do not create usage
+relationships. Remote images are recorded without network requests. Trusted
+Dropper hosts use resized URLs only for page previews; canonical sources remain
+unchanged.
 
 ---
 

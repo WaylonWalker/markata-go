@@ -219,6 +219,42 @@ func TestBuild_ClassifiesDirectHTMLVideoWithPoster(t *testing.T) {
 	}
 }
 
+func TestBuild_CollectsFigureCaptionsForImagesAndVideos(t *testing.T) {
+	post := models.NewPost("posts/captions.md")
+	post.Path = "posts/captions.md"
+	post.Slug = "captions"
+	post.Href = "/captions/"
+	post.Published = true
+	post.Title = stringPointer("Caption post")
+	post.Content = `![Markdown image](https://example.test/markdown.jpg)
+![Second image](https://example.test/second.jpg)
+Markdown figure caption`
+	post.ArticleHTML = `<figure><a href="https://example.test/html.jpg"><img src="https://example.test/html.jpg" alt="HTML image"></a><figcaption><strong>HTML image</strong> caption</figcaption></figure>
+<figure><video src="https://example.test/direct-clip.mp4"></video><figcaption>Direct video caption</figcaption></figure>
+<figure><video><source src="https://example.test/clip.mp4" type="video/mp4"></video><figcaption>Video <em>figure</em> caption</figcaption></figure>`
+
+	index, err := Build([]*models.Post{post}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	for _, test := range []struct {
+		src     string
+		caption string
+	}{
+		{src: "https://example.test/markdown.jpg", caption: "Markdown figure caption"},
+		{src: "https://example.test/second.jpg", caption: "Markdown figure caption"},
+		{src: "https://example.test/html.jpg", caption: "HTML image caption"},
+		{src: "https://example.test/direct-clip.mp4", caption: "Direct video caption"},
+		{src: "https://example.test/clip.mp4", caption: "Video figure caption"},
+	} {
+		image := imageBySrc(t, index, test.src)
+		if len(image.Uses) != 1 || image.Uses[0].Caption != test.caption {
+			t.Fatalf("caption for %q = %#v, want %q", test.src, image.Uses, test.caption)
+		}
+	}
+}
+
 func TestBuild_TracksLatestPublicUse(t *testing.T) {
 	olderDate := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 	newerDate := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)

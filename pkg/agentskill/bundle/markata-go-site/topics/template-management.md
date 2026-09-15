@@ -104,8 +104,9 @@ plugin renders its page:
 - `image_library_config` — the resolved `[markata-go.images]` settings
 
 Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` alongside the
-regular image fields. Render video cards with a `<video>` element and a nested
-`<source>` element; use `poster_src` when it is non-empty.
+regular image fields. Each item in `Uses` can include `Caption` when the media
+has an associated figure caption. Render video cards with a `<video>` element
+and a nested `<source>` element; use `poster_src` when it is non-empty.
 The bundled image-library template keeps available posters visible but defers
 video sources until a card enters the viewport. Keep that lazy-loading behavior
 in custom templates when the page can contain many videos.
