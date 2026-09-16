@@ -103,8 +103,10 @@ plugin renders its page:
 - `image_index` — the canonical image inventory
 - `image_library_config` — the resolved `[markata-go.images]` settings
 
-Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` alongside the
-regular image fields. Each item in `Uses` can include `Caption` when the media
+Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, `AddedAt`,
+`AddedAtUnix`, `LastUsedAt`, and `LastUsedAtUnix` alongside the regular image
+fields. `AddedAt` is the earliest valid public post date for the source, not a
+filesystem timestamp. Each item in `Uses` can include `Caption` when the media
 has an associated figure caption. Render video cards with a `<video>` element
 and a nested `<source>` element; use `poster_src` when it is non-empty.
 The bundled image-library template keeps available posters visible but defers

@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sort"
 	"strconv"
@@ -526,24 +526,13 @@ func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config 
 		input.WriteByte('\x00')
 	}
 
-	assetHash, assetStateHash, err := hashImageDirectory(assetsDir, imageHashExtensions())
+	mediaHash, mediaStateHash, err := hashImageDirectories(contentDir, assetsDir, imageHashExtensions(), GetBuildCache(m))
 	if err != nil {
 		return "", err
 	}
-	// Referenced local images may live beside content instead of below the
-	// configured assets directory. Include the content tree so changes to
-	// their dimensions, timestamps, or bytes invalidate the generated index.
-	contentImageHash, contentImageStateHash, err := hashImageDirectory(contentDir, imageHashExtensions())
-	if err != nil {
-		return "", err
-	}
-	input.WriteString(assetHash)
+	input.WriteString(mediaHash)
 	input.WriteByte('\x00')
-	input.WriteString(assetStateHash)
-	input.WriteByte('\x00')
-	input.WriteString(contentImageHash)
-	input.WriteByte('\x00')
-	input.WriteString(contentImageStateHash)
+	input.WriteString(mediaStateHash)
 	return buildcache.ContentHash(input.String()), nil
 }
 
@@ -610,21 +599,101 @@ func imageHashExtensions() []string {
 }
 
 // hashImageDirectory fingerprints regular image and video files while ignoring
-// symbolic links. Media discovery intentionally skips symlinks, so the cache
-// hash must not fail on a dangling or unreadable media link in content or assets.
+// symbolic links. It is retained as an uncached helper for callers and tests
+// that need to hash one directory.
 func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash string, err error) {
-	extensionsByName := make(map[string]struct{}, len(extensions))
+	return hashImageDirectoriesWithHasher(dir, "", extensions, nil, buildcache.HashFile)
+}
+
+// hashImageDirectories fingerprints media from the content and asset roots.
+// When the roots overlap, the outer root is walked once so a file below static
+// is not discovered and hashed again through the content root. The cache uses
+// normalized absolute paths only as lookup keys; generated hashes use paths
+// relative to the selected scan root and never expose filesystem timestamps.
+func hashImageDirectories(contentDir, assetsDir string, extensions []string, cache *buildcache.Cache) (contentHash, stateHash string, err error) {
+	return hashImageDirectoriesWithHasher(contentDir, assetsDir, extensions, cache, buildcache.HashFile)
+}
+
+type imageLibraryScanRoot struct {
+	path  string
+	label string
+}
+
+type imageLibraryFile struct {
+	cacheKey        string
+	hashPath        string
+	fullPath        string
+	size            int64
+	modTime         int64
+	changeTime      int64
+	changeTimeKnown bool
+}
+
+func hashImageDirectoriesWithHasher(contentDir, assetsDir string, extensions []string, cache *buildcache.Cache, hashFile func(string) (string, error)) (contentHash, stateHash string, err error) {
+	if hashFile == nil {
+		hashFile = buildcache.HashFile
+	}
+
+	roots := imageLibraryScanRoots(contentDir, assetsDir)
+	extensionsByName := imageLibraryExtensionsByName(extensions)
+	filesByPath := make(map[string]imageLibraryFile, 64)
+	for _, root := range roots {
+		if walkErr := collectImageLibraryFiles(root, extensionsByName, filesByPath); os.IsNotExist(walkErr) {
+			continue
+		} else if walkErr != nil {
+			return "", "", walkErr
+		}
+	}
+
+	files := make([]imageLibraryFile, 0, len(filesByPath))
+	for _, file := range filesByPath {
+		files = append(files, file)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].hashPath < files[j].hashPath })
+
+	previous := map[string]buildcache.ImageLibraryMediaFingerprint(nil)
+	if cache != nil {
+		previous = cache.GetImageLibraryMedia()
+	}
+	contentHash, stateHash, next, err := hashImageLibraryFiles(files, previous, hashFile)
+	if err != nil {
+		return "", "", err
+	}
+	if cache != nil {
+		cache.SetImageLibraryMedia(next)
+	}
+	return contentHash, stateHash, nil
+}
+
+func imageLibraryScanRoots(contentDir, assetsDir string) []imageLibraryScanRoot {
+	contentRoot := normalizedImageLibraryDirectory(contentDir)
+	roots := []imageLibraryScanRoot{{path: contentRoot, label: "content"}}
+	if assetsDir == "" {
+		return roots
+	}
+	assetsRoot := normalizedImageLibraryDirectory(assetsDir)
+	switch {
+	case imageLibraryPathWithin(contentRoot, assetsRoot):
+		// The content walk already includes the configured asset directory.
+	case imageLibraryPathWithin(assetsRoot, contentRoot):
+		// Prefer the outer asset root when it contains the content root.
+		roots[0] = imageLibraryScanRoot{path: assetsRoot, label: "assets"}
+	default:
+		roots = append(roots, imageLibraryScanRoot{path: assetsRoot, label: "assets"})
+	}
+	return roots
+}
+
+func imageLibraryExtensionsByName(extensions []string) map[string]struct{} {
+	byName := make(map[string]struct{}, len(extensions))
 	for _, extension := range extensions {
-		extensionsByName[extension] = struct{}{}
+		byName[strings.ToLower(extension)] = struct{}{}
 	}
-	type imageFile struct {
-		path     string
-		fullPath string
-		size     int64
-		modTime  int64
-	}
-	files := make([]imageFile, 0, 32)
-	err = filepath.WalkDir(dir, func(path string, entry os.DirEntry, walkErr error) error {
+	return byName
+}
+
+func collectImageLibraryFiles(root imageLibraryScanRoot, extensionsByName map[string]struct{}, filesByPath map[string]imageLibraryFile) error {
+	return filepath.WalkDir(root.path, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -641,49 +710,125 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		relative, relativeErr := filepath.Rel(dir, path)
+		changeTime, changeTimeKnown := imageLibraryChangeTime(info)
+		absolute := normalizedImageLibraryPath(path)
+		relative, relativeErr := filepath.Rel(root.path, path)
 		if relativeErr != nil {
 			relative = path
 		}
-		files = append(files, imageFile{
-			path:     relative,
-			fullPath: path,
-			size:     info.Size(),
-			modTime:  info.ModTime().UnixNano(),
-		})
+		cacheKey := filepath.ToSlash(absolute)
+		if _, exists := filesByPath[cacheKey]; exists {
+			return nil
+		}
+		filesByPath[cacheKey] = imageLibraryFile{
+			cacheKey:        cacheKey,
+			hashPath:        root.label + "/" + filepath.ToSlash(relative),
+			fullPath:        absolute,
+			size:            info.Size(),
+			modTime:         info.ModTime().UnixNano(),
+			changeTime:      changeTime,
+			changeTimeKnown: changeTimeKnown,
+		}
 		return nil
 	})
-	if os.IsNotExist(err) {
-		return "", "", nil
-	}
-	if err != nil {
-		return "", "", err
-	}
-	sort.Slice(files, func(i, j int) bool { return files[i].path < files[j].path })
+}
 
+func hashImageLibraryFiles(files []imageLibraryFile, previous map[string]buildcache.ImageLibraryMediaFingerprint, hashFile func(string) (string, error)) (contentHash, stateHash string, next map[string]buildcache.ImageLibraryMediaFingerprint, err error) {
+	next = make(map[string]buildcache.ImageLibraryMediaFingerprint, len(files))
 	contentHasher := sha256.New()
 	stateHasher := sha256.New()
 	for _, file := range files {
-		contentHasher.Write([]byte(file.path))
-		media, err := os.Open(file.fullPath)
-		if err != nil {
-			return "", "", err
+		fingerprint, cached := previous[file.cacheKey]
+		contentFileHash := fingerprint.ContentHash
+		if imageLibraryMediaNeedsHash(cached, fingerprint, file) {
+			contentFileHash, err = hashFile(file.fullPath)
+			if err != nil {
+				return "", "", nil, fmt.Errorf("hash media file %s: %w", file.fullPath, err)
+			}
 		}
-		if _, err := io.Copy(contentHasher, media); err != nil {
-			_ = media.Close()
-			return "", "", fmt.Errorf("hash media file %s: %w", file.fullPath, err)
+		next[file.cacheKey] = buildcache.ImageLibraryMediaFingerprint{
+			Size:            file.size,
+			ModTime:         file.modTime,
+			ChangeTime:      file.changeTime,
+			ChangeTimeKnown: file.changeTimeKnown,
+			ContentHash:     contentFileHash,
 		}
-		if err := media.Close(); err != nil {
-			return "", "", fmt.Errorf("close media file %s: %w", file.fullPath, err)
-		}
-		stateHasher.Write([]byte(file.path))
+
+		contentHasher.Write([]byte(file.hashPath))
+		contentHasher.Write([]byte{0})
+		contentHasher.Write([]byte(contentFileHash))
+		contentHasher.Write([]byte{0})
+		stateHasher.Write([]byte(file.hashPath))
 		stateHasher.Write([]byte{0})
 		stateHasher.Write([]byte(strconv.FormatInt(file.size, 10)))
 		stateHasher.Write([]byte{0})
 		stateHasher.Write([]byte(strconv.FormatInt(file.modTime, 10)))
 		stateHasher.Write([]byte{0})
 	}
-	return hex.EncodeToString(contentHasher.Sum(nil)), hex.EncodeToString(stateHasher.Sum(nil)), nil
+	return hex.EncodeToString(contentHasher.Sum(nil)), hex.EncodeToString(stateHasher.Sum(nil)), next, nil
+}
+
+func imageLibraryMediaNeedsHash(cached bool, fingerprint buildcache.ImageLibraryMediaFingerprint, file imageLibraryFile) bool {
+	return !cached || fingerprint.Size != file.size || fingerprint.ModTime != file.modTime || fingerprint.ChangeTimeKnown != file.changeTimeKnown || (file.changeTimeKnown && fingerprint.ChangeTime != file.changeTime) || fingerprint.ContentHash == ""
+}
+
+func normalizedImageLibraryDirectory(path string) string {
+	if path == "" {
+		path = "."
+	}
+	return normalizedImageLibraryPath(path)
+}
+
+func normalizedImageLibraryPath(path string) string {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = filepath.Clean(path)
+	}
+	return filepath.Clean(absolute)
+}
+
+func imageLibraryPathWithin(root, path string) bool {
+	relative, err := filepath.Rel(root, path)
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
+}
+
+// imageLibraryChangeTime extracts the portable shape shared by Unix stat
+// structures without importing platform-specific syscall types. Filesystems
+// that do not expose a change time return false and use size plus mtime only.
+func imageLibraryChangeTime(info os.FileInfo) (int64, bool) {
+	if info == nil || info.Sys() == nil {
+		return 0, false
+	}
+	value := reflect.ValueOf(info.Sys())
+	for value.Kind() == reflect.Ptr {
+		if value.IsNil() {
+			return 0, false
+		}
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return 0, false
+	}
+	for _, fieldName := range []string{"Ctim", "Ctimespec", "ChangeTime"} {
+		field := value.FieldByName(fieldName)
+		if !field.IsValid() || field.Kind() != reflect.Struct {
+			continue
+		}
+		seconds, secondsOK := imageLibraryIntField(field.FieldByName("Sec"))
+		nanos, nanosOK := imageLibraryIntField(field.FieldByName("Nsec"))
+		if !secondsOK || !nanosOK {
+			continue
+		}
+		return seconds*int64(time.Second) + nanos, true
+	}
+	return 0, false
+}
+
+func imageLibraryIntField(value reflect.Value) (int64, bool) {
+	if !value.IsValid() || !value.CanInt() {
+		return 0, false
+	}
+	return value.Int(), true
 }
 
 func imageLibraryOutputsExist(pagePath, jsonPath, flatJSONPath string, exportJSON bool) bool {

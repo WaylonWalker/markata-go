@@ -250,10 +250,7 @@ func normalize(index Index) (Index, error) {
 			return Index{}, fmt.Errorf("images[%d].src is duplicated: %q", i, image.Src)
 		}
 		seen[image.Src] = struct{}{}
-		if image.LastUsedAt != nil {
-			lastUsedAt := image.LastUsedAt.UTC()
-			image.LastUsedAt = &lastUsedAt
-		}
+		normalizeImageDates(image)
 
 		image.Uses = append([]Use(nil), image.Uses...)
 		sort.SliceStable(image.Uses, func(a, b int) bool {
@@ -278,4 +275,15 @@ func normalize(index Index) (Index, error) {
 	}
 	index.ImageCount = len(index.Images)
 	return index, nil
+}
+
+func normalizeImageDates(image *Image) {
+	if image.AddedAt != nil {
+		addedAt := image.AddedAt.UTC()
+		image.AddedAt = &addedAt
+	}
+	if image.LastUsedAt != nil {
+		lastUsedAt := image.LastUsedAt.UTC()
+		image.LastUsedAt = &lastUsedAt
+	}
 }

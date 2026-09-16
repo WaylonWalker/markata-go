@@ -46,7 +46,7 @@ import (
 )
 
 // CacheVersion is incremented when the cache format changes.
-const CacheVersion = 2
+const CacheVersion = 3
 
 // DefaultCacheDir is the directory for cache files.
 const DefaultCacheDir = ".markata"
@@ -104,6 +104,12 @@ type Cache struct {
 	// ImageLibraryOutputRoot and their last generated content hashes. Content
 	// hashes prevent cleanup from deleting a file that a user later changed.
 	ImageLibraryOutputHashes map[string]string `json:"image_library_output_hashes,omitempty"`
+
+	// ImageLibraryMedia stores content fingerprints for local image-library
+	// media. The map key is a normalized source path. Size, ModTime, and an
+	// optional ChangeTime are cheap invalidation state; ContentHash is reused
+	// while that state matches.
+	ImageLibraryMedia map[string]ImageLibraryMediaFingerprint `json:"image_library_media,omitempty"`
 
 	// TailwindManifestHash caches the generated Tailwind token manifest state.
 	TailwindManifestHash string `json:"tailwind_manifest_hash,omitempty"`
@@ -258,6 +264,17 @@ type PostCache struct {
 	MentionsContent string `json:"mentions_content,omitempty"`
 }
 
+// ImageLibraryMediaFingerprint stores the cheap filesystem state and content
+// hash for one local image-library media file. ChangeTime is an operating
+// system change-time signal when the filesystem exposes one.
+type ImageLibraryMediaFingerprint struct {
+	Size            int64  `json:"size"`
+	ModTime         int64  `json:"mod_time"`
+	ChangeTime      int64  `json:"change_time,omitempty"`
+	ChangeTimeKnown bool   `json:"change_time_known,omitempty"`
+	ContentHash     string `json:"content_hash"`
+}
+
 // FeedCache stores cached metadata for a single feed.
 type FeedCache struct {
 	// Hash is the hash of the feed's content (post slugs, config)
@@ -270,14 +287,15 @@ func New(cacheDir string) *Cache {
 		cacheDir = DefaultCacheDir
 	}
 	return &Cache{
-		Version:          CacheVersion,
-		Posts:            make(map[string]*PostCache),
-		Feeds:            make(map[string]*FeedCache),
-		Graph:            NewDependencyGraph(),
-		path:             filepath.Join(cacheDir, CacheFileName),
-		stalePosts:       make(map[string]*PostCache),
-		changedSlugs:     make(map[string]bool),
-		changedFeedSlugs: make(map[string]bool),
+		Version:           CacheVersion,
+		Posts:             make(map[string]*PostCache),
+		Feeds:             make(map[string]*FeedCache),
+		ImageLibraryMedia: make(map[string]ImageLibraryMediaFingerprint),
+		Graph:             NewDependencyGraph(),
+		path:              filepath.Join(cacheDir, CacheFileName),
+		stalePosts:        make(map[string]*PostCache),
+		changedSlugs:      make(map[string]bool),
+		changedFeedSlugs:  make(map[string]bool),
 	}
 }
 
@@ -314,6 +332,9 @@ func Load(cacheDir string) (*Cache, error) {
 	// Ensure Feeds is initialized
 	if cache.Feeds == nil {
 		cache.Feeds = make(map[string]*FeedCache)
+	}
+	if cache.ImageLibraryMedia == nil {
+		cache.ImageLibraryMedia = make(map[string]ImageLibraryMediaFingerprint)
 	}
 
 	// Ensure changedSlugs is initialized
@@ -884,6 +905,51 @@ func (c *Cache) ClearImageLibraryOutputs() {
 	c.ImageLibraryOutputRoot = ""
 	c.ImageLibraryOutputHashes = nil
 	c.dirty = true
+}
+
+// GetImageLibraryMedia returns a copy of the cached local-media fingerprints.
+func (c *Cache) GetImageLibraryMedia() map[string]ImageLibraryMediaFingerprint {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	media := make(map[string]ImageLibraryMediaFingerprint, len(c.ImageLibraryMedia))
+	for path, fingerprint := range c.ImageLibraryMedia {
+		media[path] = fingerprint
+	}
+	return media
+}
+
+// SetImageLibraryMedia replaces the cached local-media fingerprints. It
+// reports whether the persisted cache state changed.
+func (c *Cache) SetImageLibraryMedia(media map[string]ImageLibraryMediaFingerprint) bool {
+	normalized := make(map[string]ImageLibraryMediaFingerprint, len(media))
+	for path, fingerprint := range media {
+		if path == "" || fingerprint.ContentHash == "" {
+			continue
+		}
+		normalized[filepath.ToSlash(filepath.Clean(path))] = fingerprint
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if equalImageLibraryMedia(c.ImageLibraryMedia, normalized) {
+		return false
+	}
+	c.ImageLibraryMedia = normalized
+	c.dirty = true
+	return true
+}
+
+func equalImageLibraryMedia(left, right map[string]ImageLibraryMediaFingerprint) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for path, fingerprint := range left {
+		if right[path] != fingerprint {
+			return false
+		}
+	}
+	return true
 }
 
 // GetImageLibraryHash returns the cached image-library output hash.

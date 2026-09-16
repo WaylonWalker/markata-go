@@ -113,6 +113,28 @@ func TestImageLibraryPage_FormatsLastUsedAtInUTC(t *testing.T) {
 	}
 }
 
+func TestImageLibraryRecentlyAddedFilterUsesTimestampWindow(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "themes", "default", "static", "js", "image-library.js"))
+	if err != nil {
+		t.Fatalf("read image-library.js: %v", err)
+	}
+	source := string(data)
+	for _, marker := range []string{
+		"var recentWindowSeconds = 30 * 24 * 60 * 60;",
+		"var addedAt = Number(card.getAttribute(\"data-added\") || 0);",
+		"if (!(addedAt > 0)) return false;",
+		"var now = Math.floor(Date.now() / 1000);",
+		"addedAt >= now - recentWindowSeconds && addedAt <= now;",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Errorf("image-library.js missing recent-filter marker %q", marker)
+		}
+	}
+	if strings.Contains(source, "return !!card.getAttribute(\"data-added\")") {
+		t.Fatal("recent filter tests the data-added string instead of its timestamp")
+	}
+}
+
 func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	root := t.TempDir()
 	output := filepath.Join(root, "output")
@@ -165,10 +187,10 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read generated page: %v", err)
 	}
-	if !strings.Contains(string(page), "Copy Markdown") || !strings.Contains(string(page), "hello.webp") || !strings.Contains(string(page), "Hello figure caption") || !strings.Contains(string(page), "data-image-filter=\"used\"") {
+	if !strings.Contains(string(page), "Copy Markdown") || !strings.Contains(string(page), "hello.webp") || !strings.Contains(string(page), "Hello figure caption") || !strings.Contains(string(page), "data-image-filter=\"used\"") || !strings.Contains(string(page), `data-added="0"`) {
 		t.Fatalf("generated page missing image-library controls/content: %s", page)
 	}
-	if !strings.Contains(string(page), "<video") || !strings.Contains(string(page), `preload="none"`) || !strings.Contains(string(page), `poster="https://dropper.wayl.one/file/video.webp?w=640"`) || !strings.Contains(string(page), `data-video-src="https://dropper.wayl.one/file/video.mp4?w=640"`) || !strings.Contains(string(page), `data-video-type="video/mp4"`) || !strings.Contains(string(page), ">Video</span>") || !strings.Contains(string(page), `data-last-used="1768046400"`) || !strings.Contains(string(page), ">Latest used</option>") || strings.Contains(string(page), `<source src="`) || strings.Contains(string(page), `<img src="https://dropper.wayl.one/file/video.mp4`) {
+	if !strings.Contains(string(page), "<video") || !strings.Contains(string(page), `preload="none"`) || !strings.Contains(string(page), `poster="https://dropper.wayl.one/file/video.webp?w=640"`) || !strings.Contains(string(page), `data-video-src="https://dropper.wayl.one/file/video.mp4?w=640"`) || !strings.Contains(string(page), `data-video-type="video/mp4"`) || !strings.Contains(string(page), ">Video</span>") || !strings.Contains(string(page), `data-added="1768046400"`) || !strings.Contains(string(page), `data-last-used="1768046400"`) || !strings.Contains(string(page), ">Latest used</option>") || strings.Contains(string(page), `<source src="`) || strings.Contains(string(page), `<img src="https://dropper.wayl.one/file/video.mp4`) {
 		t.Fatalf("generated page missing video presentation: %s", page)
 	}
 	data, err := os.ReadFile(jsonPath)
@@ -553,6 +575,102 @@ func TestImageLibraryPlugin_RebuildsWhenReferencedContentImageChanges(t *testing
 	}
 	if secondHash := cache.GetImageLibraryHash(); secondHash == firstHash {
 		t.Fatalf("image-library hash did not change after referenced content image changed: %q", secondHash)
+	}
+}
+
+func TestHashImageDirectories_ReusesUnchangedMediaContent(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(filepath.Join(root, "posts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "asset.webp"), []byte("asset bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	contentMedia := filepath.Join(root, "posts", "content.webp")
+	if err := os.WriteFile(contentMedia, []byte("content bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	reads := 0
+	hashFile := func(path string) (string, error) {
+		reads++
+		return buildcache.HashFile(path)
+	}
+	firstContentHash, firstStateHash, err := hashImageDirectoriesWithHasher(root, assets, imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("first hashImageDirectories() error = %v", err)
+	}
+	if reads != 2 {
+		t.Fatalf("first media read count = %d, want one read per file and one overlapping traversal", reads)
+	}
+
+	secondContentHash, secondStateHash, err := hashImageDirectoriesWithHasher(root, assets, imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("second hashImageDirectories() error = %v", err)
+	}
+	if reads != 2 {
+		t.Fatalf("unchanged second media read count = %d, want %d", reads, 2)
+	}
+	if firstContentHash != secondContentHash || firstStateHash != secondStateHash {
+		t.Fatalf("unchanged hashes differ: first=(%q, %q), second=(%q, %q)", firstContentHash, firstStateHash, secondContentHash, secondStateHash)
+	}
+
+	if err := os.WriteFile(contentMedia, []byte("changed content bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := hashImageDirectoriesWithHasher(root, assets, imageHashExtensions(), cache, hashFile); err != nil {
+		t.Fatalf("changed hashImageDirectories() error = %v", err)
+	}
+	if reads != 3 {
+		t.Fatalf("changed media read count = %d, want changed file reread only", reads)
+	}
+}
+
+func TestHashImageDirectories_RehashesSameSizeMediaWithPreservedMtime(t *testing.T) {
+	root := t.TempDir()
+	mediaPath := filepath.Join(root, "photo.webp")
+	if err := os.WriteFile(mediaPath, []byte("first image"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(mediaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := imageLibraryChangeTime(info); !ok {
+		t.Skip("filesystem does not expose a change time")
+	}
+
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	reads := 0
+	hashFile := func(path string) (string, error) {
+		reads++
+		return buildcache.HashFile(path)
+	}
+	firstContentHash, _, err := hashImageDirectoriesWithHasher(root, "", imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("first hashImageDirectories() error = %v", err)
+	}
+
+	if err := os.WriteFile(mediaPath, []byte("second img!"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(mediaPath, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	secondContentHash, _, err := hashImageDirectoriesWithHasher(root, "", imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("second hashImageDirectories() error = %v", err)
+	}
+	if reads != 2 {
+		t.Fatalf("same-size preserved-mtime media read count = %d, want changed file reread", reads)
+	}
+	if firstContentHash == secondContentHash {
+		t.Fatal("same-size media replacement retained the cached content hash")
 	}
 }
 

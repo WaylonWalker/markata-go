@@ -102,12 +102,31 @@ even when `include_unreferenced` is enabled. Keep private media outside
 
 The JSON artifact is deterministic. Images are sorted by source URL and usage
 links are sorted by post path and then href. A missing local dimension is
-reported as `0`. Each used image includes `last_used_at` when a public post has
-a publication date; it is the latest such date in UTC. Tools can sort this
-field descending to show the latest-used media first. Missing values sort last.
+reported as `0`. Local PNG, JPEG, GIF, WebP, BMP, and TIFF files report their
+dimensions when the file metadata is valid. SVG files use positive `width` and
+`height` values or a positive `viewBox`; ICO files use their largest directory
+entry. AVIF and HEIC/HEIF records are supported, but their dimensions remain
+`0` until a decoder is available. Malformed or unsupported media does not fail
+the build.
+
+Each used image includes `added_at` when a public post has a valid publication
+date; it is the earliest such date in UTC. `last_used_at` is the latest public
+publication date in UTC. These dates come from post frontmatter, not local file
+timestamps, so remote media and local media use the same rules. Missing values
+sort last. The `Recently added` view shows sources with a positive `added_at`
+timestamp from the last 30 days according to the browser clock.
 Each usage relationship can also include its figure caption. Captions stay with
 the usage relationship because one media source can have different captions in
 different posts.
+
+The image library keeps a small media fingerprint cache for incremental builds.
+When a local file's path, size, and modification time are unchanged, markata-go
+reuses its content fingerprint without reopening the file. On filesystems that
+expose an operating-system change time, that signal also detects replacements
+that preserve size and modification time. Filesystems without that signal must
+keep modification times reliable for this optimization; a changed, added,
+removed, or renamed media file with changed cache state invalidates the
+generated inventory.
 
 The writer checks for collisions with posts, feeds, and static files before it
 writes. It does not overwrite an existing site file. When you disable the
@@ -126,10 +145,12 @@ page. The template receives:
 - `image_index` — the canonical `imageindex.Index`
 - `image_library_config` — the resolved image configuration
 
-Image cards expose `IsVideo`, `PosterSrc`, `Embed`, and `LastUsedAt` in addition to the
-regular image fields. Each item in `Uses` can also expose `Caption` when the
-media appears inside a figure. Custom templates should render `IsVideo` cards
-with a `<video>` and `<source>` rather than an `<img>`.
+Image cards expose `IsVideo`, `PosterSrc`, `Embed`, `AddedAt`, `AddedAtUnix`,
+`LastUsedAt`, and `LastUsedAtUnix` in addition to the regular image fields.
+`AddedAt` is the earliest valid public post date for the source. Each item in
+`Uses` can also expose `Caption` when the media appears inside a figure. Custom
+templates should render `IsVideo` cards with a `<video>` and `<source>` rather
+than an `<img>`.
 
 The bundled page keeps video URLs out of active `src` and `<source src>`
 attributes in the initial HTML while keeping the poster active as the card's

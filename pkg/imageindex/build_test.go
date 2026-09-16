@@ -2,6 +2,7 @@ package imageindex
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"golang.org/x/image/tiff"
 )
 
 func TestBuild_DiscoversPublicSourcesAndDeduplicatesUses(t *testing.T) {
@@ -131,6 +133,80 @@ func TestBuild_ScansUnreferencedVideoAssets(t *testing.T) {
 	video := imageBySrc(t, index, "/videos/clip.mp4")
 	if video.MIMEType != "video/mp4" || video.Cover || len(video.Uses) != 0 {
 		t.Fatalf("unreferenced video = %#v", video)
+	}
+}
+
+func TestBuild_ReportsDimensionsForSupportedLocalFormats(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	writeWebP(t, filepath.Join(assets, "web.webp"), 17, 11)
+	writeBMP(t, filepath.Join(assets, "bitmap.bmp"), 13, 7)
+	writeTIFF(t, filepath.Join(assets, "scan.tiff"), 9, 5)
+	if err := os.WriteFile(filepath.Join(assets, "vector.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"></svg>`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeICO(t, filepath.Join(assets, "icon.ico"), 64, 32)
+	if err := os.WriteFile(filepath.Join(assets, "photo.avif"), []byte("ftypavif without a decoder"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "photo.heic"), []byte("ftypheic without a decoder"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "photo.heif"), []byte("ftypheif without a decoder"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	index, err := Build(nil, BuildOptions{ContentDir: root, AssetsDir: assets, IncludeUnreferenced: true})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	for _, test := range []struct {
+		src      string
+		width    int
+		height   int
+		mimeType string
+	}{
+		{src: "/web.webp", width: 17, height: 11, mimeType: "image/webp"},
+		{src: "/bitmap.bmp", width: 13, height: 7, mimeType: "image/bmp"},
+		{src: "/scan.tiff", width: 9, height: 5, mimeType: "image/tiff"},
+		{src: "/vector.svg", width: 120, height: 80, mimeType: "image/svg+xml"},
+		{src: "/icon.ico", width: 64, height: 32, mimeType: "image/x-icon"},
+		{src: "/photo.avif", mimeType: "image/avif"},
+		{src: "/photo.heic", mimeType: "image/heic"},
+		{src: "/photo.heif", mimeType: "image/heif"},
+	} {
+		image := imageBySrc(t, index, test.src)
+		if image.Width != test.width || image.Height != test.height || image.MIMEType != test.mimeType {
+			t.Errorf("%s metadata = (%d, %d, %q), want (%d, %d, %q)", test.src, image.Width, image.Height, image.MIMEType, test.width, test.height, test.mimeType)
+		}
+	}
+}
+
+func TestSVGIntrinsicDimensions_UsesAbsoluteValuesAndViewBox(t *testing.T) {
+	tests := []struct {
+		name                  string
+		widthValue            string
+		heightValue           string
+		viewBox               string
+		wantWidth, wantHeight int
+	}{
+		{name: "pixel dimensions", widthValue: "120px", heightValue: "80px", wantWidth: 120, wantHeight: 80},
+		{name: "viewBox fallback", viewBox: "0 0 200 100", wantWidth: 200, wantHeight: 100},
+		{name: "percentages use viewBox", widthValue: "100%", heightValue: "50%", viewBox: "0 0 200 100", wantWidth: 200, wantHeight: 100},
+		{name: "malformed", widthValue: "wide", heightValue: "80px", wantWidth: 0, wantHeight: 0},
+		{name: "overflow", widthValue: "9223372036854775807px", heightValue: "80px", wantWidth: 0, wantHeight: 0},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			width, height := svgIntrinsicDimensions(test.widthValue, test.heightValue, test.viewBox)
+			if width != test.wantWidth || height != test.wantHeight {
+				t.Fatalf("svgIntrinsicDimensions() = (%d, %d), want (%d, %d)", width, height, test.wantWidth, test.wantHeight)
+			}
+		})
 	}
 }
 
@@ -283,6 +359,118 @@ func TestBuild_TracksLatestPublicUse(t *testing.T) {
 	}
 }
 
+func TestBuild_TracksEarliestDatedPublicUse(t *testing.T) {
+	oldestDate := time.Date(2024, time.March, 10, 0, 0, 0, 0, time.UTC)
+	newestDate := time.Date(2026, time.September, 12, 0, 0, 0, 0, time.UTC)
+	sharedSource := "https://example.test/shared.webp"
+
+	oldest := models.NewPost("posts/oldest.md")
+	oldest.Path = "posts/oldest.md"
+	oldest.Slug = "oldest"
+	oldest.Href = "/oldest/"
+	oldest.Published = true
+	oldest.Date = &oldestDate
+	oldest.Content = "![Shared](" + sharedSource + ")"
+
+	newest := models.NewPost("posts/newest.md")
+	newest.Path = "posts/newest.md"
+	newest.Slug = "newest"
+	newest.Href = "/newest/"
+	newest.Published = true
+	newest.Date = &newestDate
+	newest.Content = "![Shared](" + sharedSource + ")"
+
+	undated := models.NewPost("posts/undated.md")
+	undated.Path = "posts/undated.md"
+	undated.Slug = "undated"
+	undated.Href = "/undated/"
+	undated.Published = true
+	undated.Content = "![Shared](" + sharedSource + ")"
+
+	privateDate := time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)
+	private := models.NewPost("posts/private.md")
+	private.Path = "posts/private.md"
+	private.Slug = "private"
+	private.Href = "/private/"
+	private.Published = true
+	private.Private = true
+	private.Date = &privateDate
+	private.Content = "![Shared](" + sharedSource + ")"
+
+	index, err := Build([]*models.Post{private, newest, undated, oldest}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	shared := imageBySrc(t, index, sharedSource)
+	if shared.AddedAt == nil || !shared.AddedAt.Equal(oldestDate) {
+		t.Fatalf("earliest public use = %#v, want %s", shared.AddedAt, oldestDate.Format(time.RFC3339))
+	}
+	if shared.LastUsedAt == nil || !shared.LastUsedAt.Equal(newestDate) {
+		t.Fatalf("latest public use = %#v, want %s", shared.LastUsedAt, newestDate.Format(time.RFC3339))
+	}
+
+	undatedOnly := models.NewPost("posts/undated-only.md")
+	undatedOnly.Path = "posts/undated-only.md"
+	undatedOnly.Slug = "undated-only"
+	undatedOnly.Href = "/undated-only/"
+	undatedOnly.Published = true
+	undatedOnly.Content = "![Undated](https://example.test/undated.webp)"
+	index, err = Build([]*models.Post{undatedOnly}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("undated Build() error = %v", err)
+	}
+	undatedImage := imageBySrc(t, index, "https://example.test/undated.webp")
+	if undatedImage.AddedAt != nil || undatedImage.LastUsedAt != nil {
+		t.Fatalf("undated public use invented metadata: %#v", undatedImage)
+	}
+}
+
+func TestBuild_DoesNotUseMediaMtimeAsMetadata(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(filepath.Join(assets, "images"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	imagePath := filepath.Join(assets, "images", "photo.png")
+	writePNG(t, imagePath, 7, 5)
+
+	postDate := time.Date(2024, time.March, 10, 0, 0, 0, 0, time.UTC)
+	post := models.NewPost("posts/photo.md")
+	post.Path = "posts/photo.md"
+	post.Slug = "photo"
+	post.Href = "/photo/"
+	post.Published = true
+	post.Date = &postDate
+	post.Content = "![Photo](/images/photo.png)"
+
+	build := func() []byte {
+		t.Helper()
+		index, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, AssetsDir: assets, GeneratorVersion: "test", IncludeUnreferenced: true})
+		if err != nil {
+			t.Fatalf("Build() error = %v", err)
+		}
+		image := imageBySrc(t, index, "/images/photo.png")
+		if image.AddedAt == nil || !image.AddedAt.Equal(postDate) {
+			t.Fatalf("added_at = %#v, want post date %s", image.AddedAt, postDate.Format(time.RFC3339))
+		}
+		data, err := Marshal(index)
+		if err != nil {
+			t.Fatalf("Marshal() error = %v", err)
+		}
+		return data
+	}
+
+	first := build()
+	mtime := time.Date(1999, time.December, 31, 23, 59, 0, 0, time.UTC)
+	if err := os.Chtimes(imagePath, mtime, mtime); err != nil {
+		t.Fatal(err)
+	}
+	second := build()
+	if !bytes.Equal(first, second) {
+		t.Fatalf("media mtime changed generated output:\nfirst=%s\nsecond=%s", first, second)
+	}
+}
+
 func TestBuild_IsDeterministicAcrossPostOrderAndLocalAliases(t *testing.T) {
 	root := t.TempDir()
 	assets := filepath.Join(root, "static", "images")
@@ -380,6 +568,84 @@ func writePNG(t *testing.T, path string, width, height int) {
 		}
 	}
 	if err := png.Encode(file, canvas); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeWebP(t *testing.T, path string, width, height int) {
+	t.Helper()
+	if width < 1 || height < 1 || width > 16384 || height > 16384 {
+		t.Fatalf("unsupported test WebP dimensions: %dx%d", width, height)
+	}
+	widthMinusOne, heightMinusOne := uint32(width-1), uint32(height-1) //nolint:gosec // dimensions are bounded above.
+	payload := []byte{
+		0x2f,
+		byte(widthMinusOne),
+		byte(widthMinusOne>>8) | byte(heightMinusOne<<6),
+		byte(heightMinusOne >> 2),
+		byte(heightMinusOne >> 10),
+	}
+	data := make([]byte, 0, 12+8+len(payload)+1)
+	data = append(data, []byte("RIFF")...)
+	data = append(data, 0, 0, 0, 0)
+	data = append(data, []byte("WEBPVP8L")...)
+	chunkLength := make([]byte, 4)
+	binary.LittleEndian.PutUint32(chunkLength, uint32(len(payload))) //nolint:gosec // test payload is bounded.
+	data = append(data, chunkLength...)
+	data = append(data, payload...)
+	data = append(data, 0)                                        // RIFF chunks are padded to an even length.
+	binary.LittleEndian.PutUint32(data[4:8], uint32(len(data)-8)) //nolint:gosec // test payload is bounded.
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeBMP(t *testing.T, path string, width, height int) {
+	t.Helper()
+	rowSize := (width*3 + 3) &^ 3
+	data := make([]byte, 54+rowSize*height)
+	copy(data, "BM")
+	binary.LittleEndian.PutUint32(data[2:6], uint32(len(data))) //nolint:gosec // test bitmap is bounded by its fixture dimensions.
+	binary.LittleEndian.PutUint32(data[10:14], 54)
+	binary.LittleEndian.PutUint32(data[14:18], 40)
+	binary.LittleEndian.PutUint32(data[18:22], uint32(width))  //nolint:gosec // test dimensions are controlled positive values.
+	binary.LittleEndian.PutUint32(data[22:26], uint32(height)) //nolint:gosec // test dimensions are controlled positive values.
+	binary.LittleEndian.PutUint16(data[26:28], 1)
+	binary.LittleEndian.PutUint16(data[28:30], 24)
+	binary.LittleEndian.PutUint32(data[34:38], uint32(rowSize*height)) //nolint:gosec // test bitmap is bounded by its fixture dimensions.
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeTIFF(t *testing.T, path string, width, height int) {
+	t.Helper()
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canvas := image.NewRGBA(image.Rect(0, 0, width, height))
+	if err := tiff.Encode(file, canvas, nil); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeICO(t *testing.T, path string, width, height int) {
+	t.Helper()
+	data := make([]byte, 22+40)
+	binary.LittleEndian.PutUint16(data[2:4], 1)
+	binary.LittleEndian.PutUint16(data[4:6], 1)
+	data[6] = byte(width % 256)
+	data[7] = byte(height % 256)
+	binary.LittleEndian.PutUint16(data[10:12], 1)
+	binary.LittleEndian.PutUint16(data[12:14], 32)
+	binary.LittleEndian.PutUint32(data[14:18], 40)
+	binary.LittleEndian.PutUint32(data[18:22], 22)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -23,6 +23,7 @@
     var filterButtons = Array.prototype.slice.call(root.querySelectorAll("[data-image-filter]"));
     var activeFilter = "all";
     var frame = 0;
+    var recentWindowSeconds = 30 * 24 * 60 * 60;
 
     function text(value) {
       return (value || "").toLowerCase().trim();
@@ -33,6 +34,13 @@
       return text(card.getAttribute("data-search")).indexOf(query) !== -1;
     }
 
+    function recentlyAdded(card) {
+      var addedAt = Number(card.getAttribute("data-added") || 0);
+      var now = Math.floor(Date.now() / 1000);
+      if (!(addedAt > 0)) return false;
+      return addedAt >= now - recentWindowSeconds && addedAt <= now;
+    }
+
     function compareNames(left, right) {
       return text(left.getAttribute("data-name")).localeCompare(text(right.getAttribute("data-name"))) || text(left.getAttribute("data-src")).localeCompare(text(right.getAttribute("data-src")));
     }
@@ -41,7 +49,7 @@
       if (activeFilter === "used") return card.getAttribute("data-used") === "true";
       if (activeFilter === "unused") return card.getAttribute("data-used") !== "true";
       if (activeFilter === "cover") return card.getAttribute("data-cover") === "true";
-      if (activeFilter === "recent") return !!card.getAttribute("data-added");
+      if (activeFilter === "recent") return recentlyAdded(card);
       return true;
     }
 

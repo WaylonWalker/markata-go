@@ -327,6 +327,33 @@ func TestCache_ImageLibraryHash_PersistsAndTemplateInvalidates(t *testing.T) {
 	}
 }
 
+func TestCache_ImageLibraryMedia_PersistsFingerprints(t *testing.T) {
+	dir := t.TempDir()
+	cache := New(dir)
+	path := filepath.Join(dir, "static", "photo.webp")
+	want := map[string]ImageLibraryMediaFingerprint{
+		path: {Size: 42, ModTime: 123, ChangeTime: 456, ChangeTimeKnown: true, ContentHash: "content-hash"},
+	}
+	if !cache.SetImageLibraryMedia(want) {
+		t.Fatal("SetImageLibraryMedia() did not report a new fingerprint")
+	}
+	if cache.SetImageLibraryMedia(want) {
+		t.Fatal("SetImageLibraryMedia() reported a change for identical fingerprints")
+	}
+	if err := cache.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	loaded, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	got := loaded.GetImageLibraryMedia()
+	if len(got) != 1 || got[filepath.ToSlash(filepath.Clean(path))] != want[path] {
+		t.Fatalf("loaded image-library media = %#v, want %#v", got, want)
+	}
+}
+
 func TestCache_SetAssetsHash_InvalidatesImageLibrary(t *testing.T) {
 	cache := New("")
 	cache.AssetsHash = "old-assets"

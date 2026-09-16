@@ -62,8 +62,11 @@ searchable `/images/` page plus `/images/index.json` and `/images.json` below
 fetching remote images or videos. Check `images.path`, `images.export_json`, and
 `images.include_unreferenced` when media is missing or an inventory should
 not be public. The page searches filenames, alt text, figure captions, and
-public post titles. Private, draft, skipped, and unpublished posts must not
-create public usage relationships.
+public post titles. `added_at` is the earliest valid date from a public post
+that uses the source, while `last_used_at` is the latest; filesystem timestamps
+are not published. The `Recently added` view uses a 30-day browser-time window.
+Private, draft, skipped, and unpublished posts must not create public usage
+relationships.
 Static media referenced only by private posts is omitted from the inventory, but
 media below `assets_dir` is still public static output; keep truly private files
 outside that directory.

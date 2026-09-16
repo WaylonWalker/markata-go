@@ -60,7 +60,7 @@ The JSON artifact uses the following top-level shape:
       "height": 1000,
       "alt": "keyboard",
       "mime_type": "image/webp",
-      "added_at": "2026-01-15T12:00:00Z",
+      "added_at": "2024-03-10T00:00:00Z",
       "last_used_at": "2026-01-15T12:00:00Z",
       "cover": true,
       "uses": [
@@ -90,8 +90,11 @@ public use has a publication date.
 MUST be ignored by readers. Optional media and relationship fields
 (`poster_src`, `last_used_at`, `embed`, `uses[].embed`, and `uses[].caption`) are
 omitted when empty or false. A dimension of `0` means that the source dimensions
-are not available locally. `added_at` is emitted for local files from their
-filesystem modification time and is omitted for remote-only references.
+are not available locally. `added_at` is the earliest valid publication date of
+any public post that uses or references the source, including remote sources. It
+is omitted when no public use has a valid publication date. Filesystem
+modification times are used only as an incremental-cache invalidation signal;
+they MUST NOT be emitted as public metadata.
 
 Images are sorted by `src`. Uses are sorted by post path, then href. Consumers
 that need recency MUST sort by `last_used_at` descending, place missing values
@@ -128,6 +131,19 @@ The existing `templates.WithSize` helper is the only approved presentation
 derivative mechanism. It adds `w` and optional `h` query parameters, preserves
 other query parameters, and normalizes trusted HTTP URLs to HTTPS. The
 canonical `src` MUST NOT be replaced by a derivative URL.
+
+## Local dimensions
+
+The collector MUST inspect dimensions without fetching remote media. It MUST
+provide dimensions for PNG, JPEG, GIF, WebP, BMP, and TIFF when the local file
+contains valid decoder metadata. SVG dimensions MAY be read from positive
+`width` and `height` values or from a positive `viewBox`; CSS percentages and
+malformed values are treated as unknown. ICO dimensions MAY use the largest
+directory entry, with a zero directory byte meaning 256 pixels. AVIF and
+HEIC/HEIF dimensions are intentionally unknown unless a future implementation
+adds a vetted decoder; their MIME types and inventory records remain valid.
+Unsupported or malformed local media MUST retain zero dimensions rather than
+causing the inventory build to fail.
 
 ## Frontmatter and Markdown
 
@@ -204,6 +220,11 @@ The default page MUST:
 - expose labels, focus states, and accessible names for all controls; and
 - show a useful empty state when no images are available.
 
+The `Recently added` view means a source with a positive `added_at` Unix
+timestamp no older than 30 days from the browser's current time. A missing
+timestamp is not recent. This client-side window is intentionally separate
+from the canonical inventory format.
+
 The page MUST remain useful if JavaScript fails: images, titles, and usage
 links still render in the server-generated HTML. JavaScript only enhances
 filtering, sorting, usage expansion, copy feedback, and video loading. The
@@ -222,6 +243,16 @@ configured asset image and video files. When the hash matches the cached value
 and all enabled generated outputs exist, it MUST skip reparsing posts and
 rewriting the artifacts. A changed, added, removed, or renamed media file, or
 a changed public post publication date, MUST invalidate the aggregate output.
+
+Media hashing MUST use one filesystem traversal when the content and asset
+roots overlap. The cache MUST retain each media file's normalized path, size,
+and modification time alongside its content fingerprint. It SHOULD retain an
+operating-system change-time signal when the filesystem exposes one. An
+unchanged cheap state MUST reuse the cached content fingerprint without opening
+the media file; when the state changes, the file MUST be read and its fingerprint
+refreshed. On filesystems without a change-time signal, the cache assumes that
+size and modification time identify unchanged content. The cache state is an
+optimization only and MUST NOT affect generated metadata.
 
 The cache field is an optimization only. A missing output file MUST force a
 rewrite even when the cached hash matches.

@@ -1,15 +1,20 @@
 package imageindex
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"encoding/xml"
 	"image"
 	_ "image/gif"  // Register GIF decoding for local metadata.
 	_ "image/jpeg" // Register JPEG decoding for local metadata.
 	_ "image/png"  // Register PNG decoding for local metadata.
+	"io"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	figure "github.com/mangoumbrella/goldmark-figure"
@@ -19,6 +24,9 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
+	"golang.org/x/image/bmp"
+	"golang.org/x/image/tiff"
+	"golang.org/x/image/webp"
 	"golang.org/x/net/html"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -389,12 +397,6 @@ func (c *catalog) populateLocalMetadata(imageRecord *catalogImage, path string) 
 	if imageRecord.image.Width == 0 || imageRecord.image.Height == 0 {
 		imageRecord.image.Width, imageRecord.image.Height = dimensions(path)
 	}
-	if imageRecord.image.AddedAt == nil {
-		if info, err := os.Stat(path); err == nil {
-			addedAt := info.ModTime().UTC()
-			imageRecord.image.AddedAt = &addedAt
-		}
-	}
 	if imageRecord.image.Alt == "" {
 		c.setAlt(imageRecord, fallbackAlt(imageRecord.image.Src), 1)
 	}
@@ -416,10 +418,13 @@ func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, em
 	if imageRecord == nil || post == nil {
 		return
 	}
-	if post.Date != nil {
-		lastUsedAt := post.Date.UTC()
-		if imageRecord.image.LastUsedAt == nil || imageRecord.image.LastUsedAt.Before(lastUsedAt) {
-			imageRecord.image.LastUsedAt = &lastUsedAt
+	if post.Date != nil && !post.Date.IsZero() {
+		postDate := post.Date.UTC()
+		if imageRecord.image.AddedAt == nil || postDate.Before(*imageRecord.image.AddedAt) {
+			imageRecord.image.AddedAt = &postDate
+		}
+		if imageRecord.image.LastUsedAt == nil || imageRecord.image.LastUsedAt.Before(postDate) {
+			imageRecord.image.LastUsedAt = &postDate
 		}
 	}
 	href := strings.TrimSpace(post.Href)
@@ -627,10 +632,19 @@ func ignoredSource(rawSrc string) bool {
 	}
 }
 
+const (
+	mediaExtensionBMP  = ".bmp"
+	mediaExtensionICO  = ".ico"
+	mediaExtensionSVG  = ".svg"
+	mediaExtensionTIF  = ".tif"
+	mediaExtensionTIFF = ".tiff"
+	mediaExtensionWEBP = ".webp"
+)
+
 func isImagePath(path string) bool {
 	ext := mediaExtension(path)
 	switch ext {
-	case ".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp":
+	case ".avif", mediaExtensionBMP, ".gif", ".heic", ".heif", mediaExtensionICO, ".jpeg", ".jpg", ".png", mediaExtensionSVG, mediaExtensionTIF, mediaExtensionTIFF, mediaExtensionWEBP:
 		return true
 	default:
 		return false
@@ -648,7 +662,7 @@ func mimeType(path string) string {
 	switch mediaExtension(path) {
 	case ".avif":
 		return "image/avif"
-	case ".bmp":
+	case mediaExtensionBMP:
 		return "image/bmp"
 	case ".gif":
 		return "image/gif"
@@ -656,17 +670,17 @@ func mimeType(path string) string {
 		return "image/heic"
 	case ".heif":
 		return "image/heif"
-	case ".ico":
+	case mediaExtensionICO:
 		return "image/x-icon"
 	case ".jpeg", ".jpg":
 		return "image/jpeg"
 	case ".png":
 		return "image/png"
-	case ".svg":
+	case mediaExtensionSVG:
 		return "image/svg+xml"
-	case ".tif", ".tiff":
+	case mediaExtensionTIF, mediaExtensionTIFF:
 		return "image/tiff"
-	case ".webp":
+	case mediaExtensionWEBP:
 		return "image/webp"
 	default:
 		return ""
@@ -687,11 +701,201 @@ func dimensions(path string) (width, height int) {
 		return 0, 0
 	}
 	defer file.Close()
-	config, _, err := image.DecodeConfig(file)
+
+	var config image.Config
+	switch mediaExtension(path) {
+	case mediaExtensionBMP:
+		config, err = bmp.DecodeConfig(file)
+	case mediaExtensionTIF, mediaExtensionTIFF:
+		config, err = tiff.DecodeConfig(file)
+	case mediaExtensionWEBP:
+		// x/image/webp supports VP8, VP8L, and VP8X containers. Call it
+		// directly because image.DecodeConfig's format sniff is limited to
+		// the common VP8 signature.
+		config, err = webp.DecodeConfig(file)
+	case mediaExtensionICO:
+		return icoDimensions(file)
+	case mediaExtensionSVG:
+		return svgDimensions(file)
+	default:
+		config, _, err = image.DecodeConfig(file)
+	}
 	if err != nil {
 		return 0, 0
 	}
 	return config.Width, config.Height
+}
+
+const maxSVGMetadataBytes = 1 << 20
+
+// svgDimensions reads only the SVG root attributes needed for a useful
+// intrinsic size. Percentages are not absolute dimensions; a viewBox is used
+// when it supplies a positive fallback.
+func svgDimensions(file *os.File) (width, height int) {
+	decoder := xml.NewDecoder(io.LimitReader(file, maxSVGMetadataBytes))
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return 0, 0
+		}
+		start, ok := token.(xml.StartElement)
+		if !ok || !strings.EqualFold(start.Name.Local, "svg") {
+			continue
+		}
+
+		var widthValue, heightValue, viewBox string
+		for _, attribute := range start.Attr {
+			switch strings.ToLower(attribute.Name.Local) {
+			case "width":
+				widthValue = attribute.Value
+			case "height":
+				heightValue = attribute.Value
+			case "viewbox":
+				viewBox = attribute.Value
+			}
+		}
+		return svgIntrinsicDimensions(widthValue, heightValue, viewBox)
+	}
+}
+
+func svgIntrinsicDimensions(widthValue, heightValue, viewBox string) (width, height int) {
+	widthValuePixels, widthOK := svgLength(widthValue)
+	heightValuePixels, heightOK := svgLength(heightValue)
+	viewBoxWidth, viewBoxHeight, viewBoxOK := svgViewBoxDimensions(viewBox)
+
+	if widthOK && heightOK {
+		width, widthOK = positiveDimension(widthValuePixels)
+		height, heightOK = positiveDimension(heightValuePixels)
+		if widthOK && heightOK {
+			return width, height
+		}
+	}
+	if viewBoxOK {
+		if widthOK {
+			if derived, ok := positiveDimension(widthValuePixels * viewBoxHeight / viewBoxWidth); ok {
+				width, height = positiveDimensionPair(widthValuePixels, float64(derived))
+				if width > 0 && height > 0 {
+					return width, height
+				}
+			}
+		}
+		if heightOK {
+			if derived, ok := positiveDimension(heightValuePixels * viewBoxWidth / viewBoxHeight); ok {
+				width, height = positiveDimensionPair(float64(derived), heightValuePixels)
+				if width > 0 && height > 0 {
+					return width, height
+				}
+			}
+		}
+		return positiveDimensionPair(viewBoxWidth, viewBoxHeight)
+	}
+	return 0, 0
+}
+
+func svgLength(raw string) (float64, bool) {
+	raw = strings.ToLower(strings.TrimSpace(raw))
+	if raw == "" || strings.HasSuffix(raw, "%") {
+		return 0, false
+	}
+	unitFactor := 1.0
+	for _, unit := range []struct {
+		suffix string
+		factor float64
+	}{
+		{suffix: "px", factor: 1},
+		{suffix: "in", factor: 96},
+		{suffix: "cm", factor: 96 / 2.54},
+		{suffix: "mm", factor: 96 / 25.4},
+		{suffix: "pt", factor: 96 / 72},
+		{suffix: "pc", factor: 16},
+	} {
+		if strings.HasSuffix(raw, unit.suffix) {
+			raw = strings.TrimSpace(strings.TrimSuffix(raw, unit.suffix))
+			unitFactor = unit.factor
+			break
+		}
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value <= 0 {
+		return 0, false
+	}
+	return value * unitFactor, true
+}
+
+func svgViewBoxDimensions(raw string) (width, height float64, ok bool) {
+	values := strings.Fields(strings.NewReplacer(",", " ").Replace(strings.TrimSpace(raw)))
+	if len(values) != 4 {
+		return 0, 0, false
+	}
+	width, widthErr := strconv.ParseFloat(values[2], 64)
+	height, heightErr := strconv.ParseFloat(values[3], 64)
+	if widthErr != nil || heightErr != nil || math.IsNaN(width) || math.IsNaN(height) || math.IsInf(width, 0) || math.IsInf(height, 0) || width <= 0 || height <= 0 {
+		return 0, 0, false
+	}
+	return width, height, true
+}
+
+func positiveDimension(value float64) (int, bool) {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value <= 0 {
+		return 0, false
+	}
+	maxInt := int(^uint(0) >> 1)
+	value = math.Round(value)
+	// float64(maxInt) rounds up to the next power of two on common 64-bit
+	// platforms. Reject that boundary before converting so a huge SVG value
+	// cannot wrap into a negative int and fail index normalization.
+	if value < 1 || value >= float64(maxInt) {
+		return 0, false
+	}
+	return int(value), true
+}
+
+func positiveDimensionPair(width, height float64) (parsedWidth, parsedHeight int) {
+	parsedWidth, widthOK := positiveDimension(width)
+	parsedHeight, heightOK := positiveDimension(height)
+	if !widthOK || !heightOK {
+		return 0, 0
+	}
+	return parsedWidth, parsedHeight
+}
+
+func icoDimensions(file *os.File) (width, height int) {
+	var header [6]byte
+	if _, err := io.ReadFull(file, header[:]); err != nil || binary.LittleEndian.Uint16(header[0:2]) != 0 || binary.LittleEndian.Uint16(header[2:4]) != 1 {
+		return 0, 0
+	}
+	count := binary.LittleEndian.Uint16(header[4:6])
+	if count == 0 || count > 4096 {
+		return 0, 0
+	}
+
+	bestArea := uint64(0)
+	for index := 0; index < int(count); index++ {
+		var entry [16]byte
+		if _, err := io.ReadFull(file, entry[:]); err != nil {
+			return 0, 0
+		}
+		entryWidth, entryHeight := int(entry[0]), int(entry[1])
+		if entryWidth == 0 {
+			entryWidth = 256
+		}
+		if entryHeight == 0 {
+			entryHeight = 256
+		}
+		areaWidth, areaHeight := uint64(entry[0]), uint64(entry[1])
+		if areaWidth == 0 {
+			areaWidth = 256
+		}
+		if areaHeight == 0 {
+			areaHeight = 256
+		}
+		area := areaWidth * areaHeight
+		if area > bestArea {
+			bestArea = area
+			width, height = entryWidth, entryHeight
+		}
+	}
+	return width, height
 }
 
 var markdownParser = goldmark.New(
