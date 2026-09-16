@@ -13,10 +13,10 @@ func TestMarshal_SortsImagesAndUses(t *testing.T) {
 	index := Index{
 		Generator: Generator{Name: GeneratorName, Version: "test"},
 		Images: []Image{
-			{Src: "/z.png", Embed: true, Uses: []Use{{Post: "z.md", Href: "/z/", Caption: "Z caption", Embed: true}}},
+			{Src: "/z.png", Embed: true, Uses: []Use{{Href: "/z/", Caption: "Z caption", Embed: true}}},
 			{Src: "/a.png", AddedAt: parseTime(t, timeValue), LastUsedAt: parseTime(t, timeValue), Uses: []Use{
-				{Post: "z.md", Href: "/z/"},
-				{Post: "a.md", Href: "/a/"},
+				{Href: "/z/"},
+				{Href: "/a/"},
 			}},
 		},
 	}
@@ -37,7 +37,7 @@ func TestMarshal_SortsImagesAndUses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if len(parsed.Images) != 2 || parsed.Images[0].Uses[0].Post != "a.md" {
+	if len(parsed.Images) != 2 || parsed.Images[0].Uses[0].Href != "/a/" {
 		t.Fatalf("Parse() = %#v", parsed)
 	}
 	if !parsed.Images[1].Embed || !parsed.Images[1].Uses[0].Embed {
@@ -48,6 +48,25 @@ func TestMarshal_SortsImagesAndUses(t *testing.T) {
 	}
 	if parsed.Images[0].LastUsedAt == nil || parsed.Images[1].LastUsedAt != nil || parsed.Images[0].LastUsedAt.Format(time.RFC3339) != timeValue {
 		t.Fatalf("Parse() lost last-used metadata: %#v", parsed.Images)
+	}
+}
+
+func TestMarshal_EmitsStableEmptyImageFields(t *testing.T) {
+	data, err := Marshal(Index{
+		Generator: Generator{Name: GeneratorName, Version: "test"},
+		Images:    []Image{{Src: "/unused.png"}},
+	})
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	text := string(data)
+	for _, field := range []string{`"alt":""`, `"mime_type":""`, `"uses":[]`} {
+		if !strings.Contains(text, field) {
+			t.Fatalf("Marshal() missing stable empty field %q: %s", field, data)
+		}
+	}
+	if strings.Contains(text, `"post"`) {
+		t.Fatalf("Marshal() emitted a repository-relative use field: %s", data)
 	}
 }
 

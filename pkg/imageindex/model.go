@@ -54,7 +54,6 @@ type Image struct {
 
 // Use describes one public post relationship for a media source.
 type Use struct {
-	Post    string
 	Href    string
 	Title   string
 	Caption string
@@ -80,18 +79,17 @@ type wireImage struct {
 	Src        string     `json:"src"`
 	Width      int        `json:"width"`
 	Height     int        `json:"height"`
-	Alt        string     `json:"alt,omitempty"`
-	MIMEType   string     `json:"mime_type,omitempty"`
+	Alt        string     `json:"alt"`
+	MIMEType   string     `json:"mime_type"`
 	PosterSrc  string     `json:"poster_src,omitempty"`
 	AddedAt    *time.Time `json:"added_at,omitempty"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	Cover      bool       `json:"cover"`
 	Embed      bool       `json:"embed,omitempty"`
-	Uses       []wireUse  `json:"uses,omitempty"`
+	Uses       []wireUse  `json:"uses"`
 }
 
 type wireUse struct {
-	Post    string `json:"post"`
 	Href    string `json:"href"`
 	Title   string `json:"title,omitempty"`
 	Caption string `json:"caption,omitempty"`
@@ -252,17 +250,20 @@ func normalize(index Index) (Index, error) {
 		seen[image.Src] = struct{}{}
 		normalizeImageDates(image)
 
-		image.Uses = append([]Use(nil), image.Uses...)
+		if image.Uses == nil {
+			image.Uses = make([]Use, 0)
+		} else {
+			uses := make([]Use, len(image.Uses))
+			copy(uses, image.Uses)
+			image.Uses = uses
+		}
 		sort.SliceStable(image.Uses, func(a, b int) bool {
-			if image.Uses[a].Post != image.Uses[b].Post {
-				return image.Uses[a].Post < image.Uses[b].Post
-			}
 			return image.Uses[a].Href < image.Uses[b].Href
 		})
 		for useIndex := range image.Uses {
 			use := &image.Uses[useIndex]
 			use.Caption = strings.TrimSpace(use.Caption)
-			if use.Post == "" && use.Href == "" {
+			if use.Href == "" {
 				return Index{}, fmt.Errorf("images[%d].uses contains an empty relationship", i)
 			}
 			if use.Cover {

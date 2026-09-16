@@ -20,7 +20,7 @@ func TestParseImageLibraryConfig_DefaultsAndExplicitFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseImageLibraryConfig(nil) error = %v", err)
 	}
-	if !defaults.IsEnabled() || !defaults.ShouldExportJSON() || !defaults.ShouldIncludeUnreferenced() {
+	if !defaults.IsEnabled() || !defaults.ShouldExportJSON() || defaults.ShouldIncludeUnreferenced() {
 		t.Fatalf("defaults = %#v", defaults)
 	}
 
@@ -69,7 +69,7 @@ func TestImageLibraryPage_RendersVideoMetadataAndEmbedLabel(t *testing.T) {
 		MIMEType:  "video/mp4",
 		PosterSrc: "http://dropper.wayl.one/file/clip.webp",
 		Embed:     true,
-		Uses:      []imageindex.Use{{Post: "posts/clip.md", Href: "/clip/", Title: "Clip post", Caption: "A useful clip", Embed: true}},
+		Uses:      []imageindex.Use{{Href: "/clip/", Title: "Clip post", Caption: "A useful clip", Embed: true}},
 	}}}
 
 	page := newImageLibraryPage(index)
@@ -142,7 +142,6 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	if err := os.MkdirAll(assets, 0o755); err != nil {
 		t.Fatal(err)
 	}
-
 	post := models.NewPost("posts/hello.md")
 	post.Slug = "hello"
 	post.Href = "/hello/"
@@ -213,6 +212,235 @@ func TestImageLibraryPlugin_WriteOutputsPageAndJSON(t *testing.T) {
 	}
 	if !bytes.Equal(flatData, data) {
 		t.Fatalf("root image index differs from nested artifact")
+	}
+}
+
+func TestImageLibraryPlugin_PrivateBodyDoesNotChangePublicArtifactsOrHash(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	privateMediaPath := filepath.Join(root, "secret-private.png")
+	if err := os.WriteFile(privateMediaPath, []byte("private media"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	public := models.NewPost("posts/public.md")
+	public.Path = "posts/public.md"
+	public.Slug = "public"
+	public.Href = "/public/"
+	public.Published = true
+	public.Title = stringPointerImages("Public")
+	public.Content = "![Public](https://example.test/public.png)"
+
+	private := models.NewPost("posts/private.md")
+	private.Path = "posts/private.md"
+	private.Slug = "private"
+	private.Href = "/private/"
+	private.Published = true
+	private.Private = true
+	private.Content = "secret before"
+	private.ArticleHTML = "<p>secret before</p>"
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.OutputDir = output
+	modelsConfig.AssetsDir = assets
+	manager := lifecycle.NewManager()
+	manager.SetConfig(&lifecycle.Config{
+		ContentDir: root,
+		OutputDir:  output,
+		Extra: map[string]interface{}{
+			"assets_dir":    assets,
+			"models_config": modelsConfig,
+		},
+	})
+	manager.SetPosts([]*models.Post{private, public})
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	manager.Cache().Set("build_cache", cache)
+	plugin := NewImageLibraryPlugin()
+	manager.RegisterPlugin(plugin)
+
+	if err := manager.RunTo(lifecycle.StageWrite); err != nil {
+		t.Fatalf("first RunTo(write) error = %v", err)
+	}
+	paths := []string{
+		filepath.Join(output, "images", "index.html"),
+		filepath.Join(output, "images", "index.json"),
+		filepath.Join(output, "images.json"),
+	}
+	before := make(map[string][]byte, len(paths))
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read first artifact %s: %v", path, err)
+		}
+		before[path] = data
+	}
+	beforeHash := cache.GetImageLibraryHash()
+
+	private.Content = `![classified markdown](/secret-private.png)
+
+![classified markdown](/secret-a.png)
+
+<figure><img src="/secret-b.png" alt="classified alt"><figcaption>classified caption</figcaption></figure>
+
+![remote](https://cdn.example.test/private.jpg?token=SECRET)`
+	private.ArticleHTML = `<figure><img src="/secret-c.png" alt="rendered secret"><figcaption>rendered caption</figcaption></figure>`
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+	if afterHash := cache.GetImageLibraryHash(); afterHash != beforeHash {
+		t.Fatalf("private body changed image-library hash: before=%q after=%q", beforeHash, afterHash)
+	}
+	for _, path := range paths {
+		after, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read second artifact %s: %v", path, err)
+		}
+		if !bytes.Equal(after, before[path]) {
+			t.Fatalf("private body changed public artifact %s", path)
+		}
+	}
+
+	if err := os.WriteFile(privateMediaPath, []byte("changed private media"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("private-only media Write() error = %v", err)
+	}
+	if afterHash := cache.GetImageLibraryHash(); afterHash != beforeHash {
+		t.Fatalf("private-only content media changed image-library hash: before=%q after=%q", beforeHash, afterHash)
+	}
+	for _, path := range paths {
+		after, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read private-only media artifact %s: %v", path, err)
+		}
+		if !bytes.Equal(after, before[path]) {
+			t.Fatalf("private-only media changed public artifact %s", path)
+		}
+	}
+}
+
+func TestImageLibraryPlugin_PrivateSafeCoverFrontmatterChangesInventory(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "first.png"), []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "second.png"), []byte("second"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	private := models.NewPost("posts/private.md")
+	private.Path = "posts/private.md"
+	private.Slug = "private"
+	private.Href = "/private/"
+	private.Published = true
+	private.Private = true
+	private.Content = "private body"
+	private.Extra["cover"] = "/first.png"
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.OutputDir = output
+	modelsConfig.AssetsDir = assets
+	manager := lifecycle.NewManager()
+	manager.SetConfig(&lifecycle.Config{
+		ContentDir: root,
+		OutputDir:  output,
+		Extra: map[string]interface{}{
+			"assets_dir":    assets,
+			"models_config": modelsConfig,
+		},
+	})
+	manager.SetPosts([]*models.Post{private})
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	manager.Cache().Set("build_cache", cache)
+	plugin := NewImageLibraryPlugin()
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("first Write() error = %v", err)
+	}
+	firstHash := cache.GetImageLibraryHash()
+	firstJSON, err := os.ReadFile(filepath.Join(output, "images.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(firstJSON, []byte(`"src":"/first.png"`)) || !bytes.Contains(firstJSON, []byte(`"uses":[]`)) {
+		t.Fatalf("first private safe-cover JSON = %s", firstJSON)
+	}
+
+	private.Extra["cover"] = "/second.png"
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+	secondHash := cache.GetImageLibraryHash()
+	secondJSON, err := os.ReadFile(filepath.Join(output, "images.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondHash == firstHash || bytes.Equal(firstJSON, secondJSON) || !bytes.Contains(secondJSON, []byte(`"src":"/second.png"`)) || bytes.Contains(secondJSON, []byte(`"src":"/first.png"`)) {
+		t.Fatalf("private safe-cover change was not reflected: first=%s second=%s hashes=%q/%q", firstJSON, secondJSON, firstHash, secondHash)
+	}
+}
+
+func TestImageLibraryPlugin_FullWriteExcludesOutputMediaFromInputs(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "photo.webp"), []byte("source media"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.OutputDir = output
+	modelsConfig.AssetsDir = assets
+	includeUnreferenced := true
+	modelsConfig.Images.IncludeUnreferenced = &includeUnreferenced
+	manager := lifecycle.NewManager()
+	manager.SetConfig(&lifecycle.Config{
+		ContentDir: root,
+		OutputDir:  output,
+		Extra: map[string]interface{}{
+			"assets_dir":    assets,
+			"models_config": modelsConfig,
+		},
+	})
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	manager.Cache().Set("build_cache", cache)
+	manager.RegisterPlugins(NewStaticAssetsPlugin(), NewImageLibraryPlugin())
+
+	if err := manager.RunTo(lifecycle.StageWrite); err != nil {
+		t.Fatalf("full lifecycle write error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(output, "photo.webp")); err != nil {
+		t.Fatalf("static asset was not copied before image-library write: %v", err)
+	}
+	outputPrefix := filepath.ToSlash(filepath.Clean(output)) + "/"
+	for path := range cache.GetImageLibraryMedia() {
+		if strings.HasPrefix(path, outputPrefix) || path == strings.TrimSuffix(outputPrefix, "/") {
+			t.Fatalf("generated output participated in image-library media inputs: %q", path)
+		}
+	}
+
+	firstHash := cache.GetImageLibraryHash()
+	if err := os.WriteFile(filepath.Join(output, "generated.webp"), []byte("generated output"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plugin := NewImageLibraryPlugin()
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second image-library write error = %v", err)
+	}
+	if secondHash := cache.GetImageLibraryHash(); secondHash != firstHash {
+		t.Fatalf("output-only media changed image-library hash: before=%q after=%q", firstHash, secondHash)
 	}
 }
 
@@ -631,6 +859,122 @@ func TestHashImageDirectories_ReusesUnchangedMediaContent(t *testing.T) {
 	}
 }
 
+func TestHashImageDirectories_ExcludesOutputDirectory(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	output := filepath.Join(root, "output")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(output, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(assets, "source.webp"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outputMedia := filepath.Join(output, "generated.webp")
+	if err := os.WriteFile(outputMedia, []byte("generated one"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	reads := 0
+	hashFile := func(path string) (string, error) {
+		reads++
+		return buildcache.HashFile(path)
+	}
+	firstContentHash, _, err := hashImageDirectoriesWithHasher(root, assets, imageHashExtensions(), cache, hashFile, output)
+	if err != nil {
+		t.Fatalf("first hashImageDirectories() error = %v", err)
+	}
+	if reads != 1 {
+		t.Fatalf("first media read count = %d, want only source media", reads)
+	}
+	for path := range cache.GetImageLibraryMedia() {
+		if filepath.Clean(path) == filepath.Clean(outputMedia) {
+			t.Fatal("output media was cached as source input")
+		}
+	}
+
+	if err := os.WriteFile(outputMedia, []byte("generated two"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	secondContentHash, _, err := hashImageDirectoriesWithHasher(root, assets, imageHashExtensions(), cache, hashFile, output)
+	if err != nil {
+		t.Fatalf("second hashImageDirectories() error = %v", err)
+	}
+	if reads != 1 || firstContentHash != secondContentHash {
+		t.Fatalf("output-only change affected source hash: reads=%d first=%q second=%q", reads, firstContentHash, secondContentHash)
+	}
+}
+
+func TestImageLibraryPlugin_TouchingMediaDoesNotChangeCanonicalHash(t *testing.T) {
+	root := t.TempDir()
+	output := filepath.Join(root, "output")
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mediaPath := filepath.Join(assets, "photo.webp")
+	if err := os.WriteFile(mediaPath, []byte("same bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.OutputDir = output
+	modelsConfig.AssetsDir = assets
+	includeUnreferenced := true
+	modelsConfig.Images.IncludeUnreferenced = &includeUnreferenced
+	manager := lifecycle.NewManager()
+	manager.SetConfig(&lifecycle.Config{
+		ContentDir: root,
+		OutputDir:  output,
+		Extra: map[string]interface{}{
+			"assets_dir":    assets,
+			"models_config": modelsConfig,
+		},
+	})
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	manager.Cache().Set("build_cache", cache)
+	plugin := NewImageLibraryPlugin()
+
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("first Write() error = %v", err)
+	}
+	firstHash := cache.GetImageLibraryHash()
+	firstJSON, err := os.ReadFile(filepath.Join(output, "images.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(mediaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(mediaPath, info.ModTime().Add(2*time.Second), info.ModTime().Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("second Write() error = %v", err)
+	}
+	if secondHash := cache.GetImageLibraryHash(); secondHash != firstHash {
+		t.Fatalf("touch changed canonical image-library hash: before=%q after=%q", firstHash, secondHash)
+	}
+	secondJSON, err := os.ReadFile(filepath.Join(output, "images.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(firstJSON, secondJSON) {
+		t.Fatal("touch changed semantic image-library JSON")
+	}
+}
+
+func TestMarkdownForImage_UsesEscapedCanonicalDestination(t *testing.T) {
+	markdown := markdownForImage("/my%20photo%231%25.png", "Photo")
+	if markdown != "![Photo](/my%20photo%231%25.png)" {
+		t.Fatalf("markdownForImage() = %q", markdown)
+	}
+}
+
 func TestHashImageDirectories_RehashesSameSizeMediaWithPreservedMtime(t *testing.T) {
 	root := t.TempDir()
 	mediaPath := filepath.Join(root, "photo.webp")
@@ -911,7 +1255,7 @@ func imageIndexForTest() imageindex.Index {
 		Generator: imageindex.Generator{Name: imageindex.GeneratorName, Version: "test"},
 		Images: []imageindex.Image{
 			{Src: "/static/unused.png", Alt: "unused"},
-			{Src: "https://dropper.wayl.one/file/photo.webp?token=keep", Alt: "photo", Cover: true, Uses: []imageindex.Use{{Post: "posts/photo.md", Href: "/photo/", Title: "Photo", Cover: true}}},
+			{Src: "https://dropper.wayl.one/file/photo.webp?token=keep", Alt: "photo", Cover: true, Uses: []imageindex.Use{{Href: "/photo/", Title: "Photo", Cover: true}}},
 		},
 	}
 }

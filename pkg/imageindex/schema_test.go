@@ -22,7 +22,7 @@ func TestV1SchemaValidatesGeneratedArtifact(t *testing.T) {
 			LastUsedAt: parseTime(t, "2026-01-15T12:00:00Z"),
 			Cover:      true,
 			Embed:      true,
-			Uses:       []Use{{Post: "posts/photo.md", Href: "/photo/", Title: "Photo", Caption: "Photo caption", Cover: true, Embed: true}},
+			Uses:       []Use{{Href: "/photo/", Title: "Photo", Caption: "Photo caption", Cover: true, Embed: true}},
 		}},
 	})
 	if err != nil {

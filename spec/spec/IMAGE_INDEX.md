@@ -11,7 +11,8 @@ metadata only.
 
 The image library MUST:
 
-- discover image and video files in the configured static asset directory;
+- discover image and video files in the configured static asset directory when
+  `include_unreferenced` is enabled;
 - discover images in supported Markdown image syntax through the Goldmark AST;
 - discover images emitted by supported raw HTML image elements through an HTML
   parser, not Markdown regular expressions;
@@ -22,8 +23,9 @@ The image library MUST:
   `featured_image`, `hero_image`, `avatar`, and `author_image`;
 - exclude skipped, draft, private, and unpublished posts from public usage
   relationships;
-- omit a local static media file when its only discovered post references are from
-  private posts;
+- keep private post bodies completely outside public image discovery;
+- allow only the explicitly documented public-safe private frontmatter fields to
+  add metadata-only media records;
 - deduplicate an image within a post while retaining whether any usage is a
   cover usage;
 - preserve the canonical source URL in the index and in copy actions;
@@ -36,11 +38,37 @@ The image library MUST:
 - avoid network requests while building the index; and
 - produce deterministic output for the same source tree.
 
-The library MUST NOT expose private post metadata or private media references.
-An asset shared by a public post remains eligible for the public inventory;
-an asset referenced only by private posts is omitted even when
-`include_unreferenced` is enabled.
-It MUST NOT add Plaindown-specific behavior.
+The library MUST NOT expose private post relationships or private media
+references. It MUST NOT add Plaindown-specific behavior.
+
+### Privacy and noninterference
+
+**Private body isolation** is a hard invariant:
+
+> The public image index MUST NOT inspect, serialize, or derive public state
+> from the body of a private post. Public-safe frontmatter may participate only
+> through explicitly supported fields. Changing only private body content MUST
+> produce byte-for-byte identical public image-index output.
+
+For a public post, frontmatter and body may affect the public inventory. For a
+private post, only the following frontmatter contract applies:
+
+- `cover` is the one public-safe image field supported by the image library;
+- `cover_alt` may provide its explicit public-safe alt text;
+- the source may be a remote URL or a local file under `assets_dir`;
+- the record may be eligible for inventory and may set the top-level `cover`
+  and `alt` fields, but it MUST have no `uses[]` relationship;
+- private post hrefs, source paths, titles, captions, publication dates, and
+  relationship metadata MUST NOT be copied into the image index; and
+- all other image-related frontmatter fields on a private post are ignored by
+  this plugin.
+
+Private drafts, skipped posts, and unpublished posts do not participate in the
+private safe-cover contract. A private body can contain Markdown, HTML, local
+media, remote URLs, captions, or alt text; none of those values may influence
+the public inventory, generated page, cache/input hash, or any other derived
+state. An asset shared by a public post remains eligible for the public
+inventory. A private-only body reference neither adds nor suppresses an asset.
 
 ## Canonical data model
 
@@ -65,7 +93,6 @@ The JSON artifact uses the following top-level shape:
       "cover": true,
       "uses": [
         {
-          "post": "posts/build.md",
           "href": "/build/",
           "title": "Build notes",
           "caption": "The finished build",
@@ -78,32 +105,43 @@ The JSON artifact uses the following top-level shape:
 ```
 
 `src`, `width`, `height`, `alt`, `mime_type`, `cover`, and `uses` are stable
-fields. A `uses[].caption` value contains the normalized visible text of the
+fields and are always emitted. Empty `alt` and `mime_type` values are emitted
+as empty strings, and an unused source emits `"uses": []`. A `uses[].caption`
+value contains the normalized visible text of the
 `<figcaption>` associated with that media use, when one exists. Captions belong
 to uses rather than the canonical media record because the same source may have
 different captions in different posts. `poster_src` is the canonical poster
-source for a video, when one is available. `last_used_at` is the latest
-publication date of a public post that uses the source. It is omitted when no
-public use has a publication date.
+source for a video, when one is available. `last_used_at` is the latest valid
+publication date of a public post use. It is omitted when no public use has a
+publication date.
 `embed` identifies an image emitted by an external embed card;
-`uses[].embed` identifies the corresponding post relationship. Unknown fields
-MUST be ignored by readers. Optional media and relationship fields
+`uses[].embed` identifies the corresponding public relationship. Unknown fields
+MUST be ignored by readers. The only public use relationship fields are
+`href`, `title`, `caption`, `cover`, and `embed`; repository-relative source
+paths are not public v1 fields. Optional media and relationship fields
 (`poster_src`, `last_used_at`, `embed`, `uses[].embed`, and `uses[].caption`) are
 omitted when empty or false. A dimension of `0` means that the source dimensions
 are not available locally. `added_at` is the earliest valid publication date of
-any public post that uses or references the source, including remote sources. It
-is omitted when no public use has a valid publication date. Filesystem
-modification times are used only as an incremental-cache invalidation signal;
-they MUST NOT be emitted as public metadata.
+any public post that uses or references the source, including remote sources.
+Both dates are omitted when no public use has a valid publication date. Private
+safe-cover metadata never contributes to either timestamp. Filesystem
+modification times are used only as a cheap cache-state signal; they MUST NOT be
+emitted as public metadata or directly included in the canonical aggregate
+input hash.
 
-Images are sorted by `src`. Uses are sorted by post path, then href. Consumers
+The v1 contract intentionally uses public `href` as the only usage identity;
+older draft artifacts that contain `uses[].post` or omit the stable empty fields
+must be regenerated rather than treated as a separate compatibility format.
+
+Images are sorted by `src`. Uses are sorted by public `href`. Consumers
 that need recency MUST sort by `last_used_at` descending, place missing values
 last, and use `src` ascending as the deterministic tie-breaker. JSON is encoded
 with fixed struct field order and no insignificant whitespace.
 
-The `cover` field on an image is true when at least one use marks it as a
-cover. A repeated body reference does not create a repeated use. If a post
-uses the same image as both body content and a cover, its single use has
+The `cover` field on an image is true when at least one public use marks it as
+a cover or when the image came from the private public-safe `cover` field. A
+repeated body reference does not create a repeated use. If a public post uses
+the same image as both body content and a cover, its single use has
 `cover: true`.
 
 ## Source and URL rules
@@ -114,14 +152,21 @@ Static files are mapped from the asset directory to site-root URLs:
 static/images/logo.png -> /images/logo.png
 ```
 
+Each local URL path component MUST be URL-escaped while `/` separators are
+preserved. For example, `my photo#1%.png` becomes
+`/my%20photo%231%25.png`. Authored percent-encoded references resolve to the
+same canonical record and copy actions use the escaped canonical destination.
+
 The library MUST use the same asset-root convention as the static asset
 writer. A local reference that resolves to a scanned asset MUST share that
 asset's canonical record, even when the authored URL uses a relative path or
 the legacy `/static/` attachment prefix.
 
-Remote URLs MUST remain untouched in `src`. Data URLs, blob URLs, and empty
-sources are ignored. Trusted Dropper hosts are the exact hosts already listed
-by `models.DefaultTrustedMediaDomains`:
+Remote URLs MUST remain untouched in `src`, including query strings needed by
+signed URLs. URLs containing user information such as
+`https://user:password@example.test/image.jpg` MUST be rejected. Data URLs,
+blob URLs, and empty sources are ignored. Trusted Dropper hosts are the exact
+hosts already listed by `models.DefaultTrustedMediaDomains`:
 
 - `dropper.wayl.one`
 - `dropper.waylonwalker.com`
@@ -152,6 +197,10 @@ The effective cover convention is `cover` first, then `cover_image`, then
 inventoried, but only the first non-empty cover field is marked as the cover.
 This makes the common `image` frontmatter field a cover fallback. Other
 supported media frontmatter is inventoried as a non-cover relationship.
+
+Those public-post rules do not apply to private bodies. The private safe-cover
+contract in the privacy section is the complete private frontmatter allowlist;
+in particular, a private post never creates a normal `uses[]` relationship.
 
 Body images MUST be extracted from a Goldmark AST using the site's supported
 image syntax. Inline attributes and figure captions MUST not prevent image
@@ -185,14 +234,18 @@ enabled = true
 path = "images"
 template = "images.html"
 export_json = true
-include_unreferenced = true
+include_unreferenced = false
 ```
 
 `path` is a relative output directory and defaults to `images`. The HTML page
 is written to `path/index.html`; when `export_json` is enabled, identical JSON
 artifacts are written to `path/index.json` and `output_dir/images.json`.
 `template` defaults to `images.html`. Relative paths MUST stay inside
-`output_dir`.
+`output_dir`. `include_unreferenced` defaults to `false`: production builds
+index referenced media only. Set it to `true` explicitly for an authoring
+inventory when intentionally making every supported media file below
+`assets_dir` centrally enumerable. Files in `assets_dir` are already public
+static output; this option does not make private files safe to publish.
 
 ## Authoring page
 
@@ -238,8 +291,9 @@ canonical media URL without JavaScript.
 ## Incremental builds
 
 The image index writer MUST compute an aggregate input hash from image-related
-configuration, eligible post input hashes and publication dates, and the
-configured asset image and video files. When the hash matches the cached value
+configuration, eligible public post input hashes and publication dates,
+explicit private safe-cover frontmatter, and the configured source image and
+video files. When the hash matches the cached value
 and all enabled generated outputs exist, it MUST skip reparsing posts and
 rewriting the artifacts. A changed, added, removed, or renamed media file, or
 a changed public post publication date, MUST invalidate the aggregate output.
@@ -252,7 +306,12 @@ unchanged cheap state MUST reuse the cached content fingerprint without opening
 the media file; when the state changes, the file MUST be read and its fingerprint
 refreshed. On filesystems without a change-time signal, the cache assumes that
 size and modification time identify unchanged content. The cache state is an
-optimization only and MUST NOT affect generated metadata.
+optimization only and MUST NOT affect generated metadata or the canonical
+aggregate input hash. The configured `output_dir` is categorically excluded
+from source-media discovery and hashing, including when it is below
+`content_dir` or `assets_dir`. Touching a file without changing its bytes may
+trigger a verification read, but it MUST not change semantic output or the
+canonical hash.
 
 The cache field is an optimization only. A missing output file MUST force a
 rewrite even when the cached hash matches.

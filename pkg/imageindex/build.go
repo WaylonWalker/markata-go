@@ -37,30 +37,16 @@ import (
 type BuildOptions struct {
 	ContentDir          string
 	AssetsDir           string
+	OutputDir           string
 	GeneratorVersion    string
 	IncludeUnreferenced bool
 }
 
 // Build discovers public media references and local asset files.
 func Build(posts []*models.Post, options BuildOptions) (Index, error) {
-	contentDir := options.ContentDir
-	if contentDir == "" {
-		contentDir = "."
-	}
-	if absolute, err := filepath.Abs(contentDir); err == nil {
-		contentDir = filepath.Clean(absolute)
-	}
-	assetsDir := options.AssetsDir
-	if assetsDir == "" {
-		assetsDir = filepath.Join(contentDir, "static")
-	} else if !filepath.IsAbs(assetsDir) {
-		assetsDir = filepath.Join(contentDir, assetsDir)
-	}
-	if absolute, err := filepath.Abs(assetsDir); err == nil {
-		assetsDir = filepath.Clean(absolute)
-	}
+	contentDir, assetsDir, outputDir := imageIndexDirectories(options)
 
-	catalog := newCatalog(contentDir, assetsDir)
+	catalog := newCatalog(contentDir, assetsDir, outputDir)
 	orderedPosts := imagePostsInStableOrder(posts)
 	if options.IncludeUnreferenced {
 		if err := catalog.scanAssets(); err != nil {
@@ -69,14 +55,6 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 	}
 
 	for _, post := range orderedPosts {
-		if post != nil && post.Private {
-			catalog.markPrivatePost(post)
-		}
-	}
-	for _, post := range orderedPosts {
-		if !isPublicPost(post) {
-			continue
-		}
 		for _, reference := range extractMarkdownImages(post.Content) {
 			catalog.addReference(reference, post, false)
 		}
@@ -90,7 +68,19 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 		}
 		catalog.addFrontmatterImages(post)
 	}
-	catalog.removePrivateOnlyImages()
+
+	// Private bodies are deliberately never inspected. Only the explicitly
+	// public-safe frontmatter fields below may add metadata-only records.
+	privateReferences := make([]imageReference, 0)
+	for _, post := range posts {
+		privateReferences = append(privateReferences, privateFrontmatterImages(post)...)
+	}
+	sort.SliceStable(privateReferences, func(i, j int) bool {
+		return imageReferenceSortKey(privateReferences[i]) < imageReferenceSortKey(privateReferences[j])
+	})
+	for _, reference := range privateReferences {
+		catalog.addPrivateFrontmatterReference(reference)
+	}
 
 	version := options.GeneratorVersion
 	if version == "" {
@@ -100,22 +90,92 @@ func Build(posts []*models.Post, options BuildOptions) (Index, error) {
 	return normalize(index)
 }
 
+// LocalMediaPaths returns local media files referenced by public post bodies,
+// public frontmatter, or the explicitly public-safe private cover field. It
+// never reads private post bodies. The image-library writer uses this narrow
+// list instead of hashing every media-looking file below the content root.
+func LocalMediaPaths(posts []*models.Post, options BuildOptions) []string {
+	contentDir, assetsDir, outputDir := imageIndexDirectories(options)
+	catalog := newCatalog(contentDir, assetsDir, outputDir)
+	paths := make(map[string]struct{})
+	addReferencePath := func(reference imageReference, post *models.Post) {
+		if localPath := catalog.resolveLocalPath(reference.src, post); localPath != "" {
+			paths[localPath] = struct{}{}
+		}
+	}
+	for _, post := range imagePostsInStableOrder(posts) {
+		for _, reference := range extractMarkdownImages(post.Content) {
+			addReferencePath(reference, post)
+		}
+		for _, reference := range extractHTMLMedia(post.ArticleHTML) {
+			addReferencePath(reference, post)
+		}
+		for _, reference := range extractHTMLMedia(post.Content) {
+			addReferencePath(reference, post)
+		}
+		for _, reference := range frontmatterImageReferences(post) {
+			addReferencePath(reference, post)
+		}
+	}
+	for _, post := range posts {
+		for _, reference := range privateFrontmatterImages(post) {
+			localPath := catalog.resolveLocalPath(reference.src, nil)
+			if localPath != "" && pathWithinRoot(assetsDir, localPath) != "" {
+				paths[localPath] = struct{}{}
+			}
+		}
+	}
+	result := make([]string, 0, len(paths))
+	for path := range paths {
+		result = append(result, path)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func imageIndexDirectories(options BuildOptions) (contentDir, assetsDir, outputDir string) {
+	contentDir = options.ContentDir
+	if contentDir == "" {
+		contentDir = "."
+	}
+	if absolute, err := filepath.Abs(contentDir); err == nil {
+		contentDir = filepath.Clean(absolute)
+	}
+	assetsDir = options.AssetsDir
+	if assetsDir == "" {
+		assetsDir = filepath.Join(contentDir, "static")
+	} else if !filepath.IsAbs(assetsDir) {
+		assetsDir = filepath.Join(contentDir, assetsDir)
+	}
+	if absolute, err := filepath.Abs(assetsDir); err == nil {
+		assetsDir = filepath.Clean(absolute)
+	}
+	outputDir = options.OutputDir
+	if outputDir != "" {
+		if absolute, err := filepath.Abs(outputDir); err == nil {
+			outputDir = filepath.Clean(absolute)
+		}
+	}
+	return contentDir, assetsDir, outputDir
+}
+
 type imageReference struct {
 	src      string
 	alt      string
 	caption  string
 	poster   string
 	mimeType string
+	cover    bool
 	embed    bool
 	video    bool
 }
 
 type catalog struct {
-	contentDir    string
-	assetsDir     string
-	byKey         map[string]*catalogImage
-	byLocal       map[string]*catalogImage
-	privateLocals map[string]struct{}
+	contentDir string
+	assetsDir  string
+	outputDir  string
+	byKey      map[string]*catalogImage
+	byLocal    map[string]*catalogImage
 }
 
 type catalogImage struct {
@@ -126,13 +186,13 @@ type catalogImage struct {
 	uses       map[string]Use
 }
 
-func newCatalog(contentDir, assetsDir string) *catalog {
+func newCatalog(contentDir, assetsDir, outputDir string) *catalog {
 	return &catalog{
-		contentDir:    contentDir,
-		assetsDir:     assetsDir,
-		byKey:         make(map[string]*catalogImage),
-		byLocal:       make(map[string]*catalogImage),
-		privateLocals: make(map[string]struct{}),
+		contentDir: contentDir,
+		assetsDir:  assetsDir,
+		outputDir:  outputDir,
+		byKey:      make(map[string]*catalogImage),
+		byLocal:    make(map[string]*catalogImage),
 	}
 }
 
@@ -140,6 +200,12 @@ func (c *catalog) scanAssets() error {
 	err := filepath.WalkDir(c.assetsDir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if c.isOutputPath(path) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if entry.Type()&os.ModeSymlink != 0 || entry.IsDir() || !isMediaPath(path) {
 			return nil
@@ -153,7 +219,7 @@ func (c *catalog) scanAssets() error {
 		if err != nil {
 			return err
 		}
-		src := "/" + filepath.ToSlash(relative)
+		src := canonicalURLPath(filepath.ToSlash(relative))
 		imageRecord := c.ensure("local:"+absolute, c.localSource(absolute, src))
 		imageRecord.local = absolute
 		c.byLocal[absolute] = imageRecord
@@ -170,36 +236,65 @@ func (c *catalog) scanAssets() error {
 }
 
 func (c *catalog) addReference(reference imageReference, post *models.Post, cover bool) {
-	rawSrc := strings.TrimSpace(reference.src)
-	if rawSrc == "" || ignoredSource(rawSrc) {
+	imageRecord, rawSrc := c.imageForReference(reference, post)
+	if imageRecord == nil {
 		return
+	}
+	c.applyReferenceMetadata(imageRecord, reference, post, rawSrc)
+	c.addUse(imageRecord, post, cover, reference.embed, reference.caption)
+}
+
+func (c *catalog) addPrivateFrontmatterReference(reference imageReference) {
+	if localPath := c.resolveLocalPath(strings.TrimSpace(reference.src), nil); localPath != "" && pathWithinRoot(c.assetsDir, localPath) == "" {
+		// A private safe-cover source is public inventory metadata only when the
+		// corresponding local file is already in the public static asset root.
+		return
+	}
+	imageRecord, rawSrc := c.imageForReference(reference, nil)
+	if imageRecord == nil {
+		return
+	}
+	// A private post may opt one public-safe cover into the inventory, but the
+	// relationship itself must never be represented as a public use.
+	c.applyReferenceMetadata(imageRecord, reference, nil, rawSrc)
+	if reference.cover {
+		imageRecord.image.Cover = true
+	}
+}
+
+func (c *catalog) imageForReference(reference imageReference, post *models.Post) (imageRecord *catalogImage, rawSrc string) {
+	rawSrc = strings.TrimSpace(reference.src)
+	if rawSrc == "" || ignoredSource(rawSrc) {
+		return nil, ""
 	}
 
 	localPath := c.resolveLocalPath(rawSrc, post)
-	var imageRecord *catalogImage
 	if localPath != "" {
-		imageRecord = c.byLocal[localPath]
+		imageRecord := c.byLocal[localPath]
 		if imageRecord == nil {
 			imageRecord = c.ensure("local:"+localPath, c.localSource(localPath, rawSrc))
 			imageRecord.local = localPath
 			c.byLocal[localPath] = imageRecord
 			c.populateLocalMetadata(imageRecord, localPath)
 		}
-	} else {
-		if c.rejectedLocalSource(rawSrc, post) {
-			return
+		return imageRecord, rawSrc
+	}
+	if c.rejectedLocalSource(rawSrc, post) {
+		return nil, ""
+	}
+	imageRecord = c.ensure("url:"+rawSrc, rawSrc)
+	if width, height, ok := templates.MediaDimensionsFromURL(rawSrc); ok {
+		if imageRecord.image.Width == 0 {
+			imageRecord.image.Width = width
 		}
-		imageRecord = c.ensure("url:"+rawSrc, rawSrc)
-		if width, height, ok := templates.MediaDimensionsFromURL(rawSrc); ok {
-			if imageRecord.image.Width == 0 {
-				imageRecord.image.Width = width
-			}
-			if imageRecord.image.Height == 0 {
-				imageRecord.image.Height = height
-			}
+		if imageRecord.image.Height == 0 {
+			imageRecord.image.Height = height
 		}
 	}
+	return imageRecord, rawSrc
+}
 
+func (c *catalog) applyReferenceMetadata(imageRecord *catalogImage, reference imageReference, post *models.Post, rawSrc string) {
 	if imageRecord.image.MIMEType == "" {
 		imageRecord.image.MIMEType = strings.TrimSpace(reference.mimeType)
 	}
@@ -218,7 +313,6 @@ func (c *catalog) addReference(reference imageReference, post *models.Post, cove
 	} else {
 		c.setAlt(imageRecord, reference.alt, 2)
 	}
-	c.addUse(imageRecord, post, cover, reference.embed, reference.caption)
 }
 
 func isVideoSource(rawSrc, declaredMIME string) bool {
@@ -228,73 +322,38 @@ func isVideoSource(rawSrc, declaredMIME string) bool {
 func videoPoster(reference imageReference, post *models.Post, mediaURL string) (poster string, rank int) {
 	if post != nil && post.Extra != nil {
 		if poster := templates.PosterURLFromMap(post.Extra, ""); poster != "" {
-			return poster, 3
+			if !ignoredSource(poster) {
+				return poster, 3
+			}
+			return "", 0
 		}
 	}
 	if strings.TrimSpace(reference.poster) != "" {
-		return templates.PosterURLFromMap(map[string]interface{}{"poster": reference.poster}, ""), 2
-	}
-	return templates.PosterURLFromMap(map[string]interface{}{}, mediaURL), 1
-}
-
-func (c *catalog) markPrivatePost(post *models.Post) {
-	for _, reference := range extractMarkdownImages(post.Content) {
-		c.markPrivateSource(reference.src, post)
-	}
-	for _, reference := range extractHTMLMedia(post.ArticleHTML) {
-		c.markPrivateSource(reference.src, post)
-	}
-	for _, reference := range extractHTMLMedia(post.Content) {
-		c.markPrivateSource(reference.src, post)
-	}
-	if post.Extra == nil {
-		return
-	}
-	for _, field := range frontmatterImageFields {
-		if source, ok := post.Extra[field.name].(string); ok {
-			c.markPrivateSource(source, post)
+		poster := templates.PosterURLFromMap(map[string]interface{}{"poster": reference.poster}, "")
+		if !ignoredSource(poster) {
+			return poster, 2
 		}
+		return "", 0
 	}
-}
-
-func (c *catalog) markPrivateSource(rawSrc string, post *models.Post) {
-	rawSrc = strings.TrimSpace(rawSrc)
-	if rawSrc == "" || ignoredSource(rawSrc) {
-		return
+	poster = templates.PosterURLFromMap(map[string]interface{}{}, mediaURL)
+	if ignoredSource(poster) {
+		return "", 0
 	}
-	if localPath := c.resolveLocalPath(rawSrc, post); localPath != "" {
-		c.privateLocals[localPath] = struct{}{}
-		c.privateLocals[canonicalLocalPath(localPath)] = struct{}{}
-		return
-	}
-	for _, candidate := range c.localCandidates(rawSrc, post) {
-		if c.pathContainsSymlink(candidate) {
-			c.privateLocals[canonicalLocalPath(candidate)] = struct{}{}
-		}
-	}
-}
-
-func (c *catalog) removePrivateOnlyImages() {
-	for localPath, imageRecord := range c.byLocal {
-		if _, ok := c.privateLocals[localPath]; !ok {
-			if _, ok := c.privateLocals[canonicalLocalPath(localPath)]; !ok {
-				continue
-			}
-		}
-		if len(imageRecord.uses) > 0 {
-			continue
-		}
-		delete(c.byLocal, localPath)
-		delete(c.byKey, "local:"+imageRecord.local)
-	}
+	return poster, 1
 }
 
 func (c *catalog) addFrontmatterImages(post *models.Post) {
-	if post == nil || post.Extra == nil {
-		return
+	for _, reference := range frontmatterImageReferences(post) {
+		c.addReference(reference, post, reference.cover)
 	}
+}
 
+func frontmatterImageReferences(post *models.Post) []imageReference {
+	if post == nil || post.Extra == nil {
+		return nil
+	}
 	coverFound := false
+	result := make([]imageReference, 0, len(frontmatterImageFields))
 	for _, field := range frontmatterImageFields {
 		src, ok := post.Extra[field.name].(string)
 		if !ok || strings.TrimSpace(src) == "" {
@@ -304,9 +363,49 @@ func (c *catalog) addFrontmatterImages(post *models.Post) {
 		if isCover {
 			coverFound = true
 		}
-		alt := frontmatterAlt(post.Extra, field.altKeys...)
-		c.addReference(imageReference{src: src, alt: alt}, post, isCover)
+		result = append(result, imageReference{
+			src:   strings.TrimSpace(src),
+			alt:   frontmatterAlt(post.Extra, field.altKeys...),
+			cover: isCover,
+		})
 	}
+	return result
+}
+
+// PrivateFrontmatterHashInput returns the normalized image-library input from
+// the explicitly public-safe private frontmatter fields. It intentionally does
+// not read the post body, rendered HTML, path, title, or publication date.
+func PrivateFrontmatterHashInput(post *models.Post) string {
+	references := privateFrontmatterImages(post)
+	var result strings.Builder
+	for _, reference := range references {
+		result.WriteString(reference.src)
+		result.WriteByte('\x00')
+		result.WriteString(reference.alt)
+		result.WriteByte('\x00')
+		result.WriteString(strconv.FormatBool(reference.cover))
+		result.WriteByte('\x00')
+	}
+	return result.String()
+}
+
+func privateFrontmatterImages(post *models.Post) []imageReference {
+	if post == nil || !post.Published || post.Draft || !post.Private || post.Skip || post.Extra == nil {
+		return nil
+	}
+	result := make([]imageReference, 0, len(privateFrontmatterImageFields))
+	for _, field := range privateFrontmatterImageFields {
+		src, ok := post.Extra[field.name].(string)
+		if !ok || strings.TrimSpace(src) == "" {
+			continue
+		}
+		result = append(result, imageReference{
+			src:   strings.TrimSpace(src),
+			alt:   frontmatterAlt(post.Extra, field.altKeys...),
+			cover: field.cover,
+		})
+	}
+	return result
 }
 
 type frontmatterImageField struct {
@@ -327,6 +426,13 @@ var frontmatterImageFields = []frontmatterImageField{
 	{name: "hero_image", altKeys: []string{"hero_image_alt", "image_alt", "alt"}},
 	{name: "avatar", altKeys: []string{"avatar_alt", "alt"}},
 	{name: "author_image", altKeys: []string{"author_image_alt", "alt"}},
+}
+
+// Private image metadata is intentionally much narrower than public post
+// discovery. The cover field is an explicit public-safe opt-in; cover_alt is
+// the only private-post alt field that may affect the public inventory.
+var privateFrontmatterImageFields = []frontmatterImageField{
+	{name: "cover", cover: true, altKeys: []string{"cover_alt"}},
 }
 
 func frontmatterAlt(extra map[string]interface{}, keys ...string) string {
@@ -353,13 +459,22 @@ func (c *catalog) ensure(key, src string) *catalogImage {
 func (c *catalog) localSource(localPath, fallback string) string {
 	relative, err := filepath.Rel(c.assetsDir, localPath)
 	if err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative) {
-		return "/" + filepath.ToSlash(relative)
+		return canonicalURLPath(filepath.ToSlash(relative))
+	}
+	relative, err = filepath.Rel(c.contentDir, localPath)
+	if err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative) {
+		return canonicalURLPath(filepath.ToSlash(relative))
 	}
 	return localURL(fallback)
 }
 
 func imagePostsInStableOrder(posts []*models.Post) []*models.Post {
-	ordered := append([]*models.Post(nil), posts...)
+	ordered := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if isPublicPost(post) {
+			ordered = append(ordered, post)
+		}
+	}
 	sort.SliceStable(ordered, func(i, j int) bool {
 		return imagePostSortKey(ordered[i]) < imagePostSortKey(ordered[j])
 	})
@@ -384,6 +499,18 @@ func imagePostSortKey(post *models.Post) string {
 		post.ArticleHTML,
 		post.RawFrontmatter,
 		extra,
+	}, "\x00")
+}
+
+func imageReferenceSortKey(reference imageReference) string {
+	return strings.Join([]string{
+		reference.src,
+		reference.alt,
+		reference.poster,
+		reference.mimeType,
+		strconv.FormatBool(reference.cover),
+		strconv.FormatBool(reference.embed),
+		strconv.FormatBool(reference.video),
 	}, "\x00")
 }
 
@@ -431,16 +558,15 @@ func (c *catalog) addUse(imageRecord *catalogImage, post *models.Post, cover, em
 	if href == "" && post.Slug != "" {
 		href = "/" + strings.Trim(post.Slug, "/") + "/"
 	}
-	postPath := strings.TrimSpace(post.Path)
-	if postPath == "" {
-		postPath = post.Slug
+	if href == "" {
+		return
 	}
 	title := post.PlainTitle()
 	if title == "" {
 		title = post.Slug
 	}
-	use := Use{Post: postPath, Href: href, Title: title, Caption: strings.TrimSpace(caption), Cover: cover, Embed: embed}
-	key := postPath + "\x00" + href
+	use := Use{Href: href, Title: title, Caption: strings.TrimSpace(caption), Cover: cover, Embed: embed}
+	key := href
 	if existing, ok := imageRecord.uses[key]; ok {
 		existing.Cover = existing.Cover || cover
 		existing.Embed = existing.Embed || embed
@@ -471,9 +597,6 @@ func (c *catalog) index(generator Generator) Index {
 			image.Uses = append(image.Uses, use)
 		}
 		sort.SliceStable(image.Uses, func(i, j int) bool {
-			if image.Uses[i].Post != image.Uses[j].Post {
-				return image.Uses[i].Post < image.Uses[j].Post
-			}
 			return image.Uses[i].Href < image.Uses[j].Href
 		})
 		images = append(images, image)
@@ -486,8 +609,10 @@ func (c *catalog) resolveLocalPath(rawSrc string, post *models.Post) string {
 		return ""
 	}
 	for _, candidate := range c.localCandidates(rawSrc, post) {
+		if c.isOutputPath(candidate) {
+			continue
+		}
 		if c.pathContainsSymlink(candidate) {
-			c.privateLocals[canonicalLocalPath(candidate)] = struct{}{}
 			continue
 		}
 		info, err := os.Lstat(candidate)
@@ -500,6 +625,13 @@ func (c *catalog) resolveLocalPath(rawSrc string, post *models.Post) string {
 
 func (c *catalog) rejectedLocalSource(rawSrc string, post *models.Post) bool {
 	for _, candidate := range c.localCandidates(rawSrc, post) {
+		if c.isOutputPath(candidate) {
+			info, err := os.Lstat(candidate)
+			if err == nil && info.Mode().IsRegular() && isMediaPath(candidate) {
+				return true
+			}
+			continue
+		}
 		if c.pathContainsSymlink(candidate) {
 			return true
 		}
@@ -538,37 +670,62 @@ func (c *catalog) pathContainsSymlink(path string) bool {
 
 func (c *catalog) localCandidates(rawSrc string, post *models.Post) []string {
 	u, err := url.Parse(rawSrc)
-	if err != nil || u.Scheme != "" || u.Host != "" {
-		return nil
-	}
-	pathValue, err := url.PathUnescape(u.Path)
 	if err != nil {
-		pathValue = u.Path
+		// A relative authored filename may contain characters that are invalid
+		// in a URL escape sequence, such as a literal percent sign. Treat it as
+		// a local path unless it clearly claims to be an absolute/protocol URL.
+		if strings.Contains(rawSrc, "://") || strings.HasPrefix(rawSrc, "//") {
+			return nil
+		}
+		u = &url.URL{}
 	}
-	pathValue = filepath.FromSlash(pathValue)
-	if pathValue == "" {
+	if u.Scheme != "" || u.Host != "" {
 		return nil
+	}
+	pathValues := make([]string, 0, 4)
+	// An unescaped '#' can be part of a local filename. Try the authored path
+	// first, then the URL parser's path for ordinary fragment references and
+	// percent-encoded destinations.
+	authoredPath := rawSrc
+	pathValues = append(pathValues, authoredPath)
+	if u.Path != "" {
+		pathValues = append(pathValues, u.Path)
 	}
 
-	trimmed := strings.TrimPrefix(pathValue, string(filepath.Separator))
-	if strings.HasPrefix(filepath.ToSlash(trimmed), "static/") {
-		trimmed = filepath.FromSlash(strings.TrimPrefix(filepath.ToSlash(trimmed), "static/"))
-	}
-	candidates := make([]string, 0, 4)
-	if candidate := pathWithinRoot(c.assetsDir, filepath.Join(c.assetsDir, trimmed)); candidate != "" {
-		candidates = append(candidates, candidate)
-	}
-	if post != nil && post.Path != "" {
-		postPath := post.Path
-		if !filepath.IsAbs(postPath) {
-			postPath = filepath.Join(c.contentDir, postPath)
+	candidates := make([]string, 0, 8)
+	seen := make(map[string]struct{}, 8)
+	for _, value := range pathValues {
+		pathValue, unescapeErr := url.PathUnescape(value)
+		if unescapeErr != nil {
+			pathValue = value
 		}
-		if candidate := pathWithinRoot(c.contentDir, filepath.Join(filepath.Dir(postPath), pathValue)); candidate != "" {
+		pathValue = filepath.FromSlash(pathValue)
+		if pathValue == "" {
+			continue
+		}
+		trimmed := strings.TrimPrefix(pathValue, string(filepath.Separator))
+		if strings.HasPrefix(filepath.ToSlash(trimmed), "static/") {
+			trimmed = filepath.FromSlash(strings.TrimPrefix(filepath.ToSlash(trimmed), "static/"))
+		}
+		appendCandidate := func(candidate string) {
+			if candidate == "" {
+				return
+			}
+			if _, exists := seen[candidate]; exists {
+				return
+			}
+			seen[candidate] = struct{}{}
 			candidates = append(candidates, candidate)
 		}
-	}
-	if candidate := pathWithinRoot(c.contentDir, filepath.Join(c.contentDir, trimmed)); candidate != "" {
-		candidates = append(candidates, candidate)
+		appendCandidate(pathWithinRoot(c.assetsDir, filepath.Join(c.assetsDir, trimmed)))
+		if post != nil && post.Path != "" {
+			postPath := post.Path
+			if !filepath.IsAbs(postPath) {
+				postPath = filepath.Join(c.contentDir, postPath)
+			}
+			appendCandidate(pathWithinRoot(c.contentDir, filepath.Join(filepath.Dir(postPath), pathValue)))
+		}
+		appendCandidate(pathWithinRoot(c.contentDir, filepath.Join(c.contentDir, trimmed)))
 	}
 	return candidates
 }
@@ -589,26 +746,36 @@ func pathWithinRoot(root, path string) string {
 	return filepath.Clean(pathAbsolute)
 }
 
-func canonicalLocalPath(path string) string {
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		absolute = filepath.Clean(path)
-	}
-	if evaluated, err := filepath.EvalSymlinks(absolute); err == nil {
-		absolute = evaluated
-	}
-	return filepath.Clean(absolute)
-}
-
 func localURL(rawSrc string) string {
 	u, err := url.Parse(rawSrc)
 	if err != nil || u.Path == "" {
-		return rawSrc
+		return canonicalURLPath(rawSrc)
 	}
-	if strings.HasPrefix(u.Path, "/") {
-		return u.Path
+	pathValue := u.Path
+	if u.Scheme == "" && u.Host == "" && u.Fragment != "" && u.RawQuery == "" {
+		// Treat an unescaped fragment in a local authored path as a literal
+		// filename when resolving a local file. The resulting URL encodes it.
+		pathValue = rawSrc
 	}
-	return "/" + strings.TrimPrefix(u.Path, "./")
+	return canonicalURLPath(pathValue)
+}
+
+func canonicalURLPath(pathValue string) string {
+	pathValue = filepath.ToSlash(pathValue)
+	for strings.HasPrefix(pathValue, "./") {
+		pathValue = strings.TrimPrefix(pathValue, "./")
+	}
+	if pathValue == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(pathValue, "/") {
+		pathValue = "/" + pathValue
+	}
+	return (&url.URL{Path: pathValue}).EscapedPath()
+}
+
+func (c *catalog) isOutputPath(path string) bool {
+	return c.outputDir != "" && pathWithinRoot(c.outputDir, path) != ""
 }
 
 func isPublicPost(post *models.Post) bool {
@@ -616,13 +783,17 @@ func isPublicPost(post *models.Post) bool {
 }
 
 func ignoredSource(rawSrc string) bool {
-	lower := strings.ToLower(strings.TrimSpace(rawSrc))
+	trimmed := strings.TrimSpace(rawSrc)
+	lower := strings.ToLower(trimmed)
 	if strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "blob:") {
 		return true
 	}
-	u, err := url.Parse(lower)
+	u, err := url.Parse(trimmed)
 	if err != nil {
 		return false
+	}
+	if u.User != nil {
+		return true
 	}
 	switch u.Scheme {
 	case "javascript", "vbscript":
@@ -689,8 +860,15 @@ func mimeType(path string) string {
 
 func mediaExtension(path string) string {
 	u, err := url.Parse(path)
-	if err == nil && u.Path != "" {
-		return strings.ToLower(filepath.Ext(u.Path))
+	if err == nil {
+		if u.Path != "" {
+			if extension := filepath.Ext(u.Path); extension != "" {
+				return strings.ToLower(extension)
+			}
+		}
+		if u.Scheme != "" || u.Host != "" {
+			return ""
+		}
 	}
 	return strings.ToLower(filepath.Ext(path))
 }

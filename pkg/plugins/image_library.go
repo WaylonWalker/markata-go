@@ -213,7 +213,7 @@ func imageLibraryExistingOutputConflict(cache *buildcache.Cache, contentRoot, ou
 
 func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *ImageLibraryConfig, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath, flatJSONPath string) error {
 	cache := GetBuildCache(m)
-	inputHash, err := p.imageLibraryInputHash(m, config, contentDir, assetsDir, pathPrefix)
+	inputHash, err := p.imageLibraryInputHash(m, config, contentDir, assetsDir, outputRoot, pathPrefix)
 	if err != nil {
 		return fmt.Errorf("hashing image library inputs: %w", err)
 	}
@@ -235,6 +235,7 @@ func (p *ImageLibraryPlugin) writeImageLibrary(m *lifecycle.Manager, config *Ima
 	index, err := imageindex.Build(m.Posts(), imageindex.BuildOptions{
 		ContentDir:          contentDir,
 		AssetsDir:           assetsDir,
+		OutputDir:           outputRoot,
 		GeneratorVersion:    imageLibraryGeneratorVersion(m.Config()),
 		IncludeUnreferenced: config.ShouldIncludeUnreferenced(),
 	})
@@ -444,7 +445,7 @@ func imageLibraryRenderConfigHash(config *lifecycle.Config) (string, error) {
 	return buildcache.ContentHash(string(serialized) + "\x00" + string(extra)), nil
 }
 
-func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config *ImageLibraryConfig, contentDir, assetsDir, pathPrefix string) (string, error) {
+func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config *ImageLibraryConfig, contentDir, assetsDir, outputDir, pathPrefix string) (string, error) {
 	var input strings.Builder
 	input.WriteString(pathPrefix)
 	input.WriteByte('\x00')
@@ -471,39 +472,36 @@ func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config 
 	input.WriteString(renderConfigHash)
 	input.WriteByte('\x00')
 
-	posts := append([]*models.Post(nil), m.Posts()...)
-	sort.SliceStable(posts, func(i, j int) bool {
-		leftPath, rightPath := "", ""
-		leftSlug, rightSlug := "", ""
-		leftHref, rightHref := "", ""
-		leftContent, rightContent := "", ""
-		if posts[i] != nil {
-			leftPath = posts[i].Path
-			leftSlug = posts[i].Slug
-			leftHref = posts[i].Href
-			leftContent = posts[i].Content + "\x00" + posts[i].ArticleHTML + "\x00" + posts[i].RawFrontmatter
+	publicPosts := make([]*models.Post, 0, len(m.Posts()))
+	privateFrontmatterInputs := make(map[string]struct{})
+	for _, post := range m.Posts() {
+		if post == nil {
+			continue
 		}
-		if posts[j] != nil {
-			rightPath = posts[j].Path
-			rightSlug = posts[j].Slug
-			rightHref = posts[j].Href
-			rightContent = posts[j].Content + "\x00" + posts[j].ArticleHTML + "\x00" + posts[j].RawFrontmatter
+		if post.Published && !post.Draft && !post.Private && !post.Skip {
+			publicPosts = append(publicPosts, post)
+			continue
 		}
-		if leftPath != rightPath {
-			return leftPath < rightPath
+		if privateInput := imageindex.PrivateFrontmatterHashInput(post); privateInput != "" {
+			privateFrontmatterInputs[privateInput] = struct{}{}
 		}
-		if leftSlug != rightSlug {
-			return leftSlug < rightSlug
+	}
+	sort.SliceStable(publicPosts, func(i, j int) bool {
+		left, right := publicPosts[i], publicPosts[j]
+		leftContent := left.Content + "\x00" + left.ArticleHTML + "\x00" + left.RawFrontmatter
+		rightContent := right.Content + "\x00" + right.ArticleHTML + "\x00" + right.RawFrontmatter
+		if left.Path != right.Path {
+			return left.Path < right.Path
 		}
-		if leftHref != rightHref {
-			return leftHref < rightHref
+		if left.Slug != right.Slug {
+			return left.Slug < right.Slug
+		}
+		if left.Href != right.Href {
+			return left.Href < right.Href
 		}
 		return leftContent < rightContent
 	})
-	for _, post := range posts {
-		if post == nil || !post.Published || post.Draft || post.Private || post.Skip {
-			continue
-		}
+	for _, post := range publicPosts {
 		input.WriteString(post.Path)
 		input.WriteByte('\x00')
 		input.WriteString(post.Slug)
@@ -525,14 +523,28 @@ func (p *ImageLibraryPlugin) imageLibraryInputHash(m *lifecycle.Manager, config 
 		}, "\x00")))
 		input.WriteByte('\x00')
 	}
+	privateInputs := make([]string, 0, len(privateFrontmatterInputs))
+	for privateInput := range privateFrontmatterInputs {
+		privateInputs = append(privateInputs, privateInput)
+	}
+	sort.Strings(privateInputs)
+	for _, privateInput := range privateInputs {
+		input.WriteString("private-frontmatter")
+		input.WriteByte('\x00')
+		input.WriteString(privateInput)
+		input.WriteByte('\x00')
+	}
 
-	mediaHash, mediaStateHash, err := hashImageDirectories(contentDir, assetsDir, imageHashExtensions(), GetBuildCache(m))
+	localMediaPaths := imageindex.LocalMediaPaths(m.Posts(), imageindex.BuildOptions{
+		ContentDir: contentDir,
+		AssetsDir:  assetsDir,
+		OutputDir:  outputDir,
+	})
+	mediaHash, _, err := hashImageLibrarySources(contentDir, assetsDir, outputDir, config.ShouldIncludeUnreferenced(), localMediaPaths, imageHashExtensions(), GetBuildCache(m))
 	if err != nil {
 		return "", err
 	}
 	input.WriteString(mediaHash)
-	input.WriteByte('\x00')
-	input.WriteString(mediaStateHash)
 	return buildcache.ContentHash(input.String()), nil
 }
 
@@ -605,13 +617,64 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 	return hashImageDirectoriesWithHasher(dir, "", extensions, nil, buildcache.HashFile)
 }
 
-// hashImageDirectories fingerprints media from the content and asset roots.
-// When the roots overlap, the outer root is walked once so a file below static
-// is not discovered and hashed again through the content root. The cache uses
-// normalized absolute paths only as lookup keys; generated hashes use paths
-// relative to the selected scan root and never expose filesystem timestamps.
-func hashImageDirectories(contentDir, assetsDir string, extensions []string, cache *buildcache.Cache) (contentHash, stateHash string, err error) {
-	return hashImageDirectoriesWithHasher(contentDir, assetsDir, extensions, cache, buildcache.HashFile)
+// hashImageLibrarySources hashes the configured public asset root when the
+// inventory includes unreferenced files, plus local media files referenced by
+// eligible posts. It intentionally does not walk the whole content root:
+// private-only media and unrelated content-local files must not become
+// image-library cache inputs.
+func hashImageLibrarySources(contentDir, assetsDir, outputDir string, includeUnreferenced bool, sourceFiles, extensions []string, cache *buildcache.Cache) (contentHash, stateHash string, err error) {
+	return hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir, includeUnreferenced, sourceFiles, extensions, cache, buildcache.HashFile)
+}
+
+func hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir string, includeUnreferenced bool, sourceFiles, extensions []string, cache *buildcache.Cache, hashFile func(string) (string, error)) (contentHash, stateHash string, err error) {
+	if hashFile == nil {
+		hashFile = buildcache.HashFile
+	}
+	extensionsByName := imageLibraryExtensionsByName(extensions)
+	excludedRoots := imageLibraryExcludedRoots([]string{outputDir})
+	filesByPath := make(map[string]imageLibraryFile, len(sourceFiles)+16)
+	if includeUnreferenced {
+		for _, root := range imageLibraryScanRoots("", assetsDir) {
+			if walkErr := collectImageLibraryFiles(root, extensionsByName, excludedRoots, filesByPath); os.IsNotExist(walkErr) {
+				continue
+			} else if walkErr != nil {
+				return "", "", walkErr
+			}
+		}
+	}
+
+	assetsRoot := normalizedImageLibraryDirectory(assetsDir)
+	for _, sourcePath := range sourceFiles {
+		absolute := normalizedImageLibraryPath(sourcePath)
+		if imageLibraryPathExcluded(absolute, excludedRoots) || (includeUnreferenced && imageLibraryPathWithin(assetsRoot, absolute)) {
+			continue
+		}
+		relative, relativeErr := filepath.Rel(normalizedImageLibraryDirectory(contentDir), absolute)
+		if relativeErr != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+			continue
+		}
+		if err := collectImageLibraryFile(absolute, "content/"+filepath.ToSlash(relative), extensionsByName, excludedRoots, filesByPath); err != nil {
+			return "", "", err
+		}
+	}
+
+	files := make([]imageLibraryFile, 0, len(filesByPath))
+	for _, file := range filesByPath {
+		files = append(files, file)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].hashPath < files[j].hashPath })
+	previous := map[string]buildcache.ImageLibraryMediaFingerprint(nil)
+	if cache != nil {
+		previous = cache.GetImageLibraryMedia()
+	}
+	contentHash, stateHash, next, err := hashImageLibraryFiles(files, previous, hashFile)
+	if err != nil {
+		return "", "", err
+	}
+	if cache != nil {
+		cache.SetImageLibraryMedia(next)
+	}
+	return contentHash, stateHash, nil
 }
 
 type imageLibraryScanRoot struct {
@@ -629,16 +692,17 @@ type imageLibraryFile struct {
 	changeTimeKnown bool
 }
 
-func hashImageDirectoriesWithHasher(contentDir, assetsDir string, extensions []string, cache *buildcache.Cache, hashFile func(string) (string, error)) (contentHash, stateHash string, err error) {
+func hashImageDirectoriesWithHasher(contentDir, assetsDir string, extensions []string, cache *buildcache.Cache, hashFile func(string) (string, error), excludedDirs ...string) (contentHash, stateHash string, err error) {
 	if hashFile == nil {
 		hashFile = buildcache.HashFile
 	}
 
 	roots := imageLibraryScanRoots(contentDir, assetsDir)
+	excludedRoots := imageLibraryExcludedRoots(excludedDirs)
 	extensionsByName := imageLibraryExtensionsByName(extensions)
 	filesByPath := make(map[string]imageLibraryFile, 64)
 	for _, root := range roots {
-		if walkErr := collectImageLibraryFiles(root, extensionsByName, filesByPath); os.IsNotExist(walkErr) {
+		if walkErr := collectImageLibraryFiles(root, extensionsByName, excludedRoots, filesByPath); os.IsNotExist(walkErr) {
 			continue
 		} else if walkErr != nil {
 			return "", "", walkErr
@@ -666,12 +730,19 @@ func hashImageDirectoriesWithHasher(contentDir, assetsDir string, extensions []s
 }
 
 func imageLibraryScanRoots(contentDir, assetsDir string) []imageLibraryScanRoot {
-	contentRoot := normalizedImageLibraryDirectory(contentDir)
-	roots := []imageLibraryScanRoot{{path: contentRoot, label: "content"}}
+	roots := make([]imageLibraryScanRoot, 0, 2)
+	contentRoot := ""
+	if contentDir != "" {
+		contentRoot = normalizedImageLibraryDirectory(contentDir)
+		roots = append(roots, imageLibraryScanRoot{path: contentRoot, label: "content"})
+	}
 	if assetsDir == "" {
 		return roots
 	}
 	assetsRoot := normalizedImageLibraryDirectory(assetsDir)
+	if contentRoot == "" {
+		return []imageLibraryScanRoot{{path: assetsRoot, label: "assets"}}
+	}
 	switch {
 	case imageLibraryPathWithin(contentRoot, assetsRoot):
 		// The content walk already includes the configured asset directory.
@@ -692,45 +763,85 @@ func imageLibraryExtensionsByName(extensions []string) map[string]struct{} {
 	return byName
 }
 
-func collectImageLibraryFiles(root imageLibraryScanRoot, extensionsByName map[string]struct{}, filesByPath map[string]imageLibraryFile) error {
+func collectImageLibraryFiles(root imageLibraryScanRoot, extensionsByName map[string]struct{}, excludedRoots []string, filesByPath map[string]imageLibraryFile) error {
 	return filepath.WalkDir(root.path, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.Type()&os.ModeSymlink != 0 || entry.IsDir() {
+		if imageLibraryPathExcluded(path, excludedRoots) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-		if _, ok := extensionsByName[strings.ToLower(filepath.Ext(path))]; !ok {
-			return nil
-		}
-		info, infoErr := entry.Info()
-		if infoErr != nil {
-			return infoErr
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		changeTime, changeTimeKnown := imageLibraryChangeTime(info)
-		absolute := normalizedImageLibraryPath(path)
 		relative, relativeErr := filepath.Rel(root.path, path)
 		if relativeErr != nil {
 			relative = path
 		}
-		cacheKey := filepath.ToSlash(absolute)
-		if _, exists := filesByPath[cacheKey]; exists {
-			return nil
-		}
-		filesByPath[cacheKey] = imageLibraryFile{
-			cacheKey:        cacheKey,
-			hashPath:        root.label + "/" + filepath.ToSlash(relative),
-			fullPath:        absolute,
-			size:            info.Size(),
-			modTime:         info.ModTime().UnixNano(),
-			changeTime:      changeTime,
-			changeTimeKnown: changeTimeKnown,
-		}
-		return nil
+		return collectImageLibraryFile(path, root.label+"/"+filepath.ToSlash(relative), extensionsByName, excludedRoots, filesByPath)
 	})
+}
+
+func collectImageLibraryFile(path, hashPath string, extensionsByName map[string]struct{}, excludedRoots []string, filesByPath map[string]imageLibraryFile) error {
+	if imageLibraryPathExcluded(path, excludedRoots) {
+		return nil
+	}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return nil
+	}
+	if _, ok := extensionsByName[strings.ToLower(filepath.Ext(path))]; !ok {
+		return nil
+	}
+	absolute := normalizedImageLibraryPath(path)
+	cacheKey := filepath.ToSlash(absolute)
+	if _, exists := filesByPath[cacheKey]; exists {
+		return nil
+	}
+	changeTime, changeTimeKnown := imageLibraryChangeTime(info)
+	filesByPath[cacheKey] = imageLibraryFile{
+		cacheKey:        cacheKey,
+		hashPath:        hashPath,
+		fullPath:        absolute,
+		size:            info.Size(),
+		modTime:         info.ModTime().UnixNano(),
+		changeTime:      changeTime,
+		changeTimeKnown: changeTimeKnown,
+	}
+	return nil
+}
+
+func imageLibraryExcludedRoots(paths []string) []string {
+	result := make([]string, 0, len(paths))
+	seen := make(map[string]struct{}, len(paths))
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		normalized := normalizedImageLibraryDirectory(path)
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
+}
+
+func imageLibraryPathExcluded(path string, excludedRoots []string) bool {
+	normalized := normalizedImageLibraryPath(path)
+	for _, root := range excludedRoots {
+		if imageLibraryPathWithin(root, normalized) {
+			return true
+		}
+	}
+	return false
 }
 
 func hashImageLibraryFiles(files []imageLibraryFile, previous map[string]buildcache.ImageLibraryMediaFingerprint, hashFile func(string) (string, error)) (contentHash, stateHash string, next map[string]buildcache.ImageLibraryMediaFingerprint, err error) {
@@ -1215,7 +1326,7 @@ func imageSearchText(image imageindex.Image) string {
 		values = append(values, "embed")
 	}
 	for _, use := range image.Uses {
-		values = append(values, use.Post, use.Href, use.Title, use.Caption)
+		values = append(values, use.Href, use.Title, use.Caption)
 	}
 	return strings.ToLower(strings.Join(values, " "))
 }

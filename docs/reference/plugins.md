@@ -84,15 +84,18 @@ enabled = true
 path = "images"
 template = "images.html"
 export_json = true
-include_unreferenced = true
+include_unreferenced = false
 ```
 
 The inventory contains image metadata and public usage relationships. Usage
 relationships include normalized figure captions when the source appears in a
 `<figure>`. Draft, private, skipped, and unpublished posts do not create usage
-relationships. Remote images are recorded without network requests. Trusted
-Dropper hosts use resized URLs only for page previews; canonical sources remain
-unchanged.
+relationships. Private bodies are never scanned; only a published private
+post's public-safe `cover` and `cover_alt` frontmatter may add a metadata-only
+record. Remote images are recorded without network requests. Trusted Dropper
+hosts use resized URLs only for page previews; canonical sources remain
+unchanged. Set `include_unreferenced = true` explicitly when a local authoring
+inventory should enumerate every supported asset below `assets_dir`.
 
 ---
 

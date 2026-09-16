@@ -85,7 +85,7 @@
           <span class="image-card__uses-label">{% if image.Used %}Used in {{ image.UseCount }} post{{ image.UseCount|pluralize }}{% else %}Public usage{% endif %}</span>
           {% if image.Uses %}
             {% for use in image.Uses %}
-            <a href="{{ use.Href }}" title="{{ use.Post }}{% if use.Cover %} · cover{% endif %}">{{ use.Title }}{% if use.Cover %} <span aria-label="cover">· cover</span>{% endif %}</a>
+            <a href="{{ use.Href }}" title="{{ use.Title }}{% if use.Cover %} · cover{% endif %}">{{ use.Title }}{% if use.Cover %} <span aria-label="cover">· cover</span>{% endif %}</a>
             {% if use.Caption %}<span class="image-card__caption">{{ use.Caption }}</span>{% endif %}
             {% endfor %}
           {% else %}
@@ -112,7 +112,7 @@
 
   <div class="image-library__empty" data-image-empty{% if image_library.Images %} hidden{% endif %}>
     <strong>No media found</strong>
-    <span>Images and videos referenced by public content and files in the static asset directory will appear here.</span>
+    <span>Images and videos referenced by public content will appear here. Enable <code>include_unreferenced</code> to inventory every supported file in the static asset directory.</span>
   </div>
   <p class="image-library__status" data-image-status role="status" aria-live="polite"></p>
 </section>

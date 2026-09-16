@@ -84,7 +84,7 @@ enabled = true
 path = "images"
 template = "images.html"
 export_json = true
-include_unreferenced = true
+include_unreferenced = false
 ```
 
 | Field | Type | Default | Description |
@@ -93,7 +93,7 @@ include_unreferenced = true
 | `path` | string | `"images"` | Relative output directory below `output_dir` |
 | `template` | string | `"images.html"` | HTML template name |
 | `export_json` | bool | `true` | Write `path/index.json` and `images.json` |
-| `include_unreferenced` | bool | `true` | Include image and video files found below `assets_dir` without public post usage |
+| `include_unreferenced` | bool | `false` | Include image and video files found below `assets_dir` without public post usage; enable explicitly when a local authoring inventory should enumerate all supported assets |
 
 The path must remain inside `output_dir`. Environment variables use the
 `MARKATA_GO_IMAGES_` prefix. See the [Image Library guide](/docs/guides/image-library/)

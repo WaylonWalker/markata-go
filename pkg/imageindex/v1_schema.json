@@ -22,7 +22,7 @@
     "image": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["src", "width", "height", "cover"],
+      "required": ["src", "width", "height", "alt", "mime_type", "cover", "uses"],
       "properties": {
         "src": {"type": "string", "minLength": 1},
         "width": {"type": "integer", "minimum": 0},
@@ -38,11 +38,10 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["post", "href", "cover"],
+            "required": ["href", "cover"],
             "additionalProperties": true,
             "properties": {
-              "post": {"type": "string"},
-              "href": {"type": "string"},
+              "href": {"type": "string", "minLength": 1},
               "title": {"type": "string"},
               "caption": {"type": "string"},
               "cover": {"type": "boolean"},

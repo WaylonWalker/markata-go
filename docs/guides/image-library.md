@@ -33,7 +33,7 @@ enabled = true
 path = "images"
 template = "images.html"
 export_json = true
-include_unreferenced = true
+include_unreferenced = false
 ```
 
 | Option | Default | Description |
@@ -42,7 +42,7 @@ include_unreferenced = true
 | `path` | `"images"` | Relative output directory below `output_dir`. |
 | `template` | `"images.html"` | Template used for the HTML page. |
 | `export_json` | `true` | Write `path/index.json` and `/images.json`. |
-| `include_unreferenced` | `true` | Include image and video files found in `assets_dir` even when no public post uses them. |
+| `include_unreferenced` | `false` | Include image and video files found in `assets_dir` even when no public post uses them. Set `true` explicitly for a local authoring inventory because it makes all supported asset files enumerable. |
 
 The output path must stay inside `output_dir`. The same options work in YAML
 and JSON configuration files. Environment overrides use these names:
@@ -93,15 +93,30 @@ Images supplied by an external `![embed](...)` card are still inventoried, but
 they are marked with an **Embed** label. This distinguishes a remote OG image
 from an image authored directly in a post.
 
-Skipped, draft, private, and unpublished posts do not create usage
+Skipped, draft, private, and unpublished posts do not create public usage
 relationships. Local files are mapped from the asset root to site-root URLs;
 for example, `static/images/logo.png` becomes `/images/logo.png`.
-An asset referenced only by private posts is omitted from the public inventory,
-even when `include_unreferenced` is enabled. Keep private media outside
-`assets_dir` when it must not be published by the static asset writer.
+
+Private body isolation is strict: the image library never scans private
+Markdown, rendered HTML, captions, alt text, or remote URLs. Changing only a
+private body produces identical public image-library output. A private post may
+opt its public-safe `cover` frontmatter into the inventory, with `cover_alt` as
+its only allowed alt field. This creates metadata only: it never creates a
+`uses[]` relationship or contributes `added_at`/`last_used_at`. Other private
+image fields are ignored. Keep private media outside `assets_dir` when it must
+not be published by the static asset writer.
+
+Local canonical URLs escape path components while preserving `/`. For example,
+`my photo#1%.png` becomes `/my%20photo%231%25.png`; authored percent-encoded
+references deduplicate to that same record. Remote query strings are preserved
+for signed URLs, but URLs with `user:password@host` credentials are rejected.
+
+The public `uses[]` entries contain the public `href`, title, caption, and
+flags. They do not contain repository-relative source paths.
 
 The JSON artifact is deterministic. Images are sorted by source URL and usage
-links are sorted by post path and then href. A missing local dimension is
+links are sorted by public href. Repository-relative source paths are not
+included in public usage records. A missing local dimension is
 reported as `0`. Local PNG, JPEG, GIF, WebP, BMP, and TIFF files report their
 dimensions when the file metadata is valid. SVG files use positive `width` and
 `height` values or a positive `viewBox`; ICO files use their largest directory

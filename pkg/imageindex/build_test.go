@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestBuild_DiscoversPublicSourcesAndDeduplicatesUses(t *testing.T) {
 	public.Slug = "hello"
 	public.Href = "/hello/"
 	public.Published = true
-	public.Content = "![Authored photo](images/photo.png)\n\n<img src=\"/static/images/photo.png\" alt=\"HTML photo\">\n\n![Inline](data:image/png;base64,abc) ![Blob](blob:abc) ![Script](javascript:alert(1))"
+	public.Content = "![Authored photo](images/photo.png)\n\n<img src=\"/static/images/photo.png\" alt=\"HTML photo\">\n\n![Inline](data:image/png;base64,abc) ![Blob](blob:abc) ![Script](javascript:alert(1)) ![Credential](https://user:SECRET@example.test/private.png)"
 	public.ArticleHTML = `<p><img src="/images/photo.png" alt="Rendered photo"></p>`
 	public.Extra["cover"] = "/static/images/photo.png"
 	public.Extra["cover_image"] = "https://cdn.example.test/second.webp"
@@ -52,8 +53,8 @@ func TestBuild_DiscoversPublicSourcesAndDeduplicatesUses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if index.ImageCount != 3 {
-		t.Fatalf("ImageCount = %d, want 3 (%#v)", index.ImageCount, index.Images)
+	if index.ImageCount != 4 {
+		t.Fatalf("ImageCount = %d, want 4 (%#v)", index.ImageCount, index.Images)
 	}
 
 	photo := imageBySrc(t, index, "/images/photo.png")
@@ -78,13 +79,215 @@ func TestBuild_DiscoversPublicSourcesAndDeduplicatesUses(t *testing.T) {
 	if _, ok := findImage(index, "secret.png"); ok {
 		t.Fatal("private image leaked into index")
 	}
-	if _, ok := findImage(index, "/images/private.png"); ok {
-		t.Fatal("private-only static image leaked into index")
+	privateImage, ok := findImage(index, "/images/private.png")
+	if !ok {
+		t.Fatal("unreferenced static image was omitted because a private body referenced it")
 	}
-	for _, source := range []string{"data:image/png;base64,abc", "blob:abc", "javascript:alert(1)"} {
+	if len(privateImage.Uses) != 0 {
+		t.Fatalf("private body created a public use: %#v", privateImage.Uses)
+	}
+	for _, source := range []string{"data:image/png;base64,abc", "blob:abc", "javascript:alert(1)", "https://user:SECRET@example.test/private.png"} {
 		if _, ok := findImage(index, source); ok {
 			t.Fatalf("unsafe image source %q leaked into index", source)
 		}
+	}
+}
+
+func TestBuild_PrivateBodyHasNoInfluenceOnPublicInventory(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writePNG(t, filepath.Join(assets, "unreferenced.png"), 3, 2)
+
+	public := models.NewPost("posts/public.md")
+	public.Path = "posts/public.md"
+	public.Slug = "public"
+	public.Href = "/public/"
+	public.Published = true
+	public.Content = "![Public](https://example.test/public.png)"
+
+	private := models.NewPost("posts/private.md")
+	private.Path = "posts/private.md"
+	private.Slug = "private"
+	private.Href = "/private/"
+	private.Published = true
+	private.Private = true
+	private.Content = "secret text"
+	private.ArticleHTML = "<p>secret text</p>"
+
+	build := func() []byte {
+		t.Helper()
+		index, err := Build([]*models.Post{private, public}, BuildOptions{
+			ContentDir:          root,
+			AssetsDir:           assets,
+			GeneratorVersion:    "test",
+			IncludeUnreferenced: true,
+		})
+		if err != nil {
+			t.Fatalf("Build() error = %v", err)
+		}
+		data, err := Marshal(index)
+		if err != nil {
+			t.Fatalf("Marshal() error = %v", err)
+		}
+		return data
+	}
+
+	before := build()
+	private.Content = `![classified markdown](/unreferenced.png)
+
+<figure><img src="/private-html.png" alt="classified html"><figcaption>classified caption</figcaption></figure>
+
+![remote](https://cdn.example.test/private.jpg?token=SECRET)`
+	private.ArticleHTML = `<figure><img src="/private-rendered.png" alt="rendered secret"><figcaption>rendered caption</figcaption></figure>`
+	after := build()
+	if !bytes.Equal(before, after) {
+		t.Fatalf("private body changed public inventory:\nbefore=%s\nafter=%s", before, after)
+	}
+
+	index, err := Build([]*models.Post{private, public}, BuildOptions{
+		ContentDir:          root,
+		AssetsDir:           assets,
+		GeneratorVersion:    "test",
+		IncludeUnreferenced: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if image, ok := findImage(index, "/unreferenced.png"); !ok || len(image.Uses) != 0 {
+		t.Fatalf("private body affected unreferenced asset: found=%v image=%#v", ok, image)
+	}
+	for _, source := range []string{"/private-html.png", "/private-rendered.png", "https://cdn.example.test/private.jpg?token=SECRET"} {
+		if _, ok := findImage(index, source); ok {
+			t.Fatalf("private body source %q leaked into inventory", source)
+		}
+	}
+}
+
+func TestBuild_PrivateSafeCoverFrontmatterAddsMetadataWithoutUse(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writePNG(t, filepath.Join(assets, "cover.png"), 4, 3)
+	writePNG(t, filepath.Join(assets, "replacement.png"), 5, 2)
+
+	private := models.NewPost("posts/private.md")
+	private.Path = "posts/private.md"
+	private.Slug = "private"
+	private.Href = "/private/"
+	private.Published = true
+	private.Private = true
+	private.Content = "private body"
+	private.Extra["cover"] = "/cover.png"
+	private.Extra["cover_alt"] = "Public-safe cover"
+	private.Extra["image"] = "/private-image.png"
+	private.Extra["alt"] = "private alt that is not whitelisted"
+
+	index, err := Build([]*models.Post{private}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	cover := imageBySrc(t, index, "/cover.png")
+	if !cover.Cover || cover.Alt != "Public-safe cover" || len(cover.Uses) != 0 {
+		t.Fatalf("private safe cover metadata = %#v", cover)
+	}
+	if _, ok := findImage(index, "/private-image.png"); ok {
+		t.Fatal("non-whitelisted private frontmatter image leaked")
+	}
+	data, err := Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte("posts/private.md")) || bytes.Contains(data, []byte("/private/")) || bytes.Contains(data, []byte("private body")) {
+		t.Fatalf("private relationship or body leaked: %s", data)
+	}
+
+	private.Extra["cover"] = "/replacement.png"
+	index, err = Build([]*models.Post{private}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("Build() after safe frontmatter change error = %v", err)
+	}
+	if _, ok := findImage(index, "/cover.png"); ok {
+		t.Fatal("old safe cover remained after frontmatter change")
+	}
+	if replacement, ok := findImage(index, "/replacement.png"); !ok || len(replacement.Uses) != 0 || !replacement.Cover {
+		t.Fatalf("new safe cover metadata = found=%v image=%#v", ok, replacement)
+	}
+}
+
+func TestBuild_CanonicalizesLocalURLPathAndDeduplicatesEncodedReference(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	filename := "my photo#1%.png"
+	writePNG(t, filepath.Join(assets, filename), 2, 2)
+
+	post := models.NewPost("posts/photo.md")
+	post.Path = "posts/photo.md"
+	post.Slug = "photo"
+	post.Href = "/photo/"
+	post.Published = true
+	post.Content = "![Raw](/my photo#1%.png)\n![Encoded](/my%20photo%231%25.png)"
+	index, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	wantSource := "/my%20photo%231%25.png"
+	image := imageBySrc(t, index, wantSource)
+	if len(index.Images) != 1 || len(image.Uses) != 1 {
+		t.Fatalf("canonical image records = %#v", index.Images)
+	}
+	if strings.Contains(image.Src, " ") || strings.Contains(image.Src, "#") || strings.Contains(image.Src, "%25%20") {
+		t.Fatalf("canonical source is not a valid escaped path: %q", image.Src)
+	}
+
+	post.Content = ""
+	post.Extra["cover"] = filename
+	rawOnly, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("raw-only Build() error = %v", err)
+	}
+	if len(rawOnly.Images) != 1 || rawOnly.Images[0].Src != wantSource {
+		t.Fatalf("raw-only canonical image = %#v", rawOnly.Images)
+	}
+}
+
+func TestBuild_TreatsLiteralQuestionMarkInLocalFilenameAsPath(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writePNG(t, filepath.Join(assets, "question?mark.png"), 2, 2)
+
+	post := models.NewPost("posts/question.md")
+	post.Path = "posts/question.md"
+	post.Slug = "question"
+	post.Href = "/question/"
+	post.Published = true
+	post.Content = "![Question](/question?mark.png)"
+
+	index, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if len(index.Images) != 1 || index.Images[0].Src != "/question%3Fmark.png" {
+		t.Fatalf("literal question-mark image = %#v", index.Images)
+	}
+	post.Content = ""
+	post.Extra["cover"] = "question?mark.png"
+	frontmatter, err := Build([]*models.Post{post}, BuildOptions{ContentDir: root, AssetsDir: assets})
+	if err != nil {
+		t.Fatalf("frontmatter Build() error = %v", err)
+	}
+	if len(frontmatter.Images) != 1 || frontmatter.Images[0].Src != "/question%3Fmark.png" {
+		t.Fatalf("frontmatter question-mark image = %#v", frontmatter.Images)
 	}
 }
 
@@ -292,6 +495,29 @@ func TestBuild_ClassifiesDirectHTMLVideoWithPoster(t *testing.T) {
 	video := imageBySrc(t, index, "https://example.test/direct.mp4")
 	if video.MIMEType != "video/mp4" || video.PosterSrc != "https://example.test/direct-poster.jpg" {
 		t.Fatalf("direct HTML video = %#v", video)
+	}
+}
+
+func TestBuild_RejectsCredentialBearingPosterURLs(t *testing.T) {
+	post := models.NewPost("posts/private-poster.md")
+	post.Path = "posts/private-poster.md"
+	post.Slug = "private-poster"
+	post.Href = "/private-poster/"
+	post.Published = true
+	post.Extra["poster_image"] = "https://user:SECRET@example.test/poster.webp"
+	post.ArticleHTML = `<video src="https://example.test/clip.mp4"></video>`
+
+	index, err := Build([]*models.Post{post}, BuildOptions{GeneratorVersion: "test"})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	video := imageBySrc(t, index, "https://example.test/clip.mp4")
+	data, err := Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if video.PosterSrc != "" || bytes.Contains(data, []byte("SECRET")) {
+		t.Fatalf("credential-bearing poster leaked: %#v", video)
 	}
 }
 
@@ -522,7 +748,7 @@ func TestBuild_IsDeterministicAcrossPostOrderAndLocalAliases(t *testing.T) {
 	}
 }
 
-func TestBuild_PrivateSymlinkDoesNotExposeTargetAsUnreferenced(t *testing.T) {
+func TestBuild_PrivateSymlinkBodyDoesNotSuppressPublicTarget(t *testing.T) {
 	root := t.TempDir()
 	assets := filepath.Join(root, "static", "images")
 	if err := os.MkdirAll(assets, 0o755); err != nil {
@@ -549,8 +775,8 @@ func TestBuild_PrivateSymlinkDoesNotExposeTargetAsUnreferenced(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if index.ImageCount != 0 {
-		t.Fatalf("private symlink images leaked: %#v", index.Images)
+	if index.ImageCount != 1 || index.Images[0].Src != "/images/private-target.png" || len(index.Images[0].Uses) != 0 {
+		t.Fatalf("private symlink body affected unreferenced target: %#v", index.Images)
 	}
 }
 

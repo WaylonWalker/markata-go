@@ -66,10 +66,13 @@ public post titles. `added_at` is the earliest valid date from a public post
 that uses the source, while `last_used_at` is the latest; filesystem timestamps
 are not published. The `Recently added` view uses a 30-day browser-time window.
 Private, draft, skipped, and unpublished posts must not create public usage
-relationships.
-Static media referenced only by private posts is omitted from the inventory, but
-media below `assets_dir` is still public static output; keep truly private files
-outside that directory.
+relationships. Private bodies are never scanned by the image library. Only a
+private post's public-safe `cover` and `cover_alt` frontmatter may add a
+metadata-only record, with no private use relationship or dates. The default
+`images.include_unreferenced` is `false`; set it to `true` explicitly for a
+local authoring inventory because it makes every supported file below
+`assets_dir` centrally enumerable. Media below `assets_dir` is still public
+static output; keep truly private files outside that directory.
 
 Example:
 

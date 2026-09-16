@@ -102,9 +102,11 @@ Media fields are not typed on the Post model. They live in `post.Extra` and are 
   `thumb` (video poster candidates)
 
 For OG card generation, the first non-empty value from `image`, `cover_image`, `og_image` is used.
-The generated Image Library also records the supported image fields above for
-public posts, while private, draft, skipped, and unpublished posts do not
-create public usage relationships.
+The generated Image Library records the supported image fields above for public
+posts. It never scans private post bodies. A published private post may expose
+only its explicitly public-safe `cover` and `cover_alt` fields as a metadata-only
+image record; it does not create a public usage relationship. Draft, skipped,
+and unpublished posts do not participate.
 
 The Image Library treats `cover`, `cover_image`, `image`, and `video` as cover
 fallbacks in that order. It detects video media from the URL extension or MIME

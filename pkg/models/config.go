@@ -3094,7 +3094,8 @@ type ImagesConfig struct {
 	ExportJSON *bool `json:"export_json,omitempty" yaml:"export_json,omitempty" toml:"export_json,omitempty"`
 
 	// IncludeUnreferenced includes image and video files found in the static asset
-	// directory even when no public post references them.
+	// directory even when no public post references them. It is opt-in because
+	// enabling it makes every supported asset centrally enumerable.
 	IncludeUnreferenced *bool `json:"include_unreferenced,omitempty" yaml:"include_unreferenced,omitempty" toml:"include_unreferenced,omitempty"`
 }
 
@@ -3102,7 +3103,7 @@ type ImagesConfig struct {
 func NewImagesConfig() ImagesConfig {
 	enabled := true
 	exportJSON := true
-	includeUnreferenced := true
+	includeUnreferenced := false
 	return ImagesConfig{
 		Enabled:             &enabled,
 		Path:                "images",
