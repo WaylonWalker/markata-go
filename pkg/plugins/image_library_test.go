@@ -3,6 +3,9 @@ package plugins
 import (
 	"bytes"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +25,10 @@ func TestParseImageLibraryConfig_DefaultsAndExplicitFalse(t *testing.T) {
 	}
 	if !defaults.IsEnabled() || !defaults.ShouldExportJSON() || defaults.ShouldIncludeUnreferenced() {
 		t.Fatalf("defaults = %#v", defaults)
+	}
+	normalized := normalizeImageLibraryConfig(models.ImagesConfig{})
+	if normalized.ShouldIncludeUnreferenced() {
+		t.Fatalf("normalized zero-value config includes unreferenced media: %#v", normalized)
 	}
 
 	configured, err := parseImageLibraryConfig(map[string]interface{}{
@@ -806,6 +813,174 @@ func TestImageLibraryPlugin_RebuildsWhenReferencedContentImageChanges(t *testing
 	}
 }
 
+func TestHashImageLibrarySources_ReusesReferencedExternalAsset(t *testing.T) {
+	root := t.TempDir()
+	contentDir := filepath.Join(root, "site", "content")
+	assetsDir := filepath.Join(root, "shared", "static")
+	outputDir := filepath.Join(root, "site", "output")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	assetPath := filepath.Join(assetsDir, "photo.png")
+	writeImageLibraryPNG(t, assetPath, 3, 2)
+
+	post := models.NewPost("posts/photo.md")
+	post.Path = "posts/photo.md"
+	post.Slug = "photo"
+	post.Href = "/photo/"
+	post.Published = true
+	post.Content = "![Photo](/photo.png)"
+	paths := imageindex.LocalMediaPaths([]*models.Post{post}, imageindex.BuildOptions{
+		ContentDir: contentDir,
+		AssetsDir:  assetsDir,
+		OutputDir:  outputDir,
+	})
+	if len(paths) != 1 || filepath.Clean(paths[0]) != filepath.Clean(assetPath) {
+		t.Fatalf("referenced external media paths = %#v, want %q", paths, assetPath)
+	}
+
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	reads := 0
+	hashFile := func(path string) (string, error) {
+		reads++
+		return buildcache.HashFile(path)
+	}
+	sourceFiles := append(append([]string(nil), paths...), paths...)
+	firstContentHash, firstStateHash, err := hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir, false, sourceFiles, imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("first external asset hash error = %v", err)
+	}
+	if reads != 1 {
+		t.Fatalf("first external asset read count = %d, want one deduplicated read", reads)
+	}
+
+	secondContentHash, secondStateHash, err := hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir, false, sourceFiles, imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("second external asset hash error = %v", err)
+	}
+	if reads != 1 {
+		t.Fatalf("unchanged external asset read count = %d, want 1", reads)
+	}
+	if firstContentHash != secondContentHash || firstStateHash != secondStateHash {
+		t.Fatalf("unchanged external asset hashes differ: first=(%q, %q), second=(%q, %q)", firstContentHash, firstStateHash, secondContentHash, secondStateHash)
+	}
+
+	writeImageLibraryPNG(t, assetPath, 5, 4)
+	thirdContentHash, _, err := hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir, false, sourceFiles, imageHashExtensions(), cache, hashFile)
+	if err != nil {
+		t.Fatalf("changed external asset hash error = %v", err)
+	}
+	if reads != 2 {
+		t.Fatalf("changed external asset read count = %d, want changed file reread only", reads)
+	}
+	if thirdContentHash == firstContentHash {
+		t.Fatal("changed external asset retained the cached content hash")
+	}
+}
+
+func TestImageLibraryPlugin_RebuildsWhenReferencedExternalAssetChanges(t *testing.T) {
+	root := t.TempDir()
+	contentDir := filepath.Join(root, "site", "content")
+	assetsDir := filepath.Join(root, "shared", "static")
+	outputDir := filepath.Join(root, "site", "output")
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	assetPath := filepath.Join(assetsDir, "photo.png")
+	writeImageLibraryPNG(t, assetPath, 3, 2)
+
+	post := models.NewPost("posts/photo.md")
+	post.Path = "posts/photo.md"
+	post.Slug = "photo"
+	post.Href = "/photo/"
+	post.Published = true
+	post.Content = "![Photo](/photo.png)"
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.OutputDir = outputDir
+	modelsConfig.AssetsDir = assetsDir
+	// Keep this explicit in the regression fixture: the referenced file must be
+	// hashed even when the asset directory is not enumerated wholesale.
+	includeUnreferenced := false
+	modelsConfig.Images.IncludeUnreferenced = &includeUnreferenced
+	manager := lifecycle.NewManager()
+	manager.SetConfig(&lifecycle.Config{
+		ContentDir: contentDir,
+		OutputDir:  outputDir,
+		Extra: map[string]interface{}{
+			"assets_dir":    assetsDir,
+			"models_config": modelsConfig,
+		},
+	})
+	manager.SetPosts([]*models.Post{post})
+	cache := buildcache.New(filepath.Join(root, "cache"))
+	manager.Cache().Set("build_cache", cache)
+	plugin := NewImageLibraryPlugin()
+
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("first external asset Write() error = %v", err)
+	}
+	jsonPath := filepath.Join(outputDir, "images.json")
+	firstJSON, err := os.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstIndex, err := imageindex.Parse(firstJSON)
+	if err != nil {
+		t.Fatalf("parse first external asset index: %v", err)
+	}
+	firstImage := imageLibraryTestImageBySrc(t, firstIndex, "/photo.png")
+	if firstImage.Width != 3 || firstImage.Height != 2 {
+		t.Fatalf("first external asset metadata = %#v, want 3x2", firstImage)
+	}
+	firstHash := cache.GetImageLibraryHash()
+	pagePath := filepath.Join(outputDir, "images", "index.html")
+	firstPageInfo, err := os.Stat(pagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("unchanged external asset Write() error = %v", err)
+	}
+	secondPageInfo, err := os.Stat(pagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !secondPageInfo.ModTime().Equal(firstPageInfo.ModTime()) {
+		t.Fatal("unchanged external asset caused the image-library page to be rewritten")
+	}
+	if secondHash := cache.GetImageLibraryHash(); secondHash != firstHash {
+		t.Fatalf("unchanged external asset changed image-library hash: before=%q after=%q", firstHash, secondHash)
+	}
+
+	writeImageLibraryPNG(t, assetPath, 5, 4)
+	if err := plugin.Write(manager); err != nil {
+		t.Fatalf("changed external asset Write() error = %v", err)
+	}
+	secondJSON, err := os.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondIndex, err := imageindex.Parse(secondJSON)
+	if err != nil {
+		t.Fatalf("parse changed external asset index: %v", err)
+	}
+	secondImage := imageLibraryTestImageBySrc(t, secondIndex, "/photo.png")
+	if secondImage.Width != 5 || secondImage.Height != 4 {
+		t.Fatalf("changed external asset metadata = %#v, want 5x4", secondImage)
+	}
+	if bytes.Equal(firstJSON, secondJSON) || cache.GetImageLibraryHash() == firstHash {
+		t.Fatal("changed external asset did not invalidate image-library output")
+	}
+}
+
 func TestHashImageDirectories_ReusesUnchangedMediaContent(t *testing.T) {
 	root := t.TempDir()
 	assets := filepath.Join(root, "static")
@@ -1262,4 +1437,34 @@ func imageIndexForTest() imageindex.Index {
 
 func stringPointerImages(value string) *string {
 	return &value
+}
+
+func writeImageLibraryPNG(t *testing.T, path string, width, height int) {
+	t.Helper()
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	canvas := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			canvas.Set(x, y, color.RGBA{R: 20, G: 90, B: 70, A: 255})
+		}
+	}
+	if err := png.Encode(file, canvas); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func imageLibraryTestImageBySrc(t *testing.T, index imageindex.Index, src string) imageindex.Image {
+	t.Helper()
+	for i := range index.Images {
+		image := &index.Images[i]
+		if image.Src == src {
+			return *image
+		}
+	}
+	t.Fatalf("image %q not found in %#v", src, index.Images)
+	return imageindex.Image{}
 }

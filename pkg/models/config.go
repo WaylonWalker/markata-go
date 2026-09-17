@@ -3095,7 +3095,8 @@ type ImagesConfig struct {
 
 	// IncludeUnreferenced includes image and video files found in the static asset
 	// directory even when no public post references them. It is opt-in because
-	// enabling it makes every supported asset centrally enumerable.
+	// enabling it makes every supported asset centrally enumerable. The default,
+	// including a nil configuration value, is false.
 	IncludeUnreferenced *bool `json:"include_unreferenced,omitempty" yaml:"include_unreferenced,omitempty" toml:"include_unreferenced,omitempty"`
 }
 
@@ -3124,9 +3125,13 @@ func (c *ImagesConfig) ShouldExportJSON() bool {
 }
 
 // ShouldIncludeUnreferenced reports whether unreferenced static image files are
-// included in the inventory.
+// included in the inventory. A nil receiver or field uses the safe default of
+// false.
 func (c *ImagesConfig) ShouldIncludeUnreferenced() bool {
-	return c == nil || c.IncludeUnreferenced == nil || *c.IncludeUnreferenced
+	if c == nil || c.IncludeUnreferenced == nil {
+		return false
+	}
+	return *c.IncludeUnreferenced
 }
 
 // NewGardenConfig creates a new GardenConfig with default values.

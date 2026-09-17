@@ -31,6 +31,23 @@ func TestLoadFromString_ImagesConfigAcrossFormats(t *testing.T) {
 	}
 }
 
+func TestImagesConfig_IncludeUnreferencedDefaultsFalse(t *testing.T) {
+	var zero models.ImagesConfig
+	if zero.ShouldIncludeUnreferenced() {
+		t.Fatal("zero-valued ImagesConfig includes unreferenced media")
+	}
+
+	var nilConfig *models.ImagesConfig
+	if nilConfig.ShouldIncludeUnreferenced() {
+		t.Fatal("nil ImagesConfig includes unreferenced media")
+	}
+
+	defaults := DefaultConfig()
+	if defaults.Images.ShouldIncludeUnreferenced() {
+		t.Fatal("DefaultConfig includes unreferenced media")
+	}
+}
+
 func TestMergeConfigs_ImagesPreservesExplicitFalse(t *testing.T) {
 	base := models.NewConfig()
 	base.Images.Path = "images"

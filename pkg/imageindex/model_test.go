@@ -98,12 +98,87 @@ func TestParse_RejectsUnsupportedVersionAndCountMismatch(t *testing.T) {
 }
 
 func TestParse_IgnoresUnknownFields(t *testing.T) {
-	data := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":1,"images":[{"src":"/a.png","width":1,"height":2,"future_field":"ignored"}],"future_top_level":true}`
+	data := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":1,"images":[{"src":"/a.png","width":1,"height":2,"alt":"","mime_type":"image/png","cover":false,"uses":[],"future_field":"ignored"}],"future_top_level":true}`
 	index, err := Parse([]byte(data))
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
 	if index.Images[0].Src != "/a.png" {
 		t.Fatalf("Parse() image = %#v", index.Images[0])
+	}
+}
+
+func TestParse_RejectsMissingRequiredV1ImageFields(t *testing.T) {
+	base := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":1,"images":[{"src":"/a.png","width":1,"height":2,"alt":"","mime_type":"image/png","cover":false,"uses":[]}]}`
+	for name, fragment := range map[string]string{
+		"src":       `"src":"/a.png",`,
+		"width":     `"width":1,`,
+		"height":    `"height":2,`,
+		"alt":       `"alt":"",`,
+		"mime_type": `"mime_type":"image/png",`,
+		"cover":     `"cover":false,`,
+		"uses":      `,"uses":[]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := strings.Replace(base, fragment, "", 1)
+			_, err := Parse([]byte(data))
+			if err == nil || !strings.Contains(err.Error(), "images[0]."+name) {
+				t.Fatalf("Parse() error = %v, want missing images[0].%s", err, name)
+			}
+		})
+	}
+}
+
+func TestParse_RejectsMissingRequiredV1TopLevelFields(t *testing.T) {
+	base := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":0,"images":[]}`
+	for name, fragment := range map[string]string{
+		"$schema":        `"$schema":"markata://schemas/image-index/v1",`,
+		"schema":         `"schema":"markata.image-index",`,
+		"schema_version": `"schema_version":1,`,
+		"generator":      `"generator":{"name":"markata-go","version":"test"},`,
+		"image_count":    `"image_count":0,`,
+		"images":         `"images":[]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := strings.Replace(base, fragment, "", 1)
+			if _, err := Parse([]byte(data)); err == nil {
+				t.Fatalf("Parse() accepted missing top-level field %q", name)
+			}
+		})
+	}
+}
+
+func TestParse_RejectsInvalidRequiredV1FieldTypes(t *testing.T) {
+	base := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":1,"images":[{"src":"/a.png","width":1,"height":2,"alt":"","mime_type":"image/png","cover":false,"uses":[]}]}`
+	for name, replacement := range map[string][2]string{
+		"width":     {`"width":1`, `"width":"1"`},
+		"alt":       {`"alt":""`, `"alt":false`},
+		"mime_type": {`"mime_type":"image/png"`, `"mime_type":false`},
+		"cover":     {`"cover":false`, `"cover":"false"`},
+		"uses":      {`"uses":[]`, `"uses":{}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := strings.Replace(base, replacement[0], replacement[1], 1)
+			_, err := Parse([]byte(data))
+			if err == nil || !strings.Contains(err.Error(), "images[0]."+name) {
+				t.Fatalf("Parse() error = %v, want invalid images[0].%s", err, name)
+			}
+		})
+	}
+}
+
+func TestParse_RejectsMissingRequiredV1UseFields(t *testing.T) {
+	base := `{"$schema":"markata://schemas/image-index/v1","schema":"markata.image-index","schema_version":1,"generator":{"name":"markata-go","version":"test"},"image_count":1,"images":[{"src":"/a.png","width":1,"height":2,"alt":"","mime_type":"image/png","cover":false,"uses":[{"href":"/post/","cover":false}]}]}`
+	for name, replacement := range map[string][2]string{
+		"href":  {`"href":"/post/",`, ``},
+		"cover": {`"uses":[{"href":"/post/","cover":false}]`, `"uses":[{"href":"/post/"}]`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := strings.Replace(base, replacement[0], replacement[1], 1)
+			_, err := Parse([]byte(data))
+			if err == nil || !strings.Contains(err.Error(), "images[0].uses[0]."+name) {
+				t.Fatalf("Parse() error = %v, want missing images[0].uses[0].%s", err, name)
+			}
+		})
 	}
 }

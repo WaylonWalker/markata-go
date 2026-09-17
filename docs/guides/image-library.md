@@ -19,8 +19,9 @@ by your site. The default output is:
 - `/images/index.json` — a versioned machine-readable inventory
 - `/images.json` — the same inventory at the site root for other tools
 
-The plugin runs by default. It reads public posts and the configured static
-asset directory. It does not fetch remote images or videos.
+The plugin runs by default. It reads public posts and, when
+`include_unreferenced` is enabled, the configured static asset directory. It
+does not fetch remote images or videos.
 
 ## Configure the output
 
@@ -103,16 +104,25 @@ private body produces identical public image-library output. A private post may
 opt its public-safe `cover` frontmatter into the inventory, with `cover_alt` as
 its only allowed alt field. This creates metadata only: it never creates a
 `uses[]` relationship or contributes `added_at`/`last_used_at`. Other private
-image fields are ignored. Keep private media outside `assets_dir` when it must
-not be published by the static asset writer.
+image fields are ignored. Private frontmatter is not presumed public; consumers
+may use only explicitly documented public-safe fields. Keep private media
+outside `assets_dir` when it must not be published by the static asset writer.
 
 Local canonical URLs escape path components while preserving `/`. For example,
 `my photo#1%.png` becomes `/my%20photo%231%25.png`; authored percent-encoded
 references deduplicate to that same record. Remote query strings are preserved
 for signed URLs, but URLs with `user:password@host` credentials are rejected.
+Referenced local media is resolved and hashed when it is below `assets_dir`,
+including an absolute `assets_dir` outside `content_dir`. Other local files are
+eligible when they are below `content_dir`; files outside both roots are ignored.
 
 The public `uses[]` entries contain the public `href`, title, caption, and
 flags. They do not contain repository-relative source paths.
+
+The versioned v1 reader requires the documented top-level fields and the stable
+per-image fields (`src`, `width`, `height`, `alt`, `mime_type`, `cover`, and
+`uses`). Each usage requires `href` and `cover`. Unknown fields are ignored so
+newer producers can add metadata without breaking readers.
 
 The JSON artifact is deterministic. Images are sorted by source URL and usage
 links are sorted by public href. Repository-relative source paths are not

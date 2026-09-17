@@ -621,7 +621,8 @@ func hashImageDirectory(dir string, extensions []string) (contentHash, stateHash
 // inventory includes unreferenced files, plus local media files referenced by
 // eligible posts. It intentionally does not walk the whole content root:
 // private-only media and unrelated content-local files must not become
-// image-library cache inputs.
+// image-library cache inputs. Referenced files use stable assets/ or content/
+// logical paths regardless of their absolute filesystem location.
 func hashImageLibrarySources(contentDir, assetsDir, outputDir string, includeUnreferenced bool, sourceFiles, extensions []string, cache *buildcache.Cache) (contentHash, stateHash string, err error) {
 	return hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir, includeUnreferenced, sourceFiles, extensions, cache, buildcache.HashFile)
 }
@@ -643,17 +644,21 @@ func hashImageLibrarySourcesWithHasher(contentDir, assetsDir, outputDir string, 
 		}
 	}
 
-	assetsRoot := normalizedImageLibraryDirectory(assetsDir)
+	contentRoot := normalizedImageLibraryDirectory(contentDir)
+	assetsRoot := ""
+	if assetsDir != "" {
+		assetsRoot = normalizedImageLibraryDirectory(assetsDir)
+	}
 	for _, sourcePath := range sourceFiles {
 		absolute := normalizedImageLibraryPath(sourcePath)
 		if imageLibraryPathExcluded(absolute, excludedRoots) || (includeUnreferenced && imageLibraryPathWithin(assetsRoot, absolute)) {
 			continue
 		}
-		relative, relativeErr := filepath.Rel(normalizedImageLibraryDirectory(contentDir), absolute)
-		if relativeErr != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		logicalPath, ok := imageLibraryLogicalSourcePath(contentRoot, assetsRoot, absolute)
+		if !ok {
 			continue
 		}
-		if err := collectImageLibraryFile(absolute, "content/"+filepath.ToSlash(relative), extensionsByName, excludedRoots, filesByPath); err != nil {
+		if err := collectImageLibraryFile(absolute, logicalPath, extensionsByName, excludedRoots, filesByPath); err != nil {
 			return "", "", err
 		}
 	}
@@ -899,8 +904,35 @@ func normalizedImageLibraryPath(path string) string {
 }
 
 func imageLibraryPathWithin(root, path string) bool {
+	if root == "" {
+		return false
+	}
 	relative, err := filepath.Rel(root, path)
 	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
+}
+
+// imageLibraryLogicalSourcePath maps a resolved local media path to the stable
+// namespace used by the semantic aggregate hash. Asset paths take precedence
+// when the configured roots overlap so an asset keeps the same identity whether
+// it is discovered by an asset walk or by an explicit public reference.
+func imageLibraryLogicalSourcePath(contentRoot, assetsRoot, path string) (string, bool) {
+	for _, root := range []struct {
+		path      string
+		namespace string
+	}{
+		{path: assetsRoot, namespace: "assets"},
+		{path: contentRoot, namespace: "content"},
+	} {
+		if root.path == "" {
+			continue
+		}
+		relative, err := filepath.Rel(root.path, path)
+		if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+			continue
+		}
+		return root.namespace + "/" + filepath.ToSlash(relative), true
+	}
+	return "", false
 }
 
 // imageLibraryChangeTime extracts the portable shape shared by Unix stat

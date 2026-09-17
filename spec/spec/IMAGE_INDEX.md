@@ -50,6 +50,9 @@ references. It MUST NOT add Plaindown-specific behavior.
 > through explicitly supported fields. Changing only private body content MUST
 > produce byte-for-byte identical public image-index output.
 
+Private frontmatter is not presumed public. Public consumers may use only
+explicitly documented public-safe fields.
+
 For a public post, frontmatter and body may affect the public inventory. For a
 private post, only the following frontmatter contract applies:
 
@@ -123,11 +126,21 @@ paths are not public v1 fields. Optional media and relationship fields
 omitted when empty or false. A dimension of `0` means that the source dimensions
 are not available locally. `added_at` is the earliest valid publication date of
 any public post that uses or references the source, including remote sources.
-Both dates are omitted when no public use has a valid publication date. Private
-safe-cover metadata never contributes to either timestamp. Filesystem
+`last_used_at` is the latest valid publication date of any public post that
+uses or references the source. Both dates are omitted when no public use has a
+valid publication date.
+Private safe-cover metadata never contributes to either timestamp. Filesystem
 modification times are used only as a cheap cache-state signal; they MUST NOT be
 emitted as public metadata or directly included in the canonical aggregate
 input hash.
+
+The v1 reader is strict about the published contract. `$schema`, `schema`,
+`schema_version`, `generator`, `image_count`, and `images` are required;
+`generator.name` and `generator.version` are required; and every image requires
+`src`, `width`, `height`, `alt`, `mime_type`, `cover`, and `uses`. Every use
+requires `href` and `cover`. Readers MUST reject missing, null, or incorrectly
+typed required fields, while continuing to ignore unknown fields for forward
+compatibility.
 
 The v1 contract intentionally uses public `href` as the only usage identity;
 older draft artifacts that contain `uses[].post` or omit the stable empty fields
@@ -156,6 +169,13 @@ Each local URL path component MUST be URL-escaped while `/` separators are
 preserved. For example, `my photo#1%.png` becomes
 `/my%20photo%231%25.png`. Authored percent-encoded references resolve to the
 same canonical record and copy actions use the escaped canonical destination.
+
+Referenced local media is eligible whether `assets_dir` is inside
+`content_dir` or is an absolute directory outside it. Files below `assets_dir`
+map relative to the asset root; other referenced local files below
+`content_dir` map relative to the content root. Local paths outside both roots
+are ignored. A resolved file is one canonical source even when asset walking
+and explicit reference discovery reach it through different paths.
 
 The library MUST use the same asset-root convention as the static asset
 writer. A local reference that resolves to a scanned asset MUST share that
@@ -312,6 +332,12 @@ from source-media discovery and hashing, including when it is below
 `content_dir` or `assets_dir`. Touching a file without changing its bytes may
 trigger a verification read, but it MUST not change semantic output or the
 canonical hash.
+
+Referenced local media is hashed even when `include_unreferenced` is `false`.
+Its semantic source identity uses `assets/<relative-to-assets-root>` for files
+under `assets_dir` and `content/<relative-to-content-root>` for other files
+under `content_dir`. The same resolved path is hashed only once. Files outside
+both roots are not semantic image-library inputs.
 
 The cache field is an optimization only. A missing output file MUST force a
 rewrite even when the cached hash matches.
