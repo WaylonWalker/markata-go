@@ -1,6 +1,9 @@
 package templates
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +40,30 @@ func TestNewEngine(t *testing.T) {
 				t.Error("NewEngine() returned nil engine")
 			}
 		})
+	}
+}
+
+func TestSearchPathLoader_GetClosesFilesystemFile(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "template.html")
+	if err := os.WriteFile(path, []byte("template"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	loader := &searchPathLoader{searchPaths: []string{directory}}
+	reader, err := loader.Get("template.html")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if string(content) != "template" {
+		t.Fatalf("template content = %q", content)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove loaded template: %v", err)
 	}
 }
 

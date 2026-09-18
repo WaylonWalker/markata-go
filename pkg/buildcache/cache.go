@@ -46,7 +46,7 @@ import (
 )
 
 // CacheVersion is incremented when the cache format changes.
-const CacheVersion = 2
+const CacheVersion = 3
 
 // DefaultCacheDir is the directory for cache files.
 const DefaultCacheDir = ".markata"
@@ -88,6 +88,28 @@ type Cache struct {
 
 	// FeedsListingHash caches the /feeds listing output state.
 	FeedsListingHash string `json:"feeds_listing_hash,omitempty"`
+
+	// ImageLibraryHash caches the generated image inventory and library output state.
+	ImageLibraryHash string `json:"image_library_hash,omitempty"`
+
+	// ImageLibraryContentRoot identifies the site root for the recorded image
+	// library files. It scopes ownership when a cache is reused by another site.
+	ImageLibraryContentRoot string `json:"image_library_content_root,omitempty"`
+
+	// ImageLibraryOutputRoot identifies the output root for the recorded image
+	// library files. It scopes cleanup when a cache is reused with another output.
+	ImageLibraryOutputRoot string `json:"image_library_output_root,omitempty"`
+
+	// ImageLibraryOutputHashes records image-library output paths relative to
+	// ImageLibraryOutputRoot and their last generated content hashes. Content
+	// hashes prevent cleanup from deleting a file that a user later changed.
+	ImageLibraryOutputHashes map[string]string `json:"image_library_output_hashes,omitempty"`
+
+	// ImageLibraryMedia stores content fingerprints for local image-library
+	// media. The map key is a normalized source path. Size, ModTime, and an
+	// optional ChangeTime are cheap invalidation state; ContentHash is reused
+	// while that state matches.
+	ImageLibraryMedia map[string]ImageLibraryMediaFingerprint `json:"image_library_media,omitempty"`
 
 	// TailwindManifestHash caches the generated Tailwind token manifest state.
 	TailwindManifestHash string `json:"tailwind_manifest_hash,omitempty"`
@@ -242,6 +264,17 @@ type PostCache struct {
 	MentionsContent string `json:"mentions_content,omitempty"`
 }
 
+// ImageLibraryMediaFingerprint stores the cheap filesystem state and content
+// hash for one local image-library media file. ChangeTime is an operating
+// system change-time signal when the filesystem exposes one.
+type ImageLibraryMediaFingerprint struct {
+	Size            int64  `json:"size"`
+	ModTime         int64  `json:"mod_time"`
+	ChangeTime      int64  `json:"change_time,omitempty"`
+	ChangeTimeKnown bool   `json:"change_time_known,omitempty"`
+	ContentHash     string `json:"content_hash"`
+}
+
 // FeedCache stores cached metadata for a single feed.
 type FeedCache struct {
 	// Hash is the hash of the feed's content (post slugs, config)
@@ -254,14 +287,15 @@ func New(cacheDir string) *Cache {
 		cacheDir = DefaultCacheDir
 	}
 	return &Cache{
-		Version:          CacheVersion,
-		Posts:            make(map[string]*PostCache),
-		Feeds:            make(map[string]*FeedCache),
-		Graph:            NewDependencyGraph(),
-		path:             filepath.Join(cacheDir, CacheFileName),
-		stalePosts:       make(map[string]*PostCache),
-		changedSlugs:     make(map[string]bool),
-		changedFeedSlugs: make(map[string]bool),
+		Version:           CacheVersion,
+		Posts:             make(map[string]*PostCache),
+		Feeds:             make(map[string]*FeedCache),
+		ImageLibraryMedia: make(map[string]ImageLibraryMediaFingerprint),
+		Graph:             NewDependencyGraph(),
+		path:              filepath.Join(cacheDir, CacheFileName),
+		stalePosts:        make(map[string]*PostCache),
+		changedSlugs:      make(map[string]bool),
+		changedFeedSlugs:  make(map[string]bool),
 	}
 }
 
@@ -298,6 +332,9 @@ func Load(cacheDir string) (*Cache, error) {
 	// Ensure Feeds is initialized
 	if cache.Feeds == nil {
 		cache.Feeds = make(map[string]*FeedCache)
+	}
+	if cache.ImageLibraryMedia == nil {
+		cache.ImageLibraryMedia = make(map[string]ImageLibraryMediaFingerprint)
 	}
 
 	// Ensure changedSlugs is initialized
@@ -368,6 +405,7 @@ func (c *Cache) SetConfigHash(hash string) bool {
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
 	c.FeedsListingHash = ""
+	c.ImageLibraryHash = ""
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
 	c.dirty = true
@@ -388,6 +426,7 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
+	c.ImageLibraryHash = ""
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
 	c.dirty = true
@@ -438,6 +477,7 @@ func (c *Cache) SetAssetsHash(hash string) bool {
 	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
+	c.ImageLibraryHash = ""
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
 	c.dirty = true
@@ -722,6 +762,201 @@ func (c *Cache) GetFeedsListingHash() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.FeedsListingHash
+}
+
+// SetImageLibraryHash stores the image-library output hash in the cache.
+func (c *Cache) SetImageLibraryHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ImageLibraryHash == hash {
+		return
+	}
+	c.ImageLibraryHash = hash
+	c.dirty = true
+}
+
+// SetImageLibraryOutputs records image-library output hashes relative to the
+// supplied output root and scoped to the supplied site root.
+func (c *Cache) SetImageLibraryOutputs(contentRoot, outputRoot string, outputHashes map[string]string) {
+	siteRoot, err := filepath.Abs(contentRoot)
+	if err != nil {
+		return
+	}
+	root, err := filepath.Abs(outputRoot)
+	if err != nil {
+		return
+	}
+	siteRoot = filepath.Clean(siteRoot)
+	root = filepath.Clean(root)
+	normalized := make(map[string]string, len(outputHashes))
+	for path, hash := range outputHashes {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		relative, err := filepath.Rel(root, filepath.Clean(absolute))
+		if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) || hash == "" {
+			continue
+		}
+		normalized[filepath.Clean(relative)] = hash
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ImageLibraryContentRoot == siteRoot && c.ImageLibraryOutputRoot == root && equalStringMaps(c.ImageLibraryOutputHashes, normalized) {
+		return
+	}
+	c.ImageLibraryContentRoot = siteRoot
+	c.ImageLibraryOutputRoot = root
+	c.ImageLibraryOutputHashes = normalized
+	c.dirty = true
+}
+
+func equalStringMaps(left, right map[string]string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, value := range left {
+		if right[key] != value {
+			return false
+		}
+	}
+	return true
+}
+
+// GetImageLibraryOutputs returns the recorded site root, output root, and
+// relative path hashes.
+func (c *Cache) GetImageLibraryOutputs() (contentRoot, outputRoot string, outputs map[string]string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	outputs = make(map[string]string, len(c.ImageLibraryOutputHashes))
+	for path, hash := range c.ImageLibraryOutputHashes {
+		outputs[path] = hash
+	}
+	return c.ImageLibraryContentRoot, c.ImageLibraryOutputRoot, outputs
+}
+
+// OwnsImageLibraryOutput reports whether the cache records the exact path under
+// the supplied site and output roots. It does not verify the current file
+// contents.
+func (c *Cache) OwnsImageLibraryOutput(contentRoot, outputRoot, path string) bool {
+	siteRoot, err := filepath.Abs(contentRoot)
+	if err != nil {
+		return false
+	}
+	root, err := filepath.Abs(outputRoot)
+	if err != nil {
+		return false
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	relative, err := filepath.Rel(filepath.Clean(root), filepath.Clean(absolute))
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return false
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if filepath.Clean(c.ImageLibraryContentRoot) != filepath.Clean(siteRoot) || filepath.Clean(c.ImageLibraryOutputRoot) != filepath.Clean(root) {
+		return false
+	}
+	_, ok := c.ImageLibraryOutputHashes[filepath.Clean(relative)]
+	return ok
+}
+
+// ImageLibraryOutputHash returns the expected hash for a recorded exact path.
+func (c *Cache) ImageLibraryOutputHash(contentRoot, outputRoot, path string) (string, bool) {
+	siteRoot, err := filepath.Abs(contentRoot)
+	if err != nil {
+		return "", false
+	}
+	root, err := filepath.Abs(outputRoot)
+	if err != nil {
+		return "", false
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", false
+	}
+	relative, err := filepath.Rel(filepath.Clean(root), filepath.Clean(absolute))
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return "", false
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if filepath.Clean(c.ImageLibraryContentRoot) != filepath.Clean(siteRoot) || filepath.Clean(c.ImageLibraryOutputRoot) != filepath.Clean(root) {
+		return "", false
+	}
+	hash, ok := c.ImageLibraryOutputHashes[filepath.Clean(relative)]
+	return hash, ok
+}
+
+// ClearImageLibraryOutputs forgets the image-library output ownership records.
+func (c *Cache) ClearImageLibraryOutputs() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ImageLibraryContentRoot == "" && c.ImageLibraryOutputRoot == "" && len(c.ImageLibraryOutputHashes) == 0 {
+		return
+	}
+	c.ImageLibraryContentRoot = ""
+	c.ImageLibraryOutputRoot = ""
+	c.ImageLibraryOutputHashes = nil
+	c.dirty = true
+}
+
+// GetImageLibraryMedia returns a copy of the cached local-media fingerprints.
+func (c *Cache) GetImageLibraryMedia() map[string]ImageLibraryMediaFingerprint {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	media := make(map[string]ImageLibraryMediaFingerprint, len(c.ImageLibraryMedia))
+	for path, fingerprint := range c.ImageLibraryMedia {
+		media[path] = fingerprint
+	}
+	return media
+}
+
+// SetImageLibraryMedia replaces the cached local-media fingerprints. It
+// reports whether the persisted cache state changed.
+func (c *Cache) SetImageLibraryMedia(media map[string]ImageLibraryMediaFingerprint) bool {
+	normalized := make(map[string]ImageLibraryMediaFingerprint, len(media))
+	for path, fingerprint := range media {
+		if path == "" || fingerprint.ContentHash == "" {
+			continue
+		}
+		normalized[filepath.ToSlash(filepath.Clean(path))] = fingerprint
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if equalImageLibraryMedia(c.ImageLibraryMedia, normalized) {
+		return false
+	}
+	c.ImageLibraryMedia = normalized
+	c.dirty = true
+	return true
+}
+
+func equalImageLibraryMedia(left, right map[string]ImageLibraryMediaFingerprint) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for path, fingerprint := range left {
+		if right[path] != fingerprint {
+			return false
+		}
+	}
+	return true
+}
+
+// GetImageLibraryHash returns the cached image-library output hash.
+func (c *Cache) GetImageLibraryHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ImageLibraryHash
 }
 
 // MarkSkipped records that a post was skipped (already up to date).

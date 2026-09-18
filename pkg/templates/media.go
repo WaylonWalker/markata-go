@@ -160,10 +160,26 @@ func isTrustedURL(u *url.URL) bool {
 
 func extensionFromURL(raw string) string {
 	u, err := url.Parse(raw)
+	// A Windows drive letter is parsed as a URL scheme, leaving the path
+	// empty. Fall back to filepath.Ext for local paths in that form.
 	if err != nil {
 		return strings.ToLower(filepath.Ext(raw))
 	}
+	if u.Path == "" {
+		if !isWindowsLocalPath(raw) {
+			return ""
+		}
+		return strings.ToLower(filepath.Ext(raw))
+	}
 	return strings.ToLower(filepath.Ext(u.Path))
+}
+
+func isWindowsLocalPath(raw string) bool {
+	if filepath.VolumeName(raw) != "" {
+		return true
+	}
+	return len(raw) >= 2 && raw[1] == ':' &&
+		((raw[0] >= 'a' && raw[0] <= 'z') || (raw[0] >= 'A' && raw[0] <= 'Z'))
 }
 
 func derivePosterFromVideo(raw string) string {

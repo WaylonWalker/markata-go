@@ -78,6 +78,19 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.AssetsDir = value
 	case "templates_dir":
 		config.TemplatesDir = value
+	case "images_enabled":
+		enabled := parseBool(value)
+		config.Images.Enabled = &enabled
+	case "images_path":
+		config.Images.Path = value
+	case "images_template":
+		config.Images.Template = value
+	case "images_export_json":
+		exportJSON := parseBool(value)
+		config.Images.ExportJSON = &exportJSON
+	case "images_include_unreferenced":
+		includeUnreferenced := parseBool(value)
+		config.Images.IncludeUnreferenced = &includeUnreferenced
 	case envKeyConcurrency:
 		if v, err := strconv.Atoi(value); err == nil {
 			config.Concurrency = v

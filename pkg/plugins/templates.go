@@ -1725,6 +1725,13 @@ func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
 	} else {
 		modelsConfig.Garden = models.NewGardenConfig()
 	}
+
+	// Copy image library config if available
+	if images, ok := config.Extra["images"].(models.ImagesConfig); ok {
+		modelsConfig.Images = images
+	} else {
+		modelsConfig.Images = models.NewImagesConfig()
+	}
 }
 
 // getStringFromExtra safely gets a string value from the Extra map.

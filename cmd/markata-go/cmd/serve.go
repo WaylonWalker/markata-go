@@ -90,6 +90,8 @@ var (
 	serveCache            *buildcache.Cache
 	servePostsMu          sync.Mutex
 	servePosts            map[string]*models.Post
+	serveSearchPostsMu    sync.RWMutex
+	serveSearchPosts      map[string]*models.Post
 )
 
 const (
@@ -209,6 +211,10 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	// Do not let a previous serve session's post pointers become visible while
+	// the new manager is still populating and transforming its posts.
+	setServePosts(nil)
+	setServeSearchPosts(nil)
 	configureLoggerForManager(m)
 
 	// Apply fast mode if requested
@@ -408,13 +414,15 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		notifyBuildStatus()
 		infof("Built %d posts, %d feeds", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
+		posts := m.Posts()
+		setServePosts(posts)
+		setServeSearchPosts(posts)
 		if serveFast || serveIncremental {
 			if cached, ok := m.Cache().Get("build_cache"); ok {
 				if bc, ok := cached.(*buildcache.Cache); ok {
 					setServeCache(bc)
 				}
 			}
-			setServePosts(m.Posts())
 		}
 	}()
 }
@@ -492,7 +500,7 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 		}
 	}
 	cacheDir := filepath.Join(filepath.Dir(absOutputDir), ".markata", "cache")
-	searchHandler := searchapi.NewHandler(m.Posts(), cacheDir, apiCfg)
+	searchHandler := searchapi.NewHandler(getServeSearchPostsSnapshot(), cacheDir, apiCfg)
 
 	// Subscribe to post updates after rebuilds.
 	// UpdatePosts is now change-aware: it only rebuilds the index
@@ -500,7 +508,8 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
-			searchHandler.UpdatePosts(m.Posts())
+			posts := getServeSearchPostsSnapshot()
+			searchHandler.UpdatePosts(posts)
 		}
 	}()
 
@@ -1373,6 +1382,67 @@ func setServePosts(posts []*models.Post) {
 	servePosts = newMap
 }
 
+// setServeSearchPosts publishes an immutable search snapshot. Build plugins
+// mutate their manager-owned posts during a rebuild, so the search handler
+// must never inspect those same pointers concurrently.
+func setServeSearchPosts(posts []*models.Post) {
+	newMap := make(map[string]*models.Post, len(posts))
+	for _, post := range posts {
+		if post != nil && post.Path != "" {
+			newMap[post.Path] = cloneServeSearchPost(post)
+		}
+	}
+	serveSearchPostsMu.Lock()
+	defer serveSearchPostsMu.Unlock()
+	if len(newMap) == 0 {
+		serveSearchPosts = nil
+		return
+	}
+	serveSearchPosts = newMap
+}
+
+func getServeSearchPostsSnapshot() []*models.Post {
+	serveSearchPostsMu.RLock()
+	defer serveSearchPostsMu.RUnlock()
+	if len(serveSearchPosts) == 0 {
+		return nil
+	}
+	posts := make([]*models.Post, 0, len(serveSearchPosts))
+	for _, post := range serveSearchPosts {
+		posts = append(posts, post)
+	}
+	return posts
+}
+
+func cloneServeSearchPost(post *models.Post) *models.Post {
+	if post == nil {
+		return nil
+	}
+	clone := *post
+	if post.Title != nil {
+		title := *post.Title
+		clone.Title = &title
+	}
+	if post.Description != nil {
+		description := *post.Description
+		clone.Description = &description
+	}
+	if post.Date != nil {
+		date := *post.Date
+		clone.Date = &date
+	}
+	clone.Tags = append([]string(nil), post.Tags...)
+	clone.Templates = make(map[string]string, len(post.Templates))
+	for key, value := range post.Templates {
+		clone.Templates[key] = value
+	}
+	clone.Extra = make(map[string]interface{}, len(post.Extra))
+	for key, value := range post.Extra {
+		clone.Extra[key] = value
+	}
+	return &clone
+}
+
 func normalizeServeChangedPaths(paths []string, contentDir string) (normalized []string, outside bool) {
 	if len(paths) == 0 {
 		return nil, false
@@ -1513,13 +1583,15 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
+	posts := m.Posts()
+	setServePosts(posts)
+	setServeSearchPosts(posts)
 	if serveFast || serveIncremental {
 		if cached, ok := m.Cache().Get("build_cache"); ok {
 			if bc, ok := cached.(*buildcache.Cache); ok {
 				setServeCache(bc)
 			}
 		}
-		setServePosts(m.Posts())
 	}
 
 	// Check for cancellation after build

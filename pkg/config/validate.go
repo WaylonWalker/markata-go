@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -54,6 +55,8 @@ func ValidateConfig(config *models.Config) []error {
 			Message: "must be >= 0 (0 means auto-detect)",
 		})
 	}
+
+	errs = append(errs, validateImageLibraryConfig(config)...)
 
 	// Warn on empty glob patterns
 	if len(config.GlobConfig.Patterns) == 0 {
@@ -141,6 +144,28 @@ func ValidateConfig(config *models.Config) []error {
 	sortErrors(errs)
 
 	return errs
+}
+
+func validateImageLibraryConfig(config *models.Config) []error {
+	var errs []error
+	if path := strings.TrimSpace(config.Images.Path); path != "" && imagePathEscapesRoot(path) {
+		errs = append(errs, ValidationError{
+			Field:   "images.path",
+			Message: "must be a relative path within output_dir",
+		})
+	}
+	if template := strings.TrimSpace(config.Images.Template); template != "" && imagePathEscapesRoot(template) {
+		errs = append(errs, ValidationError{
+			Field:   "images.template",
+			Message: "must be a relative template path",
+		})
+	}
+	return errs
+}
+
+func imagePathEscapesRoot(path string) bool {
+	clean := filepath.ToSlash(filepath.Clean(path))
+	return filepath.IsAbs(path) || strings.HasPrefix(path, "/") || clean == ".." || strings.HasPrefix(clean, "../")
 }
 
 //nolint:gocyclo // Each contract dimension produces an independent validation diagnostic.

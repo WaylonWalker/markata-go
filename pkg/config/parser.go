@@ -43,6 +43,7 @@ type configSource interface {
 	getGarden() gardenConverter
 	getTemplates() templatesConverter
 	getBuilderAdmin() models.BuilderAdminConfig
+	getImages() models.ImagesConfig
 }
 
 type parsedThemeCalendar = models.ThemeCalendarConfig
@@ -420,9 +421,32 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Templates config
 	config.Templates = src.getTemplates().toTemplatesConfig()
 
+	// Convert image library config
+	config.Images = src.getImages()
+
 	// BuilderAdmin uses the shared model because it contains only scalar settings.
 	config.BuilderAdmin = src.getBuilderAdmin()
 
+	return config
+}
+
+func normalizeImagesConfig(config models.ImagesConfig) models.ImagesConfig {
+	defaults := models.NewImagesConfig()
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Path == "" {
+		config.Path = defaults.Path
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.ExportJSON == nil {
+		config.ExportJSON = defaults.ExportJSON
+	}
+	if config.IncludeUnreferenced == nil {
+		config.IncludeUnreferenced = defaults.IncludeUnreferenced
+	}
 	return config
 }
 
@@ -479,7 +503,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
 			"authors": true, "garden": true, "builder_admin": true, "include": true, "tailwind": false, "css_purge": false,
-			"assets": true,
+			"assets": true, "images": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -693,6 +717,7 @@ type tomlConfig struct {
 	Authors         tomlAuthorsConfig         `toml:"authors"`
 	Garden          tomlGardenConfig          `toml:"garden"`
 	Templates       tomlTemplatesConfig       `toml:"templates"`
+	Images          models.ImagesConfig       `toml:"images"`
 	BuilderAdmin    models.BuilderAdminConfig `toml:"builder_admin"`
 	UnknownFields   map[string]any            `toml:"-"`
 }
@@ -2069,6 +2094,7 @@ func (c *tomlConfig) getAuthors() authorsConverter                 { return &c.A
 func (c *tomlConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *tomlConfig) getTemplates() templatesConverter             { return &c.Templates }
 func (c *tomlConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
+func (c *tomlConfig) getImages() models.ImagesConfig               { return normalizeImagesConfig(c.Images) }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2292,6 +2318,7 @@ type yamlConfig struct {
 	Authors         yamlAuthorsConfig         `yaml:"authors"`
 	Garden          yamlGardenConfig          `yaml:"garden"`
 	Templates       yamlTemplatesConfig       `yaml:"templates"`
+	Images          models.ImagesConfig       `yaml:"images"`
 	BuilderAdmin    models.BuilderAdminConfig `yaml:"builder_admin"`
 }
 
@@ -3707,6 +3734,7 @@ func (c *yamlConfig) getAuthors() authorsConverter                 { return &c.A
 func (c *yamlConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *yamlConfig) getTemplates() templatesConverter             { return &c.Templates }
 func (c *yamlConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
+func (c *yamlConfig) getImages() models.ImagesConfig               { return normalizeImagesConfig(c.Images) }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -3857,6 +3885,7 @@ type jsonConfig struct {
 	Authors         jsonAuthorsConfig         `json:"authors"`
 	Garden          jsonGardenConfig          `json:"garden"`
 	Templates       jsonTemplatesConfig       `json:"templates"`
+	Images          models.ImagesConfig       `json:"images"`
 	BuilderAdmin    models.BuilderAdminConfig `json:"builder_admin"`
 }
 
@@ -5296,6 +5325,7 @@ func (c *jsonConfig) getAuthors() authorsConverter                 { return &c.A
 func (c *jsonConfig) getGarden() gardenConverter                   { return &c.Garden }
 func (c *jsonConfig) getTemplates() templatesConverter             { return &c.Templates }
 func (c *jsonConfig) getBuilderAdmin() models.BuilderAdminConfig   { return c.BuilderAdmin }
+func (c *jsonConfig) getImages() models.ImagesConfig               { return normalizeImagesConfig(c.Images) }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

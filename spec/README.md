@@ -59,6 +59,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
 | [CONTENT_INDEX.md](./spec/CONTENT_INDEX.md) | Versioned derived metadata artifact and parser contract |
+| [IMAGE_INDEX.md](./spec/IMAGE_INDEX.md) | Canonical image inventory, JSON artifact, and authoring page |
 | [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
 | [CONTENT_DIAGNOSTICS.md](./spec/CONTENT_DIAGNOSTICS.md) | Deterministic content dispositions and frontmatter diagnostics |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |

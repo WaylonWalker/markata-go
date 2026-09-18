@@ -310,4 +310,16 @@ func TestHandler_UpdatePostsRebuildsOnContentChange(t *testing.T) {
 	if after.Total != 1 {
 		t.Fatalf("expected 1 result after update, got %d", after.Total)
 	}
+
+	h.UpdatePosts(nil)
+	req = httptest.NewRequest("GET", "/api/search?q=updated", http.NoBody)
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	var cleared SearchResponse
+	if err := json.NewDecoder(w.Body).Decode(&cleared); err != nil {
+		t.Fatalf("decode cleared response: %v", err)
+	}
+	if cleared.Total != 0 {
+		t.Fatalf("expected no results after clearing posts, got %d", cleared.Total)
+	}
 }
