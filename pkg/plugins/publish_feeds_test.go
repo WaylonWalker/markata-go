@@ -215,7 +215,7 @@ func TestGenerateSimpleFeedPageHTML_LoadsDecryptionAssets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateSimpleFeedPageHTML() error = %v", err)
 	}
-	if !strings.Contains(html, `js/decryption.js`) {
+	if !containsRenderedAsset(html, "js/decryption.js") {
 		t.Fatalf("expected simple feed output to load decryption.js, got %q", html)
 	}
 }

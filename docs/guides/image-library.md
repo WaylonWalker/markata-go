@@ -115,6 +115,8 @@ for signed URLs, but URLs with `user:password@host` credentials are rejected.
 Referenced local media is resolved and hashed when it is below `assets_dir`,
 including an absolute `assets_dir` outside `content_dir`. Other local files are
 eligible when they are below `content_dir`; files outside both roots are ignored.
+Platform-native filesystem paths are supported, including Windows drive-letter
+paths.
 
 The public `uses[]` entries contain the public `href`, title, caption, and
 flags. They do not contain repository-relative source paths.

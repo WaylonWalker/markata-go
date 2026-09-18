@@ -669,6 +669,28 @@ func (c *catalog) pathContainsSymlink(path string) bool {
 }
 
 func (c *catalog) localCandidates(rawSrc string, post *models.Post) []string {
+	candidates := make([]string, 0, 8)
+	seen := make(map[string]struct{}, 8)
+	appendCandidate := func(candidate string) {
+		if candidate == "" {
+			return
+		}
+		if _, exists := seen[candidate]; exists {
+			return
+		}
+		seen[candidate] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+
+	// net/url interprets a Windows drive letter as a URL scheme. Resolve
+	// native absolute and drive-relative paths directly before parsing URLs.
+	if isWindowsLocalPath(rawSrc) {
+		nativePath := filepath.Clean(filepath.FromSlash(rawSrc))
+		appendCandidate(pathWithinRoot(c.assetsDir, nativePath))
+		appendCandidate(pathWithinRoot(c.contentDir, nativePath))
+		return candidates
+	}
+
 	u, err := url.Parse(rawSrc)
 	if err != nil {
 		// A relative authored filename may contain characters that are invalid
@@ -692,8 +714,6 @@ func (c *catalog) localCandidates(rawSrc string, post *models.Post) []string {
 		pathValues = append(pathValues, u.Path)
 	}
 
-	candidates := make([]string, 0, 8)
-	seen := make(map[string]struct{}, 8)
 	for _, value := range pathValues {
 		pathValue, unescapeErr := url.PathUnescape(value)
 		if unescapeErr != nil {
@@ -706,16 +726,6 @@ func (c *catalog) localCandidates(rawSrc string, post *models.Post) []string {
 		trimmed := strings.TrimPrefix(pathValue, string(filepath.Separator))
 		if strings.HasPrefix(filepath.ToSlash(trimmed), "static/") {
 			trimmed = filepath.FromSlash(strings.TrimPrefix(filepath.ToSlash(trimmed), "static/"))
-		}
-		appendCandidate := func(candidate string) {
-			if candidate == "" {
-				return
-			}
-			if _, exists := seen[candidate]; exists {
-				return
-			}
-			seen[candidate] = struct{}{}
-			candidates = append(candidates, candidate)
 		}
 		appendCandidate(pathWithinRoot(c.assetsDir, filepath.Join(c.assetsDir, trimmed)))
 		if post != nil && post.Path != "" {
@@ -859,6 +869,13 @@ func mimeType(path string) string {
 }
 
 func mediaExtension(path string) string {
+	// A Windows drive-letter path is parsed by net/url as a URL with a
+	// one-letter scheme (for example, "C:\\site\\photo.png"). Check native
+	// filesystem paths before parsing URLs so local assets are still scanned
+	// and their dimensions can be read on Windows.
+	if isWindowsLocalPath(path) {
+		return strings.ToLower(filepath.Ext(path))
+	}
 	u, err := url.Parse(path)
 	if err == nil {
 		if u.Path != "" {
@@ -871,6 +888,17 @@ func mediaExtension(path string) string {
 		}
 	}
 	return strings.ToLower(filepath.Ext(path))
+}
+
+func isWindowsLocalPath(path string) bool {
+	if len(path) < 2 || path[1] != ':' {
+		return false
+	}
+	letter := path[0]
+	if (letter < 'a' || letter > 'z') && (letter < 'A' || letter > 'Z') {
+		return false
+	}
+	return true
 }
 
 func dimensions(path string) (width, height int) {

@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -259,6 +260,10 @@ func TestBuild_CanonicalizesLocalURLPathAndDeduplicatesEncodedReference(t *testi
 }
 
 func TestBuild_TreatsLiteralQuestionMarkInLocalFilenameAsPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support question marks in filenames")
+	}
+
 	root := t.TempDir()
 	assets := filepath.Join(root, "static")
 	if err := os.MkdirAll(assets, 0o755); err != nil {
@@ -288,6 +293,58 @@ func TestBuild_TreatsLiteralQuestionMarkInLocalFilenameAsPath(t *testing.T) {
 	}
 	if len(frontmatter.Images) != 1 || frontmatter.Images[0].Src != "/question%3Fmark.png" {
 		t.Fatalf("frontmatter question-mark image = %#v", frontmatter.Images)
+	}
+}
+
+func TestBuild_ResolvesWindowsAbsoluteLocalReference(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows drive-letter paths require a Windows filesystem")
+	}
+
+	root := t.TempDir()
+	assets := filepath.Join(root, "static")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	imagePath := filepath.Join(assets, "photo.png")
+	writePNG(t, imagePath, 3, 2)
+
+	post := models.NewPost("posts/photo.md")
+	post.Path = "posts/photo.md"
+	post.Slug = "photo"
+	post.Href = "/photo/"
+	post.Published = true
+	post.Extra["cover"] = filepath.ToSlash(imagePath)
+
+	index, err := Build([]*models.Post{post}, BuildOptions{
+		ContentDir:          root,
+		AssetsDir:           assets,
+		IncludeUnreferenced: true,
+	})
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if len(index.Images) != 1 {
+		t.Fatalf("absolute Windows reference created duplicate records: %#v", index.Images)
+	}
+	image := imageBySrc(t, index, "/photo.png")
+	if image.Width != 3 || image.Height != 2 || !image.Cover || len(image.Uses) != 1 {
+		t.Fatalf("absolute Windows reference = %#v", image)
+	}
+}
+
+func TestMediaExtension_RecognizesWindowsDrivePaths(t *testing.T) {
+	for _, path := range []string{`C:\site\static\photo.png`, `D:/site/static/photo.webp`} {
+		if got := mediaExtension(path); got != filepath.Ext(path) {
+			t.Errorf("mediaExtension(%q) = %q, want %q", path, got, filepath.Ext(path))
+		}
+	}
+}
+
+func TestMediaExtension_UsesURLPathBeforeQuery(t *testing.T) {
+	want := filepath.Ext("/site/photo.png")
+	if got := mediaExtension(`/site/photo.png?size=large`); got != want {
+		t.Fatalf("mediaExtension() = %q, want %q", got, want)
 	}
 }
 

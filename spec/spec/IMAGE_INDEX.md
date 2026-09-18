@@ -177,6 +177,10 @@ map relative to the asset root; other referenced local files below
 are ignored. A resolved file is one canonical source even when asset walking
 and explicit reference discovery reach it through different paths.
 
+Filesystem resolution MUST support platform-native paths. In particular, a
+Windows drive-letter path such as `C:\\site\\static\\photo.png` MUST be treated
+as a local filesystem path, not as a URL with a one-letter scheme.
+
 The library MUST use the same asset-root convention as the static asset
 writer. A local reference that resolves to a scanned asset MUST share that
 asset's canonical record, even when the authored URL uses a relative path or
