@@ -96,6 +96,27 @@ Convenience aliases are also injected:
 - `site_description`
 - `site_author`
 
+Image-library templates receive these extra values when the built-in `images`
+plugin renders its page:
+
+- `image_library` — page counts and presentation-ready image cards
+- `image_index` — the canonical image inventory
+- `image_library_config` — the resolved `[markata-go.images]` settings
+
+Image-library cards include `IsVideo`, `PosterSrc`, `Embed`, `AddedAt`,
+`AddedAtUnix`, `LastUsedAt`, and `LastUsedAtUnix` alongside the regular image
+fields. `AddedAt` is the earliest valid public post date for the source, not a
+filesystem timestamp. Each item in `Uses` can include `Caption` when the media
+has an associated figure caption. Render video cards with a `<video>` element
+and a nested `<source>` element; use `poster_src` when it is non-empty.
+The bundled image-library template keeps available posters visible but defers
+video sources until a card enters the viewport. Keep that lazy-loading behavior
+in custom templates when the page can contain many videos.
+
+Keep `image_index` sources canonical in copy actions. Trusted Dropper derivatives
+are for previews only. Override `images.html` in the site's `templates/`
+directory when the default authoring page needs a different layout.
+
 ## Common Post Fields In Templates
 
 Typical `post` keys used in templates:

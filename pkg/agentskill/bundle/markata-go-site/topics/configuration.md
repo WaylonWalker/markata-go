@@ -1,6 +1,6 @@
 # Configuration
 
-Use this topic when the task involves `markata-go.toml`, environment overrides, feed setup, content index output, theme settings, or figuring out which config value is active.
+Use this topic when the task involves `markata-go.toml`, environment overrides, feed setup, content index output, image-library output, theme settings, or figuring out which config value is active.
 
 ## Preferred File
 
@@ -56,6 +56,24 @@ writes resolved metadata and feed membership, including safe metadata-only
 records for private posts. It never writes article bodies or encryption keys.
 Check the output path and privacy behavior before publishing it.
 
+The Image Library is enabled by default with `[markata-go.images]`. It writes a
+searchable `/images/` page plus `/images/index.json` and `/images.json` below
+`output_dir` without
+fetching remote images or videos. Check `images.path`, `images.export_json`, and
+`images.include_unreferenced` when media is missing or an inventory should
+not be public. The page searches filenames, alt text, figure captions, and
+public post titles. `added_at` is the earliest valid date from a public post
+that uses the source, while `last_used_at` is the latest; filesystem timestamps
+are not published. The `Recently added` view uses a 30-day browser-time window.
+Private, draft, skipped, and unpublished posts must not create public usage
+relationships. Private bodies are never scanned by the image library. Only a
+private post's public-safe `cover` and `cover_alt` frontmatter may add a
+metadata-only record, with no private use relationship or dates. The default
+`images.include_unreferenced` is `false`; set it to `true` explicitly for a
+local authoring inventory because it makes every supported file below
+`assets_dir` centrally enumerable. Media below `assets_dir` is still public
+static output; keep truly private files outside that directory.
+
 Example:
 
 ```toml
@@ -106,6 +124,11 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `error_pages`
 - `resource_hints`
 - `markdown.highlight`
+- `images.enabled`
+- `images.path`
+- `images.template`
+- `images.export_json`
+- `images.include_unreferenced`
 - `layout.name`
 - feed definitions under `[[markata-go.feeds]]`
 - `templates.media.trusted_domains` when a site serves media from a CDN and needs trusted URLs normalized to `https`

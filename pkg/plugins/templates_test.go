@@ -545,7 +545,7 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 	if !strings.Contains(post.HTML, "Test Post") {
 		t.Errorf("Render() with embedded templates: HTML should contain post title")
 	}
-	if !strings.Contains(post.HTML, "css/main.css") {
+	if !containsRenderedAsset(post.HTML, "css/main.css") {
 		t.Errorf("Render() with embedded templates: HTML should include CSS links")
 	}
 }
@@ -639,7 +639,7 @@ func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T
 				t.Fatalf("Render() error = %v", err)
 			}
 
-			hasGraphScript := strings.Contains(post.HTML, "post-graph.js")
+			hasGraphScript := containsRenderedAsset(post.HTML, "js/post-graph.js")
 			if hasGraphScript != tt.wantGraphScript {
 				t.Fatalf("post-graph.js present = %v, want %v; HTML=%q", hasGraphScript, tt.wantGraphScript, post.HTML)
 			}

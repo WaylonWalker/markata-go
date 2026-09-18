@@ -514,7 +514,7 @@ func cardTypeForPost(post map[string]interface{}) string {
 		return templateTypeArticle
 	case templateTypeNote, "ping", "thought", "status", "tweet":
 		return templateTypeNote
-	case templateTypePhoto, "shot", "shots", "image", "gallery":
+	case templateTypePhoto, "shot", "shots", "image", templateTypeGallery:
 		return templateTypePhoto
 	case templateTypeVideo, "clip", "cast", "stream":
 		return templateTypeVideo

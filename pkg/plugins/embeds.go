@@ -390,11 +390,14 @@ const (
 	embedOptionImage     = "image"
 	embedOptionVideo     = "video"
 	embedOptionLink      = "link"
+	templateTypeGallery  = "gallery"
 
 	oembedProviderYouTube = "youtube"
 
 	oembedCacheVersion = "v2"
-	embedsCacheVersion = "v2"
+	// v3 invalidates transformed embed cards so the external-card marker is
+	// added to content restored from an older cache.
+	embedsCacheVersion = "v3"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -592,7 +595,7 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == "gallery"
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == templateTypeGallery
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource := ""
 	posterURL := ""
@@ -1631,7 +1634,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(displayURL string, parsedURL *url.
 	if needsCodeCSS {
 		sb.WriteString(` data-needs-code-css="true"`)
 	}
-	sb.WriteString(`>`)
+	sb.WriteString(` data-markata-embed="true">`)
 	sb.WriteString("\n")
 
 	// Handle rich embed (iframe) mode

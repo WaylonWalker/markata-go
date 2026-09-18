@@ -169,7 +169,7 @@ func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Con
 	// Write to output directory
 	outputDir := cfg.OutputDir
 	if outputDir == "" {
-		outputDir = "output"
+		outputDir = defaultOutputDir
 	}
 
 	outputPath := filepath.Join(outputDir, "404.html")
