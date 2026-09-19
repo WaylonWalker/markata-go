@@ -168,6 +168,8 @@ site:
     tag: "1.27.5-alpine"
     pullPolicy: IfNotPresent
   use404Page: false
+  # HTTP path that must return a successful response before the site is ready.
+  healthPath: /
   cors:
     # Allow browser code on any origin to read all public site responses.
     # Protected release previews do not receive this header.
