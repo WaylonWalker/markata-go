@@ -68,3 +68,13 @@ Note: `nodejs`, `npm`, and `@mermaid-js/mermaid-cli` are NOT required. Mermaid r
 - All container tags MUST follow semantic versioning.
 - The builder and minimal images MUST use the same tag for a given release.
 - `:latest` MUST point to the most recent stable release.
+
+## Helm Site Server
+
+The Helm chart serves published site files through nginx.
+
+- Public site responses MUST include `Access-Control-Allow-Origin: *` by default.
+- Operators MUST be able to disable this header with `site.cors.enabled: false`.
+- Protected release previews MUST NOT include the public CORS header.
+- The chart MUST preserve cache headers when it adds the CORS header.
+- The configured Content Index path MUST return `404` when its artifact is missing.
