@@ -103,6 +103,7 @@ data:
         }
 
         {{- if .Values.site.contentIndexPath }}
+        {{- if not (regexMatch "^/[A-Za-z0-9._/-]+$" .Values.site.contentIndexPath) }}{{ fail "site.contentIndexPath must be an absolute URL path containing only letters, numbers, '.', '_', '-', or '/'" }}{{ end }}
         # Keep the configured Content Index path strict. Missing metadata must
         # return 404 instead of the generic HTML fallback.
         location = {{ .Values.site.contentIndexPath }} {

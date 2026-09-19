@@ -139,6 +139,11 @@ render_config "$tmp_dir/disabled.conf" --set site.cors.enabled=false
 render_config "$tmp_dir/no-content-index.conf" --set-string site.contentIndexPath=
 render_config "$tmp_dir/runtime.conf" --set site.use404Page=true
 
+if helm template cors-test "$chart" --show-only templates/nginx-config.yaml \
+  --set-string site.contentIndexPath=relative.json >/dev/null 2>&1; then
+  fail "invalid Content Index path rendered successfully"
+fi
+
 [[ "$(header_count "$tmp_dir/default.conf")" == 4 ]] || fail "default render has the wrong CORS header count"
 [[ "$(header_count "$tmp_dir/enabled.conf")" == 4 ]] || fail "enabled render has the wrong CORS header count"
 [[ "$(header_count "$tmp_dir/disabled.conf")" == 0 ]] || fail "disabled render includes CORS headers"
