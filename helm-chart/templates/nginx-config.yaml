@@ -1,3 +1,4 @@
+{{- $corsEnabled := dig "cors" "enabled" true .Values.site }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -44,6 +45,10 @@ data:
         # Retained releases are private previews. The matching Ingress applies
         # builder-admin's ForwardAuth middleware before requests reach nginx.
         location ~ ^/__preview/(?<preview_release>[A-Za-z0-9._-]+)(?<preview_path>/.*)?$ {
+          {{- if .Values.site.use404Page }}
+          # Do not send protected preview misses through the public 404 page.
+          error_page 404 = @preview_not_found;
+          {{- end }}
           if ($preview_path = "") { return 302 /__preview/$preview_release/; }
           root /usr/share/nginx/html;
           rewrite ^/__preview/[A-Za-z0-9._-]+/(.*)$ /releases/$preview_release/$1 break;
@@ -55,14 +60,26 @@ data:
         }
 
         {{- if .Values.site.use404Page }}
+        location @preview_not_found {
+          return 404;
+        }
+        {{- end }}
+
+        {{- if .Values.site.use404Page }}
         error_page 404 /404.html;
 
         location = /404.html {
           internal;
+          {{- if $corsEnabled }}
+          add_header Access-Control-Allow-Origin "*" always;
+          {{- end }}
         }
         {{- end }}
 
         location / {
+          {{- if $corsEnabled }}
+          add_header Access-Control-Allow-Origin "*" always;
+          {{- end }}
           {{- if .Values.site.use404Page }}
           try_files $uri $uri/ $uri.html =404;
           {{- else }}
@@ -71,10 +88,12 @@ data:
         }
 
         {{- if .Values.site.contentIndexPath }}
-        # The Content Index is public metadata and has no article bodies.
-        # Allow browser consumers such as Plaindown to read it cross-origin.
+        # Keep the configured Content Index path strict. Missing metadata must
+        # return 404 instead of the generic HTML fallback.
         location = {{ .Values.site.contentIndexPath }} {
+          {{- if $corsEnabled }}
           add_header Access-Control-Allow-Origin "*" always;
+          {{- end }}
           try_files $uri =404;
         }
         {{- end }}
@@ -82,11 +101,17 @@ data:
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|avif|webp)$ {
           expires 365d;
           add_header Cache-Control "public, immutable";
+          {{- if $corsEnabled }}
+          add_header Access-Control-Allow-Origin "*" always;
+          {{- end }}
         }
 
         location ~* \.html?$ {
           expires -1;
           add_header Cache-Control "no-cache, no-store, must-revalidate";
+          {{- if $corsEnabled }}
+          add_header Access-Control-Allow-Origin "*" always;
+          {{- end }}
         }
       }
     }
