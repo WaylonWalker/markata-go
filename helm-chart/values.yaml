@@ -168,8 +168,12 @@ site:
     tag: "1.27.5-alpine"
     pullPolicy: IfNotPresent
   use404Page: false
-  # Public metadata artifact consumed by browser clients from other origins.
-  # Set this to an empty string to disable the exact-location CORS rule.
+  cors:
+    # Allow browser code on any origin to read all public site responses.
+    # Protected release previews do not receive this header.
+    enabled: true
+  # Keep this public metadata path strict so a missing artifact returns 404.
+  # Set this to an empty string to disable the exact location.
   contentIndexPath: /content-index.json
   resources:
     requests:
