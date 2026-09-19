@@ -1,4 +1,5 @@
 {{- if eq (.Values.storage.source.mode | default "pvc") "pvc" }}
+{{- if or (ne .Values.search.mode "watch-content") (ne .Values.search.writableIndexStorage.mode "emptyDir") }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -48,6 +49,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.search.size | quote }}
+{{- end }}
 {{- if .Values.storage.cache.enabled }}
 ---
 apiVersion: v1
