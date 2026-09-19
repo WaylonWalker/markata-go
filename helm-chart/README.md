@@ -25,6 +25,7 @@ This chart deploys a reusable markata-go notes workload that:
 - If your notes contain private content, provide that Secret externally in the namespace or enable `markataEncryption.sealedSecret`.
 - The nginx site adds `Access-Control-Allow-Origin: *` to all public file responses by default. Set `site.cors.enabled` to `false` to disable this header. Protected release previews never receive it.
 - `site.contentIndexPath` keeps the Content Index on an exact nginx location. This location returns `404` instead of the HTML fallback when the artifact is missing.
+- Set `site.contentIndexPath` to an empty string to disable the exact Content Index location. This setting does not disable site-wide CORS.
 
 ## Setting up the encryption secret
 

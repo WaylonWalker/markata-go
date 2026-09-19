@@ -47,6 +47,10 @@ clean:
 test:
     go test -v ./...
 
+# Test the rendered Helm nginx configuration and HTTP behavior.
+test-helm:
+    ./helm-chart/tests/nginx-cors.sh
+
 # Run tests with race detector
 test-race:
     go test -v -race ./...

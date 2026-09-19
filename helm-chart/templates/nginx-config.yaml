@@ -56,7 +56,22 @@ data:
           sub_filter_types text/html;
           sub_filter 'href="/' 'href="/__preview/$preview_release/';
           sub_filter 'src="/' 'src="/__preview/$preview_release/';
-          try_files $uri $uri/ $uri.html =404;
+          # Resolve directory indexes before exact files. A bare directory match
+          # can trigger an internal redirect into the public /releases tree.
+          try_files $uri/index.html @preview_file;
+        }
+
+        location @preview_file {
+          root /usr/share/nginx/html;
+          sub_filter_once off;
+          sub_filter_types text/html;
+          sub_filter 'href="/' 'href="/__preview/$preview_release/';
+          sub_filter 'src="/' 'src="/__preview/$preview_release/';
+          {{- if .Values.site.use404Page }}
+          error_page 404 = @preview_not_found;
+          {{- end }}
+          if (-d $request_filename) { return 404; }
+          try_files $uri $uri.html =404;
         }
 
         {{- if .Values.site.use404Page }}
