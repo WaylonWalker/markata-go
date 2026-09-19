@@ -50,14 +50,14 @@ spec:
               subPath: nginx.conf
           startupProbe:
             httpGet:
-              path: /
+              path: {{ .Values.site.healthPath | quote }}
               port: 80
             timeoutSeconds: 1
             failureThreshold: 30
             periodSeconds: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: {{ .Values.site.healthPath | quote }}
               port: 80
             timeoutSeconds: 1
             periodSeconds: 5
