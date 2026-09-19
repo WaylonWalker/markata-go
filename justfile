@@ -47,6 +47,10 @@ clean:
 test:
     go test -v ./...
 
+# Test the rendered Helm nginx configuration and HTTP behavior.
+test-helm:
+    ./helm-chart/tests/nginx-cors.sh
+
 # Verify language-neutral rendering contract projections are current.
 rendering-contract-check:
     go run ./scripts/rendering-contract --check
