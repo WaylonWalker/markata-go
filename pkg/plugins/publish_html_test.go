@@ -206,6 +206,14 @@ func TestPublishHTMLPlugin_WritesExplicitHomepageAtOutputRoot(t *testing.T) {
 	}
 }
 
+func TestCachedOutputSlug_HomepageIsNotASlugDirectory(t *testing.T) {
+	outputDir := t.TempDir()
+	got := cachedOutputSlug(outputDir, filepath.Join(outputDir, "index.html"))
+	if got != "" {
+		t.Fatalf("cachedOutputSlug() = %q, want empty for homepage output", got)
+	}
+}
+
 // TestPublishHTMLPlugin_OGCardCanonicalURL tests that OG cards include canonical URL and robots meta.
 func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 	tempDir := t.TempDir()

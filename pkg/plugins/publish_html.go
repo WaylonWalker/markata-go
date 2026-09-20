@@ -480,7 +480,13 @@ func cachedOutputSlug(outputDir, outputPath string) string {
 	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.Base(relative) != "index.html" {
 		return ""
 	}
-	return filepath.Dir(relative)
+	directory := filepath.Dir(relative)
+	if directory == "." {
+		// The output root is the homepage. It is not a slug directory and must
+		// not be passed to removeAllPostOutputs as ".".
+		return ""
+	}
+	return directory
 }
 
 func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, postFormats models.PostFormatsConfig, cache *buildcache.Cache) error {

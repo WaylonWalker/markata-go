@@ -70,7 +70,17 @@ still exists for public releases.
 
 Current chart defaults also prefer clean rolling cutover instead of stop-then-start replacement.
 Builder-admin keeps one active leader for queue draining, file watching, refresh scheduling, and
- release promotion while standby pods stay ready during rollout handoff.
+release promotion while standby pods stay ready during rollout handoff.
+
+## Candidate Safety
+
+Builder-admin does not promote a build only because `markata-go` exits with code 0. Before promotion,
+it checks that the candidate contains a non-empty regular `index.html` file. When the site enables
+`content_index`, it also checks that the configured content index is valid JSON.
+
+If a check fails, builder-admin records a failed build and keeps the candidate for diagnosis. It does
+not change the `current` symlink. The service also checks free space before it copies the current
+release into `.build-work`. A failed copy stops the build before promotion.
 
 ## Match the Site Theme
 
