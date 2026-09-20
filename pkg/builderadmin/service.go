@@ -1120,6 +1120,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	s.updateRunningPhase("promote")
 	releaseID, releasePath, err := s.promoteBuild(buildWork)
 	if err != nil {
+		_, _ = fmt.Fprintf(logFile, "promotion rejected: %v\n", err)
 		record.Status = "failed"
 		record.Error = err.Error()
 		record.PromoteMS = time.Since(phaseStart).Milliseconds()
@@ -1236,6 +1237,10 @@ func (s *Service) runRollback(req queueRequest) {
 	if _, err := os.Stat(releasePath); err != nil {
 		record.Status = "failed"
 		record.Error = fmt.Sprintf("release %q not found: %v", req.ReleaseID, err)
+	} else if err := s.validateCandidateOutput(releasePath); err != nil {
+		_, _ = fmt.Fprintf(logFile, "rollback rejected: %v\n", err)
+		record.Status = "failed"
+		record.Error = fmt.Sprintf("release validation failed: %v", err)
 	} else if err := s.switchCurrentRelease(req.ReleaseID); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
@@ -1275,18 +1280,36 @@ func (s *Service) prepareBuild(log io.Writer) error {
 	}
 	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
 	if err := os.RemoveAll(buildWork); err != nil {
-		return err
+		return fmt.Errorf("remove abandoned build work: %w", err)
 	}
 	if err := os.MkdirAll(buildWork, 0o755); err != nil {
-		return err
+		return fmt.Errorf("create build work: %w", err)
 	}
 	current := filepath.Join(s.cfg.SiteDir, "current")
-	if _, err := os.Stat(current); err == nil {
+	_, currentErr := os.Stat(current)
+	if currentErr == nil {
+		// Prune old non-live releases before measuring the volume. This keeps
+		// retained history from consuming the space needed for a candidate.
+		if err := s.pruneReleases(); err != nil {
+			return fmt.Errorf("prune releases before build: %w", err)
+		}
+		if err := s.preflightBuildSpace(current); err != nil {
+			return err
+		}
 		_, _ = fmt.Fprintln(log, "seeding build work from current release")
 		// Copy file contents instead of creating hard links. The build mutates
 		// files in .build-work, and hard links would mutate the historical
 		// release that is still available for rollback.
-		return s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-a", current+"/.", buildWork+string(os.PathSeparator))
+		if err := s.runLoggedCommand(context.Background(), log, "", nil, "cp", "-a", current+"/.", buildWork+string(os.PathSeparator)); err != nil {
+			return fmt.Errorf("copy current release to build work: %w", err)
+		}
+		return nil
+	}
+	if !os.IsNotExist(currentErr) {
+		return fmt.Errorf("inspect current release: %w", currentErr)
+	}
+	if err := s.preflightBuildSpace(""); err != nil {
+		return err
 	}
 	return nil
 }
@@ -1314,6 +1337,9 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 }
 
 func (s *Service) promoteBuild(buildWork string) (string, string, error) {
+	if err := s.validateCandidateOutput(buildWork); err != nil {
+		return "", "", fmt.Errorf("candidate validation failed: %w", err)
+	}
 	s.releaseMu.Lock()
 	defer s.releaseMu.Unlock()
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()

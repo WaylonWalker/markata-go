@@ -80,9 +80,19 @@ Successful builds MUST preserve the existing atomic release publication model:
 1. prepare cache symlinks when a dedicated cache mount is configured
 2. seed a stable work directory from the current release when one exists
 3. run `markata-go build` into the work directory
-4. move the finished output into `releases/<release-id>/`
-5. atomically repoint `current` to the new release
-6. publish build success and queue release pruning according to retention policy
+4. validate the work directory before promotion
+5. move the validated output into `releases/<release-id>/`
+6. atomically repoint `current` to the new release
+7. publish build success and queue release pruning according to retention policy
+
+Candidate validation MUST confirm that `index.html` is a non-empty regular file.
+When `content_index.enabled` is true, validation MUST also confirm that the configured content
+index is a non-empty valid JSON file. If validation fails, the service MUST record a failed build,
+retain the candidate for diagnosis, and leave `current` unchanged.
+
+Before the seed copy, the service MUST remove an abandoned `.build-work` directory and check that
+the site volume has enough free space for the current release copy and working reserve. A copy
+failure MUST fail the build and MUST NOT reach promotion.
 
 Release pruning MUST NOT block successful publication or the next queued build.
 Pruning MUST remain serialized with promotion and rollback, and MUST re-check
