@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+func TestMain(m *testing.M) {
+	if os.Getenv("MARKATA_BUILDER_ADMIN_FAKE") == "1" {
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
 func TestValidateBuildOutput_RequiresHomepage(t *testing.T) {
 	candidate := t.TempDir()
 	if err := validateBuildOutput(candidate, ""); err == nil {
@@ -178,10 +185,7 @@ func TestCheckFreeSpace_RejectsENOSPCLikeBudget(t *testing.T) {
 
 func TestRunBuild_RecordsCandidateValidationFailure(t *testing.T) {
 	root := t.TempDir()
-	script := filepath.Join(root, "successful-no-output.sh")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("MARKATA_BUILDER_ADMIN_FAKE", "1")
 	svc, err := New(Config{
 		SourceDir:    root,
 		SiteDir:      filepath.Join(root, "site"),
@@ -192,7 +196,7 @@ func TestRunBuild_RecordsCandidateValidationFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = svc.leaderLock.Close() })
-	svc.executable = script
+	svc.executable = os.Args[0]
 	svc.runBuild(context.Background(), queueRequest{QueuedOperation: QueuedOperation{
 		ID:          "validation-failure",
 		Kind:        "build",
