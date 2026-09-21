@@ -212,6 +212,9 @@ func validateRenderingTheme(config *models.Config) []error {
 	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {
 		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large", "x-large"; using "large"`, IsWarn: true})
 	}
+	if config.Theme.ReadingFont != "" && !isValidReadingFont(config.Theme.ReadingFont) {
+		errs = append(errs, ValidationError{Field: "theme.reading_font", Message: `must be one of: "sans", "serif"; using "sans"`, IsWarn: true})
+	}
 	if config.Fontpack == "" || config.Fontpack != config.Theme.Fontpack {
 		valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
 	}
@@ -237,6 +240,15 @@ func validateRenderingTheme(config *models.Config) []error {
 		}
 	}
 	return errs
+}
+
+func isValidReadingFont(value string) bool {
+	switch value {
+	case models.ReadingFontSans, models.ReadingFontSerif:
+		return true
+	default:
+		return false
+	}
 }
 
 func isValidTextSize(value string) bool {

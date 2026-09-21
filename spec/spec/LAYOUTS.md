@@ -313,7 +313,28 @@ position = "left"
 width = "250px"
 feeds = ["docs", "guides"]
 max_posts = 51
+
+# Post meta component (byline extras and reading controls)
+[markata-go.components.post_meta]
+show_updated = true                 # "Updated <date>" when modified >= date + 24h
+reader_toggle = true                # Reader mode button in the post header
+series_card = true                  # "Part N of M" card for multi-post series/guides
+edit_url = ""                       # e.g. "https://github.com/o/r/edit/main/{path}"; empty disables
+edit_label = "Edit this page"
 ```
+
+#### Post meta component
+
+`post_meta` controls small post-page affordances rendered by the default theme:
+
+- **Updated date.** When `show_updated` is true and `post.modified` is at least 24 hours after `post.date`, the byline MUST render `Updated <time class="dt-updated">`. The template context exposes this as `post.updated_at` (nil when the condition is not met) alongside `post.modified`.
+- **Reader toggle.** A `[data-reader-toggle]` button MUST be rendered in the post actions row when `reader_toggle` is true. It toggles the same `reader-mode` state as the `s` shortcut and `?reader=1`; `Escape` exits reader mode when no dialog is open.
+- **Series card.** When `series_card` is true and the template context has `series_nav` with `total > 1`, the theme renders a card with position, total, progress, and previous/next links. `series_nav` is computed at render time from the post's `series` frontmatter or an explicit `series`/`guide` feed, because `post.Prev`/`post.Next` are only populated in the Collect stage after templates render.
+- **Edit link.** `edit_url` is a template where `{path}` is replaced with the post's source path relative to the site root. The rendered link is available as `post_edit_url` in the template context and is omitted when `edit_url` is empty.
+
+#### Document sidebar on wide screens
+
+When `doc_sidebar` is enabled the default theme MAY float the table of contents into the page margin beside the article on viewports of at least 1201px when there is room for the list (240px) plus a gap; otherwise the list stays in the drawer. The active heading MUST be marked with `.toc-link--active` and `aria-current="location"`. If sidenotes occupy the right margin, the list uses the left margin.
 
 The feed sidebar component renders navigation for posts that share a feed with the current post. Feed selection order is:
 

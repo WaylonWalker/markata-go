@@ -173,6 +173,8 @@ Author IDs are resolved against `[markata-go.authors]` config to produce full `p
 - `template`: selects a specific template file
 - `layout`: selects a layout-driven page shell when the site uses layout config
 - `authors` or `author`: affect bylines and author objects in templates
+- `modified` (or `lastmod`, `updated`, `updated_at`, `last_modified`): shows "Updated <date>" in the byline when at least a day after `date`
+- `series`: groups posts into a series; posts in a series with more than one member get a "Part N of M" card and prev/next footer navigation
 - `post_formats`: can override site-level post output formats per post, such as enabling `ansi` for one article or disabling `og`/`markdown` for a specific page
 - custom fields: appear in `post.Extra` for templates and plugin logic
 

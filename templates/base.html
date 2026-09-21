@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}" data-reading-font="{{ config.theme.reading_font | default:'sans' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,6 +37,18 @@
         }
       }
       root.dataset.textSize = size;
+      var font = root.dataset.readingFont === 'serif' ? 'serif' : 'sans';
+      if (allowVisitorSize) {
+        try {
+          var storedFont = localStorage.getItem('reading-font');
+          if (storedFont === 'serif' || storedFont === 'sans') {
+            font = storedFont;
+          }
+        } catch (_) {
+          // ignore storage access failures
+        }
+      }
+      root.dataset.readingFont = font;
     })();
   </script>
   <script>
@@ -747,8 +759,16 @@
     };
     {% endif %}
 
-    // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
-    if (document.querySelector('.wikilink[data-title]')) {
+    // Reading experience (margin TOC, sidenotes, code chrome, back-to-top) - post pages
+    if (document.querySelector('article.post')) {
+      const readingScript = document.createElement('script');
+      readingScript.src = '{{ 'js/reading.js' | theme_asset_hashed }}';
+      readingScript.defer = true;
+      document.body.appendChild(readingScript);
+    }
+
+    // Link previews - load when any link carries preview data
+    if (document.querySelector('.wikilink[data-title], a[data-title][data-preview]')) {
       const script = document.createElement('script');
       script.src = '{{ 'js/tooltips.js' | theme_asset_hashed }}';
       script.defer = true;
@@ -781,7 +801,7 @@
       document.body.appendChild(scrollingScript);
 
       // Navigation Shortcuts - load if feed, post cards, or prev/next navigation exist
-      if (document.querySelector('.feed, .feed-sidebar, .doc-sidebar, .post-nav, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
+      if (document.querySelector('.feed, .feed-sidebar, .doc-sidebar, .post-nav, [data-reader-toggle], .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);

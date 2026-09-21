@@ -14,6 +14,10 @@ type PrevNextContext struct {
 	// Total is the total number of posts in the sequence
 	Total int `json:"total" yaml:"total" toml:"total"`
 
+	// Series is true when the sequence is an intentional ordered series
+	// (a series or guide feed) rather than a generic chronological feed.
+	Series bool `json:"series,omitempty" yaml:"series,omitempty" toml:"series,omitempty"`
+
 	// Prev is the previous post in the sequence (nil if first)
 	Prev *Post `json:"prev,omitempty" yaml:"prev,omitempty" toml:"prev,omitempty"`
 

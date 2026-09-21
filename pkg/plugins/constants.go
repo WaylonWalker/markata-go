@@ -28,6 +28,9 @@ const (
 	// AdmonitionTypeAside is the aside admonition type.
 	AdmonitionTypeAside = "aside"
 
+	// AdmonitionTypePullquote is the pullquote reading callout type.
+	AdmonitionTypePullquote = "pullquote"
+
 	// PositionLeft is the left position value.
 	PositionLeft = "left"
 

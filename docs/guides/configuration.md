@@ -476,7 +476,8 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `palette_dark` | string | `""` | Dark mode palette |
 | `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
 | `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, `"large"`, or `"x-large"`. Article text additionally scales up on viewports ≥1800px. |
-| `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector |
+| `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector (and the serif `Aa` toggle) |
+| `reading_font` | string | `"sans"` | Default article typeface for visitors without a saved choice: `"sans"` (fontpack body font) or `"serif"` (system serif reading stack) |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
 
@@ -494,6 +495,7 @@ fallback_mode = "dark"  # or "light"
 # Optional: default reading size and visitor control
 text_size = "large"              # small, medium, large, or x-large
 show_text_size_control = true
+reading_font = "sans"            # sans or serif
 
 # Optional: override specific CSS variables
 [markata-go.theme.variables]
@@ -713,6 +715,29 @@ position = "right"
 width = "280px"
 min_depth = 2
 max_depth = 4
+```
+
+On viewports of 1201px and wider with room beside the article, the TOC floats into the page margin next to the article with scroll-spy highlighting; see [Reading Experience](/docs/guides/reading-experience/#margin-table-of-contents).
+
+#### Post Meta (`[markata-go.components.post_meta]`)
+
+Byline extras and reading controls shown on post pages.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `show_updated` | bool | `true` | Show "Updated <date>" in the byline when the post's modified date is at least a day after its publish date |
+| `reader_toggle` | bool | `true` | Show the **Reader mode** button in the post header (the `s` shortcut always works) |
+| `series_card` | bool | `true` | Show the "Part N of M" series card under the header for posts in a series or guide feed with more than one post |
+| `edit_url` | string | `""` | Edit link template; `{path}` is replaced with the post's path relative to the site root. Empty disables the link |
+| `edit_label` | string | `"Edit this page"` | Text for the edit link |
+
+```toml
+[markata-go.components.post_meta]
+show_updated = true
+reader_toggle = true
+series_card = true
+edit_url = "https://github.com/you/site/edit/main/{path}"
+edit_label = "Edit on GitHub"
 ```
 
 #### Feed Sidebar (`[markata-go.components.feed_sidebar]`)

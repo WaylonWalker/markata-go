@@ -103,6 +103,45 @@ func postToMap(p *models.Post) map[string]interface{} {
 	return GetPostMap(p)
 }
 
+// postToNavMap converts a neighbouring post into a small map suitable for
+// prev/next navigation without recursing into its own neighbours.
+func postToNavMap(p *models.Post) map[string]interface{} {
+	if p == nil {
+		return nil
+	}
+	m := map[string]interface{}{
+		"slug":       p.Slug,
+		"href":       p.Href,
+		"title":      p.PlainTitle(),
+		"title_html": p.TitleHTML,
+	}
+	if p.Description != nil {
+		m["description"] = *p.Description
+	}
+	if p.Date != nil {
+		m["date"] = *p.Date
+	}
+	return m
+}
+
+// prevNextContextToMap converts PrevNextContext for template access.
+func prevNextContextToMap(c *models.PrevNextContext) map[string]interface{} {
+	if c == nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"feed_slug":  c.FeedSlug,
+		"feed_title": c.FeedTitle,
+		"position":   c.Position,
+		"total":      c.Total,
+		"series":     c.Series,
+		"is_first":   c.IsFirst(),
+		"is_last":    c.IsLast(),
+		"prev":       postToNavMap(c.Prev),
+		"next":       postToNavMap(c.Next),
+	}
+}
+
 // postToMapUncached converts a Post to a map without caching.
 // This is the actual conversion logic used by the cache.
 func postToMapUncached(p *models.Post) map[string]interface{} {
@@ -146,11 +185,30 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 		m["date"] = nil
 	}
 
+	if p.Modified != nil {
+		m["modified"] = *p.Modified
+		// updated_at is only set when the modification date is meaningfully
+		// later than the publish date so templates can show "Updated" sparingly.
+		if p.Date == nil || p.Modified.Sub(*p.Date) >= 24*time.Hour {
+			m["updated_at"] = *p.Modified
+		} else {
+			m["updated_at"] = nil
+		}
+	} else {
+		m["modified"] = nil
+		m["updated_at"] = nil
+	}
+
 	if p.Description != nil {
 		m["description"] = *p.Description
 	} else {
 		m["description"] = nil
 	}
+
+	// Prev/next navigation (shallow maps to avoid recursive conversion)
+	m["prev"] = postToNavMap(p.Prev)
+	m["next"] = postToNavMap(p.Next)
+	m["prevnext"] = prevNextContextToMap(p.PrevNextContext)
 
 	// Handle author fields
 	if len(p.AuthorObjects) > 0 {
@@ -631,6 +689,14 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"slug":     c.ContentSidebar.Slug,
 	}
 
+	postMetaMap := map[string]interface{}{
+		"show_updated":  c.PostMeta.ShowsUpdated(),
+		"reader_toggle": c.PostMeta.ShowsReaderToggle(),
+		"series_card":   c.PostMeta.ShowsSeriesCard(),
+		"edit_url":      c.PostMeta.EditURL,
+		"edit_label":    c.PostMeta.EditLinkLabel(),
+	}
+
 	return map[string]interface{}{
 		"nav":              navMap,
 		"footer":           footerMap,
@@ -640,6 +706,7 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"card_router":      cardRouterMap,
 		"share":            shareMap,
 		"post_connections": postConnectionsMap,
+		"post_meta":        postMetaMap,
 	}
 }
 
@@ -1045,6 +1112,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 		},
 		"text_size":              t.EffectiveTextSize(),
 		"show_text_size_control": t.IsTextSizeControlEnabled(),
+		"reading_font":           t.EffectiveReadingFont(),
 		"variables":              t.Variables,
 		"custom_css":             t.CustomCSS,
 		"background":             backgroundMap,
@@ -1333,6 +1401,9 @@ func (c Context) ToPongo2() pongo2.Context {
 	}
 
 	addPostContext(&ctx, postMap, c.Post, resolvedContentSidebar)
+	if c.Post != nil && c.Config != nil {
+		ctx["post_edit_url"] = c.Config.Components.PostMeta.EditLinkFor(c.Post.Path)
+	}
 	addConfigContext(&ctx, c.Config)
 	addFeedContext(&ctx, c.Feed)
 	addExtraContext(&ctx, c.Extra)

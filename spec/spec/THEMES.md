@@ -65,6 +65,59 @@ explicit `[theme.variables]` entries (which are emitted in `overrides`) take
 precedence over any preset for the same token. Presets MUST still take
 precedence over the base `tokens` layer.
 
+### Reading Font Preference
+
+Sites may set a default article typeface family and visitors may override it:
+
+```toml
+[markata-go.theme]
+reading_font = "sans"            # "sans" (fontpack body font) or "serif"
+```
+
+- The `<html>` element carries `data-reading-font`; the inline bootstrap
+  script applies a stored `reading-font` preference from local storage before
+  first paint when `show_text_size_control` is true.
+- When the value is `serif`, article prose (`.post-content` text, list items,
+  block quotes, table cells, sidenotes) MUST use `--font-serif-reading`, a
+  zero-download system serif stack. Headings, code, and site chrome keep their
+  fontpack roles so the toggle never fetches web fonts.
+- The default theme renders an `Aa` toggle (`[data-reading-font-toggle]`,
+  `aria-pressed`) next to the text-size select; both hide together when
+  `show_text_size_control = false`.
+- Invalid values fall back to `sans`.
+
+### Long-Form Reading Features
+
+The default theme MUST provide the following for `article.post` pages without
+content changes; each is described for users in
+`docs/guides/reading-experience.md`:
+
+- **Sidenotes.** Goldmark footnotes (`.footnote-ref` / `.footnotes`) are
+  upgraded client-side: on wide viewports each note is placed in the right
+  margin beside its paragraph (stacked to avoid overlap, endnotes hidden);
+  otherwise the reference becomes a tap target for a popover
+  (`.sidenote--open`) that closes on outside click or `Escape`. Without
+  JavaScript the standard footnotes remain.
+- **Code chrome.** Highlighted fences render as
+  `<div class="code-block" data-lang data-title>` with a server-rendered
+  header (`.code-block__header`, title, language badge). Info-string extras
+  `title="..."`, `{1,3-5}`, and `hl_lines="..."` set the title and highlight
+  lines (`.line.hl`). Unhighlighted fences MUST keep goldmark's plain
+  `<pre><code class="language-x">` markup so language plugins continue to
+  match; a copy button is added in the browser for every block.
+- **Link previews.** Wikilinks and internal links enriched with `data-title`
+  and `data-preview` show a hover/focus tooltip; see `wikilink_hover` in
+  PLUGINS.md / DEFAULT_PLUGINS.md.
+- **Reading callouts.** `takeaway` and `pullquote` admonition types exist for
+  essays (see CONTENT.md).
+- **Anchors and back to top.** `[id]` targets carry `scroll-margin-top` equal
+  to the sticky header height; scrolling is smooth unless
+  `prefers-reduced-motion`; a `.back-to-top` control appears after roughly one
+  viewport of scrolling.
+- **Reader mode** hides sidebars, series card, graph, share panel, and copy
+  controls, leaving the article alone in a wide measure.
+- **Print** styles hide chrome and print sidenotes as endnotes.
+
 ### Reading Rhythm
 
 The default theme sets prose rhythm in `em` units relative to the article

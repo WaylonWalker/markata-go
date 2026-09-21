@@ -2104,8 +2104,8 @@ exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
 ### wikilink_hover
 
 **Name:** `wikilink_hover`  
-**Stage:** Render (after wikilinks)  
-**Purpose:** Adds hover preview data attributes to wikilinks for tooltip/popup previews.
+**Stage:** Render (after `render_markdown`, before `templates`)  
+**Purpose:** Adds hover preview data attributes to wikilinks and plain internal links for tooltip previews.
 
 **Status:** Enabled by default. Set `enabled = false` to disable.
 
@@ -2116,6 +2116,7 @@ enabled = true           # Enabled by default; set to false to disable
 preview_length = 200     # Max characters for preview text
 include_image = true     # Add preview image if available
 screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url="
+all_internal_links = true # Also preview plain links that resolve to a post
 ```
 
 **Options:**
@@ -2125,11 +2126,13 @@ screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url
 | `preview_length` | `200` | Max characters for preview text |
 | `include_image` | `true` | Add preview image if available |
 | `screenshot_service` | `""` | URL prefix for screenshot service |
+| `all_internal_links` | `true` | Enrich plain `href="/slug/"` and same-origin absolute links, not only wikilinks |
 
 **Behavior:**
 1. Finds `<a class="wikilink">` tags created by the wikilinks plugin
 2. Looks up the target post by href
 3. Adds data attributes for hover previews
+4. With `all_internal_links`, also scans root-relative and same-origin absolute anchors; links that resolve to a published, non-private post gain `data-title`, `data-description`, `data-date`, and `data-preview="internal"`. Anchors with chrome classes (`heading-anchor`, `tag`, `card`, `footnote-ref`, `mention`, `no-preview`, ...) and hrefs to files or the home page are skipped. Only posts whose HTML contains an internal href are processed.
 
 **Data attributes added:**
 | Attribute | Description |

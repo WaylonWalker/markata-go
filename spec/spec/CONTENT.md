@@ -590,6 +590,23 @@ With syntax highlighting (optional):
 </code></pre>
 ```
 
+#### Info-string extras
+
+The info string MAY carry a title and highlighted lines after the language:
+
+````markdown
+```python title="hello.py" {2}
+```
+````
+
+Accepted forms: `title="..."`, `{2}`, `{1,3-5}`, `{title="x" hl_lines=[1,3]}`,
+and `hl_lines="1 3-5"`. Highlighted fences are wrapped in
+`<div class="code-block" data-lang="python" data-title="hello.py">` with a
+header containing the title and a language badge; highlighted lines carry
+`class="line hl"`. Fences the highlighter does not recognize (including
+`mermaid`, `chartjs`, `csv`, and `contribution-graph`) MUST render as plain
+`<pre><code class="language-x">` so language plugins keep matching.
+
 ---
 
 ## Admonitions
@@ -631,6 +648,11 @@ With syntax highlighting (optional):
 | `quote` | Quote | Gray |
 | `abstract` | Abstract | Cyan |
 | `aside` | (none) | Gray (sidebar) |
+| `takeaway` | Takeaway | Accent (boxed summary) |
+| `pullquote` | (none) | Accent (large centered quote; a title renders as attribution) |
+
+Types with no default title MUST omit the `.admonition-title` element when no
+title is given.
 
 ### Output
 

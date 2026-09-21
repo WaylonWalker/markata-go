@@ -1,6 +1,7 @@
 /**
- * Wikilink Hover Tooltips
- * Shows a tooltip with title, description, and date when hovering over wikilinks.
+ * Link Hover Tooltips
+ * Shows a tooltip with title, description, and date when hovering over wikilinks
+ * and internal links enriched with data-title by the wikilink_hover plugin.
  */
 (function() {
   'use strict';
@@ -14,10 +15,17 @@
 
     tooltip = document.createElement('div');
     tooltip.className = 'wikilink-tooltip';
-    tooltip.innerHTML =
-      '<div class="tooltip-title">' + (link.dataset.title || '') + '</div>' +
-      (link.dataset.description ? '<div class="tooltip-desc">' + link.dataset.description + '</div>' : '') +
-      (link.dataset.date ? '<div class="tooltip-date">' + link.dataset.date + '</div>' : '');
+    tooltip.setAttribute('role', 'tooltip');
+    function row(cls, text) {
+      if (!text) return;
+      var el = document.createElement('div');
+      el.className = cls;
+      el.textContent = text;
+      tooltip.appendChild(el);
+    }
+    row('tooltip-title', link.dataset.title || '');
+    row('tooltip-desc', link.dataset.description || '');
+    row('tooltip-date', link.dataset.date || '');
     document.body.appendChild(tooltip);
     positionTooltip(link);
   }
@@ -25,8 +33,15 @@
   function positionTooltip(link) {
     if (!tooltip) return;
     var rect = link.getBoundingClientRect();
-    tooltip.style.left = rect.left + 'px';
-    tooltip.style.top = (rect.bottom + 8) + 'px';
+    var width = tooltip.offsetWidth || 300;
+    var height = tooltip.offsetHeight || 0;
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    var top = rect.bottom + 8;
+    if (top + height > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - height - 8);
+    }
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
   }
 
   function removeTooltip() {
@@ -56,13 +71,15 @@
     // Clean up first to handle view transitions properly
     cleanup();
 
-    var links = document.querySelectorAll('.wikilink[data-title]');
+    var links = document.querySelectorAll('.wikilink[data-title], a[data-preview][data-title]');
     links.forEach(function(link) {
       // Skip if already bound (shouldn't happen after cleanup, but defensive)
       if (boundLinks.has(link)) return;
 
       link.addEventListener('mouseenter', function() { createTooltip(link); });
       link.addEventListener('mouseleave', removeTooltip);
+      link.addEventListener('focus', function() { createTooltip(link); });
+      link.addEventListener('blur', removeTooltip);
       boundLinks.add(link);
     });
   }

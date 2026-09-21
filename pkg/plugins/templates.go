@@ -581,6 +581,11 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 		}
 	}
 
+	// Series card context ("Part N of M") for series/guide feeds
+	if seriesNav := p.getSeriesNav(post, config, m); seriesNav != nil {
+		ctx.Set("series_nav", seriesNav)
+	}
+
 	// Inject discovery feed for per-page feed discovery links
 	// If post has a sidebar feed, use that; otherwise use site default
 	discoveryFeed := p.getDiscoveryFeed(post, sidebarFeed, m)
@@ -948,6 +953,65 @@ func (p *TemplatesPlugin) getSeriesSidebarPosts(post *models.Post, config *lifec
 	}
 
 	return publishedPosts, feedConfig
+}
+
+// getSeriesNav resolves ordered series context for a post. It returns nil unless
+// the post belongs to an intentional ordered sequence: a frontmatter series or
+// a feed of type "series"/"guide" referenced via prevnext_feed/sidebar_feed.
+func (p *TemplatesPlugin) getSeriesNav(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) map[string]interface{} {
+	if post == nil || m == nil {
+		return nil
+	}
+
+	posts, fc := p.getSeriesSidebarPosts(post, config, m)
+	if posts == nil {
+		explicitSlug := p.getExplicitFeedSlug(post)
+		if explicitSlug == "" {
+			return nil
+		}
+		posts, fc = p.feedFromCachedConfigs(explicitSlug, post, m)
+		if posts == nil || fc == nil {
+			return nil
+		}
+		if fc.Type != models.FeedTypeSeries && fc.Type != models.FeedTypeGuide {
+			return nil
+		}
+	}
+	if fc == nil {
+		return nil
+	}
+
+	position := -1
+	for i, sp := range posts {
+		if sp != nil && sp.Slug == post.Slug {
+			position = i
+			break
+		}
+	}
+	if position == -1 {
+		return nil
+	}
+
+	nav := map[string]interface{}{
+		"feed_slug":  fc.Slug,
+		"feed_title": fc.Title,
+		"href":       "/" + strings.Trim(fc.Slug, "/") + "/",
+		"position":   position + 1,
+		"total":      len(posts),
+		"is_first":   position == 0,
+		"is_last":    position == len(posts)-1,
+		"percent":    (position + 1) * 100 / len(posts),
+	}
+	if fc.Description != "" {
+		nav["description"] = fc.Description
+	}
+	if position > 0 {
+		nav["prev"] = templates.GetPostMap(posts[position-1])
+	}
+	if position < len(posts)-1 {
+		nav["next"] = templates.GetPostMap(posts[position+1])
+	}
+	return nav
 }
 
 // getSidebarPrevNext finds the previous and next posts relative to the current post

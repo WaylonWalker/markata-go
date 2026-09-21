@@ -101,6 +101,9 @@ while keeping the configured default. Visitor selections are saved per site in
 browser-local storage. Do not add `--text-base` or `--content-width`
 overrides just to make articles "readable"; the presets already target a
 65-70 character measure. Override them only for a deliberate design choice.
+`reading_font = "serif"` sets the default article typeface; visitors can
+flip it with the `Aa` toggle. For TOC, sidenotes, code chrome, reader mode,
+and series cards see `topics/reading-experience.md`.
 
 Borders in the default theme are soft by design: `--color-border` is the text
 ink mixed 16% into the background, `--color-border-soft` is used for section

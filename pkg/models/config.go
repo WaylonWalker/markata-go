@@ -67,6 +67,77 @@ type ComponentsConfig struct {
 
 	// PostConnections configures inlink/outlink list and graph rendering on posts
 	PostConnections PostConnectionsComponentConfig `json:"post_connections" yaml:"post_connections" toml:"post_connections"`
+
+	// PostMeta configures reading-experience affordances on post pages:
+	// the "Updated" date, the reader-mode toggle, the series card, and the edit link.
+	PostMeta PostMetaComponentConfig `json:"post_meta" yaml:"post_meta" toml:"post_meta"`
+}
+
+// PostMetaComponentConfig configures post header affordances.
+type PostMetaComponentConfig struct {
+	// ShowUpdated shows an "Updated <date>" label when a post's modified date
+	// is at least a day after its publish date (default: true).
+	ShowUpdated *bool `json:"show_updated,omitempty" yaml:"show_updated,omitempty" toml:"show_updated,omitempty"`
+
+	// ReaderToggle shows a reader-mode toggle button in the post header (default: true).
+	ReaderToggle *bool `json:"reader_toggle,omitempty" yaml:"reader_toggle,omitempty" toml:"reader_toggle,omitempty"`
+
+	// SeriesCard shows a "Part N of M" series card above posts that belong to
+	// a prev/next feed (default: true).
+	SeriesCard *bool `json:"series_card,omitempty" yaml:"series_card,omitempty" toml:"series_card,omitempty"`
+
+	// EditURL is an opt-in URL template for an "Edit this page" link. The
+	// placeholder {path} is replaced with the post's source path relative to the
+	// site root, e.g. "https://github.com/user/site/edit/main/{path}".
+	EditURL string `json:"edit_url,omitempty" yaml:"edit_url,omitempty" toml:"edit_url,omitempty"`
+
+	// EditLabel overrides the edit link text (default: "Edit this page").
+	EditLabel string `json:"edit_label,omitempty" yaml:"edit_label,omitempty" toml:"edit_label,omitempty"`
+}
+
+// NewPostMetaComponentConfig returns default post meta config.
+func NewPostMetaComponentConfig() PostMetaComponentConfig {
+	enabled := true
+	seriesCard := true
+	readerToggle := true
+	return PostMetaComponentConfig{
+		ShowUpdated:  &enabled,
+		ReaderToggle: &readerToggle,
+		SeriesCard:   &seriesCard,
+		EditLabel:    "Edit this page",
+	}
+}
+
+// ShowsUpdated reports whether the "Updated" label is enabled.
+func (c PostMetaComponentConfig) ShowsUpdated() bool {
+	return c.ShowUpdated == nil || *c.ShowUpdated
+}
+
+// ShowsReaderToggle reports whether the reader-mode toggle is enabled.
+func (c PostMetaComponentConfig) ShowsReaderToggle() bool {
+	return c.ReaderToggle == nil || *c.ReaderToggle
+}
+
+// ShowsSeriesCard reports whether the series card is enabled.
+func (c PostMetaComponentConfig) ShowsSeriesCard() bool {
+	return c.SeriesCard == nil || *c.SeriesCard
+}
+
+// EditLinkFor expands EditURL for a post source path. Returns "" when the
+// edit link is not configured.
+func (c PostMetaComponentConfig) EditLinkFor(path string) string {
+	if c.EditURL == "" || path == "" {
+		return ""
+	}
+	return strings.ReplaceAll(c.EditURL, "{path}", strings.TrimPrefix(path, "./"))
+}
+
+// EditLinkLabel returns the edit link label with its default.
+func (c PostMetaComponentConfig) EditLinkLabel() string {
+	if c.EditLabel == "" {
+		return "Edit this page"
+	}
+	return c.EditLabel
 }
 
 const (
@@ -434,6 +505,7 @@ func NewComponentsConfig() ComponentsConfig {
 		},
 		Share:           NewShareComponentConfig(),
 		PostConnections: NewPostConnectionsComponentConfig(),
+		PostMeta:        NewPostMetaComponentConfig(),
 	}
 }
 
@@ -1121,6 +1193,11 @@ type ThemeConfig struct {
 	// visitor-facing reading-size selector. It defaults to true.
 	ShowTextSizeControl *bool `json:"show_text_size_control,omitempty" yaml:"show_text_size_control,omitempty" toml:"show_text_size_control,omitempty"`
 
+	// ReadingFont is the default article body typeface family for visitors
+	// without a saved preference. Valid values are "sans" (the fontpack body
+	// font) and "serif" (the fontpack serif reading stack).
+	ReadingFont string `json:"reading_font,omitempty" yaml:"reading_font,omitempty" toml:"reading_font,omitempty"`
+
 	// SeedColor is the hex color used to generate a triadic palette if Palette == "generated"
 	SeedColor string `json:"seed_color,omitempty" yaml:"seed_color,omitempty" toml:"seed_color,omitempty"`
 
@@ -1148,7 +1225,19 @@ const (
 	TextSizeMedium = "medium"
 	TextSizeLarge  = "large"
 	TextSizeXLarge = "x-large"
+
+	ReadingFontSans  = "sans"
+	ReadingFontSerif = "serif"
 )
+
+// EffectiveReadingFont returns a supported reading-font preset, falling back
+// to the fontpack body font ("sans") when the configuration is empty or invalid.
+func (c *ThemeConfig) EffectiveReadingFont() string {
+	if c != nil && c.ReadingFont == ReadingFontSerif {
+		return ReadingFontSerif
+	}
+	return ReadingFontSans
+}
 
 // EffectiveTextSize returns a supported reading-size preset, falling back to
 // the large preset when the configuration is empty or invalid.
@@ -1755,16 +1844,27 @@ type WikilinkHoverConfig struct {
 	// ScreenshotService is an optional URL prefix for screenshot generation
 	// If set, adds data-preview-screenshot attribute with the URL
 	ScreenshotService string `json:"screenshot_service" yaml:"screenshot_service" toml:"screenshot_service"`
+
+	// AllInternalLinks extends hover previews from wikilinks to every plain
+	// markdown link that resolves to a post on this site (default: true).
+	AllInternalLinks *bool `json:"all_internal_links,omitempty" yaml:"all_internal_links,omitempty" toml:"all_internal_links,omitempty"`
 }
 
 // NewWikilinkHoverConfig creates a new WikilinkHoverConfig with default values.
 func NewWikilinkHoverConfig() WikilinkHoverConfig {
+	allInternal := true
 	return WikilinkHoverConfig{
 		Enabled:           true,
 		PreviewLength:     200,
 		IncludeImage:      true,
 		ScreenshotService: "",
+		AllInternalLinks:  &allInternal,
 	}
+}
+
+// PreviewsAllInternalLinks reports whether plain internal links get preview data.
+func (c WikilinkHoverConfig) PreviewsAllInternalLinks() bool {
+	return c.AllInternalLinks == nil || *c.AllInternalLinks
 }
 
 // SEOConfig configures SEO metadata for the site.

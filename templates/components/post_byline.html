@@ -30,10 +30,13 @@
     {% endfor %}
     </div>
 
-    {% if post.date or post.reading_time %}
+    {% if post.date or post.updated_at or post.reading_time %}
     <div class="post-meta post-byline__meta">
         {% if post.date %}
         <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
+        {% endif %}
+        {% if post.updated_at and config.components.post_meta.show_updated %}
+        <span class="post-meta__updated">Updated <time class="dt-updated" datetime="{{ post.updated_at | atom_date }}">{{ post.updated_at | human_date }}</time></span>
         {% endif %}
         {% if post.reading_time %}
         <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
@@ -56,10 +59,13 @@
         {% endif %}
     </div>
 
-    {% if post.date or post.reading_time %}
+    {% if post.date or post.updated_at or post.reading_time %}
     <div class="post-meta post-byline__meta">
         {% if post.date %}
         <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
+        {% endif %}
+        {% if post.updated_at and config.components.post_meta.show_updated %}
+        <span class="post-meta__updated">Updated <time class="dt-updated" datetime="{{ post.updated_at | atom_date }}">{{ post.updated_at | human_date }}</time></span>
         {% endif %}
         {% if post.reading_time %}
         <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
@@ -68,11 +74,14 @@
     {% endif %}
 </div>
 
-{% elif post.date or post.reading_time %}
+{% elif post.date or post.updated_at or post.reading_time %}
 {# No author info, just date/reading time #}
 <div class="post-meta post-meta--header">
     {% if post.date %}
     <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>
+    {% endif %}
+    {% if post.updated_at and config.components.post_meta.show_updated %}
+    <span class="post-meta__updated">Updated <time class="dt-updated" datetime="{{ post.updated_at | atom_date }}">{{ post.updated_at | human_date }}</time></span>
     {% endif %}
     {% if post.reading_time %}
     <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>

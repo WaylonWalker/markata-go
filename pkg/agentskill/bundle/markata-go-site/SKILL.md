@@ -38,6 +38,7 @@ Read only the topic files relevant to the task:
 - `topics/faster-builds.md`
 - `topics/theme-creation.md`
 - `topics/template-management.md`
+- `topics/reading-experience.md`
 - `topics/analytics-storytelling.md`
 - `topics/plugin-creation.md`
 
@@ -83,6 +84,7 @@ If the repository is a very small or first-time site and does not yet have clear
 
 - Template work: `topics/template-management.md`
 - Theme or styling work: `topics/theme-creation.md`
+- TOC, sidenotes, link previews, code chrome, reader mode, serif, series cards, "last updated"/edit links: `topics/reading-experience.md`
 - Content creation: `topics/writing-frontmatter.md`
 - Analytics pages or metrics storytelling: `topics/analytics-storytelling.md`
 - Config debugging: `topics/configuration.md`

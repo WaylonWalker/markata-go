@@ -117,6 +117,9 @@ patterns = ["posts/**/*.md", "pages/*.md"]
 - `theme.palette`
 - `theme.text_size`
 - `theme.show_text_size_control`
+- `theme.reading_font`
+- `components.doc_sidebar`
+- `components.post_meta`
 - `head`
 - `template_presets`
 - `default_templates`

@@ -144,6 +144,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 	highlightOpts := []highlighting.Option{
 		highlighting.WithStyle(chromaTheme),
 		highlighting.WithFormatOptions(formatOptions...),
+		highlighting.WithWrapperRenderer(codeFenceWrapper),
 	}
 
 	extensions := []goldmark.Extender{
@@ -214,6 +215,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 			parser.WithASTTransformers(
 				util.Prioritized(&AttributeTransformer{}, -100),
 				util.Prioritized(&HeadingIDTransformer{}, -90),
+				util.Prioritized(&codeFenceTransformer{}, -85),
 			),
 		),
 	}

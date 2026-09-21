@@ -594,4 +594,107 @@ details.admonition[open] > summary::before {
   }
 }
 
+/* ==========================================================================
+   Reading callouts: takeaway and pullquote
+   ========================================================================== */
+
+/* Takeaway: a boxed summary the reader should leave with. */
+.admonition.takeaway {
+  --admonition-color: var(--admonition-takeaway-border, var(--color-primary));
+  --admonition-bg: var(--admonition-takeaway-bg, var(--color-surface));
+  --admonition-icon: "\2192";
+  border-top-width: 3px;
+  padding: var(--space-5);
+}
+
+.admonition.takeaway .admonition-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  color: var(--admonition-color);
+}
+
+.admonition.takeaway .admonition-title::before {
+  font-size: 1em;
+}
+
+/* Pullquote: large, airy quote that breaks the text rhythm. */
+.admonition.pullquote {
+  --admonition-color: var(--admonition-pullquote-border, var(--color-primary));
+  --admonition-bg: transparent;
+  --admonition-icon: "";
+  position: relative;
+  margin: var(--space-8) auto;
+  padding: var(--space-4) var(--space-6);
+  max-width: 34em;
+  border: none;
+  border-radius: 0;
+  text-align: center;
+  font-family: var(--font-quote, var(--font-heading));
+  font-size: 1.35em;
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--color-text);
+}
+
+.admonition.pullquote::before,
+.admonition.pullquote::after {
+  content: "";
+  display: block;
+  width: 3rem;
+  height: 2px;
+  margin: 0 auto;
+  background: var(--admonition-color);
+  opacity: 0.55;
+  border-radius: 999px;
+}
+
+.admonition.pullquote::before {
+  margin-bottom: var(--space-4);
+}
+
+.admonition.pullquote::after {
+  margin-top: var(--space-4);
+}
+
+.admonition.pullquote .admonition-title {
+  display: block;
+  order: 2;
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+.admonition.pullquote .admonition-title::before {
+  content: "\2014\00a0";
+  font-size: 1em;
+  color: inherit;
+}
+
+.admonition.pullquote > p:not(.admonition-title) {
+  margin: 0;
+}
+
+/* Title rendered before the body in markup; move it visually after. */
+.admonition.pullquote {
+  display: flex;
+  flex-direction: column;
+}
+
+.admonition.pullquote > *:not(.admonition-title) {
+  order: 1;
+}
+
+/* Gentler default aside surface that follows the palette */
+aside.admonition.aside {
+  --admonition-color: var(--color-text-muted);
+  --admonition-bg: var(--color-surface);
+  border-color: var(--color-border-soft, var(--color-border));
+  color: var(--color-text-muted);
+}
+
 }

@@ -57,3 +57,35 @@
     }
   }
 }
+
+/* Visitor-controlled reading typeface.
+
+   The default ("sans") keeps the fontpack body font. "serif" swaps the
+   article prose to --font-serif-reading, a zero-download stack of system
+   book faces. Headings, code, and UI keep their fontpack roles so the
+   site's personality survives the toggle. */
+@layer utilities {
+  :root {
+    --font-serif-reading: Charter, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  html[data-reading-font="serif"] .post-content,
+  html[data-reading-font="serif"] .post-content p,
+  html[data-reading-font="serif"] .post-content li,
+  html[data-reading-font="serif"] .post-content blockquote,
+  html[data-reading-font="serif"] .post-content dd,
+  html[data-reading-font="serif"] .post-content td,
+  html[data-reading-font="serif"] .post-description,
+  html[data-reading-font="serif"] .sidenote {
+    font-family: var(--font-serif-reading);
+  }
+
+  /* Serif faces sit visually smaller than sans at the same size; nudge up. */
+  html[data-reading-font="serif"] .post {
+    font-size: calc(var(--post-text-size, var(--text-xl)) * var(--reading-scale, 1) * 1.04);
+  }
+
+  html[data-reading-font="serif"] .post-content :is(code, pre, kbd, samp) {
+    font-family: var(--font-code);
+  }
+}

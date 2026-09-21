@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"html"
+	"net/url"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -20,6 +21,9 @@ import (
 type WikilinkHoverPlugin struct {
 	config  models.WikilinkHoverConfig
 	postIdx *lifecycle.PostIndex
+	// siteURL is the configured site origin (scheme://host, no trailing
+	// slash) so absolute self-links can be previewed like relative ones.
+	siteURL string
 }
 
 // NewWikilinkHoverPlugin creates a new WikilinkHoverPlugin with default settings.
@@ -35,10 +39,12 @@ func (p *WikilinkHoverPlugin) Name() string {
 }
 
 // Priority returns the plugin's priority for a given stage.
-// This plugin runs late in render stage (after wikilinks have been converted).
+// In the render stage it runs after render_markdown (PriorityDefault) has
+// produced ArticleHTML but before templates (PriorityLate) bakes that HTML
+// into pages, so the added data attributes reach the final output.
 func (p *WikilinkHoverPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageRender {
-		return lifecycle.PriorityLate + 10 // Run after wikilinks transform
+		return lifecycle.PriorityLate - 10
 	}
 	return lifecycle.PriorityDefault
 }
@@ -71,6 +77,9 @@ func (p *WikilinkHoverPlugin) Configure(m *lifecycle.Manager) error {
 		if screenshotService, ok := cfgMap["screenshot_service"].(string); ok {
 			p.config.ScreenshotService = screenshotService
 		}
+		if allInternal, ok := cfgMap["all_internal_links"].(bool); ok {
+			p.config.AllInternalLinks = &allInternal
+		}
 	}
 
 	return nil
@@ -84,15 +93,142 @@ func (p *WikilinkHoverPlugin) Render(m *lifecycle.Manager) error {
 
 	// Use the shared PostIndex from the lifecycle manager
 	p.postIdx = m.PostIndex()
+	p.siteURL = siteOrigin(getSiteURL(m.Config()))
 
+	allInternal := p.config.PreviewsAllInternalLinks()
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip || post.ArticleHTML == "" {
 			return false
 		}
-		return strings.Contains(post.ArticleHTML, `class="wikilink"`)
+		if strings.Contains(post.ArticleHTML, `class="wikilink"`) {
+			return true
+		}
+		return allInternal && p.hasInternalHref(post.ArticleHTML)
 	})
 
 	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
+}
+
+// internalAnchorRegex matches opening anchor tags whose href is site-relative
+// or absolute; absolute hrefs are filtered against the site origin later.
+var internalAnchorRegex = regexp.MustCompile(`<a\s+[^>]*href="(?:/|https?://)[^"]*"[^>]*>`)
+
+// siteOrigin reduces a configured site URL to scheme://host with no path or
+// trailing slash. It returns "" when the URL is empty or unparseable.
+func siteOrigin(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+// hasInternalHref reports whether the HTML contains a link that could resolve
+// to a post on this site, used as a cheap pre-filter before regex work.
+func (p *WikilinkHoverPlugin) hasInternalHref(htmlContent string) bool {
+	if strings.Contains(htmlContent, `href="/`) {
+		return true
+	}
+	return p.siteURL != "" && strings.Contains(htmlContent, `href="`+p.siteURL)
+}
+
+// internalPath converts an href to a site-relative path when it points at
+// this site, or returns "" when it is external or not a post-like path.
+func (p *WikilinkHoverPlugin) internalPath(href string) string {
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		if p.siteURL == "" || !strings.HasPrefix(href, p.siteURL) {
+			return ""
+		}
+		href = href[len(p.siteURL):]
+		if href == "" {
+			return ""
+		}
+	}
+	if !strings.HasPrefix(href, "/") {
+		return ""
+	}
+	if i := strings.IndexAny(href, "#?"); i >= 0 {
+		href = href[:i]
+	}
+	if href == "/" || strings.Contains(href, ".") {
+		return ""
+	}
+	return href
+}
+
+// anchorClassRegex extracts the class attribute of an anchor tag.
+var anchorClassRegex = regexp.MustCompile(`class="([^"]*)"`)
+
+// internalLinkSkipClasses lists anchor classes that must not receive preview
+// data: wikilinks are handled separately, and chrome links are not content.
+var internalLinkSkipClasses = []string{
+	"wikilink", "mention", "heading-anchor", "footnote-ref", "footnote-backref",
+	"no-preview", "tag", "u-url", "glightbox", "card", "post-nav",
+}
+
+// enhanceInternalLinks adds data-title/description/date to plain internal
+// links that resolve to a post, so the shared tooltip script can preview them.
+func (p *WikilinkHoverPlugin) enhanceInternalLinks(htmlContent string) string {
+	return internalAnchorRegex.ReplaceAllStringFunc(htmlContent, func(tag string) string {
+		if strings.Contains(tag, "data-title=") || strings.Contains(tag, "data-preview") {
+			return tag
+		}
+		if cm := anchorClassRegex.FindStringSubmatch(tag); cm != nil {
+			for _, cls := range strings.Fields(cm[1]) {
+				for _, skip := range internalLinkSkipClasses {
+					if cls == skip {
+						return tag
+					}
+				}
+			}
+		}
+		hrefMatches := wikilinkHrefRegex.FindStringSubmatch(tag)
+		if len(hrefMatches) < 2 {
+			return tag
+		}
+		href := p.internalPath(hrefMatches[1])
+		if href == "" {
+			return tag
+		}
+		target := p.lookupPost(href)
+		if target == nil || target.Private {
+			return tag
+		}
+
+		var attrs []string
+		if target.Title != nil && *target.Title != "" {
+			attrs = append(attrs, `data-title="`+html.EscapeString(target.PlainTitle())+`"`)
+		}
+		if target.Description != nil && *target.Description != "" {
+			attrs = append(attrs, `data-description="`+html.EscapeString(truncatePreviewText(*target.Description, p.config.PreviewLength))+`"`)
+		}
+		if target.Date != nil {
+			attrs = append(attrs, `data-date="`+target.Date.Format("2006-01-02")+`"`)
+		}
+		if len(attrs) == 0 {
+			return tag
+		}
+		attrs = append(attrs, `data-preview="internal"`)
+		return tag[:len(tag)-1] + " " + strings.Join(attrs, " ") + ">"
+	})
+}
+
+// lookupPost resolves an href to a post, tolerating trailing-slash differences.
+func (p *WikilinkHoverPlugin) lookupPost(href string) *models.Post {
+	if p.postIdx == nil {
+		return nil
+	}
+	if target := p.postIdx.ByHref[href]; target != nil {
+		return target
+	}
+	if target := p.postIdx.ByHref[strings.TrimSuffix(href, "/")]; target != nil {
+		return target
+	}
+	return p.postIdx.ByHref[href+"/"]
 }
 
 // wikilinkAnchorRegex matches wikilink anchor tags created by the wikilinks plugin.
@@ -111,15 +247,16 @@ func (p *WikilinkHoverPlugin) processPost(post *models.Post) error {
 		return nil
 	}
 
-	// Quick check for wikilinks
-	if !strings.Contains(post.ArticleHTML, `class="wikilink"`) {
-		return nil
+	result := post.ArticleHTML
+	if strings.Contains(result, `class="wikilink"`) {
+		// Replace wikilink anchors with enhanced versions
+		result = wikilinkAnchorRegex.ReplaceAllStringFunc(result, func(match string) string {
+			return p.enhanceWikilink(match)
+		})
 	}
-
-	// Replace wikilink anchors with enhanced versions
-	result := wikilinkAnchorRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
-		return p.enhanceWikilink(match)
-	})
+	if p.config.PreviewsAllInternalLinks() && p.hasInternalHref(result) {
+		result = p.enhanceInternalLinks(result)
+	}
 
 	post.ArticleHTML = result
 	return nil

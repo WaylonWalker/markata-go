@@ -50,6 +50,9 @@ Usually available in HTML templates:
 - `post.title_text_derived` (whether semantic title derivation completed)
 - `post.title_source` (authored/source title)
 - `post.date`
+- `post.modified`
+- `post.updated_at` (nil unless `modified` is at least a day after `date`)
+- `post.prev`, `post.next`, `post.prevnext` (navigation maps; prefer `series_nav` in post templates)
 - `post.description`
 - `post.author`
 - `post.authors`

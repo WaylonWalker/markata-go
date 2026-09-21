@@ -321,6 +321,7 @@ func (p *SeriesPlugin) setPrevNextContext(posts []*models.Post, feedSlug, title 
 			FeedTitle: title,
 			Position:  i + 1,
 			Total:     total,
+			Series:    true,
 			Prev:      post.Prev,
 			Next:      post.Next,
 		}

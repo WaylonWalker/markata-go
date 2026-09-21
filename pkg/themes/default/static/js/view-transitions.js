@@ -957,28 +957,35 @@
       callOptionalInit('initFeedCycling', window.initFeedCycling);
     }
 
-    // If feed cycling script was never loaded (e.g. navigating from a page
-    // without a feed sidebar to one that has it), load it dynamically.
-    if (typeof window.initFeedCycling !== 'function' && document.getElementById('feed-sidebar-data')) {
-      var existing = document.querySelector('script[src*="feed-cycling"]');
-      if (!existing) {
-        var searchDoc = newDoc || document;
-        var inlines = searchDoc.querySelectorAll('script:not([src])');
-        for (var si = 0; si < inlines.length; si++) {
-          var m = inlines[si].textContent.match(/['"]([^'"]*feed-cycling[^'"]*\.js)['"]/);
-          if (m) {
-            var s = document.createElement('script');
-            s.src = m[1];
-            s.defer = true;
-            document.body.appendChild(s);
-            break;
-          }
+    // Conditionally-loaded scripts are only injected on the first full page
+    // load. When a transition lands on a page that needs one that was never
+    // loaded, pull its hashed URL from the inline loader and inject it.
+    function ensureLazyScript(nameFragment, initFnName, needed) {
+      if (!needed || typeof window[initFnName] === 'function') return;
+      if (document.querySelector('script[src*="' + nameFragment + '"]')) return;
+      var searchDoc = newDoc || document;
+      var inlines = searchDoc.querySelectorAll('script:not([src])');
+      var re = new RegExp('[\'"]([^\'"]*' + nameFragment + '[^\'"]*\\.js)[\'"]');
+      for (var si = 0; si < inlines.length; si++) {
+        var m = inlines[si].textContent.match(re);
+        if (m) {
+          var s = document.createElement('script');
+          s.src = m[1];
+          s.defer = true;
+          document.body.appendChild(s);
+          return;
         }
       }
     }
 
+    ensureLazyScript('feed-cycling', 'initFeedCycling', !!document.getElementById('feed-sidebar-data'));
+    ensureLazyScript('reading', 'initReading', !!document.querySelector('article.post'));
+    ensureLazyScript('tooltips', 'initTooltips', !!document.querySelector('.wikilink[data-title], a[data-title][data-preview]'));
+    ensureLazyScript('navigation-shortcuts', 'initNavigationShortcuts', !!document.querySelector('.feed, .feed-sidebar, .doc-sidebar, .post-nav, [data-reader-toggle], .card'));
+
     // Re-initialize common scripts if they exist
     callOptionalInit('initScrollSpy', window.initScrollSpy);
+    callOptionalInit('initReading', window.initReading);
     callOptionalInit('initTooltips', window.initTooltips);
     callOptionalInit('initMentionCards', window.initMentionCards);
     callOptionalInit('initPagination', window.initPagination);

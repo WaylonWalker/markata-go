@@ -372,6 +372,18 @@ Presets are defaults, not overrides. If `[theme.variables]` sets
 author's value wins for that token in every preset; the selector then only
 affects the tokens the site has not pinned.
 
+### Serif reading toggle
+
+Beside the size selector, an `Aa` button switches article prose between the
+fontpack body font and a zero-download serif stack (`--font-serif-reading`).
+Headings, code, and UI keep their fontpack roles. The visitor's choice is
+saved as `reading-font`; set the default with `reading_font = "serif"` under
+`[markata-go.theme]`, and override the stack with
+`"--font-serif-reading"` in `[markata-go.theme.variables]`. The button hides
+together with the size selector when `show_text_size_control = false`. See
+[Reading Experience](/docs/guides/reading-experience/) for the rest of the
+long-form reading features.
+
 ### How It Works
 
 1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).

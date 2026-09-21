@@ -807,11 +807,9 @@ And continue reading...
 
 ### `wikilink_hover`
 
-> **Note:** This plugin is planned but not yet implemented.
+**Stage:** `render` (priority `PriorityLate - 10`: after `render_markdown` has produced `ArticleHTML`, before `templates` bakes it into pages)
 
-**Stage:** `render` (late priority, after wikilinks plugin)
-
-**Purpose:** Add hover previews to wikilinks showing target post content.
+**Purpose:** Add hover previews to wikilinks and plain internal links showing target post metadata.
 
 **Dependencies:** None
 
@@ -825,6 +823,7 @@ include_image = true               # Include featured image if available
 screenshot_service = ""            # URL of screenshot service (optional)
 screenshot_width = 400
 screenshot_height = 300
+all_internal_links = true          # Also enrich plain links that resolve to a post
 ```
 
 **Behavior:**
@@ -832,6 +831,9 @@ screenshot_height = 300
 1. Find all wikilink anchors (`<a>` tags created by wikilinks plugin)
 2. Add `data-preview` attribute with preview content
 3. Optionally add screenshot URL
+4. When `all_internal_links` is true (default), also scan anchors whose `href` is root-relative (`/slug/`) or absolute on the configured site origin. Anchors that resolve via the shared post index to a published, non-private post gain `data-title`, `data-description` (truncated to `preview_length`), `data-date`, and `data-preview="internal"`. Anchors MUST be skipped when they already carry `data-title`/`data-preview`, when their class list includes chrome classes (`wikilink`, `mention`, `heading-anchor`, `footnote-ref`, `footnote-backref`, `no-preview`, `tag`, `u-url`, `glightbox`, `card`, `post-nav`), or when the path is `/`, contains a `.` (file), or does not resolve. Fragments and query strings are ignored for lookup. Only posts whose HTML contains an internal href are processed, and the work is O(links) with a single regex pass per post.
+
+The theme's tooltip script binds `.wikilink[data-title], a[data-preview][data-title]` on hover and focus.
 
 **Output:**
 

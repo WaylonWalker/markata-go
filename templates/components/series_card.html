@@ -1,0 +1,26 @@
+{# Series card - "Part N of M" context for posts in a series or guide feed #}
+{% if series_nav and series_nav.total > 1 and config.components.post_meta.series_card %}
+<aside class="series-card" aria-label="Series">
+    <div class="series-card__head">
+        <span class="series-card__eyebrow">Part {{ series_nav.position }} of {{ series_nav.total }}</span>
+        <a class="series-card__title" href="{{ series_nav.href }}">{{ series_nav.feed_title }}</a>
+    </div>
+    <div class="series-card__progress" role="progressbar" aria-valuemin="1" aria-valuemax="{{ series_nav.total }}" aria-valuenow="{{ series_nav.position }}" aria-label="Series progress">
+        <span class="series-card__progress-fill" style="width: {{ series_nav.percent }}%"></span>
+    </div>
+    <div class="series-card__links">
+        {% if series_nav.prev %}
+        <a class="series-card__link series-card__link--prev" href="{{ series_nav.prev.href }}" rel="prev">
+            <span class="series-card__link-label">Previous</span>
+            <span class="series-card__link-title">{{ series_nav.prev.title }}</span>
+        </a>
+        {% endif %}
+        {% if series_nav.next %}
+        <a class="series-card__link series-card__link--next" href="{{ series_nav.next.href }}" rel="next">
+            <span class="series-card__link-label">Up next</span>
+            <span class="series-card__link-title">{{ series_nav.next.title }}</span>
+        </a>
+        {% endif %}
+    </div>
+</aside>
+{% endif %}

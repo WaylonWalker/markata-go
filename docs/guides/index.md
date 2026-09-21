@@ -110,6 +110,7 @@ For developers who want full control and customization.
 - [Themes and Styling](/docs/guides/themes/) - Color palettes, CSS variables, custom styles
 - [Templates](/docs/guides/templates/) - Pongo2/Jinja2 template customization
 - [Sidebars](/docs/guides/sidebars/) - Table of contents and feed navigation
+- [Reading Experience](/docs/guides/reading-experience/) - Margin TOC, sidenotes, link previews, code chrome, reader mode, serif toggle
 
 ### Features
 - [Search](/docs/guides/search/) - Pagefind integration for site search

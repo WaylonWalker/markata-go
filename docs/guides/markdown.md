@@ -983,6 +983,20 @@ With syntax highlighting enabled, the output includes highlight spans:
 </code></pre>
 ```
 
+### Titles and Highlighted Lines
+
+Add a file title and highlight lines in the info string:
+
+````markdown
+```python title="hello.py" {2}
+def hello():
+    print("hi")
+    return 1
+```
+````
+
+Highlighted fences render inside `<div class="code-block" data-lang="python" data-title="hello.py">` with a header showing the title, a language badge, and a copy button. `{2}`, `{1,3-5}`, and `hl_lines="1 3-5"` all work; highlighted lines get `class="line hl"`. Fences the highlighter does not recognize keep plain `<pre><code>` markup so language plugins (Mermaid, Chart.js, CSV) keep working. See [Reading Experience](/docs/guides/reading-experience/#code-chrome).
+
 ### Supported Languages
 
 markata-go supports syntax highlighting for many languages including:
@@ -1382,6 +1396,10 @@ Use `!!!` followed by the type and optional title:
 | `quote` | Quote | Gray | Quotations |
 | `abstract` | Abstract | Cyan | Summaries |
 | `aside` | (none) | Gray | Sidebar/marginal notes |
+| `takeaway` | Takeaway | Accent | Boxed summary the reader should leave with |
+| `pullquote` | (none) | Accent | Large centered quote; a title renders as attribution |
+
+See [Reading Experience](/docs/guides/reading-experience/#reading-callouts) for how `takeaway` and `pullquote` are styled.
 
 ### Examples of Each Type
 

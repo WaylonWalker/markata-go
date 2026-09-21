@@ -80,8 +80,9 @@ Press the first key (`g`), then the second key within 800ms.
 | `b` | Toggle the left sidebar drawer (series) |
 | `Shift+B` | Toggle the right sidebar drawer (on this page) |
 | `{` / `}` | Switch the sidebar to the previous / next primary feed |
+| `s` | Toggle reader mode on a post (also the **Reader mode** button in the post header) |
 | `?` | Show shortcuts help modal |
-| `Escape` | Close modals and desktop sidebar drawers, clear highlight, or blur inputs |
+| `Escape` | Close modals, exit reader mode, close an open sidenote or desktop sidebar drawer, clear highlight, or blur inputs |
 
 ---
 

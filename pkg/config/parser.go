@@ -760,6 +760,7 @@ type tomlThemeConfig struct {
 	FallbackMode        string                   `toml:"fallback_mode"`
 	TextSize            string                   `toml:"text_size"`
 	ShowTextSizeControl *bool                    `toml:"show_text_size_control"`
+	ReadingFont         string                   `toml:"reading_font"`
 	SeedColor           string                   `toml:"seed_color"`
 	Variables           map[string]string        `toml:"variables"`
 	CustomCSS           string                   `toml:"custom_css"`
@@ -2123,6 +2124,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
 		ShowTextSizeControl: t.ShowTextSizeControl,
+		ReadingFont:         t.ReadingFont,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,
 		CustomCSS:           t.CustomCSS,
@@ -2908,6 +2910,7 @@ type yamlThemeConfig struct {
 	FallbackMode        string                   `yaml:"fallback_mode"`
 	TextSize            string                   `yaml:"text_size"`
 	ShowTextSizeControl *bool                    `yaml:"show_text_size_control"`
+	ReadingFont         string                   `yaml:"reading_font"`
 	SeedColor           string                   `yaml:"seed_color"`
 	Variables           map[string]string        `yaml:"variables"`
 	CustomCSS           string                   `yaml:"custom_css"`
@@ -2997,6 +3000,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
 		ShowTextSizeControl: t.ShowTextSizeControl,
+		ReadingFont:         t.ReadingFont,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,
 		CustomCSS:           t.CustomCSS,
@@ -4499,6 +4503,7 @@ type jsonThemeConfig struct {
 	FallbackMode        string                   `json:"fallback_mode"`
 	TextSize            string                   `json:"text_size"`
 	ShowTextSizeControl *bool                    `json:"show_text_size_control"`
+	ReadingFont         string                   `json:"reading_font"`
 	SeedColor           string                   `json:"seed_color"`
 	Variables           map[string]string        `json:"variables"`
 	CustomCSS           string                   `json:"custom_css"`
@@ -4588,6 +4593,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
 		ShowTextSizeControl: t.ShowTextSizeControl,
+		ReadingFont:         t.ReadingFont,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,
 		CustomCSS:           t.CustomCSS,

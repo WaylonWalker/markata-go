@@ -1,29 +1,40 @@
-{# Guide navigation - prev/next navigation for guide series #}
-{% if post.Prev or post.Next %}
-<nav class="guide-navigation" aria-label="Guide series navigation">
-    {% if post.Prev %}
-    <a href="{{ post.Prev.href }}" class="guide-nav guide-nav--prev" rel="prev">
-        <span class="guide-nav-label">Previous</span>
-        <span class="guide-nav-title">{{ post.Prev.title }}</span>
+{# Post footer navigation - prev/next within the series or the sidebar feed #}
+{% if series_nav %}
+  {% set nav_prev = series_nav.prev %}
+  {% set nav_next = series_nav.next %}
+  {% set nav_label = series_nav.feed_title %}
+  {% set nav_href = series_nav.href %}
+{% elif sidebar_prev or sidebar_next %}
+  {% set nav_prev = sidebar_prev %}
+  {% set nav_next = sidebar_next %}
+  {% set nav_label = sidebar_feed.title %}
+  {% set nav_href = "/" | add:sidebar_feed.slug | add:"/" %}
+{% endif %}
+{% if nav_prev or nav_next %}
+<nav class="post-nav guide-navigation" aria-label="Post navigation">
+    {% if nav_prev %}
+    <a href="{{ nav_prev.href }}" class="guide-nav guide-nav--prev" rel="prev">
+        <span class="guide-nav-label">&larr; Previous</span>
+        <span class="guide-nav-title">{{ nav_prev.title }}</span>
     </a>
     {% else %}
-    <span class="guide-nav guide-nav--prev guide-nav--disabled"></span>
+    <span class="guide-nav guide-nav--prev guide-nav--disabled" aria-hidden="true"></span>
     {% endif %}
 
-    {% if post.PrevNextFeed %}
-    <a href="/{{ post.PrevNextFeed }}/" class="guide-nav guide-nav--series">
-        <span class="guide-nav-label">Series</span>
-        <span class="guide-nav-title">View All</span>
+    {% if nav_label and nav_href %}
+    <a href="{{ nav_href }}" class="guide-nav guide-nav--series">
+        <span class="guide-nav-label">{% if series_nav %}Series{% else %}Feed{% endif %}</span>
+        <span class="guide-nav-title">{{ nav_label }}</span>
     </a>
     {% endif %}
 
-    {% if post.Next %}
-    <a href="{{ post.Next.href }}" class="guide-nav guide-nav--next" rel="next">
-        <span class="guide-nav-label">Next</span>
-        <span class="guide-nav-title">{{ post.Next.title }}</span>
+    {% if nav_next %}
+    <a href="{{ nav_next.href }}" class="guide-nav guide-nav--next" rel="next">
+        <span class="guide-nav-label">Next &rarr;</span>
+        <span class="guide-nav-title">{{ nav_next.title }}</span>
     </a>
     {% else %}
-    <span class="guide-nav guide-nav--next guide-nav--disabled"></span>
+    <span class="guide-nav guide-nav--next guide-nav--disabled" aria-hidden="true"></span>
     {% endif %}
 </nav>
 {% endif %}

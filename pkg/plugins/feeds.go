@@ -97,6 +97,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			// For guide-type feeds, set up prev/next navigation on each post
 			if fc.Type == models.FeedTypeGuide || fc.Type == models.FeedTypeSeries {
 				setGuideNavigation(filteredPosts, fc.Slug)
+				setGuidePrevNextContext(filteredPosts, fc.Slug, fc.Title)
 			}
 		}
 
@@ -603,6 +604,23 @@ func setGuideNavigation(posts []*models.Post, feedSlug string) {
 			post.Next = posts[i+1]
 		} else {
 			post.Next = nil
+		}
+	}
+}
+
+// setGuidePrevNextContext records series position metadata for guide/series
+// feeds so templates can render "Part N of M" cards.
+func setGuidePrevNextContext(posts []*models.Post, feedSlug, feedTitle string) {
+	total := len(posts)
+	for i, post := range posts {
+		post.PrevNextContext = &models.PrevNextContext{
+			FeedSlug:  feedSlug,
+			FeedTitle: feedTitle,
+			Position:  i + 1,
+			Total:     total,
+			Series:    true,
+			Prev:      post.Prev,
+			Next:      post.Next,
 		}
 	}
 }

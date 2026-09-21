@@ -249,6 +249,7 @@
     function toggleReaderMode() {
       var body = document.body;
       var isReaderMode = body.classList.toggle('reader-mode');
+      syncReaderToggles(isReaderMode);
 
       // Update URL parameter to persist across navigation
       var url = new URL(window.location.href);
@@ -268,16 +269,57 @@
     }
 
     /**
+     * Reflect reader-mode state on any [data-reader-toggle] buttons.
+     */
+    function syncReaderToggles(isReaderMode) {
+      var toggles = document.querySelectorAll('[data-reader-toggle]');
+      for (var i = 0; i < toggles.length; i++) {
+        toggles[i].setAttribute('aria-pressed', isReaderMode ? 'true' : 'false');
+        var label = toggles[i].querySelector('.post-action__label');
+        if (label) {
+          label.textContent = isReaderMode ? 'Exit reader' : 'Reader mode';
+        }
+      }
+    }
+
+    /**
+     * Bind click handlers for [data-reader-toggle] buttons (once per element).
+     */
+    function bindReaderToggles() {
+      if (!window.__markataReaderEscapeBound) {
+        window.__markataReaderEscapeBound = true;
+        document.addEventListener('keydown', function(e) {
+          if (e.key !== 'Escape' || e.defaultPrevented) return;
+          if (!document.body.classList.contains('reader-mode')) return;
+          if (document.querySelector('#shortcuts-modal[aria-hidden="false"], dialog[open]')) return;
+          toggleReaderMode();
+        });
+      }
+      var toggles = document.querySelectorAll('[data-reader-toggle]');
+      for (var i = 0; i < toggles.length; i++) {
+        if (toggles[i].__readerBound) continue;
+        toggles[i].__readerBound = true;
+        toggles[i].addEventListener('click', function(e) {
+          e.preventDefault();
+          toggleReaderMode();
+        });
+      }
+    }
+
+    /**
      * Check for ?reader=1 URL param and apply reader-mode class.
      * Called on init (page load and after view transitions).
      */
     function applyReaderModeFromURL() {
       var params = new URLSearchParams(window.location.search);
-      if (params.get('reader') === '1' && document.querySelector('article.post')) {
+      var isReaderMode = params.get('reader') === '1' && !!document.querySelector('article.post');
+      if (isReaderMode) {
         document.body.classList.add('reader-mode');
       } else {
         document.body.classList.remove('reader-mode');
       }
+      bindReaderToggles();
+      syncReaderToggles(isReaderMode);
     }
 
    /**

@@ -364,20 +364,63 @@ func TestWikilinkHoverPlugin_ProcessPost_RegularLink(t *testing.T) {
 		"/my-article/": {Slug: "my-article", Href: "/my-article/", Description: &desc},
 	})
 
-	// Regular link (not wikilink) should not be modified
+	// Plain internal links are enriched with preview data by default
 	post := &models.Post{
 		ArticleHTML: `<a href="/my-article/">Regular Link</a>`,
 	}
-	originalHTML := post.ArticleHTML
 
 	err := p.processPost(post)
 	if err != nil {
 		t.Errorf("processPost() error = %v", err)
 	}
 
-	// HTML should be unchanged for non-wikilink anchors
+	if !strings.Contains(post.ArticleHTML, `data-preview="internal"`) {
+		t.Errorf("expected internal link to gain data-preview, got %s", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `data-description="Article description"`) {
+		t.Errorf("expected internal link to gain data-description, got %s", post.ArticleHTML)
+	}
+}
+
+func TestWikilinkHoverPlugin_ProcessPost_RegularLink_Disabled(t *testing.T) {
+	p := NewWikilinkHoverPlugin()
+	off := false
+	p.config.AllInternalLinks = &off
+
+	desc := "Article description"
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
+		"/my-article/": {Slug: "my-article", Href: "/my-article/", Description: &desc},
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<a href="/my-article/">Regular Link</a>`,
+	}
+	originalHTML := post.ArticleHTML
+
+	if err := p.processPost(post); err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
 	if post.ArticleHTML != originalHTML {
-		t.Error("Regular link was modified")
+		t.Error("Regular link was modified with all_internal_links disabled")
+	}
+}
+
+func TestWikilinkHoverPlugin_ProcessPost_SkipsUnknownAndExternalLinks(t *testing.T) {
+	p := NewWikilinkHoverPlugin()
+	p.postIdx = newTestPostIndex(map[string]*models.Post{})
+
+	post := &models.Post{
+		ArticleHTML: `<a href="/missing/">Missing</a> <a href="https://example.com/">Ext</a> <a class="heading-anchor" href="/my-article/#x">#</a>`,
+	}
+	originalHTML := post.ArticleHTML
+
+	if err := p.processPost(post); err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	if post.ArticleHTML != originalHTML {
+		t.Errorf("unresolvable or skipped links should be untouched, got %s", post.ArticleHTML)
 	}
 }
 

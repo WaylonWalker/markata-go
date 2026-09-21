@@ -38,6 +38,8 @@ var admonitionTypes = map[string]bool{
 	"vsplit":     true,
 	"chat":       true,
 	"chat-reply": true,
+	"takeaway":   true,
+	"pullquote":  true,
 }
 
 // admonitionRegex matches admonition syntax:
@@ -166,8 +168,9 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 
 	// Set default title if not provided
 	if title == "" {
-		if adType == AdmonitionTypeAside {
-			// Aside has no default title per spec
+		if adType == AdmonitionTypeAside || adType == AdmonitionTypePullquote {
+			// Aside and pullquote have no default title per spec; a pullquote
+			// title renders as an attribution line, so only show it when given.
 			title = ""
 		} else {
 			// Use capitalized type as default title
@@ -299,9 +302,11 @@ func (r *AdmonitionRenderer) renderEntering(w util.BufWriter, ad *Admonition) {
 		_, _ = w.WriteString("<div class=\"admonition ")
 		_, _ = w.WriteString(ad.AdmonitionType)
 		_, _ = w.WriteString("\">\n")
-		_, _ = w.WriteString("<p class=\"admonition-title\">")
-		_, _ = w.WriteString(ad.AdmonitionTitle)
-		_, _ = w.WriteString("</p>\n")
+		if ad.AdmonitionTitle != "" {
+			_, _ = w.WriteString("<p class=\"admonition-title\">")
+			_, _ = w.WriteString(ad.AdmonitionTitle)
+			_, _ = w.WriteString("</p>\n")
+		}
 	}
 }
 

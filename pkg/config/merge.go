@@ -235,6 +235,9 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.ShowTextSizeControl != nil {
 		result.ShowTextSizeControl = override.ShowTextSizeControl
 	}
+	if override.ReadingFont != "" {
+		result.ReadingFont = override.ReadingFont
+	}
 	if override.CustomCSS != "" {
 		result.CustomCSS = override.CustomCSS
 	}

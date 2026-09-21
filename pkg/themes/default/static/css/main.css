@@ -364,6 +364,21 @@ html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) del
 }
 }
 
+/* Anchor navigation: keep targets clear of the sticky header and glide to them */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+:is(h1, h2, h3, h4, h5, h6, [id])[id] {
+  scroll-margin-top: calc(var(--layout-header-height, 64px) + var(--space-6));
+}
+
 /* Heading Anchors */
 .heading-anchor {
   opacity: 0;

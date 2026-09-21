@@ -118,8 +118,10 @@
             </div>
             {% endif %}
 
-            {% include "components/post_copy.html" %}
+            {% include "components/post_actions.html" %}
         </header>
+
+        {% include "components/series_card.html" %}
 
         <div class="post-content e-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
             {{ body | safe }}
