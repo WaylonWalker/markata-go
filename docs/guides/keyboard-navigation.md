@@ -75,8 +75,11 @@ Press the first key (`g`), then the second key within 800ms.
 | `/` | Focus search input |
 | `Cmd/Ctrl+K` | Focus search (alternative) |
 | `y y` | Copy current URL to clipboard |
-| `[` | Go to previous page (pagination) |
-| `]` | Go to next page (pagination) |
+| `[` or `Shift+K` | Previous post in the current series/feed, or previous page on a feed |
+| `]` or `Shift+J` | Next post in the current series/feed, or next page on a feed |
+| `b` | Toggle the left sidebar drawer (series) |
+| `Shift+B` | Toggle the right sidebar drawer (on this page) |
+| `{` / `}` | Switch the sidebar to the previous / next primary feed |
 | `?` | Show shortcuts help modal |
 | `Escape` | Close modals, clear highlight, blur inputs |
 

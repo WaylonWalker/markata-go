@@ -445,7 +445,7 @@
   gap: 0.625rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .feed-nav-heading {
@@ -1113,8 +1113,18 @@
   }
 
   .feed-sidebar .feed-nav-chrome {
-    padding: 0 1.25rem;
+    padding: var(--space-5) 1.25rem 0;
     background: transparent;
+  }
+
+  .feed-sidebar #feed-nav-collapsible {
+    padding: 0 1.25rem 1.25rem;
+  }
+
+  .feed-sidebar .feed-nav-header {
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
   }
 
   /* ---- Doc sidebar specifics ---- */
@@ -1127,7 +1137,7 @@
   .doc-sidebar .toc {
     border: none;
     background: transparent;
-    padding: 0 1.25rem 1rem;
+    padding: var(--space-5) 1.25rem 1.25rem;
     margin: 0;
   }
 

@@ -9,13 +9,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
 func main() {
 	check := flag.Bool("check", false, "check generated files without writing")
 	resolveFixtures := flag.Bool("resolve-fixtures", false, "write resolved shared render-plan fixtures as JSON")
+	derivePalettes := flag.Bool("derive-palettes", false, "recompute roles of derived counterpart palettes in the source contract from pkg/palettes")
 	flag.Parse()
 	root, err := os.Getwd()
 	if err != nil {
@@ -25,6 +29,12 @@ func main() {
 	raw, err := os.ReadFile(source)
 	if err != nil {
 		panic(err)
+	}
+	if *derivePalettes {
+		raw = syncDerivedPalettes(raw)
+		if err := os.WriteFile(source, raw, 0o644); err != nil {
+			panic(err)
+		}
 	}
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {
@@ -109,4 +119,56 @@ func project(path string, expected []byte, check bool) error {
 	}
 	//nolint:gosec // Generated static assets must be readable by the web server.
 	return os.WriteFile(path, expected, 0o644)
+}
+
+// syncDerivedPalettes rewrites the roles of every contract palette that has no
+// hand-authored source (an "<id>-light"/"<id>-dark" counterpart of a shipped
+// palette) using palettes.DeriveCounterpart, so the contract and the palette
+// loader agree on derived colors. Edits are applied textually so the source
+// document keeps its key order and formatting.
+func syncDerivedPalettes(raw []byte) []byte {
+	var doc struct {
+		Palettes []struct {
+			ID string `json:"id"`
+		} `json:"palettes"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		panic(err)
+	}
+	loader := palettes.NewLoaderWithPaths(nil)
+	text := string(raw)
+	updated := 0
+	for _, entry := range doc.Palettes {
+		if palettes.HasBuiltin(entry.ID) {
+			continue
+		}
+		base, variant, ok := palettes.IsDerivedCounterpart(entry.ID)
+		if !ok || !palettes.HasBuiltin(base) {
+			continue
+		}
+		p, err := loader.Load(entry.ID)
+		if err != nil || p.Variant != variant {
+			continue
+		}
+		idMatch := regexp.MustCompile(`"id":\s*` + regexp.QuoteMeta(fmt.Sprintf("%q", entry.ID))).FindStringIndex(text)
+		if idMatch == nil {
+			continue
+		}
+		idPos := idMatch[0]
+		rolesMatch := regexp.MustCompile(`"roles":\s*\{`).FindStringIndex(text[idPos:])
+		if rolesMatch == nil {
+			continue
+		}
+		rolesStart := idPos + rolesMatch[0]
+		rolesEnd := rolesStart + strings.Index(text[rolesStart:], "}")
+		block := text[rolesStart:rolesEnd]
+		for role, semantic := range map[string]string{"accent": "accent", "background": "bg-primary", "ink": "text-primary", "surface": "bg-surface"} {
+			re := regexp.MustCompile(fmt.Sprintf(`("%s":\s*)"#[0-9a-fA-F]{6}"`, role))
+			block = re.ReplaceAllString(block, fmt.Sprintf(`${1}%q`, p.Resolve(semantic)))
+		}
+		text = text[:rolesStart] + block + text[rolesEnd:]
+		updated++
+	}
+	fmt.Printf("synced %d derived contract palettes\n", updated)
+	return []byte(text)
 }

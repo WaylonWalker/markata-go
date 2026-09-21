@@ -475,7 +475,7 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `palette` | string | `"default-light"` | Color palette to use |
 | `palette_dark` | string | `""` | Dark mode palette |
 | `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
-| `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, or `"large"` |
+| `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, `"large"`, or `"x-large"`. Article text additionally scales up on viewports ≥1800px. |
 | `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
@@ -492,7 +492,7 @@ palette_dark = "catppuccin-mocha"
 fallback_mode = "dark"  # or "light"
 
 # Optional: default reading size and visitor control
-text_size = "large"              # small, medium, or large
+text_size = "large"              # small, medium, large, or x-large
 show_text_size_control = true
 
 # Optional: override specific CSS variables
@@ -743,7 +743,7 @@ max_posts = 51
 From `1201px` up, the document and feed sidebars become fixed drawers that
 stay tucked off-screen. Each drawer has a small vertical handle on the
 viewport edge ("Series" on the left, "On this page" on the right). Clicking
-the handle — or pressing `[` / `]` — slides the drawer open; clicking again
+the handle — or pressing `b` (left) / `Shift+B` (right) — slides the drawer open; clicking again
 closes it. Drawers never open on hover, so they cannot pop in and out while
 you read. The open/closed choice is remembered per side in browser storage
 and restored on later pages without animating. While the site header is on

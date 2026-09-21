@@ -231,6 +231,32 @@ palette_dark = "catppuccin-mocha"
 fallback_mode = "dark"  # or "light"
 ```
 
+### Every Palette Has Both Modes
+
+You never have to pick a pair by hand. Every palette resolves to a light and a
+dark variant:
+
+1. **Explicit families** — `everforest-light`/`everforest-dark`,
+   `catppuccin-latte`/`catppuccin-mocha`, `rose-pine-dawn`/`rose-pine`, and
+   similar named pairs are used as-is.
+2. **Derived counterparts** — a palette that ships only one variant
+   (`dracula`, `matte-black`, `monokai`, the Lospec palettes, …) gets an
+   automatically derived counterpart named `<palette>-light` or
+   `<palette>-dark`. The derivation keeps every hue, compresses backgrounds
+   into a soft near-white (or near-black) band, and pushes text and links
+   until they meet WCAG AA against every derived surface.
+
+```toml
+[markata-go.theme]
+palette = "dracula"   # dark mode: dracula, light mode: dracula-light (derived)
+```
+
+Derived names work anywhere a palette name is accepted (`palette_light`,
+`palette_dark`, calendar rules, the switcher include/exclude lists) and show
+up in the multi-palette switcher as the family's other variant. If you prefer
+a hand-tuned light theme for a dark-only palette, set `palette_light`
+explicitly and the derived one is ignored.
+
 ---
 
 ## Multi-Palette Theme Switcher
@@ -312,12 +338,12 @@ The mode toggle is also gated by `[markata-go.header].show_theme_toggle` for bac
 ### Reading-size control
 
 The default theme uses a large, comfortable reading size by default. Visitors
-can choose a smaller or larger preset from the header control, and their
+can choose a smaller or larger preset (Small, Medium, Large, X-Large) from the header control, and their
 choice is saved for later visits on the same site.
 
 ```toml
 [markata-go.theme]
-text_size = "large"              # small, medium, or large
+text_size = "large"              # small, medium, large, or x-large
 show_text_size_control = true    # default: true
 ```
 
@@ -329,6 +355,13 @@ presets are:
 | `small` | 16px | 18px | 68ch |
 | `medium` | 17px | 20px | 66ch |
 | `large` | 18px | 22px | 64ch |
+| `x-large` | 19px | 24px | 62ch |
+
+Article text also scales with the viewport so wide desktop displays do not
+render a narrow strip of small type: `--reading-scale` multiplies the article
+font size by 1.08 from 1800px, 1.16 from 2200px (1440p), and 1.25 from
+3000px (4K). The `ch`-based measure follows the scaled font, so line length
+stays comfortable. Site chrome (`--text-base`) is not scaled.
 
 Set `show_text_size_control = false` when a site should keep the configured
 default without rendering the selector. Browser zoom remains available in
