@@ -146,6 +146,7 @@
       }
 
       section.style.display = '';
+      section.classList.remove('post-graph--pending');
 
       var connectedNodes = subset.nodes.filter(function(node) { return node.id !== subset.postId; });
       var totalConnections = connectedNodes.length;

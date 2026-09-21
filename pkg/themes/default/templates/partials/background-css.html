@@ -30,9 +30,9 @@
       {% if config.theme.background.article_radius %}border-radius: var(--article-radius);{% endif %}
     }
 
-    /* Responsive padding for article containers - mobile first */
+    /* Responsive padding for feed/list containers - mobile first.
+       article.post keeps the theme padding scale from main.css. */
     {% if config.theme.background.article_bg or config.theme.background.article_shadow %}
-    article.post,
     section.feed,
     div.feed,
     .blogroll-page,
@@ -41,7 +41,6 @@
     }
 
     @media (max-width: 768px) {
-      article.post,
       section.feed,
       div.feed,
       .blogroll-page,
@@ -52,7 +51,6 @@
     }
 
     @media (max-width: 480px) {
-      article.post,
       section.feed,
       div.feed,
       .blogroll-page,
@@ -63,7 +61,6 @@
     }
 
     @media (max-width: 375px) {
-      article.post,
       section.feed,
       div.feed,
       .blogroll-page,

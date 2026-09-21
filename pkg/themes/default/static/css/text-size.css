@@ -5,21 +5,23 @@
    author sets explicitly. Presets still beat the base tokens layer. */
 
 @layer utilities {
+  /* --content-width is in ch and resolves against the article font size,
+     so the measure stays near 65-70 characters at every preset. */
   html[data-text-size="small"] {
     --text-base: 1rem;
     --post-text-size: 1.125rem;
-    --content-width: 65ch;
+    --content-width: 68ch;
   }
 
   html[data-text-size="medium"] {
     --text-base: 1.0625rem;
-    --post-text-size: 1.1875rem;
-    --content-width: 62ch;
+    --post-text-size: 1.25rem;
+    --content-width: 66ch;
   }
 
   html[data-text-size="large"] {
     --text-base: 1.125rem;
-    --post-text-size: 1.25rem;
-    --content-width: 60ch;
+    --post-text-size: 1.375rem;
+    --content-width: 64ch;
   }
 }

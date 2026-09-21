@@ -34,9 +34,14 @@ The three presets are:
 
 | Preset | Site base | Article text | Article measure |
 |--------|-----------|--------------|-----------------|
-| `small` | 16px | 18px | 65ch |
-| `medium` | 17px | 19px | 62ch |
-| `large` | 18px | 20px | 60ch |
+| `small` | 16px | 18px | 68ch |
+| `medium` | 17px | 20px | 66ch |
+| `large` | 18px | 22px | 64ch |
+
+`--content-width` is expressed in `ch` and resolves against the article font
+size, so every preset lands near 65-70 characters per line. The article card
+(`article.post`) uses `box-sizing: content-box` so its padding frames the
+measure instead of eating into it.
 
 The configured `text_size` is the fallback used when a visitor has no saved
 preference. When the control is enabled, the default theme renders an
@@ -53,6 +58,35 @@ Preset values MUST be emitted below the `overrides` cascade layer so that
 explicit `[theme.variables]` entries (which are emitted in `overrides`) take
 precedence over any preset for the same token. Presets MUST still take
 precedence over the base `tokens` layer.
+
+### Reading Rhythm
+
+The default theme sets prose rhythm in `em` units relative to the article
+text size so spacing scales with the preset:
+
+- Body copy uses `--leading-prose` (1.7) and `margin-block: 0 1.25em`.
+- Headings inside `.post-content` carry `2em` above and `0.6em` below, use
+  `text-wrap: balance`, and are followed by a short accent bar
+  (`h1::after`/`h2::after`, colored by `--heading-rule`) instead of full-width
+  rules, so section breaks read as gentle markers rather than hard lines.
+- Blockquotes sit on a soft surface with a 3px accent left border; `hr` renders
+  as a centered gradient hairline.
+
+### Surfaces and Borders
+
+Borders MUST be soft by default. The palette CSS generator emits:
+
+- `--color-border`: `color-mix(in srgb, <ink> 16%, <background>)` — the
+  everyday hairline used by cards, headers, tables and form controls.
+- `--color-border-strong`: the palette's full-contrast border ink, reserved for
+  focus rings and places that need a 3:1 non-text contrast guarantee.
+- `--color-border-soft`: `--color-border` at 60% alpha, used for section
+  dividers and post header/footer rules.
+
+Radii follow a four-step scale — `--radius-sm` (0.375rem), `--radius`
+(0.5rem), `--radius-lg` (0.75rem), `--radius-xl` (1rem) — and aesthetics MAY
+remap the scale (for example the `minimal` aesthetic tightens it). Tags render
+as pills; cards and the article container use `--radius-lg`/`--radius-xl`.
 
 ### Contrast Guarantees
 
@@ -1329,7 +1363,9 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --color-text-muted: #6b7280;
   --color-background: #ffffff;
   --color-surface: #f9fafb;
-  --color-border: #e5e7eb;
+  --color-border: color-mix(in srgb, #1f2937 16%, #ffffff);
+  --color-border-strong: #1f2937;
+  --color-border-soft: color-mix(in srgb, var(--color-border) 60%, transparent);
 
   /* Status colors */
   --color-success: #10b981;
@@ -1391,10 +1427,12 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --space-16: 4rem;
 
   /* Layout */
-  --content-width: 65ch;
+  --content-width: 66ch;
   --page-width: 1200px;
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 ```
 

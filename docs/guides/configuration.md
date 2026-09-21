@@ -741,17 +741,23 @@ max_posts = 51
 #### Sidebar behavior on wide screens
 
 From `1201px` up, the document and feed sidebars become fixed drawers that
-stay tucked against the viewport edge. They slide in when you hover the
-screen edge or the drawer itself, and can be pinned with the pin button (or
-the keyboard shortcut). From `1600px` up, hovering the article also "peeks"
-both drawers at reduced opacity; below that width the peek is disabled so a
-drawer never covers the first characters of the article column.
+stay tucked off-screen. Each drawer has a small vertical handle on the
+viewport edge ("Series" on the left, "On this page" on the right). Clicking
+the handle — or pressing `[` / `]` — slides the drawer open; clicking again
+closes it. Drawers never open on hover, so they cannot pop in and out while
+you read. The open/closed choice is remembered per side in browser storage
+and restored on later pages without animating. While the site header is on
+screen the drawer starts just below it; once you scroll past the header the
+drawer grows to fill the full viewport height.
+
+The feed drawer also carries the feed picker, a `current/total` counter, and
+previous/next feed buttons (`{` / `}`) for switching between primary feeds.
 
 TOC entries are built from the heading's visible text: resolved wikilinks,
 Markdown links, emphasis and inline code are stripped, so the sidebar never
 shows raw HTML or markup.
 
-**Responsive behavior:** Sidebars are hidden on mobile (< 768px) and shown inline on tablets (768px - 1024px).
+**Responsive behavior:** Below `1201px` the feed sidebar collapses into a slim bar above the article that expands on tap, and the document sidebar is hidden. The header switches to a compact layout (title and controls on one row, search below, then a single scrollable nav strip).
 
 #### Share Component (`[markata-go.components.share]`)
 

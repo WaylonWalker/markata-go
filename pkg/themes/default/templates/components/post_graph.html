@@ -63,7 +63,7 @@
 {% endif %}
 
 {% if show_graph %}
-<section class="post-graph" data-graph="{{ graph_json }}" data-post="{{ post.href }}">
+<section class="post-graph post-graph--pending" data-graph="{{ graph_json }}" data-post="{{ post.href }}">
   <div class="post-graph__header">
     <div>
       <h2>Connections</h2>
@@ -184,6 +184,16 @@
   padding: var(--space-4, 1rem);
   border-radius: var(--radius-lg, 0.5rem);
   background: var(--color-background, #1a1a1a);
+}
+
+/* Stay out of the flow until the graph data confirms this post has
+   connections; post-graph.js removes the class once it can render. */
+.post-graph--pending {
+  visibility: hidden;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .post-graph__header {

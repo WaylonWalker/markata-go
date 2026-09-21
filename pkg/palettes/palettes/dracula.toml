@@ -35,19 +35,21 @@ bg-lighter = "#343746"
 
 # Lighter comment color for better contrast
 comment-light = "#8394c4"
+# Muted text tint that stays >= 4.5:1 on surface and elevated backgrounds
+comment-muted = "#aebadf"
 
 # Layer 2: Semantic Mapping
 [palette.semantic]
 # Text colors
 text-primary   = "foreground"
 text-secondary = "foreground"
-text-muted     = "foreground"
+text-muted     = "comment-muted"
 
 # Background colors
 bg-primary   = "background"
 bg-secondary = "bg-darker"
-bg-surface   = "current-line"
-bg-elevated  = "bg-lighter"
+bg-surface   = "bg-lighter"
+bg-elevated  = "current-line"
 
 # Accent colors
 accent       = "purple"

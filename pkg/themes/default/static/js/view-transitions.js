@@ -990,8 +990,10 @@
     // Re-bind feed sidebar collapse toggle (tablet/mobile)
     callOptionalInit('initSidebarToggle', window.initSidebarToggle);
 
-    // Re-bind sidebar pin toggle buttons
+    // Re-bind sidebar drawer handles and re-sync their open state/labels
     callOptionalInit('initSidebarPinButtons', window.initSidebarPinButtons);
+    callOptionalInit('initSidebarTop', window.initSidebarTop);
+    callOptionalInit('restoreSidebarState', window.restoreSidebarState);
 
     // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
     var openHamburger = document.querySelector('.hamburger-toggle--open');
@@ -1294,49 +1296,125 @@
     });
   };
 
-  // ── Sidebar pin toggle buttons ──
-  // Click handler for .sidebar-pin-toggle buttons inside sidebars
+  // ── Sidebar drawers (desktop ≥ 1201px) ──
+  // Drawers open only on explicit action: the edge handle (.sidebar-toggle),
+  // the [ / ] shortcuts, or keyboard focus. Open state is remembered per side
+  // in localStorage so a reader who wants the series list keeps it.
+  var SIDEBAR_STORAGE_PREFIX = 'markata-sidebar:';
+
+  function sidebarSide(el) {
+    return /--left\b/.test(el.className) ? 'left' : 'right';
+  }
+
+  function sidebarStorageKey(side) {
+    return SIDEBAR_STORAGE_PREFIX + side;
+  }
+
+  function readSidebarState(side) {
+    try {
+      return localStorage.getItem(sidebarStorageKey(side));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeSidebarState(side, open) {
+    try {
+      localStorage.setItem(sidebarStorageKey(side), open ? 'open' : 'closed');
+    } catch (e) {
+      /* storage unavailable: state is per-page only */
+    }
+  }
+
+  function syncSidebarToggle(sidebar) {
+    var btn = sidebar.querySelector(':scope > .sidebar-toggle');
+    if (!btn) return;
+    var open = sidebar.classList.contains('sidebar--pinned');
+    var label = btn.getAttribute('data-sidebar-label') || 'sidebar';
+    btn.setAttribute('aria-expanded', String(open));
+    btn.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + label + ' sidebar');
+  }
+
+  function setSidebarOpen(sidebar, open, persist) {
+    sidebar.classList.toggle('sidebar--pinned', open);
+    syncSidebarToggle(sidebar);
+    if (!open) {
+      // Drop focus so :focus-within cannot hold the drawer open after closing.
+      var active = document.activeElement;
+      if (active && sidebar.contains(active) && typeof active.blur === 'function') {
+        active.blur();
+      }
+    }
+    if (persist) writeSidebarState(sidebarSide(sidebar), open);
+  }
+
+  // Keep fixed drawers flush with the bottom edge of the header while it is
+  // on screen, then let them grow to the top once the header scrolls away.
+  var sidebarTopFrame = null;
+  function updateSidebarTop() {
+    sidebarTopFrame = null;
+    var header = document.querySelector('.site-header');
+    var bottom = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+    document.documentElement.style.setProperty('--sidebar-top', bottom + 'px');
+  }
+  function scheduleSidebarTop() {
+    if (sidebarTopFrame === null) {
+      sidebarTopFrame = requestAnimationFrame(updateSidebarTop);
+    }
+  }
+  window.initSidebarTop = function() {
+    if (window._sidebarTopBound) {
+      updateSidebarTop();
+      return;
+    }
+    window._sidebarTopBound = true;
+    window.addEventListener('scroll', scheduleSidebarTop, { passive: true });
+    window.addEventListener('resize', scheduleSidebarTop);
+    updateSidebarTop();
+  };
+
+  // Restore persisted drawer state without animating the initial slide.
+  window.restoreSidebarState = function() {
+    document.querySelectorAll('.feed-sidebar, .doc-sidebar, .content-sidebar').forEach(function(sidebar) {
+      var stored = readSidebarState(sidebarSide(sidebar));
+      if (stored === 'open') {
+        sidebar.classList.add('sidebar--no-motion');
+        setSidebarOpen(sidebar, true, false);
+        // Two frames so the class change lands before transitions resume.
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            sidebar.classList.remove('sidebar--no-motion');
+          });
+        });
+      } else {
+        syncSidebarToggle(sidebar);
+      }
+    });
+  };
+
   window.initSidebarPinButtons = function() {
-    document.querySelectorAll('.sidebar-pin-toggle').forEach(function(btn) {
-      if (btn._pinToggleBound) return;
-      btn._pinToggleBound = true;
+    document.querySelectorAll('.sidebar-toggle').forEach(function(btn) {
+      if (btn._sidebarToggleBound) return;
+      btn._sidebarToggleBound = true;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var sidebar = btn.closest('.feed-sidebar, .doc-sidebar, .content-sidebar');
         if (!sidebar) return;
-        var wasPinned = sidebar.classList.toggle('sidebar--pinned');
-        btn.setAttribute('aria-label', wasPinned ? 'Unpin sidebar' : 'Pin sidebar open');
-        if (!wasPinned) {
-          sidebar.classList.add('sidebar--unpinning');
-          setTimeout(function() {
-            sidebar.classList.remove('sidebar--unpinning');
-          }, 350);
-        }
+        setSidebarOpen(sidebar, !sidebar.classList.contains('sidebar--pinned'), true);
       });
     });
   };
 
-  // ── Keyboard shortcuts to pin/unpin sidebars ──
-  // [ = toggle left sidebar, ] = toggle right sidebar
+  // ── Keyboard shortcuts to open/close sidebars ──
+  // [ = toggle left drawer, ] = toggle right drawer
   // Registered via shortcuts registry in navigation-shortcuts.js.
-  // This function is called by the registry handlers.
   window.toggleSidebarPinned = function(side) {
     if (window.innerWidth < 1201) return;
     var selector = side === 'left'
       ? '.feed-sidebar--left, .doc-sidebar--left, .content-sidebar--left'
       : '.feed-sidebar--right, .doc-sidebar--right, .content-sidebar--right';
-    var els = document.querySelectorAll(selector);
-    els.forEach(function(el) {
-      var wasPinned = el.classList.contains('sidebar--pinned');
-      el.classList.toggle('sidebar--pinned');
-      if (wasPinned) {
-        // Bypass the 300ms mouse grace delay for keyboard unpin
-        el.classList.add('sidebar--unpinning');
-        // Remove after transition completes so hover delay works again
-        setTimeout(function() {
-          el.classList.remove('sidebar--unpinning');
-        }, 350);
-      }
+    document.querySelectorAll(selector).forEach(function(el) {
+      setSidebarOpen(el, !el.classList.contains('sidebar--pinned'), true);
     });
   };
 
@@ -1347,11 +1425,15 @@
       window.initFeedSidebarScroll();
       window.initSidebarToggle();
       window.initSidebarPinButtons();
+      window.initSidebarTop();
+      window.restoreSidebarState();
     });
   } else {
     init();
     window.initFeedSidebarScroll();
     window.initSidebarToggle();
     window.initSidebarPinButtons();
+    window.initSidebarTop();
+    window.restoreSidebarState();
   }
 })();

@@ -181,6 +181,8 @@ func (p *AestheticCSSPlugin) generatePresentationCSS(config *lifecycle.Config) s
 	  body::after { background-size: var(--theme-motif-field-size, calc(var(--theme-motif-size) + var(--theme-motif-gap))) auto; opacity: 1; }
    body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: 0; background-color: transparent; background-image: var(--theme-motif-over-image); background-repeat: repeat; }
    body > * { position: relative; z-index: 2; }
+   /* Fixed overlays (reading progress bar) must stay above the page wrapper. */
+   body > #view-transition-progress { z-index: 1000; }
    [data-rendering-specimen="canonical-headings"] { position: relative; z-index: 4; }
   body::before { background-size: calc(180px * var(--theme-texture-scale)); }
 	  body::after { transform: none; }
