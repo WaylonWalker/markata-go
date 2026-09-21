@@ -87,6 +87,13 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 		}
 	}
 
+	// Publish the effective light/dark palette names so templates can pin
+	// data-palette to the palette matching the resolved color mode before
+	// palette.css is available to scripts.
+	effectiveLight, effectiveDark := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
+	config.Extra["palette_light_effective"] = normalizePaletteName(effectiveLight)
+	config.Extra["palette_dark_effective"] = normalizePaletteName(effectiveDark)
+
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)
 
@@ -132,6 +139,13 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	paletteCSSLog.Phase("write").Printf("Generating CSS for palette: %s (light: %s, dark: %s)", paletteName, paletteLight, paletteDark)
+
+	// Publish the effective light/dark palette names so templates can pin
+	// data-palette to the palette matching the resolved color mode before
+	// palette.css is available to scripts.
+	effectiveLight, effectiveDark := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
+	config.Extra["palette_light_effective"] = normalizePaletteName(effectiveLight)
+	config.Extra["palette_dark_effective"] = normalizePaletteName(effectiveDark)
 
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)

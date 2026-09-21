@@ -167,7 +167,7 @@
   "derived_palette_counterparts": {
     "description": "Each former singleton family has an explicit counterpart. The counterpart keeps the source family and ID identity, and appends the missing variant suffix to its canonical ID.",
     "source_scope": "singleton_palette_families",
-    "strategy": "For every role color, convert sRGB to HSL, replace lightness L with 1-L, preserve hue and saturation, round each output channel to the nearest 8-bit value, and serialize as lowercase #rrggbb. This deterministic lightness reflection derives light from dark and dark from light without aliasing to another family."
+    "strategy": "Derived roles are produced by markata-go's palettes.DeriveCounterpart and synced with `go run ./scripts/rendering-contract --derive-palettes`. Raw colors are classified by how the source palette's semantic layer uses them. Surfaces convert sRGB to HSL, keep hue, scale saturation by 0.7, and are compressed into a 0.12-wide lightness band anchored at L=0.985 (light) or L=0.11 (dark) while preserving their relative order. Text colors reflect lightness (L to 1-L) and are then pushed away from the surfaces until they meet WCAG AA (7:1 for primary/secondary text, 4.5:1 for muted text) against every derived surface. Accents reflect lightness, clamp into a readable mid band (0.24-0.46 light, 0.56-0.80 dark), and are adjusted to 4.5:1 against the surfaces. Output channels round to 8-bit and serialize as lowercase #rrggbb. Counterparts keep the source family and append the missing variant suffix to the canonical ID."
   },
   "enums": {
     "aesthetics": [
@@ -1143,10 +1143,10 @@
       "id": "2bit-demichrome-light",
       "name": "2bit Demichrome Light",
       "roles": {
-        "accent": "#74745f",
-        "background": "#e1dee0",
+        "accent": "#dfdfda",
+        "background": "#fbfbfb",
         "ink": "#101613",
-        "surface": "#9797aa"
+        "surface": "#e9e9ec"
       },
       "variant": "light"
     },
@@ -1156,9 +1156,9 @@
       "name": "Ash Light",
       "roles": {
         "accent": "#3f3f3f",
-        "background": "#e1e1e1",
+        "background": "#f5f5f5",
         "ink": "#2b2b2b",
-        "surface": "#d9d9d9"
+        "surface": "#f0f0f0"
       },
       "variant": "light"
     },
@@ -1167,10 +1167,10 @@
       "id": "autumn-light",
       "name": "Autumn Light",
       "roles": {
-        "accent": "#ff860f",
-        "background": "#ede7e1",
+        "accent": "#a95300",
+        "background": "#f8f7f5",
         "ink": "#372b17",
-        "surface": "#e5ddd5"
+        "surface": "#f3f1ee"
       },
       "variant": "light"
     },
@@ -1179,10 +1179,10 @@
       "id": "ayu-mirage-light",
       "name": "Ayu Mirage Light",
       "roles": {
-        "accent": "#996600",
-        "background": "#cfd4e0",
+        "accent": "#916000",
+        "background": "#f4f5f7",
         "ink": "#383933",
-        "surface": "#c9cedb"
+        "surface": "#f0f1f4"
       },
       "variant": "light"
     },
@@ -1191,10 +1191,10 @@
       "id": "berry-nebula-light",
       "name": "Berry Nebula Light",
       "roles": {
-        "accent": "#368393",
-        "background": "#f2e5ff",
-        "ink": "#129393",
-        "surface": "#ebb0e2"
+        "accent": "#2d6f7c",
+        "background": "#fbf8fe",
+        "ink": "#0a5252",
+        "surface": "#f6e8f4"
       },
       "variant": "light"
     },
@@ -1203,10 +1203,10 @@
       "id": "black-gold-light",
       "name": "Black Gold Light",
       "roles": {
-        "accent": "#c8a32b",
-        "background": "#f2f2f2",
+        "accent": "#81691c",
+        "background": "#f6f6f6",
         "ink": "#272317",
-        "surface": "#eaeaea"
+        "surface": "#f2f2f2"
       },
       "variant": "light"
     },
@@ -1215,10 +1215,10 @@
       "id": "blessing-dark",
       "name": "Blessing Dark",
       "roles": {
-        "accent": "#8264a9",
-        "background": "#495100",
-        "ink": "#8264a9",
-        "surface": "#495100"
+        "accent": "#c3b4d5",
+        "background": "#2c3008",
+        "ink": "#c3b4d5",
+        "surface": "#2c3008"
       },
       "variant": "dark"
     },
@@ -1228,9 +1228,9 @@
       "name": "Catppuccin Frappe Light",
       "roles": {
         "accent": "#451961",
-        "background": "#b9bdcf",
+        "background": "#f0f1f4",
         "ink": "#0a1439",
-        "surface": "#a6aabe"
+        "surface": "#e5e6ea"
       },
       "variant": "light"
     },
@@ -1239,10 +1239,10 @@
       "id": "catppuccin-latte-dark",
       "name": "Catppuccin Latte Dark",
       "roles": {
-        "accent": "#5f10c6",
-        "background": "#0a0c10",
-        "ink": "#adafc3",
-        "surface": "#252933"
+        "accent": "#af79f4",
+        "background": "#181b21",
+        "ink": "#b5b7c9",
+        "surface": "#292c34"
       },
       "variant": "dark"
     },
@@ -1251,10 +1251,10 @@
       "id": "catppuccin-macchiato-light",
       "name": "Catppuccin Macchiato Light",
       "roles": {
-        "accent": "#2f095f",
-        "background": "#c5c8db",
+        "accent": "#370b70",
+        "background": "#f0f1f4",
         "ink": "#0a1335",
-        "surface": "#b0b4c9"
+        "surface": "#e5e6eb"
       },
       "variant": "light"
     },
@@ -1263,10 +1263,10 @@
       "id": "catppuccin-mocha-light",
       "name": "Catppuccin Mocha Light",
       "roles": {
-        "accent": "#2d0859",
-        "background": "#d1d1e1",
+        "accent": "#390a70",
+        "background": "#f1f1f4",
         "ink": "#0b1432",
-        "surface": "#bbbcce"
+        "surface": "#e5e5ea"
       },
       "variant": "light"
     },
@@ -1275,10 +1275,10 @@
       "id": "christmas-light",
       "name": "Christmas Light",
       "roles": {
-        "accent": "#ffd700",
-        "background": "#e5f0ea",
+        "accent": "#7c6800",
+        "background": "#f4f8f6",
         "ink": "#0a0f0a",
-        "surface": "#d5e5db"
+        "surface": "#ebf1ed"
       },
       "variant": "light"
     },
@@ -1287,10 +1287,10 @@
       "id": "diwali-light",
       "name": "Diwali Light",
       "roles": {
-        "accent": "#ffd700",
-        "background": "#f5eae5",
+        "accent": "#7a6600",
+        "background": "#f9f6f4",
         "ink": "#171000",
-        "surface": "#edddd5"
+        "surface": "#f4eeeb"
       },
       "variant": "light"
     },
@@ -1299,10 +1299,10 @@
       "id": "dracula-light",
       "name": "Dracula Light",
       "roles": {
-        "accent": "#30066c",
-        "background": "#c9cbd7",
+        "accent": "#340674",
+        "background": "#f5f5f7",
         "ink": "#0d0d07",
-        "surface": "#a5a8bb"
+        "surface": "#ececef"
       },
       "variant": "light"
     },
@@ -1311,10 +1311,10 @@
       "id": "halloween-light",
       "name": "Halloween Light",
       "roles": {
-        "accent": "#e75d00",
-        "background": "#f2f2f2",
+        "accent": "#ad4500",
+        "background": "#f3f3f3",
         "ink": "#171717",
-        "surface": "#e5e5e5"
+        "surface": "#ececec"
       },
       "variant": "light"
     },
@@ -1324,9 +1324,9 @@
       "name": "Hanukkah Light",
       "roles": {
         "accent": "#145b78",
-        "background": "#d7e3f5",
+        "background": "#f1f4f9",
         "ink": "#00050f",
-        "surface": "#c7d7eb"
+        "surface": "#e7ecf3"
       },
       "variant": "light"
     },
@@ -1336,9 +1336,9 @@
       "name": "Ink Light",
       "roles": {
         "accent": "#4c5869",
-        "background": "#d6d6e0",
+        "background": "#fbfbfc",
         "ink": "#21270f",
-        "surface": "#c4bdc5"
+        "surface": "#efeef0"
       },
       "variant": "light"
     },
@@ -1348,9 +1348,9 @@
       "name": "INKPINK Light",
       "roles": {
         "accent": "#930125",
-        "background": "#e4cbf2",
+        "background": "#fcfafd",
         "ink": "#000000",
-        "surface": "#d778ba"
+        "surface": "#f2e2ed"
       },
       "variant": "light"
     },
@@ -1360,9 +1360,9 @@
       "name": "Kanagawa Dragon Light",
       "roles": {
         "accent": "#586176",
-        "background": "#e9e7e7",
+        "background": "#f5f5f5",
         "ink": "#363a36",
-        "surface": "#d8d7d7"
+        "surface": "#ebebeb"
       },
       "variant": "light"
     },
@@ -1371,10 +1371,10 @@
       "id": "kanagawa-lotus-dark",
       "name": "Kanagawa Lotus Dark",
       "roles": {
-        "accent": "#927cb3",
-        "background": "#433d0d",
-        "ink": "#9b9bab",
-        "surface": "#534c23"
+        "accent": "#a796c2",
+        "background": "#29260f",
+        "ink": "#c3c3cc",
+        "surface": "#332f1c"
       },
       "variant": "dark"
     },
@@ -1384,9 +1384,9 @@
       "name": "Kanagawa Wave Light",
       "roles": {
         "accent": "#5d4780",
-        "background": "#d7d7e0",
+        "background": "#f4f4f6",
         "ink": "#454023",
-        "surface": "#c8c8d5"
+        "surface": "#ececef"
       },
       "variant": "light"
     },
@@ -1395,10 +1395,10 @@
       "id": "lava-gb-light",
       "name": "Lava-GB Light",
       "roles": {
-        "accent": "#c53a9d",
-        "background": "#c6e0fa",
+        "accent": "#eacfe2",
+        "background": "#f9fbfd",
         "ink": "#7f0e00",
-        "surface": "#a57fdb"
+        "surface": "#eae3f3"
       },
       "variant": "light"
     },
@@ -1407,10 +1407,10 @@
       "id": "lunar-new-year-light",
       "name": "Lunar New Year Light",
       "roles": {
-        "accent": "#ffd700",
-        "background": "#f5e5e5",
+        "accent": "#776400",
+        "background": "#f9f4f4",
         "ink": "#170f07",
-        "surface": "#ead5d5"
+        "surface": "#f2ebeb"
       },
       "variant": "light"
     },
@@ -1420,9 +1420,9 @@
       "name": "Matte Black Light",
       "roles": {
         "accent": "#3f5f8f",
-        "background": "#ededed",
+        "background": "#f6f6f6",
         "ink": "#171717",
-        "surface": "#e5e5e5"
+        "surface": "#f2f2f2"
       },
       "variant": "light"
     },
@@ -1432,9 +1432,9 @@
       "name": "Midnight Ablaze Light",
       "roles": {
         "accent": "#8b0e00",
-        "background": "#fdecf2",
+        "background": "#fdf9fb",
         "ink": "#8b0e00",
-        "surface": "#fae0eb"
+        "surface": "#fbf2f6"
       },
       "variant": "light"
     },
@@ -1443,10 +1443,10 @@
       "id": "mist-gb-light",
       "name": "Mist GB Light",
       "roles": {
-        "accent": "#46a594",
-        "background": "#ffedd2",
+        "accent": "#d3e6e3",
+        "background": "#fefcf8",
         "ink": "#113d0f",
-        "surface": "#91d3e1"
+        "surface": "#e8f3f5"
       },
       "variant": "light"
     },
@@ -1456,9 +1456,9 @@
       "name": "Modus Operandi Dark",
       "roles": {
         "accent": "#5687ff",
-        "background": "#000000",
+        "background": "#1c1c1c",
         "ink": "#ffffff",
-        "surface": "#0f0c10"
+        "surface": "#252027"
       },
       "variant": "dark"
     },
@@ -1468,9 +1468,9 @@
       "name": "Modus Vivendi Light",
       "roles": {
         "accent": "#002f86",
-        "background": "#ffffff",
+        "background": "#fbfbfb",
         "ink": "#000000",
-        "surface": "#e1e1e1"
+        "surface": "#ececec"
       },
       "variant": "light"
     },
@@ -1480,9 +1480,9 @@
       "name": "Monokai Light",
       "roles": {
         "accent": "#bb0044",
-        "background": "#dcddd7",
+        "background": "#f7f7f6",
         "ink": "#0d0d07",
-        "surface": "#cdccc1"
+        "surface": "#ededea"
       },
       "variant": "light"
     },
@@ -1491,10 +1491,10 @@
       "id": "nintendo-gameboy-light",
       "name": "Nintendo Gameboy Light",
       "roles": {
-        "accent": "#578f3f",
-        "background": "#dfeff7",
+        "accent": "#d9e6d3",
+        "background": "#fafcfd",
         "ink": "#172f07",
-        "surface": "#97cbb9"
+        "surface": "#eaf2ef"
       },
       "variant": "light"
     },
@@ -1503,10 +1503,10 @@
       "id": "oil-6-dark",
       "name": "Oil 6 Dark",
       "roles": {
-        "accent": "#816392",
-        "background": "#100a04",
-        "ink": "#bbbbd8",
-        "surface": "#54350d"
+        "accent": "#ac96b8",
+        "background": "#281c10",
+        "ink": "#c3c3dc",
+        "surface": "#453116"
       },
       "variant": "dark"
     },
@@ -1515,10 +1515,10 @@
       "id": "pico-8-light",
       "name": "PICO-8 Light",
       "roles": {
-        "accent": "#0084d6",
-        "background": "#ffffff",
+        "accent": "#0063a0",
+        "background": "#fbfbfb",
         "ink": "#170900",
-        "surface": "#b0a8a0"
+        "surface": "#dfddda"
       },
       "variant": "light"
     },
@@ -1527,10 +1527,10 @@
       "id": "pitch-black-light",
       "name": "Pitch Black Light",
       "roles": {
-        "accent": "#000000",
-        "background": "#ffffff",
+        "accent": "#3d3d3d",
+        "background": "#fbfbfb",
         "ink": "#000000",
-        "surface": "#f5f5f5"
+        "surface": "#f6f6f6"
       },
       "variant": "light"
     },
@@ -1539,10 +1539,10 @@
       "id": "pollen8-dark",
       "name": "Pollen8 Dark",
       "roles": {
-        "accent": "#a95473",
-        "background": "#291100",
-        "ink": "#b98c92",
-        "surface": "#291100"
+        "accent": "#b7718a",
+        "background": "#301908",
+        "ink": "#c5a0a5",
+        "surface": "#301908"
       },
       "variant": "dark"
     },
@@ -1551,10 +1551,10 @@
       "id": "rose-pine-dawn-dark",
       "name": "Rose Pine Dawn Dark",
       "roles": {
-        "accent": "#8977a7",
-        "background": "#120c05",
-        "ink": "#8b86ad",
-        "surface": "#1e150d"
+        "accent": "#9d8eb5",
+        "background": "#2c2013",
+        "ink": "#bab7ce",
+        "surface": "#30251b"
       },
       "variant": "dark"
     },
@@ -1563,10 +1563,10 @@
       "id": "rose-pine-moon-light",
       "name": "Rose Pine Moon Light",
       "roles": {
-        "accent": "#351858",
-        "background": "#cbc9de",
+        "accent": "#3a1a60",
+        "background": "#fbfbfc",
         "ink": "#0d0b21",
-        "surface": "#b1adca"
+        "surface": "#ebeaf0"
       },
       "variant": "light"
     },
@@ -1575,10 +1575,10 @@
       "id": "rose-pine-light",
       "name": "Rose Pine Light",
       "roles": {
-        "accent": "#351858",
-        "background": "#dddbe8",
+        "accent": "#3a1a60",
+        "background": "#fbfbfc",
         "ink": "#0d0b21",
-        "surface": "#c8c5dc"
+        "surface": "#efeff3"
       },
       "variant": "light"
     },
@@ -1587,10 +1587,10 @@
       "id": "rust-gold-8-light",
       "name": "Rust Gold 8 Light",
       "roles": {
-        "accent": "#d9b009",
-        "background": "#dfdfdf",
-        "ink": "#d9b009",
-        "surface": "#c6c6c6"
+        "accent": "#5d4b03",
+        "background": "#fbfbfb",
+        "ink": "#5d4b03",
+        "surface": "#ececec"
       },
       "variant": "light"
     },
@@ -1599,10 +1599,10 @@
       "id": "slso8-light",
       "name": "SLSO8 Light",
       "roles": {
-        "accent": "#a14c00",
-        "background": "#bad8f2",
+        "accent": "#9a4800",
+        "background": "#f9fbfd",
         "ink": "#291600",
-        "surface": "#9d97b1"
+        "surface": "#dbdae1"
       },
       "variant": "light"
     },
@@ -1611,10 +1611,10 @@
       "id": "st.-patrick's-day-light",
       "name": "St. Patrick's Day Light",
       "roles": {
-        "accent": "#3fffaf",
-        "background": "#e5f5eb",
+        "accent": "#007745",
+        "background": "#f4f9f6",
         "ink": "#070f09",
-        "surface": "#d5eadc"
+        "surface": "#ebf2ed"
       },
       "variant": "light"
     },
@@ -1624,9 +1624,9 @@
       "name": "Summer Beach Dark",
       "roles": {
         "accent": "#6bd4ff",
-        "background": "#0a0805",
+        "background": "#262017",
         "ink": "#afc1d3",
-        "surface": "#1a150f"
+        "surface": "#29231c"
       },
       "variant": "dark"
     },
@@ -1635,10 +1635,10 @@
       "id": "sweet-light",
       "name": "Sweet Light",
       "roles": {
-        "accent": "#2cffd3",
-        "background": "#d0d0e4",
+        "accent": "#00735b",
+        "background": "#f5f5f8",
         "ink": "#0d0d07",
-        "surface": "#bdbdda"
+        "surface": "#ebebf2"
       },
       "variant": "light"
     },
@@ -1647,10 +1647,10 @@
       "id": "tokyo-night-day-dark",
       "name": "Tokyo Night Day Dark",
       "roles": {
-        "accent": "#7342b8",
-        "background": "#18191e",
-        "ink": "#8298db",
-        "surface": "#131316"
+        "accent": "#9e7bcf",
+        "background": "#1d1e22",
+        "ink": "#9eafe3",
+        "surface": "#1b1b1e"
       },
       "variant": "dark"
     },
@@ -1659,10 +1659,10 @@
       "id": "tokyo-night-storm-light",
       "name": "Tokyo Night Storm Light",
       "roles": {
-        "accent": "#290865",
-        "background": "#c4c8db",
+        "accent": "#2e0971",
+        "background": "#f1f2f5",
         "ink": "#0a143f",
-        "surface": "#cacee0"
+        "surface": "#f3f4f7"
       },
       "variant": "light"
     },
@@ -1672,9 +1672,9 @@
       "name": "Tokyo Night Light",
       "roles": {
         "accent": "#482783",
-        "background": "#d9dae5",
+        "background": "#f7f7f9",
         "ink": "#0a143f",
-        "surface": "#c4c8db"
+        "surface": "#edeef2"
       },
       "variant": "light"
     },
@@ -1684,9 +1684,9 @@
       "name": "Twilight 5 Light",
       "roles": {
         "accent": "#791120",
-        "background": "#cfced7",
+        "background": "#fbfbfb",
         "ink": "#521204",
-        "surface": "#a7b3cc"
+        "surface": "#edeff3"
       },
       "variant": "light"
     },
@@ -1695,10 +1695,10 @@
       "id": "valentine-light",
       "name": "Valentine Light",
       "roles": {
-        "accent": "#e13d75",
-        "background": "#f0e5ea",
+        "accent": "#c41e57",
+        "background": "#f8f5f7",
         "ink": "#0f070b",
-        "surface": "#e5d5dd"
+        "surface": "#f1ecef"
       },
       "variant": "light"
     },
@@ -1707,10 +1707,10 @@
       "id": "vinik24-light",
       "name": "Vinik24 Light",
       "roles": {
-        "accent": "#539794",
-        "background": "#ffffff",
+        "accent": "#3d6f6d",
+        "background": "#fbfbfb",
         "ink": "#404733",
-        "surface": "#b9aacb"
+        "surface": "#e8e4ec"
       },
       "variant": "light"
     },
@@ -1720,9 +1720,9 @@
       "name": "White Gold Dark",
       "roles": {
         "accent": "#ffe485",
-        "background": "#010101",
+        "background": "#1d1d1d",
         "ink": "#dbd8d2",
-        "surface": "#0f0d07"
+        "surface": "#2b271a"
       },
       "variant": "dark"
     },
@@ -1731,10 +1731,10 @@
       "id": "winter-frost-light",
       "name": "Winter Frost Light",
       "roles": {
-        "accent": "#0c595a",
-        "background": "#d7dce3",
+        "accent": "#0e6b6c",
+        "background": "#f7f7f9",
         "ink": "#070f17",
-        "surface": "#cad1da"
+        "surface": "#f1f2f4"
       },
       "variant": "light"
     }

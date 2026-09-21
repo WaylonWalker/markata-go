@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +23,7 @@
     (function() {
       var root = document.documentElement;
       var fallbackSize = root.dataset.textSize || 'large';
-      var allowed = { small: true, medium: true, large: true };
+      var allowed = { small: true, medium: true, large: true, 'x-large': true };
       var size = allowed[fallbackSize] ? fallbackSize : 'large';
       var allowVisitorSize = {% if config.theme.show_text_size_control | default:true %}true{% else %}false{% endif %};
       if (allowVisitorSize) {
@@ -56,6 +56,17 @@
 
       document.documentElement.dataset.theme = mode;
       document.documentElement.classList.toggle('dark', mode === 'dark');
+
+      // Pin data-palette to the variant that matches the resolved mode so the
+      // per-palette CSS block agrees with data-theme on first paint.
+      var palettes = {
+        light: '{{ config.Extra.palette_light_effective | default:config.theme.palette }}',
+        dark: '{{ config.Extra.palette_dark_effective | default:config.theme.palette }}'
+      };
+      var modePalette = mode === 'dark' ? palettes.dark : palettes.light;
+      if (modePalette) {
+        document.documentElement.dataset.palette = modePalette;
+      }
     })();
   </script>
 
@@ -755,7 +766,7 @@
       document.body.appendChild(scrollingScript);
 
       // Navigation Shortcuts - load if feed, post cards, or prev/next navigation exist
-      if (document.querySelector('.feed, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
+      if (document.querySelector('.feed, .feed-sidebar, .doc-sidebar, .post-nav, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);

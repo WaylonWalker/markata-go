@@ -98,7 +98,48 @@ func (l *Loader) Load(name string) (*Palette, error) {
 		return p.Clone(), nil
 	}
 
+	// Derive a counterpart when "<base>-light"/"<base>-dark" is requested for
+	// a palette that only ships the opposite variant.
+	if p := l.loadDerived(name); p != nil {
+		l.cache[name] = p
+		return p.Clone(), nil
+	}
+
 	return nil, NewPaletteLoadError(name, "", "palette not found in any search path", ErrPaletteNotFound)
+}
+
+// hasExplicit reports whether name resolves to a real palette (file, dynamic,
+// or built-in) rather than a derived counterpart.
+func (l *Loader) hasExplicit(name string) bool {
+	if _, ok := l.dynamic[name]; ok {
+		return true
+	}
+	for i := len(l.paths) - 1; i >= 0; i-- {
+		if _, err := l.loadFromPath(name, l.paths[i]); err == nil {
+			return true
+		}
+	}
+	return HasBuiltin(name)
+}
+
+// loadDerived returns the derived counterpart for a suffixed palette name, or
+// nil when the name has no variant suffix or its base palette is missing or
+// already of the requested variant.
+func (l *Loader) loadDerived(name string) *Palette {
+	base, variant, ok := IsDerivedCounterpart(name)
+	if !ok || base == "" {
+		return nil
+	}
+	basePalette, err := l.Load(base)
+	if err != nil || basePalette.Variant == variant {
+		return nil
+	}
+	derived := DeriveCounterpart(basePalette)
+	derived.Source = basePalette.Source
+	if derived.Source == "" {
+		derived.Source = sourceBuiltIn
+	}
+	return derived
 }
 
 // loadFromPath attempts to load a palette from a specific path.
@@ -194,6 +235,38 @@ func (l *Loader) Discover() ([]PaletteInfo, error) {
 		}
 		for _, info := range pathInfos {
 			infos[info.Name] = info // Override with higher priority
+		}
+	}
+
+	// Every family exposes both modes: add a derived counterpart for palettes
+	// that have no explicit opposite-variant partner.
+	for name, info := range infos {
+		if info.Variant != VariantLight && info.Variant != VariantDark {
+			continue
+		}
+		explicit := explicitVariantsWithLoader(normalizeFileName(name), l)
+		partner := explicit.Dark
+		if info.Variant == VariantDark {
+			partner = explicit.Light
+		}
+		if partner != "" {
+			continue
+		}
+		derivedName := CounterpartName(normalizeFileName(name), oppositeVariant(info.Variant))
+		if _, exists := infos[derivedName]; exists {
+			continue
+		}
+		p, err := l.Load(derivedName)
+		if err != nil {
+			continue
+		}
+		infos[derivedName] = PaletteInfo{
+			Name:        p.Name,
+			Variant:     p.Variant,
+			Description: p.Description,
+			Author:      p.Author,
+			Source:      p.Source,
+			Derived:     true,
 		}
 	}
 

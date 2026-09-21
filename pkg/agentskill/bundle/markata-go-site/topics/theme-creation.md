@@ -91,10 +91,12 @@ The contract uses normalized numeric dials. `color_mix`, `row_offset`,
 values from the contract for palettes, aesthetics, textures, heading textures,
 motifs, motif colors, motif layers, and scopes.
 
-The default theme's reading presets are `small`, `medium`, and `large`.
-`text_size = "large"` selects the default 18px site base, 22px article text
-and a 64ch measure (`--content-width` is in `ch`, so it tracks the article
-font size). Set `show_text_size_control = false` to hide the visitor selector
+The default theme's reading presets are `small`, `medium`, `large`, and
+`x-large`. `text_size = "large"` selects the default 18px site base, 22px
+article text and a 64ch measure (`--content-width` is in `ch`, so it tracks
+the article font size). Article text also scales with `--reading-scale` on
+wide viewports (1.08x at ≥1800px, 1.16x at ≥2200px, 1.25x at ≥3000px), so do
+not add breakpoint overrides for large monitors. Set `show_text_size_control = false` to hide the visitor selector
 while keeping the configured default. Visitor selections are saved per site in
 browser-local storage. Do not add `--text-base` or `--content-width`
 overrides just to make articles "readable"; the presets already target a
@@ -108,7 +110,7 @@ full-width rules. Radii follow `--radius-sm`/`--radius`/`--radius-lg`/
 `--radius-xl`. Prefer adjusting these tokens over re-styling components.
 
 On wide screens (>= 1201px) the feed and document sidebars are fixed drawers
-opened from a vertical edge handle (or `[` / `]`); they never open on hover
+opened from a vertical edge handle (or `b` / `Shift+B`); they never open on hover
 and the open state is remembered per side. Below that width the feed sidebar
 becomes a collapsible bar above the article. If a site's custom CSS positions
 `.feed-sidebar` or `.doc-sidebar`, remove it and rely on the theme.
@@ -142,8 +144,14 @@ instead of styling individual selectors. For a site-local palette, read
 
 When adding a shared palette, add its family, ID, variant, and roles to
 `contract-v1.json` first. Add the light and dark members in the same change
-when the family supports both variants. Regenerate all projections before
-using the new ID.
+when the family supports both variants; single-variant palettes get a derived
+`<id>-light`/`<id>-dark` counterpart automatically (sync its contract roles
+with `go run ./scripts/rendering-contract --derive-palettes`). Regenerate all
+projections before using the new ID.
+
+Every palette has a working light/dark toggle. Do not add `palette_light` or
+`palette_dark` just to "enable" light mode; only set them to choose a
+different hand-tuned partner than the derived one.
 
 ```bash
 go run ./scripts/rendering-contract

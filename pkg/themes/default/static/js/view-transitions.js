@@ -1298,7 +1298,7 @@
 
   // ── Sidebar drawers (desktop ≥ 1201px) ──
   // Drawers open only on explicit action: the edge handle (.sidebar-toggle),
-  // the [ / ] shortcuts, or keyboard focus. Open state is remembered per side
+  // the b / B shortcuts, or keyboard focus. Open state is remembered per side
   // in localStorage so a reader who wants the series list keeps it.
   var SIDEBAR_STORAGE_PREFIX = 'markata-sidebar:';
 
@@ -1406,7 +1406,7 @@
   };
 
   // ── Keyboard shortcuts to open/close sidebars ──
-  // [ = toggle left drawer, ] = toggle right drawer
+  // b = toggle left drawer, B = toggle right drawer
   // Registered via shortcuts registry in navigation-shortcuts.js.
   window.toggleSidebarPinned = function(side) {
     if (window.innerWidth < 1201) return;

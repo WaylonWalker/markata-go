@@ -904,7 +904,7 @@ main.content-bg {
 /* Post Styles */
 .post {
   max-width: var(--content-width);
-  font-size: var(--post-text-size, var(--text-xl));
+  font-size: calc(var(--post-text-size, var(--text-xl)) * var(--reading-scale, 1));
   margin: 0 auto;
 }
 
