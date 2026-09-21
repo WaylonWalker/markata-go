@@ -1593,7 +1593,7 @@ func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
 		Enabled:          true,
 		Mode:             "client",
-		CDNURL:           "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:           "/assets/vendor/mermaid/mermaid.min.js",
 		Theme:            "default",
 		UseCSSVariables:  true,
 		Lightbox:         true,

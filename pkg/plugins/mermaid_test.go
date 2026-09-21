@@ -42,7 +42,7 @@ func TestMermaidPlugin_DefaultConfig(t *testing.T) {
 	if !config.Enabled {
 		t.Error("expected Enabled to be true by default")
 	}
-	if config.CDNURL != "/assets/vendor/mermaid/mermaid.esm.min.mjs" {
+	if config.CDNURL != "/assets/vendor/mermaid/mermaid.min.js" {
 		t.Errorf("unexpected default CDN URL: %q", config.CDNURL)
 	}
 	if config.Theme != "default" {
@@ -62,14 +62,14 @@ func TestMermaidPlugin_Configure(t *testing.T) {
 			name:        "no config",
 			extra:       nil,
 			wantEnabled: true,
-			wantCDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+			wantCDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 			wantTheme:   "default",
 		},
 		{
 			name:        "empty extra",
 			extra:       map[string]interface{}{},
 			wantEnabled: true,
-			wantCDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+			wantCDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 			wantTheme:   "default",
 		},
 		{
@@ -93,7 +93,7 @@ func TestMermaidPlugin_Configure(t *testing.T) {
 				},
 			},
 			wantEnabled: true,
-			wantCDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+			wantCDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 			wantTheme:   "forest",
 		},
 		{
@@ -104,7 +104,7 @@ func TestMermaidPlugin_Configure(t *testing.T) {
 				},
 			},
 			wantEnabled: false,
-			wantCDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+			wantCDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 			wantTheme:   "default",
 		},
 	}
@@ -518,7 +518,7 @@ func TestMermaidPlugin_CustomTheme(t *testing.T) {
 	p.SetConfig(models.MermaidConfig{
 		Enabled:         true,
 		Mode:            "client",
-		CDNURL:          "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:          "/assets/vendor/mermaid/mermaid.min.js",
 		Theme:           "dark",
 		UseCSSVariables: false,
 	})
@@ -865,7 +865,7 @@ func TestMermaidPlugin_CLIMode_Fallback(t *testing.T) {
 		Enabled: true,
 		Mode:    "cli",
 		Theme:   "default",
-		CDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 		CLIConfig: &models.CLIRendererConfig{
 			// Use a non-existent path to force fallback
 			MMDCPath:  "/nonexistent/mmdc",
@@ -899,7 +899,7 @@ func TestMermaidPlugin_ChromiumMode_Fallback(t *testing.T) {
 		Enabled: true,
 		Mode:    "chromium",
 		Theme:   "default",
-		CDNURL:  "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:  "/assets/vendor/mermaid/mermaid.min.js",
 		ChromiumConfig: &models.ChromiumRendererConfig{
 			// Use a non-existent path to force fallback
 			BrowserPath:   "/nonexistent/chrome",
@@ -935,7 +935,7 @@ func TestMermaidPlugin_InvalidMode_DefaultsToClient(t *testing.T) {
 		Mode:            "invalid", // Invalid mode
 		Theme:           "dark",
 		UseCSSVariables: false,
-		CDNURL:          "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:          "/assets/vendor/mermaid/mermaid.min.js",
 	})
 
 	post := &models.Post{
@@ -966,7 +966,7 @@ func TestMermaidPlugin_MultipleModesInPost(t *testing.T) {
 		Mode:            "client",
 		Theme:           "dark",
 		UseCSSVariables: false,
-		CDNURL:          "/assets/vendor/mermaid/mermaid.esm.min.mjs",
+		CDNURL:          "/assets/vendor/mermaid/mermaid.min.js",
 	})
 
 	post := &models.Post{

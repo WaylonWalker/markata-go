@@ -30,7 +30,7 @@ func TestGetAsset(t *testing.T) {
 		{"existing asset", "glightbox-js", false},
 		{"existing css", "glightbox-css", false},
 		{"htmx", "htmx", false},
-		{"mermaid", "mermaid-esm", false},
+		{"mermaid", "mermaid", false},
 		{"non-existent", "non-existent-asset", true},
 	}
 
@@ -104,8 +104,7 @@ func TestAssetNames(t *testing.T) {
 		"glightbox-js":         true,
 		"glightbox-css":        true,
 		"htmx":                 true,
-		"mermaid-esm":          true,
-		"mermaid-chunk":        true,
+		"mermaid":              true,
 		"chartjs":              true,
 		"svg-pan-zoom":         true,
 		"d3":                   true,

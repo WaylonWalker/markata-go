@@ -95,10 +95,8 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
-	if config.Extra != nil {
-		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
-			return nil
-		}
+	if hashedAssetReadyInFastMode(m, "css/aesthetic.css") {
+		return nil
 	}
 
 	aestheticName := p.getAestheticConfig(config.Extra)
@@ -361,6 +359,11 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	if theme.Fontpack == "" {
 		theme.Fontpack = renderingFontpackBrush
 	}
+	// Site-local palettes (./palettes) are not part of the rendering contract,
+	// so the compiled motif bundle is skipped; the legacy CSS projection is used.
+	if !contractHasPalette(theme.Palette) {
+		return renderingrecipe.Bundle{}, nil
+	}
 	// An omitted texture is the canonical no-op. Keep the other supported
 	// projections compilable: the heading wear and motif passes are independent
 	// of the surface texture pass.
@@ -394,6 +397,47 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 		return renderingrecipe.Bundle{}, fmt.Errorf("compile motif bundle: %w", err)
 	}
 	return bundle, nil
+}
+
+// hashedAssetReadyInFastMode reports whether a fast (incremental) build can
+// skip regenerating a hashed CSS asset because the file from a previous build
+// is already present in the output directory.
+func hashedAssetReadyInFastMode(m *lifecycle.Manager, asset string) bool {
+	config := m.Config()
+	if config == nil || config.Extra == nil {
+		return false
+	}
+	fast, ok := config.Extra["fast_mode"].(bool)
+	if !ok || !fast {
+		return false
+	}
+	hash := m.GetAssetHash(asset)
+	if hash == "" {
+		return false
+	}
+	base := strings.TrimSuffix(asset, filepath.Ext(asset))
+	hashed := filepath.Join(config.OutputDir, filepath.FromSlash(fmt.Sprintf("%s.%s%s", base, hash, filepath.Ext(asset))))
+	_, err := os.Stat(hashed)
+	return err == nil
+}
+
+func contractHasPalette(id string) bool {
+	if id == "" {
+		return true
+	}
+	contract, err := renderingcontract.Load()
+	if err != nil {
+		return false
+	}
+	if alias, ok := contract.Aliases[id]; ok {
+		id = alias
+	}
+	for _, palette := range contract.Palettes {
+		if palette.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveMotifPaint(contract renderingcontract.Contract, theme models.ThemeConfig, mix float64) string {

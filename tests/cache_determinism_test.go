@@ -57,6 +57,22 @@ func (s *cacheSite) buildWithCache() {
 // If configContent is empty, a default config is written.
 func (s *cacheSite) buildWithCacheAndConfig(configContent string) {
 	s.t.Helper()
+	s.buildWithCacheConfigAndExtra(configContent, nil)
+}
+
+// buildFast runs a build with the same flags the CLI applies for `build --fast`.
+func (s *cacheSite) buildFast() {
+	s.t.Helper()
+	s.buildWithCacheConfigAndExtra("", map[string]interface{}{
+		"fast_mode":         true,
+		"blogroll_disabled": true,
+		"mentions_disabled": true,
+		"feeds_incremental": true,
+	})
+}
+
+func (s *cacheSite) buildWithCacheConfigAndExtra(configContent string, extra map[string]interface{}) {
+	s.t.Helper()
 
 	if configContent == "" {
 		configContent = s.defaultConfig()
@@ -93,6 +109,9 @@ func (s *cacheSite) buildWithCacheAndConfig(configContent string) {
 	cfg.Extra["url"] = "https://example.com"
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
+	for key, value := range extra {
+		cfg.Extra[key] = value
+	}
 	m.SetConfig(cfg)
 
 	// Register all default plugins
@@ -1580,5 +1599,110 @@ Python post content.`)
 	diffs := compareOutputDirs(t, coldSnapshot, hotSnapshot)
 	if len(diffs) > 0 {
 		t.Errorf("cold vs hot cache output with all feed formats differs:\n%s", strings.Join(diffs, "\n"))
+	}
+}
+
+// TestCacheDeterminism_Homepage_SurvivesFastAndWarmBuilds guards two regressions:
+// the explicit-empty-slug homepage was never rendered in fast (incremental)
+// builds because it was excluded from the affected-path set, and warm builds
+// removed output/index.html because its cached output path mapped to slug ".".
+func TestCacheDeterminism_Homepage_SurvivesFastAndWarmBuilds(t *testing.T) {
+	site := newCacheSite(t)
+	site.addPost("index.md", `---
+title: Home
+slug: ""
+published: true
+date: 2024-01-01
+---
+Welcome home.`)
+	site.addPost("other.md", `---
+title: Other
+published: true
+date: 2024-01-01
+---
+Other post.`)
+
+	homepage := filepath.Join(site.outputDir, "index.html")
+	for i, step := range []struct {
+		name  string
+		build func()
+	}{
+		{"cold fast", site.buildFast},
+		{"warm fast", site.buildFast},
+		{"warm full", site.buildWithCache},
+		{"warm fast after full", site.buildFast},
+	} {
+		step.build()
+		data, err := os.ReadFile(homepage)
+		if err != nil {
+			t.Fatalf("step %d (%s): homepage missing: %v", i, step.name, err)
+		}
+		if !strings.Contains(string(data), "Welcome home.") {
+			t.Fatalf("step %d (%s): homepage content missing", i, step.name)
+		}
+		if _, err := os.Stat(filepath.Join(site.outputDir, ".md")); err == nil {
+			t.Fatalf("step %d (%s): stray output/.md written", i, step.name)
+		}
+	}
+}
+
+func TestBuild_EmptyBodyPublishedPostStillGetsPage(t *testing.T) {
+	site := newCacheSite(t)
+	site.addPost("empty.md", `---
+title: Empty Body
+published: true
+date: 2024-01-01
+---
+`)
+	site.addPost("other.md", `---
+title: Other
+published: true
+date: 2024-01-01
+---
+Other post.`)
+
+	site.buildWithCache()
+
+	page := filepath.Join(site.outputDir, "empty", "index.html")
+	data, err := os.ReadFile(page)
+	if err != nil {
+		t.Fatalf("expected a page for the empty-body post: %v", err)
+	}
+	if !strings.Contains(string(data), "Empty Body") {
+		t.Fatalf("empty-body page should still render its title, got %d bytes", len(data))
+	}
+}
+
+// TestBuild_EmbeddedVendorAssetsServedAtDocumentedPath guards that the default
+// theme's vendored JS lands under /assets/vendor/, which is the path used by
+// the mermaid, chartjs and cal-heatmap default cdn_url values and by the
+// template fallbacks for htmx and glightbox.
+func TestBuild_EmbeddedVendorAssetsServedAtDocumentedPath(t *testing.T) {
+	site := newCacheSite(t)
+	site.addPost("diagram.md", `---
+title: Diagram
+published: true
+date: 2024-01-01
+---
+`+"```mermaid\ngraph TD\nA-->B\n```\n")
+
+	site.buildWithCache()
+
+	for _, rel := range []string{
+		"assets/vendor/mermaid/mermaid.min.js",
+		"assets/vendor/htmx/htmx.min.js",
+		"assets/vendor/glightbox/glightbox.min.js",
+	} {
+		if _, err := os.Stat(filepath.Join(site.outputDir, rel)); err != nil {
+			t.Errorf("expected vendored asset %s in output: %v", rel, err)
+		}
+	}
+
+	page, err := os.ReadFile(filepath.Join(site.outputDir, "diagram", "index.html"))
+	if err != nil {
+		t.Fatalf("reading diagram page: %v", err)
+	}
+	if !strings.Contains(string(page), "/assets/vendor/mermaid/mermaid.min.js") {
+		t.Fatalf("diagram page should import mermaid from the vendored path")
 	}
 }

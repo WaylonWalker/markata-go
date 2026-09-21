@@ -175,7 +175,14 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 		}
 	}
 
-	reader.Advance(len(line))
+	// Stop before the trailing newline. If Open advanced onto the next line,
+	// goldmark would try child parsers on it before Continue strips the
+	// 4-space indent, turning the first body line into an indented code block.
+	consume := len(line)
+	if consume > 0 && line[consume-1] == '\n' {
+		consume--
+	}
+	reader.Advance(consume)
 
 	return NewAdmonition(adType, title, collapsible, defaultOpen, position), parser.HasChildren
 }

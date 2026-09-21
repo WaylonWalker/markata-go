@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -643,5 +645,35 @@ func TestValidateConfigWithPositions_NilConfig(t *testing.T) {
 
 	if configErrors.Errors[0].Field != "config" {
 		t.Errorf("Expected 'config' field, got %q", configErrors.Errors[0].Field)
+	}
+}
+
+func TestValidateConfig_CustomProjectPalette(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "palettes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	palette := "[palette]\nname = \"Custom\"\nvariant = \"dark\"\n\n[palette.colors]\nbg = \"#101112\"\ntext = \"#e0e1e2\"\naccent = \"#778899\"\n\n[palette.semantic]\nbg-primary = \"bg\"\ntext-primary = \"text\"\naccent = \"accent\"\nlink = \"accent\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "palettes", "custom-dark.toml"), []byte(palette), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	config := &models.Config{URL: "https://example.com", Concurrency: 1}
+	config.Theme.Palette = "custom-dark"
+	if errs := ValidateConfig(config); HasErrors(errs) {
+		t.Errorf("custom project palette rejected: %v", errs)
+	}
+
+	config.Theme.Palette = "definitely-missing"
+	if errs := ValidateConfig(config); !HasErrors(errs) {
+		t.Error("expected unknown palette error")
 	}
 }

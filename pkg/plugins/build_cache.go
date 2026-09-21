@@ -138,9 +138,10 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
 	slugByPath := make(map[string]string, len(posts))
 	for _, post := range posts {
-		// Empty slugs cannot participate in slug-based dependency expansion. They
-		// retain the existing per-plugin cache checks for their own output.
-		if post.Skip || post.Path == "" || post.Slug == "" || post.InputHash == "" {
+		// Empty slugs (the homepage) cannot participate in slug-based dependency
+		// expansion, but they must still be marked affected when their input
+		// changes, otherwise incremental/fast builds never render them.
+		if post.Skip || post.Path == "" || post.InputHash == "" {
 			continue
 		}
 		batch = append(batch, struct{ Path, InputHash, Template string }{

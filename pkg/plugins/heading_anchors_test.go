@@ -165,6 +165,24 @@ func TestHeadingAnchorsPlugin_BasicHeading(t *testing.T) {
 	}
 }
 
+func TestHeadingAnchorsPlugin_SkipsEmbeddedCardTitles(t *testing.T) {
+	p := NewHeadingAnchorsPlugin()
+	p.SetLevelRange(1, 6)
+
+	card := `<h2 class="card-title p-name"><a class="u-url" href="/post/">Post</a></h2>`
+	post := &models.Post{ArticleHTML: card + `<h2>Real Heading</h2>`}
+
+	if err := p.processPost(post); err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+	if !strings.Contains(post.ArticleHTML, card) {
+		t.Errorf("card title was modified: %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `<a href="#real-heading" class="heading-anchor">`) {
+		t.Errorf("real heading should still get an anchor: %q", post.ArticleHTML)
+	}
+}
+
 func TestWrapHeadingGlyphText_PreservesInlineMarkupAndWearsRegularLinks(t *testing.T) {
 	input := `plain <strong>strong</strong> <em>emphasis</em> <code>code</code> <mark>highlight</mark> <a href="https://example.com">linked</a>`
 	got := wrapHeadingGlyphText(input)

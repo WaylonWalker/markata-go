@@ -352,8 +352,9 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	var postsNeedingRender []*models.Post
 
 	for _, post := range m.Posts() {
-		// Skip posts marked to skip or without article HTML
-		if post.Skip || post.ArticleHTML == "" {
+		// Skip posts marked to skip. Posts with an empty body still get a page
+		// (title, metadata, feed membership) so feed links never dangle.
+		if post.Skip {
 			continue
 		}
 

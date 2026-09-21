@@ -221,6 +221,12 @@ func (p *HeadingAnchorsPlugin) processHeading(match string, idCounts map[string]
 		return match
 	}
 
+	// Skip feed card titles embedded in article content via render_feed();
+	// they are already links and must not gain ids or anchor glyphs.
+	if strings.Contains(attrs, "card-title") {
+		return match
+	}
+
 	// Parse level
 	level := int(levelStr[0] - '0')
 	if level < p.minLevel || level > p.maxLevel {

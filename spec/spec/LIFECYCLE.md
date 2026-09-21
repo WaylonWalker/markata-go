@@ -677,6 +677,12 @@ def render(core):
 **After this stage:**
 - `post.article_html` - rendered HTML content (without template)
 
+**Which posts are rendered:** every post with `skip == false`. An empty body
+is not a reason to skip; a published post whose Markdown body is empty still
+gets a full page (title, metadata, template chrome) so that feed cards and
+links pointing at it never 404. Only `skip` (set explicitly or by the
+publishing rules) removes a post from rendering.
+
 ---
 
 ## Stage 11: `post_render`

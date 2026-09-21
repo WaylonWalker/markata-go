@@ -539,8 +539,7 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 	} else {
 		script = `
 <script type="module">
-  import mermaid from '` + p.resolveAssetURL("mermaid-esm", p.config.CDNURL) + `';
-` + p.mermaidLightboxJS() + `
+` + p.mermaidImportJS() + p.mermaidLightboxJS() + `
   mermaid.initialize({ startOnLoad: false, theme: '` + p.config.Theme + `' });
   window.initMermaid = async () => {
     try {
@@ -565,7 +564,7 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 func (p *MermaidPlugin) cssVariablesScript() string {
 	return `
 <script type="module">
-  import mermaid from '` + p.resolveAssetURL("mermaid-esm", p.config.CDNURL) + `';
+` + p.mermaidImportJS() + `
   const rootStyle = getComputedStyle(document.documentElement);
   const css = (name, fallback) => (rootStyle.getPropertyValue(name) || fallback).trim();
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
@@ -618,11 +617,56 @@ func (p *MermaidPlugin) cssVariablesScript() string {
 </script>`
 }
 
+// mermaidScriptURL returns the URL the client-mode script loads Mermaid from.
+// A self-hosted asset URL (from the cdn_assets plugin) takes precedence over
+// the configured cdn_url.
+func (p *MermaidPlugin) mermaidScriptURL() string {
+	if url := p.resolveAssetURL("mermaid", ""); url != "" {
+		return url
+	}
+	return p.resolveAssetURL("mermaid-esm", p.config.CDNURL)
+}
+
+// isESModuleURL reports whether a Mermaid URL points at an ES module build.
+// The default vendored bundle is the self-contained UMD build; the ESM build
+// lazily imports per-diagram chunks and only works when the full dist
+// directory is served alongside it (e.g. from a CDN).
+func isESModuleURL(url string) bool {
+	path := url
+	if i := strings.IndexAny(path, "?#"); i >= 0 {
+		path = path[:i]
+	}
+	return strings.HasSuffix(path, ".mjs") || strings.Contains(path, ".esm.")
+}
+
+// mermaidImportJS returns JavaScript that binds a `mermaid` constant inside a
+// module script, using a static import for ESM URLs and a classic script tag
+// (resolving to window.mermaid) for UMD bundles.
+func (p *MermaidPlugin) mermaidImportJS() string {
+	url := p.mermaidScriptURL()
+	if isESModuleURL(url) {
+		return `  import mermaid from '` + url + `';
+`
+	}
+	return `  const mermaid = await (async () => {
+    if (window.mermaid) return window.mermaid;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = '` + url + `';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('failed to load mermaid from ' + s.src));
+      document.head.appendChild(s);
+    });
+    return window.mermaid;
+  })();
+`
+}
+
 // mermaidLightboxJS returns the shared JavaScript for mermaid diagram lightbox
 // with svg-pan-zoom support. This is used by both the standard and CSS variables
 // code paths.
 func (p *MermaidPlugin) mermaidLightboxJS() string {
-	svgPanZoomURL := p.resolveAssetURL("svg-pan-zoom", "https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js")
+	svgPanZoomURL := p.resolveAssetURL("svg-pan-zoom", "/assets/vendor/svg-pan-zoom/svg-pan-zoom.min.js")
 	return `
   const SVG_PAN_ZOOM_CDN = '` + svgPanZoomURL + `';
   let mermaidLightbox = null;

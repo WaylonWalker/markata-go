@@ -1079,46 +1079,47 @@
   }
 
   /* ---- Ghosted/muted sidebars when hovering article ----
-     When hovering the article itself (not the full main-content area),
-     slide sidebars into view at reduced opacity so users see navigation
-     is available without it dominating the reading experience. */
+     Only at widths where both drawers fit beside the article column;
+     below that the peeking drawer would cover the first characters of
+     every line. Edge-hover and pinning still work from 1201px. */
+  @media (min-width: 1600px) {
+    /* Catch left sidebars (they appear before .main-content in DOM) */
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--left,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--left,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--left {
+      opacity: 0.4;
+      transform: translateX(0);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.4s ease;
+      transition-delay: 0s;
+    }
 
-  /* Catch left sidebars (they appear before .main-content in DOM) */
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--left,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--left,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--left {
-    opacity: 0.4;
-    transform: translateX(0);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.4s ease;
-    transition-delay: 0s;
-  }
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--right,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--right,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--right {
+      opacity: 0.4;
+      transform: translateX(0);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.4s ease;
+      transition-delay: 0s;
+    }
 
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--right,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--right,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--right {
-    opacity: 0.4;
-    transform: translateX(0);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.4s ease;
-    transition-delay: 0s;
-  }
-
-  /* When directly hovering the sidebar itself, go full opacity */
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--left:hover,
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--left:focus-within,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--left:hover,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--left:focus-within,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--left:hover,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--left:focus-within,
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--right:hover,
-  .page-wrapper:has(article.post:hover) > .feed-sidebar--right:focus-within,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--right:hover,
-  .page-wrapper:has(article.post:hover) > .doc-sidebar--right:focus-within,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--right:hover,
-  .page-wrapper:has(article.post:hover) > .content-sidebar--right:focus-within {
-    opacity: 1;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    /* When directly hovering the sidebar itself, go full opacity */
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--left:hover,
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--left:focus-within,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--left:hover,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--left:focus-within,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--left:hover,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--left:focus-within,
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--right:hover,
+    .page-wrapper:has(article.post:hover) > .feed-sidebar--right:focus-within,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--right:hover,
+    .page-wrapper:has(article.post:hover) > .doc-sidebar--right:focus-within,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--right:hover,
+    .page-wrapper:has(article.post:hover) > .content-sidebar--right:focus-within {
+      opacity: 1;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
   }
 
   /* ---- Feed sidebar specifics ---- */
@@ -1225,7 +1226,6 @@
     opacity: 0;
     transition: opacity 0.15s ease;
   }
-}
 
 /* ---- Keyboard-pinned sidebars ----
    Toggled via [ and ] keys. Pinned sidebars stay fully visible

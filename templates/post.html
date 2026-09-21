@@ -10,10 +10,10 @@
 
 {# Alternate format links #}
 {% if config.post_formats.markdown %}
-<link rel="alternate" type="text/markdown" title="Markdown Source" href="/{{ post.slug }}.md">
+<link rel="alternate" type="text/markdown" title="Markdown Source" href="/{{ post.slug|default:"index" }}.md">
 {% endif %}
 {% if config.post_formats.text %}
-<link rel="alternate" type="text/plain" title="Plain Text" href="/{{ post.slug }}.txt">
+<link rel="alternate" type="text/plain" title="Plain Text" href="/{{ post.slug|default:"index" }}.txt">
 {% endif %}
 {% if config.post_formats.og %}
 <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">

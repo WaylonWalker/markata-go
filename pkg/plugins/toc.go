@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"html"
 	"regexp"
 	"strings"
 	"unicode"
@@ -152,7 +153,7 @@ func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 
 	for _, match := range matches {
 		level := len(match[1])
-		text := strings.TrimSpace(match[2])
+		text := cleanHeadingText(match[2])
 
 		// Skip headings outside our level range
 		if level < p.minLevel || level > p.maxLevel {
@@ -176,6 +177,41 @@ func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 
 	// Build hierarchical structure
 	return p.buildHierarchy(headings)
+}
+
+var (
+	// tocHTMLTagRegex matches HTML tags such as resolved wikilinks (<a class="wikilink">).
+	tocHTMLTagRegex = regexp.MustCompile(`<[^>]+>`)
+	// tocMarkdownLinkRegex matches [text](url) and ![alt](src), keeping the text.
+	tocMarkdownLinkRegex = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
+	// tocWikilinkRegex matches unresolved [[target]] or [[target|alias]].
+	tocWikilinkRegex = regexp.MustCompile(`\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]`)
+	// tocHeadingAttrRegex matches a trailing {#id .class} attribute block.
+	tocHeadingAttrRegex = regexp.MustCompile(`\s*\{[^}]*\}\s*$`)
+	// tocInlineMarkupRegex matches emphasis, code, strike and mark delimiters.
+	tocInlineMarkupRegex = regexp.MustCompile("[*_`~=]+")
+	// tocWhitespaceRegex collapses runs of whitespace.
+	tocWhitespaceRegex = regexp.MustCompile(`\s+`)
+)
+
+// cleanHeadingText reduces a markdown heading line to its visible text so the
+// TOC never shows raw HTML or markdown syntax. Earlier Transform plugins
+// (wikilinks, jinja_md) may already have rewritten inline markup to HTML.
+func cleanHeadingText(raw string) string {
+	text := tocHeadingAttrRegex.ReplaceAllString(raw, "")
+	text = tocHTMLTagRegex.ReplaceAllString(text, "")
+	text = tocMarkdownLinkRegex.ReplaceAllString(text, "$1")
+	text = tocWikilinkRegex.ReplaceAllStringFunc(text, func(m string) string {
+		parts := tocWikilinkRegex.FindStringSubmatch(m)
+		if parts[2] != "" {
+			return parts[2]
+		}
+		return parts[1]
+	})
+	text = tocInlineMarkupRegex.ReplaceAllString(text, "")
+	text = html.UnescapeString(text)
+	text = tocWhitespaceRegex.ReplaceAllString(text, " ")
+	return strings.TrimSpace(text)
 }
 
 // generateID creates a URL-safe ID from heading text.

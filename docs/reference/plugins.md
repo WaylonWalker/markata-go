@@ -3699,7 +3699,7 @@ jinja: true
 [markata-go.mermaid]
 enabled = true                                              # Enabled by default; set to false to disable
 mode = "client"                                             # "client", "cli", or "chromium"
-cdn_url = "/assets/vendor/mermaid/mermaid.esm.min.mjs"      # Mermaid URL (client mode, local by default)
+cdn_url = "/assets/vendor/mermaid/mermaid.min.js"      # Mermaid URL (client mode, local by default)
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
 use_css_variables = true                                    # Derive diagram colors from site CSS palette (default: true)
 lightbox = true                                             # Click diagrams to open in lightbox with pan/zoom (default: true)
@@ -3722,7 +3722,7 @@ no_sandbox = false                                          # Required in contai
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid processing is active |
 | `mode` | string | `"client"` | Rendering mode: `client` (browser-side JS), `cli` (mmdc), or `chromium` (headless Chrome) |
-| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.esm.min.mjs` | Mermaid URL (client mode, local by default) |
+| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.min.js` | Mermaid URL (client mode, local by default) |
 | `theme` | string | `"default"` | Mermaid theme: default, dark, forest, neutral. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Read site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and pass them to Mermaid's theming. Hardcoded fallbacks are used if variables are not defined. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
@@ -3774,10 +3774,19 @@ graph TD
 </pre>
 
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  // Loads the vendored UMD bundle (/assets/vendor/mermaid/mermaid.min.js)
+  // and binds it to `mermaid`; ESM URLs are imported directly instead.
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  await mermaid.run();
 </script>
 ```
+
+`cdn_url` accepts either bundle style. URLs ending in `.mjs` (or containing
+`.esm.`) are loaded with an ES module `import`; anything else is loaded as a
+classic script and read from `window.mermaid`. The default is the vendored,
+self-contained UMD build. The ESM build lazily fetches per-diagram chunks from
+the same directory, so only point `cdn_url` at an `.mjs` file when the full
+`dist/` directory is served alongside it (for example a CDN URL).
 
 When `lightbox` is enabled, each rendered SVG also gets a click handler that opens a GLightbox overlay. The lightbox contains a toolbar with Fit / + / - controls and supports mouse wheel zoom and click-drag panning via svg-pan-zoom.
 

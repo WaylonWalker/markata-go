@@ -1259,10 +1259,10 @@ func TestRenderMarkdownPlugin_DetectCSSRequirements(t *testing.T) {
 			wantCodeCSS:        true,
 		},
 		{
-			name:               "admonition - needs admonitions CSS (and code CSS due to indented content)",
+			name:               "admonition - needs admonitions CSS only",
 			content:            "!!! note \"Note\"\n    This is a note admonition.",
 			wantAdmonitionsCSS: true,
-			wantCodeCSS:        true, // Current behavior: 4-space indented content becomes code block
+			wantCodeCSS:        false, // indented body is a paragraph, not a code block
 		},
 	}
 
