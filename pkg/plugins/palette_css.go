@@ -285,7 +285,11 @@ func (p *PaletteCSSPlugin) generateContractPaletteCSS(config *lifecycle.Config) 
 			fmt.Fprintf(builder, "  --%s: %s;\n", map[string]string{"background": "bg", "surface": "panel", "ink": "ink", "accent": "accent"}[role], roles[role])
 		}
 		// These are the variables consumed by the active Markata templates.
-		fmt.Fprintf(builder, "  --color-background: %s;\n  --color-surface: %s;\n  --color-text: %s;\n  --color-primary: %s;\n  --color-border: %s;\n", background, surface, ink, accent, ink)
+		// The contract's 3:1 "border" role (ink) is kept as --color-border-strong
+		// for control boundaries; decorative borders use a low-contrast mix so
+		// cards, dividers, and surfaces read as soft edges instead of hard lines.
+		fmt.Fprintf(builder, "  --color-background: %s;\n  --color-surface: %s;\n  --color-text: %s;\n  --color-primary: %s;\n", background, surface, ink, accent)
+		fmt.Fprintf(builder, "  --color-border-strong: %s;\n  --color-border: color-mix(in srgb, %s 16%%, %s);\n", ink, ink, background)
 	}
 	var builder strings.Builder
 	builder.WriteString("\n@layer tokens {\n")

@@ -162,7 +162,12 @@ These CSS custom properties can be overridden:
 | `--color-primary` | Primary accent color | Depends on palette |
 | `--color-link` | Link color | Depends on palette |
 | `--color-link-hover` | Link hover color | Depends on palette |
-| `--color-border` | Border color | Depends on palette |
+| `--color-border` | Soft hairline border (text ink mixed 16% into the background) | Depends on palette |
+| `--color-border-strong` | Full-contrast border ink for focus rings and emphasis | Depends on palette |
+| `--color-border-soft` | `--color-border` at 60% alpha, for section dividers | Derived |
+| `--heading-rule` | Color of the short accent bar under `h1`/`h2` | `color-mix(in srgb, var(--color-primary) 55%, transparent)` |
+| `--radius-sm` / `--radius` / `--radius-lg` / `--radius-xl` | Corner radius scale | `0.375rem` / `0.5rem` / `0.75rem` / `1rem` |
+| `--leading-prose` | Article body line-height | `1.7` |
 | `--color-code-bg` | Code block background | Depends on palette |
 | `--color-code-text` | Code block text | Depends on palette |
 | `--color-code-comment` | Code comments | Depends on palette |
@@ -172,7 +177,7 @@ These CSS custom properties can be overridden:
 | `--color-code-function` | Code functions | Depends on palette |
 | `--color-code-type` | Code types and tags | Depends on palette |
 | `--color-code-operator` | Code operators | Depends on palette |
-| `--content-width` | Max content width | `720px` |
+| `--content-width` | Article measure in `ch` (relative to article text size) | `64ch` at the `large` preset |
 | `--font-family` | Body font | System fonts |
 | `--font-family-mono` | Code font | Monospace fonts |
 | `--article-progress-height` | Sticky article progress bar height | `4px` |
@@ -321,9 +326,9 @@ presets are:
 
 | Preset | Site base | Article text | Article measure |
 |--------|-----------|--------------|-----------------|
-| `small` | 16px | 18px | 65ch |
-| `medium` | 17px | 19px | 62ch |
-| `large` | 18px | 20px | 60ch |
+| `small` | 16px | 18px | 68ch |
+| `medium` | 17px | 20px | 66ch |
+| `large` | 18px | 22px | 64ch |
 
 Set `show_text_size_control = false` when a site should keep the configured
 default without rendering the selector. Browser zoom remains available in

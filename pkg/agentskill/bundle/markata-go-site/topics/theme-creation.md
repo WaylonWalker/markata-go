@@ -92,10 +92,26 @@ values from the contract for palettes, aesthetics, textures, heading textures,
 motifs, motif colors, motif layers, and scopes.
 
 The default theme's reading presets are `small`, `medium`, and `large`.
-`text_size = "large"` selects the default 18px site base and 20px article
-text. Set `show_text_size_control = false` to hide the visitor selector while
-keeping the configured default. Visitor selections are saved per site in
-browser-local storage.
+`text_size = "large"` selects the default 18px site base, 22px article text
+and a 64ch measure (`--content-width` is in `ch`, so it tracks the article
+font size). Set `show_text_size_control = false` to hide the visitor selector
+while keeping the configured default. Visitor selections are saved per site in
+browser-local storage. Do not add `--text-base` or `--content-width`
+overrides just to make articles "readable"; the presets already target a
+65-70 character measure. Override them only for a deliberate design choice.
+
+Borders in the default theme are soft by design: `--color-border` is the text
+ink mixed 16% into the background, `--color-border-soft` is used for section
+dividers, and `--color-border-strong` is the full-contrast ink for focus
+rings. Headings use a short accent bar (`--heading-rule`) rather than
+full-width rules. Radii follow `--radius-sm`/`--radius`/`--radius-lg`/
+`--radius-xl`. Prefer adjusting these tokens over re-styling components.
+
+On wide screens (>= 1201px) the feed and document sidebars are fixed drawers
+opened from a vertical edge handle (or `[` / `]`); they never open on hover
+and the open state is remembered per side. Below that width the feed sidebar
+becomes a collapsible bar above the article. If a site's custom CSS positions
+`.feed-sidebar` or `.doc-sidebar`, remove it and rely on the theme.
 
 `heading_texture.kind = "inherit"` uses the surface texture kind while keeping
 the heading texture's own `color_mix` and `scale`.
