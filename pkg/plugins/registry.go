@@ -277,6 +277,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewHashtagTagsPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),
+		NewSeriesPlugin(),
 	}
 }
 

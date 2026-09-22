@@ -696,7 +696,7 @@ func (p *MermaidPlugin) mermaidExtensionsJS() string {
 `)
 	}
 	if len(packs) > 0 {
-		packsJSON, _ := json.Marshal(packs)
+		packsJSON, _ := json.Marshal(packs) //nolint:errcheck // []string values are always JSON-encodable.
 		b.WriteString(`  const iconPackURL = ` + jsString(p.config.IconPackURL) + `;
   const iconPacks = ` + string(packsJSON) + `.filter((name) => mermaidSources.indexOf(name + ':') !== -1);
   if (iconPacks.length && typeof mermaid.registerIconPacks === 'function') {
@@ -729,7 +729,7 @@ func (p *MermaidPlugin) mermaidExtensionsJS() string {
 
 // jsString encodes s as a JavaScript string literal.
 func jsString(s string) string {
-	out, _ := json.Marshal(s)
+	out, _ := json.Marshal(s) //nolint:errcheck // strings are always JSON-encodable.
 	return string(out)
 }
 

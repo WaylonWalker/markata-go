@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -82,6 +83,9 @@ func TestWikilinkHoverPlugin_ProcessPost_BasicWikilink(t *testing.T) {
 	}
 	if !strings.Contains(post.ArticleHTML, "This is a great article") {
 		t.Error("Expected description in preview")
+	}
+	if !slices.Contains(post.Dependencies, "my-article") {
+		t.Fatalf("Dependencies = %v, want my-article", post.Dependencies)
 	}
 }
 
@@ -380,6 +384,9 @@ func TestWikilinkHoverPlugin_ProcessPost_RegularLink(t *testing.T) {
 	if !strings.Contains(post.ArticleHTML, `data-description="Article description"`) {
 		t.Errorf("expected internal link to gain data-description, got %s", post.ArticleHTML)
 	}
+	if !slices.Contains(post.Dependencies, "my-article") {
+		t.Fatalf("Dependencies = %v, want my-article", post.Dependencies)
+	}
 }
 
 func TestWikilinkHoverPlugin_ProcessPost_RegularLink_Disabled(t *testing.T) {
@@ -421,6 +428,9 @@ func TestWikilinkHoverPlugin_ProcessPost_SkipsUnknownAndExternalLinks(t *testing
 
 	if post.ArticleHTML != originalHTML {
 		t.Errorf("unresolvable or skipped links should be untouched, got %s", post.ArticleHTML)
+	}
+	if !slices.Contains(post.Dependencies, "internal-href:/missing") {
+		t.Fatalf("Dependencies = %v, want unresolved internal href dependency", post.Dependencies)
 	}
 }
 

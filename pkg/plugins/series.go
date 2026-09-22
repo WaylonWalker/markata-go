@@ -49,7 +49,7 @@ func (p *SeriesPlugin) Name() string {
 // Priority returns the plugin's priority for a given stage.
 // Series runs early in Collect so feed configs are ready for the feeds plugin.
 func (p *SeriesPlugin) Priority(stage lifecycle.Stage) int {
-	if stage == lifecycle.StageCollect {
+	if stage == lifecycle.StageTransform || stage == lifecycle.StageCollect {
 		return lifecycle.PriorityEarly
 	}
 	return lifecycle.PriorityDefault
@@ -84,6 +84,34 @@ type seriesOverride struct {
 	Description  string
 	ItemsPerPage *int
 	Formats      *models.FeedFormats
+}
+
+// Transform records series co-members as post dependencies before the
+// templates plugin decides whether a cached full page can be reused. A series
+// member can affect every other member's card, sidebar, or previous/next
+// navigation when its title, order, slug, publication state, or membership
+// changes.
+func (p *SeriesPlugin) Transform(m *lifecycle.Manager) error {
+	if m == nil || m.Config() == nil {
+		return nil
+	}
+
+	groups := p.groupPostsBySeries(m.Posts(), parseSeriesConfig(m.Config()))
+	for _, group := range groups {
+		for _, source := range group.posts {
+			if source == nil {
+				continue
+			}
+			for _, target := range group.posts {
+				if target == nil || target == source || target.Slug == "" {
+					continue
+				}
+				source.AddDependency(target.Slug)
+			}
+		}
+	}
+
+	return nil
 }
 
 // Collect scans posts for series frontmatter and injects series FeedConfigs.
@@ -528,7 +556,8 @@ func parseFeedFormatsFromMap(raw interface{}) *models.FeedFormats {
 
 // Ensure SeriesPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin         = (*SeriesPlugin)(nil)
-	_ lifecycle.CollectPlugin  = (*SeriesPlugin)(nil)
-	_ lifecycle.PriorityPlugin = (*SeriesPlugin)(nil)
+	_ lifecycle.Plugin          = (*SeriesPlugin)(nil)
+	_ lifecycle.TransformPlugin = (*SeriesPlugin)(nil)
+	_ lifecycle.CollectPlugin   = (*SeriesPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*SeriesPlugin)(nil)
 )

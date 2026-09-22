@@ -103,8 +103,8 @@ func postToMap(p *models.Post) map[string]interface{} {
 	return GetPostMap(p)
 }
 
-// postToNavMap converts a neighbouring post into a small map suitable for
-// prev/next navigation without recursing into its own neighbours.
+// postToNavMap converts a neighboring post into a small map suitable for
+// prev/next navigation without recursing into its own neighbors.
 func postToNavMap(p *models.Post) map[string]interface{} {
 	if p == nil {
 		return nil

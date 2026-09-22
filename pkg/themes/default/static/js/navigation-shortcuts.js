@@ -139,7 +139,7 @@
     if (!link) return;
 
     if (newTab) {
-      window.open(link.href, '_blank');
+      window.open(preserveReaderModeURL(link.href), '_blank');
     } else {
       navigateToURL(link.href, { triggerElement: link });
     }
@@ -157,15 +157,37 @@
     }
   }
 
+  function preserveReaderModeURL(url) {
+    try {
+      var currentURL = new URL(window.location.href);
+      var readerMode = document.body && document.body.classList.contains('reader-mode');
+      readerMode = readerMode || currentURL.searchParams.get('reader') === '1';
+      if (!readerMode) return url;
+
+      var targetURL = new URL(url, window.location.href);
+      if (targetURL.origin === window.location.origin && targetURL.searchParams.get('reader') !== '1') {
+        targetURL.searchParams.set('reader', '1');
+      }
+      return targetURL.href;
+    } catch (e) {
+      return url;
+    }
+  }
+
   function navigateToURL(url, options) {
     if (!url) return;
 
     if (window.navigateWithViewTransition && typeof window.navigateWithViewTransition === 'function') {
-      window.navigateWithViewTransition(url, Object.assign({ source: 'shortcut' }, options || {}));
+      var navigation = window.navigateWithViewTransition(url, Object.assign({ source: 'shortcut' }, options || {}));
+      if (navigation && typeof navigation.catch === 'function') {
+        navigation.catch(function() {
+          window.location.href = preserveReaderModeURL(url);
+        });
+      }
       return;
     }
 
-    window.location.href = url;
+    window.location.href = preserveReaderModeURL(url);
   }
 
   function getSidebarAdjacentLink(direction) {

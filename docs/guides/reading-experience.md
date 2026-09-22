@@ -65,6 +65,11 @@ This claim needs a source[^1].
   close it.
 - The end-of-article footnote list is hidden while notes are shown in the
   margin, and shown again when there is no room.
+- The margin and popover copies are visual-only. Screen readers use the
+  canonical end-of-article footnote list once, so the note is not announced
+  twice.
+- Keyboard and assistive-technology activation follows the normal footnote
+  link to that canonical list; pointer taps use the decorative popover.
 
 `!!! aside` blocks are a different tool: use them for author commentary that
 should sit beside the flow, not for citations.
@@ -154,6 +159,8 @@ a wide measure. Toggle it with:
 
 `Escape` or pressing the button again exits. Hide the button with
 `components.post_meta.reader_toggle = false`; the shortcut keeps working.
+When reader mode is active, keyboard, series, feed-sidebar, and view-transition
+navigation preserve `?reader=1` on same-origin post URLs.
 
 ## Reading callouts
 

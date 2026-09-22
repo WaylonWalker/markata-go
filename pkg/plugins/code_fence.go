@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -76,8 +77,12 @@ func (r *pluginFenceRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegiste
 	reg.Register(KindPluginFence, r.render)
 }
 
+//nolint:errcheck // Goldmark owns the writer lifecycle and handles write errors at the top level.
 func (r *pluginFenceRenderer) render(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	n := node.(*pluginFence)
+	n, ok := node.(*pluginFence)
+	if !ok {
+		return ast.WalkStop, fmt.Errorf("unexpected node type %T for plugin fence", node)
+	}
 	if !entering {
 		_, _ = w.WriteString("</code></pre>\n")
 		return ast.WalkContinue, nil
@@ -100,7 +105,7 @@ type codeFenceTransformer struct{}
 // Transform implements parser.ASTTransformer.
 func (t *codeFenceTransformer) Transform(node *ast.Document, reader text.Reader, _ parser.Context) {
 	source := reader.Source()
-	_ = ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	_ = ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) { //nolint:errcheck // callback always returns a nil error
 		if !entering {
 			return ast.WalkContinue, nil
 		}
@@ -124,6 +129,8 @@ func (t *codeFenceTransformer) Transform(node *ast.Document, reader text.Reader,
 // applyCodeFenceInfo parses the extras after the language token and sets
 // attributes on the node. Attributes already present (from goldmark's own
 // {key=value} parsing) are preserved.
+//
+//nolint:gocyclo // The supported fence syntaxes are independent parsing cases.
 func applyCodeFenceInfo(fence *ast.FencedCodeBlock, info string) {
 	if info == "" {
 		return
@@ -200,8 +207,9 @@ func applyCodeFenceInfo(fence *ast.FencedCodeBlock, info string) {
 // parseHighlightRanges turns "1, 3-5" into the []interface{} shape the
 // highlighting extension expects ([]uint8 range strings).
 func parseHighlightRanges(spec string) []interface{} {
-	var out []interface{}
-	for _, part := range strings.Split(spec, ",") {
+	parts := strings.Split(spec, ",")
+	out := make([]interface{}, 0, len(parts))
+	for _, part := range parts {
 		part = strings.ReplaceAll(strings.TrimSpace(part), " ", "")
 		if part == "" {
 			continue
@@ -223,6 +231,8 @@ var codeFenceDisplayLang = map[string]string{
 
 // writeCodeFenceHeader emits the static portion of the code chrome (title and
 // language badge). The copy button is added client-side by reading.js.
+//
+//nolint:errcheck // Goldmark owns the writer lifecycle and handles write errors at the top level.
 func writeCodeFenceHeader(w util.BufWriter, lang, title string) {
 	display := strings.ToLower(lang)
 	if mapped, ok := codeFenceDisplayLang[display]; ok {
@@ -247,6 +257,8 @@ func writeCodeFenceHeader(w util.BufWriter, lang, title string) {
 
 // codeFenceWrapper renders the wrapper around highlighted code blocks with
 // data attributes consumed by the theme's code chrome.
+//
+//nolint:errcheck // Goldmark owns the writer lifecycle and handles write errors at the top level.
 func codeFenceWrapper(w util.BufWriter, c highlighting.CodeBlockContext, entering bool) {
 	// Unhighlighted fences keep goldmark's plain <pre><code class="language-x">
 	// output so language-specific plugins (mermaid, chartjs, csv, ...) that
@@ -292,6 +304,7 @@ func codeFenceWrapper(w util.BufWriter, c highlighting.CodeBlockContext, enterin
 	writeCodeFenceHeader(w, lang, title)
 }
 
+//nolint:errcheck // Goldmark owns the writer lifecycle and handles write errors at the top level.
 func writePlainCodeFence(w util.BufWriter, c highlighting.CodeBlockContext, entering bool) {
 	if !entering {
 		_, _ = w.WriteString("</code></pre>\n")

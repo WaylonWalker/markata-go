@@ -822,7 +822,12 @@ And continue reading...
 
 **Purpose:** Add hover previews to wikilinks and plain internal links showing target post metadata.
 
-**Dependencies:** None
+**Dependencies:** The resolved target post. The source post records each
+resolved wikilink or plain internal-link target so a target title,
+description, date, publication state, privacy state, or slug change rebuilds
+the source before its cached full-page HTML is reused. An unresolved plain
+internal link also records a normalized path token, so creating the target
+later rebuilds the source and adds the preview metadata.
 
 **Configuration:**
 

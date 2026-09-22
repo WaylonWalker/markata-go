@@ -320,6 +320,41 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 	m.Cache().Set("feed_configs", feedConfigs)
 }
 
+// trackSeriesDependencies records the posts that can affect series cards,
+// sidebars, and guide navigation rendered by this plugin. Frontmatter series
+// groups are handled directly; explicit series/guide feeds use the same
+// resolved feed membership used by getSeriesNav.
+func (p *TemplatesPlugin) trackSeriesDependencies(config *lifecycle.Config, m *lifecycle.Manager) {
+	if config == nil || m == nil {
+		return
+	}
+
+	for _, post := range m.Posts() {
+		if post == nil {
+			continue
+		}
+
+		seriesPosts, _ := p.getSeriesSidebarPosts(post, config, m)
+		if seriesPosts == nil {
+			explicitSlug := p.getExplicitFeedSlug(post)
+			if explicitSlug != "" {
+				var feed *models.FeedConfig
+				seriesPosts, feed = p.feedFromCachedConfigs(explicitSlug, post, m)
+				if feed == nil || (feed.Type != models.FeedTypeSeries && feed.Type != models.FeedTypeGuide) {
+					seriesPosts = nil
+				}
+			}
+		}
+
+		for _, target := range seriesPosts {
+			if target == nil || target == post || target.Slug == "" {
+				continue
+			}
+			post.AddDependency(target.Slug)
+		}
+	}
+}
+
 // Phase 1a: Quick single-threaded pass to classify posts (no disk I/O)
 // Phase 1b: Restore cached full-page HTML for unchanged posts.
 // Phase 2: Concurrent rendering only for posts that need it
@@ -334,6 +369,10 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Ensure feed_configs are available in cache for sidebar auto-discovery.
 	// The Collect stage (feeds) runs AFTER Render, so we pre-compute here.
 	ensureFeedConfigsCached(config, m)
+	// Series and guide navigation is also computed here, before cache
+	// classification. Track the exact members visible to the template so
+	// configured series/guide feeds invalidate their neighboring pages too.
+	p.trackSeriesDependencies(config, m)
 
 	// Get build cache to check if posts need rebuilding
 	cache := GetBuildCache(m)

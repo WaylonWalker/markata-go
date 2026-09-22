@@ -150,6 +150,38 @@ func TestBuildCacheConfigure_DefaultsCacheDirToContentDir(t *testing.T) {
 	}
 }
 
+func TestBuildCacheCleanup_PersistsFinalDependenciesAndClearsRemovedEdges(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuilt("content/source.md", "source-hash", "output/source/index.html", "post.html")
+	cache.SetDependencies("content/source.md", "source", []string{"old-target"})
+
+	manager := lifecycle.NewManager()
+	manager.SetPosts([]*models.Post{{
+		Path:         "content/source.md",
+		Slug:         "source",
+		Dependencies: []string{"new-target"},
+	}})
+
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	if err := plugin.Cleanup(manager); err != nil {
+		t.Fatalf("Cleanup() error = %v", err)
+	}
+	if got := cache.Graph.GetDependencies("content/source.md"); !slices.Equal(got, []string{"new-target"}) {
+		t.Fatalf("final dependencies = %v, want [new-target]", got)
+	}
+
+	manager.Posts()[0].Dependencies = nil
+	// Posts returns a slice copy but preserves the same post pointers, so the
+	// dependency state transition is visible to the next cleanup pass.
+	if err := plugin.Cleanup(manager); err != nil {
+		t.Fatalf("Cleanup() after dependency removal error = %v", err)
+	}
+	if got := cache.Graph.GetDependencies("content/source.md"); len(got) != 0 {
+		t.Fatalf("dependencies after removal = %v, want empty", got)
+	}
+}
+
 func cachePathForTest(c *buildcache.Cache) string {
 	return filepath.Clean(reflect.ValueOf(c).Elem().FieldByName("path").String())
 }

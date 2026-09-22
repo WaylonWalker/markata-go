@@ -48,6 +48,37 @@ func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersPrimaryFeed(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_TrackSeriesDependenciesForExplicitGuideFeed(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	current := &models.Post{
+		Path: "current.md", Slug: "current", Href: "/current/",
+		Extra: map[string]interface{}{"sidebar_feed": "guides/intro"},
+	}
+	other := &models.Post{
+		Path: "other.md", Slug: "other", Href: "/other/",
+		Extra: map[string]interface{}{"sidebar_feed": "guides/intro"},
+	}
+	m.SetPosts([]*models.Post{current, other})
+	m.Cache().Set("feed_configs", []models.FeedConfig{
+		{
+			Slug:  "guides/intro",
+			Type:  models.FeedTypeGuide,
+			Posts: []*models.Post{current, other},
+		},
+	})
+
+	p.trackSeriesDependencies(m.Config(), m)
+
+	if len(current.Dependencies) != 1 || current.Dependencies[0] != "other" {
+		t.Fatalf("current dependencies = %v, want [other]", current.Dependencies)
+	}
+	if len(other.Dependencies) != 1 || other.Dependencies[0] != "current" {
+		t.Fatalf("other dependencies = %v, want [current]", other.Dependencies)
+	}
+}
+
 func TestTemplatesPlugin_GetFeedSidebarPosts_PrefersSmallerFeedOverLargePrimary(t *testing.T) {
 	p := NewTemplatesPlugin()
 	m := lifecycle.NewManager()

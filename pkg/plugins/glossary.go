@@ -623,6 +623,7 @@ func (p *GlossaryPlugin) buildLink(term *GlossaryTerm, matchedText string) strin
 		// styled popover in tooltips.js, which strips title once bound.
 		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
 		_, _ = attrs.WriteString(fmt.Sprintf(` title="%s"`, html.EscapeString(term.Description)))
+		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
 		_, _ = attrs.WriteString(fmt.Sprintf(` data-preview="glossary" data-title="%s" data-description="%s"`,
 			html.EscapeString(term.Term), html.EscapeString(term.Description)))
 	}

@@ -989,7 +989,8 @@ Posts may depend on:
 
 1. **Templates** - The template chain used to render
 2. **Includes** - Partials included by templates
-3. **Other posts** - Via wikilinks or queries in Jinja-in-Markdown
+3. **Other posts** - Via wikilinks, embeds, internal-link previews, series
+   membership, or queries in Jinja-in-Markdown
 4. **Static assets** - Images or files referenced in content
 
 When a dependency changes, all dependent posts are marked for rebuild.
@@ -997,6 +998,19 @@ Change detection and transitive dependent expansion MUST finish after Load and
 before Transform. This ordering lets affected transforms and renderers reject
 stale cached derivatives. Feeds that contain an affected post MUST also be
 refreshed, even when that post's source file did not change.
+
+Dependency collection has a second timing requirement: every dependency that
+affects a post's full-page HTML MUST be present before the template cache
+decision for that post. Transform-stage dependencies (such as wikilinks,
+embeds, and series co-members) MUST be collected before Render. Render-stage
+dependencies (such as hover metadata for plain internal links) MUST be
+collected before the templates plugin classifies cached pages. The final
+dependency set MUST be persisted during Cleanup, after all render and collect
+hooks have run. Persisting an empty set MUST remove stale edges from the
+reverse dependency graph.
+Custom plugin sets that enable persistent build caching MUST register the build
+cache plugin's Cleanup hook alongside dependency-producing plugins; pipelines
+without persistent build caching do not retain dependency edges between runs.
 
 ### Rebuild Strategy
 
@@ -1035,8 +1049,10 @@ be rendered instead of being treated as successfully restored.
 |--------|-------------------|
 | Single post content | That post only |
 | Linked post content | That post and its transitive dependents |
+| Internal-link preview metadata | The linking post and its transitive dependents |
 | Post frontmatter (no template change) | That post only |
 | Post template assignment | That post only |
+| Series membership, order, title, or slug | All posts whose series navigation or card includes the changed member |
 | Template file | All posts using that template |
 | Base template | All posts (cascades through inheritance) |
 | Partial/include | All posts whose templates use it |

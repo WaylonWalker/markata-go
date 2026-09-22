@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -22,12 +23,44 @@ func TestSeriesPlugin_Name(t *testing.T) {
 func TestSeriesPlugin_Priority(t *testing.T) {
 	plugin := NewSeriesPlugin()
 
+	if got := plugin.Priority(lifecycle.StageTransform); got != lifecycle.PriorityEarly {
+		t.Errorf("Priority(StageTransform) = %d, want %d (PriorityEarly)", got, lifecycle.PriorityEarly)
+	}
 	if got := plugin.Priority(lifecycle.StageCollect); got != lifecycle.PriorityEarly {
 		t.Errorf("Priority(StageCollect) = %d, want %d (PriorityEarly)", got, lifecycle.PriorityEarly)
 	}
 
 	if got := plugin.Priority(lifecycle.StageWrite); got != lifecycle.PriorityDefault {
 		t.Errorf("Priority(StageWrite) = %d, want %d (PriorityDefault)", got, lifecycle.PriorityDefault)
+	}
+}
+
+func TestSeriesPlugin_Transform_TracksSeriesCoMembers(t *testing.T) {
+	m := lifecycle.NewManager()
+	posts := []*models.Post{
+		{Path: "part-1.md", Slug: "part-1", Extra: map[string]interface{}{"series": "guide"}},
+		{Path: "part-2.md", Slug: "part-2", Extra: map[string]interface{}{"series": "guide"}},
+		{Path: "part-3.md", Slug: "part-3", Extra: map[string]interface{}{"series": "guide"}},
+		{Path: "other.md", Slug: "other", Extra: map[string]interface{}{"series": "other"}},
+	}
+	m.SetPosts(posts)
+
+	if err := NewSeriesPlugin().Transform(m); err != nil {
+		t.Fatalf("Transform() error: %v", err)
+	}
+
+	for _, post := range posts[:3] {
+		if len(post.Dependencies) != 2 {
+			t.Fatalf("%s dependencies = %v, want two co-members", post.Slug, post.Dependencies)
+		}
+		for _, target := range []string{"part-1", "part-2", "part-3"} {
+			if target != post.Slug && !slices.Contains(post.Dependencies, target) {
+				t.Errorf("%s dependencies = %v, missing %s", post.Slug, post.Dependencies, target)
+			}
+		}
+	}
+	if len(posts[3].Dependencies) != 0 {
+		t.Fatalf("unrelated series dependencies = %v, want none", posts[3].Dependencies)
 	}
 }
 

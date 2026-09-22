@@ -48,6 +48,11 @@ includes published pages with frontmatter but no Markdown body, so removing
 the output directory does not require deleting `.markata/` before a normal or
 `--fast` build recreates the page.
 
+The dependency graph also tracks internal-link previews, including unresolved
+internal paths, and series co-members. Changes to a preview target or any
+member of a series therefore rebuild pages that show the affected metadata or
+navigation instead of reusing stale full-page HTML.
+
 For `markata-go build --fast`, file discovery still rescans the content tree on each run. Added,
 removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
 reuses in-memory and on-disk state for incremental rebuilds between change events.

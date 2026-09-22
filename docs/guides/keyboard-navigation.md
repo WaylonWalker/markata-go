@@ -97,6 +97,9 @@ When a desktop sidebar drawer is open, `Escape` closes it and returns keyboard
 focus to that drawer's toggle. Activating the toggle again to close the drawer
 also keeps focus on the toggle, so the visible focus indicator is not lost.
 
+When reader mode is active, keyboard navigation keeps `?reader=1` on
+same-origin post links, including series navigation and feed-sidebar links.
+
 ### Disable Shortcuts
 
 If keyboard shortcuts interfere with your workflow or assistive technology:

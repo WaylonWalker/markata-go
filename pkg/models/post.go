@@ -117,7 +117,8 @@ type Post struct {
 	// Outlinks are links FROM this post to other pages
 	Outlinks []*Link `json:"outlinks,omitempty" yaml:"outlinks,omitempty" toml:"outlinks,omitempty"`
 
-	// Dependencies tracks slugs this post depends on (wikilinks, embeds).
+	// Dependencies tracks slugs this post depends on (wikilinks, embeds,
+	// internal-link previews, and series navigation).
 	// Used for incremental build cache invalidation.
 	// Not persisted to output files.
 	Dependencies []string `json:"-" yaml:"-" toml:"-"`

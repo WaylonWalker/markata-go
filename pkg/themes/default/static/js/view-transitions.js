@@ -918,18 +918,26 @@
     });
   }
 
-  function preserveFeedContext(rawUrl, triggerElement) {
+  function preserveNavigationContext(rawUrl, triggerElement) {
     try {
       const currentURL = new URL(window.location.href);
       const targetURL = new URL(rawUrl, window.location.href);
       const currentFeed = currentURL.searchParams.get('feed');
+      const readerMode = document.body.classList.contains('reader-mode') ||
+        currentURL.searchParams.get('reader') === '1';
 
-      if (!currentFeed) return targetURL.href;
-      if (targetURL.searchParams.get('feed')) return targetURL.href;
-      if (!triggerElement) return targetURL.href;
-
-      if (triggerElement.closest('.feed-sidebar, .post-nav')) {
+      if (currentFeed && !targetURL.searchParams.get('feed') && triggerElement &&
+          triggerElement.closest('.feed-sidebar, .post-nav')) {
         targetURL.searchParams.set('feed', currentFeed);
+      }
+
+      // Reader mode is a URL-backed state. Keyboard navigation and scripted
+      // feed/series navigation do not dispatch a click event, so preserve it
+      // at the shared view-transition boundary as well as in the click hook.
+      if (readerMode &&
+          targetURL.origin === window.location.origin &&
+          targetURL.searchParams.get('reader') !== '1') {
+        targetURL.searchParams.set('reader', '1');
       }
 
       return targetURL.href;
@@ -1038,7 +1046,7 @@
 
     let targetURL;
     try {
-      targetURL = new URL(preserveFeedContext(url, navOptions.triggerElement), window.location.href);
+      targetURL = new URL(preserveNavigationContext(url, navOptions.triggerElement), window.location.href);
     } catch (_) {
       window.location.href = url;
       return false;
@@ -1114,7 +1122,7 @@
     // Prevent default navigation
     event.preventDefault();
 
-    const url = preserveFeedContext(link.href, link);
+    const url = preserveNavigationContext(link.href, link);
 
     if (config.debug) console.log('Starting view transition to:', url);
 
@@ -1342,16 +1350,17 @@
     btn.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + label + ' sidebar');
   }
 
-  function setSidebarOpen(sidebar, open, persist) {
+  function setSidebarOpen(sidebar, open, persist, returnFocus) {
     sidebar.classList.toggle('sidebar--pinned', open);
     syncSidebarToggle(sidebar);
     if (!open) {
       // Keep the toggle focused when it closed the drawer. If focus was on a
       // drawer control, return it to the toggle instead of leaving focus on a
-      // control that is now translated off-screen.
+      // control that is now translated off-screen. Explicit keyboard/button
+      // closures also request focus when the active element is elsewhere.
       var btn = sidebar.querySelector(':scope > .sidebar-toggle');
       var active = document.activeElement;
-      if (btn && active && sidebar.contains(active) && active !== btn) {
+      if (btn && active !== btn && (returnFocus || (active && sidebar.contains(active)))) {
         btn.focus();
       }
     }
@@ -1410,7 +1419,7 @@
         e.stopPropagation();
         var sidebar = btn.closest('.feed-sidebar, .doc-sidebar, .content-sidebar');
         if (!sidebar) return;
-        setSidebarOpen(sidebar, !sidebar.classList.contains('sidebar--pinned'), true);
+        setSidebarOpen(sidebar, !sidebar.classList.contains('sidebar--pinned'), true, true);
       });
     });
 
@@ -1426,7 +1435,7 @@
       if (openSidebars.length === 0) return;
       e.preventDefault();
       openSidebars.forEach(function(sidebar) {
-        setSidebarOpen(sidebar, false, true);
+        setSidebarOpen(sidebar, false, true, true);
       });
     });
   };
@@ -1440,7 +1449,7 @@
       ? '.feed-sidebar--left, .doc-sidebar--left, .content-sidebar--left'
       : '.feed-sidebar--right, .doc-sidebar--right, .content-sidebar--right';
     document.querySelectorAll(selector).forEach(function(el) {
-      setSidebarOpen(el, !el.classList.contains('sidebar--pinned'), true);
+      setSidebarOpen(el, !el.classList.contains('sidebar--pinned'), true, true);
     });
   };
 

@@ -1688,6 +1688,158 @@ date: 2024-01-01
 	assertPage("warm fast build")
 }
 
+func TestCacheDeterminism_SeriesAndInternalPreviewDependentsRebuild(t *testing.T) {
+	site := newCacheSite(t)
+	site.addPost("part-1.md", `---
+title: Part 1
+slug: part-1
+published: true
+date: 2024-01-01
+series: reading
+series_order: 1
+---
+
+Part 1.`)
+	site.addPost("part-2.md", `---
+title: Part 2
+slug: part-2
+published: true
+date: 2024-01-02
+series: reading
+series_order: 2
+---
+
+Part 2.`)
+	site.addPost("part-3.md", `---
+title: Part 3
+slug: part-3
+published: true
+date: 2024-01-03
+series: reading
+series_order: 3
+---
+
+Part 3.`)
+	site.addPost("target.md", `---
+title: Target
+description: Original target description
+slug: target
+published: true
+date: 2024-01-04
+---
+
+Target.`)
+	site.addPost("source.md", `---
+title: Source
+slug: source
+published: true
+date: 2024-01-05
+---
+
+See [the target](/target/).`)
+	site.addPost("late-source.md", `---
+title: Late Source
+slug: late-source
+published: true
+date: 2024-01-06
+---
+
+See [the late target](/late-target/).`)
+
+	site.buildWithCache()
+	part1Before := site.outputReadFile("part-1/index.html")
+	part3Before := site.outputReadFile("part-3/index.html")
+	if !strings.Contains(part1Before, "Part 2") || !strings.Contains(part3Before, "Part 2") {
+		t.Fatal("initial series pages should include the middle member")
+	}
+	if !strings.Contains(site.outputReadFile("source/index.html"), `data-title="Target"`) {
+		t.Fatal("initial source page should contain the target preview title")
+	}
+	lateSourceBefore := site.outputReadFile("late-source/index.html")
+	if strings.Contains(lateSourceBefore, `data-preview="internal"`) {
+		t.Fatal("unresolved internal link should not have a preview before its target exists")
+	}
+
+	// Adding a new series member must invalidate the existing members even
+	// though the new post had no dependency edges in the previous cache.
+	site.addPost("part-4.md", `---
+title: Part 4
+slug: part-4
+published: true
+date: 2024-01-06
+series: reading
+series_order: -1
+---
+
+Part 4.`)
+	site.buildWithCache()
+	part1WithNewMember := site.outputReadFile("part-1/index.html")
+	if !strings.Contains(part1WithNewMember, "Part 1 of 4") {
+		t.Fatal("existing series page should reflect the newly added member")
+	}
+	if part1WithNewMember == part1Before {
+		t.Fatal("series page should change after a member is added")
+	}
+
+	// A target title change affects the series card/sidebar of its co-members.
+	site.addPost("part-2.md", `---
+title: Part 2 Updated
+slug: part-2
+published: true
+date: 2024-01-02
+series: reading
+series_order: 2
+---
+
+Part 2.`)
+	site.buildWithCache()
+	part1After := site.outputReadFile("part-1/index.html")
+	part3After := site.outputReadFile("part-3/index.html")
+	if !strings.Contains(part1After, "Part 2 Updated") || !strings.Contains(part3After, "Part 2 Updated") {
+		t.Fatalf("series dependents were not rebuilt with the changed member title")
+	}
+	if part1After == part1Before || part3After == part3Before {
+		t.Fatal("series dependent pages should change after a member update")
+	}
+
+	// A fast build must also rebuild a page whose plain internal-link preview
+	// target changed, even though the source Markdown did not.
+	site.addPost("target.md", `---
+title: Target Updated
+description: Updated target description
+slug: target
+published: true
+date: 2024-01-04
+---
+
+Target.`)
+	site.buildFast()
+	sourceAfter := site.outputReadFile("source/index.html")
+	if !strings.Contains(sourceAfter, `data-title="Target Updated"`) ||
+		!strings.Contains(sourceAfter, "Updated target description") {
+		t.Fatalf("internal-link preview dependent was not rebuilt: %s", sourceAfter)
+	}
+
+	// A previously unresolved internal link must gain preview metadata when its
+	// target is created on a later cached build.
+	site.addPost("late-target.md", `---
+title: Late Target
+description: Target created after the source
+slug: late-target
+published: true
+date: 2024-01-07
+---
+
+Late target.`)
+	site.buildWithCache()
+	lateSourceAfter := site.outputReadFile("late-source/index.html")
+	if !strings.Contains(lateSourceAfter, `data-preview="internal"`) ||
+		!strings.Contains(lateSourceAfter, `data-title="Late Target"`) ||
+		!strings.Contains(lateSourceAfter, "Target created after the source") {
+		t.Fatalf("newly resolved internal-link preview was not rendered: %s", lateSourceAfter)
+	}
+}
+
 // TestBuild_EmbeddedVendorAssetsServedAtDocumentedPath guards that the default
 // theme's vendored JS lands under /assets/vendor/, which is the path used by
 // the mermaid, chartjs and cal-heatmap default cdn_url values and by the

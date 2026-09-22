@@ -329,7 +329,7 @@ edit_label = "Edit this page"
 
 - **Updated date.** When `show_updated` is true and `post.modified` is at least 24 hours after `post.date`, the byline MUST render `Updated <time class="dt-updated">`. The template context exposes this as `post.updated_at` (nil when the condition is not met) alongside `post.modified`.
 - **Reader toggle.** A `[data-reader-toggle]` button MUST be rendered in the post actions row when `reader_toggle` is true. It toggles the same `reader-mode` state as the `s` shortcut and `?reader=1`; `Escape` exits reader mode when no dialog is open.
-- **Series card.** When `series_card` is true and the template context has `series_nav` with `total > 1`, the theme renders a card with position, total, progress, and previous/next links. `series_nav` is computed at render time from the post's `series` frontmatter or an explicit `series`/`guide` feed, because `post.Prev`/`post.Next` are only populated in the Collect stage after templates render.
+- **Series card.** When `series_card` is true and the template context has `series_nav` with `total > 1`, the theme renders a card with position, total, progress, and previous/next links. `series_nav` is computed at render time from the post's `series` frontmatter or an explicit `series`/`guide` feed, because `post.Prev`/`post.Next` are only populated in the Collect stage after templates render. Every post whose card or navigation is derived from the same series MUST track the other series members as cache dependencies.
 - **Edit link.** `edit_url` is a template where `{path}` is replaced with the post's source path relative to the site root. The rendered link is available as `post_edit_url` in the template context and is omitted when `edit_url` is empty.
 
 #### Document sidebar on wide screens

@@ -101,3 +101,75 @@ func TestSidebarTemplatesExposeAccessibleToggleState(t *testing.T) {
 		})
 	}
 }
+
+func TestReading_SidenoteCopiesAreHiddenFromAssistiveTechnology(t *testing.T) {
+	content, err := ReadStatic("js/reading.js")
+	if err != nil {
+		t.Fatalf("ReadStatic(reading.js) error = %v", err)
+	}
+
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
+	for _, needle := range []string{
+		"footnotes.setAttribute('role', 'doc-endnotes')",
+		"note.setAttribute('aria-hidden', 'true')",
+		"note.setAttribute('inert', '')",
+		"note.setAttribute('data-sidenote-for', target.id)",
+		"control.removeAttribute('href')",
+		"control.setAttribute('disabled', '')",
+		"ref.addEventListener('pointerdown', markPointerActivation)",
+		"if (!pointerActivation) return;",
+		"ref.removeEventListener('pointerdown', markPointerActivation)",
+		"ref.removeEventListener('click', toggle)",
+		"clearTimeout(pointerActivationTimer)",
+	} {
+		if !strings.Contains(js, needle) {
+			t.Fatalf("reading.js missing accessible sidenote behavior %q", needle)
+		}
+	}
+	for _, needle := range []string{
+		"ref.setAttribute('aria-controls'",
+		"ref.setAttribute('aria-expanded'",
+	} {
+		if strings.Contains(js, needle) {
+			t.Fatalf("sidenote reference must not expose misleading disclosure state: %q", needle)
+		}
+	}
+}
+
+func TestNavigation_PreservesReaderQueryForKeyboardFallbacks(t *testing.T) {
+	content, err := ReadStatic("js/navigation-shortcuts.js")
+	if err != nil {
+		t.Fatalf("ReadStatic(navigation-shortcuts.js) error = %v", err)
+	}
+
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
+	for _, needle := range []string{
+		"function preserveReaderModeURL(url)",
+		"targetURL.searchParams.set('reader', '1')",
+		"window.open(preserveReaderModeURL(link.href)",
+		"window.location.href = preserveReaderModeURL(url)",
+	} {
+		if !strings.Contains(js, needle) {
+			t.Fatalf("navigation-shortcuts.js missing reader-mode propagation %q", needle)
+		}
+	}
+}
+
+func TestViewTransitions_PreservesReaderQueryAcrossNavigation(t *testing.T) {
+	content, err := ReadStatic("js/view-transitions.js")
+	if err != nil {
+		t.Fatalf("ReadStatic(view-transitions.js) error = %v", err)
+	}
+
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
+	for _, needle := range []string{
+		"function preserveNavigationContext(rawUrl, triggerElement)",
+		"document.body.classList.contains('reader-mode')",
+		"targetURL.searchParams.set('reader', '1')",
+		"preserveNavigationContext(url, navOptions.triggerElement)",
+	} {
+		if !strings.Contains(js, needle) {
+			t.Fatalf("view-transitions.js missing reader-mode propagation %q", needle)
+		}
+	}
+}

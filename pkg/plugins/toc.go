@@ -301,7 +301,10 @@ func (p *TocPlugin) Render(m *lifecycle.Manager) error {
 		if !tocPlaceholderHTMLRegex.MatchString(post.ArticleHTML) {
 			return nil
 		}
-		entries, _ := post.Extra["toc"].([]*TocEntry)
+		entries, ok := post.Extra["toc"].([]*TocEntry)
+		if !ok {
+			entries = nil
+		}
 		replacement := ""
 		if len(entries) > 0 {
 			replacement = renderInlineTOC(entries)

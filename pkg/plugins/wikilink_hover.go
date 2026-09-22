@@ -172,7 +172,7 @@ var internalLinkSkipClasses = []string{
 
 // enhanceInternalLinks adds data-title/description/date to plain internal
 // links that resolve to a post, so the shared tooltip script can preview them.
-func (p *WikilinkHoverPlugin) enhanceInternalLinks(htmlContent string) string {
+func (p *WikilinkHoverPlugin) enhanceInternalLinks(htmlContent string, source *models.Post) string {
 	return internalAnchorRegex.ReplaceAllStringFunc(htmlContent, func(tag string) string {
 		if strings.Contains(tag, "data-title=") || strings.Contains(tag, "data-preview") {
 			return tag
@@ -196,8 +196,14 @@ func (p *WikilinkHoverPlugin) enhanceInternalLinks(htmlContent string) string {
 		}
 		target := p.lookupPost(href)
 		if target == nil || target.Private {
+			if target != nil {
+				recordPreviewDependency(source, target)
+			}
+			recordPreviewPathDependency(source, href)
 			return tag
 		}
+		recordPreviewDependency(source, target)
+		recordPreviewPathDependency(source, href)
 
 		var attrs []string
 		if target.Title != nil && *target.Title != "" {
@@ -251,11 +257,11 @@ func (p *WikilinkHoverPlugin) processPost(post *models.Post) error {
 	if strings.Contains(result, `class="wikilink"`) {
 		// Replace wikilink anchors with enhanced versions
 		result = wikilinkAnchorRegex.ReplaceAllStringFunc(result, func(match string) string {
-			return p.enhanceWikilink(match)
+			return p.enhanceWikilink(match, post)
 		})
 	}
 	if p.config.PreviewsAllInternalLinks() && p.hasInternalHref(result) {
-		result = p.enhanceInternalLinks(result)
+		result = p.enhanceInternalLinks(result, post)
 	}
 
 	post.ArticleHTML = result
@@ -263,7 +269,7 @@ func (p *WikilinkHoverPlugin) processPost(post *models.Post) error {
 }
 
 // enhanceWikilink adds data attributes to a wikilink anchor tag.
-func (p *WikilinkHoverPlugin) enhanceWikilink(match string) string {
+func (p *WikilinkHoverPlugin) enhanceWikilink(match string, source *models.Post) string {
 	// Extract href from the match
 	hrefMatches := wikilinkHrefRegex.FindStringSubmatch(match)
 	if len(hrefMatches) < 2 {
@@ -285,6 +291,7 @@ func (p *WikilinkHoverPlugin) enhanceWikilink(match string) string {
 	if targetPost == nil {
 		return match
 	}
+	recordPreviewDependency(source, targetPost)
 
 	// Skip hover data for private posts to prevent metadata leaks
 	if targetPost.Private {
@@ -333,6 +340,48 @@ func (p *WikilinkHoverPlugin) buildDataAttributes(post *models.Post) string {
 	}
 
 	return strings.Join(attrs, " ")
+}
+
+// recordPreviewDependency records a resolved preview target even when the
+// target currently produces no preview attributes (for example, while it is
+// private). A later publication or metadata change can then invalidate the
+// linking post's cached page.
+func recordPreviewDependency(source, target *models.Post) {
+	if source == nil || target == nil || target.Slug == "" {
+		return
+	}
+	source.AddDependency(target.Slug)
+}
+
+const internalHrefDependencyPrefix = "internal-href:"
+
+// internalHrefDependencyKey returns the stable dependency token for an
+// internal URL. It deliberately ignores a trailing slash so links written as
+// /target and /target/ invalidate from the same target post.
+func internalHrefDependencyKey(href string) string {
+	if i := strings.IndexAny(href, "#?"); i >= 0 {
+		href = href[:i]
+	}
+	if !strings.HasPrefix(href, "/") || href == "/" {
+		return ""
+	}
+	href = strings.TrimSuffix(href, "/")
+	if href == "" || strings.Contains(href, ".") {
+		return ""
+	}
+	return internalHrefDependencyPrefix + href
+}
+
+// recordPreviewPathDependency keeps unresolved internal links connected to the
+// target path. When a new post later claims that path, the source page must be
+// rebuilt so the preview attributes can be added.
+func recordPreviewPathDependency(source *models.Post, href string) {
+	if source == nil {
+		return
+	}
+	if key := internalHrefDependencyKey(href); key != "" {
+		source.AddDependency(key)
+	}
 }
 
 // getPreviewText extracts preview text from post description or content.

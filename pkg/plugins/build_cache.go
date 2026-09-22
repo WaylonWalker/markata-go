@@ -9,6 +9,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 var buildCacheLog = logging.Component("build_cache")
@@ -137,6 +138,7 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 	posts := m.Posts()
 	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
 	slugByPath := make(map[string]string, len(posts))
+	hrefByPath := make(map[string]string, len(posts))
 	for _, post := range posts {
 		// Empty slugs (the homepage) cannot participate in slug-based dependency
 		// expansion, but they must still be marked affected when their input
@@ -150,6 +152,7 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 			Template:  post.Template,
 		})
 		slugByPath[post.Path] = post.Slug
+		hrefByPath[post.Path] = post.Href
 	}
 
 	changedPaths := p.cache.ShouldRebuildBatch(batch)
@@ -161,8 +164,16 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 		if slug := slugByPath[path]; slug != "" {
 			p.cache.MarkSlugChanged(slug)
 		}
+		if hrefKey := internalHrefDependencyKey(hrefByPath[path]); hrefKey != "" {
+			p.cache.MarkSlugChanged(hrefKey)
+		}
 		affected[path] = true
 	}
+
+	// A newly added post has no persisted reverse edges yet. Mark the current
+	// members of any affected series or guide feed so their cached navigation
+	// and cards are rebuilt before dependency edges are refreshed in Cleanup.
+	p.markChangedMembershipDependents(m, changedPaths)
 
 	changedSlugs := p.cache.GetChangedSlugs()
 	dependentPaths := p.cache.GetAffectedPosts(changedSlugs)
@@ -183,6 +194,68 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+// markChangedMembershipDependents invalidates current series and guide-feed
+// members when one of their members changed. This covers newly added members,
+// which cannot be present in the previous dependency graph yet.
+func (p *BuildCachePlugin) markChangedMembershipDependents(m *lifecycle.Manager, changedPaths map[string]bool) {
+	if p.cache == nil || m == nil || len(changedPaths) == 0 {
+		return
+	}
+
+	config := m.Config()
+	if config == nil {
+		return
+	}
+	posts := m.Posts()
+	seriesPlugin := NewSeriesPlugin()
+	for _, group := range seriesPlugin.groupPostsBySeries(posts, parseSeriesConfig(config)) {
+		p.markMembershipGroupIfChanged(group.posts, changedPaths)
+	}
+
+	ensureFeedConfigsCached(config, m)
+	if feedConfigs, ok := cachedFeedConfigs(m); ok {
+		for i := range feedConfigs {
+			feed := &feedConfigs[i]
+			if feed.Type != models.FeedTypeSeries && feed.Type != models.FeedTypeGuide {
+				continue
+			}
+			p.markMembershipGroupIfChanged(feed.Posts, changedPaths)
+		}
+	}
+}
+
+func (p *BuildCachePlugin) markMembershipGroupIfChanged(posts []*models.Post, changedPaths map[string]bool) {
+	if !membershipGroupChanged(posts, changedPaths) {
+		return
+	}
+	for _, post := range posts {
+		if post != nil && post.Slug != "" {
+			p.cache.MarkSlugChanged(post.Slug)
+		}
+	}
+}
+
+func membershipGroupChanged(posts []*models.Post, changedPaths map[string]bool) bool {
+	for _, post := range posts {
+		if post != nil && changedPaths[post.Path] {
+			return true
+		}
+	}
+	return false
+}
+
+func cachedFeedConfigs(m *lifecycle.Manager) ([]models.FeedConfig, bool) {
+	if m == nil {
+		return nil, false
+	}
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return nil, false
+	}
+	configs, ok := cached.([]models.FeedConfig)
+	return configs, ok
 }
 
 func (p *BuildCachePlugin) isEnabled(config *lifecycle.Config) bool {
@@ -297,6 +370,13 @@ func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Render and collect plugins can discover dependencies after the transform
+	// stage (for example, hover previews and series navigation). Persist the
+	// complete final set before removing stale entries or saving the cache.
+	if recorded := p.recordDependencies(m, true); recorded > 0 {
+		buildCacheLog.Phase("cleanup").Printf("Recorded final dependencies for %d posts", recorded)
+	}
+
 	// Remove stale entries (posts that no longer exist)
 	if config := m.Config(); config.Extra != nil {
 		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
@@ -350,30 +430,51 @@ func (p *BuildCachePlugin) saveCache(m *lifecycle.Manager) error {
 }
 
 // Transform collects dependencies from posts after wikilinks/embeds have processed them.
-// This runs late in the transform stage to ensure all dependencies have been collected.
+// This runs late in the transform stage to ensure transform-stage dependencies
+// have been collected. Cleanup records the final set after render and collect
+// hooks have also had an opportunity to add dependencies.
 func (p *BuildCachePlugin) Transform(m *lifecycle.Manager) error {
 	if !p.enabled || p.cache == nil {
 		return nil
 	}
 
-	posts := m.Posts()
-	depsRecorded := 0
-
-	for _, post := range posts {
-		if post.Skip {
-			continue
-		}
-		if len(post.Dependencies) > 0 {
-			p.cache.SetDependencies(post.Path, post.Slug, post.Dependencies)
-			depsRecorded++
-		}
-	}
+	depsRecorded := p.recordDependencies(m, false)
 
 	if depsRecorded > 0 {
 		buildCacheLog.Phase("transform").Printf("Recorded dependencies for %d posts", depsRecorded)
 	}
 
 	return nil
+}
+
+// recordDependencies copies post dependency state into the persistent graph.
+// Empty dependency sets are recorded during Cleanup so removed links clear old
+// reverse edges, but are skipped during Transform because render-stage plugins
+// may still add dependencies later in the same build.
+func (p *BuildCachePlugin) recordDependencies(m *lifecycle.Manager, includeEmpty bool) int {
+	if p.cache == nil || m == nil {
+		return 0
+	}
+
+	recorded := 0
+	for _, post := range m.Posts() {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		dependencies := post.Dependencies
+		if post.Skip {
+			dependencies = nil
+		}
+		if !includeEmpty && len(dependencies) == 0 {
+			continue
+		}
+		p.cache.SetDependencies(post.Path, post.Slug, dependencies)
+		if len(dependencies) > 0 {
+			recorded++
+		}
+	}
+
+	return recorded
 }
 
 // Cache returns the build cache instance.

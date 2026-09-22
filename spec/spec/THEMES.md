@@ -94,10 +94,14 @@ content changes; each is described for users in
 
 - **Sidenotes.** Goldmark footnotes (`.footnote-ref` / `.footnotes`) are
   upgraded client-side: on wide viewports each note is placed in the right
-  margin beside its paragraph (stacked to avoid overlap, endnotes hidden);
-  otherwise the reference becomes a tap target for a popover
-  (`.sidenote--open`) that closes on outside click or `Escape`. Without
-  JavaScript the standard footnotes remain.
+  margin beside its paragraph (stacked to avoid overlap, endnotes visually
+  hidden); otherwise the reference becomes a tap target for a popover
+  (`.sidenote--open`) that closes on outside click or `Escape`. The generated
+  margin/popover copy is decorative (`aria-hidden="true"`); the canonical
+  `.footnotes` list remains the single assistive-technology-readable copy.
+  Keyboard and assistive-technology activation follows the normal footnote
+  link to that list; pointer taps use the decorative popover.
+  Without JavaScript the standard footnotes remain.
 - **Code chrome.** Highlighted fences render as
   `<div class="code-block" data-lang data-title>` with a server-rendered
   header (`.code-block__header`, title, language badge). Info-string extras

@@ -175,10 +175,14 @@
     var notes = [];
     var openNote = null;
 
+    // Keep the server-rendered endnote list as the canonical accessible copy.
+    // The margin/popover nodes below are visual duplicates and must not be
+    // announced a second time by assistive technology.
+    if (footnotes) footnotes.setAttribute('role', 'doc-endnotes');
+
     function closeOpen() {
       if (!openNote) return;
       openNote.classList.remove('sidenote--open');
-      openNote.ref.setAttribute('aria-expanded', 'false');
       openNote = null;
     }
 
@@ -194,11 +198,27 @@
       var note = document.createElement('span');
       note.className = 'sidenote';
       note.setAttribute('role', 'note');
+      note.setAttribute('aria-hidden', 'true');
+      note.setAttribute('inert', '');
+      note.inert = true;
+      note.setAttribute('data-sidenote-for', target.id);
       note.id = 'sidenote-' + (index + 1);
       var body = document.createElement('div');
       body.className = 'sidenote__body';
       body.innerHTML = target.innerHTML;
       body.querySelectorAll('.footnote-backref').forEach(function(b) { b.remove(); });
+      body.querySelectorAll('a, button, input, select, textarea, summary, [tabindex], [contenteditable]').forEach(function(control) {
+        control.removeAttribute('tabindex');
+        control.removeAttribute('contenteditable');
+        if (control.tagName === 'A') {
+          control.removeAttribute('href');
+          control.removeAttribute('target');
+          control.removeAttribute('download');
+        } else if (control.tagName === 'BUTTON' || control.tagName === 'INPUT' ||
+                   control.tagName === 'SELECT' || control.tagName === 'TEXTAREA') {
+          control.setAttribute('disabled', '');
+        }
+      });
       var num = document.createElement('span');
       num.className = 'sidenote__number';
       num.textContent = ref.textContent.trim();
@@ -210,28 +230,46 @@
       host.appendChild(note);
 
       ref.classList.add('footnote-ref--sidenote');
-      ref.setAttribute('aria-controls', note.id);
-      ref.setAttribute('aria-expanded', 'false');
 
       notes.push(note);
+
+      var pointerActivation = false;
+      var pointerActivationTimer = null;
+      function markPointerActivation() {
+        pointerActivation = true;
+        clearTimeout(pointerActivationTimer);
+        pointerActivationTimer = setTimeout(function() {
+          pointerActivation = false;
+        }, 1000);
+      }
 
       function toggle(e) {
         // On wide screens the note is already visible in the margin; let the
         // link behave normally there.
         if (document.body.classList.contains('has-sidenotes-margin')) return;
+        // Keyboard and assistive-technology activation follows the normal
+        // footnote href to the canonical endnote. Only a real pointer gesture
+        // opens the decorative popover, which is aria-hidden by design.
+        if (!pointerActivation) return;
+        pointerActivation = false;
+        clearTimeout(pointerActivationTimer);
         e.preventDefault();
         if (openNote === note) { closeOpen(); return; }
         closeOpen();
         note.classList.add('sidenote--open');
-        ref.setAttribute('aria-expanded', 'true');
         openNote = note;
         // The popover opens below its paragraph; keep it on screen.
         if (note.scrollIntoView) {
           note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       }
+      ref.addEventListener('pointerdown', markPointerActivation);
       ref.addEventListener('click', toggle);
-      onCleanup(function() { ref.removeEventListener('click', toggle); });
+      onCleanup(function() {
+        ref.removeEventListener('pointerdown', markPointerActivation);
+        ref.removeEventListener('click', toggle);
+        clearTimeout(pointerActivationTimer);
+      });
     });
 
     if (!notes.length) return;
