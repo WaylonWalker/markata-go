@@ -16,6 +16,10 @@ import (
 type OneLineLinkPlugin struct {
 	config          models.OneLineLinkConfig
 	excludePatterns []*regexp.Regexp
+	// configured is set when a [markata-go.one_line_link] table exists. The
+	// plugin ships in the default set but is opt-in: without configuration
+	// it leaves standalone URLs alone.
+	configured bool
 }
 
 // NewOneLineLinkPlugin creates a new OneLineLinkPlugin with default settings.
@@ -52,6 +56,7 @@ func (p *OneLineLinkPlugin) Configure(m *lifecycle.Manager) error {
 	if !ok {
 		return nil
 	}
+	p.configured = true
 
 	// Handle map configuration
 	if cfgMap, ok := pluginConfig.(map[string]interface{}); ok {
@@ -93,7 +98,7 @@ func (p *OneLineLinkPlugin) Configure(m *lifecycle.Manager) error {
 
 // Render processes paragraphs containing only URLs in the rendered HTML.
 func (p *OneLineLinkPlugin) Render(m *lifecycle.Manager) error {
-	if !p.config.Enabled {
+	if !p.config.Enabled || !p.configured {
 		return nil
 	}
 
@@ -107,10 +112,12 @@ func (p *OneLineLinkPlugin) Render(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
-// oneLineLinkRegex matches paragraphs containing only a URL.
-// This matches <p>https://...</p> or <p>http://...</p> patterns.
+// oneLineLinkRegex matches paragraphs containing only a URL, either bare
+// (<p>https://...</p>) or already autolinked by the GFM Linkify extension
+// (<p><a href="https://...">https://...</a></p>). Group 1 is the bare URL,
+// group 2 the autolinked href.
 var oneLineLinkRegex = regexp.MustCompile(
-	`<p>\s*(https?://[^\s<>"]+)\s*</p>`,
+	`<p>\s*(?:(https?://[^\s<>"]+)|<a href="(https?://[^"]+)"[^>]*>https?://[^<]*</a>)\s*</p>`,
 )
 
 // processPost processes a single post's HTML for standalone URL paragraphs.
@@ -129,11 +136,14 @@ func (p *OneLineLinkPlugin) processPost(post *models.Post) error {
 	result := oneLineLinkRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
 		// Extract the URL
 		submatches := oneLineLinkRegex.FindStringSubmatch(match)
-		if len(submatches) < 2 {
+		if len(submatches) < 3 {
 			return match
 		}
 
 		rawURL := strings.TrimSpace(submatches[1])
+		if rawURL == "" {
+			rawURL = html.UnescapeString(strings.TrimSpace(submatches[2]))
+		}
 
 		// Check if URL should be excluded
 		if p.isExcluded(rawURL) {

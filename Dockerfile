@@ -94,7 +94,7 @@ COPY --from=builder /app/markata-go /usr/local/bin/markata-go
 # markata-go builds can run without internet access at runtime.
 ARG BUNDLED_ASSETS_CACHE_DIR=/usr/local/share/markata-go/assets-cache
 ARG BUNDLED_MERMAID_DIR=/usr/local/share/markata-go/mermaid
-ARG MERMAID_JS_VERSION=10.9.5
+ARG MERMAID_JS_VERSION=11.17.2
 RUN mkdir -p /tmp/markata-assets \
     && cd /tmp/markata-assets \
     && /usr/local/bin/markata-go assets download \

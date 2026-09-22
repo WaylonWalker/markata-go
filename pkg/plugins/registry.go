@@ -194,6 +194,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewContributionGraphPlugin(), // Process contribution graph code blocks
 		NewMDVideoPlugin(),           // Convert video images to video tags
 		NewYouTubePlugin(),           // Convert YouTube URLs to embeds
+		NewOneLineLinkPlugin(),       // Standalone URL paragraphs -> link cards (opt-in via [markata-go.one_line_link])
 		NewChartJSPlugin(),           // Convert Chart.js code blocks to charts
 		NewCSVFencePlugin(),          // Convert CSV code blocks to tables
 		NewMermaidPlugin(),           // Convert Mermaid code blocks to diagrams

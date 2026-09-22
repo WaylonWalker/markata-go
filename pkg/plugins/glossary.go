@@ -619,8 +619,12 @@ func (p *GlossaryPlugin) buildLink(term *GlossaryTerm, matchedText string) strin
 	}
 
 	if p.config.Tooltip && term.Description != "" {
+		// title is the no-JS fallback; the data-* attributes drive the instant
+		// styled popover in tooltips.js, which strips title once bound.
 		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
 		_, _ = attrs.WriteString(fmt.Sprintf(` title="%s"`, html.EscapeString(term.Description)))
+		_, _ = attrs.WriteString(fmt.Sprintf(` data-preview="glossary" data-title="%s" data-description="%s"`,
+			html.EscapeString(term.Term), html.EscapeString(term.Description)))
 	}
 
 	return fmt.Sprintf(`<a %s>%s</a>`, attrs.String(), html.EscapeString(matchedText))

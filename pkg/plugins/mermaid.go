@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"log"
@@ -100,6 +101,15 @@ func (p *MermaidPlugin) parseMainConfig(cfgMap map[string]interface{}) {
 	}
 	if cdnURL, ok := cfgMap["cdn_url"].(string); ok && cdnURL != "" {
 		p.config.CDNURL = cdnURL
+	}
+	if elkURL, ok := cfgMap["elk_url"].(string); ok {
+		p.config.ELKURL = elkURL
+	}
+	if packs, ok := cfgMap["icon_packs"]; ok {
+		p.config.IconPacks = parseStringSlice(packs)
+	}
+	if iconPackURL, ok := cfgMap["icon_pack_url"].(string); ok && iconPackURL != "" {
+		p.config.IconPackURL = iconPackURL
 	}
 	if theme, ok := cfgMap["theme"].(string); ok && theme != "" {
 		p.config.Theme = theme
@@ -539,21 +549,9 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 	} else {
 		script = `
 <script type="module">
-` + p.mermaidImportJS() + p.mermaidLightboxJS() + `
+` + p.mermaidImportJS() + p.mermaidLightboxJS() + p.mermaidExtensionsJS() + `
   mermaid.initialize({ startOnLoad: false, theme: '` + p.config.Theme + `' });
-  window.initMermaid = async () => {
-    try {
-      await mermaid.run();
-    } catch (e) {
-      console.error('mermaid.run failed:', e);
-    }
-    ensureMermaidLightbox();
-  };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => window.initMermaid());
-  } else {
-    window.initMermaid();
-  }
+` + p.mermaidRunJS() + `
 </script>`
 	}
 
@@ -599,22 +597,140 @@ func (p *MermaidPlugin) cssVariablesScript() string {
     titleColor: css('--color-text', '#1f2937'),
     edgeLabelBackground: css('--color-code-bg', '#0a0a0a'),
   };
-` + p.mermaidLightboxJS() + `
+` + p.mermaidLightboxJS() + p.mermaidExtensionsJS() + `
   mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables, flowchart, themeCSS });
-  window.initMermaid = async () => {
+` + p.mermaidRunJS() + `
+</script>`
+}
+
+// mermaidRunJS returns the shared JavaScript that defines window.initMermaid
+// and kicks off rendering. Diagrams are rendered lazily as they approach the
+// viewport so long pages become interactive immediately instead of waiting
+// for every diagram; the first few (likely above the fold) render eagerly.
+func (p *MermaidPlugin) mermaidRunJS() string {
+	return `
+  const MERMAID_EAGER_COUNT = 3;
+  const renderDiagrams = async (nodes) => {
+    if (!nodes.length) return;
     try {
-      await mermaid.run();
+      if (typeof mermaidElkReady !== 'undefined' && mermaidElkReady &&
+          nodes.some((el) => /\belk\b/.test(el.textContent || ''))) {
+        await mermaidElkReady;
+      }
+      await mermaid.run({ nodes });
     } catch (e) {
       console.error('mermaid.run failed:', e);
     }
     ensureMermaidLightbox();
   };
+  let mermaidObserver = null;
+  window.initMermaid = async () => {
+    if (mermaidObserver) { mermaidObserver.disconnect(); mermaidObserver = null; }
+    const pending = Array.from(document.querySelectorAll('.mermaid'))
+      .filter((el) => !el.getAttribute('data-processed'));
+    if (!pending.length) return;
+    if (typeof IntersectionObserver !== 'function' || pending.length <= MERMAID_EAGER_COUNT) {
+      await renderDiagrams(pending);
+      return;
+    }
+    const eager = pending.slice(0, MERMAID_EAGER_COUNT);
+    const lazy = new Set(pending.slice(MERMAID_EAGER_COUNT));
+    mermaidObserver = new IntersectionObserver((entries) => {
+      const visible = [];
+      for (const entry of entries) {
+        if (!entry.isIntersecting || !lazy.has(entry.target)) continue;
+        lazy.delete(entry.target);
+        mermaidObserver.unobserve(entry.target);
+        visible.push(entry.target);
+      }
+      if (visible.length) renderDiagrams(visible);
+    }, { rootMargin: '800px 0px' });
+    lazy.forEach((el) => mermaidObserver.observe(el));
+    await renderDiagrams(eager);
+  };
+  // Render everything now (print, "render all" hooks, prerender checks).
+  window.renderAllMermaid = () => {
+    if (mermaidObserver) { mermaidObserver.disconnect(); mermaidObserver = null; }
+    return renderDiagrams(Array.from(document.querySelectorAll('.mermaid'))
+      .filter((el) => !el.getAttribute('data-processed')));
+  };
+  window.addEventListener('beforeprint', () => { window.renderAllMermaid(); });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => window.initMermaid());
   } else {
     window.initMermaid();
   }
-</script>`
+`
+}
+
+// mermaidExtensionsJS returns JavaScript that lazily registers the ELK layout
+// engine and Iconify icon packs when a diagram on the page uses them. Both
+// are opt-out: an empty elk_url or icon_packs list emits nothing.
+func (p *MermaidPlugin) mermaidExtensionsJS() string {
+	var b strings.Builder
+	elkURL := p.resolveAssetURL("mermaid-elk", p.config.ELKURL)
+	packs := make([]string, 0, len(p.config.IconPacks))
+	for _, name := range p.config.IconPacks {
+		if name = strings.TrimSpace(name); name != "" {
+			packs = append(packs, name)
+		}
+	}
+	if elkURL == "" && len(packs) == 0 {
+		return ""
+	}
+	b.WriteString(`
+  let mermaidElkReady = null;
+  const mermaidSources = Array.from(document.querySelectorAll('pre.mermaid'))
+    .map((el) => el.textContent || '').join('\n');
+`)
+	if elkURL != "" {
+		b.WriteString(`  if (/\belk\b/.test(mermaidSources) && typeof mermaid.registerLayoutLoaders === 'function') {
+    // Start the download now but only wait for it when an ELK diagram is
+    // about to render, so dagre diagrams are never gated on the CDN.
+    mermaidElkReady = import(` + jsString(elkURL) + `).then((elkLayouts) => {
+      mermaid.registerLayoutLoaders(elkLayouts.default || elkLayouts);
+    }).catch((e) => {
+      console.error('mermaid: failed to load ELK layout engine:', e);
+    });
+  }
+`)
+	}
+	if len(packs) > 0 {
+		packsJSON, _ := json.Marshal(packs)
+		b.WriteString(`  const iconPackURL = ` + jsString(p.config.IconPackURL) + `;
+  const iconPacks = ` + string(packsJSON) + `.filter((name) => mermaidSources.indexOf(name + ':') !== -1);
+  if (iconPacks.length && typeof mermaid.registerIconPacks === 'function') {
+    const fetchIcons = (name) => {
+      // Only request the icons this page uses; whole packs can be several MB
+      // and parsing them stalls every diagram queued after the first icon.
+      const used = new Set();
+      const re = new RegExp('\\b' + name.replace(/[^A-Za-z0-9_-]/g, '') + ':([A-Za-z0-9_-]+)', 'g');
+      let m;
+      while ((m = re.exec(mermaidSources)) !== null) used.add(m[1]);
+      const url = iconPackURL.replace('{name}', name).replace('{icons}', Array.from(used).sort().join(','));
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+      return fetch(url, ctrl ? { signal: ctrl.signal } : undefined).then((r) => {
+        if (!r.ok) throw new Error('failed to load icon pack ' + name + ': ' + r.status);
+        return r.json();
+      }).finally(() => { if (timer) clearTimeout(timer); });
+    };
+    // Start downloading now so the request overlaps with diagram rendering.
+    const iconLoads = new Map(iconPacks.map((name) => [name, fetchIcons(name).catch((e) => {
+      console.error('mermaid: failed to load icon pack ' + name + ':', e);
+      return { prefix: name, icons: {} };
+    })]));
+    mermaid.registerIconPacks(iconPacks.map((name) => ({ name, loader: () => iconLoads.get(name) })));
+  }
+`)
+	}
+	return b.String()
+}
+
+// jsString encodes s as a JavaScript string literal.
+func jsString(s string) string {
+	out, _ := json.Marshal(s)
+	return string(out)
 }
 
 // mermaidScriptURL returns the URL the client-mode script loads Mermaid from.
@@ -646,6 +762,7 @@ func (p *MermaidPlugin) mermaidImportJS() string {
 	url := p.mermaidScriptURL()
 	if isESModuleURL(url) {
 		return `  import mermaid from '` + url + `';
+  mermaid.initialize({ startOnLoad: false });
 `
 	}
 	return `  const mermaid = await (async () => {
@@ -657,6 +774,10 @@ func (p *MermaidPlugin) mermaidImportJS() string {
       s.onerror = () => reject(new Error('failed to load mermaid from ' + s.src));
       document.head.appendChild(s);
     });
+    // Disable the UMD bundle's DOMContentLoaded auto-run immediately. Later
+    // awaits (layout/icon-pack imports) can otherwise let mermaid render
+    // every diagram with its default theme before initialize() runs.
+    window.mermaid.initialize({ startOnLoad: false });
     return window.mermaid;
   })();
 `

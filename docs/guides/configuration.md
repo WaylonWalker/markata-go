@@ -1016,7 +1016,15 @@ crossorigin = true
 ```toml
 [[markata-go.head.script]]
 src = "/js/analytics.js"
+defer = true          # optional: don't block HTML parsing
+
+[[markata-go.head.script]]
+src = "https://example.com/widget.js"
+async = true          # optional: load and run independently of parsing
 ```
+
+Scripts without `defer` or `async` are parser-blocking; prefer `defer` for
+anything that is not required before the page body renders.
 
 ### Glob Settings (`[markata-go.glob]`)
 

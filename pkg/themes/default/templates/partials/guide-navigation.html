@@ -13,28 +13,28 @@
 {% if nav_prev or nav_next %}
 <nav class="post-nav guide-navigation" aria-label="Post navigation">
     {% if nav_prev %}
-    <a href="{{ nav_prev.href }}" class="guide-nav guide-nav--prev" rel="prev">
+    <a href="{{ nav_prev.href }}" class="guide-nav guide-nav--prev" rel="prev" data-action="prev">
         <span class="guide-nav-label">&larr; Previous</span>
         <span class="guide-nav-title">{{ nav_prev.title }}</span>
     </a>
     {% else %}
-    <span class="guide-nav guide-nav--prev guide-nav--disabled" aria-hidden="true"></span>
+    <span class="guide-nav guide-nav--prev guide-nav--disabled" data-nav-slot="prev" aria-hidden="true"></span>
     {% endif %}
 
     {% if nav_label and nav_href %}
-    <a href="{{ nav_href }}" class="guide-nav guide-nav--series">
-        <span class="guide-nav-label">{% if series_nav %}Series{% else %}Feed{% endif %}</span>
-        <span class="guide-nav-title">{{ nav_label }}</span>
+    <a href="{{ nav_href }}" class="guide-nav guide-nav--series" data-nav-source>
+        <span class="guide-nav-label" data-nav-source-label>{% if series_nav %}Series{% else %}Feed{% endif %}</span>
+        <span class="guide-nav-title" data-nav-source-title>{{ nav_label }}</span>
     </a>
     {% endif %}
 
     {% if nav_next %}
-    <a href="{{ nav_next.href }}" class="guide-nav guide-nav--next" rel="next">
+    <a href="{{ nav_next.href }}" class="guide-nav guide-nav--next" rel="next" data-action="next">
         <span class="guide-nav-label">Next &rarr;</span>
         <span class="guide-nav-title">{{ nav_next.title }}</span>
     </a>
     {% else %}
-    <span class="guide-nav guide-nav--next guide-nav--disabled" aria-hidden="true"></span>
+    <span class="guide-nav guide-nav--next guide-nav--disabled" data-nav-slot="next" aria-hidden="true"></span>
     {% endif %}
 </nav>
 {% endif %}

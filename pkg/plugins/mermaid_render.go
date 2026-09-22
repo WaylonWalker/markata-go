@@ -245,7 +245,7 @@ type chromiumRenderer struct {
 }
 
 // mermaidJSVersion is the MermaidJS version to download for chromium rendering.
-const mermaidJSVersion = "10.9.5"
+const mermaidJSVersion = "11.17.2"
 
 // getMermaidJSCacheDir returns the cache directory for MermaidJS source files,
 // following XDG conventions (~/.cache/markata-go/mermaid/).

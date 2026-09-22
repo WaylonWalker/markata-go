@@ -560,7 +560,8 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 		jsPath := buildHashedURL("js/link-avatars.js", p.jsHash)
 
 		modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
-			Src: jsPath,
+			Src:   jsPath,
+			Defer: true,
 		})
 	}
 

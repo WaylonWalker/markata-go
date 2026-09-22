@@ -78,10 +78,10 @@ var assetRegistry = []Asset{
 	// vendored as a single file.
 	{
 		Name:      "mermaid",
-		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js",
+		URL:       "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js",
 		LocalPath: "mermaid/mermaid.min.js",
 		Integrity: "",
-		Version:   "10.9.5",
+		Version:   "11.17.2",
 		Type:      "js",
 	},
 

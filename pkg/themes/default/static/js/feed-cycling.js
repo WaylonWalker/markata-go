@@ -292,6 +292,11 @@
    * Update the prev/next links in .post-nav (the data-action elements
    * that [ and ] keys use to navigate).
    * Appends ?feed=slug so the next page knows which feed to restore.
+   *
+   * The nav is rendered by partials/guide-navigation.html as a grid of
+   * .guide-nav cells (prev | source | next). Cells without a target are
+   * hidden placeholders carrying data-nav-slot, so links are swapped in
+   * place and the label/title structure is preserved.
    */
   function updatePrevNextLinks(feed) {
     var postNav = document.querySelector('.post-nav');
@@ -306,42 +311,55 @@
 
     postNav.classList.remove('post-nav--hidden');
 
-    // Update or create prev link
-    var prevLink = postNav.querySelector('[data-action="prev"]');
-    if (feed.prev) {
-      var prevHref = appendFeedParam(feed.prev.href, feedSlug);
-      if (prevLink) {
-        prevLink.href = prevHref;
-        prevLink.textContent = feed.prev.title;
-      } else {
-        prevLink = document.createElement('a');
-        prevLink.href = prevHref;
-        prevLink.className = 'prev';
-        prevLink.setAttribute('data-action', 'prev');
-        prevLink.textContent = feed.prev.title;
-        postNav.insertBefore(prevLink, postNav.firstChild);
-      }
-    } else if (prevLink) {
-      prevLink.remove();
+    setNavCell(postNav, 'prev', feed.prev, feedSlug, '\u2190 Previous');
+    setNavCell(postNav, 'next', feed.next, feedSlug, 'Next \u2192');
+
+    var sourceLink = postNav.querySelector('[data-nav-source]');
+    if (sourceLink && feed.slug) {
+      sourceLink.href = '/' + feed.slug + '/';
+      var sourceLabel = sourceLink.querySelector('[data-nav-source-label]');
+      var sourceTitle = sourceLink.querySelector('[data-nav-source-title]');
+      if (sourceLabel) sourceLabel.textContent = 'Feed';
+      if (sourceTitle) sourceTitle.textContent = feed.title || feed.slug;
+    }
+  }
+
+  /**
+   * Replace the prev/next cell in a guide-navigation grid with a link to
+   * target, or with a hidden placeholder when there is no target.
+   */
+  function setNavCell(postNav, direction, target, feedSlug, labelText) {
+    var existing = postNav.querySelector('[data-action="' + direction + '"]') ||
+      postNav.querySelector('[data-nav-slot="' + direction + '"]');
+    var cell;
+
+    if (target) {
+      cell = document.createElement('a');
+      cell.href = appendFeedParam(target.href, feedSlug);
+      cell.className = 'guide-nav guide-nav--' + direction;
+      cell.setAttribute('rel', direction);
+      cell.setAttribute('data-action', direction);
+      var label = document.createElement('span');
+      label.className = 'guide-nav-label';
+      label.textContent = labelText;
+      var title = document.createElement('span');
+      title.className = 'guide-nav-title';
+      title.textContent = target.title;
+      cell.appendChild(label);
+      cell.appendChild(title);
+    } else {
+      cell = document.createElement('span');
+      cell.className = 'guide-nav guide-nav--' + direction + ' guide-nav--disabled';
+      cell.setAttribute('data-nav-slot', direction);
+      cell.setAttribute('aria-hidden', 'true');
     }
 
-    // Update or create next link
-    var nextLink = postNav.querySelector('[data-action="next"]');
-    if (feed.next) {
-      var nextHref = appendFeedParam(feed.next.href, feedSlug);
-      if (nextLink) {
-        nextLink.href = nextHref;
-        nextLink.textContent = feed.next.title;
-      } else {
-        nextLink = document.createElement('a');
-        nextLink.href = nextHref;
-        nextLink.className = 'next';
-        nextLink.setAttribute('data-action', 'next');
-        nextLink.textContent = feed.next.title;
-        postNav.appendChild(nextLink);
-      }
-    } else if (nextLink) {
-      nextLink.remove();
+    if (existing) {
+      existing.replaceWith(cell);
+    } else if (direction === 'prev') {
+      postNav.insertBefore(cell, postNav.firstChild);
+    } else {
+      postNav.appendChild(cell);
     }
   }
 

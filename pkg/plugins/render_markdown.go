@@ -23,6 +23,7 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
@@ -219,6 +220,9 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 			),
 		),
 	}
+	options = append(options, goldmark.WithRendererOptions(
+		renderer.WithNodeRenderers(util.Prioritized(&pluginFenceRenderer{}, 100)),
+	))
 	if unsafeHTML {
 		options = append(options, goldmark.WithRendererOptions(html.WithUnsafe()))
 	}

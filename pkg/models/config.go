@@ -849,6 +849,14 @@ type LinkTag struct {
 // ScriptTag represents a <script> tag configuration.
 type ScriptTag struct {
 	Src string `json:"src" yaml:"src" toml:"src"`
+
+	// Defer adds the defer attribute so the script does not block HTML
+	// parsing and runs after the document is parsed (before DOMContentLoaded).
+	Defer bool `json:"defer,omitempty" yaml:"defer,omitempty" toml:"defer,omitempty"`
+
+	// Async adds the async attribute so the script loads and executes
+	// independently of parsing.
+	Async bool `json:"async,omitempty" yaml:"async,omitempty" toml:"async,omitempty"`
 }
 
 // AlternateFeed configures a <link rel="alternate"> tag for feed discovery.
@@ -1635,6 +1643,22 @@ type MermaidConfig struct {
 	// CDNURL is the URL for the Mermaid.js library (client mode only)
 	CDNURL string `json:"cdn_url" yaml:"cdn_url" toml:"cdn_url"`
 
+	// ELKURL is the ES module URL for @mermaid-js/layout-elk (client mode only).
+	// It is imported lazily, only on pages whose diagrams request the elk
+	// layout. Set to "" to disable.
+	ELKURL string `json:"elk_url" yaml:"elk_url" toml:"elk_url"`
+
+	// IconPacks lists Iconify pack names (e.g. "logos") registered for
+	// architecture diagrams (client mode only). A pack is fetched lazily,
+	// only on pages whose diagrams reference "<name>:" icons.
+	IconPacks []string `json:"icon_packs" yaml:"icon_packs" toml:"icon_packs"`
+
+	// IconPackURL is the URL template for icon pack JSON. "{name}" is
+	// replaced with the pack name and "{icons}" with a comma-separated list
+	// of the icon names the page actually uses. Templates without "{icons}"
+	// download the whole pack (several MB for large sets like "logos").
+	IconPackURL string `json:"icon_pack_url" yaml:"icon_pack_url" toml:"icon_pack_url"`
+
 	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
 	Theme string `json:"theme" yaml:"theme" toml:"theme"`
 
@@ -1678,12 +1702,22 @@ type ChromiumRendererConfig struct {
 	NoSandbox bool `json:"no_sandbox" yaml:"no_sandbox" toml:"no_sandbox"`
 }
 
+// DefaultMermaidELKURL is the default @mermaid-js/layout-elk ES module URL.
+const DefaultMermaidELKURL = "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.3/dist/mermaid-layout-elk.esm.min.mjs"
+
+// DefaultMermaidIconPackURL is the default Iconify icon URL template. It
+// uses the Iconify API so only the icons referenced on a page are fetched.
+const DefaultMermaidIconPackURL = "https://api.iconify.design/{name}.json?icons={icons}"
+
 // NewMermaidConfig creates a new MermaidConfig with default values.
 func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
 		Enabled:          true,
 		Mode:             "client",
 		CDNURL:           "/assets/vendor/mermaid/mermaid.min.js",
+		ELKURL:           DefaultMermaidELKURL,
+		IconPacks:        []string{"logos"},
+		IconPackURL:      DefaultMermaidIconPackURL,
 		Theme:            "default",
 		UseCSSVariables:  true,
 		Lightbox:         true,

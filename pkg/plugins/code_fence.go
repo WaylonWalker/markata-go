@@ -7,6 +7,7 @@ import (
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
@@ -35,8 +36,65 @@ var (
 	codeFenceRangePattern = regexp.MustCompile(`^\{\s*(\d+(?:\s*-\s*\d+)?(?:\s*,\s*\d+(?:\s*-\s*\d+)?)*)\s*\}$`)
 )
 
+// pluginFenceLanguages are fence languages consumed by other plugins
+// (csv_fence, chartjs, mermaid) that match on goldmark's plain
+// <pre><code class="language-x"> markup. Chroma has lexers for some of them
+// (csv), so they are routed around the highlighter entirely.
+var pluginFenceLanguages = map[string]bool{
+	"csv":     true,
+	"chartjs": true,
+	"mermaid": true,
+}
+
+// KindPluginFence is the AST node kind for fences handed to other plugins.
+var KindPluginFence = ast.NewNodeKind("PluginFence")
+
+// pluginFence is a fenced code block rendered as plain <pre><code> so that a
+// language plugin can transform it after markdown rendering.
+type pluginFence struct {
+	ast.BaseBlock
+	lang  []byte
+	lines *text.Segments
+}
+
+// Kind implements ast.Node.
+func (n *pluginFence) Kind() ast.NodeKind { return KindPluginFence }
+
+// Dump implements ast.Node.
+func (n *pluginFence) Dump(source []byte, level int) {
+	ast.DumpHelper(n, source, level, map[string]string{"Lang": string(n.lang)}, nil)
+}
+
+// IsRaw implements ast.Node; the block body is not parsed as inline content.
+func (n *pluginFence) IsRaw() bool { return true }
+
+// pluginFenceRenderer writes pluginFence nodes as <pre><code class="language-x">.
+type pluginFenceRenderer struct{}
+
+// RegisterFuncs implements renderer.NodeRenderer.
+func (r *pluginFenceRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(KindPluginFence, r.render)
+}
+
+func (r *pluginFenceRenderer) render(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*pluginFence)
+	if !entering {
+		_, _ = w.WriteString("</code></pre>\n")
+		return ast.WalkContinue, nil
+	}
+	_, _ = w.WriteString(`<pre><code class="language-`)
+	_, _ = w.Write(util.EscapeHTML(n.lang))
+	_, _ = w.WriteString(`">`)
+	for i := 0; i < n.lines.Len(); i++ {
+		line := n.lines.At(i)
+		_, _ = w.Write(util.EscapeHTML(line.Value(source)))
+	}
+	return ast.WalkContinue, nil
+}
+
 // codeFenceTransformer copies title/hl_lines shorthand from a fence info
-// string onto the FencedCodeBlock node attributes.
+// string onto the FencedCodeBlock node attributes, and swaps fences whose
+// language belongs to another plugin for pluginFence nodes.
 type codeFenceTransformer struct{}
 
 // Transform implements parser.ASTTransformer.
@@ -51,6 +109,13 @@ func (t *codeFenceTransformer) Transform(node *ast.Document, reader text.Reader,
 			return ast.WalkContinue, nil
 		}
 		info := strings.TrimSpace(string(fence.Info.Segment.Value(source)))
+		if lang := strings.ToLower(string(fence.Language(source))); pluginFenceLanguages[lang] {
+			replacement := &pluginFence{lang: []byte(lang), lines: fence.Lines()}
+			if parent := fence.Parent(); parent != nil {
+				parent.ReplaceChild(parent, fence, replacement)
+			}
+			return ast.WalkSkipChildren, nil
+		}
 		applyCodeFenceInfo(fence, info)
 		return ast.WalkContinue, nil
 	})

@@ -126,13 +126,28 @@ src = "https://cdn.tailwindcss.com"
 
 [[markata-go.head.script]]
 src = "/js/analytics.js"
+defer = true
+
+[[markata-go.head.script]]
+src = "/js/widget.js"
+async = true
 ```
 
 **Generated HTML:**
 ```html
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="/js/analytics.js"></script>
+<script src="/js/analytics.js" defer></script>
+<script src="/js/widget.js" async></script>
 ```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `src` | string | required | Script URL |
+| `defer` | bool | `false` | Emit the `defer` attribute (non-blocking, runs before `DOMContentLoaded`) |
+| `async` | bool | `false` | Emit the `async` attribute |
+
+Plugins that inject their own scripts (e.g. `link_avatars`, `chartjs`) emit
+them with `defer` so they never block HTML parsing.
 
 ### Raw HTML Text
 

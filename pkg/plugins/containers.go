@@ -155,20 +155,18 @@ func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context)
 
 // Continue is called for each subsequent line.
 func (p *containerParser) Continue(node ast.Node, reader text.Reader, _ parser.Context) parser.State {
-	line, segment := reader.PeekLine()
-	lineStr := strings.TrimSpace(string(line))
-	trimmed := strings.TrimLeft(lineStr, " \t")
+	line, _ := reader.PeekLine()
+	trimmed := strings.TrimSpace(string(line))
 
+	// Only a closer with the exact same number of colons closes this container.
+	// Shallower closers belong to nested children (e.g. `::::` inside `:::::`),
+	// which goldmark visits after the parents, so we must not close here.
 	if isContainerClose(trimmed) {
-		depth := len(trimmed)
-		if container, ok := node.(*Container); ok {
-			if depth == container.Depth {
-				reader.Advance(segment.Len())
-				return parser.Close
-			}
-			if depth < container.Depth {
-				return parser.Close
-			}
+		if container, ok := node.(*Container); ok && len(trimmed) == container.Depth {
+			// Leave the newline in place so goldmark sees a blank remainder
+			// instead of lazily continuing an open paragraph onto the next line.
+			reader.AdvanceToEOL()
+			return parser.Close
 		}
 	}
 

@@ -168,8 +168,10 @@ func (p *ChartJSPlugin) injectChartJSScripts(htmlContent string, initScripts []s
 		chartURL = strings.TrimRight(chartURL, "/") + "/chart.min.js"
 	}
 
+	// defer keeps the 200KB library from blocking HTML parsing; deferred
+	// scripts still run before DOMContentLoaded, which the init waits on.
 	script := fmt.Sprintf(`
-<script src="%s"></script>
+<script src="%s" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {%s
 });

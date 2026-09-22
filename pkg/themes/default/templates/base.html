@@ -485,7 +485,7 @@
 
     <!-- Script tags -->
     {% for script in config.head.script %}
-    <script src="{{ script.src }}"></script>
+    <script src="{{ script.src }}"{% if script.defer %} defer{% endif %}{% if script.async %} async{% endif %}></script>
     {% endfor %}
   {% endif %}
 
@@ -1112,26 +1112,6 @@
   </script>
 
     {% include "partials/background-scripts.html" %}
-    <script>
-      (() => {
-        const applyMarkPresentation = () => {
-          const root = getComputedStyle(document.documentElement);
-          const background = root.getPropertyValue('--color-highlight').trim();
-          const color = root.getPropertyValue('--color-highlight-text').trim();
-          if (background) document.documentElement.style.setProperty('--heading-mark-bg', background, 'important');
-          if (color) document.documentElement.style.setProperty('--heading-mark-fg', color, 'important');
-          document.querySelectorAll('mark').forEach(mark => {
-            if (background) mark.style.setProperty('background-color', background, 'important');
-            if (color) mark.style.setProperty('color', color, 'important');
-          });
-        };
-        applyMarkPresentation();
-        setTimeout(applyMarkPresentation, 0);
-        setTimeout(applyMarkPresentation, 100);
-        setInterval(applyMarkPresentation, 250);
-        new MutationObserver(applyMarkPresentation).observe(document.documentElement, { childList: true, subtree: true });
-      })();
-    </script>
   {% endblock %}
 </body>
 </html>

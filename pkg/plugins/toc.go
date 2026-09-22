@@ -4,6 +4,7 @@ package plugins
 import (
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -277,9 +278,72 @@ func (p *TocPlugin) SetLevelRange(minLevel, maxLevel int) {
 	}
 }
 
+// tocPlaceholderHTMLRegex matches the rendered [[toc]] paragraph.
+var tocPlaceholderHTMLRegex = regexp.MustCompile(`(?i)<p>\s*\[\[toc\]\]\s*</p>`)
+
+// Priority runs the render step after render_markdown so the placeholder
+// paragraph exists in ArticleHTML.
+func (p *TocPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageRender {
+		return lifecycle.PriorityLate
+	}
+	return lifecycle.PriorityDefault
+}
+
+// Render replaces the [[toc]] placeholder paragraph with an inline table of
+// contents built from the entries extracted during Transform.
+func (p *TocPlugin) Render(m *lifecycle.Manager) error {
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.TocPlaceholder && post.ArticleHTML != ""
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+		if !tocPlaceholderHTMLRegex.MatchString(post.ArticleHTML) {
+			return nil
+		}
+		entries, _ := post.Extra["toc"].([]*TocEntry)
+		replacement := ""
+		if len(entries) > 0 {
+			replacement = renderInlineTOC(entries)
+		}
+		post.ArticleHTML = tocPlaceholderHTMLRegex.ReplaceAllLiteralString(post.ArticleHTML, replacement)
+		return nil
+	})
+}
+
+// renderInlineTOC renders TOC entries as a nested list inside <nav class="toc toc--inline">.
+func renderInlineTOC(entries []*TocEntry) string {
+	var b strings.Builder
+	b.WriteString(`<nav class="toc toc--inline" aria-label="Table of contents">` + "\n")
+	b.WriteString(`<p class="toc-title">On this page</p>` + "\n")
+	writeTOCList(&b, entries, false)
+	b.WriteString("</nav>\n")
+	return b.String()
+}
+
+func writeTOCList(b *strings.Builder, entries []*TocEntry, nested bool) {
+	if nested {
+		b.WriteString(`<ul class="toc-list toc-list--nested">` + "\n")
+	} else {
+		b.WriteString(`<ul class="toc-list">` + "\n")
+	}
+	for _, entry := range entries {
+		b.WriteString(`<li class="toc-item toc-item--level-` + strconv.Itoa(entry.Level) + `">`)
+		b.WriteString(`<a href="#` + html.EscapeString(entry.ID) + `" class="toc-link">` + html.EscapeString(entry.Text) + `</a>`)
+		if len(entry.Children) > 0 {
+			b.WriteString("\n")
+			writeTOCList(b, entry.Children, true)
+		}
+		b.WriteString("</li>\n")
+	}
+	b.WriteString("</ul>\n")
+}
+
 // Ensure TocPlugin implements the required interfaces.
 var (
 	_ lifecycle.Plugin          = (*TocPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*TocPlugin)(nil)
 	_ lifecycle.TransformPlugin = (*TocPlugin)(nil)
+	_ lifecycle.RenderPlugin    = (*TocPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*TocPlugin)(nil)
 )

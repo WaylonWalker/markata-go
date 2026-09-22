@@ -2037,6 +2037,8 @@ The plugin also fits rendered graphs to narrow content columns automatically, so
 **Stage:** Render (after render_markdown)  
 **Purpose:** Expands standalone URLs in paragraphs into styled link preview cards.
 
+The plugin is bundled but **opt-in**: it does nothing until a `[markata-go.one_line_link]` table exists in your config (an empty table is enough).
+
 **Configuration (TOML):**
 ```toml
 [markata-go.one_line_link]
@@ -2050,7 +2052,7 @@ exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
 **Options:**
 | Option | Default | Description |
 |--------|---------|-------------|
-| `enabled` | `true` | Enable/disable the plugin |
+| `enabled` | `true` | Enable/disable the plugin (only consulted when the `[markata-go.one_line_link]` table exists) |
 | `card_class` | `link-card` | CSS class for the link card |
 | `fallback_title` | `Link` | Title when metadata unavailable |
 | `timeout` | `5` | HTTP timeout in seconds |
@@ -3703,6 +3705,9 @@ jinja: true
 enabled = true                                              # Enabled by default; set to false to disable
 mode = "client"                                             # "client", "cli", or "chromium"
 cdn_url = "/assets/vendor/mermaid/mermaid.min.js"      # Mermaid URL (client mode, local by default)
+elk_url = "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.3/dist/mermaid-layout-elk.esm.min.mjs"  # ELK layout engine, loaded only on pages that use `layout: elk` ("" disables)
+icon_packs = ["logos"]                                      # Iconify packs for architecture diagrams, fetched only when used
+icon_pack_url = "https://api.iconify.design/{name}.json?icons={icons}"  # {name} = pack, {icons} = comma-separated icons the page uses
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
 use_css_variables = true                                    # Derive diagram colors from site CSS palette (default: true)
 lightbox = true                                             # Click diagrams to open in lightbox with pan/zoom (default: true)
@@ -3725,7 +3730,10 @@ no_sandbox = false                                          # Required in contai
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid processing is active |
 | `mode` | string | `"client"` | Rendering mode: `client` (browser-side JS), `cli` (mmdc), or `chromium` (headless Chrome) |
-| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.min.js` | Mermaid URL (client mode, local by default) |
+| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.min.js` | Mermaid URL (client mode, local by default). The vendored bundle is Mermaid 11.17.2. |
+| `elk_url` | string | jsDelivr `@mermaid-js/layout-elk@0.2.3` ESM URL | ES module URL for the ELK layout engine. Imported lazily, only on pages where a diagram mentions `elk` (for example `layout: elk` in its frontmatter). The download starts immediately but only ELK diagrams wait for it; dagre diagrams render right away. Set to `""` to disable. |
+| `icon_packs` | []string | `["logos"]` | Iconify icon packs registered for `architecture-beta` diagrams (`service db(logos:aws-aurora)[DB]`). Each pack is fetched only on pages whose diagrams reference `<name>:`. Set to `[]` to disable. |
+| `icon_pack_url` | string | Iconify API `https://api.iconify.design/{name}.json?icons={icons}` | URL template for icon pack JSON in IconifyJSON format. `{name}` is replaced with the pack name and `{icons}` with a comma-separated list of the icons the page actually references, so only a few KB are fetched instead of a whole pack (the `logos` pack alone is ~7 MB). Omit `{icons}` to fetch full packs, e.g. a self-hosted `/assets/iconify/{name}.json`. |
 | `theme` | string | `"default"` | Mermaid theme: default, dark, forest, neutral. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Read site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and pass them to Mermaid's theming. Hardcoded fallbacks are used if variables are not defined. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
@@ -3743,6 +3751,7 @@ no_sandbox = false                                          # Required in contai
 6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from vendor assets by default.
 7. In chromium mode, the MermaidJS library is cached at `~/.cache/markata-go/mermaid/` to avoid re-downloading on each build
 8. In cli/chromium modes, rendered SVGs are cached in the build cache and reused when the diagram source and rendering inputs are unchanged
+9. In client mode, diagrams render lazily: the first three on the page render immediately and the rest render as they scroll within ~800px of the viewport, so long pages become interactive quickly. `window.renderAllMermaid()` renders every remaining diagram at once and is called automatically before printing.
 
 **Markdown usage:**
 ````markdown
@@ -3790,6 +3799,27 @@ classic script and read from `window.mermaid`. The default is the vendored,
 self-contained UMD build. The ESM build lazily fetches per-diagram chunks from
 the same directory, so only point `cdn_url` at an `.mjs` file when the full
 `dist/` directory is served alongside it (for example a CDN URL).
+
+**Layouts, looks, and icons.** Diagram frontmatter is honoured, so `layout: elk` and `look: handDrawn` work per diagram:
+
+````markdown
+```mermaid
+---
+config:
+  layout: elk
+  look: handDrawn
+---
+flowchart TD
+    A[Intake] --> B[Screening] --> C[Filtration]
+```
+````
+
+The ELK engine and Iconify packs are not vendored (ELK alone is ~5 MB of lazily
+loaded chunks). They are imported from `elk_url` / `icon_pack_url` only on pages
+that use them, so ordinary diagrams never touch a CDN. Icon requests are limited
+to the icons referenced on the page and abort after 8 seconds; a failed pack
+renders its diagram with empty icon slots instead of blocking the queue. Offline or CDN-free sites
+can set `elk_url = ""` and `icon_packs = []`, or point both at self-hosted copies.
 
 When `lightbox` is enabled, each rendered SVG also gets a click handler that opens a GLightbox overlay. The lightbox contains a toolbar with Fit / + / - controls and supports mouse wheel zoom and click-drag panning via svg-pan-zoom.
 
@@ -4173,7 +4203,7 @@ See the [[webawesome-components|Web Awesome Components]] guide for demos and sel
 enabled = true              # Enabled by default; set to false to disable
 link_class = "glossary-term"  # CSS class for glossary links (default)
 case_sensitive = false      # Case-sensitive term matching (default: false)
-tooltip = true              # Add title attribute with description (default: true)
+tooltip = true              # Show a hover definition popover (default: true)
 max_links_per_term = 1      # Max times to link each term (0 = all, default: 1)
 exclude_tags = ["glossary"] # Tags to exclude from linking (default: ["glossary"])
 export_json = true          # Export glossary.json file (default: true)
@@ -4212,8 +4242,17 @@ routines, and tools for building software applications...
 <p>You can use the API to fetch data.</p>
 
 <!-- After -->
-<p>You can use the <a href="/glossary/api/" class="glossary-term" title="Application Programming Interface - a set of protocols for building software">API</a> to fetch data.</p>
+<p>You can use the <a href="/glossary/api/" class="glossary-term" title="Application Programming Interface - a set of protocols for building software" data-preview="glossary" data-title="API" data-description="Application Programming Interface - a set of protocols for building software">API</a> to fetch data.</p>
 ```
+
+With `tooltip = true` the default theme shows an instant, styled definition
+card on hover or keyboard focus (`tooltips.js`): a "Glossary" eyebrow, the
+term, its description, and a "Read the full definition" link. The card stays
+open while the pointer moves into it. The `title` attribute is kept as a
+no-JavaScript fallback and removed once the popover script binds, so the slow
+native browser tooltip never doubles up. Custom themes can style the card via
+`.wikilink-tooltip--glossary`, `.tooltip-eyebrow`, `.tooltip-title`,
+`.tooltip-desc`, and `.tooltip-more`.
 
 **Exported glossary.json:**
 ```json

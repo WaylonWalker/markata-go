@@ -70,7 +70,7 @@ enabled = false  # Disable mermaid without removing from hooks
 enabled = true
 link_class = "glossary-term"       # CSS class for glossary links
 case_sensitive = false             # Match terms case-insensitively
-tooltip = true                     # Add tooltip with description
+tooltip = true                     # Hover definition popover + title fallback
 max_links_per_term = 1             # Link only first occurrence (0 = all)
 exclude_tags = ["glossary"]        # Don't link in glossary posts themselves
 export_json = true                 # Export glossary.json to output
@@ -85,7 +85,7 @@ template_key = "glossary"          # templateKey value identifying glossary post
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `link_class` | string | `"glossary-term"` | CSS class for glossary links |
 | `case_sensitive` | bool | `false` | Whether term matching is case-sensitive |
-| `tooltip` | bool | `true` | Add title attribute with description |
+| `tooltip` | bool | `true` | Emit `title` (no-JS fallback) plus `data-preview="glossary"`, `data-title`, and `data-description` for the instant popover rendered by the theme's `tooltips.js` |
 | `max_links_per_term` | int | `1` | Max links per term per post (0 = unlimited) |
 | `exclude_tags` | []string | `["glossary"]` | Tags that should not have terms linked |
 | `export_json` | bool | `true` | Whether to export glossary.json |
@@ -171,6 +171,9 @@ The plugin MUST implement:
 enabled = true
 mode = "client"                         # "client", "cli", or "chromium"
 cdn_url = "/assets/vendor/mermaid/mermaid.min.js"  # vendored UMD bundle; .mjs URLs are ES-module imported
+elk_url = "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.3/dist/mermaid-layout-elk.esm.min.mjs"  # lazy ELK layout engine; "" disables
+icon_packs = ["logos"]                  # Iconify packs, fetched lazily when a diagram uses "<name>:"
+icon_pack_url = "https://api.iconify.design/{name}.json?icons={icons}"  # {icons} = icons used on the page
 theme = "default"                       # default, dark, forest, neutral
 use_css_variables = true                # Use site palette CSS variables for diagram theming
 lightbox = true                         # Click diagrams to open in full-screen lightbox with pan/zoom
@@ -195,6 +198,9 @@ max_concurrent = 4                      # Maximum concurrent diagram renderings
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `mode` | string | `"client"` | Rendering mode: `"client"` (browser), `"cli"` (mmdc), or `"chromium"` (Chrome DevTools Protocol) |
 | `cdn_url` | string | `"/assets/vendor/mermaid/mermaid.min.js"` | URL for Mermaid.js library (client mode only). URLs ending in `.mjs`/containing `.esm.` are loaded with an ES module `import`; other URLs are loaded as a classic script and read from `window.mermaid`. |
+| `elk_url` | string | jsDelivr `@mermaid-js/layout-elk@0.2.3` ESM URL | ES module URL for the ELK layout engine (client mode only). The client script starts the import only when the page's diagram sources match `\belk\b`, calls `mermaid.registerLayoutLoaders` when it resolves, and awaits it only before rendering a batch that contains an ELK diagram. `""` disables. |
+| `icon_packs` | []string | `["logos"]` | Iconify pack names registered via `mermaid.registerIconPacks` (client mode only). A pack is fetched only when a diagram on the page contains `<name>:`. |
+| `icon_pack_url` | string | `https://api.iconify.design/{name}.json?icons={icons}` | URL template returning IconifyJSON. `{name}` is substituted with the pack name; `{icons}` with the sorted, comma-separated icon names matching `<name>:<icon>` in the page's diagram sources. Requests abort after 8s and a failed pack resolves to an empty icon set so rendering continues. |
 | `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, etc.) with hardcoded fallbacks. When enabled, the `theme` field is ignored. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay for rendered diagrams. Uses a programmatic GLightbox instance with svg-pan-zoom for interactive pan and zoom. |
@@ -261,6 +267,8 @@ graph TD
 3. Inject Mermaid.js initialization script (once per post with mermaid content)
 4. When `use_css_variables` is true, inject a script that reads CSS custom properties and passes them to `mermaid.initialize()`
 5. When `lightbox` is true, attach click handlers to render SVG diagrams in a full-screen lightbox with pan/zoom
+6. Call `mermaid.initialize({ startOnLoad: false })` immediately after the library loads so Mermaid's own `load` handler never renders with the default theme before the palette configuration is applied
+7. Render lazily: `window.initMermaid()` renders the first 3 unprocessed `.mermaid` elements immediately and observes the rest with an `IntersectionObserver` (`rootMargin: 800px`), rendering each batch as it nears the viewport. `window.renderAllMermaid()` renders every remaining diagram and is invoked on `beforeprint`. Environments without `IntersectionObserver` render everything eagerly.
 
 *CLI and Chromium modes:*
 1. Find all `<pre><code class="language-mermaid">` blocks
@@ -730,7 +738,10 @@ The plugin MUST implement:
 
 ### `one_line_link`
 
-> **Note:** This plugin is planned but not yet implemented.
+> **Note:** Included in the default plugin set but **opt-in**: it only runs when a
+> `[markata-go.one_line_link]` table is present in the configuration. Metadata
+> fetching (`fetch_metadata`, `cache_metadata`, per-domain templates) is not yet
+> implemented; cards use `fallback_title` and the URL's domain.
 
 **Stage:** `render` (late priority, after markdown conversion)
 

@@ -2591,7 +2591,9 @@ func (p *BlogrollPlugin) headToMap(h *models.HeadConfig) map[string]interface{} 
 	scriptTags := make([]map[string]interface{}, len(h.Script))
 	for i, script := range h.Script {
 		scriptTags[i] = map[string]interface{}{
-			"src": script.Src,
+			"src":   script.Src,
+			"defer": script.Defer,
+			"async": script.Async,
 		}
 	}
 

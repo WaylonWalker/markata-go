@@ -1941,6 +1941,12 @@ func scriptTagsFromValue(value interface{}, fallback []models.ScriptTag) []model
 			if src, ok := m["src"].(string); ok {
 				tag.Src = src
 			}
+			if d, ok := m["defer"].(bool); ok {
+				tag.Defer = d
+			}
+			if a, ok := m["async"].(bool); ok {
+				tag.Async = a
+			}
 			result = append(result, tag)
 		}
 		return result

@@ -21,6 +21,10 @@ config flag or a small Markdown change, not a template or CSS rewrite.
 | "Key takeaway box / pull quote" | `!!! takeaway` and `!!! pullquote` admonitions. A pullquote title renders as attribution. | Style blockquotes by hand |
 | "Part N of M series navigation" | Add `series: name` to frontmatter or use a `type = "series"` / `type = "guide"` feed; the card and footer prev/next appear when the series has >1 post. Hide with `components.post_meta.series_card = false`. | Hand-write prev/next links |
 | "Back to top / smooth anchors" | Built in. | Add JS |
+| "Glossary term popups" | Define terms with the `glossary` plugin; matched terms get `data-preview="glossary"` and an instant hover/focus popover (title, definition, link). Native `title` remains as the no-JS fallback. | Add tooltip libraries |
+| "Mermaid with `layout: elk` or `architecture-beta` icons" | Works out of the box: ELK and Iconify packs load lazily from CDN only on pages that use them (`[markata-go.mermaid] elk_url`, `icon_packs`, `icon_pack_url` with `{name}`/`{icons}`). Set `elk_url = ""` / `icon_packs = []` for offline sites. | Vendor 5 MB of ELK chunks |
+| "Page with many diagrams is slow" | Client mode already renders the first 3 diagrams eagerly and the rest as they scroll into view; `window.renderAllMermaid()` forces the rest. Prefer `mode = "chromium"` prerendering for very heavy pages. | Add a diagram-count limit |
+| "Block pages with nested containers" | `:::` containers nest by adding colons (`::::` outside, `:::` inside); each closer must match its opener's depth. | Flatten to HTML |
 
 ## Config Reference
 
@@ -45,6 +49,14 @@ edit_label = "Edit this page"
 
 [markata-go.wikilink_hover]
 all_internal_links = true
+
+[markata-go.mermaid]
+elk_url = ""               # "" disables the lazy ELK layout import
+icon_packs = ["logos"]     # Iconify packs fetched per-icon when a diagram uses "logos:..."
+
+[[markata-go.head.script]]
+src = "/js/analytics.js"
+defer = true               # non-blocking; `async = true` is also supported
 ```
 
 ## Template Context Added For These Features
@@ -71,6 +83,10 @@ rendered HTML rather than the source:
   `class="line hl"` for highlighted lines
 - Series: `Part N of M` text and `<nav class="post-nav guide-navigation">`
 - Updated: `<time class="dt-updated">`
+- Glossary: `<a class="glossary-term" data-preview="glossary" data-title=...>`
+- Mermaid: every `<pre class="mermaid">` has `data-processed` after calling
+  `window.renderAllMermaid()` in a headless browser; a missing final diagram
+  usually means an earlier one hung (check the console for icon/ELK errors)
 
 Margin TOC, sidenotes, tooltips, copy buttons, and back-to-top are applied by
 `reading.js`/`tooltips.js` in the browser, so verify those with a headless
