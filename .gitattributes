@@ -1,0 +1,3 @@
+# Embedded catalog text must keep stable bytes across platform checkouts.
+internal/fontcatalog/**/*.txt text eol=lf
+internal/fontcatalog/**/*.yaml text eol=lf
