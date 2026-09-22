@@ -27,7 +27,6 @@ var derivedReadabilityChecks = []struct {
 func TestDeriveCounterpart_EveryBuiltinIsReadable(t *testing.T) {
 	t.Parallel()
 	for _, name := range BuiltinNames() {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			base, err := LoadBuiltin(name)
@@ -41,7 +40,10 @@ func TestDeriveCounterpart_EveryBuiltinIsReadable(t *testing.T) {
 			if errs := derived.Validate(); len(errs) > 0 {
 				t.Fatalf("derived palette invalid: %v", errs)
 			}
-			bg, _ := ParseHexColor(derived.Resolve("bg-primary"))
+			bg, err := ParseHexColor(derived.Resolve("bg-primary"))
+			if err != nil {
+				t.Fatalf("derived background is not a color: %v", err)
+			}
 			if l := bg.ToHSL().L; derived.Variant == VariantLight && l < 0.85 {
 				t.Errorf("light background too dark: %s (L=%.2f)", bg.Hex(), l)
 			} else if derived.Variant == VariantDark && l > 0.25 {

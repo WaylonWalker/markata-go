@@ -81,11 +81,25 @@ func DeriveCounterpart(p *Palette) *Palette {
 	if p == nil {
 		return nil
 	}
-	target := VariantLight
-	if p.Variant == VariantLight {
-		target = VariantDark
-	}
+	target := counterpartVariant(p.Variant)
+	derived := newDerivedPalette(p, target)
+	backgrounds, texts, primaryText := classifyDerivedColors(p)
 
+	deriveBackgroundColors(p, derived, target, backgrounds)
+	contrastBgs := derivedBackgroundColorsForContrast(p, derived)
+	deriveForegroundColors(p, derived, target, backgrounds, texts, primaryText, contrastBgs)
+
+	return derived
+}
+
+func counterpartVariant(variant Variant) Variant {
+	if variant == VariantLight {
+		return VariantDark
+	}
+	return VariantLight
+}
+
+func newDerivedPalette(p *Palette, target Variant) *Palette {
 	derived := NewPalette(counterpartDisplayName(p.Name, target), target)
 	derived.Author = p.Author
 	derived.License = p.License
@@ -99,15 +113,18 @@ func DeriveCounterpart(p *Palette) *Palette {
 	for k, v := range p.Components {
 		derived.Components[k] = v
 	}
+	return derived
+}
 
-	backgrounds := map[string]bool{}
+func classifyDerivedColors(p *Palette) (backgrounds, texts, primaryText map[string]bool) {
+	backgrounds = make(map[string]bool)
 	for _, role := range derivedBackgroundRoles {
 		if raw := p.rawNameFor(role); raw != "" {
 			backgrounds[raw] = true
 		}
 	}
-	texts := map[string]bool{}
-	primaryText := map[string]bool{}
+	texts = make(map[string]bool)
+	primaryText = make(map[string]bool)
 	for _, role := range derivedTextRoles {
 		raw := p.rawNameFor(role)
 		if raw == "" || backgrounds[raw] {
@@ -118,7 +135,10 @@ func DeriveCounterpart(p *Palette) *Palette {
 			primaryText[raw] = true
 		}
 	}
+	return backgrounds, texts, primaryText
+}
 
+func deriveBackgroundColors(p, derived *Palette, target Variant, backgrounds map[string]bool) {
 	// Backgrounds first: text and accents are adjusted against them.
 	bgNames := make([]string, 0, len(backgrounds))
 	for name := range backgrounds {
@@ -149,7 +169,9 @@ func DeriveCounterpart(p *Palette) *Palette {
 		hsl.S *= derivedBackgroundSatScale
 		derived.Colors[name] = hsl.ToColor().Hex()
 	}
+}
 
+func derivedBackgroundColorsForContrast(p, derived *Palette) []Color {
 	contrastBgs := make([]Color, 0, len(derivedContrastBackgrounds))
 	for _, role := range derivedContrastBackgrounds {
 		raw := p.rawNameFor(role)
@@ -159,7 +181,10 @@ func DeriveCounterpart(p *Palette) *Palette {
 			}
 		}
 	}
+	return contrastBgs
+}
 
+func deriveForegroundColors(p, derived *Palette, target Variant, backgrounds, texts, primaryText map[string]bool, contrastBgs []Color) {
 	rawNames := make([]string, 0, len(p.Colors))
 	for name := range p.Colors {
 		rawNames = append(rawNames, name)
@@ -184,8 +209,6 @@ func DeriveCounterpart(p *Palette) *Palette {
 		}
 		derived.Colors[name] = adjustAgainstAll(hsl.ToColor(), contrastBgs, minContrast).Hex()
 	}
-
-	return derived
 }
 
 // counterpartDisplayName appends the variant word to a display name, replacing

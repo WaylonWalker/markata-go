@@ -32,6 +32,7 @@ func main() {
 	}
 	if *derivePalettes {
 		raw = syncDerivedPalettes(raw)
+		//nolint:gosec // G306: this is a checked-in generated source artifact.
 		if err := os.WriteFile(source, raw, 0o644); err != nil {
 			panic(err)
 		}
@@ -163,7 +164,7 @@ func syncDerivedPalettes(raw []byte) []byte {
 		rolesEnd := rolesStart + strings.Index(text[rolesStart:], "}")
 		block := text[rolesStart:rolesEnd]
 		for role, semantic := range map[string]string{"accent": "accent", "background": "bg-primary", "ink": "text-primary", "surface": "bg-surface"} {
-			re := regexp.MustCompile(fmt.Sprintf(`("%s":\s*)"#[0-9a-fA-F]{6}"`, role))
+			re := regexp.MustCompile(fmt.Sprintf(`(%q:\s*)"#[0-9a-fA-F]{6}"`, role))
 			block = re.ReplaceAllString(block, fmt.Sprintf(`${1}%q`, p.Resolve(semantic)))
 		}
 		text = text[:rolesStart] + block + text[rolesEnd:]
