@@ -217,24 +217,7 @@ func cleanHeadingText(raw string) string {
 // generateID creates a URL-safe ID from heading text.
 // Handles duplicate IDs by appending numbers.
 func (p *TocPlugin) generateID(text string, idCounts map[string]int) string {
-	// Use the shared Slugify function for consistent slug generation
-	id := models.Slugify(text)
-
-	// Handle empty ID
-	if id == "" {
-		id = "heading"
-	}
-
-	// Handle duplicates
-	baseID := id
-	count := idCounts[baseID]
-	idCounts[baseID] = count + 1
-
-	if count > 0 {
-		id = strings.ToLower(strings.TrimSpace(id)) + "-" + strings.Repeat("1", count)
-	}
-
-	return id
+	return generateHeadingID(text, idCounts)
 }
 
 // buildHierarchy converts a flat list of headings into a nested structure.

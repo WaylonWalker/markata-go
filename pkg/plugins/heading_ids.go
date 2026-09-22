@@ -2,7 +2,9 @@ package plugins
 
 import (
 	"bytes"
+	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
@@ -19,6 +21,7 @@ type HeadingIDTransformer struct{}
 // Transform implements parser.ASTTransformer.
 func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
+	idCounts := make(map[string]int)
 	if err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -42,17 +45,29 @@ func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, 
 			return ast.WalkContinue, nil
 		}
 
-		clean := headingPlainText(h, source)
-		if bytes.Equal(goldmarkHeadingSlug(clean), id) {
-			return ast.WalkContinue, nil
-		}
-		h.SetAttribute([]byte("id"), pc.IDs().Generate(clean, ast.KindHeading))
+		h.SetAttribute([]byte("id"), []byte(generateHeadingID(string(headingPlainText(h, source)), idCounts)))
 		return ast.WalkContinue, nil
 	}); err != nil {
 		// The transformer callbacks do not return errors, but preserve the
 		// parser's contract if a future callback does.
 		return
 	}
+}
+
+// generateHeadingID assigns IDs in source order using the same collision
+// behavior as the table of contents.
+func generateHeadingID(text string, idCounts map[string]int) string {
+	id := models.Slugify(text)
+	if id == "" {
+		id = "heading"
+	}
+
+	count := idCounts[id]
+	idCounts[id] = count + 1
+	if count > 0 {
+		return id + "-" + strings.Repeat("1", count)
+	}
+	return id
 }
 
 func headingRawLine(h *ast.Heading, source []byte) []byte {
