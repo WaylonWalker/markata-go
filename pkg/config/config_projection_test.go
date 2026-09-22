@@ -139,6 +139,64 @@ html = "default.html"
 	}
 }
 
+func TestLoadFromStringProjectsPostMetaComponent(t *testing.T) {
+	tests := []struct {
+		name   string
+		format Format
+		data   string
+	}{
+		{
+			name:   "toml",
+			format: FormatTOML,
+			data: `[markata-go.components.post_meta]
+show_updated = false
+reader_toggle = false
+series_card = false
+edit_url = "https://github.com/example/site/edit/main/{path}"
+edit_label = "Edit source"
+`,
+		},
+		{
+			name:   "yaml",
+			format: FormatYAML,
+			data: `markata-go:
+  components:
+    post_meta:
+      show_updated: false
+      reader_toggle: false
+      series_card: false
+      edit_url: https://github.com/example/site/edit/main/{path}
+      edit_label: Edit source
+`,
+		},
+		{
+			name:   "json",
+			format: FormatJSON,
+			data:   `{"markata-go":{"components":{"post_meta":{"show_updated":false,"reader_toggle":false,"series_card":false,"edit_url":"https://github.com/example/site/edit/main/{path}","edit_label":"Edit source"}}}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := LoadFromString(tt.data, tt.format)
+			if err != nil {
+				t.Fatalf("LoadFromString() error = %v", err)
+			}
+
+			postMeta := config.Components.PostMeta
+			if postMeta.ShowsUpdated() || postMeta.ShowsReaderToggle() || postMeta.ShowsSeriesCard() {
+				t.Errorf("PostMeta = %+v, want explicit disabled values", postMeta)
+			}
+			if got := postMeta.EditLinkFor("./pages/post.md"); got != "https://github.com/example/site/edit/main/pages/post.md" {
+				t.Errorf("EditLinkFor() = %q, want expanded edit URL", got)
+			}
+			if got := postMeta.EditLinkLabel(); got != "Edit source" {
+				t.Errorf("EditLinkLabel() = %q, want %q", got, "Edit source")
+			}
+		})
+	}
+}
+
 func TestLoadFromStringNormalizesHeadTextBlocks(t *testing.T) {
 	tests := []struct {
 		name   string

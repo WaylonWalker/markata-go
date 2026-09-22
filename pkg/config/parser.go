@@ -1291,14 +1291,15 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type tomlComponentsConfig struct {
-	Nav            tomlNavComponentConfig    `toml:"nav"`
-	Footer         tomlFooterComponentConfig `toml:"footer"`
-	DocSidebar     tomlDocSidebarConfig      `toml:"doc_sidebar"`
-	FeedSidebar    tomlFeedSidebarConfig     `toml:"feed_sidebar"`
-	ContentSidebar tomlContentSidebarConfig  `toml:"content_sidebar"`
-	CardRouter     tomlCardRouterConfig      `toml:"card_router"`
-	Share          tomlShareComponentConfig  `toml:"share"`
-	PostConn       tomlPostConnectionsConfig `toml:"post_connections"`
+	Nav            tomlNavComponentConfig         `toml:"nav"`
+	Footer         tomlFooterComponentConfig      `toml:"footer"`
+	DocSidebar     tomlDocSidebarConfig           `toml:"doc_sidebar"`
+	FeedSidebar    tomlFeedSidebarConfig          `toml:"feed_sidebar"`
+	ContentSidebar tomlContentSidebarConfig       `toml:"content_sidebar"`
+	CardRouter     tomlCardRouterConfig           `toml:"card_router"`
+	Share          tomlShareComponentConfig       `toml:"share"`
+	PostConn       tomlPostConnectionsConfig      `toml:"post_connections"`
+	PostMeta       models.PostMetaComponentConfig `toml:"post_meta"`
 }
 
 type tomlPostConnectionsConfig struct {
@@ -1920,6 +1921,7 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			InlinksLimit:  c.PostConn.InlinksLimit,
 			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
+		PostMeta: c.PostMeta,
 	}
 
 	if len(c.Share.Platforms) == 0 {
@@ -3085,14 +3087,15 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type yamlComponentsConfig struct {
-	Nav            yamlNavComponentConfig    `yaml:"nav"`
-	Footer         yamlFooterComponentConfig `yaml:"footer"`
-	DocSidebar     yamlDocSidebarConfig      `yaml:"doc_sidebar"`
-	FeedSidebar    yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
-	ContentSidebar yamlContentSidebarConfig  `yaml:"content_sidebar"`
-	CardRouter     yamlCardRouterConfig      `yaml:"card_router"`
-	Share          yamlShareComponentConfig  `yaml:"share"`
-	PostConn       yamlPostConnectionsConfig `yaml:"post_connections"`
+	Nav            yamlNavComponentConfig         `yaml:"nav"`
+	Footer         yamlFooterComponentConfig      `yaml:"footer"`
+	DocSidebar     yamlDocSidebarConfig           `yaml:"doc_sidebar"`
+	FeedSidebar    yamlFeedSidebarConfig          `yaml:"feed_sidebar"`
+	ContentSidebar yamlContentSidebarConfig       `yaml:"content_sidebar"`
+	CardRouter     yamlCardRouterConfig           `yaml:"card_router"`
+	Share          yamlShareComponentConfig       `yaml:"share"`
+	PostConn       yamlPostConnectionsConfig      `yaml:"post_connections"`
+	PostMeta       models.PostMetaComponentConfig `yaml:"post_meta"`
 }
 
 type yamlPostConnectionsConfig struct {
@@ -3591,6 +3594,7 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			InlinksLimit:  c.PostConn.InlinksLimit,
 			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
+		PostMeta: c.PostMeta,
 	}
 
 	if len(c.Share.Platforms) == 0 {
@@ -4678,14 +4682,15 @@ func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type jsonComponentsConfig struct {
-	Nav            jsonNavComponentConfig    `json:"nav"`
-	Footer         jsonFooterComponentConfig `json:"footer"`
-	DocSidebar     jsonDocSidebarConfig      `json:"doc_sidebar"`
-	FeedSidebar    jsonFeedSidebarConfig     `json:"feed_sidebar"`
-	ContentSidebar jsonContentSidebarConfig  `json:"content_sidebar"`
-	CardRouter     jsonCardRouterConfig      `json:"card_router"`
-	Share          jsonShareComponentConfig  `json:"share"`
-	PostConn       jsonPostConnectionsConfig `json:"post_connections"`
+	Nav            jsonNavComponentConfig         `json:"nav"`
+	Footer         jsonFooterComponentConfig      `json:"footer"`
+	DocSidebar     jsonDocSidebarConfig           `json:"doc_sidebar"`
+	FeedSidebar    jsonFeedSidebarConfig          `json:"feed_sidebar"`
+	ContentSidebar jsonContentSidebarConfig       `json:"content_sidebar"`
+	CardRouter     jsonCardRouterConfig           `json:"card_router"`
+	Share          jsonShareComponentConfig       `json:"share"`
+	PostConn       jsonPostConnectionsConfig      `json:"post_connections"`
+	PostMeta       models.PostMetaComponentConfig `json:"post_meta"`
 }
 
 type jsonPostConnectionsConfig struct {
@@ -5184,6 +5189,7 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			InlinksLimit:  c.PostConn.InlinksLimit,
 			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
+		PostMeta: c.PostMeta,
 	}
 
 	if len(c.Share.Platforms) == 0 {
