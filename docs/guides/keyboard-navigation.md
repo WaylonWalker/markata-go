@@ -81,7 +81,7 @@ Press the first key (`g`), then the second key within 800ms.
 | `Shift+B` | Toggle the right sidebar drawer (on this page) |
 | `{` / `}` | Switch the sidebar to the previous / next primary feed |
 | `?` | Show shortcuts help modal |
-| `Escape` | Close modals, clear highlight, blur inputs |
+| `Escape` | Close modals and desktop sidebar drawers, clear highlight, or blur inputs |
 
 ---
 
@@ -91,6 +91,10 @@ Press the first key (`g`), then the second key within 800ms.
 
 - **Reduced Motion:** When `prefers-reduced-motion` is enabled, smooth scrolling is disabled for instant navigation.
 - **Input Context:** Shortcuts are automatically disabled when typing in text inputs, textareas, or contenteditable elements.
+
+When a desktop sidebar drawer is open, `Escape` closes it and returns keyboard
+focus to that drawer's toggle. Activating the toggle again to close the drawer
+also keeps focus on the toggle, so the visible focus indicator is not lost.
 
 ### Disable Shortcuts
 

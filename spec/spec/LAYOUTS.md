@@ -326,6 +326,13 @@ Automatic discovery MUST choose the smallest matching feed as the most specific 
 
 `max_posts` limits the rendered sidebar items. A value of `0` or less means no limit. When `max_posts` is positive and the matching feed has more posts than the limit, implementations MUST render a contiguous window that includes the current post and SHOULD center that window around the current post when possible. If the current post cannot be found in the selected feed, implementations SHOULD render the first `max_posts` entries.
 
+On desktop widths, the default theme renders feed and document sidebars as
+fixed drawers with keyboard-focusable toggle buttons. Each toggle's
+`aria-expanded` value MUST match the drawer state. Closing a drawer with its
+toggle MUST keep focus on that toggle; closing with `Escape` MUST return focus
+to the toggle. Narrow layouts MAY use a different collapse presentation, but
+must preserve an accessible name and accurate expanded state.
+
 ---
 
 ## Frontmatter Overrides

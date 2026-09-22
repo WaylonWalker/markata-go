@@ -1339,10 +1339,13 @@
     sidebar.classList.toggle('sidebar--pinned', open);
     syncSidebarToggle(sidebar);
     if (!open) {
-      // Drop focus so :focus-within cannot hold the drawer open after closing.
+      // Keep the toggle focused when it closed the drawer. If focus was on a
+      // drawer control, return it to the toggle instead of leaving focus on a
+      // control that is now translated off-screen.
+      var btn = sidebar.querySelector(':scope > .sidebar-toggle');
       var active = document.activeElement;
-      if (active && sidebar.contains(active) && typeof active.blur === 'function') {
-        active.blur();
+      if (btn && active && sidebar.contains(active) && active !== btn) {
+        btn.focus();
       }
     }
     if (persist) writeSidebarState(sidebarSide(sidebar), open);
@@ -1401,6 +1404,22 @@
         var sidebar = btn.closest('.feed-sidebar, .doc-sidebar, .content-sidebar');
         if (!sidebar) return;
         setSidebarOpen(sidebar, !sidebar.classList.contains('sidebar--pinned'), true);
+      });
+    });
+
+    // Escape closes desktop drawers and returns focus to the corresponding
+    // handle. Bind once because view transitions re-run this initializer.
+    if (window._sidebarEscapeBound) return;
+    window._sidebarEscapeBound = true;
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape' || window.innerWidth < 1201) return;
+      var openSidebars = document.querySelectorAll(
+        '.feed-sidebar.sidebar--pinned, .doc-sidebar.sidebar--pinned, .content-sidebar.sidebar--pinned'
+      );
+      if (openSidebars.length === 0) return;
+      e.preventDefault();
+      openSidebars.forEach(function(sidebar) {
+        setSidebarOpen(sidebar, false, true);
       });
     });
   };

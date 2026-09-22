@@ -111,7 +111,9 @@ full-width rules. Radii follow `--radius-sm`/`--radius`/`--radius-lg`/
 
 On wide screens (>= 1201px) the feed and document sidebars are fixed drawers
 opened from a vertical edge handle (or `b` / `Shift+B`); they never open on hover
-and the open state is remembered per side. Below that width the feed sidebar
+and the open state is remembered per side. The handle's `aria-expanded` value
+tracks the drawer, closing with the handle keeps focus on it, and `Escape`
+closes the drawer and returns focus to the handle. Below that width the feed sidebar
 becomes a collapsible bar above the article. If a site's custom CSS positions
 `.feed-sidebar` or `.doc-sidebar`, remove it and rely on the theme.
 

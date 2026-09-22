@@ -54,3 +54,50 @@ func TestViewTransitions_PreservesRuntimeStateAndBoundsPrefetch(t *testing.T) {
 		}
 	}
 }
+
+func TestViewTransitions_SidebarClosePreservesKeyboardFocus(t *testing.T) {
+	content, err := ReadStatic("js/view-transitions.js")
+	if err != nil {
+		t.Fatalf("ReadStatic(view-transitions.js) error = %v", err)
+	}
+
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
+	for _, needle := range []string{
+		"active !== btn",
+		"btn.focus();",
+		"window._sidebarEscapeBound",
+		"e.key !== 'Escape' || window.innerWidth < 1201",
+		"aria-expanded",
+	} {
+		if !strings.Contains(js, needle) {
+			t.Fatalf("view-transitions.js missing keyboard drawer behavior %q", needle)
+		}
+	}
+	if strings.Contains(js, "active.blur()") {
+		t.Fatal("sidebar closing must not discard keyboard focus")
+	}
+}
+
+func TestSidebarTemplatesExposeAccessibleToggleState(t *testing.T) {
+	for _, name := range []string{
+		"components/feed_sidebar.html",
+		"components/doc_sidebar.html",
+	} {
+		t.Run(name, func(t *testing.T) {
+			content, err := ReadTemplate(name)
+			if err != nil {
+				t.Fatalf("ReadTemplate(%q) error = %v", name, err)
+			}
+			template := string(content)
+			for _, needle := range []string{
+				`class="sidebar-toggle"`,
+				`aria-expanded="false"`,
+				`data-sidebar-label=`,
+			} {
+				if !strings.Contains(template, needle) {
+					t.Fatalf("%s missing accessible drawer toggle attribute %q", name, needle)
+				}
+			}
+		})
+	}
+}
