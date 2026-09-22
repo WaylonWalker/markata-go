@@ -56,6 +56,7 @@ func TestTemplatesPlugin_TrackSeriesDependenciesForExplicitGuideFeed(t *testing.
 		Path: "current.md", Slug: "current", Href: "/current/",
 		Extra: map[string]interface{}{"sidebar_feed": "guides/intro"},
 	}
+
 	other := &models.Post{
 		Path: "other.md", Slug: "other", Href: "/other/",
 		Extra: map[string]interface{}{"sidebar_feed": "guides/intro"},
@@ -76,6 +77,41 @@ func TestTemplatesPlugin_TrackSeriesDependenciesForExplicitGuideFeed(t *testing.
 	}
 	if len(other.Dependencies) != 1 || other.Dependencies[0] != "current" {
 		t.Fatalf("other dependencies = %v, want [current]", other.Dependencies)
+	}
+}
+
+func TestTemplatesPlugin_GetSeriesNavWhenAutoSidebarDisabled(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+	m.Config().Extra["series"] = map[string]interface{}{"auto_sidebar": false}
+
+	first := &models.Post{
+		Slug:      "first",
+		Href:      "/first/",
+		Published: true,
+		Extra:     map[string]interface{}{seriesKey: "Introduction"},
+	}
+	second := &models.Post{
+		Slug:      "second",
+		Href:      "/second/",
+		Published: true,
+		Extra:     map[string]interface{}{seriesKey: "Introduction"},
+	}
+	m.SetPosts([]*models.Post{first, second})
+
+	if posts, _ := p.getSeriesSidebarPosts(first, m.Config(), m); posts != nil {
+		t.Fatalf("sidebar posts = %#v, want nil when auto_sidebar is disabled", posts)
+	}
+
+	nav := p.getSeriesNav(first, m.Config(), m)
+	if nav == nil {
+		t.Fatal("expected series navigation when auto_sidebar is disabled")
+	}
+	if nav["total"] != 2 || nav["position"] != 1 {
+		t.Fatalf("series navigation = %#v, want first post in two-post series", nav)
+	}
+	if next, ok := nav["next"].(map[string]interface{}); !ok || next["slug"] != "second" {
+		t.Fatalf("series next = %#v, want second post", nav["next"])
 	}
 }
 

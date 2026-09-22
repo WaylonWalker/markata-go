@@ -334,7 +334,7 @@ func (p *TemplatesPlugin) trackSeriesDependencies(config *lifecycle.Config, m *l
 			continue
 		}
 
-		seriesPosts, _ := p.getSeriesSidebarPosts(post, config, m)
+		seriesPosts, _ := p.getSeriesPosts(post, config, m)
 		if seriesPosts == nil {
 			explicitSlug := p.getExplicitFeedSlug(post)
 			if explicitSlug != "" {
@@ -935,6 +935,16 @@ func (p *TemplatesPlugin) autoDiscoverFeed(post *models.Post, config *lifecycle.
 }
 
 func (p *TemplatesPlugin) getSeriesSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	if config == nil || !parseSeriesConfig(config).AutoSidebar {
+		return nil, nil
+	}
+
+	return p.getSeriesPosts(post, config, m)
+}
+
+// getSeriesPosts resolves ordered, published series membership independently
+// of whether the series is configured to appear in a sidebar.
+func (p *TemplatesPlugin) getSeriesPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
 	if post == nil || config == nil || m == nil {
 		return nil, nil
 	}
@@ -945,10 +955,6 @@ func (p *TemplatesPlugin) getSeriesSidebarPosts(post *models.Post, config *lifec
 	}
 
 	seriesCfg := parseSeriesConfig(config)
-	if !seriesCfg.AutoSidebar {
-		return nil, nil
-	}
-
 	seriesSlug := buildSeriesFeedSlug(seriesCfg.SlugPrefix, slugify(seriesName))
 
 	allPosts := m.Posts()
@@ -1002,7 +1008,7 @@ func (p *TemplatesPlugin) getSeriesNav(post *models.Post, config *lifecycle.Conf
 		return nil
 	}
 
-	posts, fc := p.getSeriesSidebarPosts(post, config, m)
+	posts, fc := p.getSeriesPosts(post, config, m)
 	if posts == nil {
 		explicitSlug := p.getExplicitFeedSlug(post)
 		if explicitSlug == "" {
