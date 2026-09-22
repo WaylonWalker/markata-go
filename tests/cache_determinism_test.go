@@ -1646,7 +1646,7 @@ Other post.`)
 	}
 }
 
-func TestBuild_EmptyBodyPublishedPostStillGetsPage(t *testing.T) {
+func TestCacheDeterminism_EmptyBodyPublishedPost_SurvivesWarmFreshAndFastBuilds(t *testing.T) {
 	site := newCacheSite(t)
 	site.addPost("empty.md", `---
 title: Empty Body
@@ -1654,23 +1654,38 @@ published: true
 date: 2024-01-01
 ---
 `)
-	site.addPost("other.md", `---
-title: Other
-published: true
-date: 2024-01-01
----
-Other post.`)
-
-	site.buildWithCache()
-
 	page := filepath.Join(site.outputDir, "empty", "index.html")
-	data, err := os.ReadFile(page)
-	if err != nil {
-		t.Fatalf("expected a page for the empty-body post: %v", err)
+	assertPage := func(step string) {
+		t.Helper()
+		data, err := os.ReadFile(page)
+		if err != nil {
+			t.Fatalf("%s: expected a page for the empty-body post: %v", step, err)
+		}
+		if !strings.Contains(string(data), "Empty Body") {
+			t.Fatalf("%s: empty-body page should still render its title, got %d bytes", step, len(data))
+		}
 	}
-	if !strings.Contains(string(data), "Empty Body") {
-		t.Fatalf("empty-body page should still render its title, got %d bytes", len(data))
-	}
+
+	// A cold full build establishes both the page and its persistent cache.
+	site.buildWithCache()
+	assertPage("cold full build")
+
+	// A normal warm build must keep the page materialized.
+	site.buildWithCache()
+	assertPage("warm full build")
+
+	// Recreating output while retaining the cache must restore the cached page.
+	site.clearOutput(t)
+	site.buildWithCache()
+	assertPage("warm full build with fresh output")
+
+	// --fast follows a distinct incremental path and must have the same result.
+	site.clearOutput(t)
+	site.buildFast()
+	assertPage("warm fast build with fresh output")
+
+	site.buildFast()
+	assertPage("warm fast build")
 }
 
 // TestBuild_EmbeddedVendorAssetsServedAtDocumentedPath guards that the default

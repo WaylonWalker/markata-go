@@ -654,7 +654,7 @@ func TestValidateConfig_CustomProjectPalette(t *testing.T) {
 		t.Fatal(err)
 	}
 	palette := "[palette]\nname = \"Custom\"\nvariant = \"dark\"\n\n[palette.colors]\nbg = \"#101112\"\ntext = \"#e0e1e2\"\naccent = \"#778899\"\n\n[palette.semantic]\nbg-primary = \"bg\"\ntext-primary = \"text\"\naccent = \"accent\"\nlink = \"accent\"\n"
-	if err := os.WriteFile(filepath.Join(dir, "palettes", "custom-dark.toml"), []byte(palette), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "palettes", "custom-dark.toml"), []byte(palette), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	wd, err := os.Getwd()
@@ -664,7 +664,11 @@ func TestValidateConfig_CustomProjectPalette(t *testing.T) {
 	if err := os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chdir(wd) })
+	t.Cleanup(func() {
+		if err := os.Chdir(wd); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
 
 	config := &models.Config{URL: "https://example.com", Concurrency: 1}
 	config.Theme.Palette = "custom-dark"

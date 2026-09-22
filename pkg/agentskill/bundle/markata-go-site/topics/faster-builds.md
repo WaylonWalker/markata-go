@@ -43,6 +43,11 @@ Fast mode still does the main site build work:
 - feed and collection generation
 - normal output writing for the site itself
 
+Unchanged pages restore cached full-page HTML before output is written. This
+includes published pages with frontmatter but no Markdown body, so removing
+the output directory does not require deleting `.markata/` before a normal or
+`--fast` build recreates the page.
+
 For `markata-go build --fast`, file discovery still rescans the content tree on each run. Added,
 removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
 reuses in-memory and on-disk state for incremental rebuilds between change events.

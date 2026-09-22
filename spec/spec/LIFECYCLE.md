@@ -1021,6 +1021,14 @@ refreshed, even when that post's source file did not change.
 └─────────────────────────────────────────────────────────────┘
 ```
 
+When an unchanged post is restored from the build cache, its cached full-page
+HTML MUST be available to the write stage before output materialization. This
+also applies when the output directory is new or was removed after the cache
+was created. A published post with an empty Markdown body still has a full
+page, so an empty `post.article_html` value MUST NOT prevent that cached page
+from being written. If the full-page cache entry is unavailable, the post MUST
+be rendered instead of being treated as successfully restored.
+
 ### Cache Invalidation Rules
 
 | Change | Invalidation Scope |

@@ -19,7 +19,7 @@ type HeadingIDTransformer struct{}
 // Transform implements parser.ASTTransformer.
 func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
-	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	if err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
@@ -48,7 +48,11 @@ func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, 
 		}
 		h.SetAttribute([]byte("id"), pc.IDs().Generate(clean, ast.KindHeading))
 		return ast.WalkContinue, nil
-	})
+	}); err != nil {
+		// The transformer callbacks do not return errors, but preserve the
+		// parser's contract if a future callback does.
+		return
+	}
 }
 
 func headingRawLine(h *ast.Heading, source []byte) []byte {
@@ -63,7 +67,7 @@ func headingRawLine(h *ast.Heading, source []byte) []byte {
 // headingPlainText concatenates the text of all inline descendants.
 func headingPlainText(h *ast.Heading, source []byte) []byte {
 	var buf bytes.Buffer
-	_ = ast.Walk(h, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	if err := ast.Walk(h, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
@@ -77,7 +81,9 @@ func headingPlainText(h *ast.Heading, source []byte) []byte {
 			buf.Write(v.Value)
 		}
 		return ast.WalkContinue, nil
-	})
+	}); err != nil {
+		return buf.Bytes()
+	}
 	return buf.Bytes()
 }
 

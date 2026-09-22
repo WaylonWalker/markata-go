@@ -1024,7 +1024,10 @@ func TestFilterSummary(t *testing.T) {
 		t.Errorf("got %q want %q", s, want)
 	}
 
-	short, _ := filterSummary(pongo2.AsValue("<p>one two three four</p>"), pongo2.AsValue(7))
+	short, err := filterSummary(pongo2.AsValue("<p>one two three four</p>"), pongo2.AsValue(7))
+	if err != nil {
+		t.Fatalf("unexpected truncation error: %v", err)
+	}
 	if short.String() != "one two…" {
 		t.Errorf("truncation: got %q", short.String())
 	}
