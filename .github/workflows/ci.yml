@@ -138,11 +138,17 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run tests (linux with race + coverage)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Run Linux tests (race + coverage, excluding observational Build Lab)
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
         # The integration suite performs repeated cold builds under the race
         # detector. Keep the Go test timeout above the CI job's historical
         # runtime so a slow runner does not kill an otherwise progressing run.
+        run: go test -v -race -timeout=30m "-coverprofile=coverage.out" -covermode=atomic -skip '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$' ./...
+
+      - name: Run Linux tests (race + coverage)
+        if: matrix.os == 'ubuntu-latest' && github.event_name != 'pull_request'
+        # Pushes to main, scheduled CI, and manual full runs retain the broad
+        # observational Build Lab characterization.
         run: go test -v -race -timeout=30m "-coverprofile=coverage.out" -covermode=atomic ./...
 
       - name: Run tests (windows short)
