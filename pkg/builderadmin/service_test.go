@@ -554,6 +554,13 @@ output_dir = "output"
 [markata-go.assets]
 mode = "cdn"
 
+# Minification is covered separately; this fixture tests deleted-output pruning.
+[markata-go.js_minify]
+enabled = false
+
+[markata-go.css_minify]
+enabled = false
+
 [markata-go.glob]
 patterns = ["content/**/*.md"]
 use_gitignore = false
