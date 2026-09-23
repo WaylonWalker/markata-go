@@ -21,6 +21,10 @@ func TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct(t *testing.T) {
 	requireLinuxBuildLab(t)
 	fixture := filepath.Join(moduleRoot(t), "cmd", "markata-go", "cmd", "testdata", "buildlab-site")
 	binary := buildTestBinary(t)
+	// The focused Build Lab integration tests below retain deterministic-replay
+	// coverage. Avoid an extra clean build at each of this scenario's eight
+	// mutation checkpoints; each checkpoint still compares baseline, clean
+	// candidate, and incremental candidate output.
 	result, runErr := buildlab.RunScenario(context.Background(), buildlab.ScenarioRunConfig{
 		Fixture: fixture,
 		Scenario: buildlab.Scenario{ID: "cli-buildlab-fixture-mutations", Version: "1", Operations: []buildlab.Operation{
@@ -32,10 +36,10 @@ func TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct(t *testing.T) {
 			{Type: buildlab.OpRename, Path: "content/target.md", Dest: "content/renamed.md"}, {Type: buildlab.OpBuild},
 			{Type: buildlab.OpSetConfig, Path: "markata-go.toml", Key: "title", Value: "Changed by scenario"}, {Type: buildlab.OpBuild},
 		}},
-		Baseline:         buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Candidate:        buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
-		Classes:          map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
-		CheckDeterminism: true, GOMAXPROCS: 1,
+		Baseline:   buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Candidate:  buildlab.BuildCommand{Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output", Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"}},
+		Classes:    map[string]buildlab.OutputClass{".markata/diagnostics.json": buildlab.ClassVolatile, ".well-known/time": buildlab.ClassVolatile},
+		GOMAXPROCS: 1,
 	})
 	for checkpointIndex := range result.Checkpoints {
 		checkpoint := &result.Checkpoints[checkpointIndex]

@@ -72,6 +72,14 @@ func (s *testSite) addConfig(content string) {
 	}
 }
 
+// disableMinificationForTestBuild keeps integration tests focused on their
+// asserted behavior. Minifier behavior has dedicated tests in pkg/plugins;
+// processing all bundled assets for every tiny fixture is slow under -race.
+func disableMinificationForTestBuild(extra map[string]interface{}) {
+	extra["js_minify"] = map[string]interface{}{"enabled": false}
+	extra["css_minify"] = map[string]interface{}{"enabled": false}
+}
+
 // build runs a full build and returns the manager.
 func (s *testSite) build() *lifecycle.Manager {
 	s.t.Helper()
@@ -1322,6 +1330,7 @@ Content`)
 			Name:    "default",
 			Palette: paletteName,
 		}
+		disableMinificationForTestBuild(cfg.Extra)
 		m.SetConfig(cfg)
 
 		// Register all default plugins including static_assets and palette_css
@@ -1411,6 +1420,7 @@ Content`)
 		lcConfig.Extra["url"] = cfg.URL
 		lcConfig.Extra["title"] = cfg.Title
 		lcConfig.Extra["theme"] = cfg.Theme // This is models.ThemeConfig
+		disableMinificationForTestBuild(lcConfig.Extra)
 		m.SetConfig(lcConfig)
 
 		// Register all default plugins
@@ -1545,6 +1555,7 @@ palette = "%s"
 		lcConfig.Extra["url"] = cfg.URL
 		lcConfig.Extra["title"] = cfg.Title
 		lcConfig.Extra["theme"] = cfg.Theme
+		disableMinificationForTestBuild(lcConfig.Extra)
 		m.SetConfig(lcConfig)
 
 		// Register all default plugins (including build_cache)
