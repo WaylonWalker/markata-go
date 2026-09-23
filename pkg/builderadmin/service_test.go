@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/internal/testbinary"
 	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
 
@@ -596,19 +597,14 @@ Delete this post.
 		}
 	}
 
-	binary := filepath.Join(t.TempDir(), "markata-go")
-	if runtime.GOOS == "windows" {
-		binary += ".exe"
-	}
 	_, sourceFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller() failed")
 	}
 	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", ".."))
-	command := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
-	command.Dir = moduleRoot
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build markata-go: %v\n%s", err, output)
+	binary, err := testbinary.Resolve(moduleRoot, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve markata-go test binary: %v", err)
 	}
 
 	siteDir := t.TempDir()

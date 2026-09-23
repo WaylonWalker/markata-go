@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/internal/testbinary"
 	"github.com/WaylonWalker/markata-go/pkg/buildlab"
 )
 
@@ -344,14 +345,9 @@ func hasBuildLabProductFailure(result buildlab.Result) bool {
 
 func buildTestBinary(t *testing.T) string {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "markata-go")
-	if runtime.GOOS == "windows" {
-		binary += ".exe"
-	}
-	command := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
-	command.Dir = moduleRoot(t)
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build markata-go: %v\n%s", err, output)
+	binary, err := testbinary.Resolve(moduleRoot(t), t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve markata-go test binary: %v", err)
 	}
 	return binary
 }
