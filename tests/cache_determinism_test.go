@@ -109,6 +109,7 @@ func (s *cacheSite) buildWithCacheConfigAndExtra(configContent string, extra map
 	cfg.Extra["url"] = "https://example.com"
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
+	disableMinificationForTestBuild(cfg.Extra)
 	for key, value := range extra {
 		cfg.Extra[key] = value
 	}
@@ -161,6 +162,7 @@ func (s *cacheSite) buildWithCacheAndTheme(theme models.ThemeConfig) {
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
 	cfg.Extra["theme"] = theme
+	disableMinificationForTestBuild(cfg.Extra)
 	m.SetConfig(cfg)
 
 	// Register all default plugins
@@ -208,6 +210,7 @@ func (s *cacheSite) buildWithCacheAndFeeds(feedConfigs []models.FeedConfig) {
 	cfg.Extra["url"] = "https://example.com"
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
+	disableMinificationForTestBuild(cfg.Extra)
 	cfg.Extra["feeds"] = feedConfigs
 	cfg.Extra["feed_defaults"] = models.FeedDefaults{
 		ItemsPerPage:    10,

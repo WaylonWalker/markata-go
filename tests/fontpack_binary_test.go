@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/internal/testbinary"
 )
 
 func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
@@ -18,14 +20,9 @@ func TestInstalledBinaryUsesEmbeddedFontpackOutsideCheckout(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	repo := filepath.Dir(filepath.Dir(thisFile))
-	binary := filepath.Join(t.TempDir(), "markata-go")
-	if runtime.GOOS == "windows" {
-		binary += ".exe"
-	}
-	build := exec.Command("go", "build", "-o", binary, "./cmd/markata-go")
-	build.Dir = repo
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build standalone binary: %v\n%s", err, output)
+	binary, err := testbinary.Resolve(repo, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve standalone binary: %v", err)
 	}
 	site := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(site, "pages"), 0o755); err != nil {
