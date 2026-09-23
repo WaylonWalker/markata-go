@@ -77,6 +77,8 @@ func IsDerivedCounterpart(name string) (base string, variant Variant, ok bool) {
 // derived surface, and accents are inverted into a mid-lightness band and then
 // adjusted so links stay readable. Semantic and component references are copied
 // unchanged so the derived palette keeps the original's structure.
+//
+//nolint:gocyclo // Keep the ordered derivation pipeline together.
 func DeriveCounterpart(p *Palette) *Palette {
 	if p == nil {
 		return nil
