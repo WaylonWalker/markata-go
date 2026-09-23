@@ -109,6 +109,7 @@ func (s *cacheSite) buildWithCacheConfigAndExtra(configContent string, extra map
 	cfg.Extra["url"] = "https://example.com"
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
+	configureCacheTestOutputPlugins(cfg.Extra)
 	for key, value := range extra {
 		cfg.Extra[key] = value
 	}
@@ -161,6 +162,7 @@ func (s *cacheSite) buildWithCacheAndTheme(theme models.ThemeConfig) {
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
 	cfg.Extra["theme"] = theme
+	configureCacheTestOutputPlugins(cfg.Extra)
 	m.SetConfig(cfg)
 
 	// Register all default plugins
@@ -208,6 +210,7 @@ func (s *cacheSite) buildWithCacheAndFeeds(feedConfigs []models.FeedConfig) {
 	cfg.Extra["url"] = "https://example.com"
 	cfg.Extra["title"] = "Test Site"
 	cfg.Extra["cache_dir"] = s.cacheDir
+	configureCacheTestOutputPlugins(cfg.Extra)
 	cfg.Extra["feeds"] = feedConfigs
 	cfg.Extra["feed_defaults"] = models.FeedDefaults{
 		ItemsPerPage:    10,
@@ -225,6 +228,16 @@ func (s *cacheSite) buildWithCacheAndFeeds(feedConfigs []models.FeedConfig) {
 	if err := m.Run(); err != nil {
 		s.t.Fatalf("build failed: %v", err)
 	}
+}
+
+// configureCacheTestOutputPlugins disables output minification for cache
+// determinism fixtures. These tests verify cache invalidation and output
+// rebuilding, not minifier behavior; the plugins have dedicated tests in
+// pkg/plugins. Minifying all bundled site assets for every small fixture is
+// particularly slow under -race.
+func configureCacheTestOutputPlugins(extra map[string]interface{}) {
+	extra["js_minify"] = map[string]interface{}{"enabled": false}
+	extra["css_minify"] = map[string]interface{}{"enabled": false}
 }
 
 // defaultConfig returns a minimal TOML config for tests.
