@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 )
 
@@ -195,6 +196,13 @@ func validateRenderingTheme(config *models.Config) []error {
 		if item.ID == palette {
 			found = true
 			break
+		}
+	}
+	if palette != "" && !found {
+		// Site-local and user palettes (./palettes, ~/.config/markata-go/palettes)
+		// are valid even though they are not part of the rendering contract.
+		if _, err := palettes.NewLoader().Load(palette); err == nil {
+			found = true
 		}
 	}
 	if palette != "" && !found {

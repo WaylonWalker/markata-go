@@ -49,6 +49,11 @@ Custom themes may reuse the `data-text-size` attribute and the typography
 custom properties, or omit the control while retaining the configured
 default. Invalid values fall back to `large` during rendering.
 
+Preset values MUST be emitted below the `overrides` cascade layer so that
+explicit `[theme.variables]` entries (which are emitted in `overrides`) take
+precedence over any preset for the same token. Presets MUST still take
+precedence over the base `tokens` layer.
+
 ### Contrast Guarantees
 
 - Default theme text in compact UI surfaces such as home metadata, card metadata, and admonition titles MUST use text tokens that maintain WCAG 2.1 AA contrast at their rendered size.
@@ -1264,6 +1269,30 @@ The `document.startViewTransition()` update callback SHOULD stay limited to crit
 | Features | `encryption.css` | `has_encrypted_content` |
 | Features | `glightbox.min.css` | `glightbox_enabled` and `needs_image_zoom` |
 | Features | `palette-switcher.css` | `config.theme.switcher.enabled` or (`config.theme.switcher.mode_toggle` and `config.header.show_theme_toggle`) |
+
+### Cascade Layers
+
+The default theme's stylesheets are organised with CSS cascade layers,
+declared once in `variables.css`:
+
+```css
+@layer reset, tokens, base, components, utilities, overrides;
+```
+
+Rules:
+
+- Every top-level block in a theme stylesheet that uses layers MUST be an
+  `@layer` block. Unlayered rules outrank every layered rule regardless of
+  specificity, so a single stray brace that closes a layer early silently
+  changes the cascade for the whole site. `pkg/themes/css_layers_test.go`
+  enforces balanced braces and layered top-level blocks for shipped CSS.
+- Palette tokens and plugin-generated theme tokens live in `tokens`; component
+  styling lives in `components`; text-size presets live in `utilities`;
+  author `[theme.variables]` overrides are emitted in `overrides`.
+- Every page — posts, feeds, tag pages, archives — MUST receive the same
+  `data-palette`, `data-aesthetic`, `data-fontpack` and texture attributes on
+  `<html>`; `config.theme` exposes those resolved values to templates so
+  typography is never scoped to post pages only.
 
 ### Estimated Savings
 

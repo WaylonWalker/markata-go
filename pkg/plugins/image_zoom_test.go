@@ -375,3 +375,25 @@ func containsSubstringHelper(s, substr string) bool {
 	}
 	return false
 }
+
+func TestImageZoomPlugin_SelfClosingImgKeepsAttributesInsideTag(t *testing.T) {
+	p := NewImageZoomPlugin()
+	p.SetConfig(models.ImageZoomConfig{
+		Enabled:  true,
+		Library:  "glightbox",
+		Selector: ".glightbox",
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<p><img src="test.jpg" alt="Card {data-zoomable}" loading="lazy"/></p>`,
+	}
+	if err := p.processPost(post); err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+	if containsSubstring(post.ArticleHTML, `/ data-glightbox`) || containsSubstring(post.ArticleHTML, `"/ `) {
+		t.Errorf("attributes must not follow a self-closing slash, got: %s", post.ArticleHTML)
+	}
+	if !containsSubstring(post.ArticleHTML, `loading="lazy" data-glightbox="description: Card">`) {
+		t.Errorf("expected well-formed img tag, got: %s", post.ArticleHTML)
+	}
+}

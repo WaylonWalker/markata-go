@@ -46,6 +46,11 @@ The `-a` flag forces Go to rebuild **all** packages, ignoring the cache.
 
 **Problem**: The `.markata/` directory caches rendered HTML to speed up incremental builds.
 
+Unchanged pages, including published frontmatter-only pages, restore their
+cached full-page HTML before the write stage. If you recreate the output
+directory while keeping `.markata/`, a normal or `--fast` build can materialize
+those pages again without clearing the build cache.
+
 **Symptoms**:
 - Removing templates but still seeing cached output
 - Template changes not reflected in output

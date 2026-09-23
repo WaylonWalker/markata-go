@@ -165,3 +165,18 @@ func newFeedTestManagerWithCustom(t *testing.T, feeds []models.FeedConfig, posts
 	m.SetPosts(posts)
 	return m
 }
+
+func TestNormalizeTemplateWhitespace_SingleHTMLBlock(t *testing.T) {
+	in := "\n  <div class=\"feed\">\n\n    <article>\n\n\n      <p>one</p>\n    </article>\n\n</div>\n\n"
+	got := normalizeTemplateWhitespace(in)
+	if strings.Contains(got, "\n\n") {
+		t.Fatalf("expected no blank lines so goldmark keeps one HTML block, got %q", got)
+	}
+	if strings.Contains(got, "\n ") || strings.HasPrefix(got, " ") {
+		t.Fatalf("expected left-trimmed lines, got %q", got)
+	}
+	want := "<div class=\"feed\">\n<article>\n<p>one</p>\n</article>\n</div>"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}

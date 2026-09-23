@@ -890,6 +890,17 @@ Add clickable permalink anchors to all headings for easy deep-linking.
 
 The anchor appears on hover and uses your theme's color scheme.
 
+Heading IDs are generated from the heading's **visible text**, so link
+destinations, emphasis markers and inline code never leak into the slug:
+
+```markdown
+## Recent [TIL](/til/)        → id="recent-til"
+## Use `git stash`            → id="use-git-stash"
+```
+
+Explicit IDs (`## Title {#custom-id}`) are always kept as written. Headings
+that belong to embedded cards (for example from `render_feed`) are left alone.
+
 **Use cases:**
 - Documentation sites needing deep links
 - Easy sharing of specific sections
@@ -1580,6 +1591,10 @@ Admonitions can contain any Markdown content:
 
     A blank line after the admonition header is allowed.
     Content must still be indented.
+
+!!! tip
+    - The first body line can be a list, heading or quote too;
+    - it is parsed as Markdown, never as an indented code block.
 ```
 
 **Live example:**

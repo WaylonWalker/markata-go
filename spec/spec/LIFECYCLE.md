@@ -677,6 +677,12 @@ def render(core):
 **After this stage:**
 - `post.article_html` - rendered HTML content (without template)
 
+**Which posts are rendered:** every post with `skip == false`. An empty body
+is not a reason to skip; a published post whose Markdown body is empty still
+gets a full page (title, metadata, template chrome) so that feed cards and
+links pointing at it never 404. Only `skip` (set explicitly or by the
+publishing rules) removes a post from rendering.
+
 ---
 
 ## Stage 11: `post_render`
@@ -1014,6 +1020,14 @@ refreshed, even when that post's source file did not change.
 │  8. Update cache with new state                              │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+When an unchanged post is restored from the build cache, its cached full-page
+HTML MUST be available to the write stage before output materialization. This
+also applies when the output directory is new or was removed after the cache
+was created. A published post with an empty Markdown body still has a full
+page, so an empty `post.article_html` value MUST NOT prevent that cached page
+from being written. If the full-page cache entry is unavailable, the post MUST
+be rendered instead of being treated as successfully restored.
 
 ### Cache Invalidation Rules
 

@@ -8,10 +8,10 @@
 <div class="format-links">
   <span class="format-links-label">View as:</span>
   {% if config.post_formats.markdown %}
-  <a href="/{{ post.slug }}.md" class="format-link format-link--markdown" title="View Markdown source">Markdown</a>
+  <a href="/{{ post.slug|default:"index" }}.md" class="format-link format-link--markdown" title="View Markdown source">Markdown</a>
   {% endif %}
   {% if config.post_formats.text %}
-  <a href="/{{ post.slug }}.txt" class="format-link format-link--text" title="View as plain text">Text</a>
+  <a href="/{{ post.slug|default:"index" }}.txt" class="format-link format-link--text" title="View as plain text">Text</a>
   {% endif %}
   {% if config.post_formats.og %}
   <a href="{{ post.href }}og/" class="format-link format-link--og" title="View social card">Card</a>

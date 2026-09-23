@@ -194,6 +194,11 @@ Site configuration is available via `config`:
 | `config.Description` | string | Site description |
 | `config.URL` | string | Site base URL |
 | `config.Author` | string | Site author |
+| `config.theme.palette` | string | Active palette name |
+| `config.theme.fontpack` | string | Resolved fontpack name (emitted as `data-fontpack` on `<html>` for every page, including feeds) |
+| `config.theme.aesthetic` | string | Aesthetic token set name |
+| `config.theme.texture.kind` / `.scope` | string | Surface texture dial |
+| `config.theme.text_size` | string | Effective text-size preset |
 
 Shorthand aliases are also available:
 
@@ -286,6 +291,7 @@ Use `human_date` for visible HTML dates so cards, post bylines, archive views, a
 | `safe` | `{{ html\|safe }}` | Mark HTML as safe (don't escape) |
 | `escape` | `{{ text\|escape }}` | HTML escape (default behavior) |
 | `plaintext` | `{{ html\|plaintext }}` | Convert HTML to clean plain text (entities decoded, tags stripped, links as footnotes) |
+| `summary` | `{{ post.content\|summary:300 }}` | One-line, HTML-escaped excerpt for cards: drops code blocks, tables, figures and scripts, strips tags, collapses whitespace, truncates with `…` (default 300 chars). Safe to embed in Markdown via `render_feed` because it never contains blank lines or raw HTML |
 | `linebreaks` | `{{ text\|linebreaks }}` | Convert newlines to `<p>` and `<br>` |
 | `linebreaksbr` | `{{ text\|linebreaksbr }}` | Convert newlines to `<br>` |
 

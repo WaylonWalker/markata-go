@@ -504,6 +504,10 @@ var (
 
 	// glossaryPreTagRegex matches content inside <pre>...</pre> tags
 	glossaryPreTagRegex = regexp.MustCompile(`(?is)<pre[^>]*>.*?</pre>`)
+
+	// glossaryTagRegex matches any remaining HTML tag so terms inside
+	// attributes (id, href, alt, title, ...) are never rewritten.
+	glossaryTagRegex = regexp.MustCompile(`<[^>]+>`)
 )
 
 // placeholder is used to mark protected content
@@ -539,6 +543,14 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 
 	// Protect <code> tags
 	htmlContent = glossaryCodeTagRegex.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		key := fmt.Sprintf(placeholder, protectedIdx)
+		protectedSegments[key] = match
+		protectedIdx++
+		return key
+	})
+
+	// Protect every other tag so attribute values are left untouched
+	htmlContent = glossaryTagRegex.ReplaceAllStringFunc(htmlContent, func(match string) string {
 		key := fmt.Sprintf(placeholder, protectedIdx)
 		protectedSegments[key] = match
 		protectedIdx++

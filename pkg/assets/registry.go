@@ -73,19 +73,13 @@ var assetRegistry = []Asset{
 		Type:      "js",
 	},
 
-	// Mermaid - diagram/chart library
+	// Mermaid - diagram/chart library. The UMD bundle is self-contained; the
+	// ESM build lazily imports dozens of per-diagram chunks and cannot be
+	// vendored as a single file.
 	{
-		Name:      "mermaid-esm",
-		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.esm.min.mjs",
-		LocalPath: "mermaid/mermaid.esm.min.mjs",
-		Integrity: "",
-		Version:   "10.9.5",
-		Type:      "js",
-	},
-	{
-		Name:      "mermaid-chunk",
-		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid-b92f6f74.js",
-		LocalPath: "mermaid/mermaid-b92f6f74.js",
+		Name:      "mermaid",
+		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js",
+		LocalPath: "mermaid/mermaid.min.js",
 		Integrity: "",
 		Version:   "10.9.5",
 		Type:      "js",

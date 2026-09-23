@@ -231,6 +231,34 @@ func TestGlossaryPlugin_LinkTerms_Basic(t *testing.T) {
 	}
 }
 
+func TestGlossaryPlugin_LinkTerms_SkipsTagAttributes(t *testing.T) {
+	p := NewGlossaryPlugin()
+
+	title := "aur"
+	desc := "Arch User Repository"
+	glossaryPost := &models.Post{
+		Title:       &title,
+		Description: &desc,
+		Slug:        "aur",
+		Href:        "/aur/",
+		Extra:       map[string]interface{}{"templateKey": "glossary"},
+	}
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
+
+	html := `<h2 id="malicious-aur-packages" class="card-title">Malicious aur packages</h2><img alt="aur logo" src="/aur.png">`
+	result := p.linkTerms(html, nil)
+
+	if !strings.Contains(result, `id="malicious-aur-packages"`) {
+		t.Errorf("id attribute was rewritten: %s", result)
+	}
+	if !strings.Contains(result, `alt="aur logo"`) {
+		t.Errorf("alt attribute was rewritten: %s", result)
+	}
+	if strings.Count(result, `class="glossary-term"`) != 1 {
+		t.Errorf("expected exactly one linked term in text content, got: %s", result)
+	}
+}
+
 func TestGlossaryPlugin_LinkTerms_MaxLinksPerTerm(t *testing.T) {
 	p := NewGlossaryPlugin()
 	p.config.MaxLinksPerTerm = 1

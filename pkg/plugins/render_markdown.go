@@ -213,6 +213,7 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 			// Enable inline attribute syntax for inline and block elements
 			parser.WithASTTransformers(
 				util.Prioritized(&AttributeTransformer{}, -100),
+				util.Prioritized(&HeadingIDTransformer{}, -90),
 			),
 		),
 	}

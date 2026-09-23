@@ -50,7 +50,7 @@ Mermaid code blocks are converted to `<pre class="mermaid">` and Mermaid.js is l
 ```toml
 [markata-go.mermaid]
 mode = "client"
-cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
+cdn_url = "/assets/vendor/mermaid/mermaid.min.js"
 ```
 
 **Behavior:**

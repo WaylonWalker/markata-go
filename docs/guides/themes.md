@@ -329,6 +329,11 @@ Set `show_text_size_control = false` when a site should keep the configured
 default without rendering the selector. Browser zoom remains available in
 all modes.
 
+Presets are defaults, not overrides. If `[theme.variables]` sets
+`--text-base`, `--post-text-size`, or `--content-width` explicitly, the
+author's value wins for that token in every preset; the selector then only
+affects the tokens the site has not pinned.
+
 ### How It Works
 
 1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).

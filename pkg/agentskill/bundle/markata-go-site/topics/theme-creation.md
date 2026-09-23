@@ -28,6 +28,18 @@ or consumer.
 Inspect the active config, `palettes/`, `templates/`, and site CSS before editing.
 Preserve the site's existing layout and typography unless the task changes them.
 
+`[markata-go.theme.variables]` entries are emitted in the `overrides` cascade
+layer and win over text-size presets and palette tokens, so `--content-width`
+or `--text-base` set there take effect without `!important`. The resolved
+`palette`, `aesthetic`, `fontpack` and texture are stamped on `<html>` for
+every page (posts and feeds alike); if a feed page looks untyped, check the
+`data-fontpack` attribute in the built HTML before touching CSS.
+
+Theme CSS uses `@layer reset, tokens, base, components, utilities, overrides`.
+Any unlayered rule outranks all layered rules, so custom CSS that must lose to
+palette tokens should be wrapped in `@layer components { ... }`, and a rule
+that should win everything belongs in `@layer overrides`.
+
 ## Canonical Theme Configuration
 
 Keep theme-level keys in `[markata-go.theme]`. Put each nested group under its

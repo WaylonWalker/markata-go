@@ -280,7 +280,8 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		// Clean up the markers from alt text if present
 		cleanedAttrs := dataZoomableRegex.ReplaceAllString(attrs, "")
 		cleanedAttrs = zoomableClassRegex.ReplaceAllString(cleanedAttrs, "")
-		cleanedAttrs = strings.TrimSpace(cleanedAttrs)
+		// Drop a self-closing slash so appended attributes stay inside the tag
+		cleanedAttrs = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(cleanedAttrs), "/"))
 
 		// Extract src and alt for the glightbox data attribute
 		srcMatch := imgSrcRegex.FindStringSubmatch(cleanedAttrs)

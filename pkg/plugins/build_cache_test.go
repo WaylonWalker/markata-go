@@ -162,6 +162,7 @@ func TestBuildCacheLoad_InvalidatesOnlyChangedPostsAndTransitiveDependents(t *te
 	cache.MarkRebuilt("content/unrelated.md", "unrelated-hash", "output/unrelated/index.html", "post.html")
 	cache.SetDependencies("content/source.md", "source", []string{"target"})
 	cache.SetDependencies("content/downstream.md", "downstream", []string{"source"})
+	cache.MarkRebuilt("content/root.md", "root-hash", "output/index.html", "home.html")
 	cache.SetPostSlug("content/target.md", "target")
 	cache.SetPostSlug("content/unrelated.md", "unrelated")
 	cache.ResetStats()
@@ -190,11 +191,38 @@ func TestBuildCacheLoad_InvalidatesOnlyChangedPostsAndTransitiveDependents(t *te
 		t.Fatalf("unrelated post was invalidated: %v", affected)
 	}
 	if affected["content/root.md"] {
-		t.Fatalf("empty-slug post was invalidated: %v", affected)
+		t.Fatalf("unchanged empty-slug post was invalidated: %v", affected)
 	}
 
 	changedSlugs := cache.GetChangedSlugs()
 	if want := []string{"downstream", "source", "target"}; !slices.Equal(changedSlugs, want) {
 		t.Fatalf("changed slugs = %v, want %v", changedSlugs, want)
+	}
+}
+
+func TestBuildCacheLoad_ChangedHomepageIsAffected(t *testing.T) {
+	cache := buildcache.New(t.TempDir())
+	cache.MarkRebuilt("content/other.md", "other-hash", "output/other/index.html", "post.html")
+	cache.ResetStats()
+
+	manager := lifecycle.NewManager()
+	manager.Cache().Set("build_cache", cache)
+	manager.SetPosts([]*models.Post{
+		{Path: "content/other.md", Slug: "other", InputHash: "other-hash", Template: "post.html"},
+		{Path: "content/index.md", Slug: "", InputHash: "home-hash", Template: "post.html"},
+	})
+
+	plugin := NewBuildCachePlugin()
+	plugin.cache = cache
+	if err := plugin.Load(manager); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	affected := lifecycle.GetServeAffectedPaths(manager)
+	if !affected["content/index.md"] {
+		t.Fatalf("new empty-slug homepage must be affected so incremental builds render it: %v", affected)
+	}
+	if affected["content/other.md"] {
+		t.Fatalf("unchanged post was invalidated: %v", affected)
 	}
 }

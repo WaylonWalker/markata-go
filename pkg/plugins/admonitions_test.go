@@ -1091,3 +1091,57 @@ func TestAdmonitionIntegration_ContentLeakRegression(t *testing.T) {
 		})
 	}
 }
+
+// TestAdmonitionParser_FirstBodyLineIsNotCodeBlock guards against the first
+// indented body line being parsed as an indented code block. The Open method
+// must not advance onto the next line, otherwise goldmark tries child parsers
+// before Continue strips the 4-space indent.
+func TestAdmonitionParser_FirstBodyLineIsNotCodeBlock(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+		notWant string
+	}{
+		{
+			name:    "paragraph",
+			content: "!!! note \"T\"\n    First line.\n    Second line.\n",
+			want:    "<p>First line.\nSecond line.</p>",
+			notWant: "<pre>",
+		},
+		{
+			name:    "bullet list",
+			content: "!!! note\n    * one\n    * two\n",
+			want:    "<ul>\n<li>one</li>\n<li>two</li>\n</ul>",
+			notWant: "<pre>",
+		},
+		{
+			name:    "heading",
+			content: "!!! note\n    # Heading\n\nafter",
+			want:    "<h1 id=\"heading\">Heading</h1>\n</div>\n<p>after</p>",
+			notWant: "<pre>",
+		},
+		{
+			name:    "blank line before body",
+			content: "!!! note\n\n    para\n",
+			want:    "<p>para</p>",
+			notWant: "<pre>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewRenderMarkdownPlugin()
+			post := &models.Post{Content: tt.content}
+			if err := p.renderPost(post); err != nil {
+				t.Fatalf("renderPost() error = %v", err)
+			}
+			if !strings.Contains(post.ArticleHTML, tt.want) {
+				t.Errorf("output missing %q:\n%s", tt.want, post.ArticleHTML)
+			}
+			if strings.Contains(post.ArticleHTML, tt.notWant) {
+				t.Errorf("output contains %q:\n%s", tt.notWant, post.ArticleHTML)
+			}
+		})
+	}
+}
