@@ -569,6 +569,14 @@ og = true
 		t.Fatal(err)
 	}
 	for name, contents := range map[string]string{
+		"index.md": `---
+title: Home
+slug: ""
+published: true
+---
+
+Home page.
+`,
 		"keep.md": `---
 title: Keep
 published: true
@@ -651,8 +659,8 @@ Delete this post.
 		return artifact
 	}
 	firstArtifact := readArtifact(first.ReleasePath)
-	if firstArtifact.Summary.Discovered != 2 {
-		t.Fatalf("first release diagnostics summary = %+v, want two discovered files", firstArtifact.Summary)
+	if firstArtifact.Summary.Discovered != 3 {
+		t.Fatalf("first release diagnostics summary = %+v, want three discovered files", firstArtifact.Summary)
 	}
 	oldDeleted := filepath.Join(first.ReleasePath, "deleted", "index.html")
 	oldContents, err := os.ReadFile(oldDeleted)
@@ -669,8 +677,8 @@ Delete this post.
 	}
 	second := run("build-second")
 	secondArtifact := readArtifact(second.ReleasePath)
-	if secondArtifact.Summary.Discovered != 1 {
-		t.Fatalf("second release diagnostics summary = %+v, want one discovered file", secondArtifact.Summary)
+	if secondArtifact.Summary.Discovered != 2 {
+		t.Fatalf("second release diagnostics summary = %+v, want two discovered files", secondArtifact.Summary)
 	}
 	if first.ReleasePath == second.ReleasePath {
 		t.Fatalf("release paths are identical: %q", first.ReleasePath)
