@@ -1114,7 +1114,7 @@ type ThemeConfig struct {
 	FallbackMode string `json:"fallback_mode,omitempty" yaml:"fallback_mode,omitempty" toml:"fallback_mode,omitempty"`
 
 	// TextSize is the default reading-size preset for visitors without a saved
-	// preference. Valid values are "small", "medium", and "large".
+	// preference. Valid values are "small", "medium", "large", and "x-large".
 	TextSize string `json:"text_size,omitempty" yaml:"text_size,omitempty" toml:"text_size,omitempty"`
 
 	// ShowTextSizeControl controls whether the default theme renders the
@@ -1147,6 +1147,7 @@ const (
 	TextSizeSmall  = "small"
 	TextSizeMedium = "medium"
 	TextSizeLarge  = "large"
+	TextSizeXLarge = "x-large"
 )
 
 // EffectiveTextSize returns a supported reading-size preset, falling back to
@@ -1157,7 +1158,7 @@ func (c *ThemeConfig) EffectiveTextSize() string {
 	}
 
 	switch c.TextSize {
-	case TextSizeSmall, TextSizeMedium, TextSizeLarge:
+	case TextSizeSmall, TextSizeMedium, TextSizeLarge, TextSizeXLarge:
 		return c.TextSize
 	default:
 		return TextSizeLarge

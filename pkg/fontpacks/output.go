@@ -230,8 +230,21 @@ func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset) string 
 		b.WriteString(roleDeclarations(c, packs[name]))
 		b.WriteString("}\n")
 	}
-	b.WriteString(roleRulesForPacks(packs))
+	writeLayeredRoleRules(&b, roleRulesForPacks(packs))
 	return b.String()
+}
+
+// writeLayeredRoleRules emits element role rules inside @layer base so that
+// component styles (TOC titles, feed navigation labels, controls) can keep
+// their UI typography while ordinary headings and prose still receive the
+// pack's fonts. Unlayered rules would beat every layered component rule.
+func writeLayeredRoleRules(b *strings.Builder, rules string) {
+	if rules == "" {
+		return
+	}
+	b.WriteString("@layer base {\n")
+	b.WriteString(rules)
+	b.WriteString("}\n")
 }
 
 func rolesCSS(c *Catalog, pack FontPack) string {
@@ -239,7 +252,7 @@ func rolesCSS(c *Catalog, pack FontPack) string {
 	b.WriteString(":root {\n")
 	b.WriteString(roleDeclarations(c, pack))
 	b.WriteString("}\n")
-	b.WriteString(roleRulesForPack(pack))
+	writeLayeredRoleRules(&b, roleRulesForPack(pack))
 	return b.String()
 }
 

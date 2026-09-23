@@ -17,7 +17,9 @@
   --heading-code-bg: var(--color-code-bg, var(--color-surface));
   --heading-code-fg: var(--color-code-text, var(--color-text));
   --heading-link-decoration: var(--color-primary);
-  --heading-rule: color-mix(in srgb, var(--color-text) 72%, var(--heading-accent) 28%);
+  /* Accent underline drawn under expressive H1/H2 (see main.css). Kept
+     translucent so it reads as a soft rule, not a hard divider. */
+  --heading-rule: color-mix(in srgb, var(--heading-accent) 55%, transparent);
 
   /* Semantic colors */
   --color-text: #1f2937;
@@ -25,6 +27,11 @@
   --color-background: #ffffff;
   --color-surface: #f9fafb;
   --color-border: #e5e7eb;
+  /* Full-contrast boundary for controls that must meet 3:1 (inputs, focus).
+     Decorative edges (cards, dividers, surfaces) use --color-border or the
+     even quieter --color-border-soft hairline. */
+  --color-border-strong: var(--color-text);
+  --color-border-soft: color-mix(in srgb, var(--color-border) 60%, transparent);
 
   /* Status colors */
   --color-success: #10b981;
@@ -55,9 +62,11 @@
   --text-4xl: 2.25rem;
 
   /* Line heights */
-  --leading-tight: 1.25;
+  --leading-tight: 1.2;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.6;
+  --leading-relaxed: 1.65;
+  /* Long-form reading measure; paragraphs in .post-content use this. */
+  --leading-prose: 1.7;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -67,17 +76,22 @@
   --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
 
   /* Layout */
-  --content-width: 60ch;
+  --content-width: 66ch;
   --content-max-width: var(--content-width);
   --post-text-size: 1.25rem;
   --page-width: 1200px;
   --grid-max-width: 1400px;
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
+  /* Radius scale. aesthetic.css maps these onto the active aesthetic's
+     --radius-sm/md/lg/xl so every component follows one scale. */
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 
   /* Article reading progress indicator - minimal, no glow */
   --article-progress-height: 3px;

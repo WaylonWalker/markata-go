@@ -146,6 +146,7 @@
       }
 
       section.style.display = '';
+      section.classList.remove('post-graph--pending');
 
       var connectedNodes = subset.nodes.filter(function(node) { return node.id !== subset.postId; });
       var totalConnections = connectedNodes.length;
@@ -354,12 +355,28 @@
       return null;
     }
 
-    function onPointerMove(event) {
+    // Convert a mouse event to canvas-space CSS pixels. The drawing surface
+    // is sized from the parent at resize time; if the layout has since
+    // shifted (drawers, scrollbars, fonts) the canvas is displayed stretched,
+    // so scale by the ratio between the logical size and the rendered box.
+    function canvasPoint(event) {
       var rect = canvas.getBoundingClientRect();
-      var x = (event.clientX - rect.left - panX) / zoom;
-      var y = (event.clientY - rect.top - panY) / zoom;
+      var sx = rect.width ? width / rect.width : 1;
+      var sy = rect.height ? height / rect.height : 1;
+      return {
+        x: (event.clientX - rect.left) * sx,
+        y: (event.clientY - rect.top) * sy,
+        cssX: event.clientX - rect.left,
+        cssY: event.clientY - rect.top
+      };
+    }
+
+    function onPointerMove(event) {
+      var point = canvasPoint(event);
+      var x = (point.x - panX) / zoom;
+      var y = (point.y - panY) / zoom;
       hoveredNode = findNodeAt(x, y);
-      setTooltip(hoveredNode, event.clientX - rect.left, event.clientY - rect.top);
+      setTooltip(hoveredNode, point.cssX, point.cssY);
       draw();
     }
 
@@ -377,9 +394,9 @@
 
     function onWheel(event) {
       event.preventDefault();
-      var rect = canvas.getBoundingClientRect();
-      var mx = event.clientX - rect.left;
-      var my = event.clientY - rect.top;
+      var point = canvasPoint(event);
+      var mx = point.x;
+      var my = point.y;
       var delta = event.deltaY > 0 ? 0.92 : 1.08;
       var nextZoom = Math.max(0.4, Math.min(3, zoom * delta));
       panX = mx - (mx - panX) * (nextZoom / zoom);
@@ -389,9 +406,9 @@
     }
 
     function onPointerDown(event) {
-      var rect = canvas.getBoundingClientRect();
-      var x = (event.clientX - rect.left - panX) / zoom;
-      var y = (event.clientY - rect.top - panY) / zoom;
+      var point = canvasPoint(event);
+      var x = (point.x - panX) / zoom;
+      var y = (point.y - panY) / zoom;
       dragNode = findNodeAt(x, y);
       if (dragNode) {
         dragNode.fx = dragNode.x;
@@ -413,9 +430,9 @@
         panX = dragNode.baseX + (event.clientX - dragNode.startX);
         panY = dragNode.baseY + (event.clientY - dragNode.startY);
       } else {
-        var rect = canvas.getBoundingClientRect();
-        dragNode.fx = (event.clientX - rect.left - panX) / zoom;
-        dragNode.fy = (event.clientY - rect.top - panY) / zoom;
+        var point = canvasPoint(event);
+        dragNode.fx = (point.x - panX) / zoom;
+        dragNode.fy = (point.y - panY) / zoom;
       }
 
       draw();
@@ -478,6 +495,30 @@
     window.addEventListener('mouseup', onPointerUp);
     window.addEventListener('resize', onResize);
 
+    // The window may not resize when the graph's container does (sidebar
+    // drawers opening, fonts loading, scrollbars appearing). Track the
+    // container itself so the drawing surface always matches the box.
+    var resizeObserver = null;
+    var resizeFrame = 0;
+    if (typeof ResizeObserver === 'function' && canvas.parentElement) {
+      resizeObserver = new ResizeObserver(function() {
+        if (resizeFrame) {
+          return;
+        }
+        resizeFrame = window.requestAnimationFrame(function() {
+          resizeFrame = 0;
+          if (destroyed) {
+            return;
+          }
+          var rect = canvas.parentElement.getBoundingClientRect();
+          if (Math.abs(rect.width - width) > 0.5 || Math.abs(rect.height - height) > 0.5) {
+            onResize();
+          }
+        });
+      });
+      resizeObserver.observe(canvas.parentElement);
+    }
+
     if (limitInput) {
       limitInput.addEventListener('input', onLimitInput);
     }
@@ -514,6 +555,12 @@
       window.removeEventListener('mousemove', onPointerMoveDrag);
       window.removeEventListener('mouseup', onPointerUp);
       window.removeEventListener('resize', onResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (resizeFrame) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
 
       if (limitInput) {
         limitInput.removeEventListener('input', onLimitInput);
