@@ -195,3 +195,28 @@ func TestFeedToMap_IncludesRobots(t *testing.T) {
 		t.Fatalf("robots = %#v, want noindex,follow", got)
 	}
 }
+
+func TestThemeToMap_ExposesRenderingContractFields(t *testing.T) {
+	theme := &models.ThemeConfig{
+		Palette:   "caterpillar-dark",
+		Fontpack:  "brush",
+		Aesthetic: "minimal",
+	}
+	theme.Texture.Kind = "screenprint"
+	theme.Texture.Scope = "quiet"
+
+	got := ThemeToMap(theme)
+	if got["fontpack"] != "brush" {
+		t.Errorf("fontpack = %v, want brush", got["fontpack"])
+	}
+	if got["aesthetic"] != "minimal" {
+		t.Errorf("aesthetic = %v, want minimal", got["aesthetic"])
+	}
+	texture, ok := got["texture"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("texture = %T, want map", got["texture"])
+	}
+	if texture["kind"] != "screenprint" || texture["scope"] != "quiet" {
+		t.Errorf("texture = %v", texture)
+	}
+}

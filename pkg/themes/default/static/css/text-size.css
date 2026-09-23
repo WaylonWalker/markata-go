@@ -1,6 +1,10 @@
-/* Visitor-controlled reading-size presets. */
+/* Visitor-controlled reading-size presets.
 
-@layer overrides {
+   These live in the utilities layer, below overrides, so a site's
+   [theme.variables] (emitted into @layer overrides) win for any token the
+   author sets explicitly. Presets still beat the base tokens layer. */
+
+@layer utilities {
   html[data-text-size="small"] {
     --text-base: 1rem;
     --post-text-size: 1.125rem;

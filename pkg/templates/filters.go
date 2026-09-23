@@ -140,6 +140,7 @@ func registerFilters() {
 		// HTML/text filters
 		pongo2.ReplaceFilter("striptags", filterStripTags)
 		pongo2.RegisterFilter("plaintext", filterPlaintext)
+		pongo2.RegisterFilter("summary", filterSummary)
 		pongo2.RegisterFilter("linebreaks", filterLinebreaks)
 		pongo2.RegisterFilter("linebreaksbr", filterLinebreaksBR)
 
@@ -624,6 +625,44 @@ func filterPlaintext(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return pongo2.AsSafeValue(""), nil
 	}
 	return pongo2.AsSafeValue(htmltotext.Convert(s)), nil
+}
+
+var (
+	summaryDropBlockRe  = regexp.MustCompile(`(?is)<(pre|code|script|style|figure|table|svg)\b[^>]*>.*?</\s*(pre|code|script|style|figure|table|svg)\s*>`)
+	summaryWhitespaceRe = regexp.MustCompile(`\s+`)
+	summaryPunctGapRe   = regexp.MustCompile(` +([.,;:!?)\]])`)
+)
+
+// filterSummary turns rendered HTML into a short, single-line, escaped
+// summary suitable for cards and previews. Unlike plaintext it drops code,
+// tables, and figures rather than flattening them, collapses all whitespace
+// (so the result never breaks a surrounding HTML block when embedded in
+// Markdown), and truncates to the optional character limit (default 300)
+// with an ellipsis.
+func filterSummary(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	if s == "" {
+		return pongo2.AsSafeValue(""), nil
+	}
+
+	limit := 300
+	if param != nil && !param.IsNil() {
+		if n := param.Integer(); n > 0 {
+			limit = n
+		}
+	}
+
+	s = summaryDropBlockRe.ReplaceAllString(s, " ")
+	s = htmlTagRe.ReplaceAllString(s, " ")
+	s = html.UnescapeString(s)
+	s = strings.TrimSpace(summaryWhitespaceRe.ReplaceAllString(s, " "))
+	s = summaryPunctGapRe.ReplaceAllString(s, "$1")
+
+	if runes := []rune(s); len(runes) > limit {
+		s = strings.TrimRight(string(runes[:limit]), " ") + "…"
+	}
+
+	return pongo2.AsSafeValue(html.EscapeString(s)), nil
 }
 
 // filterLinebreaks converts newlines to <p> and <br> tags.

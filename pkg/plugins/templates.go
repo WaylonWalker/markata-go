@@ -321,8 +321,7 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 }
 
 // Phase 1a: Quick single-threaded pass to classify posts (no disk I/O)
-// Phase 1b: No-op for unchanged posts; cached full-page HTML is restored lazily
-// only when a later stage truly needs it.
+// Phase 1b: Restore cached full-page HTML for unchanged posts.
 // Phase 2: Concurrent rendering only for posts that need it
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
@@ -348,28 +347,40 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 	// Phase 1a: Classify posts into "cacheable" vs "needs rendering" without disk I/O.
 	t0 := time.Now()
-	cacheableCount := 0
+	cacheablePosts := make([]*models.Post, 0, len(m.Posts()))
 	var postsNeedingRender []*models.Post
 
 	for _, post := range m.Posts() {
-		// Skip posts marked to skip or without article HTML
-		if post.Skip || post.ArticleHTML == "" {
+		// Skip posts marked to skip. Posts with an empty body still get a page
+		// (title, metadata, feed membership) so feed links never dangle.
+		if post.Skip {
 			continue
 		}
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
 		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) {
-			cacheableCount++
+			cacheablePosts = append(cacheablePosts, post)
 		} else {
 			postsNeedingRender = append(postsNeedingRender, post)
 		}
 	}
 	t1 := time.Now()
-	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", cacheableCount, len(postsNeedingRender), t1.Sub(t0))
+	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", len(cacheablePosts), len(postsNeedingRender), t1.Sub(t0))
 
-	// Phase 1b: Intentionally skip eager full-page HTML restore for unchanged posts.
-	// Later stages can use cached derivatives or restore lazily when truly needed.
+	// Phase 1b: Restore the full page before the write stage. The output tree may
+	// have been removed while the persistent cache remains, so later stages must
+	// receive the same HTML that a cold build would have rendered. If the full
+	// page cache is unavailable (for example, from an older cache format), render
+	// the post instead of treating it as successfully restored.
 	t2 := time.Now()
+	for _, post := range cacheablePosts {
+		cachedHTML := cache.GetCachedFullHTML(post.Path)
+		if cachedHTML == "" {
+			postsNeedingRender = append(postsNeedingRender, post)
+			continue
+		}
+		post.HTML = cachedHTML
+	}
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
 	// Phase 2: Process only posts that need rendering concurrently

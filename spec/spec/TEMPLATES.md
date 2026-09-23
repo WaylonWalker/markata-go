@@ -442,6 +442,7 @@ comment
 | `truncate(n)` | `{{ text \| truncate(100) }}` | First 100 chars... |
 | `striptags` | `{{ html \| striptags }}` | Remove HTML tags |
 | `plaintext` | `{{ html \| plaintext }}` | Convert HTML to clean plain text (see below) |
+| `summary(n)` | `{{ html \| summary:300 }}` | Single-line escaped card excerpt (see below) |
 | `escape` | `{{ html \| escape }}` | HTML escape (default) |
 | `safe` | `{{ html \| safe }}` | Don't escape |
 | `slugify` | `{{ "Hello World" \| slugify }}` | `hello-world` |
@@ -509,6 +510,24 @@ Usage:
 {{ post.content | reading_time }}
 {{ post.content | reading_time(250) }}
 ```
+
+### The `summary` Filter
+
+The `summary` filter produces a short, single-line excerpt from rendered HTML
+for use in cards and other listings. Unlike `plaintext`, whose output is
+Markdown-like and multi-line, `summary` output is safe to inject into a
+Markdown document (for example through `render_feed`) because it never
+contains blank lines or raw HTML that goldmark could re-parse.
+
+**Behavior:**
+
+1. Removes `<pre>`, `<code>`, `<script>`, `<style>`, `<figure>`, `<table>` and
+   `<svg>` elements together with their content
+2. Strips all remaining tags and decodes entities
+3. Collapses whitespace to single spaces and repairs `" ."` gaps left by
+   removed inline elements
+4. Truncates to `n` characters (default 300) on a rune boundary and appends `…`
+5. Returns an HTML-escaped value marked safe
 
 ### The `plaintext` Filter
 

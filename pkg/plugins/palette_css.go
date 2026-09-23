@@ -114,10 +114,8 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
-	if config.Extra != nil {
-		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
-			return nil
-		}
+	if hashedAssetReadyInFastMode(m, "css/palette.css") {
+		return nil
 	}
 
 	// Get palette configuration from config.Extra["theme"].

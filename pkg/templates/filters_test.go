@@ -1005,3 +1005,30 @@ func TestFilterPosterURLAliasAndFallback(t *testing.T) {
 		t.Errorf("poster_url should derive .webp when no alias exists, got %q", fallback)
 	}
 }
+
+func TestFilterSummary(t *testing.T) {
+	in := "<p>Recent Arch vulns.</p>\n<ol><li><p>AUR is community</p></li></ol>\n<pre><code>sudo pacman -Rns yay\necho \"== pkg\"</code></pre>\n<p>Keep &amp; watch <a href=\"/x\">links</a>.</p>"
+	got, err := filterSummary(pongo2.AsValue(in), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	s := got.String()
+	if strings.Contains(s, "\n") {
+		t.Errorf("summary must be single-line, got %q", s)
+	}
+	if strings.Contains(s, "pacman") || strings.Contains(s, "==") {
+		t.Errorf("code blocks must be dropped, got %q", s)
+	}
+	want := "Recent Arch vulns. AUR is community Keep &amp; watch links."
+	if s != want {
+		t.Errorf("got %q want %q", s, want)
+	}
+
+	short, err := filterSummary(pongo2.AsValue("<p>one two three four</p>"), pongo2.AsValue(7))
+	if err != nil {
+		t.Fatalf("unexpected truncation error: %v", err)
+	}
+	if short.String() != "one two…" {
+		t.Errorf("truncation: got %q", short.String())
+	}
+}

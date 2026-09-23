@@ -480,7 +480,12 @@ func cachedOutputSlug(outputDir, outputPath string) string {
 	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.Base(relative) != "index.html" {
 		return ""
 	}
-	return filepath.Dir(relative)
+	slug := filepath.Dir(relative)
+	// The homepage writes output_dir/index.html; its slug is "" not ".".
+	if slug == "." {
+		return ""
+	}
+	return filepath.ToSlash(slug)
 }
 
 func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, postFormats models.PostFormatsConfig, cache *buildcache.Cache) error {
@@ -827,6 +832,18 @@ func inferPaletteVariant(paletteName string) palettes.Variant {
 //
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/465
 func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string, skipSlugRedirect bool) error {
+	// The homepage (empty slug) lives at the output root, so its alternate
+	// formats are /index.<ext>. There is no /<slug>.<ext> location or redirect
+	// directory that would not collide with that file.
+	if slug == "" {
+		contentPath := filepath.Join(outputDir, "index."+ext)
+		//nolint:gosec // G306: Output files need 0644 for web serving
+		if err := os.WriteFile(contentPath, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", contentPath, err)
+		}
+		return nil
+	}
+
 	// Special files get content at root level (e.g., /robots.txt)
 	if isSpecialFile(slug) {
 		return p.writeSpecialFileOutput(slug, ext, content, outputDir, skipSlugRedirect)

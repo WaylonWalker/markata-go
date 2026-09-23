@@ -559,3 +559,27 @@ func TestTocPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.ConfigurePlugin = p
 	var _ lifecycle.TransformPlugin = p
 }
+
+func TestCleanHeadingText(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "Plain heading", "Plain heading"},
+		{"resolved wikilink html", `Posts tagged: <a href="/tags/launchdoc/" class="wikilink" data-title="Posts tagged: launchdoc">launchdoc</a>`, "Posts tagged: launchdoc"},
+		{"markdown link", "Recent [TIL](/til/)", "Recent TIL"},
+		{"wikilink alias", "See [[target|Alias Text]]", "See Alias Text"},
+		{"wikilink plain", "See [[ daily-notes ]]", "See daily-notes"},
+		{"inline markup", "**Bold** and `code` and ==mark==", "Bold and code and mark"},
+		{"heading attrs", "Title {#custom-id .cls}", "Title"},
+		{"entities", "Fish &amp; Chips", "Fish & Chips"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := cleanHeadingText(tt.in); got != tt.want {
+				t.Errorf("cleanHeadingText(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}

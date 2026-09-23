@@ -170,7 +170,7 @@ The plugin MUST implement:
 [markata-go.mermaid]
 enabled = true
 mode = "client"                         # "client", "cli", or "chromium"
-cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
+cdn_url = "/assets/vendor/mermaid/mermaid.min.js"  # vendored UMD bundle; .mjs URLs are ES-module imported
 theme = "default"                       # default, dark, forest, neutral
 use_css_variables = true                # Use site palette CSS variables for diagram theming
 lightbox = true                         # Click diagrams to open in full-screen lightbox with pan/zoom
@@ -194,7 +194,7 @@ max_concurrent = 4                      # Maximum concurrent diagram renderings
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `mode` | string | `"client"` | Rendering mode: `"client"` (browser), `"cli"` (mmdc), or `"chromium"` (Chrome DevTools Protocol) |
-| `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library (client mode only) |
+| `cdn_url` | string | `"/assets/vendor/mermaid/mermaid.min.js"` | URL for Mermaid.js library (client mode only). URLs ending in `.mjs`/containing `.esm.` are loaded with an ES module `import`; other URLs are loaded as a classic script and read from `window.mermaid`. |
 | `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, etc.) with hardcoded fallbacks. When enabled, the `theme` field is ignored. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay for rendered diagrams. Uses a programmatic GLightbox instance with svg-pan-zoom for interactive pan and zoom. |

@@ -738,6 +738,19 @@ feeds = ["tutorials", "guides"]
 max_posts = 51
 ```
 
+#### Sidebar behavior on wide screens
+
+From `1201px` up, the document and feed sidebars become fixed drawers that
+stay tucked against the viewport edge. They slide in when you hover the
+screen edge or the drawer itself, and can be pinned with the pin button (or
+the keyboard shortcut). From `1600px` up, hovering the article also "peeks"
+both drawers at reduced opacity; below that width the peek is disabled so a
+drawer never covers the first characters of the article column.
+
+TOC entries are built from the heading's visible text: resolved wikilinks,
+Markdown links, emphasis and inline code are stripped, so the sidebar never
+shows raw HTML or markup.
+
 **Responsive behavior:** Sidebars are hidden on mobile (< 768px) and shown inline on tablets (768px - 1024px).
 
 #### Share Component (`[markata-go.components.share]`)
@@ -1098,7 +1111,7 @@ the typed setting disabled.
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid diagram processing is active |
 | `mode` | string | `"client"` | Rendering mode: `client` (browser-side), `cli` (mmdc), or `chromium` (headless Chrome) |
-| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.esm.min.mjs` | Mermaid JS URL (local by default) |
+| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.min.js` | Mermaid JS URL (local by default) |
 | `theme` | string | `"default"` | Mermaid theme: `default`, `dark`, `forest`, `neutral`. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties. Reads `--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, and `--color-surface` with hardcoded fallbacks. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |

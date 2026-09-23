@@ -58,6 +58,8 @@ The `jinja_md` plugin and page templates expose two helpers that surface feed da
 - Renders the latest posts for a feed slug using the default partial `partials/feed_preview.html`. The `card` layout now includes `partials/cards/card-router.html`, so each post renders with the card for its template (article, note, photo, etc.) and photo/shot cards display their media inside a `<figure>` plus `<figcaption>` caption. `variant` accepts `card` or `list` and defaults to `card`.
 - `limit` truncates the rendered posts even if the feed definition includes more items. The helper gracefully falls back to a simple `<section>` if the template or engine is unavailable.
 - You can pass options as positional args (`limit`, `variant`) in markdown/Jinja content, or with an options map in full templates. The template override key remains `template` (for example, `{"template": "partials/custom-feed.html"}` in template files).
+- The rendered HTML is emitted as a single block with no blank lines, so Markdown never re-parses card text as lists, marks or code. Card excerpts use the `summary` filter for the same reason.
+- An unknown feed slug renders nothing and logs a `jinja_md` warning naming the slug — check the build output if a section comes up empty.
 
 #### Last 5 blog/shot/ping/thought example
 

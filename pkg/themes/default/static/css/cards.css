@@ -78,7 +78,15 @@
 
 .card {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   background: var(--color-surface);
+}
+
+/* Long code lines scroll inside the card instead of widening it */
+.card pre {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Ensure card sections don't paint their own bands */
@@ -475,6 +483,24 @@
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  container-type: inline-size;
+}
+
+/* Narrow link cards (sidebars, tight grid columns) stack the thumbnail above
+   the text instead of squeezing the title into a sliver beside a 120px image. */
+@container (max-width: 360px) {
+  .card-link .card-link-wrapper {
+    flex-direction: column;
+  }
+
+  .card-link .card-link-image {
+    width: 100%;
+    height: 120px;
+  }
+
+  .card-link .card-link-image img {
+    height: 120px;
+  }
 }
 
 .card-link .card-link-wrapper {
@@ -607,7 +633,9 @@
 aside .card-link .card-title {
   font-size: var(--text-sm);
   font-weight: 500;
-  -webkit-line-clamp: 1;
+  /* min-height must not exceed the clamped line box or the next line peeks */
+  min-height: 0;
+  -webkit-line-clamp: 2;
 }
 
 aside .card-link .card-excerpt {

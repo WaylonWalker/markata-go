@@ -174,6 +174,7 @@ Use `human_date` for visible HTML dates in cards, post bylines, archive views, a
 - `sort`
 - `striptags`
 - `plaintext`
+- `summary` (single-line, escaped card excerpt; use this instead of `plaintext|truncatechars` in cards)
 - `safe`
 - `absolute_url`
 - `theme_asset`
@@ -390,7 +391,9 @@ Returns rendered HTML for a feed preview. Accepts a variant name (default `"card
 
 The default template is `partials/feed_preview.html`. If that template is missing, a basic HTML fallback is used.
 
-Feed helpers only surface posts that produced renderable page output. Empty-content pages, drafts, and skipped posts are omitted from feed pages and syndicated outputs instead of rendering broken entries.
+Feed helpers only surface posts that are not skipped. Drafts and skipped posts are omitted from feed pages and syndicated outputs; a published post with an empty body still gets a page, so its card never links to a 404.
+
+`render_feed` output is a single HTML block with no blank lines, so goldmark never re-parses card text as Markdown. Keep card partials to inline markup and use the `summary` filter for excerpts. When a slug does not match a feed the helper renders nothing and logs a `jinja_md` warning; check the feed's `slug`, not its name.
 
 ## Text And Alternate Format Templates
 

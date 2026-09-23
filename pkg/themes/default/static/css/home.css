@@ -246,7 +246,10 @@
 /* ── Feed card grids ── */
 
 .page-home .feed .posts,
-.page-home .feed .posts-list {
+.page-home .feed .posts-list,
+.page-home .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts,
+.page-home .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+  width: 100%;
   max-width: 100%;
 }
 
@@ -276,9 +279,12 @@
   margin-bottom: var(--space-4);
 }
 
-.home-shots-section .feed .posts-list {
+/* Embedded feeds: mirror the feeds.css page-level selector chain so these
+   grid rules outrank its flex-column default for .posts-list. */
+.home-shots-section .feed .posts-list,
+.home-shots-section .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
   grid-auto-flow: dense;
 }
@@ -375,15 +381,17 @@
   min-width: 0; /* prevent grid blowout */
 }
 
-.home-main-content .feed .posts-list {
+.home-main-content .feed .posts-list,
+.home-main-content .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
 /* Shots grid overrides the single-column main-content default */
-.home-main-content .home-shots-section .feed .posts-list {
-  grid-template-columns: repeat(3, 1fr);
+.home-main-content .home-shots-section .feed .posts-list,
+.home-main-content .home-shots-section .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
 }
 
@@ -537,25 +545,26 @@
   }
 
   .home-two-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-feeds-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
   }
 
   /* Sidebar moves below main content on mobile */
   .home-main-rail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-sidebar {
     position: static;
   }
 
-  .home-shots-section .feed .posts-list {
-    grid-template-columns: repeat(3, 1fr);
+  .home-shots-section .feed .posts-list,
+  .home-shots-section .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .page-home .post-content h2 {
@@ -620,7 +629,8 @@
     padding: var(--space-4);
   }
 
-  .home-shots-section .feed .posts-list {
-    grid-template-columns: repeat(2, 1fr);
+  .home-shots-section .feed .posts-list,
+  .home-shots-section .feed.h-feed:not(.feed-layout-grid):not(.feed-layout-masonry) > .posts-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

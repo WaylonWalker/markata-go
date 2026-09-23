@@ -9,10 +9,13 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/flosch/pongo2/v6"
 )
+
+var renderFeedLog = logging.Component("jinja_md").Phase("transform")
 
 const defaultFeedEmbedTemplate = "partials/feed_preview.html"
 const defaultFeedSortField = "date"
@@ -76,7 +79,11 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 	return func(slug string, args ...interface{}) (*pongo2.Value, error) {
 		opts := parseRenderFeedArgs(args)
 		posts, fc := getFeedPosts(slug, opts.limit, m)
-		if len(posts) == 0 || fc == nil {
+		if fc == nil {
+			renderFeedLog.Warnf("render_feed(%q): no feed with that slug is configured; rendering nothing", slug)
+			return pongo2.AsSafeValue(""), nil
+		}
+		if len(posts) == 0 {
 			return pongo2.AsSafeValue(""), nil
 		}
 
@@ -299,36 +306,22 @@ func renderFeedWithTemplate(ctx map[string]interface{}, opts renderFeedArgs, m *
 // normalizeTemplateWhitespace cleans up whitespace artifacts from pongo2 template
 // rendering. Pongo2 replaces {% %} tags with empty strings but preserves surrounding
 // whitespace, creating blank lines and whitespace-only lines. When this HTML is
-// injected into markdown (via render_feed), goldmark can misinterpret indented lines
-// after blank lines as indented code blocks (CommonMark: 4+ leading spaces = code).
+// injected into markdown (via render_feed), goldmark treats the snippet as an HTML
+// block that ends at the first blank line; everything after it is parsed as
+// Markdown again (list markers, ==marks==, indented code blocks, ...).
 //
 // This function:
 //  1. Left-trims every line (removes leading whitespace) so no line starts with 4+ spaces
-//  2. Collapses consecutive blank lines into at most one
-//  3. Removes leading/trailing blank lines
+//  2. Drops blank lines entirely so the snippet stays a single HTML block
 func normalizeTemplateWhitespace(s string) string {
 	lines := strings.Split(s, "\n")
 	out := make([]string, 0, len(lines))
-	prevBlank := false
 	for _, line := range lines {
 		trimmed := strings.TrimLeft(line, " \t")
 		if trimmed == "" {
-			if prevBlank {
-				continue // collapse consecutive blank lines
-			}
-			out = append(out, "")
-			prevBlank = true
-		} else {
-			out = append(out, trimmed)
-			prevBlank = false
+			continue
 		}
-	}
-	// Trim leading/trailing blank lines
-	for len(out) > 0 && out[0] == "" {
-		out = out[1:]
-	}
-	for len(out) > 0 && out[len(out)-1] == "" {
-		out = out[:len(out)-1]
+		out = append(out, trimmed)
 	}
 	return strings.Join(out, "\n")
 }
