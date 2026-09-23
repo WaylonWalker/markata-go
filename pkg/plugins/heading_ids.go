@@ -19,7 +19,7 @@ import (
 type HeadingIDTransformer struct{}
 
 // Transform implements parser.ASTTransformer.
-func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
+func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	source := reader.Source()
 	idCounts := make(map[string]int)
 	if err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {

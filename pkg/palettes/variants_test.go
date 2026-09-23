@@ -43,7 +43,7 @@ func TestGetKnownVariants(t *testing.T) {
 		{"rose-pine", "rose-pine", "rose-pine-dawn", "rose-pine", false},
 		{"tokyo-night", "tokyo-night", "tokyo-night-day", "tokyo-night", false},
 		{"tokyo-night-day", "tokyo-night-day", "tokyo-night-day", "tokyo-night", false},
-		{"dracula (dark only)", "dracula", "", "dracula", false},
+		{"dracula (no known mapping, derived)", "dracula", "", "", true},
 		{"unknown palette", "unknown-palette", "", "", true},
 	}
 
@@ -84,7 +84,7 @@ func TestDetectVariants(t *testing.T) {
 		// Known mappings
 		{"catppuccin-latte", "catppuccin-latte", "catppuccin-latte", "catppuccin-mocha"},
 		{"catppuccin-mocha", "catppuccin-mocha", "catppuccin-latte", "catppuccin-mocha"},
-		{"dracula (dark only)", "dracula", "", "dracula"},
+		{"dracula (dark only, derived light)", "dracula", "dracula-light", "dracula"},
 	}
 
 	for _, tt := range tests {
@@ -144,9 +144,9 @@ func TestGetEffectivePalettes(t *testing.T) {
 			wantDark:  "catppuccin-mocha",
 		},
 		{
-			name:      "dracula dark-only fallback",
+			name:      "dracula dark-only derives light counterpart",
 			palette:   "dracula",
-			wantLight: "dracula",
+			wantLight: "dracula-light",
 			wantDark:  "dracula",
 		},
 	}

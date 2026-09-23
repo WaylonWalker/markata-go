@@ -162,7 +162,12 @@ These CSS custom properties can be overridden:
 | `--color-primary` | Primary accent color | Depends on palette |
 | `--color-link` | Link color | Depends on palette |
 | `--color-link-hover` | Link hover color | Depends on palette |
-| `--color-border` | Border color | Depends on palette |
+| `--color-border` | Soft hairline border (text ink mixed 16% into the background) | Depends on palette |
+| `--color-border-strong` | Full-contrast border ink for focus rings and emphasis | Depends on palette |
+| `--color-border-soft` | `--color-border` at 60% alpha, for section dividers | Derived |
+| `--heading-rule` | Color of the short accent bar under `h1`/`h2` | `color-mix(in srgb, var(--color-primary) 55%, transparent)` |
+| `--radius-sm` / `--radius` / `--radius-lg` / `--radius-xl` | Corner radius scale | `0.375rem` / `0.5rem` / `0.75rem` / `1rem` |
+| `--leading-prose` | Article body line-height | `1.7` |
 | `--color-code-bg` | Code block background | Depends on palette |
 | `--color-code-text` | Code block text | Depends on palette |
 | `--color-code-comment` | Code comments | Depends on palette |
@@ -172,7 +177,7 @@ These CSS custom properties can be overridden:
 | `--color-code-function` | Code functions | Depends on palette |
 | `--color-code-type` | Code types and tags | Depends on palette |
 | `--color-code-operator` | Code operators | Depends on palette |
-| `--content-width` | Max content width | `720px` |
+| `--content-width` | Article measure in `ch` (relative to article text size) | `64ch` at the `large` preset |
 | `--font-family` | Body font | System fonts |
 | `--font-family-mono` | Code font | Monospace fonts |
 | `--article-progress-height` | Sticky article progress bar height | `4px` |
@@ -225,6 +230,32 @@ palette = "catppuccin-latte"
 palette_dark = "catppuccin-mocha"
 fallback_mode = "dark"  # or "light"
 ```
+
+### Every Palette Has Both Modes
+
+You never have to pick a pair by hand. Every palette resolves to a light and a
+dark variant:
+
+1. **Explicit families** — `everforest-light`/`everforest-dark`,
+   `catppuccin-latte`/`catppuccin-mocha`, `rose-pine-dawn`/`rose-pine`, and
+   similar named pairs are used as-is.
+2. **Derived counterparts** — a palette that ships only one variant
+   (`dracula`, `matte-black`, `monokai`, the Lospec palettes, …) gets an
+   automatically derived counterpart named `<palette>-light` or
+   `<palette>-dark`. The derivation keeps every hue, compresses backgrounds
+   into a soft near-white (or near-black) band, and pushes text and links
+   until they meet WCAG AA against every derived surface.
+
+```toml
+[markata-go.theme]
+palette = "dracula"   # dark mode: dracula, light mode: dracula-light (derived)
+```
+
+Derived names work anywhere a palette name is accepted (`palette_light`,
+`palette_dark`, calendar rules, the switcher include/exclude lists) and show
+up in the multi-palette switcher as the family's other variant. If you prefer
+a hand-tuned light theme for a dark-only palette, set `palette_light`
+explicitly and the derived one is ignored.
 
 ---
 
@@ -307,12 +338,12 @@ The mode toggle is also gated by `[markata-go.header].show_theme_toggle` for bac
 ### Reading-size control
 
 The default theme uses a large, comfortable reading size by default. Visitors
-can choose a smaller or larger preset from the header control, and their
+can choose a smaller or larger preset (Small, Medium, Large, X-Large) from the header control, and their
 choice is saved for later visits on the same site.
 
 ```toml
 [markata-go.theme]
-text_size = "large"              # small, medium, or large
+text_size = "large"              # small, medium, large, or x-large
 show_text_size_control = true    # default: true
 ```
 
@@ -321,9 +352,16 @@ presets are:
 
 | Preset | Site base | Article text | Article measure |
 |--------|-----------|--------------|-----------------|
-| `small` | 16px | 18px | 65ch |
-| `medium` | 17px | 19px | 62ch |
-| `large` | 18px | 20px | 60ch |
+| `small` | 16px | 18px | 68ch |
+| `medium` | 17px | 20px | 66ch |
+| `large` | 18px | 22px | 64ch |
+| `x-large` | 19px | 24px | 62ch |
+
+Article text also scales with the viewport so wide desktop displays do not
+render a narrow strip of small type: `--reading-scale` multiplies the article
+font size by 1.08 from 1800px, 1.16 from 2200px (1440p), and 1.25 from
+3000px (4K). The `ch`-based measure follows the scaled font, so line length
+stays comfortable. Site chrome (`--text-base`) is not scaled.
 
 Set `show_text_size_control = false` when a site should keep the configured
 default without rendering the selector. Browser zoom remains available in
