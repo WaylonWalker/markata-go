@@ -205,8 +205,8 @@ jobs:
           files: ./coverage-core.out
           fail_ci_if_error: false
 
-  test-linux-integration:
-    name: Linux tests (integration)
+  test-linux-cli:
+    name: Linux tests (CLI and search)
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -235,18 +235,57 @@ jobs:
           printf 'MARKATA_GO_TEST_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
           printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Run integration tests (race + coverage, excluding observational Build Lab)
+      - name: Run CLI and search tests (race + coverage, excluding observational Build Lab)
         if: github.event_name == 'pull_request'
-        run: go test -v -race -timeout=30m -coverprofile=coverage-integration.out -covermode=atomic -skip '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$' ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi ./tests
+        run: go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic -skip '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$' ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
 
-      - name: Run integration tests (race + coverage)
+      - name: Run CLI and search tests (race + coverage)
         if: github.event_name != 'pull_request'
-        run: go test -v -race -timeout=30m -coverprofile=coverage-integration.out -covermode=atomic ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi ./tests
+        run: go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
 
-      - name: Upload integration coverage
+      - name: Upload CLI and search coverage
         uses: codecov/codecov-action@v7
         with:
-          files: ./coverage-integration.out
+          files: ./coverage-cli.out
+          fail_ci_if_error: false
+
+  test-linux-site:
+    name: Linux tests (site integration)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Download the CLI built from this checkout
+        uses: actions/download-artifact@v7
+        with:
+          name: markata-go-linux-amd64
+          path: ${{ runner.temp }}
+
+      - name: Configure the checked-out CLI binary
+        run: |
+          binary="$RUNNER_TEMP/markata-go"
+          chmod +x "$binary"
+          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+          printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Run site integration tests (race + coverage)
+        run: go test -v -race -timeout=30m -coverprofile=coverage-site.out -covermode=atomic ./tests
+
+      - name: Upload site integration coverage
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage-site.out
           fail_ci_if_error: false
 
   test-linux:
@@ -255,15 +294,17 @@ jobs:
     if: always()
     needs:
       - test-linux-core
-      - test-linux-integration
+      - test-linux-cli
+      - test-linux-site
     steps:
       - name: Check Linux test shards
         env:
           CORE_RESULT: ${{ needs.test-linux-core.result }}
-          INTEGRATION_RESULT: ${{ needs.test-linux-integration.result }}
+          CLI_RESULT: ${{ needs.test-linux-cli.result }}
+          SITE_RESULT: ${{ needs.test-linux-site.result }}
         run: |
-          if [[ "$CORE_RESULT" != "success" || "$INTEGRATION_RESULT" != "success" ]]; then
-            printf 'Linux test shards failed: core=%s integration=%s\n' "$CORE_RESULT" "$INTEGRATION_RESULT" >&2
+          if [[ "$CORE_RESULT" != "success" || "$CLI_RESULT" != "success" || "$SITE_RESULT" != "success" ]]; then
+            printf 'Linux test shards failed: core=%s cli=%s site=%s\n' "$CORE_RESULT" "$CLI_RESULT" "$SITE_RESULT" >&2
             exit 1
           fi
           echo "All Linux race and coverage test shards passed"
