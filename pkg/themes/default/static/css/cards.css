@@ -80,7 +80,6 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  background: var(--color-surface);
 }
 
 /* Long code lines scroll inside the card instead of widening it */
@@ -250,12 +249,10 @@
    ========================================================================== */
 
 .card-note {
-  padding: var(--space-4);
-  border: none;
-  border-top: 2px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
   max-width: 550px;
   margin-left: auto;
   margin-right: auto;
@@ -281,7 +278,7 @@
 
 .card-note .card-text {
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   line-height: var(--leading-relaxed);
 }
 
@@ -651,7 +648,7 @@ aside .card-link .card-excerpt {
 .card-quote {
   padding: var(--space-6);
   background: var(--color-surface);
-  border-top: 2px solid var(--color-border);
+  border-top: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 
 .card-quote .card-blockquote {
@@ -817,7 +814,7 @@ aside .card-link .card-excerpt {
 .card-inline .card-content blockquote {
   margin: var(--space-3) 0;
   padding: var(--space-3) var(--space-4);
-  border-top: 2px solid var(--color-border);
+  border-top: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
   border-left: none;
   background: var(--color-surface);
   border-radius: var(--radius);

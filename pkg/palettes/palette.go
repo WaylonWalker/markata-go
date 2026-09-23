@@ -277,4 +277,5 @@ type PaletteInfo struct {
 	Author      string  `json:"author,omitempty"`
 	Source      string  `json:"source"` // "built-in", "user", "project"
 	Path        string  `json:"path,omitempty"`
+	Derived     bool    `json:"derived,omitempty"` // true when auto-derived from the opposite variant
 }

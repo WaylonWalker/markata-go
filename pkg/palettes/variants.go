@@ -22,14 +22,49 @@ type PaletteVariants struct {
 //   - "everforest" -> light: "everforest-light", dark: "everforest-dark"
 //   - "everforest-light" -> light: "everforest-light", dark: "everforest-dark"
 //   - "catppuccin-mocha" -> light: "catppuccin-latte", dark: "catppuccin-mocha"
-//   - "dracula" -> light: "", dark: "dracula" (no light variant)
+//   - "dracula" -> light: "dracula-light" (derived), dark: "dracula"
 func DetectVariants(name string) PaletteVariants {
 	loader := NewLoader()
 	return detectVariantsWithLoader(name, loader)
 }
 
 // detectVariantsWithLoader is the internal implementation that accepts a loader.
+// Families that ship only one variant are completed with a derived counterpart
+// (see DeriveCounterpart) so every palette has a light and a dark mode.
 func detectVariantsWithLoader(name string, loader *Loader) PaletteVariants {
+	result := explicitVariantsWithLoader(name, loader)
+	palette, err := loader.Load(name)
+	if err != nil {
+		return result
+	}
+	if result.Light == "" {
+		if palette.Variant == VariantLight {
+			result.Light = name
+		} else {
+			result.Light = CounterpartName(name, VariantLight)
+		}
+	}
+	if result.Dark == "" {
+		if palette.Variant == VariantDark {
+			result.Dark = name
+		} else {
+			result.Dark = CounterpartName(name, VariantDark)
+		}
+	}
+	return result
+}
+
+// oppositeVariant returns the other mode.
+func oppositeVariant(v Variant) Variant {
+	if v == VariantLight {
+		return VariantDark
+	}
+	return VariantLight
+}
+
+// explicitVariantsWithLoader finds only variants that exist as real palettes
+// (files or known-family mappings), without deriving counterparts.
+func explicitVariantsWithLoader(name string, loader *Loader) PaletteVariants {
 	result := PaletteVariants{Base: name}
 
 	// Check if the palette exists
@@ -54,13 +89,13 @@ func detectVariantsWithLoader(name string, loader *Loader) PaletteVariants {
 	lightName := baseName + "-light"
 	darkName := baseName + "-dark"
 
-	// Check if light variant exists
-	if _, err := loader.Load(lightName); err == nil {
+	// Check if light variant exists as a real (non-derived) palette
+	if lightName != name && loader.hasExplicit(lightName) {
 		result.Light = lightName
 	}
 
-	// Check if dark variant exists
-	if _, err := loader.Load(darkName); err == nil {
+	// Check if dark variant exists as a real (non-derived) palette
+	if darkName != name && loader.hasExplicit(darkName) {
 		result.Dark = darkName
 	}
 
@@ -118,10 +153,6 @@ var knownVariantMappings = map[string]PaletteVariants{
 	"kanagawa-wave":   {Base: "kanagawa", Light: "kanagawa-lotus", Dark: "kanagawa-wave"},
 	"kanagawa-lotus":  {Base: "kanagawa", Light: "kanagawa-lotus", Dark: "kanagawa-wave"},
 	"kanagawa-dragon": {Base: "kanagawa", Light: "kanagawa-lotus", Dark: "kanagawa-dragon"},
-
-	// Single-variant palettes (dark only)
-	"dracula":     {Base: "dracula", Light: "", Dark: "dracula"},
-	"matte-black": {Base: "matte-black", Light: "", Dark: "matte-black"},
 }
 
 // getKnownVariants returns known variant mappings for special palette families.

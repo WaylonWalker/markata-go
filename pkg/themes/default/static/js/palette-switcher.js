@@ -212,9 +212,28 @@
         const palette = getBestPalette(family, mode);
         if (palette) {
           applyPalette(palette.name);
+          return;
         }
       }
     }
+
+    // No family selected (mode-toggle-only sites): pin data-palette to the
+    // configured palette for this mode so the per-palette CSS block agrees
+    // with data-theme. Every palette has a light and dark counterpart.
+    const configured = getConfiguredPalette(mode);
+    if (configured) {
+      root.dataset.palette = configured;
+    }
+  }
+
+  /**
+   * Read the site-configured palette for a mode from palette.css
+   * (--palette-light / --palette-dark).
+   */
+  function getConfiguredPalette(mode) {
+    const styles = getComputedStyle(document.documentElement);
+    const value = styles.getPropertyValue(mode === 'light' ? '--palette-light' : '--palette-dark');
+    return value ? value.trim().replace(/^["']|["']$/g, '') : '';
   }
 
   /**

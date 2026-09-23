@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{{ config.theme.palette }}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +23,7 @@
     (function() {
       var root = document.documentElement;
       var fallbackSize = root.dataset.textSize || 'large';
-      var allowed = { small: true, medium: true, large: true };
+      var allowed = { small: true, medium: true, large: true, 'x-large': true };
       var size = allowed[fallbackSize] ? fallbackSize : 'large';
       var allowVisitorSize = {% if config.theme.show_text_size_control | default:true %}true{% else %}false{% endif %};
       if (allowVisitorSize) {
@@ -56,6 +56,17 @@
 
       document.documentElement.dataset.theme = mode;
       document.documentElement.classList.toggle('dark', mode === 'dark');
+
+      // Pin data-palette to the variant that matches the resolved mode so the
+      // per-palette CSS block agrees with data-theme on first paint.
+      var palettes = {
+        light: '{{ config.Extra.palette_light_effective | default:config.theme.palette }}',
+        dark: '{{ config.Extra.palette_dark_effective | default:config.theme.palette }}'
+      };
+      var modePalette = mode === 'dark' ? palettes.dark : palettes.light;
+      if (modePalette) {
+        document.documentElement.dataset.palette = modePalette;
+      }
     })();
   </script>
 
@@ -650,13 +661,15 @@
 
   <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
-      {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
-      <div class="sidebar-edge-target sidebar-edge-target--left" aria-hidden="true"></div>
-      {% endif %}
 
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
       {% include "components/feed_sidebar.html" %}
+      {% endif %}
+
+      {# Left sidebar for document TOC (if enabled) #}
+      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'left' %}
+      {% include "components/doc_sidebar.html" %}
       {% endif %}
 
       <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
@@ -669,9 +682,6 @@
       {% include "components/doc_sidebar.html" %}
       {% endif %}
 
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
-      <div class="sidebar-edge-target sidebar-edge-target--right" aria-hidden="true"></div>
-      {% endif %}
     {% endblock %}
   </div>
 
@@ -756,7 +766,7 @@
       document.body.appendChild(scrollingScript);
 
       // Navigation Shortcuts - load if feed, post cards, or prev/next navigation exist
-      if (document.querySelector('.feed, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
+      if (document.querySelector('.feed, .feed-sidebar, .doc-sidebar, .post-nav, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);
@@ -788,6 +798,15 @@
       hoverPlayVideoScript.src = '{{ 'js/hover-play-video.js' | theme_asset_hashed }}';
       hoverPlayVideoScript.defer = true;
       document.body.appendChild(hoverPlayVideoScript);
+    }
+
+    // Feed cycling - populates the feed sidebar picker, counter, and prev/next
+    // feed controls when the page ships feed sidebar data.
+    if (document.querySelector('#feed-sidebar-data')) {
+      const feedCyclingScript = document.createElement('script');
+      feedCyclingScript.src = '{{ 'js/feed-cycling.js' | theme_asset_hashed }}';
+      feedCyclingScript.defer = true;
+      document.body.appendChild(feedCyclingScript);
     }
 
     // GLightbox - load when page has zoomable images

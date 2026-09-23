@@ -8,7 +8,7 @@
   'use strict';
 
   const STORAGE_KEY = 'text-size';
-  const SIZES = ['small', 'medium', 'large'];
+  const SIZES = ['small', 'medium', 'large', 'x-large'];
 
   function isValidSize(value) {
     return SIZES.includes(value);
