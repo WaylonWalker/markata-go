@@ -184,7 +184,7 @@ name = "blog"
 "/about/" = "landing"
 
 [markata-go.layout.blog]
-show_toc = true
+show_toc = true          # TOC sidebar on blog-layout (post.html) pages
 show_prev_next = true
 
 [markata-go.layout.docs]
