@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -18,6 +19,12 @@ import (
 
 // createManager creates and configures a lifecycle manager with all plugins.
 func createManager(cfgPath string) (*lifecycle.Manager, error) {
+	return createManagerWithPlugins(cfgPath, plugins.DefaultPlugins)
+}
+
+// createManagerWithPlugins loads configuration and registers the plugin set
+// returned by pluginSet.
+func createManagerWithPlugins(cfgPath string, pluginSet func() []lifecycle.Plugin) (*lifecycle.Manager, error) {
 	cfg, configPathUsed, configPaths, err := loadManagerConfig(cfgPath)
 	if err != nil {
 		return nil, err
@@ -187,16 +194,16 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 		m.SetConcurrency(cfg.Concurrency)
 	}
 
-	// Register default plugins
-	registerDefaultPlugins(m)
+	m.RegisterPlugins(pluginSet()...)
 
 	return m, nil
 }
 
 // createSinglePageManager configures the normal renderer for one Markdown
-// source while suppressing collection output such as feeds and archives.
+// source and publishes it at output/index.html. Site-level output such as
+// feeds, listings, sitemaps, and search indexes is not generated.
 func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, error) {
-	m, err := createManager(cfgPath)
+	m, err := createManagerWithPlugins(cfgPath, plugins.SinglePagePlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -231,14 +238,33 @@ func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, er
 	m.Config().GlobPatterns = []string{relativePath}
 	m.Config().Extra["feeds"] = []models.FeedConfig{}
 	m.Config().Extra["subscription_feeds_disabled"] = true
+	m.Config().Extra["single_page"] = true
+	// The single-page plugin set has no search index, so hide the search UI.
+	search, ok := m.Config().Extra["search"].(models.SearchConfig)
+	if !ok {
+		search = models.NewSearchConfig()
+	}
+	searchDisabled := false
+	search.Enabled = &searchDisabled
+	m.Config().Extra["search"] = search
 
 	return m, nil
 }
 
+// configOverlayExtraKey carries the serve settings preview fingerprint to the
+// build cache (see plugins.configHashInput).
+const configOverlayExtraKey = "config_overlay"
+
 func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
+	return loadManagerConfigWith(cfgPath, servePreviewOverlay())
+}
+
+// loadManagerConfigWith loads the config files and merges overlay (unsaved
+// settings previewed by `markata-go serve`) on top, below env overrides.
+func loadManagerConfigWith(cfgPath string, overlay map[string]any) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
 	configPathUsed = cfgPath
 
-	if len(mergeConfigFiles) > 0 {
+	if len(mergeConfigFiles) > 0 || len(overlay) > 0 {
 		basePath := cfgPath
 		if basePath == "" {
 			discovered, discoverErr := config.Discover()
@@ -248,9 +274,21 @@ func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed strin
 		}
 		configPathUsed = basePath
 
-		cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
+		cfg, err = config.LoadWithMergeOptions(config.LoadOptions{Overlay: overlay}, basePath, mergeConfigFiles...)
 		if err != nil {
 			return nil, "", nil, fmt.Errorf("loading merged config: %w", err)
+		}
+		if len(overlay) > 0 {
+			// The build cache hashes config files; the overlay changes the
+			// config without touching them, so it must be part of the hash.
+			fingerprint, err := json.Marshal(overlay)
+			if err != nil {
+				return nil, "", nil, fmt.Errorf("encoding settings preview: %w", err)
+			}
+			if cfg.Extra == nil {
+				cfg.Extra = map[string]any{}
+			}
+			cfg.Extra[configOverlayExtraKey] = string(fingerprint)
 		}
 		if basePath != "" {
 			configPaths = append(configPaths, basePath)
@@ -310,12 +348,6 @@ func isLicenseWarning(err error) bool {
 		return false
 	}
 	return vErr.IsWarn && vErr.Field == "license"
-}
-
-// registerDefaultPlugins registers all default plugins to the manager.
-func registerDefaultPlugins(m *lifecycle.Manager) {
-	// Use the centralized DefaultPlugins() to ensure all plugins are registered
-	m.RegisterPlugins(plugins.DefaultPlugins()...)
 }
 
 // applyFastMode sets the fast_mode flag in the manager's config Extra map,

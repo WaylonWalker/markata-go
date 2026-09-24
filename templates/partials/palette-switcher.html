@@ -65,9 +65,13 @@
           <button type="button" class="theme-picker-icon-btn" data-picker-shuffle title="Random theme" aria-label="Random theme">
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
           </button>
+          <button type="button" class="theme-picker-icon-btn" data-picker-schedule aria-pressed="false" aria-controls="theme-picker-schedule" title="Seasonal schedule" aria-label="Seasonal schedule" hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="12" cy="15" r="1.6" fill="currentColor"></circle></svg>
+          </button>
         </div>
         <div class="theme-picker-grid" id="theme-picker-grid" role="listbox" aria-label="Color themes"></div>
         <p class="theme-picker-empty" hidden>No themes match.</p>
+        <div class="theme-picker-schedule" id="theme-picker-schedule" data-picker-schedule-view aria-label="Seasonal schedule" hidden></div>
       </div>
 
       <div class="theme-picker-pane" id="theme-picker-pane-style" data-picker-pane="style" role="tabpanel" aria-labelledby="theme-picker-tab-style" hidden>
@@ -90,7 +94,9 @@
       <div class="theme-picker-bar">
         <p class="theme-picker-hint" aria-hidden="true"><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> preview <span>&middot;</span> <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs <span>&middot;</span> <kbd>Enter</kbd> done</p>
         <button type="button" class="theme-picker-reset" data-picker-reset title="Use the site's default look">Reset</button>
-        <button type="button" class="theme-picker-copy" data-picker-copy title="Copy these choices as markata-go.toml config">Copy config</button>
+        {# Shown only by `markata-go serve`, which injects the bake endpoint. #}
+        <button type="button" class="theme-picker-bake" data-picker-bake hidden title="Write these choices into your site config">Bake</button>
+        <button type="button" class="theme-picker-bake theme-picker-settings" data-picker-settings hidden title="Open the serve settings sidebar">All settings</button>
       </div>
     </div>
   </div>

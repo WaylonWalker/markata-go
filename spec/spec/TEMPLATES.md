@@ -660,7 +660,7 @@ When `config.license` contains a string key the default footer appends the licen
 ```jinja
 {% if footer.show_copyright %}
 <p class="footer-copyright">
-  &copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}.
+  &copy; {{ now | date:"2006" }}{% if config.author or config.title %} {{ config.author | default:config.title }}.{% endif %}
   {% if config.license and config.license.name %}
   Content licensed under
   {% if config.license.url %}

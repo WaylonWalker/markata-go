@@ -592,6 +592,21 @@ atom = true
 </feed>
 ```
 
+### Styled RSS and Atom Pages
+
+RSS and Atom feeds link to `/rss.xsl` and `/atom.xsl`, so a browser shows a readable page instead of raw XML. Both pages use your site's theme: the same palette, light or dark mode, fontpack, text size, and aesthetic. They also follow the visitor's own theme picker choices. When you change the theme, the feed pages change with it.
+
+To customize a feed page, copy `rss.xsl` or `atom.xsl` into your `templates/` directory. Keep this block inside `<head>` to keep the site theme; markata-go replaces it with the theme's styles and scripts when it builds:
+
+```xml
+<!-- markata:theme-head -->
+<link rel="stylesheet" href="/css/variables.css" />
+<link rel="stylesheet" href="/css/main.css" />
+<!-- /markata:theme-head -->
+```
+
+A custom stylesheet without this block is copied as-is. To change what is injected, override `partials/feed-xsl-head.html` in your templates.
+
 ### JSON Feed
 
 JSON Feed (version 1.1) for modern feed readers and APIs.

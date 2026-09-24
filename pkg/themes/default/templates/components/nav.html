@@ -14,7 +14,7 @@
         {% for item in config.nav %}
     <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}{% if item.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
         {% endfor %}
-    {% else %}
+    {% elif not single_page %}
     <a href="/" class="nav-link">Home</a>
     <a href="/archive/" class="nav-link">Archive</a>
     {% endif %}

@@ -1331,6 +1331,8 @@ func (c Context) ToPongo2() pongo2.Context {
 		"sidebar_items":            sidebarItemsToMaps(c.SidebarItems),
 		"sidebar_title":            c.SidebarTitle,
 		"resolved_content_sidebar": resolvedContentSidebar,
+		// now is the render time, e.g. {{ now | date:"2006" }} for copyright years.
+		"now": time.Now(),
 	}
 
 	addPostContext(&ctx, postMap, c.Post, resolvedContentSidebar)

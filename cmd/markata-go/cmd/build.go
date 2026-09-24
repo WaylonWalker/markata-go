@@ -74,7 +74,7 @@ Clean modes:
 
 Example usage:
   markata-go build              # Standard build
-  markata-go build pages/post.md # Render one Markdown file with the default theme
+  markata-go build pages/post.md # Render one Markdown file to <output>/index.html
   markata-go build --clean      # Clean build cache + output
   markata-go build --clean-all  # Also nuke external plugin caches
   markata-go build --fast       # Skip minification for faster builds

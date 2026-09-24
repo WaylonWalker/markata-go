@@ -268,21 +268,23 @@ Every site ships with a live theme picker. Visitors can restyle the site in any 
 
 The picker opens as a compact popover (a bottom sheet on phones, so the page stays visible above it) with three tabs. Every tab is a grid of live preview cards:
 
-- **Colors**: each card renders in that theme's own background, surface, text, accent, and status colors. Includes search, Light/Dark buttons to browse either mode, Shuffle for a random theme, and a **Seasonal** card.
+- **Colors**: each card renders in that theme's own background, surface, text, accent, and status colors. Includes search, Light/Dark buttons to browse either mode, Shuffle for a random theme, a **Seasonal** card, and a calendar button that shows the seasonal schedule.
 - **Style**: each card draws its corners, borders, and shadows in that aesthetic.
 - **Font**: each card shows a heading, body line, and code sample in that font pack. Text size buttons (Small to X-Large) sit above the grid.
 
+With a mouse, hovering a card shows that theme, style, or font on the whole page right away. Move off the cards and the page goes back to your current choice; click to keep it. Hovering a holiday or season in the seasonal schedule previews its colors the same way. On touch screens, tap to choose.
+
 To move fast, use the **‹ ›** buttons in the picker's top bar. They step through the current tab and show the name of the current choice, and the page updates on every tap. Arrow keys, Home/End, and PageUp/PageDown do the same from the keyboard. The picker remembers the last tab you used.
 
-The bottom bar has **Reset**, which goes back to the site's default theme, style, and font, and **Copy config**, which copies the current choices as a `[markata-go.theme]` TOML snippet. Paste it into `markata-go.toml` to make that look your site default.
+The bottom bar has **Reset**, which goes back to the site's default theme, style, and font. While you run `markata-go serve`, it also shows **Bake**, which writes the current choices into your site config (see below). Published sites never show Bake.
 
 On phones, every control is at least 40px tall, the search field uses 16px text so iOS does not zoom, and the sheet leaves room for the home indicator.
 
 Sites are dark by default (`fallback_mode = "dark"`): a first-time visitor sees the dark palette regardless of their OS preference until they flip the mode toggle.
 
-### Copying a look into your config
+### Baking a look into your config
 
-Open the picker, choose a theme, style, font, and text size, then click **Copy config**. The clipboard receives something like:
+Run `markata-go serve`, open the picker, and choose a theme, style, font, and text size. Click **Bake**; the button changes to **Bake into markata-go.toml?** (naming the file it will edit). Click again within four seconds to write it. The dev server updates the file, rebuilds, and live-reloads, so every visitor now starts with that look:
 
 ```toml
 [markata-go.theme]
@@ -295,7 +297,17 @@ fontpack = "editorial"
 text_size = "large"
 ```
 
-Merge these keys into the `[markata-go.theme]` table of `markata-go.toml` and rebuild; every visitor now starts with that look.
+Bake picks the file carefully:
+
+- It looks at the root config, every file it pulls in with `include = [...]` (for example a `config/` directory), and any `--merge-config` files.
+- If one or more already have a `[markata-go.theme]` section, it edits the one that takes effect (the last to load). A theme in `config/theme.toml` stays there.
+- Otherwise it adds `[markata-go.theme]` to the root config, or creates `markata-go.toml` when the site has none.
+
+Only the baked keys change. Comments, key order, and other settings are kept, and existing keys are updated in place. TOML, YAML, and JSON configs all work. If the theme is written in a shape bake cannot edit safely (a TOML inline table `theme = { ... }`, a YAML flow mapping, or a multi-line value), bake leaves the file alone and reports the error; convert it to a normal table and try again. `MARKATA_GO_THEME_*` environment variables still override the file, and bake warns when one is set.
+
+After a successful bake the picker clears your browser's saved picks, so what you see is the site default.
+
+To change other theme settings, such as `palette_light`, `custom_css`, or `switcher.enabled`, click **All settings** next to Bake. It opens the serve-only settings sidebar at the Theme section (see [Edit Settings While Serving](/docs/guides/configuration/#edit-settings-while-serving)).
 
 ### Seasonal
 
@@ -323,6 +335,16 @@ It switches to a holiday palette for the three days before a holiday and on the 
 | Hanukkah | varies, all 8 days | `hanukkah` |
 | Christmas | Dec 25 | `christmas` |
 
+To see the schedule, open the picker and click the calendar button next to Shuffle on the Colors tab. It shows:
+
+- a strip for the current year, colored with each season's and holiday's theme, with a line at today
+- a **Coming up** list: what is showing now, until when, and how long is left, then each upcoming holiday (its dates and how many days it shows, lead days included) and season change (its length in weeks) over the next year, each with a color swatch
+- a **Use Seasonal** button, if you picked a different theme
+
+Hover a band in the strip or a row in the list to preview that period's colors on the page. The hovered band and its row are outlined together, a line under the strip spells out the period's dates and length, and the picker's top label reads **Preview: …** while anything is being previewed. On touch screens, tap a band or row to see its dates without changing the page.
+
+The schedule follows the Light/Dark buttons, so you see the palettes for the mode you are browsing. Click the calendar button again, search, or step with ‹ › to go back to the grid.
+
 Seasonal follows the light/dark toggle and uses each palette's matching variant. The date comes from the visitor's clock, and the head script resolves it before the first paint, so nothing flashes. Easter is calculated. Other moving holidays come from a built-in table: Lunar New Year and Hanukkah through 2035, Diwali through 2033. Holidays and seasons whose palettes are excluded by `[markata-go.theme.switcher]` are skipped.
 
 To make seasonal the default for every visitor who has not picked a theme, set `seasonal = true`. Your `palette` settings stay as the fallback (for example, when the picker is disabled):
@@ -333,7 +355,7 @@ palette = "ayu-dark"
 seasonal = true
 ```
 
-**Copy config** writes `seasonal = true` when the visitor has Seasonal selected.
+**Bake** writes `seasonal = true` when Seasonal is selected and leaves your `palette` settings as the fallback. Baking a regular theme sets `seasonal = false` if seasonal was on.
 
 ### Styles
 
@@ -345,7 +367,7 @@ The **Style** tab switches the aesthetic, which sets the shape and depth of code
 | `balanced` | Medium radii with a light drop shadow |
 | `elevated` | Large radii, borderless surfaces lifted by soft shadows |
 | `precision` | Near-square corners with crisp hairline borders |
-| `brutal` | Square corners, 2px ink borders, and hard offset shadows |
+| `brutal` | Square corners, 2px ink borders, and hard offset shadows in the palette's accent color, applied to cards, code, tables, buttons, inputs, search, and share buttons |
 
 ### Fonts
 
@@ -500,8 +522,10 @@ affects the tokens the site has not pinned.
 .theme-picker-step   { /* ‹ › step buttons */ }
 .theme-card          { /* any preview card */ }
 .palette-card, .seasonal-card, .style-card, .font-card { /* per-tab cards */ }
+.theme-picker-schedule { /* seasonal schedule view (.ss-year strip, .ss-list) */ }
 .theme-card[aria-selected="true"] { /* current theme */ }
-.theme-picker-copy   { /* "Copy config" button */ }
+.theme-picker-bake   { /* "Bake" button (markata-go serve only) */ }
+.theme-picker-settings { /* "All settings" button (markata-go serve only) */ }
 ```
 
 ### JavaScript API
@@ -521,8 +545,8 @@ picker.nextFont();                // cycle fonts (also prevFont, cycleFont)
 picker.setTextSize("x-large");    // small, medium, large, x-large
 picker.selectSeasonal();          // follow the seasonal calendar
 picker.getSeasonal("dark");       // today's pick: { label, name }
-picker.getConfigSnippet();        // current choices as TOML
-picker.copyConfig();              // copy that snippet to the clipboard
+picker.getBakeSettings();         // current choices as [markata-go.theme] keys
+picker.bake();                    // serve only: write them to the site config
 picker.open("font");              // show the picker (optionally on a tab)
 picker.close();
 picker.resetTheme();              // back to the site default
@@ -797,7 +821,7 @@ markata-go includes 5 built-in aesthetics:
 | Aesthetic | Description | Best For |
 |-----------|-------------|----------|
 | `balanced` | **Default.** Comfortable rounding, subtle shadows, normal spacing | General purpose, blogs |
-| `brutal` | Sharp corners, thick borders, tight spacing, no shadows | Bold statements, portfolios |
+| `brutal` | Sharp corners, thick borders, tight spacing, hard accent-colored offset shadows | Bold statements, portfolios |
 | `minimal` | No rounding, maximum whitespace, no shadows, hairline borders | Documentation, reading-focused |
 | `elevated` | Generous rounding, layered shadows, generous spacing | Premium/SaaS, card-heavy layouts |
 | `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows | Technical docs, data-heavy sites |
@@ -810,7 +834,7 @@ markata-go includes 5 built-in aesthetics:
 │ No rounding            │
 │ Thick 3px borders      │
 │ Tight spacing          │
-│ No shadows             │
+│ Hard accent shadows    │
 └────────────────────────┘
 ```
 
@@ -1032,7 +1056,7 @@ Create `templates/partials/footer.html`:
 ```html
 <footer class="site-footer">
   <div class="container">
-    <p>&copy; {{ now().year }} {{ config.title }}. Built with markata-go.</p>
+    <p>&copy; {{ now | date:"2006" }} {{ config.title }}. Built with markata-go.</p>
     <nav>
       <a href="/about/">About</a>
       <a href="/contact/">Contact</a>

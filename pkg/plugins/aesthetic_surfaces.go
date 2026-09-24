@@ -18,7 +18,9 @@ const aestheticSurfaceCSS = `
   [data-aesthetic="precision"] { --radius: 2px; --radius-sm: 1px; --radius-md: 2px; --radius-lg: 3px; --radius-xl: 4px;
     --surface-border: 1px solid color-mix(in srgb, var(--color-text) 30%, var(--color-background)); --surface-shadow: none; }
   [data-aesthetic="brutal"] { --radius: 0px; --radius-sm: 0px; --radius-md: 0px; --radius-lg: 0px; --radius-xl: 0px;
-    --surface-border: 2px solid var(--color-text); --surface-shadow: 4px 4px 0 var(--color-text); }
+    --brutal-ink: color-mix(in srgb, var(--color-text) 82%, var(--color-background));
+    --brutal-accent: var(--color-primary, var(--color-text));
+    --surface-border: 2px solid var(--brutal-ink); --surface-shadow: 5px 5px 0 var(--brutal-accent); }
 }
 @layer utilities {
   html[data-aesthetic]:is([data-aesthetic="balanced"], [data-aesthetic="elevated"], [data-aesthetic="precision"], [data-aesthetic="brutal"]) :is(pre, .card, .admonition, .embed-card, .blogroll-card, .post-content table, .post-content img) {
@@ -26,10 +28,14 @@ const aestheticSurfaceCSS = `
     box-shadow: var(--surface-shadow);
   }
   html[data-aesthetic="elevated"] :is(pre, .card, .admonition) { background: color-mix(in srgb, var(--color-surface) 85%, var(--color-text) 4%); }
-  html[data-aesthetic="brutal"] blockquote { border-left-width: 6px; border-left-color: var(--color-text); border-radius: 0; }
-  html[data-aesthetic="brutal"] :is(button, input, select):not(.theme-card) { border-width: 2px; border-color: var(--color-text); border-radius: 0; }
+  html[data-aesthetic="brutal"] :is(.card, .embed-card, .blogroll-card):hover { box-shadow: 8px 8px 0 var(--brutal-accent); }
+  html[data-aesthetic="brutal"] blockquote { border-left: 6px solid var(--brutal-accent); border-radius: 0; }
+  html[data-aesthetic="brutal"] :is(button, input, select, textarea, .share-button, .post-copy__summary):not(.theme-card, .theme-picker-panel *) { border: 2px solid var(--brutal-ink); border-radius: 0; }
+  html[data-aesthetic="brutal"] :is(button, .share-button, .post-copy__summary):not(.theme-card, .theme-picker-panel *):hover { box-shadow: 3px 3px 0 var(--brutal-accent); }
+  html[data-aesthetic="brutal"], html[data-aesthetic="brutal"] .pagefind-ui { --pagefind-ui-border: var(--brutal-ink); --pagefind-ui-border-width: 2px; --pagefind-ui-border-radius: 0; }
+  html[data-aesthetic="brutal"] .pagefind-ui__search-input { border: 2px solid var(--brutal-ink) !important; border-radius: 0 !important; }
   html[data-aesthetic="brutal"] .post-content :is(h1, h2, h3)::after { height: 4px; }
-  html[data-aesthetic="brutal"] code:not(pre code) { border: 1px solid var(--color-text); }
+  html[data-aesthetic="brutal"] code:not(pre code) { border: 1px solid var(--brutal-ink); border-radius: 0; }
   html[data-aesthetic="precision"] blockquote { border-radius: 0; }
 }
 `

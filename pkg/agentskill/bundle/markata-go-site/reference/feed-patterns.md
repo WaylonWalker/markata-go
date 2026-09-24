@@ -165,6 +165,7 @@ No additional config is needed. The sitemap plugin runs in the Write stage after
 - per-feed HTML can switch to another built-in template with `[markata-go.feeds.templates] html = "feed-photo-grid.html"`
 - card rendering often happens in a partial
 - RSS and Atom can use separate XML templates
+- `/rss.xsl` and `/atom.xsl` render with the site theme via the `<!-- markata:theme-head -->` ... `<!-- /markata:theme-head -->` region; keep that region when overriding them in `templates/` (customize the injected head with `partials/feed-xsl-head.html`)
 
 ## Feed Sidebar Windowing
 

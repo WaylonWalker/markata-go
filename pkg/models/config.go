@@ -1462,6 +1462,7 @@ type GlobConfig struct {
 	UseGitignore bool `json:"use_gitignore" yaml:"use_gitignore" toml:"use_gitignore"`
 
 	// SlugMode controls how slugs are derived from matched source paths.
+	// Valid values: "path", "flat".
 	SlugMode string `json:"slug_mode" yaml:"slug_mode" toml:"slug_mode"`
 
 	// SlugRules override slug mode for specific content path prefixes.
