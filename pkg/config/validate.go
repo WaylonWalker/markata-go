@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
@@ -169,6 +170,26 @@ func imagePathEscapesRoot(path string) bool {
 	return filepath.IsAbs(path) || strings.HasPrefix(path, "/") || clean == ".." || strings.HasPrefix(clean, "../")
 }
 
+// fontpackInCatalog reports whether name resolves to a pack or alias in the
+// font catalog the fontpack plugin will load (fontpacks_file or built-in).
+func fontpackInCatalog(config *models.Config, name string) bool {
+	if name == "" {
+		return false
+	}
+	var source *fontpacks.CatalogSource
+	var err error
+	if config.FontpacksFile != "" {
+		source, err = fontpacks.LoadSource(config.FontpacksFile)
+	} else {
+		source, err = fontpacks.BuiltinSource()
+	}
+	if err != nil || source == nil || source.Catalog == nil {
+		return false
+	}
+	_, _, err = source.Catalog.ResolvePack(name)
+	return err == nil
+}
+
 //nolint:gocyclo // Each contract dimension produces an independent validation diagnostic.
 func validateRenderingTheme(config *models.Config) []error {
 	c, err := renderingcontract.Load()
@@ -213,7 +234,11 @@ func validateRenderingTheme(config *models.Config) []error {
 		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large", "x-large"; using "large"`, IsWarn: true})
 	}
 	if config.Fontpack == "" || config.Fontpack != config.Theme.Fontpack {
-		valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
+		// Font catalog packs (built-in or fontpacks_file) are valid even though
+		// they are not part of the rendering contract.
+		if !fontpackInCatalog(config, config.Theme.Fontpack) {
+			valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
+		}
 	}
 	valid("textures", config.Theme.Texture.Kind, "theme.texture.kind")
 	valid("scopes", config.Theme.Texture.Scope, "theme.texture.scope")
