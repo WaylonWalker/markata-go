@@ -36,6 +36,29 @@ type BakeSetting struct {
 // (for example a TOML inline table or a YAML flow mapping).
 var ErrBakeUnsupportedLayout = errors.New("config group layout cannot be edited safely")
 
+// BakeRemove is a BakeSetting value that deletes the key from the file, so
+// the setting falls back to its default (or to a lower-precedence file).
+var BakeRemove any = bakeRemove{}
+
+type bakeRemove struct{}
+
+// IsBakeRemove reports whether value is BakeRemove.
+func IsBakeRemove(value any) bool {
+	_, ok := value.(bakeRemove)
+	return ok
+}
+
+// withoutRemovals returns the values that set a key.
+func withoutRemovals(values []BakeValue) []BakeValue {
+	out := make([]BakeValue, 0, len(values))
+	for _, v := range values {
+		if !IsBakeRemove(v.Value) {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 var bakeKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 // FindGroupConfigFile returns the file in paths that should receive settings
@@ -107,13 +130,51 @@ func BakeValues(path, group string, values []BakeValue) error {
 
 // BakeSettings writes settings into the config file at path. When path does
 // not exist it is created. Existing formatting, comments, and key order are
-// preserved: matching keys are replaced in place, missing keys are added to
-// their table, and absent tables are appended. The edited document is
-// re-parsed and must differ from the original only by the baked keys,
-// otherwise the file is left untouched.
+// preserved: matching keys are replaced in place (or deleted for BakeRemove),
+// missing keys are added to their table, and absent tables are appended. The
+// edited document is re-parsed and must differ from the original only by the
+// baked keys, otherwise the file is left untouched.
 func BakeSettings(path string, settings []BakeSetting) error {
+	plan, err := PlanBake(path, settings)
+	if err != nil {
+		return err
+	}
+	return plan.Write()
+}
+
+// BakePlan is the verified result of editing one config file, ready to be
+// written. Before is nil when the file does not exist yet.
+type BakePlan struct {
+	Path   string
+	Exists bool
+	Before []byte
+	After  []byte
+	mode   os.FileMode
+}
+
+// Changed reports whether writing the plan would modify the file.
+func (p BakePlan) Changed() bool {
+	if !p.Exists {
+		return len(p.After) > 0
+	}
+	return !bytes.Equal(p.Before, p.After)
+}
+
+// Write replaces the file atomically with the planned content. A plan that
+// changes nothing is a no-op.
+func (p BakePlan) Write() error {
+	if !p.Changed() {
+		return nil
+	}
+	return WriteFileAtomic(p.Path, p.After, p.mode)
+}
+
+// PlanBake computes and verifies the edit BakeSettings would make to the
+// config file at path without writing it.
+func PlanBake(path string, settings []BakeSetting) (BakePlan, error) {
+	plan := BakePlan{Path: path, mode: 0o644}
 	if len(settings) == 0 {
-		return errors.New("no settings to bake")
+		return plan, errors.New("no settings to bake")
 	}
 	type tableValues struct {
 		table  []string
@@ -122,15 +183,15 @@ func BakeSettings(path string, settings []BakeSetting) error {
 	var tables []*tableValues
 	for _, s := range settings {
 		if len(s.Path) == 0 {
-			return errors.New("empty config key")
+			return plan, errors.New("empty config key")
 		}
 		for _, part := range s.Path {
 			if !bakeKeyPattern.MatchString(part) {
-				return fmt.Errorf("invalid config key %q", strings.Join(s.Path, "."))
+				return plan, fmt.Errorf("invalid config key %q", strings.Join(s.Path, "."))
 			}
 		}
 		if err := checkBakeValue(s.Value); err != nil {
-			return fmt.Errorf("%s: %w", strings.Join(s.Path, "."), err)
+			return plan, fmt.Errorf("%s: %w", strings.Join(s.Path, "."), err)
 		}
 		table, leaf := s.Path[:len(s.Path)-1], s.Path[len(s.Path)-1]
 		var tv *tableValues
@@ -148,24 +209,25 @@ func BakeSettings(path string, settings []BakeSetting) error {
 	}
 
 	format := detectConfigFormat(path)
-	mode := os.FileMode(0o644)
 	data, err := os.ReadFile(path)
 	switch {
 	case err == nil:
+		plan.Exists = true
+		plan.Before = data
 		if info, statErr := os.Stat(path); statErr == nil {
-			mode = info.Mode().Perm()
+			plan.mode = info.Mode().Perm()
 		}
 	case errors.Is(err, os.ErrNotExist):
 		data = nil
 	default:
-		return fmt.Errorf("read config file: %w", err)
+		return plan, fmt.Errorf("read config file: %w", err)
 	}
 
 	before := map[string]any{}
 	if len(bytes.TrimSpace(data)) > 0 {
 		before, err = loadRawConfigData(data, format)
 		if err != nil {
-			return fmt.Errorf("parse config file %s: %w", path, err)
+			return plan, fmt.Errorf("parse config file %s: %w", path, err)
 		}
 	}
 
@@ -182,19 +244,20 @@ func BakeSettings(path string, settings []BakeSetting) error {
 			err = fmt.Errorf("unsupported config format: %s", format)
 		}
 		if err != nil {
-			return fmt.Errorf("bake %s: %w", path, err)
+			return plan, fmt.Errorf("bake %s: %w", path, err)
 		}
 	}
 
 	if err := verifyBake(before, updated, format, settings); err != nil {
-		return fmt.Errorf("bake %s: %w", path, err)
+		return plan, fmt.Errorf("bake %s: %w", path, err)
 	}
-	return writeFileAtomic(path, updated, mode)
+	plan.After = updated
+	return plan, nil
 }
 
 func checkBakeValue(value any) error {
 	switch v := value.(type) {
-	case string, bool, int, int64, []string:
+	case bakeRemove, string, bool, int, int64, []string:
 		return nil
 	case float64:
 		if math.IsNaN(v) || math.IsInf(v, 0) {
@@ -207,34 +270,74 @@ func checkBakeValue(value any) error {
 }
 
 // verifyBake re-parses the edited document and checks that applying settings
-// to the original document yields exactly the edited document.
+// to the original document yields exactly the edited document. Tables left
+// empty (or null in YAML) count as absent.
 func verifyBake(before map[string]any, updated []byte, format Format, settings []BakeSetting) error {
-	after, err := loadRawConfigData(updated, format)
-	if err != nil {
-		return fmt.Errorf("edited config does not parse: %w", err)
+	after := map[string]any{}
+	if len(bytes.TrimSpace(updated)) > 0 {
+		var err error
+		after, err = loadRawConfigData(updated, format)
+		if err != nil {
+			return fmt.Errorf("edited config does not parse: %w", err)
+		}
 	}
 	expected := cloneMap(before)
 	if expected == nil {
 		expected = map[string]any{}
 	}
 	for _, s := range settings {
+		parents := append([]string{"markata-go"}, s.Path[:len(s.Path)-1]...)
+		leaf := s.Path[len(s.Path)-1]
+		if IsBakeRemove(s.Value) {
+			node := expected
+			for _, key := range parents {
+				child, ok := node[key].(map[string]any)
+				if !ok {
+					node = nil
+					break
+				}
+				node = child
+			}
+			if node != nil {
+				delete(node, leaf)
+			}
+			continue
+		}
 		node := expected
-		for _, key := range append([]string{"markata-go"}, s.Path[:len(s.Path)-1]...) {
+		for _, key := range parents {
 			child, ok := node[key].(map[string]any)
-			if ok {
-				child = cloneMap(child)
-			} else {
+			if !ok {
 				child = map[string]any{}
 			}
 			node[key] = child
 			node = child
 		}
-		node[s.Path[len(s.Path)-1]] = s.Value
+		node[leaf] = s.Value
 	}
-	if !reflect.DeepEqual(bakeComparable(expected), bakeComparable(after)) {
+	if !reflect.DeepEqual(pruneEmptyTables(bakeComparable(expected)), pruneEmptyTables(bakeComparable(after))) {
 		return errors.New("edited config did not match the expected settings; file left unchanged")
 	}
 	return nil
+}
+
+// pruneEmptyTables drops nil values and empty maps, recursively.
+func pruneEmptyTables(value any) any {
+	m, ok := value.(map[string]any)
+	if !ok {
+		return value
+	}
+	out := make(map[string]any, len(m))
+	for key, item := range m {
+		item = pruneEmptyTables(item)
+		if item == nil {
+			continue
+		}
+		if child, isMap := item.(map[string]any); isMap && len(child) == 0 {
+			continue
+		}
+		out[key] = item
+	}
+	return out
 }
 
 // bakeComparable normalizes parsed values so that documents decoded by
@@ -282,7 +385,9 @@ func bakeComparable(value any) any {
 	return value
 }
 
-func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+// WriteFileAtomic replaces path with data via a temporary file and rename, so
+// readers never see a partially written file.
+func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".bake-*")
 	if err != nil {
@@ -618,6 +723,11 @@ func bakeTOML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 		}
 	}
 
+	sets := withoutRemovals(values)
+	if len(sets) == 0 {
+		// Nothing defines the table, so there is nothing to remove.
+		return data, nil
+	}
 	var b strings.Builder
 	b.WriteString(strings.Join(lines, ""))
 	if b.Len() > 0 {
@@ -627,7 +737,7 @@ func bakeTOML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 		b.WriteString(newline)
 	}
 	b.WriteString("[" + strings.Join(full, ".") + "]" + newline)
-	for _, v := range values {
+	for _, v := range sets {
 		b.WriteString(v.Key + " = " + bakeScalar(v.Value) + newline)
 	}
 	return []byte(b.String()), nil
@@ -725,6 +835,13 @@ func tomlEditSection(lines []string, scanned []tomlLine, start, end int, prefix 
 			if !ok {
 				return nil, fmt.Errorf("%w: %s is not a single-line value", ErrBakeUnsupportedLayout, name)
 			}
+			found[name] = true
+			if IsBakeRemove(v.Value) {
+				for j := i; j <= last; j++ {
+					out[j] = ""
+				}
+				continue
+			}
 			_, ending := lineEnding(lines[last])
 			keyText := strings.Join(append(append([]string{}, prefix...), name), ".")
 			replaced := l.keyIndent + keyText + " = " + bakeScalar(v.Value)
@@ -741,7 +858,7 @@ func tomlEditSection(lines []string, scanned []tomlLine, start, end int, prefix 
 
 	var inserts []string
 	for _, v := range values {
-		if found[v.Key] {
+		if found[v.Key] || IsBakeRemove(v.Value) {
 			continue
 		}
 		keyText := strings.Join(append(append([]string{}, prefix...), v.Key), ".")
@@ -854,6 +971,9 @@ func bakeYAML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 			result = append(result, pad(indent+i*step)+key+":"+newline)
 		}
 		for _, v := range values {
+			if IsBakeRemove(v.Value) {
+				continue
+			}
 			if only == nil || only(v.Key) {
 				result = append(result, pad(indent+len(path)*step)+v.Key+": "+bakeScalar(v.Value)+newline)
 			}
@@ -870,7 +990,11 @@ func bakeYAML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 		return []byte(strings.Join(out, ""))
 	}
 
+	hasSets := len(withoutRemovals(values)) > 0
 	if markataKey == nil {
+		if !hasSets {
+			return data, nil
+		}
 		var b strings.Builder
 		b.WriteString(strings.Join(lines, ""))
 		if b.Len() > 0 && !strings.HasSuffix(b.String(), "\n") {
@@ -889,6 +1013,9 @@ func bakeYAML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 	for depth, seg := range table {
 		keyNode, valNode := yamlMappingValue(parent, seg)
 		if keyNode == nil {
+			if !hasSets {
+				return data, nil
+			}
 			indent := yamlChildIndent(parent, parentKey, step)
 			return insertAfter(lines, parentKey.Line, nested(table[depth:], indent, nil)), nil
 		}
@@ -912,6 +1039,16 @@ func bakeYAML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 			return nil, unsupported
 		}
 		lastLine := yamlMaxLine(valNode)
+		if IsBakeRemove(v.Value) {
+			if valNode.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 || (valNode.Kind == yaml.ScalarNode && valNode.Line != keyNode.Line) {
+				return nil, unsupported
+			}
+			for l := keyNode.Line - 1; l < lastLine; l++ {
+				out[l] = ""
+			}
+			found[v.Key] = true
+			continue
+		}
 		body, ending := lineEnding(out[keyNode.Line-1])
 		runes := []rune(body)
 		var replaced string
@@ -1102,6 +1239,24 @@ func bakeJSON(data []byte, table []string, values []BakeValue) ([]byte, error) {
 		}
 		return obj, nil
 	}
+	if len(withoutRemovals(values)) == 0 {
+		// Only removals: walk without creating tables; a missing table
+		// means there is nothing to remove.
+		node := rootObj
+		for _, key := range append([]string{"markata-go"}, table...) {
+			next, ok := node.values[key].(*orderedObject)
+			if !ok {
+				if _, exists := node.values[key]; exists && node.values[key] != nil {
+					return nil, fmt.Errorf("%w: %s is not an object", ErrBakeUnsupportedLayout, key)
+				}
+				return data, nil
+			}
+			node = next
+		}
+		child = func(parent *orderedObject, key string) (*orderedObject, error) {
+			return parent.values[key].(*orderedObject), nil
+		}
+	}
 	section, err := child(rootObj, "markata-go")
 	if err != nil {
 		return nil, err
@@ -1113,6 +1268,13 @@ func bakeJSON(data []byte, table []string, values []BakeValue) ([]byte, error) {
 		}
 	}
 	for _, v := range values {
+		if IsBakeRemove(v.Value) {
+			if _, exists := section.values[v.Key]; exists {
+				delete(section.values, v.Key)
+				section.keys = slices.DeleteFunc(section.keys, func(k string) bool { return k == v.Key })
+			}
+			continue
+		}
 		if _, exists := section.values[v.Key]; !exists {
 			section.keys = append(section.keys, v.Key)
 		}

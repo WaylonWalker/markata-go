@@ -284,7 +284,7 @@ Sites are dark by default (`fallback_mode = "dark"`): a first-time visitor sees 
 
 ### Baking a look into your config
 
-Run `markata-go serve`, open the picker, and choose a theme, style, font, and text size. Click **Bake**; the button changes to **Bake into markata-go.toml?** (naming the file it will edit). Click again within four seconds to write it. The dev server updates the file, rebuilds, and live-reloads, so every visitor now starts with that look:
+Run `markata-go serve`, open the picker, and choose a theme, style, font, and text size. Click **Bake**; the button changes to **Bake into markata-go.toml?** (naming the file it will edit, and marked **(override)** when that is a `--merge-config` file). Click again within four seconds to write it. The dev server updates the file, rebuilds, and live-reloads, so every visitor now starts with that look:
 
 ```toml
 [markata-go.theme]
@@ -297,15 +297,18 @@ fontpack = "editorial"
 text_size = "large"
 ```
 
+`fallback_mode` and `text_size` are only baked when you picked them yourself in the picker; otherwise bake leaves the site's settings alone, because they are usually each visitor's preference.
+
 Bake picks the file carefully:
 
 - It looks at the root config, every file it pulls in with `include = [...]` (for example a `config/` directory), and any `--merge-config` files.
 - If one or more already have a `[markata-go.theme]` section, it edits the one that takes effect (the last to load). A theme in `config/theme.toml` stays there.
 - Otherwise it adds `[markata-go.theme]` to the root config, or creates `markata-go.toml` when the site has none.
+- If the site has no config and serve is using your global `~/.config/markata-go/config.toml`, the button reads **Bake unavailable**: bake never edits your global defaults. Create a `markata-go.toml` in the site first.
 
 Only the baked keys change. Comments, key order, and other settings are kept, and existing keys are updated in place. TOML, YAML, and JSON configs all work. If the theme is written in a shape bake cannot edit safely (a TOML inline table `theme = { ... }`, a YAML flow mapping, or a multi-line value), bake leaves the file alone and reports the error; convert it to a normal table and try again. `MARKATA_GO_THEME_*` environment variables still override the file, and bake warns when one is set.
 
-After a successful bake the picker clears your browser's saved picks, so what you see is the site default.
+After a successful bake the picker names the keys it wrote and clears your browser's saved picks, so what you see is the site default. Bake uses the same checks as the settings sidebar: if the config does not load back as written, every file is restored. A baked key also replaces any unsaved sidebar preview of it.
 
 To change other theme settings, such as `palette_light`, `custom_css`, or `switcher.enabled`, click **All settings** next to Bake. It opens the serve-only settings sidebar at the Theme section (see [Edit Settings While Serving](/docs/guides/configuration/#edit-settings-while-serving)).
 

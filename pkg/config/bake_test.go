@@ -318,3 +318,77 @@ func TestSettingDefinedDepth(t *testing.T) {
 		}
 	}
 }
+
+func TestBakeSettings_RemovesKeys(t *testing.T) {
+	remove := []BakeSetting{
+		{Path: []string{"title"}, Value: BakeRemove},
+		{Path: []string{"theme", "palette"}, Value: BakeRemove},
+		{Path: []string{"seo", "missing"}, Value: BakeRemove},
+	}
+	tests := []struct {
+		name  string
+		file  string
+		input string
+		want  string
+	}{
+		{
+			name:  "toml",
+			file:  "markata-go.toml",
+			input: "[markata-go]\ntitle = \"Old\" # the title\nlicense = false\n\n[markata-go.theme]\npalette = \"x\"\naesthetic = \"y\"\n",
+			want:  "[markata-go]\nlicense = false\n\n[markata-go.theme]\naesthetic = \"y\"\n",
+		},
+		{
+			name:  "yaml",
+			file:  "markata-go.yaml",
+			input: "markata-go:\n  title: Old\n  license: false\n  theme:\n    palette: x\n    aesthetic: y\n",
+			want:  "markata-go:\n  license: false\n  theme:\n    aesthetic: y\n",
+		},
+		{
+			name:  "json",
+			file:  "markata-go.json",
+			input: "{\n  \"markata-go\": {\n    \"title\": \"Old\",\n    \"license\": false,\n    \"theme\": {\n      \"palette\": \"x\",\n      \"aesthetic\": \"y\"\n    }\n  }\n}\n",
+			want:  "{\n  \"markata-go\": {\n    \"license\": false,\n    \"theme\": {\n      \"aesthetic\": \"y\"\n    }\n  }\n}\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := writeBakeFixture(t, tt.file, tt.input)
+			if err := BakeSettings(path, remove); err != nil {
+				t.Fatalf("BakeSettings() error = %v", err)
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("BakeSettings() wrote:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPlanBake_DoesNotWriteUntilAsked(t *testing.T) {
+	input := "[markata-go]\ntitle = \"Old\"\n"
+	path := writeBakeFixture(t, "markata-go.toml", input)
+	plan, err := PlanBake(path, []BakeSetting{{Path: []string{"title"}, Value: "New"}})
+	if err != nil {
+		t.Fatalf("PlanBake() error = %v", err)
+	}
+	if !plan.Exists || !plan.Changed() || string(plan.Before) != input || !strings.Contains(string(plan.After), "title = \"New\"") {
+		t.Fatalf("plan = %+v", plan)
+	}
+	if got, _ := os.ReadFile(path); string(got) != input {
+		t.Fatalf("PlanBake wrote the file:\n%s", got)
+	}
+	if err := plan.Write(); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != string(plan.After) {
+		t.Fatalf("Write() wrote:\n%s", got)
+	}
+
+	noop, err := PlanBake(path, []BakeSetting{{Path: []string{"nav"}, Value: BakeRemove}})
+	if err != nil || noop.Changed() {
+		t.Fatalf("removing an absent key should be a no-op: %v %+v", err, noop)
+	}
+}

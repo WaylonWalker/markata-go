@@ -133,7 +133,8 @@ the active tab. Colors includes a **Seasonal** option: northern hemisphere
 seasons, switching to holiday palettes a few days before and on world
 holidays. To make that the default for visitors, add `seasonal = true` to
 `[markata-go.theme]` and keep `palette` as the fallback. Under `markata-go serve` only, its **Bake** button writes the current choices
-into `[markata-go.theme]`. It edits whichever config file already holds the
+into `[markata-go.theme]` (color mode and text size only when the visitor
+picked them). It edits whichever config file already holds the
 theme table (including `include`d files such as `config/theme.toml`), keeps
 comments, and triggers a rebuild. When a user says "use the look I picked",
 have them click Bake in `serve`, then review the diff of the named file. The

@@ -40,21 +40,27 @@ Rules:
 While `markata-go serve` is running, every page has a small gear button in the bottom-left corner (or press `Alt+,`). It opens a **Site settings** sidebar listing every config option with its current value and description. Change a setting and the site rebuilds and reloads with it right away. The change is only a preview until you click **Bake** to write it into your config, or **Reset** to throw it away. `markata-go build` never includes the sidebar, so published sites don't have it. The sidebar and Bake only accept changes from the machine running `serve`; if you bind to `--host 0.0.0.0` to test on a phone, the phone can browse but cannot edit settings.
 
 1. Run `markata-go serve` and open the site.
-2. Click the gear and search, for example, `title` or `items_per_page`.
-3. Change a value. Text fields apply when you press Enter or leave the field; dropdowns, checkboxes, and numbers apply right away. The page reloads with the change, and the sidebar stays open where you left it.
-4. Keep going. Changed rows are highlighted, and **Revert** undoes one field. While the sidebar is closed, a small **Previewing N unsaved changes · Reset · Review** bar next to the gear reminds you the site is showing unsaved changes.
-5. Click **Bake** to keep them. The button changes to **Bake into markata-go.toml?** and lists the files it will edit. Click again to confirm. The server writes the files, rebuilds, and live-reloads.
+2. Click the gear. The **Common** section at the top has the settings most sites change (title, URL, palettes, style, font, nav, footer). Search to find anything else, for example `items_per_page`.
+3. Change a value. Text fields apply when you press Enter or leave the field; dropdowns, checkboxes, and numbers apply right away. The status line shows **Rebuilding… 3s** until the build finishes, then the page reloads with the change and the sidebar stays open where you left it. If the build fails, the error is shown instead.
+4. Keep going. Changed rows are highlighted, and **Revert** undoes one field. **Reset to default** removes a setting from your config so it falls back to the default shown on the row. While the sidebar is closed, a small **Previewing N unsaved changes · Reset · Review** bar next to the gear reminds you the site is showing unsaved changes.
+5. Click **Bake** to keep them. The sidebar shows the exact diff for every file it will edit (secret values are hidden). Click **Write** to save, or **Cancel**. The server writes the files, rebuilds, and live-reloads.
 6. Or click **Reset** to drop every unsaved change and go back to what your config files say.
 
-Previews live in the serve process's memory only. Your files don't change until you bake, and restarting `markata-go serve` also discards unsaved previews.
+Previews live in the serve process's memory only. Your files don't change until you bake. If you restart `markata-go serve`, the sidebar re-applies the edits you had staged in that browser tab. While a preview is active, builds use a separate cache in `.markata/serve-preview/`, so previewing never throws away your site's warm build cache.
 
-Settings with a fixed set of values, such as `glob.slug_mode`, `theme.palette`, `theme.fontpack`, `nav.position`, or `markdown.highlight.theme`, are dropdowns. Numbers with a range, such as `theme.background.color_mix` (0-1), are limited to that range. A value that isn't allowed gets a red message under the field and is not previewed, so a typo can't break the site. Leave a field empty to use the default.
+If you changed the theme with the theme picker, the picker's choice is saved in your browser and would hide a palette, style, font, text size, or color mode preview. Previewing one of those settings clears the matching picker choice, and the status line tells you it did.
+
+When you run `markata-go serve <file>` for a single page, sections for site-wide output such as feeds, tags, and the blogroll are hidden. Search or click **Show hidden sections** to see them.
+
+Settings with a fixed set of values, such as `glob.slug_mode`, `theme.palette`, `theme.fontpack`, `nav.position`, or `markdown.highlight.theme`, are dropdowns. Numbers with a range, such as `theme.background.color_mix` (0-1), are limited to that range. A value that isn't allowed gets a red message under the field and is not previewed, so a typo can't break the site; the status line lists every change that is not being previewed. Leave a field empty to use the default.
 
 Each row shows where a setting lives: **set in config/theme.toml** means that file defines it now, and **writes to ...** names the file a change will go to. The sidebar edits the file that owns the setting:
 
 - A key that is already set is edited where it is set (the file that wins, when several set it).
 - A new key goes to the file that already holds its group. For example, a new `feed_defaults.items_per_page` lands in the file that has `[markata-go.feed_defaults]`.
 - Otherwise it goes to your root config, or a new `markata-go.toml` when you have none.
+- A file passed with `--merge-config` is marked **override**, so you know the change won't be in your base config.
+- If your site has no config of its own and serve fell back to your global `~/.config/markata-go/config.toml`, the rows are marked **global** and Bake is refused, so a preview never changes the defaults for all your sites. Create a `markata-go.toml` in the site to bake.
 
 This works with `include = [...]` files, config directories, and `--merge-config` files, in TOML, YAML, or JSON. Comments, key order, and other settings are kept.
 
@@ -66,9 +72,9 @@ Some settings are shown but not editable in the sidebar; edit them in the file:
 
 Changes are checked before they stick. If a preview or bake makes the config invalid or does not load back as written, it is rejected (and a bake restores every file) and the sidebar shows the error. When a `MARKATA_GO_*` environment variable overrides a setting, the row says so, because the variable wins over both previews and files until it is unset.
 
-On phones the sidebar opens full screen.
+On phones the sidebar opens full screen. `Alt+,` does nothing while you are typing in a field on the page.
 
-The theme picker's **All settings** button opens this sidebar at the Theme section. Its **Bake** button still writes only the look you picked (see [Themes Guide](/docs/guides/themes/#baking-a-look-into-your-config)).
+The theme picker's **All settings** button opens this sidebar at the Theme section. Its **Bake** button writes only the look you picked, through the same checks and file selection as the sidebar (see [Themes Guide](/docs/guides/themes/#baking-a-look-into-your-config)).
 
 ## Content Index
 

@@ -72,6 +72,12 @@ type SettingField struct {
 	intBits int
 }
 
+// SensitiveSettingName reports whether a config key name (the last path
+// segment) holds a secret that must not be shown or edited in the dev UI.
+func SensitiveSettingName(name string) bool {
+	return sensitiveSettingPattern.MatchString(name)
+}
+
 // ErrUnknownSetting is returned for keys that are not editable settings.
 var ErrUnknownSetting = errors.New("unknown or read-only setting")
 
@@ -91,8 +97,9 @@ func Settings(cfg *models.Config) []SettingField {
 	templates := settingFieldTemplates()
 	out := make([]SettingField, len(templates))
 	root := reflect.ValueOf(cfg)
+	memo := &settingOptionsMemo{}
 	for i, field := range templates {
-		field.Options, field.Closed = settingOptions(field, cfg)
+		field.Options, field.Closed = memo.options(field, cfg)
 		field.Min, field.Max = settingRange(field.Key)
 		if v, ok := settingReflectValue(root, field.path); ok && !field.Sensitive {
 			field.Value, field.Summary = settingValueOf(v, field.Kind)
@@ -560,15 +567,44 @@ func settingRange(key string) (lo, hi *float64) {
 // settingOptions returns the allowed values of a string setting and whether
 // other values are rejected.
 func settingOptions(field SettingField, cfg *models.Config) (options []string, closed bool) {
+	return (&settingOptionsMemo{}).options(field, cfg)
+}
+
+// settingOptionsMemo shares palette discovery, the font catalog, and the
+// rendering contract across the fields of one Settings call.
+type settingOptionsMemo struct {
+	palettes, fontpacks []string
+	contract            *renderingcontract.Contract
+	loaded              map[string]bool
+}
+
+func (m *settingOptionsMemo) once(name string) bool {
+	if m.loaded == nil {
+		m.loaded = map[string]bool{}
+	}
+	if m.loaded[name] {
+		return false
+	}
+	m.loaded[name] = true
+	return true
+}
+
+func (m *settingOptionsMemo) options(field SettingField, cfg *models.Config) (options []string, closed bool) {
 	if field.Kind != SettingString {
 		return nil, false
 	}
 	switch field.Key {
 	case "theme.palette", "theme.palette_light", "theme.palette_dark", "theme_calendar.default_palette":
-		return paletteOptions(), true
+		if m.once("palettes") {
+			m.palettes = paletteOptions()
+		}
+		return append([]string{}, m.palettes...), true
 	case "fontpack", "theme.fontpack":
+		if m.once("fontpacks") {
+			m.fontpacks = fontpackOptions()
+		}
 		// A custom catalog can define any pack name.
-		return fontpackOptions(), cfg == nil || cfg.FontpacksFile == ""
+		return append([]string{}, m.fontpacks...), cfg == nil || cfg.FontpacksFile == ""
 	case "markdown.highlight.theme":
 		return styles.Names(), true
 	}
@@ -585,8 +621,13 @@ func settingOptions(field SettingField, cfg *models.Config) (options []string, c
 		"theme.motif.color":          "motif_colors",
 	}
 	if group, ok := contractGroups[field.Key]; ok {
-		if c, err := renderingcontract.Load(); err == nil {
-			return append([]string{}, c.Enums[group]...), true
+		if m.once("contract") {
+			if c, err := renderingcontract.Load(); err == nil {
+				m.contract = &c
+			}
+		}
+		if m.contract != nil {
+			return append([]string{}, m.contract.Enums[group]...), true
 		}
 	}
 	return docOptions(field.Doc)

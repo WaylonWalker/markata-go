@@ -1386,8 +1386,10 @@ HTML, and the `[data-picker-bake]` button stays `hidden` unless that global is
 set. Static builds never contain the endpoint.
 
 The first click sends `GET /__markata/theme/bake`, which returns
-`{target, path, exists, warnings}`, and relabels the button
-`Bake into <target>?`. A second click within 4s sends `POST` with a JSON body:
+`{target, path, exists, target_kind, warnings}`, and relabels the button
+`Bake into <target>?` (with `(override)` for a `--merge-config` file). When
+`target_kind` is `global` the button reads "Bake unavailable" instead. A second
+click within 4s sends `POST` with a JSON body:
 
 ```json
 {"palette": "<current>", "palette_light": "<light pick>", "palette_dark": "<dark pick>",
@@ -1402,14 +1404,29 @@ The server writes these `[markata-go.theme]` keys, in this order:
   `seasonal = false` when the target file or effective config has seasonal on.
 - Then `fallback_mode`, `aesthetic`, `fontpack`, and `text_size`. Empty fields are skipped.
 
+`fallback_mode` and `text_size` are visitor preferences, so the picker sends
+them only when the visitor explicitly chose them in this browser (the
+`color-mode` or `text-size` key is stored); otherwise the site's settings are
+left alone.
+
+The picks are converted to `theme.*` settings changes and applied through the
+settings sidebar's apply path (see "Serve Settings Sidebar" in
+[CONFIG.md](CONFIG.md)): the same target selection, `override`/`global`
+target kinds (a global target is refused with 409), reload verification,
+atomic rollback, and serve config lock. Baked keys are dropped from any
+active settings preview, so the rebuilt page shows the baked value rather than
+a stale preview. The response lists the baked `keys`.
+
 On success the picker removes the stored palette, aesthetic, and fontpack
-picks, the server queues a full rebuild, and live reload shows the new defaults.
+picks (and text size when it was baked), notifies which keys were baked, the
+server queues a full rebuild, and live reload shows the new defaults.
 
 **Target file.** Candidates are the root config, its `include` files
 (recursively, in load order), then `--merge-config` files. This is the same
 lowest-to-highest precedence order the loader uses.
 
-- The last candidate that already defines `markata-go.theme` is edited.
+- Each key goes to the candidate that defines the deepest prefix of
+  `theme.<key>` (so normally the last file that defines `markata-go.theme`).
 - If none defines it, the root config is used.
 - With no config file, `markata-go.toml` is created in the site directory.
 

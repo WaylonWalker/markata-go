@@ -196,6 +196,35 @@ func TestLoadWithMergeOptions_Overlay(t *testing.T) {
 	}
 }
 
+func TestLoadWithMergeOptions_Remove(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/markata-go.toml"
+	if err := os.WriteFile(path, []byte("[markata-go]\ntitle = \"Disk\"\nconcurrency = 3\n\n[markata-go.theme]\npalette = \"nord-dark\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	defaults, err := LoadWithMergeOptions(LoadOptions{DisableDotEnv: true, DisableEnvOverrides: true}, dir+"/missing.toml")
+	if err != nil {
+		defaults = nil
+	}
+	cfg, err := LoadWithMergeOptions(LoadOptions{
+		DisableDotEnv:       true,
+		DisableEnvOverrides: true,
+		Remove:              [][]string{{"theme", "palette"}, {"concurrency"}, {"not", "there"}},
+	}, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Title != "Disk" {
+		t.Fatalf("title = %q, want untouched", cfg.Title)
+	}
+	if cfg.Theme.Palette == "nord-dark" || cfg.Concurrency == 3 {
+		t.Fatalf("remove not applied: palette=%q concurrency=%d", cfg.Theme.Palette, cfg.Concurrency)
+	}
+	if defaults != nil && cfg.Theme.Palette != defaults.Theme.Palette {
+		t.Fatalf("palette = %q, want default %q", cfg.Theme.Palette, defaults.Theme.Palette)
+	}
+}
+
 // quotedListPattern finds doc text listing two or more quoted values, such
 // as `"left", "right"` or `"pagefind" (default) or "bleve"`.
 var quotedListPattern = regexp.MustCompile(`"[a-z][a-z0-9_-]*"(?: \(default\))?(?:,| or) "[a-z][a-z0-9_-]*"`)

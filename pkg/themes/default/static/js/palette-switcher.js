@@ -571,12 +571,17 @@
     return typeof endpoint === 'string' && endpoint ? endpoint : '';
   }
 
-  /** The visitor's current choices as [markata-go.theme] settings. */
+  /**
+   * The visitor's current choices as [markata-go.theme] settings. Color mode
+   * and text size are visitor preferences, so they are only included when the
+   * visitor explicitly picked them in this browser.
+   */
   function getBakeSettings() {
     const mode = getColorMode();
     const light = paletteForMode('light');
     const dark = paletteForMode('dark');
-    const settings = { fallback_mode: mode };
+    const settings = {};
+    if (store.get(MODE_KEY) || store.get(LEGACY_MODE_KEY)) settings.fallback_mode = mode;
     if (isSeasonal(mode)) {
       // Seasonal picks change by date; the site palettes stay as the fallback.
       settings.seasonal = true;
@@ -590,7 +595,7 @@
     if (aesthetic) settings.aesthetic = aesthetic;
     const fontpack = getFontManifest().length ? getFontpack() : root.dataset.fontpack;
     if (fontpack) settings.fontpack = fontpack;
-    if (root.dataset.textSize) settings.text_size = root.dataset.textSize;
+    if (store.get(TEXT_SIZE_KEY) && root.dataset.textSize) settings.text_size = root.dataset.textSize;
     return settings;
   }
 
@@ -632,6 +637,7 @@
       store.remove(PICK_PREFIX + 'dark');
       store.remove(AESTHETIC_KEY);
       store.remove(FONT_KEY);
+      if (result.keys && result.keys.indexOf('text_size') >= 0) store.remove(TEXT_SIZE_KEY);
       return result;
     });
   }
@@ -642,10 +648,19 @@
     if (!button.dataset.armed) {
       button.dataset.busy = '1';
       bakeRequest('GET').then((info) => {
-        button.dataset.armed = '1';
         const target = info.target || 'config';
-        setBakeLabel(button, 'Bake into ' + target + '?', 'armed');
+        if (info.target_kind === 'global') {
+          setBakeLabel(button, 'Bake unavailable', 'error');
+          button.title = target + ' is your global config; add a site config to bake into.';
+          showNotification('Bake unavailable: this site has no config file of its own (' + target + ' is global)');
+          button._bakeTimeout = setTimeout(() => disarmBake(button), 4000);
+          return;
+        }
+        button.dataset.armed = '1';
+        const override = info.target_kind === 'override';
+        setBakeLabel(button, 'Bake into ' + target + (override ? ' (override)' : '') + '?', 'armed');
         button.title = 'Click again to write these choices to ' + (info.path || target) +
+          (override ? '\nThis is a --merge-config override file, not the base config.' : '') +
           (info.warnings && info.warnings.length ? '\n' + info.warnings.join('\n') : '');
         clearTimeout(button._bakeTimeout);
         button._bakeTimeout = setTimeout(() => disarmBake(button), 4000);
@@ -663,7 +678,8 @@
     bakeConfig().then((result) => {
       setBakeLabel(button, 'Baked', 'done');
       button.title = 'Saved to ' + (result.path || result.target);
-      showNotification('Baked into ' + result.target + ' \u2014 rebuilding');
+      const keys = result.keys && result.keys.length ? ' (' + result.keys.join(', ') + ')' : '';
+      showNotification('Baked' + keys + ' into ' + result.target + ' \u2014 rebuilding');
       if (result.warnings && result.warnings.length) console.warn('[theme-picker] ' + result.warnings.join('; '));
     }, (error) => {
       setBakeLabel(button, 'Bake failed', 'error');
