@@ -72,7 +72,7 @@
     </article>
 </div>
 {% else %}
-<div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
+<div class="content-wrapper{% if resolved_doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ resolved_doc_sidebar.position | default:'right' }}{% endif %}">
     <article class="post h-entry" data-pagefind-body>
         {# Hidden canonical URL for microformats parsers #}
         <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>

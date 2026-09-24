@@ -597,6 +597,64 @@ func TestTemplatesPlugin_Render_StartsWebAwesomeLoader(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_Render_BlogShowToc(t *testing.T) {
+	enabled := true
+	disabled := false
+
+	tests := []struct {
+		name     string
+		showToc  *bool
+		template string
+		wantTOC  bool
+	}{
+		{name: "show_toc enabled on blog layout", showToc: &enabled, wantTOC: true},
+		{name: "show_toc disabled on blog layout", showToc: &disabled, wantTOC: false},
+		{name: "show_toc ignored for non-blog template", showToc: &enabled, template: "reader.html", wantTOC: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewTemplatesPlugin()
+			m := lifecycle.NewManager()
+			config := m.Config()
+			config.Extra["templates_dir"] = "/nonexistent"
+			layout := models.NewLayoutConfig()
+			layout.Blog.ShowToc = tt.showToc
+			layout.Blog.TocPosition = "left"
+			layout.Blog.TocWidth = "210px"
+			config.Extra["layout"] = layout
+
+			if err := p.Configure(m); err != nil {
+				t.Fatalf("Configure() error = %v", err)
+			}
+
+			title := "TOC Post"
+			post := &models.Post{
+				Title:       &title,
+				Slug:        "toc-post",
+				Href:        "/toc-post/",
+				Template:    tt.template,
+				ArticleHTML: `<h2 id="intro">Intro</h2><p>Body</p>`,
+				Extra: map[string]interface{}{
+					"toc": []*TocEntry{{Level: 2, Text: "Intro", ID: "intro"}},
+				},
+			}
+			m.AddPost(post)
+
+			if err := p.Render(m); err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			hasTOC := strings.Contains(post.HTML, `class="doc-sidebar doc-sidebar--left"`) &&
+				strings.Contains(post.HTML, `width: 210px`) &&
+				strings.Contains(post.HTML, `href="#intro"`)
+			if hasTOC != tt.wantTOC {
+				t.Fatalf("TOC sidebar rendered = %v, want %v\nHTML: %s", hasTOC, tt.wantTOC, post.HTML)
+			}
+		})
+	}
+}
+
 func TestTemplatesPlugin_Render_PostGraphScriptOnlyWhenGraphRenders(t *testing.T) {
 	tests := []struct {
 		name            string
