@@ -409,6 +409,108 @@ func TestContext_ToPongo2_ResolvedContentSidebar(t *testing.T) {
 	}
 }
 
+func TestResolveDocSidebar(t *testing.T) {
+	enabled := true
+	disabled := false
+
+	tests := []struct {
+		name         string
+		config       *models.Config
+		blog         bool
+		wantEnabled  bool
+		wantPosition string
+		wantWidth    string
+	}{
+		{
+			name:         "nil config",
+			config:       nil,
+			blog:         true,
+			wantEnabled:  false,
+			wantPosition: "right",
+			wantWidth:    "250px",
+		},
+		{
+			name: "blog show_toc enables sidebar with blog settings",
+			config: &models.Config{
+				Components: models.ComponentsConfig{DocSidebar: models.DocSidebarConfig{Enabled: &disabled, Position: "right", Width: "250px"}},
+				Layout:     models.LayoutConfig{Blog: models.BlogLayoutConfig{ShowToc: &enabled, TocPosition: "left", TocWidth: "200px"}},
+			},
+			blog:         true,
+			wantEnabled:  true,
+			wantPosition: "left",
+			wantWidth:    "200px",
+		},
+		{
+			name: "blog show_toc ignored outside blog layout",
+			config: &models.Config{
+				Layout: models.LayoutConfig{Blog: models.BlogLayoutConfig{ShowToc: &enabled, TocPosition: "left"}},
+			},
+			blog:         false,
+			wantEnabled:  false,
+			wantPosition: "right",
+			wantWidth:    "250px",
+		},
+		{
+			name: "blog show_toc false keeps sidebar disabled",
+			config: &models.Config{
+				Layout: models.LayoutConfig{Blog: models.BlogLayoutConfig{ShowToc: &disabled}},
+			},
+			blog:         true,
+			wantEnabled:  false,
+			wantPosition: "right",
+			wantWidth:    "250px",
+		},
+		{
+			name: "doc_sidebar enabled takes precedence",
+			config: &models.Config{
+				Components: models.ComponentsConfig{DocSidebar: models.DocSidebarConfig{Enabled: &enabled, Position: "left", Width: "300px"}},
+				Layout:     models.LayoutConfig{Blog: models.BlogLayoutConfig{ShowToc: &enabled, TocPosition: "right", TocWidth: "200px"}},
+			},
+			blog:         true,
+			wantEnabled:  true,
+			wantPosition: "left",
+			wantWidth:    "300px",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveDocSidebar(tt.config, tt.blog)
+			if got["enabled"] != tt.wantEnabled {
+				t.Errorf("enabled = %v, want %v", got["enabled"], tt.wantEnabled)
+			}
+			if got["position"] != tt.wantPosition {
+				t.Errorf("position = %v, want %v", got["position"], tt.wantPosition)
+			}
+			if got["width"] != tt.wantWidth {
+				t.Errorf("width = %v, want %v", got["width"], tt.wantWidth)
+			}
+			if got["min_depth"] != 2 || got["max_depth"] != 4 {
+				t.Errorf("depth = %v-%v, want 2-4", got["min_depth"], got["max_depth"])
+			}
+		})
+	}
+}
+
+func TestContext_ToPongo2_ResolvedDocSidebar(t *testing.T) {
+	enabled := true
+	config := &models.Config{
+		Layout: models.LayoutConfig{Blog: models.BlogLayoutConfig{ShowToc: &enabled}},
+	}
+
+	ctx := NewContext(&models.Post{}, "", config).WithBlogLayout(true)
+	sidebar, ok := ctx.ToPongo2()["resolved_doc_sidebar"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolved_doc_sidebar not set in context as map")
+	}
+	if sidebar["enabled"] != true {
+		t.Errorf("resolved_doc_sidebar.enabled = %v, want true", sidebar["enabled"])
+	}
+	if !ctx.Clone().BlogLayout {
+		t.Error("Clone() did not copy BlogLayout")
+	}
+}
+
 func TestContext_Clone(t *testing.T) {
 	title := "Original"
 	post := &models.Post{Title: &title}

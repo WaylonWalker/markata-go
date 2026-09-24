@@ -534,7 +534,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	// Create template context
 	modelsConfig := applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config))
 	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
-	ctx = ctx.WithCore(m)
+	ctx = ctx.WithCore(m).WithBlogLayout(templateName == models.LayoutToTemplate("blog"))
 	ctx.Set("canonical_rendering_fixture", isCanonicalRenderingFixture(post))
 	ctx.Set("feed_posts", createFeedPostsFunc(m))
 	ctx.Set("render_feed", createRenderFeedFunc(m))

@@ -715,6 +715,8 @@ min_depth = 2
 max_depth = 4
 ```
 
+To show the TOC only on blog-layout posts (pages rendered with `post.html`), use `show_toc` under `[markata-go.layout.blog]` instead. When `doc_sidebar.enabled = true`, it takes precedence and its `position` and `width` are used. See the Blog Layout section below.
+
 #### Feed Sidebar (`[markata-go.components.feed_sidebar]`)
 
 Series/collection navigation sidebar for posts in the same feed.
@@ -1318,8 +1320,8 @@ Single-column layout optimized for reading long-form content.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `content_max_width` | string | `"720px"` | Maximum content width |
-| `show_toc` | bool | `false` | Show table of contents |
-| `toc_position` | string | `"right"` | TOC position if enabled |
+| `show_toc` | bool | `false` | Show the table of contents sidebar on blog-layout posts that have headings |
+| `toc_position` | string | `"right"` | TOC position if enabled: `"left"` or `"right"` |
 | `toc_width` | string | `"200px"` | TOC width |
 | `header_style` | string | `"full"` | Header style |
 | `footer_style` | string | `"full"` | Footer style |
