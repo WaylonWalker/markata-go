@@ -170,6 +170,26 @@ func imagePathEscapesRoot(path string) bool {
 	return filepath.IsAbs(path) || strings.HasPrefix(path, "/") || clean == ".." || strings.HasPrefix(clean, "../")
 }
 
+// fontpackInCatalog reports whether name resolves to a pack or alias in the
+// font catalog the fontpack plugin will load (fontpacks_file or built-in).
+func fontpackInCatalog(config *models.Config, name string) bool {
+	if name == "" {
+		return false
+	}
+	var source *fontpacks.CatalogSource
+	var err error
+	if config.FontpacksFile != "" {
+		source, err = fontpacks.LoadSource(config.FontpacksFile)
+	} else {
+		source, err = fontpacks.BuiltinSource()
+	}
+	if err != nil || source == nil || source.Catalog == nil {
+		return false
+	}
+	_, _, err = source.Catalog.ResolvePack(name)
+	return err == nil
+}
+
 //nolint:gocyclo // Each contract dimension produces an independent validation diagnostic.
 func validateRenderingTheme(config *models.Config) []error {
 	c, err := renderingcontract.Load()
@@ -195,7 +215,8 @@ func validateRenderingTheme(config *models.Config) []error {
 	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {
 		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large", "x-large"; using "large"`, IsWarn: true})
 	}
-	if !fontpackInCatalog(config) {
+<<<<<<< HEAD
+	if !fontpackInCatalog(config, config.Theme.Fontpack) {
 		// A legacy top-level fontpack is copied into theme.fontpack during
 		// normalization; report it under the key the user actually wrote.
 		field := "theme.fontpack"

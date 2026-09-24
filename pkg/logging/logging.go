@@ -407,9 +407,14 @@ func (w *Writer) styleMessage(message, level string) string {
 	}
 }
 
+// stylePrefixedMessage colors prefix. If message already starts with prefix
+// (case-insensitive), that prefix is replaced; otherwise prefix is prepended.
 func stylePrefixedMessage(message, prefix, color string, enabled bool) string {
-	if len(message) < len(prefix) {
+	if len(message) >= len(prefix) && strings.EqualFold(message[:len(prefix)], prefix) {
+		return style(prefix, color, enabled) + message[len(prefix):]
+	}
+	if message == "" {
 		return style(prefix, color, enabled)
 	}
-	return style(prefix, color, enabled) + message[len(prefix):]
+	return style(prefix, color, enabled) + " " + message
 }
