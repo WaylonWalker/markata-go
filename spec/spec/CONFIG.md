@@ -1170,8 +1170,11 @@ config fields appear automatically. Each field has:
 | `options` | Suggested or allowed values: palettes, fontpacks, chroma styles, rendering-contract enums, the curated enum registry (`settingEnums`), or values parsed from a `Valid values:` / `Options:` doc line |
 | `closed` | True when `options` is the complete set; the client renders a dropdown and the server rejects other non-empty values |
 | `min`, `max` | Inclusive numeric range for `int`/`float` fields, when one applies (for example `0`-`1` for `theme.background.color_mix`) |
+| `default` | Value the key has when no config file sets it (display only) |
 | `source` | Last config file that defines the key, relative to the site |
+| `sources` | Every config file that defines the key, in load order |
 | `target` | File a change will be written to |
+| `target_kind` | `override` for a `--merge-config` file, `global` for `~/.config/markata-go/config.toml`, omitted otherwise |
 | `env` | Name of a set `MARKATA_GO_*` variable that overrides the file |
 | `editable` | False for `complex`, `sensitive`, and `unsupported` fields |
 
@@ -1193,6 +1196,14 @@ to the later file. With no match it goes to the root config, or a new
 `markata-go.toml` when there is none. So a setting stays in the file that owns
 it, and a new key lands next to its siblings.
 
+- A `--merge-config` target is reported as `target_kind: "override"` and the
+  client labels it before writing.
+- When no `--config` is given and discovery fell back to the global
+  `~/.config/markata-go/config.toml`, every non-override candidate is
+  `global`. Bakes (settings and theme) into a global target are refused with
+  409 so a site preview never edits the user's shared defaults.
+- An unset (reset to default) targets every file that defines the key.
+
 ### Closed Options
 
 - An empty string is always accepted and means "use the default".
@@ -1206,26 +1217,42 @@ it, and a new key lands next to its siblings.
 ### Preview
 
 `POST /__markata/settings/preview` with the same body replaces the whole
-preview set; an empty `changes` list resets it. Preview changes are held only
+preview set; an empty `changes` list resets it. A change may be
+`{"key": "...", "unset": true}` (no `value`) to preview the key at its
+default. Preview changes are held only
 in the serve process's memory and are never written to disk:
 
 1. Changes are validated as in Apply step 1, plus closed options and ranges
    (400 on failure).
 2. The preview is loaded as a config overlay (`LoadOptions.Overlay`), merged
    after all config files and before defaults normalization and environment
-   variables, so `MARKATA_GO_*` still wins. A new validation error or a value
+   variables, so `MARKATA_GO_*` still wins. Unset keys are deleted from the
+   merged raw config (`LoadOptions.Remove`) after the overlay. A new validation error or a value
    that does not load back is rejected with 422 and the previous preview is kept.
-3. A full rebuild is queued. The overlay JSON is stored in
-   `Extra["config_overlay"]` and included in the build-cache config hash so
-   cached pages re-render.
+3. A full rebuild is queued. The preview fingerprint
+   (`{"set": {...}, "reset": [...]}`) is stored in `Extra["config_overlay"]`
+   and included in the build-cache config hash so cached pages re-render.
+   While a preview is active the build cache lives in
+   `<cache_dir>/serve-preview` (default `.markata/serve-preview`), so
+   previewing, resetting, and stopping serve never invalidate the site's main
+   build cache.
 
 The response and `GET /__markata/settings` include `preview`, the current
-list of previewed changes. Restarting serve discards the preview.
+list of previewed changes, `session`, a random ID for this serve process, and
+`single_page` (true for `markata-go serve <file>`). Restarting serve discards
+the server preview; the client keeps staged edits in `sessionStorage` and, when
+`session` changes, re-sends them as a preview.
 
 ### Apply
 
-`POST /__markata/settings` with `{"changes": [{"key": "...", "value": ...}]}`
-(max 200 changes, 256 KiB, unknown JSON fields rejected):
+`POST /__markata/settings` with `{"changes": [{"key": "...", "value": ...}], "dry_run": false}`
+(max 200 changes, 256 KiB, unknown JSON fields rejected). A change with
+`"unset": true` and no value removes the key from every file that defines it;
+unsetting a key no file defines, or sending a value with `unset`, is a 400.
+With `dry_run: true` nothing is written and the response lists `diffs`:
+`[{target, kind, created, diff}]`, one unified diff (2 lines of context) per
+file, with the values of sensitive keys replaced by `"…"`. The preview
+endpoint rejects `dry_run`.
 
 1. Each key MUST be editable, appear once, and have a value of its kind.
    Strings are at most 4096 characters with no control characters other than
@@ -1234,15 +1261,17 @@ list of previewed changes. Restarting serve discards the preview.
    editor used by theme bake (comments and order kept, TOML tables, dotted
    keys, and multi-line arrays, nested YAML mappings, JSON objects).
 3. The config is reloaded. If it gains a validation error that was not
-   present before, or a key does not load back as the requested value (unless
-   an env variable overrides it), every file is restored and the response is
-   422.
+   present before, or a key does not load back as the requested value (an
+   unset key must equal its value in a load with the key removed), unless an
+   env variable overrides it, every file is restored atomically and the
+   response is 422. The whole apply, including rollback, holds the serve config
+   lock, which manager creation for rebuilds also takes.
 4. On success the baked keys are dropped from the preview, a full rebuild is
    queued, and live reload shows the result. Bake reads config from disk only,
    never from the preview overlay.
 
 Status codes: 400 invalid request, 403 non-loopback client, cross-origin, or non-local `Host`,
-409 layout the editor refuses (see THEMES.md Bake), 422 rolled back.
+409 layout the editor refuses (see THEMES.md Bake) or a global target, 422 rolled back.
 Both settings and theme-bake endpoints require a loopback client address
 (`RemoteAddr`), a same-origin request, and a `Host` of `localhost`,
 `*.localhost`, or an IP literal, as a defense against DNS rebinding. The
@@ -1251,20 +1280,39 @@ lets other hosts read or change the config.
 
 ### Client
 
-- Toggle: a gear button at the bottom left (`Alt+,`), with a badge that shows
+- Toggle: a gear button at the bottom left (`Alt+,`, ignored while focus is in
+  a page input, textarea, select, or contenteditable), with a badge that shows
   the number of unsaved changes. While the panel is closed and a preview is
   active, a chip reads "Previewing N unsaved changes · Reset · Review".
 - The panel has search, a filter (all / set in config / changed), sections that
-  can be collapsed, and per-field Revert. It is full screen at 640px wide and below.
+  can be collapsed, and per-field Revert. A pinned **Common** section repeats
+  frequently edited keys (site identity, light/dark palettes, aesthetic,
+  fontpack, text size, nav, footer, layout, search) above the full schema; both
+  copies stay in sync. In single-page serve, sections for site-wide output
+  (`glob`, feeds, `blogroll`, `tags`, `garden`, and similar) are hidden unless
+  searching or after "Show hidden sections".
+  It is full screen at 640px wide and below.
+- Each field set in a config file has **Reset to default**, which stages an
+  unset; the row shows the default it will fall back to. Rows show the
+  `target` and flag `override` and `global` targets.
+- Previewing a `theme.*` key that the theme picker stores in `localStorage`
+  (palette, aesthetic, fontpack, text size, color mode) clears that stored pick
+  so the preview is visible, and says so in the status line.
 - The server preview is the source of truth. Edits commit on change, blur, or
   Enter, are checked client-side (options, ranges, kinds), and sent to the
   preview endpoint after a 300ms debounce. A rejected key is marked invalid
-  inline and the rest are re-sent without it.
+  inline and the rest are re-sent without it; the status line lists every
+  change that is not being previewed and why.
+- After a preview or bake the status line shows "Rebuilding… Ns" until the dev
+  server reports the build finished (`markata:build-status` window event from
+  the live reload client) or failed (the build error is shown).
 - Closed options render as a `<select>`; open options as an input with a
   datalist; numbers get `min`/`max`/`step`.
 - **Reset** clears the preview. Panel state (open, scroll, collapsed sections)
   lives in `sessionStorage` and survives live reload.
-- Baking needs a second click within 4s ("Bake into <files>?").
+- **Bake** first sends a dry run and shows the per-file diffs with **Write
+  N files** and **Cancel**. Changing any staged edit closes the confirmation.
+  Global targets cannot be baked.
 - `window.markataDevSettings.open(section?)`, `.close()`, `.isOpen()`, and `.reset()`.
 
 ## See Also

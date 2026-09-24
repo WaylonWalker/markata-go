@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -31,8 +32,10 @@ var (
 	// serveRequestFullRebuild queues a full rebuild; set by runServe.
 	serveRequestFullRebuild func()
 
-	// themeBakeMu serializes bakes so concurrent requests cannot interleave edits.
-	themeBakeMu sync.Mutex
+	// serveConfigMu serializes config edits, previews, and the config loads of
+	// serve rebuilds, so a rebuild never reads a half-applied bake or one that
+	// is about to be rolled back.
+	serveConfigMu sync.Mutex
 )
 
 type themeBakeRequest struct {
@@ -47,61 +50,21 @@ type themeBakeRequest struct {
 }
 
 type themeBakeResponse struct {
-	Target   string   `json:"target"`
-	Path     string   `json:"path"`
-	Exists   bool     `json:"exists"`
-	Keys     []string `json:"keys,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
-	Error    string   `json:"error,omitempty"`
-}
-
-// themeBakeTarget describes the config file that receives baked settings.
-type themeBakeTarget struct {
-	path        string
-	exists      bool
-	cfg         *models.Config
-	hasSeasonal bool
-}
-
-// resolveThemeBakeTarget picks the config file to edit. Among the root config,
-// its includes, and any --merge-config files (in precedence order), the last
-// file that already defines [markata-go.theme] wins so the baked values take
-// effect. Otherwise the root config is used, and a config-less site gets a
-// new markata-go.toml in the site directory.
-func resolveThemeBakeTarget(cfgPath string) (*themeBakeTarget, error) {
-	cfg, sources, err := resolveServeConfigSources(cfgPath)
-	if err != nil {
-		return nil, err
-	}
-	target := &themeBakeTarget{cfg: cfg}
-	if len(sources) == 0 {
-		path, err := filepath.Abs("markata-go.toml")
-		if err != nil {
-			return nil, err
-		}
-		target.path = path
-		return target, nil
-	}
-	path, err := config.FindGroupConfigFile(sources, themeBakeGroup)
-	if err != nil {
-		return nil, err
-	}
-	if path == "" {
-		path = sources[0]
-	}
-	target.path = path
-	target.exists = true
-	if value, err := config.GetValueFromFile(path, themeBakeGroup+".seasonal"); err == nil && value != nil {
-		target.hasSeasonal = true
-	}
-	return target, nil
+	Target string `json:"target"`
+	Path   string `json:"path"`
+	Exists bool   `json:"exists"`
+	// TargetKind flags an unusual target (override or global).
+	TargetKind string   `json:"target_kind,omitempty"`
+	Keys       []string `json:"keys,omitempty"`
+	Warnings   []string `json:"warnings,omitempty"`
+	Error      string   `json:"error,omitempty"`
 }
 
 // resolveServeConfigSources loads the effective config and returns every
 // config file that contributes to it as absolute paths, ordered from lowest
 // to highest precedence: root config, its includes, then --merge-config files.
 func resolveServeConfigSources(cfgPath string) (*models.Config, []string, error) {
-	cfg, _, configPaths, err := loadManagerConfigWith(cfgPath, nil)
+	cfg, _, configPaths, err := loadManagerConfigWith(cfgPath, configPreview{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,9 +93,10 @@ func validThemeBakeName(field, value string) error {
 	return fmt.Errorf("invalid %s %q", field, value)
 }
 
-// themeBakeValues converts a picker request into config keys, in the order
-// they are written.
-func themeBakeValues(req themeBakeRequest, target *themeBakeTarget) ([]config.BakeValue, error) {
+// themeBakeValues converts a picker request into theme config keys, in the
+// order they are written. seasonalSet reports whether the site currently
+// turns seasonal palettes on, which a palette pick must switch off to show.
+func themeBakeValues(req themeBakeRequest, cfg *models.Config, seasonalSet bool) ([]config.BakeValue, error) {
 	for field, value := range map[string]string{
 		"palette":       req.Palette,
 		"palette_light": req.PaletteLight,
@@ -145,8 +109,8 @@ func themeBakeValues(req themeBakeRequest, target *themeBakeTarget) ([]config.Ba
 		}
 	}
 	fontpacksFile := ""
-	if target.cfg != nil {
-		fontpacksFile = target.cfg.FontpacksFile
+	if cfg != nil {
+		fontpacksFile = cfg.FontpacksFile
 	}
 	if !config.KnownFontpack(req.Fontpack, fontpacksFile) {
 		return nil, fmt.Errorf("unknown fontpack %q", req.Fontpack)
@@ -175,7 +139,7 @@ func themeBakeValues(req themeBakeRequest, target *themeBakeTarget) ([]config.Ba
 		add("palette", req.Palette)
 		add("palette_light", req.PaletteLight)
 		add("palette_dark", req.PaletteDark)
-		if target.hasSeasonal || (target.cfg != nil && target.cfg.Theme.Seasonal) {
+		if len(values) > 0 && (seasonalSet || (cfg != nil && cfg.Theme.Seasonal)) {
 			values = append(values, config.BakeValue{Key: "seasonal", Value: false})
 		}
 	}
@@ -241,7 +205,9 @@ func writeThemeBakeJSON(w http.ResponseWriter, status int, resp themeBakeRespons
 }
 
 // handleThemeBake serves GET (describe the target file) and POST (write the
-// picker's choices into it and queue a full rebuild).
+// picker's choices). A POST is a settings bake of theme.* keys, so it shares
+// the sidebar's target selection, verification, rollback, and preview
+// handling: baked keys leave the unsaved preview so they take effect.
 func handleThemeBake(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		w.Header().Set("Allow", "GET, POST")
@@ -253,19 +219,26 @@ func handleThemeBake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	themeBakeMu.Lock()
-	defer themeBakeMu.Unlock()
+	serveConfigMu.Lock()
+	defer serveConfigMu.Unlock()
 
-	target, err := resolveThemeBakeTarget(cfgFile)
+	state, err := loadSettingsState()
 	if err != nil {
 		writeThemeBakeJSON(w, http.StatusInternalServerError, themeBakeResponse{Error: err.Error()})
 		return
 	}
+	target, err := state.target([]string{themeBakeGroup, "palette"})
+	if err != nil {
+		writeThemeBakeJSON(w, http.StatusInternalServerError, themeBakeResponse{Error: err.Error()})
+		return
+	}
+	_, statErr := os.Stat(target)
 	resp := themeBakeResponse{
-		Target:   displayConfigPath(target.path),
-		Path:     target.path,
-		Exists:   target.exists,
-		Warnings: themeBakeEnvWarnings(),
+		Target:     displayConfigPath(target),
+		Path:       target,
+		Exists:     statErr == nil,
+		TargetKind: state.kinds[target],
+		Warnings:   themeBakeEnvWarnings(),
 	}
 	if r.Method == http.MethodGet {
 		writeThemeBakeJSON(w, http.StatusOK, resp)
@@ -285,30 +258,39 @@ func handleThemeBake(w http.ResponseWriter, r *http.Request) {
 		writeThemeBakeJSON(w, http.StatusBadRequest, resp)
 		return
 	}
-	values, err := themeBakeValues(req, target)
+	seasonalSet := state.source([]string{themeBakeGroup, "seasonal"}) != ""
+	values, err := themeBakeValues(req, state.cfg, seasonalSet)
 	if err != nil {
 		resp.Error = err.Error()
 		writeThemeBakeJSON(w, http.StatusBadRequest, resp)
 		return
 	}
-	if err := config.BakeValues(target.path, themeBakeGroup, values); err != nil {
-		resp.Error = err.Error()
-		status := http.StatusInternalServerError
-		if errors.Is(err, config.ErrBakeUnsupportedLayout) {
-			status = http.StatusConflict
-		}
+	changes := make([]settingsChange, len(values))
+	for i, v := range values {
+		changes[i] = settingsChange{Key: themeBakeGroup + "." + v.Key, Value: v.Value}
+	}
+	baked, status := applySettingsChanges(state, changes, false)
+	resp.Warnings = append(resp.Warnings, baked.Warnings...)
+	if baked.Error != "" {
+		resp.Error = baked.Error
 		writeThemeBakeJSON(w, status, resp)
 		return
 	}
-	for _, v := range values {
-		resp.Keys = append(resp.Keys, v.Key)
+	var targets []string
+	for _, c := range baked.Changed {
+		resp.Keys = append(resp.Keys, strings.TrimPrefix(c.Key, themeBakeGroup+"."))
+		if !slices.Contains(targets, c.Target) {
+			targets = append(targets, c.Target)
+		}
+	}
+	resp.Target = strings.Join(targets, ", ")
+	if len(targets) == 1 {
+		if abs, err := filepath.Abs(targets[0]); err == nil {
+			resp.Path = abs
+		}
 	}
 	resp.Exists = true
-	infof("Baked theme settings into %s (%s)", resp.Target, strings.Join(resp.Keys, ", "))
-	if serveRequestFullRebuild != nil {
-		serveRequestFullRebuild()
-	}
-	writeThemeBakeJSON(w, http.StatusOK, resp)
+	writeThemeBakeJSON(w, status, resp)
 }
 
 // loopbackRemote reports whether the client address is a loopback address.

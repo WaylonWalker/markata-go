@@ -178,6 +178,16 @@ func createManagerWithPlugins(cfgPath string, pluginSet func() []lifecycle.Plugi
 	// paths even when the raw config also contains the option in Extra.
 	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)
 
+	// Previews build into their own cache so the site's warm cache survives
+	// previewing, resetting, and stopping serve.
+	if _, previewing := lcConfig.Extra[configOverlayExtraKey]; previewing {
+		cacheDir := filepath.Join(contentDir, ".markata")
+		if dir, ok := lcConfig.Extra["cache_dir"].(string); ok && dir != "" {
+			cacheDir = dir
+		}
+		lcConfig.Extra["cache_dir"] = filepath.Join(cacheDir, servePreviewCacheDir)
+	}
+
 	// Store full models.Config for components that need direct access (e.g., 404 page handler)
 	lcConfig.Extra["models_config"] = cfg
 	if configPathUsed != "" {
@@ -255,16 +265,31 @@ func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, er
 // build cache (see plugins.configHashInput).
 const configOverlayExtraKey = "config_overlay"
 
-func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
-	return loadManagerConfigWith(cfgPath, servePreviewOverlay())
+// servePreviewCacheDir is the build cache subdirectory used while unsaved
+// settings are previewed, so previews never overwrite the site's cache.
+const servePreviewCacheDir = "serve-preview"
+
+// configPreview holds unsaved settings previewed by `markata-go serve`:
+// overlay sets keys and remove resets keys to their defaults.
+type configPreview struct {
+	overlay map[string]any
+	remove  [][]string
 }
 
-// loadManagerConfigWith loads the config files and merges overlay (unsaved
+func (p configPreview) empty() bool {
+	return len(p.overlay) == 0 && len(p.remove) == 0
+}
+
+func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
+	return loadManagerConfigWith(cfgPath, servePreviewConfig())
+}
+
+// loadManagerConfigWith loads the config files and applies preview (unsaved
 // settings previewed by `markata-go serve`) on top, below env overrides.
-func loadManagerConfigWith(cfgPath string, overlay map[string]any) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
+func loadManagerConfigWith(cfgPath string, preview configPreview) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
 	configPathUsed = cfgPath
 
-	if len(mergeConfigFiles) > 0 || len(overlay) > 0 {
+	if len(mergeConfigFiles) > 0 || !preview.empty() {
 		basePath := cfgPath
 		if basePath == "" {
 			discovered, discoverErr := config.Discover()
@@ -274,14 +299,15 @@ func loadManagerConfigWith(cfgPath string, overlay map[string]any) (cfg *models.
 		}
 		configPathUsed = basePath
 
-		cfg, err = config.LoadWithMergeOptions(config.LoadOptions{Overlay: overlay}, basePath, mergeConfigFiles...)
+		options := config.LoadOptions{Overlay: preview.overlay, Remove: preview.remove}
+		cfg, err = config.LoadWithMergeOptions(options, basePath, mergeConfigFiles...)
 		if err != nil {
 			return nil, "", nil, fmt.Errorf("loading merged config: %w", err)
 		}
-		if len(overlay) > 0 {
-			// The build cache hashes config files; the overlay changes the
+		if !preview.empty() {
+			// The build cache hashes config files; the preview changes the
 			// config without touching them, so it must be part of the hash.
-			fingerprint, err := json.Marshal(overlay)
+			fingerprint, err := json.Marshal(map[string]any{"set": preview.overlay, "reset": preview.remove})
 			if err != nil {
 				return nil, "", nil, fmt.Errorf("encoding settings preview: %w", err)
 			}

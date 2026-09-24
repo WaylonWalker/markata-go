@@ -778,6 +778,12 @@ func buildDevScript(status BuildStatus) string {
             return;
         }
 
+        // Dev tools such as the settings sidebar follow rebuild progress.
+        window.__markataBuildStatus = state;
+        try {
+            window.dispatchEvent(new CustomEvent('markata:build-status', { detail: state }));
+        } catch (e) {}
+
         ensureStyle();
         var banner = ensureBanner();
         banner.setAttribute('data-status', state.status);
@@ -1923,6 +1929,9 @@ func drainTimer(timer *time.Timer) {
 // createServeManager builds the manager for serve and its rebuilds, keeping
 // single-page mode when serve was given a Markdown file.
 func createServeManager() (*lifecycle.Manager, error) {
+	// Wait for any in-flight settings bake (and its rollback) to finish.
+	serveConfigMu.Lock()
+	defer serveConfigMu.Unlock()
 	if serveSourceFile != "" {
 		return createSinglePageManager(cfgFile, serveSourceFile)
 	}

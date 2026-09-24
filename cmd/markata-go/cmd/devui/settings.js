@@ -100,13 +100,67 @@
     '.chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chip button{font:inherit;font-weight:600;border-radius:16px;padding:6px 10px;cursor:pointer;border:1px solid var(--line);background:none;color:var(--fg);min-height:30px}',
     '.chip button.primary{background:var(--accent);border-color:var(--accent);color:var(--page)}',
-    '.panel.open~.chip{display:none}'
+    '.panel.open~.chip{display:none}',
+    '.meta .warn{color:var(--warn)}',
+    '.meta .bad{color:var(--bad)}',
+    '.default-note{font-size:11.5px;color:var(--muted)}',
+    '.divider{padding:16px 16px 6px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line)}',
+    '.note{padding:10px 16px;color:var(--muted);font-size:12px}',
+    'button.link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:0}',
+    '.confirm{display:grid;gap:8px;max-height:45vh;overflow:auto;padding-right:2px}',
+    '.confirm h3{margin:0;font-size:12.5px;font-weight:600;display:flex;flex-wrap:wrap;gap:6px;align-items:center;overflow-wrap:anywhere}',
+    '.tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid currentColor;border-radius:4px;padding:0 4px}',
+    '.tag.override{color:var(--warn)}.tag.global{color:var(--bad)}.tag.new{color:var(--ok)}',
+    '.confirm .explain{color:var(--muted);font-size:11.5px}',
+    'pre.diff{margin:0;font:11.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--page);border:1px solid var(--line);border-radius:6px;padding:6px 0;overflow:auto;white-space:pre}',
+    'pre.diff span{display:block;padding:0 8px;min-width:max-content}',
+    'pre.diff .add{background:rgba(76,175,122,.16);color:var(--ok)}',
+    'pre.diff .del{background:rgba(229,83,75,.14);color:var(--bad)}',
+    'pre.diff .hunk{color:var(--muted)}'
   ].join('');
 
   var ICON_GEAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
   var ICON_CLOSE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
+  // COMMON lists the settings most sites change; they are pinned above the
+  // full schema. Keys missing from this build are skipped.
+  var COMMON = [
+    'title', 'description', 'url', 'author', 'language',
+    'theme.palette_light', 'theme.palette_dark', 'theme.fallback_mode', 'theme.seasonal',
+    'theme.aesthetic', 'theme.fontpack', 'theme.text_size', 'theme.switcher.enabled',
+    'components.nav.enabled', 'components.nav.position',
+    'components.footer.text', 'components.footer.show_copyright',
+    'layout.name', 'layout.blog.show_toc', 'layout.blog.show_date', 'layout.blog.show_reading_time',
+    'search.enabled'
+  ];
+  var COMMON_SECTION = '\u0000common';
+
+  // Site-wide output that `markata-go serve <file>` does not build.
+  var SINGLE_PAGE_HIDDEN = [
+    'glob', 'feed_defaults', 'feeds_page', 'post_formats', 'well_known', 'websub', 'search',
+    'blogroll', 'error_pages', 'tags', 'garden', 'tag_aggregator', 'theme_calendar'
+  ];
+
+  // The theme picker stores per-browser choices (see palette-switcher.js and
+  // text-size.js) that win over the config. Previewing or baking these
+  // settings clears the matching choices so the change is visible.
+  var PICKER_STORAGE = {
+    'theme.palette': ['theme-palette-light', 'theme-palette-dark'],
+    'theme.palette_light': ['theme-palette-light'],
+    'theme.palette_dark': ['theme-palette-dark'],
+    'theme.seasonal': ['theme-palette-light', 'theme-palette-dark'],
+    'theme.aesthetic': ['theme-aesthetic'],
+    'theme.fontpack': ['theme-fontpack'],
+    'fontpack': ['theme-fontpack'],
+    'theme.text_size': ['text-size'],
+    'theme.fallback_mode': ['color-mode', 'theme']
+  };
+
+  var STAGED_KEY = 'markata-dev-settings:staged';
+  var UNSET = { __unset: true };
+
   function has(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
+  function isUnset(value) { return !!(value && typeof value === 'object' && value.__unset === true); }
   function readJSON(key, fallback) {
     try {
       var raw = sessionStorage.getItem(key);
@@ -141,10 +195,17 @@
     return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
   }
   function sectionLabel(key) {
+    if (key === COMMON_SECTION) return 'Common';
     if (!key) return 'Site';
     return key.replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
   }
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+  function show(value) {
+    if (value === null || value === undefined) return 'unset';
+    if (value === '') return 'empty, so the built-in default applies';
+    if (Array.isArray(value)) return value.length ? value.join(', ') : 'empty list';
+    return String(value);
+  }
 
   var host = document.createElement('markata-dev-settings');
   var root = host.attachShadow({ mode: 'open' });
@@ -171,7 +232,9 @@
   var body = el('div', { className: 'body' });
   var summaryText = el('span', { className: 'summary', text: 'No changes' });
   var discardBtn = el('button', { className: 'btn', type: 'button', text: 'Reset', disabled: true, title: 'Drop all unsaved changes and rebuild with your config files' });
-  var bakeBtn = el('button', { className: 'btn primary', type: 'button', text: 'Bake', disabled: true, title: 'Write the previewed changes into your config files' });
+  var bakeBtn = el('button', { className: 'btn primary', type: 'button', text: 'Bake\u2026', disabled: true, title: 'Review the edits, then write them into your config files' });
+  var confirmBox = el('div', { className: 'confirm', hidden: true });
+  var actions = el('div', { className: 'actions' }, [summaryText, discardBtn, bakeBtn]);
   var status = el('div', { className: 'status', role: 'status', 'aria-live': 'polite' });
 
   panel.appendChild(el('header', null, [
@@ -180,7 +243,7 @@
     files
   ]));
   panel.appendChild(body);
-  panel.appendChild(el('footer', null, [el('div', { className: 'actions' }, [summaryText, discardBtn, bakeBtn]), status]));
+  panel.appendChild(el('footer', null, [confirmBox, actions, status]));
   var chipText = el('span');
   var chipReset = el('button', { type: 'button', text: 'Reset', title: 'Drop unsaved changes' });
   var chipReview = el('button', { className: 'primary', type: 'button', text: 'Review', title: 'Open settings to bake or reset' });
@@ -192,8 +255,9 @@
 
   var fields = [];
   var byKey = {};
-  // staged: every edited value; invalid: keys whose value failed checks and
-  // is not previewed; previewed: what the server is applying right now.
+  // staged: every edited value (UNSET resets to the default); invalid: keys
+  // whose value failed checks and is not previewed; previewed: what the
+  // server is applying right now.
   var staged = {};
   var invalid = {};
   var previewed = {};
@@ -201,10 +265,17 @@
   var previewSeq = 0;
   var openSections = {};
   var sectionNodes = {};
+  // rows maps a key to its rendered rows (a pinned setting renders twice).
   var rows = {};
   var loaded = false;
   var loading = null;
-  var armedTimer = null;
+  var session = '';
+  var singlePage = false;
+  var showHidden = false;
+  var confirming = null;
+  // Rebuild tracking: set when a preview or bake queues a rebuild.
+  var awaiting = null;
+  var buildTicker = null;
 
   function setStatus(text, kind) {
     status.textContent = text || '';
@@ -219,12 +290,8 @@
     return stagedKeys().filter(function (key) { return !has(invalid, key); });
   }
 
-  function disarm() {
-    if (armedTimer) clearTimeout(armedTimer);
-    armedTimer = null;
-    bakeBtn.classList.remove('armed');
-    bakeBtn.textContent = 'Bake';
-    bakeBtn.removeAttribute('title');
+  function saveStaged() {
+    writeJSON(STAGED_KEY, Object.keys(staged).length ? { session: session, changes: staged } : null);
   }
 
   function updateSummary() {
@@ -234,12 +301,13 @@
     summaryText.textContent = n ? plural(n, 'unsaved change') + (bad ? ' (' + bad + ' invalid)' : '') : 'No changes';
     summaryText.title = n ? 'Previewing live; Bake saves them, Reset drops them' : '';
     discardBtn.disabled = !n && !live;
-    bakeBtn.disabled = !validKeys().length || !loaded;
+    bakeBtn.disabled = !validKeys().length || !loaded || !!confirming;
     dot.hidden = !n;
     dot.textContent = n ? String(n) : '';
     chip.hidden = !live;
     chipText.textContent = 'Previewing ' + plural(live, 'unsaved change');
-    disarm();
+    if (confirming && !same(confirming.keys, validKeys().slice().sort())) closeConfirm();
+    saveStaged();
   }
 
   function updateCounts() {
@@ -251,14 +319,17 @@
     });
   }
 
+  function rowsFor(key) { return rows[key] || []; }
+
   function refreshRow(field) {
-    var row = rows[field.key];
-    if (row) row.replaceWith(renderField(field));
+    var old = rowsFor(field.key);
+    rows[field.key] = [];
+    old.forEach(function (row) { row.replaceWith(renderField(field)); });
   }
 
   // check mirrors the server's validation so mistakes show before a rebuild.
   function check(field, value) {
-    if (value === null || value === undefined) return '';
+    if (value === null || value === undefined || isUnset(value)) return '';
     if (field.kind === 'int' || field.kind === 'float') {
       if (typeof value !== 'number' || !isFinite(value)) return 'Enter a number';
       if (field.kind === 'int' && Math.floor(value) !== value) return 'Enter a whole number';
@@ -275,39 +346,57 @@
   function setInvalid(key, message) {
     if (message) invalid[key] = message;
     else delete invalid[key];
-    var row = rows[key];
-    if (!row) return;
-    row.classList.toggle('invalid', !!message);
-    var err = row.querySelector('.error');
-    if (message) {
-      if (!err) {
-        err = el('div', { className: 'error', role: 'alert' });
-        row.insertBefore(err, row.querySelector('.meta'));
+    rowsFor(key).forEach(function (row) {
+      row.classList.toggle('invalid', !!message);
+      var err = row.querySelector('.error');
+      if (message) {
+        if (!err) {
+          err = el('div', { className: 'error', role: 'alert' });
+          row.insertBefore(err, row.querySelector('.meta'));
+        }
+        err.textContent = message;
+      } else if (err) {
+        err.remove();
       }
-      err.textContent = message;
-    } else if (err) {
-      err.remove();
-    }
+    });
   }
 
   // stage records an edit; commit also previews it live (after a short
   // debounce so quick successive changes share one rebuild).
   function stage(field, value, commit) {
     var wasStaged = has(staged, field.key);
-    if (same(value, field.value)) delete staged[field.key];
+    var wasUnset = wasStaged && isUnset(staged[field.key]);
+    if (!isUnset(value) && same(value, field.value)) delete staged[field.key];
     else staged[field.key] = value;
     setInvalid(field.key, has(staged, field.key) ? check(field, value) : '');
-    if (wasStaged !== has(staged, field.key)) {
-      var row = rows[field.key];
-      if (row) {
+    if (wasUnset || isUnset(value)) {
+      refreshRow(field);
+    } else if (wasStaged !== has(staged, field.key)) {
+      rowsFor(field.key).forEach(function (row) {
         row.classList.toggle('changed', has(staged, field.key));
         var meta = row.querySelector('.meta');
         if (meta) meta.replaceWith(renderMeta(field));
-      }
+      });
+      // Keep the pinned and section copies of a setting in sync.
+      if (rowsFor(field.key).length > 1) refreshRow(field);
+    } else if (rowsFor(field.key).length > 1) {
+      refreshOtherRows(field);
     }
     updateSummary();
     updateCounts();
     if (commit) schedulePreview();
+  }
+
+  // refreshOtherRows re-renders copies of a setting other than the one being
+  // edited, so typing is not interrupted.
+  function refreshOtherRows(field) {
+    var active = root.activeElement;
+    rows[field.key] = rowsFor(field.key).map(function (row) {
+      if (active && row.contains(active)) return row;
+      var fresh = renderRow(field);
+      row.replaceWith(fresh);
+      return fresh;
+    });
   }
 
   function schedulePreview() {
@@ -315,8 +404,12 @@
     previewTimer = setTimeout(sendPreview, 300);
   }
 
+  function toChange(key) {
+    return isUnset(staged[key]) ? { key: key, unset: true } : { key: key, value: staged[key] };
+  }
+
   function previewChanges() {
-    return validKeys().map(function (key) { return { key: key, value: staged[key] }; });
+    return validKeys().map(toChange);
   }
 
   // keyFromError finds the setting a server error message is about.
@@ -328,16 +421,38 @@
     return best;
   }
 
+  function invalidNote() {
+    var keys = Object.keys(invalid);
+    if (!keys.length) return '';
+    return ' Not previewed: ' + keys.map(function (k) { return k + ' (' + invalid[k] + ')'; }).join('; ') + '.';
+  }
+
+  // clearPickerChoices drops theme picker choices that would hide keys.
+  function clearPickerChoices(keys) {
+    var cleared = [];
+    keys.forEach(function (key) {
+      (PICKER_STORAGE[key] || []).forEach(function (name) {
+        try {
+          if (localStorage.getItem(name) !== null) {
+            localStorage.removeItem(name);
+            if (cleared.indexOf(key) < 0) cleared.push(key);
+          }
+        } catch (e) { /* storage unavailable */ }
+      });
+    });
+    return cleared.length ? ' Cleared this browser\u2019s theme picker choice for ' + cleared.join(', ') + ' so the change shows.' : '';
+  }
+
   function sendPreview() {
     clearTimeout(previewTimer);
     previewTimer = null;
     var changes = previewChanges();
     var desired = {};
-    changes.forEach(function (c) { desired[c.key] = c.value; });
+    changes.forEach(function (c) { desired[c.key] = c.unset ? UNSET : c.value; });
     if (same(desired, previewed)) return Promise.resolve(true);
     var seq = ++previewSeq;
-    setStatus(changes.length ? 'Previewing\u2026 rebuilding' : 'Resetting\u2026 rebuilding');
-    return post(previewEndpoint, changes).then(function (result) {
+    setStatus(changes.length ? 'Previewing\u2026' : 'Resetting\u2026');
+    return post(previewEndpoint, { changes: changes }).then(function (result) {
       if (seq !== previewSeq) return false;
       var data = result.data || {};
       if (!result.ok) {
@@ -347,13 +462,15 @@
           updateSummary();
           return sendPreview();
         }
-        setStatus(data.error || 'Preview failed', 'error');
+        setStatus((data.error || 'Preview failed') + invalidNote(), 'error');
         return false;
       }
       previewed = toMap(data.preview);
-      var warn = (data.warnings || []).join(' ');
-      setStatus(changes.length ? 'Previewing ' + plural(changes.length, 'unsaved change') + ' \u2014 rebuilding\u2026' + (warn ? ' ' + warn : '') :
-        'Reset to your config files \u2014 rebuilding\u2026', warn ? 'warn' : '');
+      var note = clearPickerChoices(changes.map(function (c) { return c.key; }));
+      var warn = (data.warnings || []).join(' ') + invalidNote();
+      var text = changes.length ? 'Previewing ' + plural(changes.length, 'unsaved change') + '.' : 'Reset to your config files.';
+      writeJSON(FLASH_KEY, { text: text + note, warn: warn });
+      awaitBuild(text + note, warn);
       updateSummary();
       return true;
     }, function (err) {
@@ -362,12 +479,57 @@
     });
   }
 
-  function post(url, changes) {
+  // awaitBuild shows rebuild progress until live reload or a build error.
+  function awaitBuild(text, warn) {
+    awaiting = { text: text, warn: warn, started: Date.now(), building: false };
+    renderBuild();
+  }
+
+  function renderBuild() {
+    clearInterval(buildTicker);
+    buildTicker = null;
+    if (!awaiting) return;
+    var tail = awaiting.warn ? ' ' + awaiting.warn : '';
+    var tick = function () {
+      var secs = Math.round((Date.now() - awaiting.started) / 1000);
+      setStatus(awaiting.text + ' Rebuilding\u2026 ' + secs + 's' + tail, awaiting.warn ? 'warn' : '');
+    };
+    tick();
+    buildTicker = setInterval(function () { if (awaiting) tick(); }, 1000);
+  }
+
+  window.addEventListener('markata:build-status', function (e) {
+    var state = e.detail || {};
+    if (!awaiting) {
+      if (state.status === 'error' && Object.keys(previewed).length) {
+        setStatus('Build failed with the previewed settings: ' + (state.message || 'see the serve log') + '. Revert a change or Reset.', 'error');
+      }
+      return;
+    }
+    if (state.status === 'building') {
+      awaiting.building = true;
+      return;
+    }
+    var done = awaiting;
+    if (state.status === 'error') {
+      awaiting = null;
+      renderBuild();
+      writeJSON(FLASH_KEY, null);
+      setStatus('Build failed: ' + (state.message || 'see the serve log') + '. Revert a change or Reset.', 'error');
+    } else if (state.status === 'success' && done.building) {
+      // Live reload follows when output changed; otherwise finish here.
+      awaiting = null;
+      renderBuild();
+      setStatus(done.text + ' Rebuilt.' + (done.warn ? ' ' + done.warn : ''), done.warn ? 'warn' : 'ok');
+    }
+  });
+
+  function post(url, payload) {
     return fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ changes: changes })
+      body: JSON.stringify(payload)
     }).then(function (res) {
       return res.json().then(function (data) { return { ok: res.ok, data: data }; });
     });
@@ -375,17 +537,18 @@
 
   function toMap(list) {
     var map = {};
-    (list || []).forEach(function (c) { map[c.key] = c.value; });
+    (list || []).forEach(function (c) { map[c.key] = c.unset ? UNSET : c.value; });
     return map;
   }
 
   function currentValue(field) {
-    return has(staged, field.key) ? staged[field.key] : field.value;
+    if (!has(staged, field.key)) return field.value;
+    return isUnset(staged[field.key]) ? field.default : staged[field.key];
   }
 
   function control(field) {
     var value = currentValue(field);
-    var id = 'f-' + field.key.replace(/[^a-z0-9_-]/gi, '-');
+    var id = 'f-' + field.key.replace(/[^a-z0-9_-]/gi, '-') + '-' + Math.random().toString(36).slice(2, 7);
     if (!field.editable) {
       var text = field.sensitive ? 'Hidden (sensitive) \u2014 edit it in the config file' :
         field.unsupported ? 'Not read from config files' :
@@ -432,7 +595,7 @@
       var opts = options.slice();
       // Keep a saved value the list does not name (e.g. a palette alias).
       if (field.value && opts.indexOf(field.value) < 0) opts.unshift(field.value);
-      if (!field.value || !str) select.appendChild(el('option', { value: '', text: 'Default' }));
+      if (!str) select.appendChild(el('option', { value: '', text: 'Default' }));
       opts.forEach(function (opt) { select.appendChild(el('option', { value: opt, text: opt })); });
       select.value = str;
       select.addEventListener('change', function () { stage(field, select.value, true); });
@@ -456,40 +619,66 @@
     return { node: input, id: id };
   }
 
+  function revertField(field) {
+    delete staged[field.key];
+    delete invalid[field.key];
+    refreshRow(field);
+    updateSummary();
+    updateCounts();
+    schedulePreview();
+  }
+
   function renderMeta(field) {
     var meta = el('div', { className: 'meta' });
-    meta.appendChild(field.source ? el('span', { className: 'set', text: 'set in ' + field.source }) : el('span', { text: 'default' }));
-    if (field.editable && field.target !== field.source) meta.appendChild(el('span', { text: 'writes to ' + field.target }));
+    var sources = field.sources || (field.source ? [field.source] : []);
+    meta.appendChild(sources.length ? el('span', { className: 'set', text: 'set in ' + sources.join(', ') }) : el('span', { text: 'default' }));
+    if (field.editable) {
+      if (field.target_kind === 'global') {
+        meta.appendChild(el('span', { className: 'bad', text: 'from your user-level config ' + field.target + ' \u2014 bake disabled (it applies to every site)' }));
+      } else if (field.target_kind === 'override') {
+        meta.appendChild(el('span', { className: 'warn', text: 'writes to ' + field.target + ' (--merge-config override; plain builds ignore it)' }));
+      } else if (field.target !== field.source) {
+        meta.appendChild(el('span', { text: 'writes to ' + field.target }));
+      }
+    }
     if (field.env) meta.appendChild(el('span', { className: 'env', text: field.env + ' overrides this' }));
     if (has(staged, field.key)) {
       var revert = el('button', { className: 'revert', type: 'button', text: 'Revert' });
-      revert.addEventListener('click', function () {
-        delete staged[field.key];
-        delete invalid[field.key];
-        refreshRow(field);
-        updateSummary();
-        updateCounts();
-        schedulePreview();
-      });
+      revert.addEventListener('click', function () { revertField(field); });
       meta.appendChild(revert);
+    } else if (field.editable && sources.length) {
+      var reset = el('button', { className: 'revert', type: 'button', text: 'Reset to default',
+        title: 'Remove ' + field.key + ' from ' + sources.join(', ') + ' (default: ' + show(field.default) + ')' });
+      reset.addEventListener('click', function () { stage(field, UNSET, true); });
+      meta.appendChild(reset);
     }
     return meta;
   }
 
-  function renderField(field) {
+  function renderRow(field) {
     var ctl = control(field);
+    var unset = has(staged, field.key) && isUnset(staged[field.key]);
     var row = el('div', { className: 'field' + (has(staged, field.key) ? ' changed' : ''), 'data-key': field.key });
     var label = el(ctl.id ? 'label' : 'span', { className: 'label', for: ctl.id, text: field.label });
     row.appendChild(el('div', { className: 'row' }, [label, ctl.inline ? ctl.node : null]));
     row.appendChild(el('div', { className: 'key', text: field.key }));
     if (field.doc) row.appendChild(el('div', { className: 'doc', text: field.doc }));
     if (!ctl.inline) row.appendChild(ctl.node);
+    if (unset) {
+      row.appendChild(el('div', { className: 'default-note',
+        text: 'Resets to the default (' + show(field.default) + ') by removing it from ' + (field.sources || []).join(', ') + '.' }));
+    }
     if (has(invalid, field.key)) {
       row.classList.add('invalid');
       row.appendChild(el('div', { className: 'error', role: 'alert', text: invalid[field.key] }));
     }
     row.appendChild(renderMeta(field));
-    rows[field.key] = row;
+    return row;
+  }
+
+  function renderField(field) {
+    var row = renderRow(field);
+    (rows[field.key] = rows[field.key] || []).push(row);
     return row;
   }
 
@@ -499,6 +688,32 @@
     if (!words.length) return true;
     var hay = (field.key + ' ' + field.label + ' ' + (field.doc || '')).toLowerCase();
     return words.every(function (word) { return hay.indexOf(word) >= 0; });
+  }
+
+  function renderSection(group, filtering) {
+    var details = el('details', { 'data-section': group.key });
+    var remembered = has(openSections, group.key) ? openSections[group.key] : group.key === COMMON_SECTION;
+    details.open = filtering || !!remembered;
+    var count = el('span', { className: 'count' });
+    details.appendChild(el('summary', null, [sectionLabel(group.key), count]));
+    var list = el('div');
+    var filled = false;
+    function fill() {
+      if (filled) return;
+      filled = true;
+      group.fields.forEach(function (field) { list.appendChild(renderField(field)); });
+    }
+    if (details.open) fill();
+    details.addEventListener('toggle', function () {
+      if (details.open) fill();
+      if (!filtering) {
+        openSections[group.key] = details.open;
+        saveState();
+      }
+    });
+    details.appendChild(list);
+    body.appendChild(details);
+    sectionNodes[group.key] = { node: details, count: count, fields: group.fields };
   }
 
   function render() {
@@ -511,8 +726,13 @@
     sectionNodes = {};
     var groups = [];
     var index = {};
+    var hidden = 0;
     fields.forEach(function (field) {
       if (!matches(field, words, mode)) return;
+      if (singlePage && !showHidden && !words.length && SINGLE_PAGE_HIDDEN.indexOf(field.section) >= 0) {
+        hidden++;
+        return;
+      }
       if (!has(index, field.section)) {
         index[field.section] = groups.length;
         groups.push({ key: field.section, fields: [] });
@@ -523,30 +743,21 @@
       body.appendChild(el('div', { className: 'empty', text: loaded ? 'No settings match.' : 'Loading settings\u2026' }));
       return;
     }
-    groups.forEach(function (group) {
-      var details = el('details', { 'data-section': group.key });
-      details.open = filtering || !!openSections[group.key];
-      var count = el('span', { className: 'count' });
-      details.appendChild(el('summary', null, [sectionLabel(group.key), count]));
-      var list = el('div');
-      var filled = false;
-      function fill() {
-        if (filled) return;
-        filled = true;
-        group.fields.forEach(function (field) { list.appendChild(renderField(field)); });
+    if (!filtering) {
+      var common = COMMON.map(function (key) { return byKey[key]; }).filter(function (f) { return f && f.editable; });
+      if (common.length) {
+        renderSection({ key: COMMON_SECTION, fields: common }, false);
+        body.appendChild(el('div', { className: 'divider', text: 'All settings' }));
       }
-      if (details.open) fill();
-      details.addEventListener('toggle', function () {
-        if (details.open) fill();
-        if (!filtering) {
-          openSections[group.key] = details.open;
-          saveState();
-        }
-      });
-      details.appendChild(list);
-      body.appendChild(details);
-      sectionNodes[group.key] = { node: details, count: count, fields: group.fields };
-    });
+    }
+    groups.forEach(function (group) { renderSection(group, filtering); });
+    if (hidden) {
+      var showBtn = el('button', { className: 'link', type: 'button', text: 'Show them' });
+      showBtn.addEventListener('click', function () { showHidden = true; render(); });
+      body.appendChild(el('div', { className: 'note' }, [
+        plural(hidden, 'site-wide setting') + ' (feeds, search, tags\u2026) are hidden because serve is rendering a single page. ', showBtn
+      ]));
+    }
     updateCounts();
   }
 
@@ -556,23 +767,40 @@
       .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
       .then(function (result) {
         if (!result.ok) throw new Error(result.data.error || 'Could not load settings');
-        fields = result.data.fields || [];
+        var data = result.data;
+        fields = data.fields || [];
         byKey = {};
         fields.forEach(function (f) { byKey[f.key] = f; });
-        previewed = toMap(result.data.preview);
-        Object.keys(previewed).forEach(function (key) {
-          var f = byKey[key];
-          if (f && f.editable && !has(staged, key)) staged[key] = previewed[key];
-        });
+        singlePage = !!data.single_page;
+        previewed = toMap(data.preview);
+        var stored = readJSON(STAGED_KEY, null);
+        var restarted = stored && stored.session && data.session && stored.session !== data.session &&
+          !Object.keys(previewed).length && stored.changes && Object.keys(stored.changes).length;
+        session = data.session || '';
+        if (restarted) {
+          // The dev server restarted and lost its in-memory preview.
+          staged = stored.changes;
+        } else {
+          Object.keys(previewed).forEach(function (key) {
+            var f = byKey[key];
+            if (f && f.editable && !has(staged, key)) staged[key] = previewed[key];
+          });
+        }
         Object.keys(staged).forEach(function (key) {
           var f = byKey[key];
-          if (!f || !f.editable || same(staged[key], f.value)) delete staged[key];
+          if (!f || !f.editable) { delete staged[key]; return; }
+          if (isUnset(staged[key]) ? !f.source : same(staged[key], f.value)) delete staged[key];
         });
-        var list = result.data.files || [];
+        var list = data.files || [];
         files.textContent = list.length ? 'Config: ' + list.join(', ') : 'No config file yet \u2014 baking creates markata-go.toml';
         loaded = true;
         render();
         updateSummary();
+        if (restarted && validKeys().length) {
+          sendPreview().then(function (ok) {
+            if (ok) setStatus('The dev server restarted \u2014 re-applied ' + plural(validKeys().length, 'unsaved change') + '.', 'warn');
+          });
+        }
       })
       .catch(function (err) {
         loading = null;
@@ -625,50 +853,113 @@
     toggle.focus({ preventScroll: true });
   }
 
+  function closeConfirm() {
+    confirming = null;
+    confirmBox.hidden = true;
+    confirmBox.textContent = '';
+    actions.hidden = false;
+    bakeBtn.disabled = !validKeys().length || !loaded;
+  }
+
+  function renderDiff(text) {
+    var pre = el('pre', { className: 'diff' });
+    text.replace(/\n$/, '').split('\n').forEach(function (line) {
+      var cls = line[0] === '+' ? 'add' : line[0] === '-' ? 'del' : line[0] === '@' ? 'hunk' : '';
+      pre.appendChild(el('span', { className: cls, text: line || ' ' }));
+    });
+    return pre;
+  }
+
+  // bake asks the server for the exact edits (a dry run) and shows them for
+  // confirmation before anything is written.
   function bake() {
     var keys = validKeys();
     if (!keys.length) return;
-    var targets = [];
-    keys.forEach(function (key) {
-      var f = byKey[key];
-      if (f && targets.indexOf(f.target) < 0) targets.push(f.target);
+    bakeBtn.disabled = true;
+    setStatus('Preparing edits\u2026');
+    var changes = keys.map(toChange);
+    post(endpoint, { changes: changes, dry_run: true }).then(function (result) {
+      var data = result.data || {};
+      if (!result.ok) {
+        var key = keyFromError(data.error || '');
+        if (key) setInvalid(key, data.error);
+        throw new Error(data.error || 'Bake failed');
+      }
+      setStatus('');
+      confirming = { keys: keys.slice().sort(), changes: changes };
+      confirmBox.textContent = '';
+      var diffs = data.diffs || [];
+      confirmBox.appendChild(el('div', { className: 'explain',
+        text: 'Bake writes ' + plural(keys.length, 'setting') + ' into ' + plural(diffs.length, 'file') + ':' }));
+      diffs.forEach(function (d) {
+        var tags = [];
+        if (d.created) tags.push(el('span', { className: 'tag new', text: 'new file' }));
+        if (d.kind === 'override') tags.push(el('span', { className: 'tag override', text: 'override' }));
+        confirmBox.appendChild(el('h3', null, [d.target].concat(tags)));
+        if (d.kind === 'override') {
+          confirmBox.appendChild(el('div', { className: 'explain', text: 'Passed with --merge-config; builds without that flag will not see this change.' }));
+        }
+        confirmBox.appendChild(renderDiff(d.diff || ''));
+      });
+      (data.warnings || []).forEach(function (w) { confirmBox.appendChild(el('div', { className: 'status warn', text: w })); });
+      var cancel = el('button', { className: 'btn', type: 'button', text: 'Cancel' });
+      var write = el('button', { className: 'btn primary', type: 'button', text: 'Write ' + plural(diffs.length, 'file') });
+      cancel.addEventListener('click', function () { closeConfirm(); bakeBtn.focus(); });
+      write.addEventListener('click', function () { commitBake(changes); });
+      confirmBox.appendChild(el('div', { className: 'actions' }, [el('span', { className: 'summary' }), cancel, write]));
+      confirmBox.hidden = false;
+      actions.hidden = true;
+      write.focus();
+    }).catch(function (err) {
+      setStatus(err.message, 'error');
+      updateSummary();
     });
-    if (!bakeBtn.classList.contains('armed')) {
-      bakeBtn.classList.add('armed');
-      bakeBtn.textContent = 'Bake into ' + targets.join(', ') + '?';
-      bakeBtn.title = 'Click again to write ' + plural(keys.length, 'setting') + ' into ' + targets.join(', ');
-      armedTimer = setTimeout(disarm, 4000);
-      return;
-    }
-    disarm();
+  }
+
+  function commitBake(changes) {
+    closeConfirm();
     bakeBtn.disabled = true;
     bakeBtn.textContent = 'Baking\u2026';
     setStatus('');
-    var changes = keys.map(function (key) { return { key: key, value: staged[key] }; });
-    post(endpoint, changes)
+    post(endpoint, { changes: changes })
       .then(function (result) {
         var data = result.data || {};
+        bakeBtn.textContent = 'Bake\u2026';
         if (!result.ok) {
           var key = keyFromError(data.error || '');
           if (key) setInvalid(key, data.error);
           throw new Error(data.error || 'Bake failed');
         }
         var written = [];
+        var bakedKeys = [];
         (data.changed || []).forEach(function (c) {
           if (written.indexOf(c.target) < 0) written.push(c.target);
+          if (bakedKeys.indexOf(c.key) < 0) bakedKeys.push(c.key);
           var f = byKey[c.key];
-          if (f) { f.value = staged[c.key]; f.source = c.target; }
+          if (f) {
+            if (c.unset) {
+              f.value = f.default;
+              f.source = '';
+              f.sources = [];
+            } else {
+              f.value = staged[c.key];
+              f.source = c.target;
+              f.sources = [c.target];
+            }
+          }
           delete staged[c.key];
         });
         previewed = toMap(data.preview);
-        var text = 'Baked ' + plural((data.changed || []).length, 'setting') + ' into ' + written.join(', ') + '.';
+        var text = 'Baked ' + plural(bakedKeys.length, 'setting') + ' into ' + written.join(', ') + '.';
+        var note = clearPickerChoices(bakedKeys);
         var warn = (data.warnings || []).join(' ');
-        writeJSON(FLASH_KEY, { text: text, warn: warn });
-        setStatus(text + ' Rebuilding\u2026' + (warn ? ' ' + warn : ''), warn ? 'warn' : 'ok');
+        writeJSON(FLASH_KEY, { text: text + note, warn: warn });
         render();
         updateSummary();
+        awaitBuild(text + note, warn);
       })
       .catch(function (err) {
+        bakeBtn.textContent = 'Bake\u2026';
         setStatus(err.message, 'error');
         updateSummary();
       });
@@ -677,11 +968,17 @@
   function reset() {
     staged = {};
     invalid = {};
+    closeConfirm();
     render();
     updateSummary();
     if (!Object.keys(previewed).length) { setStatus(''); return; }
-    writeJSON(FLASH_KEY, { text: 'Reset to your config files.', warn: '' });
     sendPreview();
+  }
+
+  function editableTarget(target) {
+    if (!target || target === host) return false;
+    var tag = target.tagName;
+    return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
   toggle.addEventListener('click', function () { if (isOpen()) close(); else open(); });
@@ -704,13 +1001,16 @@
   });
   bakeBtn.addEventListener('click', bake);
   panel.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    if (e.key !== 'Escape') return;
+    e.stopPropagation();
+    if (confirming) { closeConfirm(); bakeBtn.focus(); } else close();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'Comma') {
-      e.preventDefault();
-      if (isOpen()) close(); else open();
-    }
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.code !== 'Comma') return;
+    // Leave Alt+, alone while typing in the page (Option+, types "\u2264" on macOS).
+    if (editableTarget(e.target)) return;
+    e.preventDefault();
+    if (isOpen()) close(); else open();
   });
 
   function mount() {
@@ -718,7 +1018,7 @@
     var state = readJSON(STATE_KEY, null);
     var flash = readJSON(FLASH_KEY, null);
     writeJSON(FLASH_KEY, null);
-    openSections = (state && state.sections) || { '': true };
+    openSections = (state && state.sections) || {};
     if (state) {
       search.value = state.q || '';
       filter.value = state.filter || 'all';

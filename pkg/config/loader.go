@@ -166,6 +166,10 @@ type LoadOptions struct {
 	// every file and before environment overrides. markata-go serve uses it
 	// to preview unsaved settings; see SettingsOverlay.
 	Overlay map[string]any
+	// Remove lists key paths (below the markata-go wrapper) deleted from the
+	// merged files and overlay before defaults apply, so each falls back to
+	// its default. markata-go serve uses it to preview "reset to default".
+	Remove [][]string
 }
 
 // LoadWithMergeOptions loads and merges configuration with explicit options.
@@ -205,6 +209,9 @@ func LoadWithMergeOptions(options LoadOptions, basePath string, overridePaths ..
 
 	if len(options.Overlay) > 0 {
 		mergedRaw = mergeRawMaps(nil, mergedRaw, options.Overlay)
+	}
+	for _, path := range options.Remove {
+		removeRawSetting(mergedRaw, path)
 	}
 
 	warnings := normalizeRenderingTheme(mergedRaw)
@@ -454,4 +461,22 @@ func DiscoverAll() []Path {
 	}
 
 	return found
+}
+
+// removeRawSetting deletes markata-go.<path...> from raw, a merged config
+// wrapper whose maps the caller owns.
+func removeRawSetting(raw map[string]any, path []string) {
+	if len(path) == 0 {
+		return
+	}
+	node, ok := raw["markata-go"].(map[string]any)
+	if !ok {
+		return
+	}
+	for _, key := range path[:len(path)-1] {
+		if node, ok = node[key].(map[string]any); !ok {
+			return
+		}
+	}
+	delete(node, path[len(path)-1])
 }
