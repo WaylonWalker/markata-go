@@ -193,10 +193,31 @@ Only essential, cross-cutting concerns live at the root:
 | `title` | string? | null | Site title |
 | `description` | string? | null | Site description |
 | `author` | string? | null | Default author |
-| `license` | string `\|` bool | `(unset)` | Select from the supported license keys below or set to `false` to disable the footer attribution and associated warning. |
+| `license` | string `\|` bool | `"cc-by-4.0"` | Select from the supported license keys below or set to `false` to disable the footer attribution. |
 | `lang` | string | `"en"` | Site language |
 | `hooks` | string[] | `["default"]` | Plugins to load |
 | `disabled_hooks` | string[] | `[]` | Plugins to exclude |
+
+### Configless Small Sites
+
+When no configuration file is present, the default content patterns discover
+Markdown at the site root and in the `pages/` and `posts/` directories. The
+implicit root feed renders an HTML homepage of published posts as well as
+`/rss.xml` and `/atom.xml`; the default archive remains available at
+`/archive/`. When no posts are published yet, both routes still render with
+guidance to set `published: true`.
+The default navigation links to `/` and `/archive/`; it does not assume a
+custom `/blog/` feed exists.
+
+An explicit root feed (`slug = ""`) remains authoritative. To render only one
+Markdown file with the default theme and no generated home, archive, or feed
+pages, pass it to the CLI:
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+```
 
 Everything else goes in a plugin namespace.
 
@@ -214,7 +235,9 @@ The root `license` key lets you declare how visitors may reuse your content. It 
   - `mit` – MIT License (`https://opensource.org/licenses/MIT`).
 
 - **Boolean `false`** suppresses the license footer and prevents the validation warning (useful for sites that intentionally publish without an explicit license).
-- **Omitted key** (default) triggers a validation warning and the serve banner/toast reminder until a license string is configured or `false` is set.
+- **Omitted key** inherits the default `cc-by-4.0` license. Set another
+  supported string to override it, or `false` to suppress the footer
+  attribution.
 
 The default scaffolding details from `markata-go config init` include `license = "cc-by-4.0"`, so new sites ship with the recommended Creative Commons attribution out of the box.
 

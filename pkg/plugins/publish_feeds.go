@@ -570,7 +570,9 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 	paths := make([]string, 0, len(fc.Pages)*2+8)
 	htmlPages := fc.Pages
 	if fc.Formats.HTML || fc.Formats.SimpleHTML {
-		htmlPages = feedConfigWithRenderablePosts(fc).Pages
+		htmlFeed := feedConfigWithRenderablePosts(fc)
+		ensureDefaultCollectionPage(htmlFeed)
+		htmlPages = htmlFeed.Pages
 	}
 	add := func(path string) {
 		if path != "" {
@@ -684,6 +686,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 			baseURL = "/"
 		}
 		htmlFC.Paginate(baseURL)
+		ensureDefaultCollectionPage(htmlFC)
 		renderCtx = buildFeedRenderContext(htmlFC)
 	}
 
@@ -811,6 +814,22 @@ func feedConfigWithRenderablePosts(fc *models.FeedConfig) *models.FeedConfig {
 	}
 	clone.Paginate(baseURL)
 	return clone
+}
+
+// ensureDefaultCollectionPage gives a configless site addressable home and
+// archive pages before it has published content. Other empty feeds retain
+// their existing no-page behavior.
+func ensureDefaultCollectionPage(fc *models.FeedConfig) {
+	if fc == nil || (fc.Slug != "" && fc.Slug != defaultArchivePrefix) || len(fc.Pages) != 0 {
+		return
+	}
+	fc.Pages = []models.FeedPage{{
+		Number:         1,
+		Posts:          []*models.Post{},
+		TotalPages:     1,
+		ItemsPerPage:   fc.ItemsPerPage,
+		PaginationType: fc.PaginationType,
+	}}
 }
 
 func feedConfigWithOutputPosts(fc *models.FeedConfig) *models.FeedConfig {

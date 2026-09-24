@@ -45,7 +45,7 @@ var (
 
 // buildCmd represents the build command.
 var buildCmd = &cobra.Command{
-	Use:   "build",
+	Use:   "build [markdown-file]",
 	Short: "Build the static site",
 	Long: `Build runs all lifecycle stages to generate the static site.
 
@@ -74,11 +74,13 @@ Clean modes:
 
 Example usage:
   markata-go build              # Standard build
+  markata-go build pages/post.md # Render one Markdown file with the default theme
   markata-go build --clean      # Clean build cache + output
   markata-go build --clean-all  # Also nuke external plugin caches
   markata-go build --fast       # Skip minification for faster builds
   markata-go build --dry-run    # Show what would be built
   markata-go build -v           # Build with verbose output`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runBuildCommand,
 }
 
@@ -94,13 +96,21 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
 }
 
-func runBuildCommand(_ *cobra.Command, _ []string) error {
+func runBuildCommand(_ *cobra.Command, args []string) error {
 	startTime := time.Now()
 
 	verbosef("Starting build...")
 
 	// Create the manager
-	m, err := createManager(cfgFile)
+	var (
+		m   *lifecycle.Manager
+		err error
+	)
+	if len(args) == 1 {
+		m, err = createSinglePageManager(cfgFile, args[0])
+	} else {
+		m, err = createManager(cfgFile)
+	}
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}

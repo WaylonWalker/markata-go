@@ -566,3 +566,23 @@ func ManagedFontFiles(outputDir string) ([]string, error) {
 func SystemResolved() *Resolved {
 	return &Resolved{Name: "system", Pack: FontPack{Performance: Performance{Class: "zero-download"}}, CSS: ":root {\n  --font-display: system-ui, sans-serif;\n  --font-heading: system-ui, sans-serif;\n  --font-body: system-ui, sans-serif;\n  --font-code: ui-monospace, monospace;\n}\n"}
 }
+
+// RoleFontFamily returns the CSS font-family value for the first role of pack
+// that exists, or "" when none do. It matches the --font-<role> declarations.
+func (c *Catalog) RoleFontFamily(pack FontPack, roles ...string) (family string, weight float64) {
+	for _, role := range roles {
+		r, ok := pack.Roles[role]
+		if !ok {
+			continue
+		}
+		if r.Stack != "" {
+			family = c.SystemStacks[r.Stack].CSS
+		} else if src, ok := c.FontSources[r.Source]; ok {
+			family = cssQuote(src.Family) + ", " + fallback(c, r.Fallback)
+		}
+		if family != "" {
+			return family, r.Weight
+		}
+	}
+	return "", 0
+}

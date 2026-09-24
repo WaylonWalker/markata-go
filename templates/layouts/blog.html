@@ -24,11 +24,7 @@
             {% if config.search.enabled and config.header.show_search %}
             {% include "components/search.html" %}
             {% endif %}
-            {% if config.header.show_theme_toggle %}
-            <button class="theme-toggle" type="button" aria-label="Toggle theme">
-                <span class="theme-toggle-icon" aria-hidden="true"></span>
-            </button>
-            {% endif %}
+            {% include "partials/palette-switcher.html" %}
         </div>
     </div>
 </header>

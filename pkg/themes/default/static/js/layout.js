@@ -120,6 +120,17 @@
   const toggle = document.querySelector('.theme-toggle');
   if (!toggle) return;
 
+  // palette-switcher.js owns mode and palette state (including visitor theme
+  // picks restored in <head>). Legacy toggles delegate to it instead of
+  // resetting data-palette to the site defaults.
+  if (document.querySelector('.theme-switcher, [data-theme-picker]')) {
+    toggle.addEventListener('click', () => {
+      const switcher = window.markata && window.markata.paletteSwitcher;
+      if (switcher) switcher.toggleColorMode();
+    });
+    return;
+  }
+
   const STORAGE_KEY = 'theme';
   const DARK_CLASS = 'dark';
 

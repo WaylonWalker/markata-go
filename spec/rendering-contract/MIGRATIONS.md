@@ -33,3 +33,13 @@ The portable source is `contract-v1.json`. Browser and Go copies are generated
 artifacts and must not gain local registry entries. Add palette families,
 variants, and presentation dials to the portable source first, then regenerate
 the projections and run the generated-artifact check.
+
+## Default motif is off
+
+The contract default for `theme.motif.kind` is `"off"`. Sites that relied on
+the implicit `block-w` motif must set it explicitly:
+
+```toml
+[markata-go.theme.motif]
+kind = "block-w"
+```

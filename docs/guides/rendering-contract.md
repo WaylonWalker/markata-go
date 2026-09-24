@@ -55,6 +55,9 @@ url = "https://waylonwalker.com/w.svg"
 "--content-width" = "68ch"
 ```
 
+The motif is off by default (`kind = "off"`); the example above enables the
+`block-w` motif explicitly.
+
 In TOML, a key belongs to the current table until another table header
 appears. Keep `custom_css` in `[markata-go.theme]`, not in `motif`.
 

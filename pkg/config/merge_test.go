@@ -805,3 +805,16 @@ func TestMergeBlogrollConfig_PaginationFields(t *testing.T) {
 		t.Errorf("PaginationType = %q, want htmx", result.PaginationType)
 	}
 }
+
+func TestMergeSwitcherConfig_KeepsModeToggle(t *testing.T) {
+	off := false
+	on := true
+	base := models.ThemeSwitcherConfig{Enabled: &on}
+	result := mergeSwitcherConfig(base, models.ThemeSwitcherConfig{ModeToggle: &off})
+	if result.ModeToggle == nil || *result.ModeToggle {
+		t.Fatalf("ModeToggle = %v, want false from override", result.ModeToggle)
+	}
+	if result.Enabled == nil || !*result.Enabled {
+		t.Fatal("Enabled from base should be preserved")
+	}
+}

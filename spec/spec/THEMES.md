@@ -1192,6 +1192,206 @@ Full report saved to: .markata/palette-report-catppuccin-mocha.html
 
 ---
 
+## Live Theme Picker
+
+Every site ships a visitor-facing theme picker by default
+(`theme.switcher.enabled` defaults to `true`). Setting it to `false` restores
+single-palette output and hides the picker; the light/dark toggle remains
+governed by `theme.switcher.mode_toggle` and `header.show_theme_toggle`.
+
+```toml
+[markata-go.theme.switcher]
+enabled = true          # default
+mode_toggle = true      # light/dark button
+include_all = true      # every discovered palette
+include = []            # or an explicit allow-list
+exclude = []
+```
+
+### Header UI
+
+The header renders one compact button (a painter's-palette icon whose dots use
+the live `--color-primary`, `--color-code-string`, and `--color-warning`) plus
+the mode toggle. No other nav items are added. The button opens a
+fixed-height popover (a bottom sheet at `max-width: 640px`) with an ARIA
+tablist of three tabs, each a `role="listbox"` grid of preview cards:
+
+| Tab | Cards | Scoping |
+|-----|-------|---------|
+| Colors | Seasonal card, then one card per palette for the browsed mode; search, Light/Dark, Shuffle | card sets `data-palette` |
+| Style | one card per aesthetic | card sets `data-aesthetic` |
+| Font | text-size radio buttons, then one card per font pack | inline font stacks from the manifest, applied when the card intersects the grid (IntersectionObserver) |
+
+Tabs with fewer than two choices are hidden (Font stays while the size
+control is shown). The top bar has ‹ › step buttons and a live label with
+the current choice. The buttons move through the active tab's visible cards,
+wrap at the ends, and apply each choice immediately. The last tab is stored
+as `theme-picker-tab`. The bottom bar holds Reset (clears all stored choices)
+and Copy config. The popover uses a fixed system UI font, so it does not
+reflow while fonts are previewed. On small screens, every control is at least
+40px tall and the sheet pads for `env(safe-area-inset-bottom)`.
+
+### Fonts
+
+When the picker is enabled, the fontpack plugin resolves every catalog pack
+(not only the configured one) into `css/fonts.css`, one
+`[data-fontpack="<name>"]` block per pack, and appends:
+
+```css
+:root{--fontpack-default:"brush";--fontpack-manifest:'[{"name":"brush","displayName":"Brush","heading":"Knewave","body":"Space Grotesk","code":"DM Mono"},...]'}
+```
+
+Each manifest entry also carries `headingFont`, `headingWeight`, `bodyFont`,
+and `codeFont`, the CSS values of the pack's `--font-*` roles. Quotes are
+normalized to single quotes so the JSON survives the custom-property round
+trip. `@font-face` files are only fetched when used. A visitor choice is stored as
+`theme-fontpack` and wins over per-post `fontpack` overrides. Without a
+stored choice, SPA navigation keeps each page's own `data-fontpack`.
+
+### Styles
+
+`aesthetic.css` appends per-aesthetic surface rules keyed on
+`[data-aesthetic="<id>"]`: radius, `--surface-border`, and `--surface-shadow`
+tokens in `@layer tokens` (beating the contract's `:root` radius). Tokens use
+a bare attribute selector so Style cards scope them. Border/box-shadow rules
+for `pre`, `.card`, `.admonition`, `.embed-card`, `.blogroll-card`, and post
+tables/images live in `@layer utilities` and are keyed on
+`html[data-aesthetic]`. `minimal` defines tokens only (for previews); its
+surfaces are the theme's native look.
+
+### Seasonal
+
+`seasonal` is a pseudo-palette: the picker stores it as
+`theme-palette-light` and `theme-palette-dark`. `theme.seasonal = true` makes
+it the default when no palette is stored. With a seasonal default, picking
+any concrete palette, including the site pair, stores it explicitly.
+
+The palette CSS plugin resolves a calendar against the manifest and publishes
+it as `config.Extra.palette_seasonal_json`. `base.html` inlines it as
+`window.__markataSeasonal`, together with `__markataSeasonalDefault` and
+`__markataSeasonalPick(mode, date?)`, which returns `{label, name}`:
+
+```json
+{"lead":3,
+ "s":[{"l":"Spring","f":320,"lt":"pollen8","dk":"pollen8-dark"}, ...],
+ "h":[{"l":"Christmas","d":["12-25"],"lt":"christmas-light","dk":"christmas"},
+      {"l":"Hanukkah","d":["2026-12-05", ...],"n":8,"lt":"...","dk":"..."}, ...]}
+```
+
+Resolution uses the visitor's local date:
+
+1. **Holidays.** A holiday matches from `lead` days before its date through
+   the end of the celebration (`n` days, default 1). `MM-DD` dates are tried
+   in the previous, current, and next year. When several match, the one with
+   the soonest date wins.
+2. **Seasons.** With no holiday match, the season is the last one whose start
+   (`f`, as MMDD) is on or before today. Winter wraps the year.
+
+Seasons follow the northern hemisphere, astronomical (spring 03-20, summer
+06-21, autumn 09-22, winter 12-21).
+
+Holidays:
+
+- **Fixed dates:** New Year, Valentine's Day, St. Patrick's Day, Earth Day,
+  Halloween, Christmas.
+- **Computed:** Western Easter, using the Gregorian computus for the build
+  year −1 through +10.
+- **Tabulated:** Lunar New Year (through 2036), Diwali/Lakshmi Puja (through
+  2033), and Hanukkah (first full day, 8 days, through 2035).
+
+For each mode, the first listed palette with that variant is used, then the
+first palette's counterpart. Entries without both variants are dropped. When
+no season resolves, the schedule is omitted and the Seasonal card is hidden.
+Copy config emits the site palettes plus `seasonal = true`.
+
+### Copy Config
+
+Copy config writes the current choices as TOML:
+
+```toml
+[markata-go.theme]
+palette = "<current>"
+palette_light = "<light pick>"   # omitted when light == dark
+palette_dark = "<dark pick>"
+fallback_mode = "<current mode>"
+aesthetic = "<id>"
+fontpack = "<id>"
+text_size = "<preset>"
+```
+
+It uses the async Clipboard API in secure contexts, falls back to
+`execCommand('copy')`, and finally to a `prompt()` showing the snippet.
+
+### Manifest
+
+`palette.css` is emitted with one scoped block per palette
+(`[data-palette="<name>"] { ... }`) and a JSON manifest stored in the
+`--palette-manifest` custom property (aesthetics use `--aesthetic-manifest`).
+Each palette entry has:
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Palette id used in `data-palette` |
+| `displayName` | Human label |
+| `variant` | `light` or `dark` |
+| `baseName` | Family label shared by light/dark partners |
+| `counterpart` | Name of the opposite-mode partner, if any |
+| `derived` | `true` when generated by `Loader.Discover()` |
+
+The manifest is deterministic: `Discover()` snapshots explicit palettes
+before deriving counterparts and never derives from a derived palette.
+Aesthetics use normalized ids (`aestheticID()`, e.g. `minimal`) in both the
+manifest and `[data-aesthetic]` selectors.
+
+### No-Flash Restore
+
+A blocking inline script in `<head>`, before any stylesheet, reads
+`localStorage` (`color-mode`, `theme-palette-<mode>`, `theme-aesthetic`,
+`theme-fontpack`), resolves `seasonal` to today's palette, and sets `data-theme`, `data-palette`, `data-aesthetic`, and
+`data-fontpack` on `<html>` (recording the page's own pack in
+`window.__markataPageFontpack` first). Without a stored mode, the site's
+`fallback_mode` (default `dark`) is used; the OS preference is ignored so the
+site is dark by default. `color-scheme` follows `data-theme`. It falls
+back to the configured light/dark palettes (`window.__markataThemeDefaults`)
+when nothing is stored; the runtime discards stored palettes missing from the
+manifest and ignores legacy keys (`selected-palette`, `selected-family`,
+`selected-aesthetic`). Contract fallbacks for `:root` dark/light use
+`:where(...)` so their specificity never beats a `[data-palette]` block.
+View transitions preserve `data-palette` and `data-aesthetic` across SPA
+navigation.
+
+### Keyboard Navigation
+
+| Key | Action |
+|-----|--------|
+| `t` | Open/close picker |
+| `.` / `,` | Next / previous palette family (applies immediately) |
+| `>` / `<` | Next / previous aesthetic |
+| `f` / `F` | Next / previous font pack |
+| `1` `2` `3` (in popover) | Colors / Style / Font tab |
+| `\` | Toggle light/dark within the current family |
+| Arrows, Home/End, PageUp/PageDown | Move and live-preview inside the popover; `Enter` selects, `Esc` reverts |
+
+### Motif Recoloring
+
+The motif is off by default (`theme.motif.kind = "off"` in the contract
+defaults). The recipe compiler still compiles texture and heading passes when
+the motif is off and drops the unused motif asset. Aesthetic motif images (SVG) bake the configured palette's colors. When
+`html[data-palette]` differs from the configured palette, the motif is
+reused as a CSS mask painted with
+`color-mix(in srgb, var(--color-text) N%, var(--color-background))` so it
+matches the live palette.
+
+### Config-less Builds
+
+When no config file is found (`LoadWithDefaults`), the theme is normalized
+exactly as an empty config file would be, so single-file builds get the
+contract defaults (`ayu-dark` palette, `minimal` aesthetic) and a working
+picker. If no manifest is available at runtime, the picker container is
+hidden.
+
+---
+
 ## Feature Flags
 
 Themes can expose optional features that users can enable/disable:

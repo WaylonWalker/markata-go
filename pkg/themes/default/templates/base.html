@@ -45,11 +45,20 @@
       window.__markataThemeFallbackMode = fallbackMode;
 
       var mode = fallbackMode;
+      var picked = '';
+      var aesthetic = '';
+      var fontpack = '';
       try {
         var stored = localStorage.getItem('color-mode') || localStorage.getItem('theme');
         if (stored === 'light' || stored === 'dark') {
           mode = stored;
         }
+        {% if config.theme.switcher.enabled %}
+        // Restore the visitor's theme picker choice before any CSS paints.
+        picked = localStorage.getItem('theme-palette-' + mode) || '';
+        aesthetic = localStorage.getItem('theme-aesthetic') || '';
+        fontpack = localStorage.getItem('theme-fontpack') || '';
+        {% endif %}
       } catch (_) {
         // ignore storage access failures
       }
@@ -63,9 +72,47 @@
         light: '{{ config.Extra.palette_light_effective | default:config.theme.palette }}',
         dark: '{{ config.Extra.palette_dark_effective | default:config.theme.palette }}'
       };
-      var modePalette = mode === 'dark' ? palettes.dark : palettes.light;
+      window.__markataThemeDefaults = palettes;
+      {% if config.theme.switcher.enabled and config.Extra.palette_seasonal_json %}
+      // Seasonal palette: northern hemisphere seasons, switching to a holiday
+      // palette a few days before and on the day of world holidays.
+      window.__markataSeasonal = {{ config.Extra.palette_seasonal_json | safe }};
+      window.__markataSeasonalDefault = {% if config.theme.seasonal %}true{% else %}false{% endif %};
+      window.__markataSeasonalPick = function(forMode, date) {
+        var s = window.__markataSeasonal, now = date || new Date(), y = now.getFullYear();
+        var today = Date.UTC(y, now.getMonth(), now.getDate()) / 864e5;
+        var best = null, bestDiff = 1e9;
+        s.h.forEach(function(h) {
+          h.d.forEach(function(d) {
+            var p = d.split('-'), years = p.length === 3 ? [+p[0]] : [y - 1, y, y + 1];
+            years.forEach(function(yy) {
+              var diff = Date.UTC(yy, +p[p.length - 2] - 1, +p[p.length - 1]) / 864e5 - today;
+              if (diff <= s.lead && diff > -(h.n || 1) && diff < bestDiff) { best = h; bestDiff = diff; }
+            });
+          });
+        });
+        if (!best) {
+          var md = (now.getMonth() + 1) * 100 + now.getDate();
+          best = s.s[s.s.length - 1];
+          s.s.forEach(function(x) { if (md >= x.f) best = x; });
+        }
+        return { label: best.l, name: forMode === 'dark' ? best.dk : best.lt };
+      };
+      if (picked === 'seasonal' || (!picked && window.__markataSeasonalDefault)) {
+        picked = window.__markataSeasonalPick(mode).name;
+      }
+      {% endif %}
+      if (picked === 'seasonal') picked = '';
+      var modePalette = picked || (mode === 'dark' ? palettes.dark : palettes.light);
       if (modePalette) {
         document.documentElement.dataset.palette = modePalette;
+      }
+      if (aesthetic) {
+        document.documentElement.dataset.aesthetic = aesthetic;
+      }
+      window.__markataPageFontpack = document.documentElement.dataset.fontpack || '';
+      if (fontpack) {
+        document.documentElement.dataset.fontpack = fontpack;
       }
     })();
   </script>
@@ -371,7 +418,8 @@
       width: 100%;
     }
   </style>
-  <script type="module">
+  {# data-webawesome gives the base path to the loader's import-time auto-start. #}
+  <script type="module" data-webawesome="{{ config.Extra.webawesome_base_path }}">
     import { setBasePath, startLoader } from "{{ config.Extra.webawesome_loader_url }}";
     setBasePath("{{ config.Extra.webawesome_base_path }}");
     startLoader();
@@ -414,14 +462,9 @@
   {% endif %}
 
   <style>
-    html:root {
-      color-scheme: dark;
-    }
-    @media (prefers-color-scheme: light) {
-      html:root {
-        color-scheme: light;
-      }
-    }
+    /* Native controls and scrollbars follow the site's resolved mode, not the OS. */
+    html:root { color-scheme: dark; }
+    html:root[data-theme="light"] { color-scheme: light; }
   </style>
 
   <!-- RSS/Atom/JSON Feeds -->

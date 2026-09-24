@@ -9,13 +9,14 @@ import (
 func DefaultConfig() *models.Config {
 	return &models.Config{
 		Fontpack:     "system",
+		License:      models.LicenseValue{Raw: models.DefaultLicenseKey},
 		OutputDir:    "output",
 		TemplatesDir: "templates",
 		AssetsDir:    "static",
 		Hooks:        []string{"default"},
 		Extra:        make(map[string]any),
 		GlobConfig: models.GlobConfig{
-			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
+			Patterns:     []string{"*.md", "pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,
 			SlugMode:     models.SlugModeFlat,
 			SlugRules:    nil,
