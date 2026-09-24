@@ -681,3 +681,26 @@ func TestValidateConfig_CustomProjectPalette(t *testing.T) {
 		t.Error("expected unknown palette error")
 	}
 }
+
+func TestValidateConfig_ThemeFontpackAcceptsCatalogPacks(t *testing.T) {
+	tests := []struct {
+		name     string
+		fontpack string
+		wantErr  bool
+	}{
+		{"contract fontpack", "brush", false},
+		{"catalog-only fontpack", "typewriter", false},
+		{"catalog alias", "reader", false},
+		{"unknown fontpack", "definitely-missing", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &models.Config{URL: "https://example.com", Concurrency: 1}
+			config.Theme.Fontpack = tt.fontpack
+			errs := ValidateConfig(config)
+			if HasErrors(errs) != tt.wantErr {
+				t.Fatalf("HasErrors = %v, want %v: %v", HasErrors(errs), tt.wantErr, errs)
+			}
+		})
+	}
+}

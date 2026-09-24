@@ -114,7 +114,8 @@ those repositories are available, and do not add a local registry instead.
 ### New site
 
 Start with the canonical example above. Select one palette ID, aesthetic, and
-fontpack from the contract. Validate the site with the contract check and the
+fontpack. `theme.fontpack` accepts contract fontpack IDs and any pack or alias
+in the font catalog (`markata-go fonts packs`, or your `fontpacks_file`). Validate the site with the contract check and the
 focused configuration tests before adding local variables.
 
 ### New palette
