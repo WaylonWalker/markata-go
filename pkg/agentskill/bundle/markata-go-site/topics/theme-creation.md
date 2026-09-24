@@ -163,7 +163,8 @@ repositories. Run it from the markata-go repository root.
 
 ## Fonts
 
-Select a `fontpack` from the contract. A fontpack assigns named roles instead
+Select a `fontpack` from the contract or from `markata-go fonts packs` (built-in
+catalog packs and aliases such as `typewriter` or `reader` are valid). A fontpack assigns named roles instead
 of requiring each selector to name a font family. The contract roles are
 `body`, `heading`, and `mono`; use the roles supplied by the selected pack. The
 `mono` role controls code and diagrams. Do not invent a fontpack ID or a role
