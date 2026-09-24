@@ -1113,6 +1113,12 @@ type ThemeConfig struct {
 	// Valid values: "dark", "light" (default: "dark").
 	FallbackMode string `json:"fallback_mode,omitempty" yaml:"fallback_mode,omitempty" toml:"fallback_mode,omitempty"`
 
+	// Seasonal makes the seasonal palette the default for visitors who have not
+	// picked a theme. It follows northern hemisphere seasons and switches to a
+	// holiday palette a few days before and on world holidays. It requires the
+	// theme switcher, which ships the seasonal palettes.
+	Seasonal bool `json:"seasonal,omitempty" yaml:"seasonal,omitempty" toml:"seasonal,omitempty"`
+
 	// TextSize is the default reading-size preset for visitors without a saved
 	// preference. Valid values are "small", "medium", "large", and "x-large".
 	TextSize string `json:"text_size,omitempty" yaml:"text_size,omitempty" toml:"text_size,omitempty"`
@@ -1231,10 +1237,11 @@ func (c *ThemeConfig) MarkThemeNumericPresence(theme map[string]any) {
 	}
 }
 
-// ThemeSwitcherConfig configures the multi-palette theme switcher dropdown.
-// When enabled, users can select any available palette at runtime in the browser.
+// ThemeSwitcherConfig configures the visitor theme picker.
+// When enabled (the default), visitors can preview and select any available
+// palette at runtime in the browser.
 type ThemeSwitcherConfig struct {
-	// Enabled controls whether the palette switcher is shown (default: false)
+	// Enabled controls whether the visitor theme picker is shown (default: true)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
 
 	// ModeToggle controls whether the dark/light mode toggle is shown (default: true)
@@ -1258,7 +1265,7 @@ type ThemeSwitcherConfig struct {
 
 // NewThemeSwitcherConfig creates a new ThemeSwitcherConfig with default values.
 func NewThemeSwitcherConfig() ThemeSwitcherConfig {
-	enabled := false
+	enabled := true
 	modeToggle := true
 	includeAll := true
 	return ThemeSwitcherConfig{
@@ -1271,11 +1278,11 @@ func NewThemeSwitcherConfig() ThemeSwitcherConfig {
 	}
 }
 
-// IsEnabled returns whether the palette switcher is enabled.
-// Defaults to false if not explicitly set.
+// IsEnabled returns whether the visitor theme picker is enabled.
+// Defaults to true if not explicitly set.
 func (s *ThemeSwitcherConfig) IsEnabled() bool {
 	if s.Enabled == nil {
-		return false
+		return true
 	}
 	return *s.Enabled
 }
@@ -3542,7 +3549,7 @@ func NewThemeConfig() ThemeConfig {
 		Variables:       make(map[string]string),
 		Texture:         ThemeTextureConfig{Kind: "screenprint", ColorMix: 0.35, Scale: 1, Scope: "all"},
 		HeadingTexture:  ThemeHeadingTextureConfig{Kind: "inherit", ColorMix: 0.45, Scale: 1},
-		Motif:           ThemeMotifConfig{Kind: "block-w", Glyph: "W", Size: "78px", Gap: "10px", RowOffset: 0.24, Wobble: 0.18, Layer: "sandwich", Color: "ink", ColorMix: 0.01},
+		Motif:           ThemeMotifConfig{Kind: "off", Glyph: "W", Size: "78px", Gap: "10px", RowOffset: 0.24, Wobble: 0.18, Layer: "sandwich", Color: "ink", ColorMix: 0.01},
 		Font:            NewFontConfig(),
 		Switcher:        NewThemeSwitcherConfig(),
 	}

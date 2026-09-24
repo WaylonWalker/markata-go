@@ -86,6 +86,8 @@ Profiling:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       Version,
+	Args:          cobra.MaximumNArgs(1),
+	RunE:          runRootCommand,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
 		// Build Lab resolves and binds every child to its copied workspace. Do
@@ -141,6 +143,13 @@ Profiling:
 		}
 		return nil
 	},
+}
+
+func runRootCommand(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+	return runBuildCommand(cmd, args)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

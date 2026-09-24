@@ -127,6 +127,7 @@ func TestAestheticCSSPlugin_CanonicalMotifUsesCompiledAsset(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()
 	config := lifecycle.NewConfig()
 	theme := models.NewThemeConfig()
+	theme.Motif.Kind = "block-w"
 	config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
 	css := plugin.generatePresentationCSS(config)
 	if !strings.Contains(css, `--theme-motif-image: url("/assets/motif-block-w-v1.svg")`) || strings.Contains(css, "data:image/svg+xml;base64,") {
@@ -272,6 +273,7 @@ func TestAestheticCSSPlugin_PresentationKeepsTextureAndMotifPassesIndependent(t 
 		theme.Texture.Kind = "screenprint"
 		theme.Texture.ColorMix = 0
 		theme.Motif.Layer = layer
+		theme.Motif.Kind = "block-w"
 		config.Extra = map[string]interface{}{"models_config": &models.Config{Theme: theme}}
 		css := plugin.generatePresentationCSS(config)
 		if !strings.Contains(css, `--theme-texture-opacity: 0.000;`) {

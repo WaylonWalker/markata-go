@@ -232,6 +232,9 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.TextSize != "" {
 		result.TextSize = override.TextSize
 	}
+	if override.Seasonal {
+		result.Seasonal = true
+	}
 	if override.ShowTextSizeControl != nil {
 		result.ShowTextSizeControl = override.ShowTextSizeControl
 	}
@@ -338,6 +341,9 @@ func mergeSwitcherConfig(base, override models.ThemeSwitcherConfig) models.Theme
 
 	if override.Enabled != nil {
 		result.Enabled = override.Enabled
+	}
+	if override.ModeToggle != nil {
+		result.ModeToggle = override.ModeToggle
 	}
 	if override.IncludeAll != nil {
 		result.IncludeAll = override.IncludeAll

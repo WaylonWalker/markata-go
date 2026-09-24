@@ -7,6 +7,8 @@ Use this topic for everyday site work and safe project inspection.
 ### Build And Serve
 
 - `markata-go build`
+- `markata-go build pages/sample.md` (render one Markdown file with the default theme and no generated collections)
+- `markata-go pages/sample.md` (equivalent one-file invocation)
 - `markata-go build --clean` (remove output + build cache)
 - `markata-go build --clean-all` (also remove external caches: blogroll, embeds, mentions)
 - `markata-go build --fast` (skip minification, CSS purging, Pagefind indexing)

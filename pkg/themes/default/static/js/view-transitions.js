@@ -39,7 +39,9 @@
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
   const MAX_PREFETCHED_DOCUMENTS = 8;
   const PREFETCH_DEBOUNCE_MS = 120;
-  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size']);
+  // Visitor-controlled theme state must survive in-site navigation; the new
+  // document only carries server defaults.
+  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size', 'data-palette', 'data-aesthetic']);
   const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);
   const RUNTIME_HTML_ATTRIBUTE_PREFIXES = [
     'data-shared-transition-',
@@ -586,6 +588,14 @@
         preservedAttributes.set(attribute.name, attribute.value);
       }
     });
+
+    // A visitor-picked font follows navigation; otherwise each page keeps the
+    // fontpack its author assigned.
+    let pickedFontpack = null;
+    try { pickedFontpack = localStorage.getItem('theme-fontpack'); } catch (_) { /* ignore */ }
+    if (pickedFontpack && document.documentElement.hasAttribute('data-fontpack')) {
+      preservedAttributes.set('data-fontpack', document.documentElement.getAttribute('data-fontpack'));
+    }
 
     RUNTIME_HTML_CLASS_NAMES.forEach((className) => {
       if (document.documentElement.classList.contains(className)) {

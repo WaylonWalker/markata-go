@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
@@ -187,6 +189,48 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Register default plugins
 	registerDefaultPlugins(m)
+
+	return m, nil
+}
+
+// createSinglePageManager configures the normal renderer for one Markdown
+// source while suppressing collection output such as feeds and archives.
+func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, error) {
+	m, err := createManager(cfgPath)
+	if err != nil {
+		return nil, err
+	}
+
+	contentRoot, err := filepath.Abs(m.Config().ContentDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve content directory: %w", err)
+	}
+	sourceAbs, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Markdown file %q: %w", sourcePath, err)
+	}
+	relativePath, err := filepath.Rel(contentRoot, sourceAbs)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Markdown file %q relative to content directory: %w", sourcePath, err)
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("Markdown file %q is outside content directory %q", sourcePath, m.Config().ContentDir)
+	}
+	info, err := os.Stat(sourceAbs)
+	if err != nil {
+		return nil, fmt.Errorf("Markdown file %q: %w", sourcePath, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("Markdown file %q is a directory", sourcePath)
+	}
+	extension := strings.ToLower(filepath.Ext(sourceAbs))
+	if extension != ".md" && extension != ".markdown" {
+		return nil, fmt.Errorf("Markdown file %q must end in .md or .markdown", sourcePath)
+	}
+
+	m.Config().GlobPatterns = []string{relativePath}
+	m.Config().Extra["feeds"] = []models.FeedConfig{}
+	m.Config().Extra["subscription_feeds_disabled"] = true
 
 	return m, nil
 }

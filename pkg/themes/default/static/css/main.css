@@ -509,10 +509,8 @@ html:root {
   scrollbar-color: var(--color-border) transparent;
 }
 
-@media (prefers-color-scheme: light) {
-  html:root {
-    color-scheme: light;
-  }
+html:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 html::-webkit-scrollbar {

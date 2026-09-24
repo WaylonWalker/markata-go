@@ -109,7 +109,24 @@ func Discover() (string, error) {
 // LoadWithDefaults returns a configuration with default values and
 // environment variable overrides applied.
 func LoadWithDefaults() (*models.Config, error) {
-	config := DefaultConfig()
+	// Run defaults through the same theme normalization as a config file so a
+	// config-less site (e.g. `markata-go build page.md`) gets the contract
+	// default theme, including a palette for the theme picker.
+	emptyRaw := map[string]any{"markata-go": map[string]any{}}
+	warnings := normalizeRenderingTheme(emptyRaw)
+	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode default config: %w", err)
+	}
+	mergedRaw := mergeRawMaps(nil, defaultRaw, emptyRaw)
+	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	config, err := configFromRawWrapper(mergedRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode default config: %w", err)
+	}
+	if len(warnings) > 0 {
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 
 	if err := ApplyEnvOverrides(config); err != nil {
 		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)

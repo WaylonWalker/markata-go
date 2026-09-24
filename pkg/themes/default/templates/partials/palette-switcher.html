@@ -1,24 +1,22 @@
-{# Palette and Aesthetic Switcher UI Component #}
-{# Rendered when config.theme.switcher.enabled is true #}
-{# Contains: palette family dropdown, dark/light toggle, aesthetic dropdown #}
+{# Theme controls: dark/light toggle plus the visitor theme picker. #}
+{# The header stays minimal (two icon buttons). The picker popover has Colors, #}
+{# Style, and Font tabs (text size lives under Font); palette-switcher.js fills them. #}
 
 {% set show_mode_toggle = (config.theme.switcher.mode_toggle | default:true) and (config.header.show_theme_toggle | default:true) %}
 {% set show_full_switcher = config.theme.switcher.enabled %}
 {% set show_text_size_control = config.theme.show_text_size_control | default:true %}
 {% if show_mode_toggle or show_full_switcher or show_text_size_control %}
 <div class="theme-switcher{% if not show_full_switcher %} theme-switcher--mode-only{% endif %}" data-pagefind-ignore>
-  {# Dark/Light Mode Toggle #}
   {% if show_mode_toggle %}
-  <button class="palette-mode-toggle" type="button" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">
+  <button class="palette-mode-toggle" type="button" aria-label="Toggle dark/light mode" title="Toggle dark/light mode (\)">
     <span class="mode-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-        <path d="M21 14.8A8.8 8.8 0 1 1 9.2 3a7.1 7.1 0 0 0 11.8 11.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-      </svg>
+      <svg class="mode-icon-moon" viewBox="0 0 24 24" width="18" height="18" focusable="false"><path d="M21 14.8A8.8 8.8 0 1 1 9.2 3a7.1 7.1 0 0 0 11.8 11.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <svg class="mode-icon-sun" viewBox="0 0 24 24" width="18" height="18" focusable="false"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
     </span>
   </button>
   {% endif %}
 
-  {% if show_text_size_control %}
+  {% if show_text_size_control and not show_full_switcher %}
   <label class="text-size-control">
     <span class="sr-only">Text size</span>
     <select class="text-size-select" data-text-size-control aria-label="Text size">
@@ -30,91 +28,72 @@
   </label>
   {% endif %}
 
-  {# Palette Family Selector #}
   {% if show_full_switcher %}
-  <div class="palette-family-wrapper">
-    <button class="palette-family-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
-      <span>Theme</span>
-      <span class="palette-arrow" aria-hidden="true">&#9660;</span>
+  <div class="theme-picker" data-theme-picker>
+    <button class="theme-picker-toggle" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="theme-picker-panel" aria-label="Change theme" title="Change theme (t)">
+      <svg class="theme-picker-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16.5A4.5 4.5 0 0 0 21 10.5C21 6.4 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><circle class="theme-picker-dot theme-picker-dot--a" cx="7.5" cy="11.5" r="1.6"></circle><circle class="theme-picker-dot theme-picker-dot--b" cx="10" cy="7.5" r="1.6"></circle><circle class="theme-picker-dot theme-picker-dot--c" cx="14.5" cy="7.5" r="1.6"></circle></svg>
     </button>
-    <div class="palette-family-dropdown" role="listbox" hidden>
-      <div class="palette-search">
-        <input type="text" placeholder="Search palettes…" aria-label="Search palettes" autocomplete="off">
+    <div class="theme-picker-panel" id="theme-picker-panel" role="dialog" aria-label="Customize appearance" hidden>
+      <div class="theme-picker-top">
+        <div class="theme-picker-tabs" role="tablist" aria-label="Appearance">
+          <button type="button" role="tab" id="theme-picker-tab-colors" data-picker-tab="colors" aria-controls="theme-picker-pane-colors" aria-selected="true">Colors</button>
+          <button type="button" role="tab" id="theme-picker-tab-style" data-picker-tab="style" aria-controls="theme-picker-pane-style" aria-selected="false" tabindex="-1" hidden>Style</button>
+          <button type="button" role="tab" id="theme-picker-tab-font" data-picker-tab="font" aria-controls="theme-picker-pane-font" aria-selected="false" tabindex="-1" hidden>Font</button>
+        </div>
+        <div class="theme-picker-steps" role="group" aria-label="Step through choices">
+          <button type="button" class="theme-picker-step" data-picker-step="prev" aria-label="Previous">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+          <span class="theme-picker-current" data-picker-current aria-live="polite"></span>
+          <button type="button" class="theme-picker-step" data-picker-step="next" aria-label="Next">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+        </div>
       </div>
-      <div class="palette-family-list">
-        {# Family options are populated by palette-switcher.js from --palette-manifest #}
+
+      <div class="theme-picker-pane" id="theme-picker-pane-colors" data-picker-pane="colors" role="tabpanel" aria-labelledby="theme-picker-tab-colors">
+        <div class="theme-picker-head">
+          <input class="theme-picker-search" type="search" placeholder="Search themes" aria-label="Search themes" role="combobox" aria-controls="theme-picker-grid" aria-expanded="true" aria-autocomplete="list" autocomplete="off" spellcheck="false">
+          <div class="theme-picker-modes" role="group" aria-label="Color mode">
+            <button type="button" data-picker-mode="light" aria-pressed="false" title="Light themes" aria-label="Light themes">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </button>
+            <button type="button" data-picker-mode="dark" aria-pressed="false" title="Dark themes" aria-label="Dark themes">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M21 14.8A8.8 8.8 0 1 1 9.2 3a7.1 7.1 0 0 0 11.8 11.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+          </div>
+          <button type="button" class="theme-picker-icon-btn" data-picker-shuffle title="Random theme" aria-label="Random theme">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+        </div>
+        <div class="theme-picker-grid" id="theme-picker-grid" role="listbox" aria-label="Color themes"></div>
+        <p class="theme-picker-empty" hidden>No themes match.</p>
+      </div>
+
+      <div class="theme-picker-pane" id="theme-picker-pane-style" data-picker-pane="style" role="tabpanel" aria-labelledby="theme-picker-tab-style" hidden>
+        <div class="theme-picker-grid theme-picker-grid--style" data-picker-style-grid role="listbox" aria-label="Styles"></div>
+      </div>
+
+      <div class="theme-picker-pane" id="theme-picker-pane-font" data-picker-pane="font" role="tabpanel" aria-labelledby="theme-picker-tab-font" hidden>
+        {% if show_text_size_control %}
+        <div class="theme-picker-head theme-picker-sizes" role="radiogroup" aria-label="Text size" data-picker-sizes>
+          <span class="theme-picker-label" aria-hidden="true">Size</span>
+          <button type="button" role="radio" aria-checked="false" data-picker-size="small" aria-label="Small text" title="Small text"><span aria-hidden="true">A</span></button>
+          <button type="button" role="radio" aria-checked="false" data-picker-size="medium" aria-label="Medium text" title="Medium text"><span aria-hidden="true">A</span></button>
+          <button type="button" role="radio" aria-checked="false" data-picker-size="large" aria-label="Large text" title="Large text"><span aria-hidden="true">A</span></button>
+          <button type="button" role="radio" aria-checked="false" data-picker-size="x-large" aria-label="Extra large text" title="Extra large text"><span aria-hidden="true">A</span></button>
+        </div>
+        {% endif %}
+        <div class="theme-picker-grid theme-picker-grid--font" data-picker-font-grid role="listbox" aria-label="Fonts"></div>
+      </div>
+
+      <div class="theme-picker-bar">
+        <p class="theme-picker-hint" aria-hidden="true"><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> preview <span>&middot;</span> <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs <span>&middot;</span> <kbd>Enter</kbd> done</p>
+        <button type="button" class="theme-picker-reset" data-picker-reset title="Use the site's default look">Reset</button>
+        <button type="button" class="theme-picker-copy" data-picker-copy title="Copy these choices as markata-go.toml config">Copy config</button>
       </div>
     </div>
   </div>
-
-  {# Aesthetic Selector #}
-  <div class="aesthetic-wrapper">
-    <select id="aesthetic-select" class="aesthetic-select" aria-label="Select aesthetic">
-      {# Options are populated dynamically by palette-switcher.js from --aesthetic-manifest #}
-    </select>
-  </div>
   {% endif %}
 </div>
-
-{% if show_full_switcher %}
-<style>
-/* Aesthetic selector styling - matches palette-switcher design */
-.aesthetic-wrapper {
-  position: relative;
-}
-
-.aesthetic-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  background: var(--color-surface, #f5f5f5);
-  color: var(--color-text, #333);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: var(--radius-md, 0.375rem);
-  font-size: var(--text-sm, 0.875rem);
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  white-space: nowrap;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
-  background-repeat: no-repeat;
-  background-size: 1.25rem 1.25rem;
-}
-
-.aesthetic-select:hover {
-  background-color: var(--color-background, #fff);
-  border-color: var(--color-primary, #6366f1);
-}
-
-.aesthetic-select:focus-visible {
-  outline: 2px solid var(--color-primary, #6366f1);
-  outline-offset: 2px;
-}
-
-.aesthetic-select option {
-  background: var(--color-background, #fff);
-  color: var(--color-text, #333);
-  padding: 0.5rem;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 640px) {
-  .aesthetic-select {
-    padding: 0.375rem 1.75rem 0.375rem 0.5rem;
-    font-size: var(--text-xs, 0.75rem);
-  }
-}
-
-@media (max-width: 480px) {
-  .aesthetic-select {
-    max-width: 90px;
-  }
-}
-</style>
-{% endif %}
-
-{# Aesthetic initialization is handled by static/js/palette-switcher.js and re-runs after view transitions. #}
 {% endif %}

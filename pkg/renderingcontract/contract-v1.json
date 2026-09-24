@@ -148,7 +148,7 @@
       "color_mix": 0.01,
       "gap": "10px",
       "glyph": "W",
-      "kind": "block-w",
+      "kind": "off",
       "layer": "sandwich",
       "row_offset": 0.24,
       "scatter": 0,

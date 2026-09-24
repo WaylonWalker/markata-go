@@ -22,6 +22,16 @@ The markata-go CLI follows a subcommand pattern similar to tools like `git` and 
 markata-go [global flags] <command> [command flags] [arguments]
 ```
 
+For a one-file preview, pass a Markdown file directly. This renders the file
+with the default theme and skips generated feeds, the homepage, and the
+archive:
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+```
+
 ## Global Flags
 
 These flags are available for all commands:

@@ -114,6 +114,32 @@ markata-go searches for configuration files in the following order (first found 
 
 If no configuration file is found, markata-go uses default values with any environment variable overrides applied.
 
+### Start With One Markdown File
+
+A configuration file is optional for a small site. The default content
+patterns include root Markdown plus the `pages/` and `posts/` directories, so
+this minimal layout works:
+
+```text
+pages/
+  sample.md
+```
+
+`markata-go build` and `markata-go serve` render `sample.md`, a homepage that
+links to it, and an `/archive/` page. The homepage also keeps the default RSS
+and Atom endpoints at `/rss.xml` and `/atom.xml`. Posts must be published to
+appear in these collections: use `published: true` in frontmatter. An empty
+site still renders `/` with that reminder.
+
+To render only one Markdown file with the bundled default theme, without
+generating a homepage, archive, or feeds, pass the file directly:
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+```
+
 ## Select A Site From Another Directory
 
 Use `--site-dir` when the site is not your current directory. This is useful
@@ -377,7 +403,8 @@ Supported license keys:
 - `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
 - `mit` – MIT License (`https://opensource.org/licenses/MIT`).
 
-Leaving the key absent (the default in older configs) triggers a validation warning and the serve banner/toast until you choose one of the supported strings or set `license = false`.
+When omitted, `license` defaults to `cc-by-4.0`. Set another supported string
+to override it, or set `license = false` to suppress footer attribution.
 
 ### Navigation Links (`[[markata-go.nav]]`)
 
@@ -472,13 +499,19 @@ When enabled, markata-go generates JSON-LD structured data for:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | `"default"` | Theme name |
-| `palette` | string | `"default-light"` | Color palette to use |
+| `palette` | string | `"ayu-dark"` | Color palette to use |
 | `palette_dark` | string | `""` | Dark mode palette |
-| `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
+| `fallback_mode` | string | `"dark"` | Mode for visitors who have not toggled it (`"dark"` or `"light"`); the OS preference is not used |
+| `seasonal` | boolean | `false` | Default visitors to the seasonal palette (northern hemisphere seasons plus world holidays). Needs the theme switcher; `palette` stays the fallback. See [Themes: Seasonal](/docs/guides/themes/#seasonal) |
 | `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, `"large"`, or `"x-large"`. Article text additionally scales up on viewports ≥1800px. |
 | `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
+| `fontpack` | string | `"brush"` | Font pack: Knewave headings, Space Grotesk body, DM Mono code by default |
+| `aesthetic` | string | `"minimal"` | Surface style: `minimal`, `balanced`, `elevated`, `precision`, or `brutal` |
+| `motif.kind` | string | `"off"` | Background motif (`off`, `block-w`, `letter`) |
+| `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; its **Copy config** button copies the current choices as TOML (see [Themes Guide](/docs/guides/themes/)) |
+| `switcher.mode_toggle` | bool | `true` | Show the light/dark toggle next to the picker |
 
 ```toml
 [markata-go.theme]

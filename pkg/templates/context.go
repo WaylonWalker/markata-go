@@ -1034,6 +1034,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 		"palette_light":    t.PaletteLight,
 		"palette_dark":     t.PaletteDark,
 		"fallback_mode":    t.FallbackMode,
+		"seasonal":         t.Seasonal,
 		"contract_version": t.ContractVersion,
 		"fontpack":         t.Fontpack,
 		"aesthetic":        t.Aesthetic,
@@ -1058,7 +1059,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 func SwitcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 	if s == nil {
 		return map[string]interface{}{
-			"enabled":     false,
+			"enabled":     true,
 			"mode_toggle": true,
 			"include_all": true,
 			"position":    "header",

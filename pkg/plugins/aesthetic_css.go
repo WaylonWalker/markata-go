@@ -69,7 +69,7 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 	} else {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
-	css += p.generatePresentationCSS(config)
+	css += p.generatePresentationCSS(config) + aestheticSurfaceCSS
 	if bundle, err := compileMotifBundle(config); err != nil {
 		return err
 	} else if len(bundle.Assets) != 0 {
@@ -115,7 +115,7 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 	} else {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
-	css += p.generatePresentationCSS(config)
+	css += p.generatePresentationCSS(config) + aestheticSurfaceCSS
 
 	cssDir := filepath.Join(outputDir, "css")
 	cssPath := filepath.Join(cssDir, "aesthetic.css")
@@ -338,7 +338,43 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 		}
 	}
 	aestheticCSS += fmt.Sprintf(" --canonical-highlight-radius: %s;", canonicalHighlightRadius)
-	return fmt.Sprintf("\n@layer tokens {\n  :root {\n    %s\n    --theme-contract-version: %d;\n    --theme-texture-kind: %q; --theme-texture-color-mix: %.3f; --theme-texture-scale: %.3f; --theme-texture-scope: %q; --theme-texture-opacity: %.3f; --theme-texture-image: %s;\n    --theme-heading-texture-kind: %q; --theme-heading-texture-color-mix: %.3f; --theme-heading-texture-scale: %.3f; --theme-heading-texture-color: %s; --theme-heading-texture-mask: %s;\n    --theme-motif-kind: %q; --theme-motif-glyph: %q; --theme-motif-color-mix: %.3f; --theme-motif-layer: %q; --theme-motif-image: %s; --theme-motif-under-image: %s; --theme-motif-over-image: %s; --theme-motif-mask: %s; --theme-motif-paint: %s; --theme-motif-size: %q; --theme-motif-gap: %q; --theme-motif-row-offset: %.3f; --theme-motif-wobble: %.3f; --theme-motif-scatter: %.3f; --theme-motif-color: %q; --theme-motif-url: %q; --theme-motif-z: %s;\n  }\n  body { background-image: var(--theme-motif-under-image); background-size: var(--theme-motif-field-size); background-position: 0 0; }\n  body::before { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: -1; background-image: var(--theme-texture-image); background-size: calc(180px * var(--theme-texture-scale)); background-position: 0 0; opacity: var(--theme-texture-opacity); }\n  [data-theme-texture-scope=quiet] main, [data-theme-texture-scope=quiet] article, [data-theme-texture-scope=quiet] [data-reading-surface], [data-theme-texture-scope=quiet] .reading-surface { background-color: var(--color-background, #fff); }\n  h1, h2, h3, h4, h5, h6 { color: transparent; background-color: var(--color-text, #222); background-image: var(--theme-heading-texture-color); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }\n  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-color: var(--theme-motif-paint); background-image: var(--theme-motif-over-image); mask-image: var(--theme-motif-mask); -webkit-mask-image: var(--theme-motif-mask); background-size: var(--theme-motif-field-size); mask-size: var(--theme-motif-field-size); background-position: 0 0; mask-position: 0 0; background-repeat: repeat; mask-repeat: repeat; opacity: 1; transform: none; }\n}\n", aestheticCSS, theme.ContractVersion, textureKind, textureMix, theme.Texture.Scale, theme.Texture.Scope, textureOpacity, textureImage, headingTextureKind, headingMix, theme.HeadingTexture.Scale, headingColor, headingImage, theme.Motif.Kind, theme.Motif.Glyph, motifMix, theme.Motif.Layer, motifImage, underImage, overImage, motifMask, motifPaint, theme.Motif.Size, theme.Motif.Gap, theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter, theme.Motif.Color, theme.Motif.URL, motifZ)
+	liveMotif := liveMotifCSS(theme, motifImage, motifMix)
+	return fmt.Sprintf("\n@layer tokens {\n  :root {\n    %s\n    --theme-contract-version: %d;\n    --theme-texture-kind: %q; --theme-texture-color-mix: %.3f; --theme-texture-scale: %.3f; --theme-texture-scope: %q; --theme-texture-opacity: %.3f; --theme-texture-image: %s;\n    --theme-heading-texture-kind: %q; --theme-heading-texture-color-mix: %.3f; --theme-heading-texture-scale: %.3f; --theme-heading-texture-color: %s; --theme-heading-texture-mask: %s;\n    --theme-motif-kind: %q; --theme-motif-glyph: %q; --theme-motif-color-mix: %.3f; --theme-motif-layer: %q; --theme-motif-image: %s; --theme-motif-under-image: %s; --theme-motif-over-image: %s; --theme-motif-mask: %s; --theme-motif-paint: %s; --theme-motif-size: %q; --theme-motif-gap: %q; --theme-motif-row-offset: %.3f; --theme-motif-wobble: %.3f; --theme-motif-scatter: %.3f; --theme-motif-color: %q; --theme-motif-url: %q; --theme-motif-z: %s;\n  }\n  body { background-image: var(--theme-motif-under-image); background-size: var(--theme-motif-field-size); background-position: 0 0; }\n  body::before { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: -1; background-image: var(--theme-texture-image); background-size: calc(180px * var(--theme-texture-scale)); background-position: 0 0; opacity: var(--theme-texture-opacity); }\n  [data-theme-texture-scope=quiet] main, [data-theme-texture-scope=quiet] article, [data-theme-texture-scope=quiet] [data-reading-surface], [data-theme-texture-scope=quiet] .reading-surface { background-color: var(--color-background, #fff); }\n  h1, h2, h3, h4, h5, h6 { color: transparent; background-color: var(--color-text, #222); background-image: var(--theme-heading-texture-color); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; mask-image: var(--theme-heading-texture-mask); -webkit-mask-image: var(--theme-heading-texture-mask); mask-size: calc(180px * var(--theme-heading-texture-scale)); -webkit-mask-size: calc(180px * var(--theme-heading-texture-scale)); mask-repeat: repeat; -webkit-mask-repeat: repeat; }\n  body::after { content: ''; pointer-events: none; position: fixed; inset: 0; z-index: var(--theme-motif-z); background-color: var(--theme-motif-paint); background-image: var(--theme-motif-over-image); mask-image: var(--theme-motif-mask); -webkit-mask-image: var(--theme-motif-mask); background-size: var(--theme-motif-field-size); mask-size: var(--theme-motif-field-size); background-position: 0 0; mask-position: 0 0; background-repeat: repeat; mask-repeat: repeat; opacity: 1; transform: none; }\n}\n", aestheticCSS, theme.ContractVersion, textureKind, textureMix, theme.Texture.Scale, theme.Texture.Scope, textureOpacity, textureImage, headingTextureKind, headingMix, theme.HeadingTexture.Scale, headingColor, headingImage, theme.Motif.Kind, theme.Motif.Glyph, motifMix, theme.Motif.Layer, motifImage, underImage, overImage, motifMask, motifPaint, theme.Motif.Size, theme.Motif.Gap, theme.Motif.RowOffset, theme.Motif.Wobble, theme.Motif.Scatter, theme.Motif.Color, theme.Motif.URL, motifZ) + liveMotif
+}
+
+// liveMotifCSS lets the motif follow a palette chosen in the theme picker.
+// Compiled motif artwork bakes the configured palette's paint into the image,
+// so when the page runs any other palette the artwork is reused as an alpha
+// mask and painted from the live palette variables instead.
+func liveMotifCSS(theme models.ThemeConfig, motifImage string, mix float64) string {
+	if theme.Motif.Kind == renderingMotifOff || motifImage == "" || motifImage == renderingTextureNone {
+		return ""
+	}
+	target := "var(--color-text)"
+	weight := mix
+	switch theme.Motif.Color {
+	case "accent":
+		target = "var(--color-link, var(--color-primary))"
+	case "muted":
+		weight = mix * .55
+	case "shadow":
+		weight = mix * .28
+	}
+	z := "var(--theme-motif-z)"
+	if theme.Motif.Layer == renderingLayerUnder {
+		z = "0"
+	}
+	selector := "html[data-palette]"
+	if theme.Palette != "" && !strings.ContainsAny(theme.Palette, "\"\\]\n\r") {
+		selector += fmt.Sprintf(`:not([data-palette=%q])`, theme.Palette)
+	}
+	size := "var(--theme-motif-field-size, calc(16 * (var(--theme-motif-size) + var(--theme-motif-gap)))) auto"
+	return fmt.Sprintf(`
+@layer tokens {
+  %[1]s body { background-image: none; }
+  %[1]s body::after { z-index: %[2]s; background-image: none; background-color: color-mix(in srgb, %[3]s %.2[4]f%%, var(--color-background)); mask-image: %[5]s; -webkit-mask-image: %[5]s; mask-size: %[6]s; -webkit-mask-size: %[6]s; mask-repeat: repeat; -webkit-mask-repeat: repeat; mask-position: 0 0; -webkit-mask-position: 0 0; }
+}
+`, selector, z, target, weight*100, motifImage, size)
 }
 
 // compiledMotifBundle is the single bridge from the model configuration to
@@ -378,6 +414,13 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	if theme.HeadingTexture.Kind == renderingHeadingInherit {
 		theme.HeadingTexture.Kind = renderingHeadingSplatter
 	}
+	// A disabled motif still needs the texture and heading passes. Compile
+	// them with the canonical motif geometry and drop the unused motif asset.
+	motifOff := theme.Motif.Kind == renderingMotifOff
+	if motifOff {
+		theme.Motif.Kind = renderingMotifBlockW
+		theme.Motif.URL = ""
+	}
 	if (theme.Texture.Kind != renderingTextureNone && theme.Texture.Kind != renderingTextureScreenprint) || theme.HeadingTexture.Kind != renderingHeadingSplatter || theme.Motif.Kind != renderingMotifBlockW {
 		return renderingrecipe.Bundle{}, fmt.Errorf("unsupported rendering recipe: texture=%q heading_texture=%q motif=%q", theme.Texture.Kind, theme.HeadingTexture.Kind, theme.Motif.Kind)
 	}
@@ -397,6 +440,9 @@ func compileMotifBundle(config *lifecycle.Config) (renderingrecipe.Bundle, error
 	bundle, err := renderingrecipe.Compile(bundleTheme)
 	if err != nil {
 		return renderingrecipe.Bundle{}, fmt.Errorf("compile motif bundle: %w", err)
+	}
+	if motifOff {
+		delete(bundle.Assets, "assets/motif-block-w-v1.svg")
 	}
 	return bundle, nil
 }
@@ -547,20 +593,7 @@ func motifLayerZ(layer string) string {
 }
 
 func (p *AestheticCSSPlugin) isSwitcherEnabled(extra map[string]interface{}) bool {
-	if extra == nil {
-		return false
-	}
-	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
-		return themeConfig.Switcher.IsEnabled()
-	}
-	if theme, ok := extra["theme"].(map[string]interface{}); ok {
-		if switcher, ok := theme["switcher"].(map[string]interface{}); ok {
-			if enabled, ok := switcher["enabled"].(bool); ok {
-				return enabled
-			}
-		}
-	}
-	return false
+	return themeSwitcherEnabled(extra)
 }
 
 func (p *AestheticCSSPlugin) getSwitcherConfig(extra map[string]interface{}) models.ThemeSwitcherConfig {
@@ -617,7 +650,7 @@ func (p *AestheticCSSPlugin) generateMultiAestheticCSS(loader *aesthetic.Loader,
 	manifest := make([]AestheticManifestEntry, 0, len(filteredAesthetics))
 	for _, info := range filteredAesthetics {
 		manifest = append(manifest, AestheticManifestEntry{
-			Name:        info.Name,
+			Name:        aestheticID(info.Name),
 			DisplayName: info.Name,
 		})
 	}
@@ -645,7 +678,9 @@ func (p *AestheticCSSPlugin) generateMultiAestheticCSS(loader *aesthetic.Loader,
 		}
 
 		buf.WriteString(fmt.Sprintf("/* Aesthetic: %s */\n", info.Name))
-		buf.WriteString(fmt.Sprintf("[data-aesthetic=%q] {\n", info.Name))
+		// Scope by the normalized id so it matches the configured aesthetic
+		// name rendered into data-aesthetic (e.g. "minimal", not "Minimal").
+		buf.WriteString(fmt.Sprintf("[data-aesthetic=%q] {\n", aestheticID(info.Name)))
 
 		// Extract variables directly to inject in [data-aesthetic] scope
 		p.writeAestheticVariablesIndented(&buf, a, "  ")
@@ -665,6 +700,11 @@ func (p *AestheticCSSPlugin) generateMultiAestheticCSS(loader *aesthetic.Loader,
 
 	buf.WriteString("}\n")
 	return buf.String()
+}
+
+// aestheticID normalizes an aesthetic name the same way the aesthetic loader does.
+func aestheticID(name string) string {
+	return strings.NewReplacer(" ", "-", "_", "-").Replace(strings.ToLower(name))
 }
 
 func (p *AestheticCSSPlugin) writeAestheticVariablesIndented(buf *bytes.Buffer, a *aesthetic.Aesthetic, indent string) {
