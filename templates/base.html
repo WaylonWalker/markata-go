@@ -617,7 +617,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
+  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not resolved_doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
       {% endif %}
@@ -628,7 +628,7 @@
       {% endif %}
 
       {# Left sidebar for document TOC (if enabled) #}
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'left' %}
+      {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'left' %}
       {% include "components/doc_sidebar.html" %}
       {% endif %}
 
@@ -638,11 +638,11 @@
       </main>
 
       {# Right sidebar for document TOC (if enabled) #}
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+      {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'right' %}
       {% include "components/doc_sidebar.html" %}
       {% endif %}
 
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+      {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'right' %}
       {% endif %}
     {% endblock %}
   </div>
