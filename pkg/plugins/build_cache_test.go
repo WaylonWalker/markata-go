@@ -36,6 +36,30 @@ func TestConfigFilesHash_ChangesWhenOverlayChanges(t *testing.T) {
 	}
 }
 
+func TestConfigFilesHash_ChangesWhenIncludedFileChanges(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "markata-go.toml")
+	included := filepath.Join(dir, "config", "theme.toml")
+	if err := os.MkdirAll(filepath.Dir(included), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(base, []byte("[markata-go]\ninclude = [\"config/*.toml\"]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(included, []byte("[markata-go.theme]\npalette = \"a\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	first := buildcache.ContentHash(configFilesHash([]string{base}))
+	if err := os.WriteFile(included, []byte("[markata-go.theme]\npalette = \"b\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second := buildcache.ContentHash(configFilesHash([]string{base}))
+	if first == second {
+		t.Fatal("expected config hash to change when an included config file changes")
+	}
+}
+
 func TestConfigFilesHash_IsStableAcrossPathFormsAndOrder(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "markata-go.toml")

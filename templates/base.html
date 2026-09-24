@@ -19,103 +19,7 @@
       if (params.get('capture') === 'natural') document.documentElement.classList.add('canonical-natural-route');
     }
   </script>
-  <script>
-    (function() {
-      var root = document.documentElement;
-      var fallbackSize = root.dataset.textSize || 'large';
-      var allowed = { small: true, medium: true, large: true, 'x-large': true };
-      var size = allowed[fallbackSize] ? fallbackSize : 'large';
-      var allowVisitorSize = {% if config.theme.show_text_size_control | default:true %}true{% else %}false{% endif %};
-      if (allowVisitorSize) {
-        try {
-          var stored = localStorage.getItem('text-size');
-          if (stored && allowed[stored]) {
-            size = stored;
-          }
-        } catch (_) {
-          // ignore storage access failures
-        }
-      }
-      root.dataset.textSize = size;
-    })();
-  </script>
-  <script>
-    (function() {
-      var fallbackMode = '{% if config.theme.fallback_mode == "light" %}light{% else %}dark{% endif %}';
-      window.__markataThemeFallbackMode = fallbackMode;
-
-      var mode = fallbackMode;
-      var picked = '';
-      var aesthetic = '';
-      var fontpack = '';
-      try {
-        var stored = localStorage.getItem('color-mode') || localStorage.getItem('theme');
-        if (stored === 'light' || stored === 'dark') {
-          mode = stored;
-        }
-        {% if config.theme.switcher.enabled %}
-        // Restore the visitor's theme picker choice before any CSS paints.
-        picked = localStorage.getItem('theme-palette-' + mode) || '';
-        aesthetic = localStorage.getItem('theme-aesthetic') || '';
-        fontpack = localStorage.getItem('theme-fontpack') || '';
-        {% endif %}
-      } catch (_) {
-        // ignore storage access failures
-      }
-
-      document.documentElement.dataset.theme = mode;
-      document.documentElement.classList.toggle('dark', mode === 'dark');
-
-      // Pin data-palette to the variant that matches the resolved mode so the
-      // per-palette CSS block agrees with data-theme on first paint.
-      var palettes = {
-        light: '{{ config.Extra.palette_light_effective | default:config.theme.palette }}',
-        dark: '{{ config.Extra.palette_dark_effective | default:config.theme.palette }}'
-      };
-      window.__markataThemeDefaults = palettes;
-      {% if config.theme.switcher.enabled and config.Extra.palette_seasonal_json %}
-      // Seasonal palette: northern hemisphere seasons, switching to a holiday
-      // palette a few days before and on the day of world holidays.
-      window.__markataSeasonal = {{ config.Extra.palette_seasonal_json | safe }};
-      window.__markataSeasonalDefault = {% if config.theme.seasonal %}true{% else %}false{% endif %};
-      window.__markataSeasonalPick = function(forMode, date) {
-        var s = window.__markataSeasonal, now = date || new Date(), y = now.getFullYear();
-        var today = Date.UTC(y, now.getMonth(), now.getDate()) / 864e5;
-        var best = null, bestDiff = 1e9;
-        s.h.forEach(function(h) {
-          h.d.forEach(function(d) {
-            var p = d.split('-'), years = p.length === 3 ? [+p[0]] : [y - 1, y, y + 1];
-            years.forEach(function(yy) {
-              var diff = Date.UTC(yy, +p[p.length - 2] - 1, +p[p.length - 1]) / 864e5 - today;
-              if (diff <= s.lead && diff > -(h.n || 1) && diff < bestDiff) { best = h; bestDiff = diff; }
-            });
-          });
-        });
-        if (!best) {
-          var md = (now.getMonth() + 1) * 100 + now.getDate();
-          best = s.s[s.s.length - 1];
-          s.s.forEach(function(x) { if (md >= x.f) best = x; });
-        }
-        return { label: best.l, name: forMode === 'dark' ? best.dk : best.lt };
-      };
-      if (picked === 'seasonal' || (!picked && window.__markataSeasonalDefault)) {
-        picked = window.__markataSeasonalPick(mode).name;
-      }
-      {% endif %}
-      if (picked === 'seasonal') picked = '';
-      var modePalette = picked || (mode === 'dark' ? palettes.dark : palettes.light);
-      if (modePalette) {
-        document.documentElement.dataset.palette = modePalette;
-      }
-      if (aesthetic) {
-        document.documentElement.dataset.aesthetic = aesthetic;
-      }
-      window.__markataPageFontpack = document.documentElement.dataset.fontpack || '';
-      if (fontpack) {
-        document.documentElement.dataset.fontpack = fontpack;
-      }
-    })();
-  </script>
+  {% include "partials/theme-bootstrap.html" %}
 
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
@@ -489,7 +393,7 @@
   {% if discovery_feed.has_json %}
   <link rel="alternate" type="application/feed+json" title="{{ discovery_feed.title }} (JSON)" href="{{ discovery_feed.json_url }}">
   {% endif %}
-  {% else %}
+  {% elif not single_page %}
   {# Fallback: default feeds when no discovery_feed or alternate_feeds configured #}
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">

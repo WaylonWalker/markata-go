@@ -448,10 +448,34 @@ The XSL stylesheet SHOULD use the same color palette as the main site:
 
 ```toml
 [markata-go.theme]
-palette = "catppuccin-mocha"  # RSS feed will use same colors
+palette = "catppuccin-mocha"  # RSS/Atom pages use the same palette, fonts and aesthetic
 ```
 
-The stylesheet template receives palette colors as variables, ensuring visual consistency between your site and feed reader previews.
+The default `rss.xsl` and `atom.xsl` MUST render with the same theme as the site pages:
+
+- Each stylesheet contains a marker region:
+
+  ```xml
+  <!-- markata:theme-head -->
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <!-- /markata:theme-head -->
+  ```
+
+- When copying stylesheets to the output, `publish_feeds` renders
+  `partials/feed-xsl-head.html` with the site config and replaces the whole
+  region with it. The partial sets the `<html>` theme attributes
+  (`data-palette` resolved for `fallback_mode`, `data-aesthetic`,
+  `data-fontpack`, `data-text-size`, `data-theme-texture-scope`), includes
+  `partials/theme-bootstrap.html` (the same color-mode, visitor theme-picker,
+  seasonal-palette and text-size bootstrap `base.html` uses), and links the same
+  hashed core CSS (variables, palette, main, components, text-size, fonts,
+  aesthetic).
+- The rendered markup is made XML-safe before substitution: `<script>` bodies are
+  wrapped in CDATA and `<link>`/`<meta>` are self-closed.
+- Stylesheets without the marker (for example older custom files in the
+  templates directory) are copied unchanged. If rendering fails, the region is
+  left as-is so the static fallback links still apply.
 
 ---
 
@@ -1218,16 +1242,25 @@ tablist of three tabs, each a `role="listbox"` grid of preview cards:
 
 | Tab | Cards | Scoping |
 |-----|-------|---------|
-| Colors | Seasonal card, then one card per palette for the browsed mode; search, Light/Dark, Shuffle | card sets `data-palette` |
+| Colors | Seasonal card, then one card per palette for the browsed mode; search, Light/Dark, Shuffle, seasonal schedule toggle | card sets `data-palette` |
 | Style | one card per aesthetic | card sets `data-aesthetic` |
 | Font | text-size radio buttons, then one card per font pack | inline font stacks from the manifest, applied when the card intersects the grid (IntersectionObserver) |
+
+Hover preview: for mouse pointers (`pointerType === "mouse"`), entering a
+card, a year-strip segment, or a Coming-up row applies its palette (with the
+palette's variant as `data-theme`), aesthetic, or fontpack to `<html>` without
+storing anything, at most once per animation frame. The real attributes are
+saved on the first preview and restored 90ms after the pointer leaves all
+cards (gaps inside a grid, the year strip, or the list keep the last preview),
+and before any choice is committed, the tab or schedule view changes, the mode
+changes, Reset, or the picker closes.
 
 Tabs with fewer than two choices are hidden (Font stays while the size
 control is shown). The top bar has ‹ › step buttons and a live label with
 the current choice. The buttons move through the active tab's visible cards,
 wrap at the ends, and apply each choice immediately. The last tab is stored
 as `theme-picker-tab`. The bottom bar holds Reset (clears all stored choices)
-and Copy config. The popover uses a fixed system UI font, so it does not
+and, under `markata-go serve` only, Bake. The popover uses a fixed system UI font, so it does not
 reflow while fonts are previewed. On small screens, every control is at least
 40px tall and the sheet pads for `env(safe-area-inset-bottom)`.
 
@@ -1258,6 +1291,16 @@ for `pre`, `.card`, `.admonition`, `.embed-card`, `.blogroll-card`, and post
 tables/images live in `@layer utilities` and are keyed on
 `html[data-aesthetic]`. `minimal` defines tokens only (for previews); its
 surfaces are the theme's native look.
+
+`brutal` derives its colors from the active palette so it fits every theme:
+borders use `--brutal-ink` (`--color-text` mixed 82% with
+`--color-background`), and the hard 5px offset shadow uses `--brutal-accent`
+(`--color-primary`). Brutal also squares and borders every control in page
+content and the header: `button`, `input`, `select`, `textarea`,
+`.share-button`, `.post-copy__summary`, and the Pagefind search input. It
+excludes `.theme-card` and anything inside `.theme-picker-panel`. Blockquotes
+get a 6px accent left rule. On hover, cards deepen to an 8px accent shadow and
+controls gain a 3px accent shadow, without transforms.
 
 ### Seasonal
 
@@ -1302,25 +1345,107 @@ Holidays:
 For each mode, the first listed palette with that variant is used, then the
 first palette's counterpart. Entries without both variants are dropped. When
 no season resolves, the schedule is omitted and the Seasonal card is hidden.
-Copy config emits the site palettes plus `seasonal = true`.
 
-### Copy Config
+#### Schedule View
 
-Copy config writes the current choices as TOML:
+When a schedule exists, the Colors tab shows a calendar toggle
+(`[data-picker-schedule]`, `aria-pressed`) that swaps the grid for
+`#theme-picker-schedule`:
 
-```toml
-[markata-go.theme]
-palette = "<current>"
-palette_light = "<light pick>"   # omitted when light == dark
-palette_dark = "<dark pick>"
-fallback_mode = "<current mode>"
-aesthetic = "<id>"
-fontpack = "<id>"
-text_size = "<preset>"
+- Periods are computed by calling `__markataSeasonalPick(mode, date)` for each
+  day and merging consecutive days with the same pick, so the view always
+  matches what the head script applies. `mode` is the mode being browsed.
+- A year strip (Jan 1 to Dec 31 of the visitor's current year) with one
+  segment per period, width proportional to its days, scoped with
+  `data-palette`, and a marker for today. It has an `aria-label` listing every
+  period.
+- A **Coming up** list for the next 366 days: the current period ("Now · until
+  <date>"), then each holiday with its date range and each season the first
+  time it starts ("From <date>"). A season resuming after a holiday is not
+  listed again.
+- Durations: holidays show their day count (lead days included); seasons show
+  the full season length (start to the next season's start, holidays
+  included); the current period shows the time left. Under 14 days is shown in
+  days, otherwise in weeks (`~` when not a whole number of weeks).
+- A readout under the strip shows the hovered (or tapped, on touch) period's
+  label, dates, length, and palette. The strip segment and list row of the same
+  period share a `data-period-key` and get `.is-linked` together. While any
+  hover preview is active, the top label reads `Preview: <name>`.
+- **Use Seasonal** selects seasonal; it is disabled when seasonal is active.
+- Searching, Shuffle, the ‹ › step buttons, closing the picker, or pressing the
+  toggle again returns to the grid. Changing the browsed mode re-renders the
+  view.
+Bake writes `seasonal = true` and leaves the configured palettes as the fallback.
+
+### Bake
+
+Bake writes the picker's current choices into the site config. It exists only
+under `markata-go serve`: the dev server injects
+`window.__markataThemeBakeEndpoint = "/__markata/theme/bake"` into served
+HTML, and the `[data-picker-bake]` button stays `hidden` unless that global is
+set. Static builds never contain the endpoint.
+
+The first click sends `GET /__markata/theme/bake`, which returns
+`{target, path, exists, warnings}`, and relabels the button
+`Bake into <target>?`. A second click within 4s sends `POST` with a JSON body:
+
+```json
+{"palette": "<current>", "palette_light": "<light pick>", "palette_dark": "<dark pick>",
+ "seasonal": false, "fallback_mode": "light|dark", "aesthetic": "<id>",
+ "fontpack": "<id>", "text_size": "small|medium|large|x-large"}
 ```
 
-It uses the async Clipboard API in secure contexts, falls back to
-`execCommand('copy')`, and finally to a `prompt()` showing the snippet.
+The server writes these `[markata-go.theme]` keys, in this order:
+
+- When `seasonal` is true, it writes `seasonal = true` and does not touch the palettes.
+- Otherwise it writes `palette`, `palette_light`, and `palette_dark`, plus
+  `seasonal = false` when the target file or effective config has seasonal on.
+- Then `fallback_mode`, `aesthetic`, `fontpack`, and `text_size`. Empty fields are skipped.
+
+On success the picker removes the stored palette, aesthetic, and fontpack
+picks, the server queues a full rebuild, and live reload shows the new defaults.
+
+**Target file.** Candidates are the root config, its `include` files
+(recursively, in load order), then `--merge-config` files. This is the same
+lowest-to-highest precedence order the loader uses.
+
+- The last candidate that already defines `markata-go.theme` is edited.
+- If none defines it, the root config is used.
+- With no config file, `markata-go.toml` is created in the site directory.
+
+**Editing rules.** Edits MUST preserve everything except the baked keys:
+
+- Existing keys are replaced in place, keeping their trailing comments.
+- Missing keys are added to the existing group. TOML appends them after the
+  table's last key; YAML inserts them first in the block mapping, using the
+  file's indentation.
+- A missing group is appended as `[markata-go.theme]` (TOML) or inserted under
+  `markata-go:` (YAML). JSON keeps key order and indentation.
+- TOML dotted keys (`theme.palette = ...` under `[markata-go]`) are edited in place.
+
+**Refusals.** Layouts that cannot be edited without reformatting fail with
+HTTP 409 and leave the file unchanged: TOML inline tables, YAML flow
+mappings, block scalars, and multi-line strings. (Multi-line TOML arrays and
+YAML block sequences are replaced whole.) The edited document is
+re-parsed, and it MUST equal the original plus the baked keys, or the write
+is aborted. Writes are atomic (temp file plus rename) and keep file permissions.
+
+**Request safety.** The endpoint accepts only GET and POST.
+
+- POST requires `Content-Type: application/json`, and requests from another
+  origin (`Origin` host mismatch or `Sec-Fetch-Site: cross-site`) get 403.
+- Bodies over 8 KiB, unknown fields, names outside
+  `[A-Za-z0-9][A-Za-z0-9 ._'&+()-]{0,79}`, and unknown modes or sizes get 400.
+- `MARKATA_GO_THEME_*` environment overrides are reported as warnings.
+
+Included config files are part of the build-cache config hash, so editing
+any of them, by bake or by hand, invalidates cached pages.
+
+Bake is the theme-only front end of the general settings sidebar, which edits
+any config setting with the same editor; see "Serve Settings Sidebar" in
+[CONFIG.md](CONFIG.md). The picker shows an `[data-picker-settings]`
+**All settings** button, hidden unless `window.__markataSettingsEndpoint` is
+set, that closes the picker and calls `window.markataDevSettings.open('theme')`.
 
 ### Manifest
 

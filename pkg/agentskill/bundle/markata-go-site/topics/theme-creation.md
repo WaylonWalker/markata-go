@@ -132,9 +132,11 @@ plus text size) tabs of live preview cards, with ‹ › buttons to step through
 the active tab. Colors includes a **Seasonal** option: northern hemisphere
 seasons, switching to holiday palettes a few days before and on world
 holidays. To make that the default for visitors, add `seasonal = true` to
-`[markata-go.theme]` and keep `palette` as the fallback. Its **Copy config** button copies the visitor's current choices as
-a `[markata-go.theme]` TOML snippet; when a user says "use the look I picked",
-ask them to paste that snippet and merge its keys into the theme table. The
+`[markata-go.theme]` and keep `palette` as the fallback. Under `markata-go serve` only, its **Bake** button writes the current choices
+into `[markata-go.theme]`. It edits whichever config file already holds the
+theme table (including `include`d files such as `config/theme.toml`), keeps
+comments, and triggers a rebuild. When a user says "use the look I picked",
+have them click Bake in `serve`, then review the diff of the named file. The
 default fontpack is `brush` (Knewave headings, Space Grotesk body, DM Mono
 code). Sites are dark by default (`fallback_mode = "dark"`).
 Builds with no config file (such as `markata-go build post.md`) use the

@@ -1635,6 +1635,9 @@ func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir stri
 // It searches for XSL files in the following order:
 // 1. User's templates directory (if configured)
 // 2. Embedded default theme templates (fallback)
+//
+// Stylesheets containing the markata:theme-head marker region get the site's
+// theme head injected (see themeFeedXSL).
 func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, outputDir string) error {
 	// Ensure output directory exists
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
@@ -1672,6 +1675,8 @@ func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, output
 		} else {
 			return fmt.Errorf("checking XSL file %s: %w", srcPath, statErr)
 		}
+
+		content = p.themeFeedXSL(content, config, templatesDir)
 
 		// Write to output directory
 		dstPath := filepath.Join(outputDir, xslFile)

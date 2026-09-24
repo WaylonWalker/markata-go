@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
@@ -187,33 +188,21 @@ func validateRenderingTheme(config *models.Config) []error {
 		}
 		errs = append(errs, ValidationError{Field: field, Message: fmt.Sprintf("unsupported value %q", value)})
 	}
-	palette := config.Theme.Palette
-	if alias, ok := c.Aliases[palette]; ok {
-		palette = alias
-	}
-	found := false
-	for _, item := range c.Palettes {
-		if item.ID == palette {
-			found = true
-			break
-		}
-	}
-	if palette != "" && !found {
-		// Site-local and user palettes (./palettes, ~/.config/markata-go/palettes)
-		// are valid even though they are not part of the rendering contract.
-		if _, err := palettes.NewLoader().Load(palette); err == nil {
-			found = true
-		}
-	}
-	if palette != "" && !found {
+	if palette := config.Theme.Palette; palette != "" && !knownPalette(&c, palette) {
 		errs = append(errs, ValidationError{Field: "theme.palette", Message: fmt.Sprintf("unknown palette %q", config.Theme.Palette)})
 	}
 	valid("aesthetics", config.Theme.Aesthetic, "theme.aesthetic")
 	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {
 		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large", "x-large"; using "large"`, IsWarn: true})
 	}
-	if config.Fontpack == "" || config.Fontpack != config.Theme.Fontpack {
-		valid("fontpacks", config.Theme.Fontpack, "theme.fontpack")
+	if !fontpackInCatalog(config) {
+		// A legacy top-level fontpack is copied into theme.fontpack during
+		// normalization; report it under the key the user actually wrote.
+		field := "theme.fontpack"
+		if config.Fontpack != "" && config.Fontpack == config.Theme.Fontpack {
+			field = "fontpack"
+		}
+		valid("fontpacks", config.Theme.Fontpack, field)
 	}
 	valid("textures", config.Theme.Texture.Kind, "theme.texture.kind")
 	valid("scopes", config.Theme.Texture.Scope, "theme.texture.scope")
@@ -792,4 +781,49 @@ func FormatConfigErrors(configErrors *ConfigErrors) string {
 	}
 
 	return sb.String()
+}
+
+// fontpackInCatalog reports whether theme.fontpack names a pack (or alias) the
+// fontpack plugin can resolve.
+func fontpackInCatalog(config *models.Config) bool {
+	return KnownFontpack(config.Theme.Fontpack, config.FontpacksFile)
+}
+
+// KnownFontpack reports whether name resolves to a built-in font pack or
+// alias. Any name is accepted when fontpacksFile selects a custom catalog.
+func KnownFontpack(name, fontpacksFile string) bool {
+	if name == "" || strings.TrimSpace(fontpacksFile) != "" {
+		return true
+	}
+	source, err := fontpacks.BuiltinSource()
+	if err != nil {
+		return false
+	}
+	_, _, err = source.Catalog.ResolvePack(name)
+	return err == nil
+}
+
+// KnownPalette reports whether name is a rendering-contract palette, a
+// contract alias, or a site-local or user palette the loader can find.
+func KnownPalette(name string) bool {
+	c, err := renderingcontract.Load()
+	if err != nil {
+		return false
+	}
+	return knownPalette(&c, name)
+}
+
+func knownPalette(c *renderingcontract.Contract, name string) bool {
+	if alias, ok := c.Aliases[name]; ok {
+		name = alias
+	}
+	for _, item := range c.Palettes {
+		if item.ID == name {
+			return true
+		}
+	}
+	// Site-local and user palettes (./palettes, ~/.config/markata-go/palettes)
+	// are valid even though they are not part of the rendering contract.
+	_, err := palettes.NewLoader().Load(name)
+	return err == nil
 }

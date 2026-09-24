@@ -49,6 +49,10 @@ var (
 	// serveHost is the host to serve on.
 	serveHost string
 
+	// serveSourceFile is the Markdown file passed to `serve <file>`. When set,
+	// every build and rebuild uses single-page mode.
+	serveSourceFile string
+
 	// serveWatch enables file watching (default true).
 	serveWatch bool
 
@@ -157,7 +161,7 @@ func getModelsConfig(m *lifecycle.Manager) *models.Config {
 
 // serveCmd represents the serve command.
 var serveCmd = &cobra.Command{
-	Use:   "serve",
+	Use:   "serve [markdown-file]",
 	Short: "Build and serve locally with live reload",
 	Long: `Serve builds the site and starts a local development server with file watching.
 
@@ -167,6 +171,8 @@ Features:
   - File watching for content, templates, and config
   - Automatic rebuild on file changes
   - Live reload support (injects reload script into HTML)
+  - Theme picker "Bake" button: writes the chosen palette, style, font, and
+    text size into the config file that holds [markata-go.theme]
 
 Fast mode:
   --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
@@ -177,6 +183,7 @@ Incremental mode:
 
 Example usage:
   markata-go serve              # Serve on localhost:8000 with file watching
+  markata-go serve post.md      # Serve just post.md at the root index
   markata-go serve --fast       # Serve with fast mode (skip minification)
   markata-go serve -p 3000      # Serve on localhost:3000
   markata-go serve -m fast.toml # Serve with merged config overrides
@@ -184,6 +191,7 @@ Example usage:
   markata-go serve --watch=false # Disable file watching
   markata-go serve --no-watch   # Serve without file watching (legacy flag)
   markata-go serve -v           # Serve with verbose output`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runServeCommand,
 }
 
@@ -198,8 +206,12 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveIncremental, "incremental", false, "reuse unchanged posts without skipping production output processing")
 }
 
-func runServeCommand(cmd *cobra.Command, _ []string) error {
+func runServeCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
+	serveSourceFile = ""
+	if len(args) == 1 {
+		serveSourceFile = args[0]
+	}
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -207,7 +219,7 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	setupServeSignals(cancel)
 
 	// Create manager (config and plugin setup)
-	m, err := createManager(cfgFile)
+	m, err := createServeManager()
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
@@ -248,6 +260,20 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer closeWatcher()
+	serveRequestFullRebuild = func() {
+		serveChangedPathsMu.Lock()
+		serveForceFullRebuild = true
+		serveChangedPathsMu.Unlock()
+		if isRebuilding.Load() {
+			rebuildPending.Store(true)
+			return
+		}
+		select {
+		case rebuildCh <- struct{}{}:
+		default:
+		}
+	}
+	defer func() { serveRequestFullRebuild = nil }()
 
 	// Create HTTP server with search API
 	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
@@ -526,6 +552,26 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 			return
 		}
 
+		// Theme picker "Bake" writes picks into the site config (serve only).
+		if r.URL.Path == serveThemeBakeEndpoint {
+			handleThemeBake(w, r)
+			return
+		}
+
+		// Settings sidebar: schema, bake endpoint, and its script (serve only).
+		if r.URL.Path == serveSettingsEndpoint {
+			handleSettings(w, r)
+			return
+		}
+		if r.URL.Path == serveSettingsPreview {
+			handleSettingsPreview(w, r)
+			return
+		}
+		if r.URL.Path == serveSettingsScriptPath {
+			handleSettingsScript(w, r)
+			return
+		}
+
 		// Handle search API endpoint (bleve-powered, read-only)
 		if r.URL.Path == searchEndpoint {
 			searchHandler.ServeHTTP(w, r)
@@ -634,8 +680,13 @@ func injectDevScripts(html string, status BuildStatus) string {
 	// Inject search endpoint override for dev mode.
 	// This tells the frontend to use the local bleve API instead of pagefind.
 	// It's only injected during `serve` — production builds never see this.
-	searchScript := `<script>window.__markataSearchEndpoint = "` + serveSearchEndpoint + `";</script>`
-	bodyInjection := devScript
+	// The theme bake endpoint is likewise serve-only; the picker shows its
+	// Bake button only when this global exists. The settings sidebar script
+	// is served by the dev server itself, so it never reaches output/.
+	searchScript := `<script>window.__markataSearchEndpoint = "` + serveSearchEndpoint + `";` +
+		`window.__markataThemeBakeEndpoint = "` + serveThemeBakeEndpoint + `";` +
+		`window.__markataSettingsEndpoint = "` + serveSettingsEndpoint + `";</script>`
+	bodyInjection := devScript + `<script src="` + serveSettingsScriptPath + `" defer></script>`
 	headInjection := searchScript
 
 	if strings.Contains(html, "</head>") {
@@ -1556,7 +1607,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	default:
 	}
 
-	m, err := createManager(cfgFile)
+	m, err := createServeManager()
 	if err != nil {
 		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
@@ -1867,4 +1918,13 @@ func drainTimer(timer *time.Timer) {
 	case <-timer.C:
 	default:
 	}
+}
+
+// createServeManager builds the manager for serve and its rebuilds, keeping
+// single-page mode when serve was given a Markdown file.
+func createServeManager() (*lifecycle.Manager, error) {
+	if serveSourceFile != "" {
+		return createSinglePageManager(cfgFile, serveSourceFile)
+	}
+	return createManager(cfgFile)
 }

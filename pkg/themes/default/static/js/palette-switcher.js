@@ -148,6 +148,7 @@
   }
 
   function selectSeasonal() {
+    endPreview();
     const mode = getColorMode();
     const pick = seasonalPick(mode);
     if (!pick || !findEntry(pick.name)) return;
@@ -198,8 +199,167 @@
     root.classList.toggle('dark', mode === 'dark');
   }
 
+  // ---------------------------------------------------------------------------
+  // Hover preview
+  // ---------------------------------------------------------------------------
+
+  // Hovering a card or a calendar period shows it on the page without storing
+  // anything. The real attributes are saved on the first preview and put back
+  // when the pointer leaves, or before a choice is committed.
+  let previewSaved = null;
+  let previewFrame = 0;
+  let previewPending = null;
+  let previewRestoreTimer = 0;
+
+  function snapshotAttributes() {
+    return {
+      palette: root.dataset.palette,
+      theme: root.dataset.theme,
+      dark: root.classList.contains('dark'),
+      aesthetic: root.dataset.aesthetic,
+      fontpack: root.dataset.fontpack,
+    };
+  }
+
+  function setOrRemove(key, value) {
+    if (value === undefined) delete root.dataset[key];
+    else root.dataset[key] = value;
+  }
+
+  function writePreview(target) {
+    withoutTransitions(() => {
+      const saved = previewSaved;
+      setOrRemove('palette', saved.palette);
+      setOrRemove('theme', saved.theme);
+      root.classList.toggle('dark', saved.dark);
+      setOrRemove('aesthetic', saved.aesthetic);
+      setOrRemove('fontpack', saved.fontpack);
+      if (target.palette) {
+        root.dataset.palette = target.palette;
+        if (target.mode) setModeAttributes(target.mode);
+      }
+      if (target.aesthetic) root.dataset.aesthetic = target.aesthetic;
+      if (target.fontpack) root.dataset.fontpack = target.fontpack;
+    });
+  }
+
+  // Say what the page is showing: the top label names the previewed choice,
+  // and in the schedule the hovered period and its twin (strip segment or
+  // list row) are highlighted with a readout of its dates and length.
+  function showPreviewInfo(target) {
+    if (!picker) return;
+    if (picker.schedule) {
+      picker.schedule.querySelectorAll('.is-linked').forEach((el) => el.classList.remove('is-linked'));
+      if (target && target.key) {
+        picker.schedule.querySelectorAll('[data-period-key="' + CSS.escape(target.key) + '"]')
+          .forEach((el) => el.classList.add('is-linked'));
+      }
+      const readout = picker.schedule.querySelector('.ss-readout');
+      if (readout) {
+        readout.textContent = target && target.detail ? target.detail : readout.dataset.hint || '';
+        readout.classList.toggle('is-active', !!(target && target.detail));
+      }
+    }
+    if (!picker.current) return;
+    if (target && target.label) {
+      picker.current.textContent = 'Preview: ' + target.label;
+      picker.current.classList.add('is-previewing');
+    } else {
+      picker.current.classList.remove('is-previewing');
+      syncUI();
+    }
+  }
+
+  function startPreview(target) {
+    clearTimeout(previewRestoreTimer);
+    showPreviewInfo(target);
+    if (!previewSaved) previewSaved = snapshotAttributes();
+    previewPending = target;
+    // Sweeping across many cards costs at most one style change per frame.
+    if (previewFrame) return;
+    previewFrame = requestAnimationFrame(() => {
+      previewFrame = 0;
+      if (previewSaved && previewPending) writePreview(previewPending);
+    });
+  }
+
+  function endPreview() {
+    clearTimeout(previewRestoreTimer);
+    cancelAnimationFrame(previewFrame);
+    previewFrame = 0;
+    previewPending = null;
+    if (!previewSaved) return;
+    const saved = previewSaved;
+    previewSaved = null;
+    withoutTransitions(() => {
+      setOrRemove('palette', saved.palette);
+      setOrRemove('theme', saved.theme);
+      root.classList.toggle('dark', saved.dark);
+      setOrRemove('aesthetic', saved.aesthetic);
+      setOrRemove('fontpack', saved.fontpack);
+    });
+    showPreviewInfo(null);
+  }
+
+  // Leaving one card for the next should not flash the saved theme in between.
+  function scheduleEndPreview() {
+    clearTimeout(previewRestoreTimer);
+    previewRestoreTimer = setTimeout(endPreview, 90);
+  }
+
+  function palettePreview(name) {
+    const entry = findEntry(name);
+    return entry ? { palette: entry.name, mode: entry.variant } : null;
+  }
+
+  function previewTargetFor(element) {
+    if (!element || !element.closest) return null;
+    const period = element.closest('[data-preview-palette]');
+    if (period) {
+      const target = palettePreview(period.dataset.previewPalette);
+      if (target) {
+        target.label = period.dataset.previewLabel || '';
+        target.key = period.dataset.periodKey || '';
+        target.detail = period.dataset.previewDetail || '';
+      }
+      return target;
+    }
+    const card = element.closest('.theme-card');
+    if (!card) return null;
+    const name = card.querySelector('.tc-label') || card.querySelector('.theme-card-name');
+    const label = name ? name.textContent : '';
+    let target;
+    if (card.classList.contains('style-card')) target = { aesthetic: card.dataset.aesthetic };
+    else if (card.classList.contains('font-card')) target = { fontpack: card.dataset.name };
+    else target = palettePreview(card.dataset.palette);
+    if (target) target.label = label;
+    return target;
+  }
+
+  const PREVIEW_AREAS = '.theme-picker-grid, .ss-year, .ss-list';
+
+  function bindHoverPreview(panel) {
+    panel.addEventListener('pointerover', (event) => {
+      if (event.pointerType !== 'mouse') return;
+      const target = previewTargetFor(event.target);
+      if (target) startPreview(target);
+    });
+    panel.addEventListener('pointerout', (event) => {
+      if (event.pointerType !== 'mouse' || !previewSaved) return;
+      const next = event.relatedTarget;
+      if (next && panel.contains(next)) {
+        if (previewTargetFor(next)) return;
+        // Gaps between cards or calendar periods keep the last preview.
+        const area = event.target.closest && event.target.closest(PREVIEW_AREAS);
+        if (area && area.contains(next)) return;
+      }
+      scheduleEndPreview();
+    });
+  }
+
   function setColorMode(mode) {
     if (mode !== 'light' && mode !== 'dark') return;
+    endPreview();
     store.set(MODE_KEY, mode);
     store.set(LEGACY_MODE_KEY, mode);
     const palette = paletteForMode(mode);
@@ -224,6 +384,7 @@
   function selectTheme(name) {
     const entry = findEntry(name);
     if (!entry) return;
+    endPreview();
     const mode = entry.variant;
     const other = otherMode(mode);
     const defaults = getDefaults();
@@ -251,6 +412,7 @@
   }
 
   function resetTheme() {
+    endPreview();
     store.remove(PICK_PREFIX + 'light');
     store.remove(PICK_PREFIX + 'dark');
     store.remove(AESTHETIC_KEY);
@@ -314,6 +476,7 @@
   function setAesthetic(name) {
     const names = getAestheticManifest().map((item) => item.name);
     if (!names.includes(name)) return;
+    endPreview();
     if (name === getDefaultAesthetic()) {
       store.remove(AESTHETIC_KEY);
     } else {
@@ -370,6 +533,7 @@
 
   function setFontpack(name) {
     if (!fontpackNames().includes(name)) return;
+    endPreview();
     if (name === pageFontpack) {
       store.remove(FONT_KEY);
     } else {
@@ -398,81 +562,116 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Copy as config
+  // Bake into config (markata-go serve only)
   // ---------------------------------------------------------------------------
 
-  function tomlString(value) {
-    return '"' + String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  /** The dev-server bake endpoint; only `markata-go serve` injects it. */
+  function bakeEndpoint() {
+    const endpoint = window.__markataThemeBakeEndpoint;
+    return typeof endpoint === 'string' && endpoint ? endpoint : '';
   }
 
-  /** The visitor's current choices as a [markata-go.theme] TOML snippet. */
-  function getConfigSnippet() {
+  /** The visitor's current choices as [markata-go.theme] settings. */
+  function getBakeSettings() {
     const mode = getColorMode();
     const light = paletteForMode('light');
     const dark = paletteForMode('dark');
-    const lines = ['[markata-go.theme]'];
+    const settings = { fallback_mode: mode };
     if (isSeasonal(mode)) {
-      // Seasonal picks change by date; keep the site palettes as the fallback.
-      const defaults = getDefaults();
-      if (defaults[mode]) lines.push('palette = ' + tomlString(defaults[mode]));
-      if (defaults.light && defaults.dark && defaults.light !== defaults.dark) {
-        lines.push('palette_light = ' + tomlString(defaults.light));
-        lines.push('palette_dark = ' + tomlString(defaults.dark));
-      }
-      lines.push('seasonal = true');
+      // Seasonal picks change by date; the site palettes stay as the fallback.
+      settings.seasonal = true;
     } else {
       const current = root.dataset.palette || (mode === 'dark' ? dark : light);
-      if (current) lines.push('palette = ' + tomlString(current));
-      if (light && dark && light !== dark) {
-        lines.push('palette_light = ' + tomlString(light));
-        lines.push('palette_dark = ' + tomlString(dark));
-      }
+      if (current) settings.palette = current;
+      if (light && !isSeasonal('light')) settings.palette_light = light;
+      if (dark && !isSeasonal('dark')) settings.palette_dark = dark;
     }
-    lines.push('fallback_mode = ' + tomlString(mode));
     const aesthetic = getAestheticManifest().length ? getAesthetic() : root.dataset.aesthetic;
-    if (aesthetic) lines.push('aesthetic = ' + tomlString(aesthetic));
+    if (aesthetic) settings.aesthetic = aesthetic;
     const fontpack = getFontManifest().length ? getFontpack() : root.dataset.fontpack;
-    if (fontpack) lines.push('fontpack = ' + tomlString(fontpack));
-    if (root.dataset.textSize) lines.push('text_size = ' + tomlString(root.dataset.textSize));
-    return lines.join('\n') + '\n';
+    if (fontpack) settings.fontpack = fontpack;
+    if (root.dataset.textSize) settings.text_size = root.dataset.textSize;
+    return settings;
   }
 
-  function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(text);
+  function bakeRequest(method, body) {
+    const endpoint = bakeEndpoint();
+    if (!endpoint) return Promise.reject(new Error('Bake is only available in markata-go serve'));
+    const init = { method: method, headers: { Accept: 'application/json' }, credentials: 'same-origin' };
+    if (body) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(body);
     }
-    return new Promise((resolve, reject) => {
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.setAttribute('readonly', '');
-      area.style.position = 'fixed';
-      area.style.opacity = '0';
-      document.body.appendChild(area);
-      area.select();
-      let ok = false;
-      try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
-      area.remove();
-      if (ok) resolve(); else reject(new Error('copy failed'));
+    return fetch(endpoint, init).then((response) => response.json().catch(() => ({})).then((data) => {
+      if (!response.ok || data.error) throw new Error(data.error || ('HTTP ' + response.status));
+      return data;
+    }));
+  }
+
+  function setBakeLabel(button, text, state) {
+    if (!button) return;
+    button.textContent = text;
+    button.classList.toggle('is-armed', state === 'armed');
+    button.classList.toggle('is-done', state === 'done');
+    button.classList.toggle('is-error', state === 'error');
+  }
+
+  function disarmBake(button) {
+    if (!button) return;
+    clearTimeout(button._bakeTimeout);
+    delete button.dataset.armed;
+    setBakeLabel(button, 'Bake', '');
+  }
+
+  /** Write the current choices into the site config and clear stored picks. */
+  function bakeConfig() {
+    return bakeRequest('POST', getBakeSettings()).then((result) => {
+      // The config now matches these picks; drop the per-browser overrides so
+      // the rebuilt site's defaults take over after live reload.
+      store.remove(PICK_PREFIX + 'light');
+      store.remove(PICK_PREFIX + 'dark');
+      store.remove(AESTHETIC_KEY);
+      store.remove(FONT_KEY);
+      return result;
     });
   }
 
-  function copyConfig(button) {
-    const text = getConfigSnippet();
-    return copyText(text).then(() => {
-      showNotification('Theme config copied');
-      if (button) {
-        button.classList.add('is-copied');
-        button.textContent = 'Copied';
-        clearTimeout(button._copyTimeout);
-        button._copyTimeout = setTimeout(() => {
-          button.classList.remove('is-copied');
-          button.textContent = 'Copy config';
-        }, 1400);
-      }
-      return text;
-    }, () => {
-      window.prompt('Copy this into markata-go.toml:', text);
-      return text;
+  /** First click names the target file; a second click within 4s bakes. */
+  function onBakeClick(button) {
+    if (button.dataset.busy) return;
+    if (!button.dataset.armed) {
+      button.dataset.busy = '1';
+      bakeRequest('GET').then((info) => {
+        button.dataset.armed = '1';
+        const target = info.target || 'config';
+        setBakeLabel(button, 'Bake into ' + target + '?', 'armed');
+        button.title = 'Click again to write these choices to ' + (info.path || target) +
+          (info.warnings && info.warnings.length ? '\n' + info.warnings.join('\n') : '');
+        clearTimeout(button._bakeTimeout);
+        button._bakeTimeout = setTimeout(() => disarmBake(button), 4000);
+      }, (error) => {
+        setBakeLabel(button, 'Bake failed', 'error');
+        button.title = error.message;
+        showNotification('Bake failed: ' + error.message);
+      }).finally(() => { delete button.dataset.busy; });
+      return;
+    }
+    clearTimeout(button._bakeTimeout);
+    delete button.dataset.armed;
+    button.dataset.busy = '1';
+    setBakeLabel(button, 'Baking\u2026', '');
+    bakeConfig().then((result) => {
+      setBakeLabel(button, 'Baked', 'done');
+      button.title = 'Saved to ' + (result.path || result.target);
+      showNotification('Baked into ' + result.target + ' \u2014 rebuilding');
+      if (result.warnings && result.warnings.length) console.warn('[theme-picker] ' + result.warnings.join('; '));
+    }, (error) => {
+      setBakeLabel(button, 'Bake failed', 'error');
+      button.title = error.message;
+      showNotification('Bake failed: ' + error.message);
+    }).finally(() => {
+      delete button.dataset.busy;
+      button._bakeTimeout = setTimeout(() => disarmBake(button), 2500);
     });
   }
 
@@ -656,7 +855,7 @@
     card.id = 'palette-card-seasonal';
     card.dataset.name = SEASONAL;
     card.classList.add('seasonal-card');
-    card.title = 'Seasonal - follows the seasons and celebrates holidays. Now: ' + pick.label + ' (' + labelFor(pick.name) + ')';
+    card.title = 'Seasonal - follows the seasons and celebrates holidays. Now: ' + pick.label + ' (' + labelFor(pick.name) + '). The calendar button shows the schedule.';
     const name = card.querySelector('.theme-card-name');
     name.textContent = '';
     const label = document.createElement('span');
@@ -667,6 +866,236 @@
     note.textContent = pick.label;
     name.append(label, note);
     return card;
+  }
+
+  // Seasonal schedule
+  //
+  // Periods are derived by asking the same pick function the head script uses
+  // for every day, so the schedule always matches what the site will do.
+  function seasonalPeriods(mode, start, days) {
+    const periods = [];
+    if (!hasSeasonal()) return periods;
+    for (let i = 0; i < days; i++) {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 12);
+      let pick = null;
+      try {
+        pick = window.__markataSeasonalPick(mode, date);
+      } catch (_) {
+        return periods;
+      }
+      if (!pick || !pick.name) continue;
+      const last = periods[periods.length - 1];
+      if (last && last.label === pick.label && last.name === pick.name) {
+        last.end = date;
+        last.days++;
+      } else {
+        periods.push({ label: pick.label, name: pick.name, start: date, end: date, days: 1 });
+      }
+    }
+    return periods;
+  }
+
+  function isSeasonLabel(label) {
+    const s = window.__markataSeasonal;
+    return !!(s && s.s && s.s.some((season) => season.l === label));
+  }
+
+  function formatDay(date) {
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  function formatDuration(days) {
+    if (days < 14) return days + (days === 1 ? ' day' : ' days');
+    const weeks = days / 7;
+    return (Number.isInteger(weeks) ? '' : '~') + Math.round(weeks) + ' weeks';
+  }
+
+  // Full span of the season active on date (holidays inside it included).
+  function seasonBounds(label, date) {
+    const s = window.__markataSeasonal;
+    if (!s || !s.s) return null;
+    const seasons = s.s.slice().sort((a, b) => a.f - b.f);
+    const index = seasons.findIndex((season) => season.l === label);
+    if (index === -1) return null;
+    const at = (f, year) => new Date(year, Math.floor(f / 100) - 1, f % 100, 12);
+    let start = at(seasons[index].f, date.getFullYear());
+    if (start > date) start = at(seasons[index].f, date.getFullYear() - 1);
+    const next = seasons[(index + 1) % seasons.length];
+    let end = at(next.f, start.getFullYear());
+    if (end <= start) end = at(next.f, start.getFullYear() + 1);
+    return { start: start, end: end, days: Math.round((end - start) / 864e5) };
+  }
+
+  function periodKey(period) {
+    if (isSeasonLabel(period.label)) {
+      const bounds = seasonBounds(period.label, period.start);
+      if (bounds) return period.label + '|' + bounds.start.toDateString();
+    }
+    return period.label + '|' + period.start.toDateString();
+  }
+
+  function withPalette(text, period) {
+    const name = labelFor(period.name);
+    return name && name.toLowerCase() !== period.label.toLowerCase() ? text + ' · ' + name : text;
+  }
+
+  function markPeriod(el, period, detail) {
+    el.dataset.previewPalette = period.name;
+    el.dataset.periodKey = periodKey(period);
+    el.dataset.previewLabel = period.label;
+    el.dataset.previewDetail = detail;
+  }
+
+  function formatRange(period) {
+    return period.days === 1 ? formatDay(period.start) : formatDay(period.start) + ' – ' + formatDay(period.end);
+  }
+
+  function scheduleSwatch(name) {
+    const swatch = document.createElement('span');
+    swatch.className = 'ss-swatch';
+    swatch.dataset.palette = name;
+    swatch.setAttribute('aria-hidden', 'true');
+    swatch.innerHTML = '<i class="tc-accent"></i><i class="tc-success"></i><i class="tc-warning"></i>';
+    return swatch;
+  }
+
+  function renderSchedule() {
+    if (!picker || !picker.schedule) return;
+    const mode = picker.viewMode;
+    const view = picker.schedule;
+    const today = new Date();
+    const lead = (window.__markataSeasonal && window.__markataSeasonal.lead) || 0;
+
+    const intro = document.createElement('div');
+    intro.className = 'ss-intro';
+    const text = document.createElement('p');
+    text.textContent = 'Seasonal changes the colors with the seasons (northern hemisphere) and switches to a holiday theme ' +
+      (lead ? lead + ' days before' : 'on') + ' each holiday. Showing ' + mode + ' themes.';
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'ss-use';
+    use.dataset.scheduleUse = 'true';
+    const active = isSeasonal(mode);
+    use.textContent = active ? 'Using Seasonal' : 'Use Seasonal';
+    use.disabled = active;
+    intro.append(text, use);
+
+    // Year strip for the current calendar year.
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const yearDays = Math.round((new Date(today.getFullYear() + 1, 0, 1) - yearStart) / 864e5);
+    const strip = document.createElement('div');
+    strip.className = 'ss-year';
+    strip.setAttribute('role', 'img');
+    const yearPeriods = seasonalPeriods(mode, yearStart, yearDays);
+    strip.setAttribute('aria-label', today.getFullYear() + ' seasonal calendar: ' +
+      yearPeriods.map((p) => p.label + ' ' + formatRange(p)).join(', '));
+    yearPeriods.forEach((period) => {
+      const segment = document.createElement('span');
+      segment.className = 'ss-seg' + (isSeasonLabel(period.label) ? '' : ' ss-seg--holiday');
+      segment.dataset.palette = period.name;
+      const detail = withPalette(period.label + ' · ' + formatRange(period) + ' · ' + formatDuration(period.days), period);
+      markPeriod(segment, period, detail);
+      segment.style.flexGrow = String(period.days);
+      segment.title = detail;
+      strip.appendChild(segment);
+    });
+    const dayOfYear = Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - yearStart) / 864e5);
+    const marker = document.createElement('span');
+    marker.className = 'ss-today';
+    marker.style.left = ((dayOfYear + 0.5) / yearDays * 100).toFixed(2) + '%';
+    marker.title = 'Today';
+    strip.appendChild(marker);
+
+    const months = document.createElement('div');
+    months.className = 'ss-months';
+    months.setAttribute('aria-hidden', 'true');
+    for (let m = 0; m < 12; m++) {
+      const label = document.createElement('span');
+      label.textContent = new Date(today.getFullYear(), m, 1).toLocaleDateString(undefined, { month: 'narrow' });
+      months.appendChild(label);
+    }
+
+    // Upcoming changes over the next year, starting with today's period.
+    const heading = document.createElement('h3');
+    heading.className = 'ss-heading';
+    heading.textContent = 'Coming up';
+    const list = document.createElement('ol');
+    list.className = 'ss-list';
+    // A season that resumes after a holiday is not a new change worth listing.
+    const seen = new Set();
+    seasonalPeriods(mode, today, 366).forEach((period, index) => {
+      const season = isSeasonLabel(period.label);
+      if (index > 0 && season && seen.has(period.label)) return;
+      seen.add(period.label);
+      const item = document.createElement('li');
+      item.className = 'ss-item' + (index === 0 ? ' is-now' : '');
+      const body = document.createElement('span');
+      body.className = 'ss-item-body';
+      const label = document.createElement('strong');
+      label.textContent = period.label;
+      body.appendChild(label);
+      const paletteName = labelFor(period.name);
+      if (paletteName && paletteName.toLowerCase() !== period.label.toLowerCase()) {
+        const palette = document.createElement('small');
+        palette.textContent = paletteName;
+        body.appendChild(palette);
+      }
+      const when = document.createElement('span');
+      when.className = 'ss-when';
+      const date = document.createElement('span');
+      const length = document.createElement('small');
+      let detail;
+      if (index === 0) {
+        const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+        const left = Math.round((period.end - todayNoon) / 864e5) + 1;
+        date.textContent = 'Now · until ' + formatDay(period.end);
+        length.textContent = left === 1 ? 'last day' : formatDuration(left) + ' left';
+        detail = period.label + ' · now until ' + formatDay(period.end) + ' · ' + length.textContent;
+      } else if (season) {
+        const bounds = seasonBounds(period.label, period.start);
+        date.textContent = 'From ' + formatDay(period.start);
+        length.textContent = bounds ? formatDuration(bounds.days) + ' season' : '';
+        detail = period.label + ' · from ' + formatDay(period.start) +
+          (bounds ? ' · ' + formatDuration(bounds.days) + ', holidays included' : '');
+      } else {
+        date.textContent = formatRange(period);
+        length.textContent = formatDuration(period.days);
+        detail = period.label + ' · ' + formatRange(period) + ' · ' + formatDuration(period.days) +
+          (lead ? ', starting ' + lead + ' days before' : '');
+      }
+      when.append(date, length);
+      markPeriod(item, period, withPalette(detail, period));
+      item.append(scheduleSwatch(period.name), body, when);
+      list.appendChild(item);
+    });
+
+    const readout = document.createElement('p');
+    readout.className = 'ss-readout';
+    readout.setAttribute('aria-live', 'polite');
+    readout.dataset.hint = window.matchMedia('(hover: hover)').matches
+      ? 'Hover the calendar to preview a period on this page.'
+      : 'Tap a band or row for its dates. The line marks today.';
+    readout.textContent = readout.dataset.hint;
+
+    view.replaceChildren(intro, strip, months, readout, heading, list);
+    picker.scheduleMode = mode;
+  }
+
+  function setScheduleOpen(open) {
+    if (!picker || !picker.schedule || !picker.scheduleButton) return;
+    endPreview();
+    open = !!open && hasSeasonal();
+    picker.scheduleOpen = open;
+    picker.scheduleButton.setAttribute('aria-pressed', String(open));
+    picker.schedule.hidden = !open;
+    picker.grid.hidden = open;
+    if (open) {
+      picker.empty.hidden = true;
+      renderSchedule();
+      picker.schedule.scrollTop = 0;
+    } else {
+      renderGrid();
+    }
   }
 
   // Style cards carry their own data-aesthetic, so the surface tokens
@@ -882,6 +1311,7 @@
 
   function showTab(tab, options) {
     if (!picker) return;
+    endPreview();
     const tabs = availableTabs();
     if (!tabs.includes(tab)) tab = tabs[0] || 'colors';
     picker.activeTab = tab;
@@ -906,6 +1336,7 @@
 
   function stepActive(direction) {
     if (!picker) return;
+    if (picker.activeTab === 'colors' && picker.scheduleOpen) setScheduleOpen(false);
     moveSelection(direction === 'prev' ? 'ArrowLeft' : 'ArrowRight');
   }
 
@@ -926,6 +1357,7 @@
 
   function closePicker(returnFocus) {
     if (!picker || picker.panel.hidden) return;
+    endPreview();
     picker.panel.hidden = true;
     picker.toggle.setAttribute('aria-expanded', 'false');
     picker.root.classList.remove('is-open');
@@ -937,6 +1369,7 @@
       picker.search.value = '';
       renderGrid();
     }
+    if (picker.scheduleOpen) setScheduleOpen(false);
     if (returnFocus) picker.toggle.focus({ preventScroll: true });
   }
 
@@ -968,6 +1401,9 @@
       modeButtons: Array.from(panel.querySelectorAll('[data-picker-mode]')),
       sizeButtons: Array.from(panel.querySelectorAll('[data-picker-size]')),
       stepButtons: Array.from(panel.querySelectorAll('[data-picker-step]')),
+      schedule: panel.querySelector('[data-picker-schedule-view]'),
+      scheduleButton: panel.querySelector('[data-picker-schedule]'),
+      scheduleOpen: false,
       viewMode: getColorMode(),
       renderedMode: null,
       fontObserver: null,
@@ -981,6 +1417,7 @@
       return;
     }
     container.dataset.themePickerBound = 'true';
+    bindHoverPreview(panel);
 
     toggle.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -1004,6 +1441,7 @@
     });
 
     picker.search.addEventListener('input', () => {
+      if (picker.scheduleOpen) setScheduleOpen(false);
       renderGrid();
       const first = visibleCards('colors')[0];
       if (first) revealCard(first, false);
@@ -1024,13 +1462,32 @@
         picker.viewMode = mode;
         if (getColorMode() !== mode) setColorMode(mode);
         renderGrid();
-        revealCard(picker.grid.querySelector('.theme-card.is-current'), true);
+        if (picker.scheduleOpen) renderSchedule();
+        else revealCard(picker.grid.querySelector('.theme-card.is-current'), true);
       });
     });
+
+    if (picker.scheduleButton && picker.schedule && hasSeasonal()) {
+      picker.scheduleButton.hidden = false;
+      picker.scheduleButton.addEventListener('click', () => setScheduleOpen(!picker.scheduleOpen));
+      picker.schedule.addEventListener('click', (event) => {
+        if (event.target.closest('[data-schedule-use]')) {
+          selectSeasonal();
+          renderSchedule();
+          return;
+        }
+        // Touch has no hover: a tap shows the period's details without re-theming.
+        const period = event.target.closest('[data-period-key]');
+        if (period && !previewSaved) {
+          showPreviewInfo({ key: period.dataset.periodKey, detail: period.dataset.previewDetail });
+        }
+      });
+    }
 
     const shuffle = panel.querySelector('[data-picker-shuffle]');
     if (shuffle) {
       shuffle.addEventListener('click', () => {
+        if (picker.scheduleOpen) setScheduleOpen(false);
         const pool = visibleCards('colors').map((card) => findEntry(card.dataset.name)).filter(Boolean);
         const pick = randomTheme(pool);
         if (pick) {
@@ -1052,9 +1509,21 @@
       });
     }
 
-    const copy = panel.querySelector('[data-picker-copy]');
-    if (copy) {
-      copy.addEventListener('click', () => copyConfig(copy));
+    const bake = panel.querySelector('[data-picker-bake]');
+    if (bake && bakeEndpoint()) {
+      bake.hidden = false;
+      bake.addEventListener('click', () => onBakeClick(bake));
+    }
+
+    const settings = panel.querySelector('[data-picker-settings]');
+    if (settings && typeof window.__markataSettingsEndpoint === 'string' && window.__markataSettingsEndpoint) {
+      settings.hidden = false;
+      settings.addEventListener('click', () => {
+        const devSettings = window.markataDevSettings;
+        if (!devSettings) return;
+        closePicker(false);
+        devSettings.open('theme');
+      });
     }
 
     panel.addEventListener('keydown', (event) => {
@@ -1125,6 +1594,7 @@
         if (picker && !picker.panel.hidden) {
           picker.viewMode = getColorMode();
           renderGrid();
+          if (picker.scheduleOpen) renderSchedule();
         }
         return;
       }
@@ -1211,6 +1681,7 @@
             if (picker && !picker.panel.hidden) {
               picker.viewMode = next;
               renderGrid();
+              if (picker.scheduleOpen) renderSchedule();
             }
             showNotification(next === 'dark' ? 'Dark mode' : 'Light mode');
           },
@@ -1277,7 +1748,7 @@
     selectSeasonal: selectSeasonal,
     isSeasonal: () => isSeasonal(),
     getSeasonal: (mode) => seasonalPick(mode),
-    getConfigSnippet: getConfigSnippet,
-    copyConfig: () => copyConfig(null),
+    getBakeSettings: getBakeSettings,
+    bake: bakeConfig,
   };
 })();

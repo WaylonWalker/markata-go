@@ -162,6 +162,10 @@ type LoadOptions struct {
 	// DisableEnvOverrides prevents ambient MARKATA_GO_* variables from changing
 	// the explicitly supplied configuration.
 	DisableEnvOverrides bool
+	// Overlay is a raw config wrapper (keyed by "markata-go") merged after
+	// every file and before environment overrides. markata-go serve uses it
+	// to preview unsaved settings; see SettingsOverlay.
+	Overlay map[string]any
 }
 
 // LoadWithMergeOptions loads and merges configuration with explicit options.
@@ -197,6 +201,10 @@ func LoadWithMergeOptions(options LoadOptions, basePath string, overridePaths ..
 		}
 
 		mergedRaw = mergeRawMaps(nil, mergedRaw, overrideRaw)
+	}
+
+	if len(options.Overlay) > 0 {
+		mergedRaw = mergeRawMaps(nil, mergedRaw, options.Overlay)
 	}
 
 	warnings := normalizeRenderingTheme(mergedRaw)

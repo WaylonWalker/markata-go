@@ -211,12 +211,24 @@ custom `/blog/` feed exists.
 
 An explicit root feed (`slug = ""`) remains authoritative. To render only one
 Markdown file with the default theme and no generated home, archive, or feed
-pages, pass it to the CLI:
+pages, pass it to the CLI. Single-file builds MUST:
+
+- publish that file at the site root (`<output>/index.html`, href `/`),
+  regardless of its path or frontmatter slug;
+- still emit theme assets (CSS, JS, fonts, palettes);
+- skip site-level generators: feeds, subscription feeds, series, blogroll,
+  prev/next, archive and listing pages, sitemap, content index, `.well-known`,
+  image library, redirects, random-post, 404 page, garden view, and Pagefind;
+- hide search UI, feed `<link rel="alternate">` fallbacks, and the default
+  Home/Archive navigation (configured nav items still render);
+- bypass the build cache.
 
 ```bash
 markata-go pages/sample.md
 # equivalent:
 markata-go build pages/sample.md
+# serve accepts the same argument and keeps single-file mode on every rebuild:
+markata-go serve pages/sample.md
 ```
 
 Everything else goes in a plugin namespace.
@@ -1134,6 +1146,126 @@ trusted_domains = [
 
 - `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters, derived posters, and `https` normalization. Relative URLs are always treated as trusted.
 - The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
+
+## Serve Settings Sidebar
+
+`markata-go serve` (never `build`) injects a settings sidebar into served HTML:
+`window.__markataSettingsEndpoint = "/__markata/settings"` in `<head>` and
+`<script src="/__markata/settings.js" defer>` before `</body>`. Static output
+MUST NOT contain either. The script mounts a `<markata-dev-settings>` element
+with a Shadow DOM, so site CSS cannot style it and it cannot style the site.
+
+### Schema
+
+The field list is derived by reflection over `models.Config` TOML tags, so new
+config fields appear automatically. Each field has:
+
+| Field | Meaning |
+|-------|---------|
+| `key` | Dotted path under `markata-go`, e.g. `theme.palette` |
+| `section` | First path segment for nested keys, `""` for top-level keys |
+| `kind` | `string`, `bool`, `int`, `float`, `list` (of strings), or `complex` |
+| `value` | Effective value; `null` for unset optional (pointer) fields and for sensitive fields |
+| `doc` | The Go doc comment of the model field (generated into `pkg/config/settings_docs_gen.go` by `go generate ./pkg/config`; a test fails when it is stale) |
+| `options` | Suggested or allowed values: palettes, fontpacks, chroma styles, rendering-contract enums, the curated enum registry (`settingEnums`), or values parsed from a `Valid values:` / `Options:` doc line |
+| `closed` | True when `options` is the complete set; the client renders a dropdown and the server rejects other non-empty values |
+| `min`, `max` | Inclusive numeric range for `int`/`float` fields, when one applies (for example `0`-`1` for `theme.background.color_mix`) |
+| `source` | Last config file that defines the key, relative to the site |
+| `target` | File a change will be written to |
+| `env` | Name of a set `MARKATA_GO_*` variable that overrides the file |
+| `editable` | False for `complex`, `sensitive`, and `unsupported` fields |
+
+- **complex**: maps, slices of structs, and types from other packages. Shown
+  read-only with a summary such as "3 items".
+- **sensitive**: the leaf key matches
+  `(^|_)(secret|token|password|passphrase|api_key|private_key|credentials?)$`.
+  The value is never sent to the browser.
+- **unsupported**: model fields the config loader does not read from files.
+  Each editable field is probed at startup by parsing a TOML document that sets
+  it; fields that do not round-trip are marked unsupported.
+
+### Target File
+
+Candidates are the same load-order list as theme bake (root, `include` files,
+`--merge-config` files). A change to `a.b.c` is written to the candidate that
+defines the deepest prefix of the path (`a.b.c`, then `a.b`, then `a`); ties go
+to the later file. With no match it goes to the root config, or a new
+`markata-go.toml` when there is none. So a setting stays in the file that owns
+it, and a new key lands next to its siblings.
+
+### Closed Options
+
+- An empty string is always accepted and means "use the default".
+- Palette keys accept any name `KnownPalette` accepts (contract IDs, aliases,
+  loader palettes), even when not listed.
+- Fontpack options are closed unless `theme.fontpacks_file` is set.
+- A guard test fails when a field's doc lists quoted values but the field has
+  no closed options (allowlist: free-form fields such as
+  `components.share.position`).
+
+### Preview
+
+`POST /__markata/settings/preview` with the same body replaces the whole
+preview set; an empty `changes` list resets it. Preview changes are held only
+in the serve process's memory and are never written to disk:
+
+1. Changes are validated as in Apply step 1, plus closed options and ranges
+   (400 on failure).
+2. The preview is loaded as a config overlay (`LoadOptions.Overlay`), merged
+   after all config files and before defaults normalization and environment
+   variables, so `MARKATA_GO_*` still wins. A new validation error or a value
+   that does not load back is rejected with 422 and the previous preview is kept.
+3. A full rebuild is queued. The overlay JSON is stored in
+   `Extra["config_overlay"]` and included in the build-cache config hash so
+   cached pages re-render.
+
+The response and `GET /__markata/settings` include `preview`, the current
+list of previewed changes. Restarting serve discards the preview.
+
+### Apply
+
+`POST /__markata/settings` with `{"changes": [{"key": "...", "value": ...}]}`
+(max 200 changes, 256 KiB, unknown JSON fields rejected):
+
+1. Each key MUST be editable, appear once, and have a value of its kind.
+   Strings are at most 4096 characters with no control characters other than
+   newline and tab. Lists have at most 256 items. Ints must fit the Go type.
+2. Changes are grouped by target file and written with the format-preserving
+   editor used by theme bake (comments and order kept, TOML tables, dotted
+   keys, and multi-line arrays, nested YAML mappings, JSON objects).
+3. The config is reloaded. If it gains a validation error that was not
+   present before, or a key does not load back as the requested value (unless
+   an env variable overrides it), every file is restored and the response is
+   422.
+4. On success the baked keys are dropped from the preview, a full rebuild is
+   queued, and live reload shows the result. Bake reads config from disk only,
+   never from the preview overlay.
+
+Status codes: 400 invalid request, 403 non-loopback client, cross-origin, or non-local `Host`,
+409 layout the editor refuses (see THEMES.md Bake), 422 rolled back.
+Both settings and theme-bake endpoints require a loopback client address
+(`RemoteAddr`), a same-origin request, and a `Host` of `localhost`,
+`*.localhost`, or an IP literal, as a defense against DNS rebinding. The
+loopback requirement means binding `serve` to `0.0.0.0` or a LAN address never
+lets other hosts read or change the config.
+
+### Client
+
+- Toggle: a gear button at the bottom left (`Alt+,`), with a badge that shows
+  the number of unsaved changes. While the panel is closed and a preview is
+  active, a chip reads "Previewing N unsaved changes · Reset · Review".
+- The panel has search, a filter (all / set in config / changed), sections that
+  can be collapsed, and per-field Revert. It is full screen at 640px wide and below.
+- The server preview is the source of truth. Edits commit on change, blur, or
+  Enter, are checked client-side (options, ranges, kinds), and sent to the
+  preview endpoint after a 300ms debounce. A rejected key is marked invalid
+  inline and the rest are re-sent without it.
+- Closed options render as a `<select>`; open options as an input with a
+  datalist; numbers get `min`/`max`/`step`.
+- **Reset** clears the preview. Panel state (open, scroll, collapsed sections)
+  lives in `sessionStorage` and survives live reload.
+- Baking needs a second click within 4s ("Bake into <files>?").
+- `window.markataDevSettings.open(section?)`, `.close()`, `.isOpen()`, and `.reset()`.
 
 ## See Also
 

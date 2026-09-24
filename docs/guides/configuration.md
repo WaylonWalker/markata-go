@@ -35,6 +35,41 @@ Rules:
 - repeated includes are loaded once
 - cycles fail with a clear error
 
+## Edit Settings While Serving
+
+While `markata-go serve` is running, every page has a small gear button in the bottom-left corner (or press `Alt+,`). It opens a **Site settings** sidebar listing every config option with its current value and description. Change a setting and the site rebuilds and reloads with it right away. The change is only a preview until you click **Bake** to write it into your config, or **Reset** to throw it away. `markata-go build` never includes the sidebar, so published sites don't have it. The sidebar and Bake only accept changes from the machine running `serve`; if you bind to `--host 0.0.0.0` to test on a phone, the phone can browse but cannot edit settings.
+
+1. Run `markata-go serve` and open the site.
+2. Click the gear and search, for example, `title` or `items_per_page`.
+3. Change a value. Text fields apply when you press Enter or leave the field; dropdowns, checkboxes, and numbers apply right away. The page reloads with the change, and the sidebar stays open where you left it.
+4. Keep going. Changed rows are highlighted, and **Revert** undoes one field. While the sidebar is closed, a small **Previewing N unsaved changes · Reset · Review** bar next to the gear reminds you the site is showing unsaved changes.
+5. Click **Bake** to keep them. The button changes to **Bake into markata-go.toml?** and lists the files it will edit. Click again to confirm. The server writes the files, rebuilds, and live-reloads.
+6. Or click **Reset** to drop every unsaved change and go back to what your config files say.
+
+Previews live in the serve process's memory only. Your files don't change until you bake, and restarting `markata-go serve` also discards unsaved previews.
+
+Settings with a fixed set of values, such as `glob.slug_mode`, `theme.palette`, `theme.fontpack`, `nav.position`, or `markdown.highlight.theme`, are dropdowns. Numbers with a range, such as `theme.background.color_mix` (0-1), are limited to that range. A value that isn't allowed gets a red message under the field and is not previewed, so a typo can't break the site. Leave a field empty to use the default.
+
+Each row shows where a setting lives: **set in config/theme.toml** means that file defines it now, and **writes to ...** names the file a change will go to. The sidebar edits the file that owns the setting:
+
+- A key that is already set is edited where it is set (the file that wins, when several set it).
+- A new key goes to the file that already holds its group. For example, a new `feed_defaults.items_per_page` lands in the file that has `[markata-go.feed_defaults]`.
+- Otherwise it goes to your root config, or a new `markata-go.toml` when you have none.
+
+This works with `include = [...]` files, config directories, and `--merge-config` files, in TOML, YAML, or JSON. Comments, key order, and other settings are kept.
+
+Some settings are shown but not editable in the sidebar; edit them in the file:
+
+- Lists of tables and maps, such as `nav`, `feeds`, and `head.meta`, show a summary like "3 items".
+- Secrets such as tokens and passwords are never sent to the browser.
+- A few fields that the config loader does not read are marked **Not read from config files**.
+
+Changes are checked before they stick. If a preview or bake makes the config invalid or does not load back as written, it is rejected (and a bake restores every file) and the sidebar shows the error. When a `MARKATA_GO_*` environment variable overrides a setting, the row says so, because the variable wins over both previews and files until it is unset.
+
+On phones the sidebar opens full screen.
+
+The theme picker's **All settings** button opens this sidebar at the Theme section. Its **Bake** button still writes only the look you picked (see [Themes Guide](/docs/guides/themes/#baking-a-look-into-your-config)).
+
 ## Content Index
 
 Enable the optional metadata artifact with a plugin table:
@@ -510,7 +545,7 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `fontpack` | string | `"brush"` | Font pack: Knewave headings, Space Grotesk body, DM Mono code by default |
 | `aesthetic` | string | `"minimal"` | Surface style: `minimal`, `balanced`, `elevated`, `precision`, or `brutal` |
 | `motif.kind` | string | `"off"` | Background motif (`off`, `block-w`, `letter`) |
-| `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; its **Copy config** button copies the current choices as TOML (see [Themes Guide](/docs/guides/themes/)) |
+| `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; under `markata-go serve` its **Bake** button writes the current choices into your config (see [Themes Guide](/docs/guides/themes/)) |
 | `switcher.mode_toggle` | bool | `true` | Show the light/dark toggle next to the picker |
 
 ```toml
