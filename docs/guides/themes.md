@@ -259,46 +259,174 @@ explicitly and the derived one is ignored.
 
 ---
 
-## Multi-Palette Theme Switcher
+## Live Theme Picker
 
-Allow visitors to choose any available color palette at runtime through an interactive UI in the header. The switcher provides:
+Every site ships with a live theme picker. Visitors can restyle the site in any built-in palette without changing your configured default. The header only gains two small round buttons:
 
-- **Dark/Light toggle**: A sun/moon button to instantly switch between dark and light mode
-- **Palette family selector**: A dropdown to choose from palette families (Catppuccin, Gruvbox, Rose Pine, etc.)
-- **Smart variant selection**: Automatically picks the appropriate light/dark variant based on current mode
-- **Keyboard shortcuts**: `.` next family, `,` previous family, `>` next aesthetic, `<` previous aesthetic, `\` toggle dark/light mode
-- **Toast notifications**: Visual feedback when cycling through palettes
+- **Mode toggle** (sun/moon): switch between light and dark.
+- **Theme button** (painter's palette icon, dotted with the current theme's accent colors): opens the picker.
 
-### Enabling the Switcher
+The picker opens as a compact popover (a bottom sheet on phones, so the page stays visible above it) with three tabs. Every tab is a grid of live preview cards:
 
-The dark/light mode toggle is available independently.
-Enable this full switcher when you also want palette family and aesthetic controls:
+- **Colors**: each card renders in that theme's own background, surface, text, accent, and status colors. Includes search, Light/Dark buttons to browse either mode, Shuffle for a random theme, a **Seasonal** card, and a calendar button that shows the seasonal schedule.
+- **Style**: each card draws its corners, borders, and shadows in that aesthetic.
+- **Font**: each card shows a heading, body line, and code sample in that font pack. Text size buttons (Small to X-Large) sit above the grid.
+
+With a mouse, hovering a card shows that theme, style, or font on the whole page right away. Move off the cards and the page goes back to your current choice; click to keep it. Hovering a holiday or season in the seasonal schedule previews its colors the same way. On touch screens, tap to choose.
+
+To move fast, use the **‹ ›** buttons in the picker's top bar. They step through the current tab and show the name of the current choice, and the page updates on every tap. Arrow keys, Home/End, and PageUp/PageDown do the same from the keyboard. The picker remembers the last tab you used.
+
+The bottom bar has **Reset**, which goes back to the site's default theme, style, and font. While you run `markata-go serve`, it also shows **Bake**, which writes the current choices into your site config (see below). Published sites never show Bake.
+
+On phones, every control is at least 40px tall, the search field uses 16px text so iOS does not zoom, and the sheet leaves room for the home indicator.
+
+Sites are dark by default (`fallback_mode = "dark"`): a first-time visitor sees the dark palette regardless of their OS preference until they flip the mode toggle.
+
+### Baking a look into your config
+
+Run `markata-go serve`, open the picker, and choose a theme, style, font, and text size. Click **Bake**; the button changes to **Bake into markata-go.toml?** (naming the file it will edit, and marked **(override)** when that is a `--merge-config` file). Click again within four seconds to write it. The dev server updates the file, rebuilds, and live-reloads, so every visitor now starts with that look:
 
 ```toml
 [markata-go.theme]
-palette = "rose-pine"  # Default palette
-
-[markata-go.theme.switcher]
-mode_toggle = true
-enabled = true
-include_all = true  # Include all 70+ built-in palettes
+palette = "gruvbox-dark"
+palette_light = "gruvbox-light"
+palette_dark = "gruvbox-dark"
+fallback_mode = "dark"
+aesthetic = "brutal"
+fontpack = "editorial"
+text_size = "large"
 ```
 
-When enabled, the switcher UI appears in the site header. Visitor selections are persisted in localStorage and restored on return visits.
+`fallback_mode` and `text_size` are only baked when you picked them yourself in the picker; otherwise bake leaves the site's settings alone, because they are usually each visitor's preference.
+
+Bake picks the file carefully:
+
+- It looks at the root config, every file it pulls in with `include = [...]` (for example a `config/` directory), and any `--merge-config` files.
+- If one or more already have a `[markata-go.theme]` section, it edits the one that takes effect (the last to load). A theme in `config/theme.toml` stays there.
+- Otherwise it adds `[markata-go.theme]` to the root config, or creates `markata-go.toml` when the site has none.
+- If the site has no config and serve is using your global `~/.config/markata-go/config.toml`, the button reads **Bake unavailable**: bake never edits your global defaults. Create a `markata-go.toml` in the site first.
+
+Only the baked keys change. Comments, key order, and other settings are kept, and existing keys are updated in place. TOML, YAML, and JSON configs all work. If the theme is written in a shape bake cannot edit safely (a TOML inline table `theme = { ... }`, a YAML flow mapping, or a multi-line value), bake leaves the file alone and reports the error; convert it to a normal table and try again. `MARKATA_GO_THEME_*` environment variables still override the file, and bake warns when one is set.
+
+After a successful bake the picker names the keys it wrote and clears your browser's saved picks, so what you see is the site default. Bake uses the same checks as the settings sidebar: if the config does not load back as written, every file is restored. A baked key also replaces any unsaved sidebar preview of it.
+
+To change other theme settings, such as `palette_light`, `custom_css`, or `switcher.enabled`, click **All settings** next to Bake. It opens the serve-only settings sidebar at the Theme section (see [Edit Settings While Serving](/docs/guides/configuration/#edit-settings-while-serving)).
+
+### Seasonal
+
+The **Seasonal** card, first in the Colors grid, picks a palette from today's date. It follows the northern hemisphere seasons:
+
+| Season | Starts | Palette |
+|--------|--------|---------|
+| Spring | Mar 20 | `pollen8` |
+| Summer | Jun 21 | `summer-beach` |
+| Autumn | Sep 22 | `autumn` |
+| Winter | Dec 21 | `winter-frost` |
+
+It switches to a holiday palette for the three days before a holiday and on the day itself:
+
+| Holiday | Date | Palette |
+|---------|------|---------|
+| New Year | Jan 1 | `white-gold` / `black-gold` |
+| Lunar New Year | varies | `lunar-new-year` |
+| Valentine's Day | Feb 14 | `valentine` |
+| St. Patrick's Day | Mar 17 | `st-patricks` |
+| Easter | varies (Western) | `blessing` |
+| Earth Day | Apr 22 | `everforest-light` / `everforest-dark` |
+| Halloween | Oct 31 | `halloween` |
+| Diwali | varies (Lakshmi Puja) | `diwali` |
+| Hanukkah | varies, all 8 days | `hanukkah` |
+| Christmas | Dec 25 | `christmas` |
+
+To see the schedule, open the picker and click the calendar button next to Shuffle on the Colors tab. It shows:
+
+- a strip for the current year, colored with each season's and holiday's theme, with a line at today
+- a **Coming up** list: what is showing now, until when, and how long is left, then each upcoming holiday (its dates and how many days it shows, lead days included) and season change (its length in weeks) over the next year, each with a color swatch
+- a **Use Seasonal** button, if you picked a different theme
+
+Hover a band in the strip or a row in the list to preview that period's colors on the page. The hovered band and its row are outlined together, a line under the strip spells out the period's dates and length, and the picker's top label reads **Preview: …** while anything is being previewed. On touch screens, tap a band or row to see its dates without changing the page.
+
+The schedule follows the Light/Dark buttons, so you see the palettes for the mode you are browsing. Click the calendar button again, search, or step with ‹ › to go back to the grid.
+
+Seasonal follows the light/dark toggle and uses each palette's matching variant. The date comes from the visitor's clock, and the head script resolves it before the first paint, so nothing flashes. Easter is calculated. Other moving holidays come from a built-in table: Lunar New Year and Hanukkah through 2035, Diwali through 2033. Holidays and seasons whose palettes are excluded by `[markata-go.theme.switcher]` are skipped.
+
+To make seasonal the default for every visitor who has not picked a theme, set `seasonal = true`. Your `palette` settings stay as the fallback (for example, when the picker is disabled):
+
+```toml
+[markata-go.theme]
+palette = "ayu-dark"
+seasonal = true
+```
+
+**Bake** writes `seasonal = true` when Seasonal is selected and leaves your `palette` settings as the fallback. Baking a regular theme sets `seasonal = false` if seasonal was on.
+
+### Styles
+
+The **Style** tab switches the aesthetic, which sets the shape and depth of code blocks, cards, admonitions, tables, images, and form controls:
+
+| Style | Look |
+|-------|------|
+| `minimal` | Default. Soft 1px borders, small radii, no shadows |
+| `balanced` | Medium radii with a light drop shadow |
+| `elevated` | Large radii, borderless surfaces lifted by soft shadows |
+| `precision` | Near-square corners with crisp hairline borders |
+| `brutal` | Square corners, 2px ink borders, and hard offset shadows in the palette's accent color, applied to cards, code, tables, buttons, inputs, search, and share buttons |
+
+### Fonts
+
+The **Font** tab lists every bundled font pack as a preview card with its heading, body, and code faces. The default pack is `brush`: **Knewave** headings, **Space Grotesk** body text, and **DM Mono** code. Fonts are self-hosted, and a card only loads its fonts once it scrolls into view. Offering every pack therefore adds CSS, not downloads (the build copies all pack files, about 4MB, to `assets/fonts/`). Set `fontpack` in `[markata-go.theme]` to change the site default.
+
+### No flash on load
+
+A visitor's choice is restored by a tiny inline script in `<head>` before any stylesheet paints, so return visits render in the chosen theme from the first frame. Transitions are suppressed during a switch, and view-transition navigation keeps the chosen theme.
 
 ### Keyboard Shortcuts
 
-The palette switcher includes convenient keyboard shortcuts:
-
 | Key | Action |
 |-----|--------|
-| `.` | Switch to next palette family (full switcher only) |
-| `,` | Switch to previous palette family (full switcher only) |
-| `>` | Switch to next aesthetic (full switcher only) |
-| `<` | Switch to previous aesthetic (full switcher only) |
-| `\` | Toggle dark/light mode (mode toggle only) |
+| `t` | Open or close the theme picker |
+| `.` | Next theme (shows a toast) |
+| `,` | Previous theme |
+| `>` | Next style (aesthetic) |
+| `<` | Previous style |
+| `f` | Next font |
+| `F` | Previous font |
+| `\` | Toggle dark/light mode |
 
-These shortcuts work anywhere on the page and show a toast notification with the new palette name.
+Inside the picker:
+
+- `1`, `2`, and `3` switch to the Colors, Style, and Font tabs.
+- Arrow keys preview.
+- `Enter` keeps the choice and closes.
+- `Escape` closes.
+
+On the tab bar, `←`/`→` move between tabs and `↓` moves into the grid.
+
+### How choices are stored
+
+Choices are saved per mode in `localStorage`:
+
+| Key | Value |
+|-----|-------|
+| `color-mode` | `light` or `dark` |
+| `theme-palette-light` | Palette used in light mode, or `seasonal` |
+| `theme-palette-dark` | Palette used in dark mode, or `seasonal` |
+| `theme-aesthetic` | Chosen aesthetic |
+| `theme-fontpack` | Chosen font pack |
+| `text-size` | Chosen reading size |
+| `theme-picker-tab` | Last picker tab (`colors`, `style`, `font`) |
+
+Picking a theme also stores its counterpart for the other mode. For example, choosing Gruvbox in dark mode makes the mode toggle switch to Gruvbox Light. Picking your site's default pair clears the stored keys, so the visitor follows future default changes again.
+
+### Disabling the picker
+
+```toml
+[markata-go.theme.switcher]
+enabled = false      # remove the picker; ship only your palette
+mode_toggle = true   # keep the sun/moon toggle
+```
+
+With the picker disabled, only the configured palette's CSS and font pack are generated, and the text-size control goes back to the header.
 
 ### Filtering Palettes
 
@@ -308,7 +436,6 @@ By default, all discovered palettes are included. You can control which palettes
 
 ```toml
 [markata-go.theme.switcher]
-enabled = true
 include_all = true  # Default
 exclude = ["default-light", "default-dark"]  # Hide these palettes
 ```
@@ -317,17 +444,18 @@ exclude = ["default-light", "default-dark"]  # Hide these palettes
 
 ```toml
 [markata-go.theme.switcher]
-enabled = true
 include_all = false
 include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 ```
+
+Your configured default palettes are always available in the picker.
 
 ### Switcher Configuration Reference
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `enabled` | boolean | `true` | Show the live theme picker |
 | `mode_toggle` | boolean | `true` | Show the dark/light mode toggle |
-| `enabled` | boolean | `false` | Show the full palette switcher UI |
 | `include_all` | boolean | `true` | Include all discovered palettes |
 | `include` | array | `[]` | Palettes to include (when `include_all` is false) |
 | `exclude` | array | `[]` | Palettes to exclude (when `include_all` is true) |
@@ -335,10 +463,12 @@ include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 
 The mode toggle is also gated by `[markata-go.header].show_theme_toggle` for backward compatibility.
 
+All palettes add roughly 30KB (gzip) to `palette.css`. Use `include` to trim that on very size-sensitive sites.
+
 ### Reading-size control
 
 The default theme uses a large, comfortable reading size by default. Visitors
-can choose a smaller or larger preset (Small, Medium, Large, X-Large) from the header control, and their
+can choose a smaller or larger preset (Small, Medium, Large, X-Large) from the theme picker (or the header control when the picker is off), and their
 choice is saved for later visits on the same site.
 
 ```toml
@@ -374,111 +504,79 @@ affects the tokens the site has not pinned.
 
 ### How It Works
 
-1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).
+1. **Palette manifest**: `palette.css` includes a JSON manifest (`--palette-manifest`) listing each theme's `name`, `displayName`, `variant` (`light`/`dark`), and mode `counterpart`.
 
-2. **CSS Variables**: Each palette's colors are generated as CSS custom properties using `[data-palette="palette-name"]` selectors. When a user selects a palette, a data attribute is set on the `<html>` element.
+2. **Scoped palettes**: each palette is emitted as a `[data-palette="name"]` block. The page sets `data-palette` on `<html>`, and each preview card sets it on itself, so cards render with the real palette CSS.
 
-3. **JavaScript UI**: The `palette-switcher.js` script (loaded conditionally when enabled):
-   - Reads the palette manifest from CSS
-   - Groups palettes into "families" (e.g., all Catppuccin variants)
-   - Creates the sun/moon toggle and family dropdown
-   - Handles keyboard shortcuts and persistence
+3. **Style tokens**: per-aesthetic surface tokens (`--radius-*`, `--surface-border`, `--surface-shadow`) are keyed on `[data-aesthetic="name"]`, so each Style card previews its own aesthetic.
 
-4. **Persistence**: Selected palette family and dark/light preference are saved to `localStorage` and restored on page load.
+4. **Font manifest**: `css/fonts.css` includes `--fontpack-manifest` and `--fontpack-default`, plus one `[data-fontpack="name"]` block per pack. Each manifest entry carries the CSS font stacks (`headingFont`, `bodyFont`, `codeFont`) that Font cards apply inline.
 
-5. **Smart Variants**: When you select a family like "Catppuccin", the switcher automatically chooses `catppuccin-latte` in light mode and `catppuccin-mocha` in dark mode.
+5. **Seasonal calendar**: when the picker is on, `base.html` inlines the seasonal schedule as `window.__markataSeasonal`, resolved against the palettes that ship.
 
-### Styling the Switcher
+6. **Motifs follow the theme**: background motifs are off by default. When you enable one (`[markata-go.theme.motif] kind = "block-w"`), it is repainted from the active palette's colors whenever the page runs a palette other than the configured one.
 
-The switcher UI uses CSS custom properties for easy customization:
+### Styling the Picker
 
 ```css
-/* In your custom CSS */
-:root {
-  /* Toast notifications */
-  --toast-bg: var(--color-surface);
-  --toast-text: var(--color-text);
-  --toast-border: var(--color-border);
-
-  /* Mode toggle button */
-  --toggle-size: 2rem;
-  --toggle-bg: var(--color-surface);
-  --toggle-hover-bg: var(--color-surface-hover);
-
-  /* Family dropdown */
-  --dropdown-bg: var(--color-surface);
-  --dropdown-border: var(--color-border);
-}
-```
-
-The switcher container can also be styled:
-
-```css
-.palette-switcher {
-  /* Container styles */
-  gap: 0.5rem;
-}
-
-.palette-family-select {
-  /* Dropdown styles */
-  min-width: 120px;
-}
-
-.mode-toggle {
-  /* Sun/moon button styles */
-  border-radius: 50%;
-}
-```
-
-### Hide on Mobile
-
-To hide the family dropdown on mobile (keeping only the dark/light toggle):
-
-```css
-@media (max-width: 768px) {
-  .palette-family-select {
-    display: none;
-  }
-}
+.theme-picker-toggle { /* round palette button in the header */ }
+.theme-picker-panel  { /* popover / bottom sheet */ }
+.theme-picker-tabs   { /* Colors / Style / Font tabs */ }
+.theme-picker-step   { /* ‹ › step buttons */ }
+.theme-card          { /* any preview card */ }
+.palette-card, .seasonal-card, .style-card, .font-card { /* per-tab cards */ }
+.theme-picker-schedule { /* seasonal schedule view (.ss-year strip, .ss-list) */ }
+.theme-card[aria-selected="true"] { /* current theme */ }
+.theme-picker-bake   { /* "Bake" button (markata-go serve only) */ }
+.theme-picker-settings { /* "All settings" button (markata-go serve only) */ }
 ```
 
 ### JavaScript API
 
-The switcher exposes a JavaScript API for programmatic control:
-
 ```javascript
-// Get the current palette info
-const current = PaletteSwitcher.getCurrentPalette();
-// { family: "catppuccin", variant: "mocha", isDark: true }
+const picker = window.markata.paletteSwitcher;
 
-// Set a specific palette
-PaletteSwitcher.setPalette("rose-pine-moon");
-
-// Toggle dark/light mode
-PaletteSwitcher.toggleDarkMode();
-
-// Get current dark mode state
-const isDark = PaletteSwitcher.isDarkMode();
-
-// Get all palette families
-const families = PaletteSwitcher.getFamilies();
-// ["catppuccin", "gruvbox", "rose-pine", ...]
+document.documentElement.dataset.palette; // current theme, e.g. "gruvbox-dark"
+picker.selectTheme("nord-dark");  // apply and remember a theme
+picker.nextFamily();              // next theme in the current mode
+picker.prevFamily();
+picker.randomTheme();
+picker.toggleColorMode();         // flip light/dark
+picker.setAesthetic("brutal");
+picker.setFontpack("editorial");
+picker.nextFont();                // cycle fonts (also prevFont, cycleFont)
+picker.setTextSize("x-large");    // small, medium, large, x-large
+picker.selectSeasonal();          // follow the seasonal calendar
+picker.getSeasonal("dark");       // today's pick: { label, name }
+picker.getBakeSettings();         // current choices as [markata-go.theme] keys
+picker.bake();                    // serve only: write them to the site config
+picker.open("font");              // show the picker (optionally on a tab)
+picker.close();
+picker.resetTheme();              // back to the site default
+picker.getManifest();             // all themes with variant and counterpart
 ```
 
 ### Event Handling
 
-Listen for palette and mode changes:
-
 ```javascript
-// Palette family changed
-window.addEventListener('palette-family-change', (e) => {
-  console.log('Family:', e.detail.family);
+window.addEventListener('palette-change', (e) => {
   console.log('Palette:', e.detail.palette);
 });
 
-// Dark/light mode toggled
-window.addEventListener('dark-mode-change', (e) => {
-  console.log('Dark mode:', e.detail.isDark);
+window.addEventListener('color-mode-change', (e) => {
+  console.log('Mode:', e.detail.mode);
+});
+
+window.addEventListener('aesthetic-change', (e) => {
+  console.log('Aesthetic:', e.detail.aesthetic);
+});
+
+window.addEventListener('fontpack-change', (e) => {
+  console.log('Font pack:', e.detail.fontpack);
+});
+
+window.addEventListener('text-size-change', (e) => {
+  console.log('Text size:', e.detail.size);
 });
 ```
 
@@ -726,7 +824,7 @@ markata-go includes 5 built-in aesthetics:
 | Aesthetic | Description | Best For |
 |-----------|-------------|----------|
 | `balanced` | **Default.** Comfortable rounding, subtle shadows, normal spacing | General purpose, blogs |
-| `brutal` | Sharp corners, thick borders, tight spacing, no shadows | Bold statements, portfolios |
+| `brutal` | Sharp corners, thick borders, tight spacing, hard accent-colored offset shadows | Bold statements, portfolios |
 | `minimal` | No rounding, maximum whitespace, no shadows, hairline borders | Documentation, reading-focused |
 | `elevated` | Generous rounding, layered shadows, generous spacing | Premium/SaaS, card-heavy layouts |
 | `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows | Technical docs, data-heavy sites |
@@ -739,7 +837,7 @@ markata-go includes 5 built-in aesthetics:
 │ No rounding            │
 │ Thick 3px borders      │
 │ Tight spacing          │
-│ No shadows             │
+│ Hard accent shadows    │
 └────────────────────────┘
 ```
 
@@ -961,7 +1059,7 @@ Create `templates/partials/footer.html`:
 ```html
 <footer class="site-footer">
   <div class="container">
-    <p>&copy; {{ now().year }} {{ config.title }}. Built with markata-go.</p>
+    <p>&copy; {{ now | date:"2006" }} {{ config.title }}. Built with markata-go.</p>
     <nav>
       <a href="/about/">About</a>
       <a href="/contact/">Contact</a>

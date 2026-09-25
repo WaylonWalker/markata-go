@@ -9,8 +9,8 @@ import (
 )
 
 // SubscriptionFeedsPlugin creates built-in subscription feeds at root and /archive.
-// It generates /rss.xml, /atom.xml, /archive/rss.xml, /archive/atom.xml
-// without creating HTML index pages.
+// The root feed also renders the default homepage, while /archive retains the
+// configured archive page and both locations expose RSS and Atom feeds.
 //
 // This plugin also computes the discovery feed for each post during rendering,
 // enabling dynamic <link rel="alternate"> tags based on the post's sidebar feed.
@@ -38,7 +38,8 @@ func (p *SubscriptionFeedsPlugin) Priority(stage lifecycle.Stage) int {
 }
 
 // Collect injects built-in subscription feeds into the feed configs.
-// These feeds generate RSS/Atom at root (/) and /archive without HTML pages.
+// The implicit root feed generates an HTML homepage as well as RSS and Atom.
+// Explicit root or archive feed configuration remains authoritative.
 func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
 	syndication := getSyndicationConfig(config)
@@ -50,11 +51,23 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Get existing feed configs from cache
-	var feedConfigs []models.FeedConfig
+	// Start from the resolved config so built-in feeds (including /archive/)
+	// and feeds injected earlier in Collect (e.g. series) are present. Cached
+	// configs may predate those injections, so they only add feeds whose slug
+	// the resolved config does not already define.
+	feedConfigs := getFeedConfigs(config)
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
 		if fcs, ok := cached.([]models.FeedConfig); ok {
-			feedConfigs = fcs
+			known := make(map[string]bool, len(feedConfigs))
+			for i := range feedConfigs {
+				known[feedConfigs[i].Slug] = true
+			}
+			for i := range fcs {
+				if !known[fcs[i].Slug] {
+					known[fcs[i].Slug] = true
+					feedConfigs = append(feedConfigs, fcs[i])
+				}
+			}
 		}
 	}
 
@@ -80,7 +93,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			Sort:        "date",
 			Reverse:     true,
 			Formats: models.FeedFormats{
-				HTML: false, // Don't generate index.html at root
+				HTML: true,
 				RSS:  true,
 				Atom: true,
 				JSON: false,
@@ -108,7 +121,9 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		feedConfigs = append(feedConfigs, archiveFeed)
 	}
 
-	// Store updated feed configs back to cache
+	// FeedsPlugin reads the resolved config during collection. Keep it in sync
+	// with the cache so the injected feeds are collected on this build.
+	config.Extra["feeds"] = feedConfigs
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil

@@ -35,6 +35,47 @@ Rules:
 - repeated includes are loaded once
 - cycles fail with a clear error
 
+## Edit Settings While Serving
+
+While `markata-go serve` is running, every page has a small gear button in the bottom-left corner (or press `Alt+,`). It opens a **Site settings** sidebar listing every config option with its current value and description. Change a setting and the site rebuilds and reloads with it right away. The change is only a preview until you click **Bake** to write it into your config, or **Reset** to throw it away. `markata-go build` never includes the sidebar, so published sites don't have it. The sidebar and Bake only accept changes from the machine running `serve`; if you bind to `--host 0.0.0.0` to test on a phone, the phone can browse but cannot edit settings.
+
+1. Run `markata-go serve` and open the site.
+2. Click the gear. The **Common** section at the top has the settings most sites change (title, URL, palettes, style, font, nav, footer). Search to find anything else, for example `items_per_page`.
+3. Change a value. Text fields apply when you press Enter or leave the field; dropdowns, checkboxes, and numbers apply right away. The status line shows **Rebuilding… 3s** until the build finishes, then the page reloads with the change and the sidebar stays open where you left it. If the build fails, the error is shown instead.
+4. Keep going. Changed rows are highlighted, and **Revert** undoes one field. **Reset to default** removes a setting from your config so it falls back to the default shown on the row. While the sidebar is closed, a small **Previewing N unsaved changes · Reset · Review** bar next to the gear reminds you the site is showing unsaved changes.
+5. Click **Bake** to keep them. The sidebar shows the exact diff for every file it will edit (secret values are hidden). Click **Write** to save, or **Cancel**. The server writes the files, rebuilds, and live-reloads.
+6. Or click **Reset** to drop every unsaved change and go back to what your config files say.
+
+Previews live in the serve process's memory only. Your files don't change until you bake. If you restart `markata-go serve`, the sidebar re-applies the edits you had staged in that browser tab. While a preview is active, builds use a separate cache in `.markata/serve-preview/`, so previewing never throws away your site's warm build cache.
+
+If you changed the theme with the theme picker, the picker's choice is saved in your browser and would hide a palette, style, font, text size, or color mode preview. Previewing one of those settings clears the matching picker choice, and the status line tells you it did.
+
+When you run `markata-go serve <file>` for a single page, sections for site-wide output such as feeds, tags, and the blogroll are hidden. Search or click **Show hidden sections** to see them.
+
+Settings with a fixed set of values, such as `glob.slug_mode`, `theme.palette`, `theme.fontpack`, `nav.position`, or `markdown.highlight.theme`, are dropdowns. Numbers with a range, such as `theme.background.color_mix` (0-1), are limited to that range. A value that isn't allowed gets a red message under the field and is not previewed, so a typo can't break the site; the status line lists every change that is not being previewed. Leave a field empty to use the default.
+
+Each row shows where a setting lives: **set in config/theme.toml** means that file defines it now, and **writes to ...** names the file a change will go to. The sidebar edits the file that owns the setting:
+
+- A key that is already set is edited where it is set (the file that wins, when several set it).
+- A new key goes to the file that already holds its group. For example, a new `feed_defaults.items_per_page` lands in the file that has `[markata-go.feed_defaults]`.
+- Otherwise it goes to your root config, or a new `markata-go.toml` when you have none.
+- A file passed with `--merge-config` is marked **override**, so you know the change won't be in your base config.
+- If your site has no config of its own and serve fell back to your global `~/.config/markata-go/config.toml`, the rows are marked **global** and Bake is refused, so a preview never changes the defaults for all your sites. Create a `markata-go.toml` in the site to bake.
+
+This works with `include = [...]` files, config directories, and `--merge-config` files, in TOML, YAML, or JSON. Comments, key order, and other settings are kept.
+
+Some settings are shown but not editable in the sidebar; edit them in the file:
+
+- Lists of tables and maps, such as `nav`, `feeds`, and `head.meta`, show a summary like "3 items".
+- Secrets such as tokens and passwords are never sent to the browser.
+- A few fields that the config loader does not read are marked **Not read from config files**.
+
+Changes are checked before they stick. If a preview or bake makes the config invalid or does not load back as written, it is rejected (and a bake restores every file) and the sidebar shows the error. When a `MARKATA_GO_*` environment variable overrides a setting, the row says so, because the variable wins over both previews and files until it is unset.
+
+On phones the sidebar opens full screen. `Alt+,` does nothing while you are typing in a field on the page.
+
+The theme picker's **All settings** button opens this sidebar at the Theme section. Its **Bake** button writes only the look you picked, through the same checks and file selection as the sidebar (see [Themes Guide](/docs/guides/themes/#baking-a-look-into-your-config)).
+
 ## Content Index
 
 Enable the optional metadata artifact with a plugin table:
@@ -113,6 +154,32 @@ markata-go searches for configuration files in the following order (first found 
 | 6 | `~/.config/markata-go/config.toml` | User config directory |
 
 If no configuration file is found, markata-go uses default values with any environment variable overrides applied.
+
+### Start With One Markdown File
+
+A configuration file is optional for a small site. The default content
+patterns include root Markdown plus the `pages/` and `posts/` directories, so
+this minimal layout works:
+
+```text
+pages/
+  sample.md
+```
+
+`markata-go build` and `markata-go serve` render `sample.md`, a homepage that
+links to it, and an `/archive/` page. The homepage also keeps the default RSS
+and Atom endpoints at `/rss.xml` and `/atom.xml`. Posts must be published to
+appear in these collections: use `published: true` in frontmatter. An empty
+site still renders `/` with that reminder.
+
+To render only one Markdown file with the bundled default theme, without
+generating a homepage, archive, or feeds, pass the file directly:
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+```
 
 ## Select A Site From Another Directory
 
@@ -377,7 +444,8 @@ Supported license keys:
 - `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
 - `mit` – MIT License (`https://opensource.org/licenses/MIT`).
 
-Leaving the key absent (the default in older configs) triggers a validation warning and the serve banner/toast until you choose one of the supported strings or set `license = false`.
+When omitted, `license` defaults to `cc-by-4.0`. Set another supported string
+to override it, or set `license = false` to suppress footer attribution.
 
 ### Navigation Links (`[[markata-go.nav]]`)
 
@@ -472,13 +540,19 @@ When enabled, markata-go generates JSON-LD structured data for:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | `"default"` | Theme name |
-| `palette` | string | `"default-light"` | Color palette to use |
+| `palette` | string | `"ayu-dark"` | Color palette to use |
 | `palette_dark` | string | `""` | Dark mode palette |
-| `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
+| `fallback_mode` | string | `"dark"` | Mode for visitors who have not toggled it (`"dark"` or `"light"`); the OS preference is not used |
+| `seasonal` | boolean | `false` | Default visitors to the seasonal palette (northern hemisphere seasons plus world holidays). Needs the theme switcher; `palette` stays the fallback. See [Themes: Seasonal](/docs/guides/themes/#seasonal) |
 | `text_size` | string | `"large"` | Default reading-size preset: `"small"`, `"medium"`, `"large"`, or `"x-large"`. Article text additionally scales up on viewports ≥1800px. |
 | `show_text_size_control` | bool | `true` | Show the visitor-facing reading-size selector |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
+| `fontpack` | string | `"brush"` | Font pack: Knewave headings, Space Grotesk body, DM Mono code by default |
+| `aesthetic` | string | `"minimal"` | Surface style: `minimal`, `balanced`, `elevated`, `precision`, or `brutal` |
+| `motif.kind` | string | `"off"` | Background motif (`off`, `block-w`, `letter`) |
+| `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; under `markata-go serve` its **Bake** button writes the current choices into your config (see [Themes Guide](/docs/guides/themes/)) |
+| `switcher.mode_toggle` | bool | `true` | Show the light/dark toggle next to the picker |
 
 ```toml
 [markata-go.theme]
@@ -714,6 +788,8 @@ width = "280px"
 min_depth = 2
 max_depth = 4
 ```
+
+To show the TOC only on blog-layout posts (pages rendered with `post.html`), use `show_toc` under `[markata-go.layout.blog]` instead. When `doc_sidebar.enabled = true`, it takes precedence and its `position` and `width` are used. See the Blog Layout section below.
 
 #### Feed Sidebar (`[markata-go.components.feed_sidebar]`)
 
@@ -1318,8 +1394,8 @@ Single-column layout optimized for reading long-form content.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `content_max_width` | string | `"720px"` | Maximum content width |
-| `show_toc` | bool | `false` | Show table of contents |
-| `toc_position` | string | `"right"` | TOC position if enabled |
+| `show_toc` | bool | `false` | Show the table of contents sidebar on blog-layout posts that have headings |
+| `toc_position` | string | `"right"` | TOC position if enabled: `"left"` or `"right"` |
 | `toc_width` | string | `"200px"` | TOC width |
 | `header_style` | string | `"full"` | Header style |
 | `footer_style` | string | `"full"` | Footer style |

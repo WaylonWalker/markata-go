@@ -104,7 +104,7 @@ name = "blog"
 
 [markata-go.layout.blog]
 content_max_width = "720px"
-show_toc = false          # Enable per-post in frontmatter
+show_toc = false          # Show the TOC sidebar on blog-layout pages
 toc_position = "right"
 header_style = "full"
 footer_style = "full"
@@ -114,6 +114,20 @@ show_tags = true
 show_reading_time = true
 show_prev_next = true
 ```
+
+**Table of contents (`show_toc`):** The `blog` layout renders with `post.html`.
+When `show_toc = true`, pages rendered with `post.html` MUST show the table of
+contents sidebar (`components/doc_sidebar.html`) for posts that have TOC
+entries. The sidebar uses `toc_position` and `toc_width` from
+`[markata-go.layout.blog]`, and `min_depth`/`max_depth` from
+`[markata-go.components.doc_sidebar]`.
+
+- If `[markata-go.components.doc_sidebar] enabled = true`, that component's
+  settings take precedence on all pages, and `show_toc` has no extra effect.
+- `show_toc` MUST NOT enable the sidebar for pages rendered with other
+  templates (for example `docs`, `landing`, `bare`, or custom templates).
+- Templates read the effective settings from the `resolved_doc_sidebar`
+  context variable (`enabled`, `position`, `width`, `min_depth`, `max_depth`).
 
 ### `landing` Layout
 

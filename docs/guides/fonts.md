@@ -18,6 +18,10 @@ site configuration:
 fontpack: system-reader
 ```
 
+The same value can be set as `theme.fontpack`. Any pack or alias listed by
+`markata-go fonts packs` is valid. When `fontpacks_file` is set, names are
+checked against that catalog when the site builds.
+
 Catalog-defined bundled packs use vendored, stable WOFF2 tiers. The built-in
 catalog, manifests, licenses, and font assets are embedded in the executable,
 so these packs work from an installed or GoReleaser binary in any working

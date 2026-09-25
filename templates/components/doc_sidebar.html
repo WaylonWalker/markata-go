@@ -1,9 +1,9 @@
 {# Document sidebar (Table of Contents) component template #}
 {# Usage: {% include "components/doc_sidebar.html" %} #}
-{# Requires: config.components.doc_sidebar (DocSidebarConfig) #}
+{# Requires: resolved_doc_sidebar (components.doc_sidebar merged with layout.blog.show_toc) #}
 {# Requires: post.toc ([]TocEntry) from toc plugin #}
 
-{% with sidebar = config.components.doc_sidebar %}
+{% with sidebar = resolved_doc_sidebar %}
 {% if sidebar.enabled and post.toc %}
 <aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}" data-pagefind-ignore>
     <nav class="toc" aria-label="Table of Contents">

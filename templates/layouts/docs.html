@@ -24,11 +24,7 @@
             {% if config.search.enabled and config.header.show_search %}
             {% include "components/search.html" %}
             {% endif %}
-            {% if config.header.show_theme_toggle %}
-            <button class="theme-toggle" type="button" aria-label="Toggle theme">
-                <span class="theme-toggle-icon" aria-hidden="true"></span>
-            </button>
-            {% endif %}
+            {% include "partials/palette-switcher.html" %}
             <button class="mobile-menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
                 <span class="hamburger-line" aria-hidden="true"></span>
                 <span class="hamburger-line" aria-hidden="true"></span>

@@ -19,56 +19,7 @@
       if (params.get('capture') === 'natural') document.documentElement.classList.add('canonical-natural-route');
     }
   </script>
-  <script>
-    (function() {
-      var root = document.documentElement;
-      var fallbackSize = root.dataset.textSize || 'large';
-      var allowed = { small: true, medium: true, large: true, 'x-large': true };
-      var size = allowed[fallbackSize] ? fallbackSize : 'large';
-      var allowVisitorSize = {% if config.theme.show_text_size_control | default:true %}true{% else %}false{% endif %};
-      if (allowVisitorSize) {
-        try {
-          var stored = localStorage.getItem('text-size');
-          if (stored && allowed[stored]) {
-            size = stored;
-          }
-        } catch (_) {
-          // ignore storage access failures
-        }
-      }
-      root.dataset.textSize = size;
-    })();
-  </script>
-  <script>
-    (function() {
-      var fallbackMode = '{% if config.theme.fallback_mode == "light" %}light{% else %}dark{% endif %}';
-      window.__markataThemeFallbackMode = fallbackMode;
-
-      var mode = fallbackMode;
-      try {
-        var stored = localStorage.getItem('color-mode') || localStorage.getItem('theme');
-        if (stored === 'light' || stored === 'dark') {
-          mode = stored;
-        }
-      } catch (_) {
-        // ignore storage access failures
-      }
-
-      document.documentElement.dataset.theme = mode;
-      document.documentElement.classList.toggle('dark', mode === 'dark');
-
-      // Pin data-palette to the variant that matches the resolved mode so the
-      // per-palette CSS block agrees with data-theme on first paint.
-      var palettes = {
-        light: '{{ config.Extra.palette_light_effective | default:config.theme.palette }}',
-        dark: '{{ config.Extra.palette_dark_effective | default:config.theme.palette }}'
-      };
-      var modePalette = mode === 'dark' ? palettes.dark : palettes.light;
-      if (modePalette) {
-        document.documentElement.dataset.palette = modePalette;
-      }
-    })();
-  </script>
+  {% include "partials/theme-bootstrap.html" %}
 
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
@@ -371,7 +322,8 @@
       width: 100%;
     }
   </style>
-  <script type="module">
+  {# data-webawesome gives the base path to the loader's import-time auto-start. #}
+  <script type="module" data-webawesome="{{ config.Extra.webawesome_base_path }}">
     import { setBasePath, startLoader } from "{{ config.Extra.webawesome_loader_url }}";
     setBasePath("{{ config.Extra.webawesome_base_path }}");
     startLoader();
@@ -414,14 +366,9 @@
   {% endif %}
 
   <style>
-    html:root {
-      color-scheme: dark;
-    }
-    @media (prefers-color-scheme: light) {
-      html:root {
-        color-scheme: light;
-      }
-    }
+    /* Native controls and scrollbars follow the site's resolved mode, not the OS. */
+    html:root { color-scheme: dark; }
+    html:root[data-theme="light"] { color-scheme: light; }
   </style>
 
   <!-- RSS/Atom/JSON Feeds -->
@@ -446,7 +393,7 @@
   {% if discovery_feed.has_json %}
   <link rel="alternate" type="application/feed+json" title="{{ discovery_feed.title }} (JSON)" href="{{ discovery_feed.json_url }}">
   {% endif %}
-  {% else %}
+  {% elif not single_page %}
   {# Fallback: default feeds when no discovery_feed or alternate_feeds configured #}
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
@@ -659,7 +606,7 @@
     {% block progress %}{% endblock %}
   </div>
 
-  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not config.components.doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
+  <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not resolved_doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page">
     {% block main %}
 
       {# Left sidebar for feed navigation (if enabled) #}
@@ -668,7 +615,7 @@
       {% endif %}
 
       {# Left sidebar for document TOC (if enabled) #}
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'left' %}
+      {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'left' %}
       {% include "components/doc_sidebar.html" %}
       {% endif %}
 
@@ -678,7 +625,7 @@
       </main>
 
       {# Right sidebar for document TOC (if enabled) #}
-      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+      {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'right' %}
       {% include "components/doc_sidebar.html" %}
       {% endif %}
 

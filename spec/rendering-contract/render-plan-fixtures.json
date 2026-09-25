@@ -27,7 +27,7 @@
           "scale": 1
         },
         "motif": {
-          "kind": "block-w",
+          "kind": "off",
           "color_mix": 0.01,
           "scatter": 0,
           "glyph": "W",
@@ -55,8 +55,8 @@
           "scale": 1
         },
         "motif": {
-          "recipe": "block-w",
-          "kind": "block-w",
+          "recipe": "off",
+          "kind": "off",
           "glyph": "W",
           "size": "78px",
           "gap": "10px",
@@ -69,19 +69,9 @@
         },
         "layers": [
           {
-            "role": "motif-under",
-            "recipe": "block-w",
-            "mix": 0.01
-          },
-          {
             "role": "surface",
             "recipe": "screenprint",
             "mix": 0.35
-          },
-          {
-            "role": "motif-over",
-            "recipe": "block-w",
-            "mix": 0.01
           }
         ]
       }

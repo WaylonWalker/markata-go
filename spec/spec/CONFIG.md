@@ -193,10 +193,43 @@ Only essential, cross-cutting concerns live at the root:
 | `title` | string? | null | Site title |
 | `description` | string? | null | Site description |
 | `author` | string? | null | Default author |
-| `license` | string `\|` bool | `(unset)` | Select from the supported license keys below or set to `false` to disable the footer attribution and associated warning. |
+| `license` | string `\|` bool | `"cc-by-4.0"` | Select from the supported license keys below or set to `false` to disable the footer attribution. |
 | `lang` | string | `"en"` | Site language |
 | `hooks` | string[] | `["default"]` | Plugins to load |
 | `disabled_hooks` | string[] | `[]` | Plugins to exclude |
+
+### Configless Small Sites
+
+When no configuration file is present, the default content patterns discover
+Markdown at the site root and in the `pages/` and `posts/` directories. The
+implicit root feed renders an HTML homepage of published posts as well as
+`/rss.xml` and `/atom.xml`; the default archive remains available at
+`/archive/`. When no posts are published yet, both routes still render with
+guidance to set `published: true`.
+The default navigation links to `/` and `/archive/`; it does not assume a
+custom `/blog/` feed exists.
+
+An explicit root feed (`slug = ""`) remains authoritative. To render only one
+Markdown file with the default theme and no generated home, archive, or feed
+pages, pass it to the CLI. Single-file builds MUST:
+
+- publish that file at the site root (`<output>/index.html`, href `/`),
+  regardless of its path or frontmatter slug;
+- still emit theme assets (CSS, JS, fonts, palettes);
+- skip site-level generators: feeds, subscription feeds, series, blogroll,
+  prev/next, archive and listing pages, sitemap, content index, `.well-known`,
+  image library, redirects, random-post, 404 page, garden view, and Pagefind;
+- hide search UI, feed `<link rel="alternate">` fallbacks, and the default
+  Home/Archive navigation (configured nav items still render);
+- bypass the build cache.
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+# serve accepts the same argument and keeps single-file mode on every rebuild:
+markata-go serve pages/sample.md
+```
 
 Everything else goes in a plugin namespace.
 
@@ -214,7 +247,9 @@ The root `license` key lets you declare how visitors may reuse your content. It 
   - `mit` – MIT License (`https://opensource.org/licenses/MIT`).
 
 - **Boolean `false`** suppresses the license footer and prevents the validation warning (useful for sites that intentionally publish without an explicit license).
-- **Omitted key** (default) triggers a validation warning and the serve banner/toast reminder until a license string is configured or `false` is set.
+- **Omitted key** inherits the default `cc-by-4.0` license. Set another
+  supported string to override it, or `false` to suppress the footer
+  attribution.
 
 The default scaffolding details from `markata-go config init` include `license = "cc-by-4.0"`, so new sites ship with the recommended Creative Commons attribution out of the box.
 
@@ -1111,6 +1146,174 @@ trusted_domains = [
 
 - `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters, derived posters, and `https` normalization. Relative URLs are always treated as trusted.
 - The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
+
+## Serve Settings Sidebar
+
+`markata-go serve` (never `build`) injects a settings sidebar into served HTML:
+`window.__markataSettingsEndpoint = "/__markata/settings"` in `<head>` and
+`<script src="/__markata/settings.js" defer>` before `</body>`. Static output
+MUST NOT contain either. The script mounts a `<markata-dev-settings>` element
+with a Shadow DOM, so site CSS cannot style it and it cannot style the site.
+
+### Schema
+
+The field list is derived by reflection over `models.Config` TOML tags, so new
+config fields appear automatically. Each field has:
+
+| Field | Meaning |
+|-------|---------|
+| `key` | Dotted path under `markata-go`, e.g. `theme.palette` |
+| `section` | First path segment for nested keys, `""` for top-level keys |
+| `kind` | `string`, `bool`, `int`, `float`, `list` (of strings), or `complex` |
+| `value` | Effective value; `null` for unset optional (pointer) fields and for sensitive fields |
+| `doc` | The Go doc comment of the model field (generated into `pkg/config/settings_docs_gen.go` by `go generate ./pkg/config`; a test fails when it is stale) |
+| `options` | Suggested or allowed values: palettes, fontpacks, chroma styles, rendering-contract enums, the curated enum registry (`settingEnums`), or values parsed from a `Valid values:` / `Options:` doc line |
+| `closed` | True when `options` is the complete set; the client renders a dropdown and the server rejects other non-empty values |
+| `min`, `max` | Inclusive numeric range for `int`/`float` fields, when one applies (for example `0`-`1` for `theme.background.color_mix`) |
+| `default` | Value the key has when no config file sets it (display only) |
+| `source` | Last config file that defines the key, relative to the site |
+| `sources` | Every config file that defines the key, in load order |
+| `target` | File a change will be written to |
+| `target_kind` | `override` for a `--merge-config` file, `global` for `~/.config/markata-go/config.toml`, omitted otherwise |
+| `env` | Name of a set `MARKATA_GO_*` variable that overrides the file |
+| `editable` | False for `complex`, `sensitive`, and `unsupported` fields |
+
+- **complex**: maps, slices of structs, and types from other packages. Shown
+  read-only with a summary such as "3 items".
+- **sensitive**: the leaf key matches
+  `(^|_)(secret|token|password|passphrase|api_key|private_key|credentials?)$`.
+  The value is never sent to the browser.
+- **unsupported**: model fields the config loader does not read from files.
+  Each editable field is probed at startup by parsing a TOML document that sets
+  it; fields that do not round-trip are marked unsupported.
+
+### Target File
+
+Candidates are the same load-order list as theme bake (root, `include` files,
+`--merge-config` files). A change to `a.b.c` is written to the candidate that
+defines the deepest prefix of the path (`a.b.c`, then `a.b`, then `a`); ties go
+to the later file. With no match it goes to the root config, or a new
+`markata-go.toml` when there is none. So a setting stays in the file that owns
+it, and a new key lands next to its siblings.
+
+- A `--merge-config` target is reported as `target_kind: "override"` and the
+  client labels it before writing.
+- When no `--config` is given and discovery fell back to the global
+  `~/.config/markata-go/config.toml`, every non-override candidate is
+  `global`. Bakes (settings and theme) into a global target are refused with
+  409 so a site preview never edits the user's shared defaults.
+- An unset (reset to default) targets every file that defines the key.
+
+### Closed Options
+
+- An empty string is always accepted and means "use the default".
+- Palette keys accept any name `KnownPalette` accepts (contract IDs, aliases,
+  loader palettes), even when not listed.
+- Fontpack options are closed unless `theme.fontpacks_file` is set.
+- A guard test fails when a field's doc lists quoted values but the field has
+  no closed options (allowlist: free-form fields such as
+  `components.share.position`).
+
+### Preview
+
+`POST /__markata/settings/preview` with the same body replaces the whole
+preview set; an empty `changes` list resets it. A change may be
+`{"key": "...", "unset": true}` (no `value`) to preview the key at its
+default. Preview changes are held only
+in the serve process's memory and are never written to disk:
+
+1. Changes are validated as in Apply step 1, plus closed options and ranges
+   (400 on failure).
+2. The preview is loaded as a config overlay (`LoadOptions.Overlay`), merged
+   after all config files and before defaults normalization and environment
+   variables, so `MARKATA_GO_*` still wins. Unset keys are deleted from the
+   merged raw config (`LoadOptions.Remove`) after the overlay. A new validation error or a value
+   that does not load back is rejected with 422 and the previous preview is kept.
+3. A full rebuild is queued. The preview fingerprint
+   (`{"set": {...}, "reset": [...]}`) is stored in `Extra["config_overlay"]`
+   and included in the build-cache config hash so cached pages re-render.
+   While a preview is active the build cache lives in
+   `<cache_dir>/serve-preview` (default `.markata/serve-preview`), so
+   previewing, resetting, and stopping serve never invalidate the site's main
+   build cache.
+
+The response and `GET /__markata/settings` include `preview`, the current
+list of previewed changes, `session`, a random ID for this serve process, and
+`single_page` (true for `markata-go serve <file>`). Restarting serve discards
+the server preview; the client keeps staged edits in `sessionStorage` and, when
+`session` changes, re-sends them as a preview.
+
+### Apply
+
+`POST /__markata/settings` with `{"changes": [{"key": "...", "value": ...}], "dry_run": false}`
+(max 200 changes, 256 KiB, unknown JSON fields rejected). A change with
+`"unset": true` and no value removes the key from every file that defines it;
+unsetting a key no file defines, or sending a value with `unset`, is a 400.
+With `dry_run: true` nothing is written and the response lists `diffs`:
+`[{target, kind, created, diff}]`, one unified diff (2 lines of context) per
+file, with the values of sensitive keys replaced by `"…"`. The preview
+endpoint rejects `dry_run`.
+
+1. Each key MUST be editable, appear once, and have a value of its kind.
+   Strings are at most 4096 characters with no control characters other than
+   newline and tab. Lists have at most 256 items. Ints must fit the Go type.
+2. Changes are grouped by target file and written with the format-preserving
+   editor used by theme bake (comments and order kept, TOML tables, dotted
+   keys, and multi-line arrays, nested YAML mappings, JSON objects).
+3. The config is reloaded. If it gains a validation error that was not
+   present before, or a key does not load back as the requested value (an
+   unset key must equal its value in a load with the key removed), unless an
+   env variable overrides it, every file is restored atomically and the
+   response is 422. The whole apply, including rollback, holds the serve config
+   lock, which manager creation for rebuilds also takes.
+4. On success the baked keys are dropped from the preview, a full rebuild is
+   queued, and live reload shows the result. Bake reads config from disk only,
+   never from the preview overlay.
+
+Status codes: 400 invalid request, 403 non-loopback client, cross-origin, or non-local `Host`,
+409 layout the editor refuses (see THEMES.md Bake) or a global target, 422 rolled back.
+Both settings and theme-bake endpoints require a loopback client address
+(`RemoteAddr`), a same-origin request, and a `Host` of `localhost`,
+`*.localhost`, or an IP literal, as a defense against DNS rebinding. The
+loopback requirement means binding `serve` to `0.0.0.0` or a LAN address never
+lets other hosts read or change the config.
+
+### Client
+
+- Toggle: a gear button at the bottom left (`Alt+,`, ignored while focus is in
+  a page input, textarea, select, or contenteditable), with a badge that shows
+  the number of unsaved changes. While the panel is closed and a preview is
+  active, a chip reads "Previewing N unsaved changes · Reset · Review".
+- The panel has search, a filter (all / set in config / changed), sections that
+  can be collapsed, and per-field Revert. A pinned **Common** section repeats
+  frequently edited keys (site identity, light/dark palettes, aesthetic,
+  fontpack, text size, nav, footer, layout, search) above the full schema; both
+  copies stay in sync. In single-page serve, sections for site-wide output
+  (`glob`, feeds, `blogroll`, `tags`, `garden`, and similar) are hidden unless
+  searching or after "Show hidden sections".
+  It is full screen at 640px wide and below.
+- Each field set in a config file has **Reset to default**, which stages an
+  unset; the row shows the default it will fall back to. Rows show the
+  `target` and flag `override` and `global` targets.
+- Previewing a `theme.*` key that the theme picker stores in `localStorage`
+  (palette, aesthetic, fontpack, text size, color mode) clears that stored pick
+  so the preview is visible, and says so in the status line.
+- The server preview is the source of truth. Edits commit on change, blur, or
+  Enter, are checked client-side (options, ranges, kinds), and sent to the
+  preview endpoint after a 300ms debounce. A rejected key is marked invalid
+  inline and the rest are re-sent without it; the status line lists every
+  change that is not being previewed and why.
+- After a preview or bake the status line shows "Rebuilding… Ns" until the dev
+  server reports the build finished (`markata:build-status` window event from
+  the live reload client) or failed (the build error is shown).
+- Closed options render as a `<select>`; open options as an input with a
+  datalist; numbers get `min`/`max`/`step`.
+- **Reset** clears the preview. Panel state (open, scroll, collapsed sections)
+  lives in `sessionStorage` and survives live reload.
+- **Bake** first sends a dry run and shows the per-file diffs with **Write
+  N files** and **Cancel**. Changing any staged edit closes the confirmation.
+  Global targets cannot be baked.
+- `window.markataDevSettings.open(section?)`, `.close()`, `.isOpen()`, and `.reset()`.
 
 ## See Also
 

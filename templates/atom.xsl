@@ -17,8 +17,11 @@
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title><xsl:value-of select="/atom:feed/atom:title"/> - Atom Feed</title>
-        <link rel="stylesheet" href="/css/variables.css"/>
-        <link rel="stylesheet" href="/css/main.css"/>
+        <!-- Site theme: publish_feeds replaces this region with partials/feed-xsl-head.html -->
+        <!-- markata:theme-head -->
+        <link rel="stylesheet" href="/css/variables.css" />
+        <link rel="stylesheet" href="/css/main.css" />
+        <!-- /markata:theme-head -->
         <style>
           /* Feed-specific styles */
           .feed-banner {

@@ -92,6 +92,9 @@
     {% endfor %}
     {% endif %}
   </div>
+  {% if not feed.posts %}
+  <p class="feed-empty">No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
+  {% endif %}
 
   {% include "partials/pagination.html" %}
 </div>

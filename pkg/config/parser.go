@@ -759,6 +759,7 @@ type tomlThemeConfig struct {
 	PaletteDark         string                   `toml:"palette_dark"`
 	FallbackMode        string                   `toml:"fallback_mode"`
 	TextSize            string                   `toml:"text_size"`
+	Seasonal            bool                     `toml:"seasonal"`
 	ShowTextSizeControl *bool                    `toml:"show_text_size_control"`
 	SeedColor           string                   `toml:"seed_color"`
 	Variables           map[string]string        `toml:"variables"`
@@ -2122,6 +2123,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:         t.PaletteDark,
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
+		Seasonal:            t.Seasonal,
 		ShowTextSizeControl: t.ShowTextSizeControl,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,
@@ -2907,6 +2909,7 @@ type yamlThemeConfig struct {
 	PaletteDark         string                   `yaml:"palette_dark"`
 	FallbackMode        string                   `yaml:"fallback_mode"`
 	TextSize            string                   `yaml:"text_size"`
+	Seasonal            bool                     `yaml:"seasonal"`
 	ShowTextSizeControl *bool                    `yaml:"show_text_size_control"`
 	SeedColor           string                   `yaml:"seed_color"`
 	Variables           map[string]string        `yaml:"variables"`
@@ -2996,6 +2999,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:         t.PaletteDark,
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
+		Seasonal:            t.Seasonal,
 		ShowTextSizeControl: t.ShowTextSizeControl,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,
@@ -4498,6 +4502,7 @@ type jsonThemeConfig struct {
 	PaletteDark         string                   `json:"palette_dark"`
 	FallbackMode        string                   `json:"fallback_mode"`
 	TextSize            string                   `json:"text_size"`
+	Seasonal            bool                     `json:"seasonal"`
 	ShowTextSizeControl *bool                    `json:"show_text_size_control"`
 	SeedColor           string                   `json:"seed_color"`
 	Variables           map[string]string        `json:"variables"`
@@ -4587,6 +4592,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:         t.PaletteDark,
 		FallbackMode:        t.FallbackMode,
 		TextSize:            t.TextSize,
+		Seasonal:            t.Seasonal,
 		ShowTextSizeControl: t.ShowTextSizeControl,
 		SeedColor:           t.SeedColor,
 		Variables:           variables,

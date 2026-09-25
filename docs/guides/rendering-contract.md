@@ -55,6 +55,9 @@ url = "https://waylonwalker.com/w.svg"
 "--content-width" = "68ch"
 ```
 
+The motif is off by default (`kind = "off"`); the example above enables the
+`block-w` motif explicitly.
+
 In TOML, a key belongs to the current table until another table header
 appears. Keep `custom_css` in `[markata-go.theme]`, not in `motif`.
 
@@ -111,7 +114,8 @@ those repositories are available, and do not add a local registry instead.
 ### New site
 
 Start with the canonical example above. Select one palette ID, aesthetic, and
-fontpack from the contract. Validate the site with the contract check and the
+fontpack. `theme.fontpack` accepts contract fontpack IDs and any pack or alias
+in the font catalog (`markata-go fonts packs`, or your `fontpacks_file`). Validate the site with the contract check and the
 focused configuration tests before adding local variables.
 
 ### New palette

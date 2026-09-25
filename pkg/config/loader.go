@@ -109,7 +109,24 @@ func Discover() (string, error) {
 // LoadWithDefaults returns a configuration with default values and
 // environment variable overrides applied.
 func LoadWithDefaults() (*models.Config, error) {
-	config := DefaultConfig()
+	// Run defaults through the same theme normalization as a config file so a
+	// config-less site (e.g. `markata-go build page.md`) gets the contract
+	// default theme, including a palette for the theme picker.
+	emptyRaw := map[string]any{"markata-go": map[string]any{}}
+	warnings := normalizeRenderingTheme(emptyRaw)
+	defaultRaw, err := rawWrapperFromConfig(DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode default config: %w", err)
+	}
+	mergedRaw := mergeRawMaps(nil, defaultRaw, emptyRaw)
+	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	config, err := configFromRawWrapper(mergedRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode default config: %w", err)
+	}
+	if len(warnings) > 0 {
+		config.Extra["theme_migration_warnings"] = warnings
+	}
 
 	if err := ApplyEnvOverrides(config); err != nil {
 		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
@@ -145,6 +162,14 @@ type LoadOptions struct {
 	// DisableEnvOverrides prevents ambient MARKATA_GO_* variables from changing
 	// the explicitly supplied configuration.
 	DisableEnvOverrides bool
+	// Overlay is a raw config wrapper (keyed by "markata-go") merged after
+	// every file and before environment overrides. markata-go serve uses it
+	// to preview unsaved settings; see SettingsOverlay.
+	Overlay map[string]any
+	// Remove lists key paths (below the markata-go wrapper) deleted from the
+	// merged files and overlay before defaults apply, so each falls back to
+	// its default. markata-go serve uses it to preview "reset to default".
+	Remove [][]string
 }
 
 // LoadWithMergeOptions loads and merges configuration with explicit options.
@@ -180,6 +205,13 @@ func LoadWithMergeOptions(options LoadOptions, basePath string, overridePaths ..
 		}
 
 		mergedRaw = mergeRawMaps(nil, mergedRaw, overrideRaw)
+	}
+
+	if len(options.Overlay) > 0 {
+		mergedRaw = mergeRawMaps(nil, mergedRaw, options.Overlay)
+	}
+	for _, path := range options.Remove {
+		removeRawSetting(mergedRaw, path)
 	}
 
 	warnings := normalizeRenderingTheme(mergedRaw)
@@ -429,4 +461,22 @@ func DiscoverAll() []Path {
 	}
 
 	return found
+}
+
+// removeRawSetting deletes markata-go.<path...> from raw, a merged config
+// wrapper whose maps the caller owns.
+func removeRawSetting(raw map[string]any, path []string) {
+	if len(path) == 0 {
+		return
+	}
+	node, ok := raw["markata-go"].(map[string]any)
+	if !ok {
+		return
+	}
+	for _, key := range path[:len(path)-1] {
+		if node, ok = node[key].(map[string]any); !ok {
+			return
+		}
+	}
+	delete(node, path[len(path)-1])
 }

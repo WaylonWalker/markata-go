@@ -534,7 +534,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	// Create template context
 	modelsConfig := applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config))
 	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
-	ctx = ctx.WithCore(m)
+	ctx = ctx.WithCore(m).WithBlogLayout(templateName == models.LayoutToTemplate("blog"))
 	ctx.Set("canonical_rendering_fixture", isCanonicalRenderingFixture(post))
 	ctx.Set("feed_posts", createFeedPostsFunc(m))
 	ctx.Set("render_feed", createRenderFeedFunc(m))
@@ -583,8 +583,11 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 
 	// Inject discovery feed for per-page feed discovery links
 	// If post has a sidebar feed, use that; otherwise use site default
-	discoveryFeed := p.getDiscoveryFeed(post, sidebarFeed, m)
-	if discoveryFeed != nil {
+	// Single-file builds publish no feeds, so skip feed discovery links and
+	// site-level fallbacks that would point at missing pages.
+	if singlePage, ok := config.Extra["single_page"].(bool); ok && singlePage {
+		ctx.Set("single_page", true)
+	} else if discoveryFeed := p.getDiscoveryFeed(post, sidebarFeed, m); discoveryFeed != nil {
 		ctx.Set("discovery_feed", DiscoveryFeedToMap(discoveryFeed))
 	}
 

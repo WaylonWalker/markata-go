@@ -39,7 +39,9 @@
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
   const MAX_PREFETCHED_DOCUMENTS = 8;
   const PREFETCH_DEBOUNCE_MS = 120;
-  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size']);
+  // Visitor-controlled theme state must survive in-site navigation; the new
+  // document only carries server defaults.
+  const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size', 'data-palette', 'data-aesthetic']);
   const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);
   const RUNTIME_HTML_ATTRIBUTE_PREFIXES = [
     'data-shared-transition-',
@@ -58,6 +60,15 @@
   function getNavigationKey(url) {
     if (!url) return '';
     return `${url.pathname || ''}${url.search || ''}`;
+  }
+
+  // Path+query of the document currently rendered. Fragment navigation (TOC
+  // and heading anchors) fires popstate without changing it, so popstate uses
+  // this to leave in-page jumps to the browser instead of refetching the page.
+  let renderedNavigationKey = getNavigationKey(window.location);
+
+  function markRenderedLocation() {
+    renderedNavigationKey = getNavigationKey(window.location);
   }
 
   function createSharedTransitionToken(path) {
@@ -587,6 +598,14 @@
       }
     });
 
+    // A visitor-picked font follows navigation; otherwise each page keeps the
+    // fontpack its author assigned.
+    let pickedFontpack = null;
+    try { pickedFontpack = localStorage.getItem('theme-fontpack'); } catch (_) { /* ignore */ }
+    if (pickedFontpack && document.documentElement.hasAttribute('data-fontpack')) {
+      preservedAttributes.set('data-fontpack', document.documentElement.getAttribute('data-fontpack'));
+    }
+
     RUNTIME_HTML_CLASS_NAMES.forEach((className) => {
       if (document.documentElement.classList.contains(className)) {
         preservedClasses.add(className);
@@ -1050,6 +1069,7 @@
       if (navOptions.pushState) {
         history.pushState(null, '', targetURL.href);
       }
+      markRenderedLocation();
 
       finalizeNavigationMetrics(metrics);
       return true;
@@ -1077,6 +1097,7 @@
         if (navOptions.pushState) {
           history.pushState(null, '', targetURL.href);
         }
+        markRenderedLocation();
       });
 
       await transition.finished;
@@ -1135,6 +1156,11 @@
   async function handlePopState(event) {
     if (config.debug) console.log('Handling popstate to:', window.location.href);
 
+    // Same document, different fragment: the browser already scrolled.
+    if (getNavigationKey(window.location) === renderedNavigationKey) {
+      return;
+    }
+
     // If we land on a special route, force a full reload so its scripts run.
     try {
       const currentURL = new URL(window.location.href);
@@ -1153,6 +1179,7 @@
 
       const transition = document.startViewTransition(() => {
         updateDocument(newDoc, metrics, { reinitialize: false, hydrateCritical: true });
+        markRenderedLocation();
       });
 
       await transition.finished;

@@ -1,0 +1,23 @@
+{# Theme head for rss.xsl/atom.xsl: publish_feeds renders this, makes it XML-safe, and swaps it in for the markata:theme-head marker region. #}
+<script>
+  (function() {
+    var root = document.documentElement;
+    root.dataset.themeTextureScope = '{{ config.theme.texture.scope | default:'all' | escapejs }}';
+    root.dataset.palette = '{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette | escapejs }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette | escapejs }}{% endif %}';
+    root.dataset.aesthetic = '{{ config.theme.aesthetic | escapejs }}';
+    root.dataset.fontpack = '{{ config.theme.fontpack | escapejs }}';
+    root.dataset.textSize = '{{ config.theme.text_size | default:'large' | escapejs }}';
+  })();
+</script>
+{% include "partials/theme-bootstrap.html" %}
+<link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
+{% if config.theme.palette or config.theme.palette_light or config.theme.palette_dark or config.theme.seed_color %}
+<link rel="stylesheet" href="{{ 'css/palette.css' | theme_asset_hashed }}">
+{% endif %}
+<link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
+<link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
+<link rel="stylesheet" href="{{ 'css/text-size.css' | theme_asset_hashed }}">
+{% if config.Extra.fontpack_css %}
+<link rel="stylesheet" href="{{ 'css/fonts.css' | theme_asset_hashed }}">
+{% endif %}
+{% include "partials/aesthetic-css.html" %}

@@ -331,7 +331,7 @@ func NormalizeTheme(raw map[string]any) (normalized map[string]any, warnings []s
 		}
 	}
 	resolveLegacy("heading_texture", "kind", "heading_texture", "inherit")
-	resolveLegacy("motif", "kind", "motif", "block-w")
+	resolveLegacy("motif", "kind", "motif", "off")
 	resolveLegacy("motif", "glyph", "motif_glyph", "W")
 	resolveLegacy("motif", "size", "motif_size", "78px")
 	resolveLegacy("motif", "gap", "motif_gap", "10px")

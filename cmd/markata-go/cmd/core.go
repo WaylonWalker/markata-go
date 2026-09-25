@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
@@ -16,6 +19,12 @@ import (
 
 // createManager creates and configures a lifecycle manager with all plugins.
 func createManager(cfgPath string) (*lifecycle.Manager, error) {
+	return createManagerWithPlugins(cfgPath, plugins.DefaultPlugins)
+}
+
+// createManagerWithPlugins loads configuration and registers the plugin set
+// returned by pluginSet.
+func createManagerWithPlugins(cfgPath string, pluginSet func() []lifecycle.Plugin) (*lifecycle.Manager, error) {
 	cfg, configPathUsed, configPaths, err := loadManagerConfig(cfgPath)
 	if err != nil {
 		return nil, err
@@ -169,6 +178,16 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// paths even when the raw config also contains the option in Extra.
 	lcConfig.Extra["fontpacks_file"] = resolveConfigRelativePath(baseDir, cfg.FontpacksFile)
 
+	// Previews build into their own cache so the site's warm cache survives
+	// previewing, resetting, and stopping serve.
+	if _, previewing := lcConfig.Extra[configOverlayExtraKey]; previewing {
+		cacheDir := filepath.Join(contentDir, ".markata")
+		if dir, ok := lcConfig.Extra["cache_dir"].(string); ok && dir != "" {
+			cacheDir = dir
+		}
+		lcConfig.Extra["cache_dir"] = filepath.Join(cacheDir, servePreviewCacheDir)
+	}
+
 	// Store full models.Config for components that need direct access (e.g., 404 page handler)
 	lcConfig.Extra["models_config"] = cfg
 	if configPathUsed != "" {
@@ -185,16 +204,92 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 		m.SetConcurrency(cfg.Concurrency)
 	}
 
-	// Register default plugins
-	registerDefaultPlugins(m)
+	m.RegisterPlugins(pluginSet()...)
 
 	return m, nil
 }
 
+// createSinglePageManager configures the normal renderer for one Markdown
+// source and publishes it at output/index.html. Site-level output such as
+// feeds, listings, sitemaps, and search indexes is not generated.
+func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, error) {
+	m, err := createManagerWithPlugins(cfgPath, plugins.SinglePagePlugins)
+	if err != nil {
+		return nil, err
+	}
+
+	contentRoot, err := filepath.Abs(m.Config().ContentDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve content directory: %w", err)
+	}
+	sourceAbs, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Markdown file %q: %w", sourcePath, err)
+	}
+	relativePath, err := filepath.Rel(contentRoot, sourceAbs)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Markdown file %q relative to content directory: %w", sourcePath, err)
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("markdown file %q is outside content directory %q", sourcePath, m.Config().ContentDir)
+	}
+	info, err := os.Stat(sourceAbs)
+	if err != nil {
+		return nil, fmt.Errorf("markdown file %q: %w", sourcePath, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("markdown file %q is a directory", sourcePath)
+	}
+	extension := strings.ToLower(filepath.Ext(sourceAbs))
+	if extension != ".md" && extension != ".markdown" {
+		return nil, fmt.Errorf("markdown file %q must end in .md or .markdown", sourcePath)
+	}
+
+	m.Config().GlobPatterns = []string{relativePath}
+	m.Config().Extra["feeds"] = []models.FeedConfig{}
+	m.Config().Extra["subscription_feeds_disabled"] = true
+	m.Config().Extra["single_page"] = true
+	// The single-page plugin set has no search index, so hide the search UI.
+	search, ok := m.Config().Extra["search"].(models.SearchConfig)
+	if !ok {
+		search = models.NewSearchConfig()
+	}
+	searchDisabled := false
+	search.Enabled = &searchDisabled
+	m.Config().Extra["search"] = search
+
+	return m, nil
+}
+
+// configOverlayExtraKey carries the serve settings preview fingerprint to the
+// build cache (see plugins.configHashInput).
+const configOverlayExtraKey = "config_overlay"
+
+// servePreviewCacheDir is the build cache subdirectory used while unsaved
+// settings are previewed, so previews never overwrite the site's cache.
+const servePreviewCacheDir = "serve-preview"
+
+// configPreview holds unsaved settings previewed by `markata-go serve`:
+// overlay sets keys and remove resets keys to their defaults.
+type configPreview struct {
+	overlay map[string]any
+	remove  [][]string
+}
+
+func (p configPreview) empty() bool {
+	return len(p.overlay) == 0 && len(p.remove) == 0
+}
+
 func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
+	return loadManagerConfigWith(cfgPath, servePreviewConfig())
+}
+
+// loadManagerConfigWith loads the config files and applies preview (unsaved
+// settings previewed by `markata-go serve`) on top, below env overrides.
+func loadManagerConfigWith(cfgPath string, preview configPreview) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
 	configPathUsed = cfgPath
 
-	if len(mergeConfigFiles) > 0 {
+	if len(mergeConfigFiles) > 0 || !preview.empty() {
 		basePath := cfgPath
 		if basePath == "" {
 			discovered, discoverErr := config.Discover()
@@ -204,9 +299,22 @@ func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed strin
 		}
 		configPathUsed = basePath
 
-		cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
+		options := config.LoadOptions{Overlay: preview.overlay, Remove: preview.remove}
+		cfg, err = config.LoadWithMergeOptions(options, basePath, mergeConfigFiles...)
 		if err != nil {
 			return nil, "", nil, fmt.Errorf("loading merged config: %w", err)
+		}
+		if !preview.empty() {
+			// The build cache hashes config files; the preview changes the
+			// config without touching them, so it must be part of the hash.
+			fingerprint, err := json.Marshal(map[string]any{"set": preview.overlay, "reset": preview.remove})
+			if err != nil {
+				return nil, "", nil, fmt.Errorf("encoding settings preview: %w", err)
+			}
+			if cfg.Extra == nil {
+				cfg.Extra = map[string]any{}
+			}
+			cfg.Extra[configOverlayExtraKey] = string(fingerprint)
 		}
 		if basePath != "" {
 			configPaths = append(configPaths, basePath)
@@ -266,12 +374,6 @@ func isLicenseWarning(err error) bool {
 		return false
 	}
 	return vErr.IsWarn && vErr.Field == "license"
-}
-
-// registerDefaultPlugins registers all default plugins to the manager.
-func registerDefaultPlugins(m *lifecycle.Manager) {
-	// Use the centralized DefaultPlugins() to ensure all plugins are registered
-	m.RegisterPlugins(plugins.DefaultPlugins()...)
 }
 
 // applyFastMode sets the fast_mode flag in the manager's config Extra map,

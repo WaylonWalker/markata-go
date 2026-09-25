@@ -74,8 +74,8 @@ func TestPostToMap_InlinksOutlinks(t *testing.T) {
 func TestSwitcherToMap_Defaults(t *testing.T) {
 	m := SwitcherToMap(nil)
 
-	if got, ok := m["enabled"].(bool); !ok || got {
-		t.Fatalf("enabled = %#v, want false", m["enabled"])
+	if got, ok := m["enabled"].(bool); !ok || !got {
+		t.Fatalf("enabled = %#v, want true (theme picker is on by default)", m["enabled"])
 	}
 	if got, ok := m["mode_toggle"].(bool); !ok || !got {
 		t.Fatalf("mode_toggle = %#v, want true", m["mode_toggle"])
