@@ -814,26 +814,54 @@ feeds = ["tutorials", "guides"]
 max_posts = 51
 ```
 
-#### Sidebar behavior on wide screens
+#### Sidebar behavior
 
-From `1201px` up, the document and feed sidebars become fixed drawers that
-stay tucked off-screen. Each drawer has a small vertical handle on the
-viewport edge ("Series" on the left, "On this page" on the right). Clicking
-the handle — or pressing `b` (left) / `Shift+B` (right) — slides the drawer open; clicking again
-closes it. Drawers never open on hover, so they cannot pop in and out while
-you read. The open/closed choice is remembered per side in browser storage
-and restored on later pages without animating. While the site header is on
-screen the drawer starts just below it; once you scroll past the header the
-drawer grows to fill the full viewport height.
+The document and feed sidebars are drawers at every width. Each drawer has a
+small handle ("Series" on the left, "On this page" on the right). Clicking the
+handle, or pressing `b` (left) / `Shift+B` (right), opens the drawer; doing it
+again closes it. Drawers never open on hover, so they cannot pop in and out
+while you read. Hovering or focusing a handle shows its hotkey (`b` or `⇧B`),
+and the handle's tooltip names it too.
+
+**Wide screens (`1201px` and up):** an open drawer docks beside the article
+and pushes the content aside instead of covering it. With both drawers open
+the article sits between them, and it narrows if the viewport cannot fit all
+three at full width. The open/closed choice is remembered per side in browser
+storage and restored on later pages without animating. While the site header
+is on screen the drawer starts just below it; once you scroll past the header
+the drawer fills the full viewport height. Each drawer has a single themed
+scrollbar.
+
+**Narrow screens (`1200px` and below):** the handles become small pills in the
+bottom corners. An open drawer slides over the page with a dimmed backdrop,
+and only one drawer is open at a time. Tapping the backdrop, pressing
+`Escape`, following a link inside the drawer, or tapping the pill again closes
+it, and focus returns to the handle. Overlay drawers always start closed and
+don't change the remembered wide-screen state. A content sidebar
+(`[markata-go.content_sidebar]`) stacks below the article at this width.
 
 The feed drawer also carries the feed picker, a `current/total` counter, and
 previous/next feed buttons (`{` / `}`) for switching between primary feeds.
 
 TOC entries are built from the heading's visible text: resolved wikilinks,
 Markdown links, emphasis and inline code are stripped, so the sidebar never
-shows raw HTML or markup.
+shows raw HTML or markup. TOC anchors always match the rendered heading ids,
+including duplicate headings (`setup`, `setup-1`, `setup-2`), headings with
+inline code such as `` `update_meta` ``, headings with smart quotes, and
+explicit `{#custom-id}` attributes. Lines starting with `#` inside fenced code
+blocks are never treated as headings.
 
-**Responsive behavior:** Below `1201px` the feed sidebar collapses into a slim bar above the article that expands on tap, and the document sidebar is hidden. The header switches to a compact layout (title and controls on one row, search below, then a single scrollable nav strip).
+Clicking a TOC entry moves quickly to the heading with a short glide (under a
+quarter of a second, starting close to the target so long jumps don't
+stream the whole page past). The URL hash updates and the heading briefly
+highlights. Scrolling, touching or pressing a key during the glide hands
+control back to you immediately. With `prefers-reduced-motion`, the jump is
+instant. As you read, a marker slides along the TOC rail to the current
+section, and the TOC keeps that entry in view.
+
+**Header on narrow screens:** below `1201px` the header switches to a compact
+layout (title and controls on one row, search below, then a single scrollable
+nav strip).
 
 #### Share Component (`[markata-go.components.share]`)
 

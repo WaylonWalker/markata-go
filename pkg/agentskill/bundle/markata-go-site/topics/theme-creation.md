@@ -109,11 +109,14 @@ rings. Headings use a short accent bar (`--heading-rule`) rather than
 full-width rules. Radii follow `--radius-sm`/`--radius`/`--radius-lg`/
 `--radius-xl`. Prefer adjusting these tokens over re-styling components.
 
-On wide screens (>= 1201px) the feed and document sidebars are fixed drawers
-opened from a vertical edge handle (or `b` / `Shift+B`); they never open on hover
-and the open state is remembered per side. Below that width the feed sidebar
-becomes a collapsible bar above the article. If a site's custom CSS positions
-`.feed-sidebar` or `.doc-sidebar`, remove it and rely on the theme.
+The feed and document sidebars are drawers at every width, opened from an edge
+handle (or `b` / `Shift+B`); they never open on hover. On wide screens
+(>= 1201px) an open drawer docks and pushes the article aside, and the open
+state is remembered per side. At 1200px and below, drawers are overlays with a
+backdrop, opened from bottom-corner pills, one at a time. Width comes from the
+`--feed-sidebar-width` / `--doc-sidebar-width` custom properties on
+`.page-wrapper`. If a site's custom CSS positions `.feed-sidebar` or
+`.doc-sidebar`, remove it and rely on the theme.
 
 Every site ships a live theme picker by default. The header shows one
 palette-swatch button and the light/dark toggle, and visitors can preview and

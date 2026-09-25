@@ -19,6 +19,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 	"github.com/WaylonWalker/markata-go/pkg/renderingrecipe"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 // AestheticCSSPlugin generates CSS variables from the configured aesthetic.
@@ -73,6 +74,11 @@ func (p *AestheticCSSPlugin) Configure(m *lifecycle.Manager) error {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
 	css += p.generatePresentationCSS(config) + aestheticSurfaceCSS
+	surfaceCSS, err := themes.ReadStatic("css/aesthetic.css")
+	if err != nil {
+		return fmt.Errorf("reading default aesthetic surfaces: %w", err)
+	}
+	css += "\n" + string(surfaceCSS)
 	if bundle, err := compileMotifBundle(config); err != nil {
 		return err
 	} else if len(bundle.Assets) != 0 {
@@ -119,6 +125,11 @@ func (p *AestheticCSSPlugin) Write(m *lifecycle.Manager) error {
 		css = p.generateSingleAestheticCSS(loader, aestheticName)
 	}
 	css += p.generatePresentationCSS(config) + aestheticSurfaceCSS
+	surfaceCSS, err := themes.ReadStatic("css/aesthetic.css")
+	if err != nil {
+		return fmt.Errorf("reading default aesthetic surfaces: %w", err)
+	}
+	css += "\n" + string(surfaceCSS)
 
 	cssDir := filepath.Join(outputDir, "css")
 	cssPath := filepath.Join(cssDir, "aesthetic.css")

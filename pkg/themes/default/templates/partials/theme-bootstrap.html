@@ -93,6 +93,22 @@
     window.__markataPageFontpack = document.documentElement.dataset.fontpack || '';
     if (fontpack) {
       document.documentElement.dataset.fontpack = fontpack;
+      {% if config.Extra.fontpack_preloads_json %}
+      // The visitor choice can differ from the page default. Preload only
+      // that pack's above-the-fold faces, before the stylesheets are parsed.
+      var fontURLs = ({{ config.Extra.fontpack_preloads_json | safe }})[fontpack] || [];
+      if (fontpack !== window.__markataPageFontpack && Array.isArray(fontURLs)) {
+        fontURLs.forEach(function(url) {
+          var link = document.createElement('link');
+          link.rel = 'preload';
+          link.href = url;
+          link.as = 'font';
+          link.type = 'font/woff2';
+          link.crossOrigin = 'anonymous';
+          document.head.appendChild(link);
+        });
+      }
+      {% endif %}
     }
   })();
 </script>

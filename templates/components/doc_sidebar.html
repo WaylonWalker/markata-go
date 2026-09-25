@@ -5,7 +5,12 @@
 
 {% with sidebar = resolved_doc_sidebar %}
 {% if sidebar.enabled and post.toc %}
-<aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}" data-pagefind-ignore>
+<aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="--doc-sidebar-width: {{ sidebar.width | default:'250px' }}" aria-label="Table of Contents" data-pagefind-ignore>
+    <button type="button" class="sidebar-toggle" aria-expanded="false" aria-label="Open on this page sidebar" data-sidebar-label="on this page" {% if (sidebar.position | default:'right') == 'left' %}aria-keyshortcuts="b" data-sidebar-hotkey="b"{% else %}aria-keyshortcuts="Shift+B" data-sidebar-hotkey="Shift+B"{% endif %}>
+        <svg class="sidebar-toggle__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="sidebar-toggle__label">On this page</span>
+        <kbd class="sidebar-toggle__kbd" aria-hidden="true">{% if (sidebar.position | default:'right') == 'left' %}b{% else %}&#8679;B{% endif %}</kbd>
+    </button>
     <nav class="toc" aria-label="Table of Contents">
         <h2 class="toc-title">On this page</h2>
         <ul class="toc-list">

@@ -499,12 +499,76 @@ The table of contents component shows an outline of the current page.
 
 #### Scroll Spy
 
-When `scroll_spy: true`, the TOC highlights the currently visible section:
+When `scroll_spy: true`, the TOC highlights the currently visible section.
 
-```javascript
-// Intersection Observer watches heading visibility
-// Updates .toc-link--active class on scroll
-```
+- The active entry is the last heading whose top has passed the reading line
+  (the sticky header offset plus `min(120px, 20vh)`). At the very bottom of the
+  page, the last heading still on screen becomes active.
+- The active link gets `.toc-link--active` and `aria-current="location"`; its
+  ancestors get `.toc-link--parent-active`. A `.toc-marker` element inside the
+  top-level `.toc-list` slides to the active link, and the TOC scroller keeps
+  that link in view.
+- Clicking a TOC link MUST land its heading at the reading offset. The click
+  marks the entry active at once and the page moves: first a cut to within
+  0.6 viewport heights of the target, then an ease-out glide of 150–250ms that
+  re-measures the target every frame. Late layout shifts are corrected at
+  +120ms and +450ms. Any wheel, touch or navigation key input cancels the glide
+  and the corrections. `prefers-reduced-motion: reduce` jumps instantly.
+- The URL hash is updated with `history.pushState`, the heading receives focus
+  (`tabindex="-1"`, no scroll), and `.toc-target` plays a brief highlight.
+- The clicked entry stays active until the reader scrolls, even when the page
+  cannot scroll far enough to bring the heading to the reading line.
+- Listeners are bound once and re-initialised after SPA navigation.
+
+#### TOC ids
+
+TOC hrefs MUST equal the ids of the rendered headings:
+
+- `#` lines inside fenced code blocks are not headings.
+- Explicit `{#id}` ids win and do not consume an auto-id collision slot.
+- Ids are slugged from the visible text: inline code is kept literally
+  (`update_meta` keeps its underscore), paired emphasis delimiters are
+  removed, and typographer entities (smart quotes) are unescaped first.
+- Duplicate auto ids use `-1`, `-2`, … suffixes (GitHub style), counting
+  every heading, including levels outside the TOC range.
+
+### Sidebar Drawers (default theme)
+
+The feed sidebar (`.feed-sidebar`) and document sidebar (`.doc-sidebar`) are
+fixed drawers at every width. Each has a `.sidebar-toggle` handle with
+`aria-expanded`, `aria-keyshortcuts` and `data-sidebar-hotkey` (`b` for the
+left drawer, `Shift+B` for the right) and a `<kbd class="sidebar-toggle__kbd">`
+hint shown on hover or keyboard focus (hidden on coarse, hover-less pointers).
+The handle's `title`/`aria-label` also names the hotkey. Open drawers carry
+`.sidebar--pinned`; closed drawers are `visibility: hidden` so their links are
+out of the tab order. Each drawer is one scroller on a single surface color
+with a themed scrollbar.
+
+- **Docked (≥ 1201px):** opening a drawer pushes `.main-content` aside via
+  `.page-wrapper:has(> .X--side.sidebar--pinned)`. Content width is
+  `min(page width, 100% − open drawer widths)`, so the article never sits
+  under a drawer. Widths come from `--feed-sidebar-width` and
+  `--doc-sidebar-width` on `.page-wrapper`. The open state persists per side
+  in `localStorage`.
+- **Overlay (≤ 1200px):** drawers open over the page (z-index 1100) above a
+  scrim (`.page-wrapper::before`). Only one drawer is open at a time. Handles
+  are bottom-corner pills, offset right when the dev settings button is
+  present. A scrim click, `Escape`, a link click inside the drawer, or the
+  hotkey closes it, and focus returns to the handle. Opening moves focus into
+  the drawer. Overlay state is never persisted, and entering overlay mode
+  closes any open drawers.
+- Print hides drawers and handles; reduced motion removes the slide.
+
+### Wikilink Previews (default theme)
+
+`tooltips.js` shows a preview card for `a.wikilink[data-title]` on mouse hover
+(180ms open delay, 120ms close delay) and on keyboard focus. The card shows
+the title, the description (clamped), the date and the target path. Content is
+set with `textContent`, never HTML. Moving the pointer onto the card keeps it
+open. It is placed below the link, or flipped above, and clamped to the
+viewport. It closes on `Escape`, scroll, or leaving the link. Events are
+delegated from `document`, so previews work after SPA navigation without
+re-binding.
 
 ### Header Component
 

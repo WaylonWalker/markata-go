@@ -11,6 +11,19 @@ only referenced tiers into `output/assets/fonts` and write one shared
 `output/css/fonts.css`; page content never creates a new subset. The optional
 FontTools workflow is intentionally separate from ordinary builds.
 
+Before the stylesheets, HTML heads preload only the emitted WOFF2 tier used
+for the active pack's body and first-level heading (display, or heading when
+display is absent). Duplicate sources are preloaded once; system stacks need
+no preload. A page's `fontpack` override replaces the site default preload
+list. When the picker is enabled, the synchronous theme bootstrap may preload
+the same files for a stored `theme-fontpack` choice instead, without preloading
+every pack on every visit. Preloads use `as="font"`, `type="font/woff2"` and
+`crossorigin` so the CSS fetch can reuse them. The shared stylesheet has a
+content-hashed URL and retains `font-display: swap`.
+Built-in packs cache the hash and per-pack preload URLs alongside the font
+output, keyed by the rendered content and catalog; a missing or invalid
+cache entry triggers ordinary resolution instead of serving stale hints.
+
 Custom catalogs may be selected with `fontpacks_file`. Relative paths in a
 custom catalog resolve relative to the catalog file. Markata records generated
 font filenames in `output/assets/fonts/.markata-fonts.json` and removes only

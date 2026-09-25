@@ -4,13 +4,13 @@ description = "Layered/premium: generous rounding, generous spacing, layered sha
 [tokens.radius]
 none = "0"
 sm = "8px"
-md = "16px"
-lg = "24px"
-xl = "32px"
+md = "12px"
+lg = "20px"
+xl = "28px"
 full = "9999px"
 
 [tokens.spacing]
-scale = 1.25
+scale = 1.15
 
 [tokens.border]
 width_thin = "1px"
@@ -19,11 +19,11 @@ width_thick = "2px"
 style = "solid"
 
 [tokens.shadow]
-sm = "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)"
-md = "0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)"
-lg = "0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05)"
-xl = "0 25px 50px rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.1)"
+sm = "0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)"
+md = "0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)"
+lg = "0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)"
+xl = "0 24px 64px rgba(0,0,0,0.15), 0 8px 24px rgba(0,0,0,0.1)"
 
 [tokens.typography]
-font_primary = "var(--font-sans)"
-leading_scale = 1.1
+font_primary = "var(--font-body, system-ui)"
+leading_scale = "1.06"

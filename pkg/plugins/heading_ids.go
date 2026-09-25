@@ -2,7 +2,8 @@ package plugins
 
 import (
 	"bytes"
-	"strings"
+	"html"
+	"strconv"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/yuin/goldmark/ast"
@@ -41,7 +42,7 @@ func (t *HeadingIDTransformer) Transform(doc *ast.Document, reader text.Reader, 
 
 		// Only rewrite IDs goldmark derived from the raw line; anything else
 		// was set explicitly by the author.
-		if !bytes.Equal(id, goldmarkHeadingSlug(headingRawLine(h, source))) {
+		if hasExplicitAttributes(h, source) || !isGoldmarkAutoID(id, goldmarkHeadingSlug(headingRawLine(h, source))) {
 			return ast.WalkContinue, nil
 		}
 
@@ -65,9 +66,47 @@ func generateHeadingID(text string, idCounts map[string]int) string {
 	count := idCounts[id]
 	idCounts[id] = count + 1
 	if count > 0 {
-		return id + "-" + strings.Repeat("1", count)
+		// Match goldmark/GitHub numbering: intro, intro-1, intro-2, ...
+		return id + "-" + strconv.Itoa(count)
 	}
 	return id
+}
+
+// isGoldmarkAutoID reports whether id is goldmark's auto ID for a heading
+// whose raw-line slug is slug, including its "-N" collision suffixes.
+func isGoldmarkAutoID(id, slug []byte) bool {
+	if bytes.Equal(id, slug) {
+		return true
+	}
+	if !bytes.HasPrefix(id, slug) || len(id) < len(slug)+2 || id[len(slug)] != '-' {
+		return false
+	}
+	for _, c := range id[len(slug)+1:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// hasExplicitAttributes reports whether the heading's source line ends with
+// an attribute block such as {#id}. goldmark trims that block from the
+// heading's text segment, so it sits between the segment end and the newline.
+func hasExplicitAttributes(h *ast.Heading, source []byte) bool {
+	lines := h.Lines()
+	if lines.Len() == 0 {
+		return false
+	}
+	stop := lines.At(lines.Len() - 1).Stop
+	if stop < 0 || stop > len(source) {
+		return false
+	}
+	rest := source[stop:]
+	if nl := bytes.IndexByte(rest, '\n'); nl >= 0 {
+		rest = rest[:nl]
+	}
+	rest = bytes.TrimSpace(rest)
+	return bytes.HasPrefix(rest, []byte("{")) && bytes.HasSuffix(rest, []byte("}"))
 }
 
 func headingRawLine(h *ast.Heading, source []byte) []byte {
@@ -93,7 +132,9 @@ func headingPlainText(h *ast.Heading, source []byte) []byte {
 				buf.WriteByte(' ')
 			}
 		case *ast.String:
-			buf.Write(v.Value)
+			// The typographer extension emits entities such as &ldquo;;
+			// decode them so they do not leak into the slug as "ldquo".
+			buf.WriteString(html.UnescapeString(string(v.Value)))
 		}
 		return ast.WalkContinue, nil
 	}); err != nil {

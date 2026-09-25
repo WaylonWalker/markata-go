@@ -93,10 +93,17 @@
 
       <div class="theme-picker-bar">
         <p class="theme-picker-hint" aria-hidden="true"><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> preview <span>&middot;</span> <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tabs <span>&middot;</span> <kbd>Enter</kbd> done</p>
-        <button type="button" class="theme-picker-reset" data-picker-reset title="Use the site's default look">Reset</button>
+        <button type="button" class="theme-picker-bar-btn theme-picker-reset" data-picker-reset title="Reset to the site's default look" aria-label="Reset to the site's default look">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.55M3 2.5v2.5h2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         {# Shown only by `markata-go serve`, which injects the bake endpoint. #}
-        <button type="button" class="theme-picker-bake" data-picker-bake hidden title="Write these choices into your site config">Bake</button>
-        <button type="button" class="theme-picker-bake theme-picker-settings" data-picker-settings hidden title="Open the serve settings sidebar">All settings</button>
+        <button type="button" class="theme-picker-bar-btn theme-picker-bake" data-picker-bake hidden title="Bake: write these choices into your site config" aria-label="Bake: write these choices into your site config">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="M8 2v7.5M5 6.5 8 9.5l3-3M3 11v1.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="theme-picker-bake__label" data-picker-bake-label></span>
+        </button>
+        <button type="button" class="theme-picker-bar-btn theme-picker-settings" data-picker-settings hidden title="All settings: open the serve settings sidebar" aria-label="All settings: open the serve settings sidebar">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="4.5" r="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="11.5" r="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
       </div>
     </div>
   </div>

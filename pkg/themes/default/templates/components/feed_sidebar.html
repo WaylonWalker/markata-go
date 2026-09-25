@@ -10,9 +10,10 @@
 {# sidebar_posts is injected when the current post belongs to a configured feed #}
 {% if sidebar.enabled and (sidebar_posts or feed.posts or posts) %}
 <aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="--feed-sidebar-width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation">
-    <button type="button" class="sidebar-toggle" aria-expanded="false" aria-label="Open series sidebar" data-sidebar-label="series">
+    <button type="button" class="sidebar-toggle" aria-expanded="false" aria-label="Open series sidebar" data-sidebar-label="series" {% if (sidebar.position | default:'left') == 'left' %}aria-keyshortcuts="b" data-sidebar-hotkey="b"{% else %}aria-keyshortcuts="Shift+B" data-sidebar-hotkey="Shift+B"{% endif %}>
         <svg class="sidebar-toggle__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="sidebar-toggle__label">Series</span>
+        <kbd class="sidebar-toggle__kbd" aria-hidden="true">{% if (sidebar.position | default:'left') == 'left' %}b{% else %}&#8679;B{% endif %}</kbd>
     </button>
     <nav class="feed-nav">
         {# Chrome: header + links + hotkeys -- sticky on desktop so they stay visible #}

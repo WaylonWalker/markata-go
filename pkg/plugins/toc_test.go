@@ -1,6 +1,9 @@
 package plugins
 
 import (
+	"bytes"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -574,6 +577,10 @@ func TestCleanHeadingText(t *testing.T) {
 		{"inline markup", "**Bold** and `code` and ==mark==", "Bold and code and mark"},
 		{"heading attrs", "Title {#custom-id .cls}", "Title"},
 		{"entities", "Fish &amp; Chips", "Fish & Chips"},
+		{"code span keeps underscores", "`update_meta`", "update_meta"},
+		{"code span keeps markup", "`**not bold**` option", "**not bold** option"},
+		{"intraword underscore", "snake_case and _emphasis_", "snake_case and emphasis"},
+		{"unpaired underscore", "_headers File", "_headers File"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -581,5 +588,44 @@ func TestCleanHeadingText(t *testing.T) {
 				t.Errorf("cleanHeadingText(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTocPlugin_IDsMatchRenderedHeadings(t *testing.T) {
+	content := "# Intro\n\n## Intro\n\n```toml\n## Not a heading\n# comment\n```\n\n" +
+		"### `update_meta`\n\n### \"Quoted title\"\n\n## Snake_case and _emphasis_\n\n" +
+		"## Custom {#my-id}\n\n## Intro\n\n### _headers File\n\n## Intro\n\n~~~\n## Also not\n~~~\n\n" +
+		"## Pinned {#intro-9}\n\n## Café {#café}\n\n## Scoped {#a:b.c .wide}\n"
+
+	p := NewTocPlugin()
+	p.SetLevelRange(2, 4)
+	var got []string
+	var walk func([]*TocEntry)
+	walk = func(entries []*TocEntry) {
+		for _, e := range entries {
+			got = append(got, e.ID)
+			walk(e.Children)
+		}
+	}
+	walk(p.extractTOC(content))
+
+	md := createMarkdownRenderer("github", false, MarkdownExtensionConfig{TypographerEnabled: true})
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(content), &buf); err != nil {
+		t.Fatalf("convert: %v", err)
+	}
+	matches := regexp.MustCompile(`<h[2-4] id="([^"]+)"`).FindAllStringSubmatch(buf.String(), -1)
+	var want []string
+	for _, m := range matches {
+		want = append(want, m[1])
+	}
+
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("TOC ids %v do not match rendered heading ids %v", got, want)
+	}
+	for _, id := range []string{"intro-9", "café", "a:b.c"} {
+		if !strings.Contains(strings.Join(want, ","), id) {
+			t.Errorf("explicit id %q missing from rendered ids %v", id, want)
+		}
 	}
 }

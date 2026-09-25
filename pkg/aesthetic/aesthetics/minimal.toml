@@ -1,16 +1,16 @@
 name = "Minimal"
-description = "Maximum whitespace: sharp corners, maximum spacing, no shadows"
+description = "Airy and flat: restrained corners, generous spacing, no shadows"
 
 [tokens.radius]
 none = "0"
-sm = "0"
-md = "0"
-lg = "0"
-xl = "0"
+sm = "4px"
+md = "6px"
+lg = "10px"
+xl = "14px"
 full = "9999px"
 
 [tokens.spacing]
-scale = 1.5
+scale = 1.2
 
 [tokens.border]
 width_thin = "1px"
@@ -25,5 +25,5 @@ lg = "none"
 xl = "none"
 
 [tokens.typography]
-font_primary = "var(--font-sans)"
-leading_scale = 1.2
+font_primary = "var(--font-body, system-ui)"
+leading_scale = "1.03"
