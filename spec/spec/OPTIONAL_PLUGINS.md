@@ -19,7 +19,8 @@ This document specifies optional plugins that extend the static site generator w
 │                                                                      │
 │  LINK ENHANCEMENT                                                    │
 │    ├─ one_line_link       Rich previews for URLs on own line       │
-│    └─ wikilink_hover      Hover previews for wikilinks             │
+│    ├─ wikilink_hover      Hover previews for wikilinks             │
+│    └─ external_link_hover Hover previews for external links        │
 │                                                                      │
 │  OUTPUT GENERATION                                                   │
 │    ├─ image_optimization  Generate AVIF/WebP images               │
@@ -70,7 +71,7 @@ enabled = false  # Disable mermaid without removing from hooks
 enabled = true
 link_class = "glossary-term"       # CSS class for glossary links
 case_sensitive = false             # Match terms case-insensitively
-tooltip = true                     # Add tooltip with description
+tooltip = true                     # Add hover-card data (title + data-hover-title)
 max_links_per_term = 1             # Link only first occurrence (0 = all)
 exclude_tags = ["glossary"]        # Don't link in glossary posts themselves
 export_json = true                 # Export glossary.json to output
@@ -85,7 +86,7 @@ template_key = "glossary"          # templateKey value identifying glossary post
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `link_class` | string | `"glossary-term"` | CSS class for glossary links |
 | `case_sensitive` | bool | `false` | Whether term matching is case-sensitive |
-| `tooltip` | bool | `true` | Add title attribute with description |
+| `tooltip` | bool | `true` | Add `title` (description) and `data-hover-title` (term name) for the hover card |
 | `max_links_per_term` | int | `1` | Max links per term per post (0 = unlimited) |
 | `exclude_tags` | []string | `["glossary"]` | Tags that should not have terms linked |
 | `export_json` | bool | `true` | Whether to export glossary.json |
@@ -807,8 +808,6 @@ And continue reading...
 
 ### `wikilink_hover`
 
-> **Note:** This plugin is planned but not yet implemented.
-
 **Stage:** `render` (late priority, after wikilinks plugin)
 
 **Purpose:** Add hover previews to wikilinks showing target post content.
@@ -846,14 +845,9 @@ screenshot_height = 300
 
 **JavaScript Integration:**
 
-The plugin adds data attributes; JavaScript handles the hover display:
-
-```javascript
-document.querySelectorAll('[data-preview]').forEach(link => {
-  link.addEventListener('mouseenter', showPreview);
-  link.addEventListener('mouseleave', hidePreview);
-});
-```
+The default theme's hover card component (`tooltips.js`, see
+[LAYOUTS.md](LAYOUTS.md#hover-cards-default-theme)) displays the card. It uses
+`data-preview` as the description when the wikilink has no `data-description`.
 
 **Screenshot Service:**
 
@@ -871,6 +865,87 @@ Output:
   Other Post
 </a>
 ```
+
+---
+
+### `external_link_hover`
+
+**Stage:** `render` (`PriorityLate`, after `encryption`; registered after
+`glossary` and before `templates` so the data reaches the rendered page)
+
+**Purpose:** Add hover preview data to external links in post content so the
+default theme's hover card can show where a link goes before the reader
+clicks.
+
+**Dependencies:** Reuses the `embeds` plugin's metadata cache and fetcher. No
+other plugin has to be enabled.
+
+**Configuration:**
+
+```toml
+[markata-go.external_link_hover]
+enabled = false          # Opt in; adds data attributes to external links
+fetch = false            # Fetch metadata for links with no cached data
+include_image = true     # Add data-link-image when metadata has an image
+favicon_service = ""     # e.g. "https://icons.duckduckgo.com/ip3/{host}.ico"
+ignore_domains = []      # Hosts (and their subdomains) to skip
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Whether the plugin annotates links |
+| `fetch` | bool | `false` | Resolve uncached URLs with the `embeds` strategy (oEmbed/Open Graph) and cache the result. When `false`, the build makes no network requests |
+| `include_image` | bool | `true` | Emit `data-link-image` |
+| `favicon_service` | string | `""` | URL template for a site icon. `{host}` and `{origin}` are replaced. Empty means no icon |
+| `ignore_domains` | []string | `[]` | Hosts to skip. A host matches itself and its subdomains |
+
+**Link selection:** An `<a>` in `ArticleHTML` is annotated when all of these
+hold:
+
+- `href` is an absolute `http` or `https` URL whose host differs from the
+  site `url` host and isn't in `ignore_domains`.
+- It has none of the classes `wikilink`, `mention`, `glossary-term`,
+  `heading-anchor`, or any class containing `embed-card` or `link-card`.
+- It has no `data-link-preview`, `data-hover-card`, `data-hover-title`,
+  `data-hover-description`, or `data-no-preview` attribute.
+
+Posts with `skip`, `private`, or encrypted content are left alone, so the
+build never fetches or exposes metadata for links in private posts.
+
+**Metadata sources** (first non-empty value wins per field):
+
+1. Cached `embeds` metadata for the URL (oEmbed, then Open Graph). With
+   `fetch = true`, uncached URLs are resolved with the `embeds` resolution
+   strategy and written to the same cache. Each URL is resolved at most once
+   per build.
+2. A `[[markata-go.blogroll.feeds]]` entry whose `site_url` (or `url`) host
+   matches the link host: `title` becomes the site name, `description` the
+   fallback description, and `image_url` the fallback image.
+3. The link's own `title` attribute becomes the description.
+
+A fallback title (such as the `embeds` "Link" placeholder) is ignored.
+
+**Output:**
+
+```html
+<a href="https://go.dev/doc/"
+   data-link-preview
+   data-link-host="go.dev"
+   data-link-title="Documentation - The Go Programming Language"
+   data-link-description="The Go programming language..."
+   data-link-site="Go"
+   data-link-image="https://go.dev/images/go-logo-blue.svg"
+   data-link-icon="https://icons.duckduckgo.com/ip3/go.dev.ico">Go docs</a>
+```
+
+`data-link-preview` and `data-link-host` are always present on annotated
+links. All other attributes are omitted when empty. Values are HTML-escaped.
+
+**Hover display:** The default theme's hover card component shows
+`a[data-link-preview]` links as a card with the class `hover-card--external`:
+an optional image, the title (falling back to the host), the description,
+then the icon, site name (or host), and path. See
+[LAYOUTS.md](LAYOUTS.md#hover-cards-default-theme).
 
 ---
 

@@ -68,6 +68,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["contribution_graph"] = func() lifecycle.Plugin { return NewContributionGraphPlugin() }
 	pluginRegistry.constructors["one_line_link"] = func() lifecycle.Plugin { return NewOneLineLinkPlugin() }
 	pluginRegistry.constructors["wikilink_hover"] = func() lifecycle.Plugin { return NewWikilinkHoverPlugin() }
+	pluginRegistry.constructors["external_link_hover"] = func() lifecycle.Plugin { return NewExternalLinkHoverPlugin() }
 	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
 	pluginRegistry.constructors["youtube"] = func() lifecycle.Plugin { return NewYouTubePlugin() }
 	pluginRegistry.constructors["chroma_css"] = func() lifecycle.Plugin { return NewChromaCSSPlugin() }
@@ -199,6 +200,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewMermaidPlugin(),           // Convert Mermaid code blocks to diagrams
 		NewGlossaryPlugin(),          // Auto-link glossary terms (Render + Write stages)
 		NewWikilinkHoverPlugin(),     // Add hover data to wikilinks (runs after wikilinks)
+		NewExternalLinkHoverPlugin(), // Add hover data to external links (opt-in)
 		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
 		NewEncryptionPlugin(),        // Encrypt content for private posts (runs late in Render)
 		NewLinkAvatarsPlugin(),       // Add favicon icons to external links (build-time modes)

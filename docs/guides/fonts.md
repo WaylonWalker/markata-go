@@ -27,6 +27,14 @@ catalog, manifests, licenses, and font assets are embedded in the executable,
 so these packs work from an installed or GoReleaser binary in any working
 directory. Bundled builds do not run Python or FontTools during `markata build`.
 
+The generated `css/fonts.css` has a content-hashed URL for caching. Pages
+preload the emitted WOFF2 files for their body and main heading ahead of CSS;
+per-page overrides use their own pack. A stored picker choice is restored
+before paint and preloads that choice too. Other fonts (including code and
+additional script coverage) load when needed. Font faces use
+`font-display: swap`, so slow networks can still briefly show fallback text;
+preloading reduces that delay without forcing fallback fonts permanently.
+
 System packs use local system stacks and transfer zero font files. Custom packs
 are loaded from an explicit catalog and may reference local assets. Relative
 paths in a custom catalog are resolved relative to the catalog file, not the

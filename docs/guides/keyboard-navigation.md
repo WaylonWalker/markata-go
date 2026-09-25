@@ -77,11 +77,11 @@ Press the first key (`g`), then the second key within 800ms.
 | `y y` | Copy current URL to clipboard |
 | `[` or `Shift+K` | Previous post in the current series/feed, or previous page on a feed |
 | `]` or `Shift+J` | Next post in the current series/feed, or next page on a feed |
-| `b` | Toggle the left sidebar drawer (series) |
+| `b` | Toggle the left sidebar drawer (series). Works at every width; hover a drawer handle to see its key |
 | `Shift+B` | Toggle the right sidebar drawer (on this page) |
 | `{` / `}` | Switch the sidebar to the previous / next primary feed |
 | `?` | Show shortcuts help modal |
-| `Escape` | Close modals, clear highlight, blur inputs |
+| `Escape` | Close modals and overlay drawers, clear highlight, blur inputs |
 
 ---
 

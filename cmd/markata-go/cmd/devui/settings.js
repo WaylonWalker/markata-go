@@ -18,8 +18,14 @@
   var CSS = [
     ':host{all:initial;--bg:var(--color-surface,#1d2029);--fg:var(--color-text,#e8e8ee);--muted:var(--color-text-muted,#9aa0ad);',
     '--line:var(--color-border,rgba(127,127,127,.28));--accent:var(--color-primary,#7aa2f7);--page:var(--color-background,#15171e);',
-    '--ok:var(--color-success,#4caf7a);--bad:var(--color-error,#e5534b);--warn:var(--color-warning,#d9a43a);}',
-    '*{box-sizing:border-box}',
+    '--ok:var(--color-success,#4caf7a);--bad:var(--color-error,#e5534b);--warn:var(--color-warning,#d9a43a);',
+    // all:initial resets color-scheme, which paints native scrollbars light; follow the page instead.
+    'color-scheme:inherit;}',
+    '*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--fg) 28%,transparent) transparent}',
+    '::-webkit-scrollbar{width:10px;height:10px}',
+    '::-webkit-scrollbar-track{background:transparent}',
+    '::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--fg) 24%,transparent);border-radius:8px;border:3px solid transparent;background-clip:padding-box}',
+    '::-webkit-scrollbar-thumb:hover{background-color:color-mix(in srgb,var(--fg) 40%,transparent)}',
     '[hidden]{display:none!important}',
     '.toggle{position:fixed;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));z-index:2147483000;',
     'width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg);display:grid;place-items:center;',
@@ -823,9 +829,21 @@
 
   function isOpen() { return panel.classList.contains('open'); }
 
+  // On wide screens the open panel pushes the page aside instead of covering
+  // the article. Themes read --page-inset-right to keep right-edge fixed
+  // chrome (drawers) clear of it.
+  var pushStyle = document.createElement('style');
+  pushStyle.textContent = '@media (min-width:1100px){html.markata-dev-settings-open{--page-inset-right:min(440px,100vw)}' +
+    'html.markata-dev-settings-open body{margin-right:var(--page-inset-right)}}' +
+    '@media (min-width:1100px) and (prefers-reduced-motion:no-preference){body{transition:margin-right .2s ease}}';
+  function syncPush() {
+    document.documentElement.classList.toggle('markata-dev-settings-open', isOpen());
+  }
+
   function open(section) {
     panel.classList.add('open');
     toggle.setAttribute('aria-expanded', 'true');
+    syncPush();
     saveState();
     return load().then(function () {
       if (section !== undefined && section !== null) {
@@ -849,6 +867,7 @@
   function close() {
     panel.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
+    syncPush();
     saveState();
     toggle.focus({ preventScroll: true });
   }
@@ -1014,6 +1033,7 @@
   });
 
   function mount() {
+    document.head.appendChild(pushStyle);
     document.body.appendChild(host);
     var state = readJSON(STATE_KEY, null);
     var flash = readJSON(FLASH_KEY, null);
@@ -1027,6 +1047,7 @@
     if (state && state.open) {
       panel.classList.add('open');
       toggle.setAttribute('aria-expanded', 'true');
+      syncPush();
     }
     // Load right away so the gear badge and preview bar reflect the server.
     load().then(function () { if (state && state.open) body.scrollTop = state.scroll || 0; });

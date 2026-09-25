@@ -12,6 +12,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 var paletteManifestPattern = regexp.MustCompile(`--palette-manifest: '([^\n]*)';`)
@@ -234,12 +235,27 @@ func TestFontpackManifestCSS_ListsPacksWithFamilies(t *testing.T) {
 }
 
 func TestAestheticSurfaceCSS_DistinctPerAesthetic(t *testing.T) {
-	for _, name := range []string{"balanced", "elevated", "precision", "brutal"} {
-		if !strings.Contains(aestheticSurfaceCSS, `[data-aesthetic="`+name+`"] { --radius:`) {
-			t.Errorf("aesthetic %q has no surface tokens", name)
+	// The generated stylesheet is aestheticSurfaceCSS followed by the theme's
+	// aesthetic.css, which owns the per-aesthetic radius and surface tokens.
+	themeCSS, err := themes.ReadStatic("css/aesthetic.css")
+	if err != nil {
+		t.Fatalf("read aesthetic.css: %v", err)
+	}
+	combined := aestheticSurfaceCSS + strings.ReplaceAll(string(themeCSS), "\r\n", "\n")
+	for _, name := range []string{"balanced", "elevated", "precision", "brutal", "minimal"} {
+		if !strings.Contains(combined, `[data-aesthetic="`+name+`"] {`+"\n  --radius-sm:") {
+			t.Errorf("aesthetic %q has no radius tokens", name)
 		}
 	}
-	if strings.Contains(aestheticSurfaceCSS, `html[data-aesthetic="minimal"]`) || strings.Contains(aestheticSurfaceCSS, `[data-aesthetic="minimal"]) :is(`) {
-		t.Error("minimal is the native look and must not be restyled")
+	for _, name := range []string{"precision", "elevated", "minimal"} {
+		if !strings.Contains(combined, `html[data-aesthetic][data-aesthetic="`+name+`"]`) {
+			t.Errorf("aesthetic %q has no signature surface rules", name)
+		}
+	}
+	if !strings.Contains(aestheticSurfaceCSS, "--brutal-ink:") {
+		t.Error("brutal ink token missing from surface CSS")
+	}
+	if strings.Contains(combined, `html[data-aesthetic][data-aesthetic="balanced"]`) {
+		t.Error("balanced is the default look and must not get signature rules")
 	}
 }

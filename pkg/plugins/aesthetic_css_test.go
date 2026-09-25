@@ -1,6 +1,9 @@
 package plugins
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -8,7 +11,42 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
 	"github.com/WaylonWalker/markata-go/pkg/renderingrecipe"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
+
+func TestAestheticCSSPlugin_BundlesConsumptionRules(t *testing.T) {
+	m := lifecycle.NewManager()
+	config := lifecycle.NewConfig()
+	config.OutputDir = t.TempDir()
+	config.Extra = map[string]interface{}{"theme": models.ThemeConfig{Aesthetic: "brutal"}}
+	m.SetConfig(config)
+	plugin := NewAestheticCSSPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatal(err)
+	}
+	if err := plugin.Write(m); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(config.OutputDir, "css", "aesthetic.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	surfaces, err := themes.ReadStatic("css/aesthetic.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(got), string(surfaces)) {
+		t.Fatal("generated aesthetic stylesheet must end with default theme's surface rules")
+	}
+	hash := m.GetAssetHash("css/aesthetic.css")
+	hashed, err := os.ReadFile(filepath.Join(config.OutputDir, "css", "aesthetic."+hash+".css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(hashed, got) {
+		t.Fatal("hashed asset differs from generated aesthetic CSS")
+	}
+}
 
 func TestAestheticCSSPlugin_Configure(t *testing.T) {
 	plugin := NewAestheticCSSPlugin()

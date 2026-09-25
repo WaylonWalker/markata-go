@@ -499,12 +499,115 @@ The table of contents component shows an outline of the current page.
 
 #### Scroll Spy
 
-When `scroll_spy: true`, the TOC highlights the currently visible section:
+When `scroll_spy: true`, the TOC highlights the currently visible section.
 
-```javascript
-// Intersection Observer watches heading visibility
-// Updates .toc-link--active class on scroll
-```
+- The active entry is the last heading whose top has passed the reading line
+  (the sticky header offset plus `min(120px, 20vh)`). At the very bottom of the
+  page, the last heading still on screen becomes active.
+- The active link gets `.toc-link--active` and `aria-current="location"`; its
+  ancestors get `.toc-link--parent-active`. A `.toc-marker` element inside the
+  top-level `.toc-list` slides to the active link, and the TOC scroller keeps
+  that link in view.
+- Clicking a TOC link MUST land its heading at the reading offset. The click
+  marks the entry active at once and the page moves: first a cut to within
+  0.6 viewport heights of the target, then an ease-out glide of 150–250ms that
+  re-measures the target every frame. Late layout shifts are corrected at
+  +120ms and +450ms. Any wheel, touch or navigation key input cancels the glide
+  and the corrections. `prefers-reduced-motion: reduce` jumps instantly.
+- The URL hash is updated with `history.pushState`, the heading receives focus
+  (`tabindex="-1"`, no scroll), and `.toc-target` plays a brief highlight.
+- The clicked entry stays active until the reader scrolls, even when the page
+  cannot scroll far enough to bring the heading to the reading line.
+- Listeners are bound once and re-initialised after SPA navigation.
+
+#### TOC ids
+
+TOC hrefs MUST equal the ids of the rendered headings:
+
+- `#` lines inside fenced code blocks are not headings.
+- Explicit `{#id}` ids win and do not consume an auto-id collision slot.
+- Ids are slugged from the visible text: inline code is kept literally
+  (`update_meta` keeps its underscore), paired emphasis delimiters are
+  removed, and typographer entities (smart quotes) are unescaped first.
+- Duplicate auto ids use `-1`, `-2`, … suffixes (GitHub style), counting
+  every heading, including levels outside the TOC range.
+
+### Sidebar Drawers (default theme)
+
+The feed sidebar (`.feed-sidebar`) and document sidebar (`.doc-sidebar`) are
+fixed drawers at every width. Each has a `.sidebar-toggle` handle with
+`aria-expanded`, `aria-keyshortcuts` and `data-sidebar-hotkey` (`b` for the
+left drawer, `Shift+B` for the right) and a `<kbd class="sidebar-toggle__kbd">`
+hint shown on hover or keyboard focus (hidden on coarse, hover-less pointers).
+The handle's `title`/`aria-label` also names the hotkey. Open drawers carry
+`.sidebar--pinned`; closed drawers are `visibility: hidden` so their links are
+out of the tab order. Each drawer is one scroller on a single surface color
+with a themed scrollbar.
+
+- **Docked (≥ 1201px):** opening a drawer pushes `.main-content` aside via
+  `.page-wrapper:has(> .X--side.sidebar--pinned)`. Content width is
+  `min(page width, 100% − open drawer widths)`, so the article never sits
+  under a drawer. Widths come from `--feed-sidebar-width` and
+  `--doc-sidebar-width` on `.page-wrapper`. The open state persists per side
+  in `localStorage`.
+- **Overlay (≤ 1200px):** drawers open over the page (z-index 1100) above a
+  scrim (`.page-wrapper::before`). Only one drawer is open at a time. Handles
+  are bottom-corner pills, offset right when the dev settings button is
+  present. A scrim click, `Escape`, a link click inside the drawer, or the
+  hotkey closes it, and focus returns to the handle. Opening moves focus into
+  the drawer. Overlay state is never persisted, and entering overlay mode
+  closes any open drawers.
+- Print hides drawers and handles; reduced motion removes the slide.
+
+### Hover Cards (default theme)
+
+`tooltips.js` is the single hover/focus preview component for the default
+theme. It exposes `window.MarkataHoverCards` with `register(selector, build,
+options)`, `placement(target, width, height)`, `show(el)`, `hide()`, and
+`refresh()`. `build(el)` returns a DOM node,
+or `null` to show no card. Built-in sources are tried first, in this order:
+
+| Source | Card content | Extra class |
+|--------|--------------|-------------|
+| `a.wikilink[data-title]` | title, description (falls back to `data-preview`), date, target path | `wikilink-tooltip` |
+| `a.glossary-term` | `data-hover-title` (or link text), definition from `data-hover-description` or `title`, "Glossary" label, path | `hover-card--glossary` |
+| `a[data-link-preview]` | optional image, `data-link-title` (or host), description, icon, site name (or host), path | `hover-card--external` |
+| `[data-hover-card]` | children of the element or `<template>` matched by the attribute's CSS selector, with `id`s removed | `hover-card--rich` |
+| `[data-hover-title]`, `[data-hover-description]` | title and description (falls back to `title`) | none |
+
+Rules:
+
+- Every card is a `div.hover-card[role=tooltip]` appended to `<body>` with
+  `position: fixed`. The target gets `aria-describedby` while it's open. Only
+  one card is open at a time.
+- Built-in text sources set content with `textContent`, never HTML. Rich cards
+  clone author-controlled DOM from the page.
+- When a card opens for an element with a `title`, the title moves to
+  `data-hover-native-title` so the browser tooltip doesn't also appear.
+- Pointer hover (not touch) opens after 180ms, or immediately when moving
+  from one open card's target to another. Keyboard focus opens only for
+  `:focus-visible`. Leaving the target and card closes after 150ms. Moving
+  onto the card or focusing inside it keeps it open.
+- It closes on `Escape` (returning focus to the target if focus was inside the
+  card), window scroll, or a pointer down outside the card.
+- Placement follows the pointer. For a target that wraps across lines,
+  hovering the first line opens the card above the first line, hovering the
+  last line opens it below the last line, and a middle line picks the nearer
+  end. Single-line targets and keyboard focus open below. When the preferred
+  side is too short for the card and the other side has more room, it flips.
+  The card aligns with the left edge of the line it attaches to, clamped to
+  8px from the viewport edges, and never overlaps any line of the target when
+  either side fits.
+- `MarkataHoverCards.placement(target, width, height)` returns
+  `{ top, left, placement }` in viewport pixels using these rules. Other theme
+  popups (`mention-cards.js`, `tag-cards.js`) use it when it's available, so
+  every popup opens on the same side.
+- `[data-hover-card]`, `[data-hover-title]`, and `[data-hover-description]`
+  elements that aren't focusable get `tabindex="0"` on load and after view
+  transitions.
+- Events are delegated from `document`, so cards work after SPA navigation
+  without re-binding. `window.initTooltips` and `view-transition-complete`
+  remove stale cards.
 
 ### Header Component
 

@@ -613,9 +613,19 @@
     }));
   }
 
+  // The bake control is an icon button; idle it shows only the icon, while
+  // the confirm/progress/result states expand an inline label.
   function setBakeLabel(button, text, state) {
     if (!button) return;
-    button.textContent = text;
+    const label = button.querySelector('[data-picker-bake-label]');
+    const idle = text === 'Bake' && !state;
+    if (label) {
+      label.textContent = idle ? '' : text;
+    } else {
+      button.textContent = text;
+    }
+    button.classList.toggle('has-label', !idle);
+    button.setAttribute('aria-label', idle ? 'Bake: write these choices into your site config' : text);
     button.classList.toggle('is-armed', state === 'armed');
     button.classList.toggle('is-done', state === 'done');
     button.classList.toggle('is-error', state === 'error');

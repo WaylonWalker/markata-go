@@ -1283,24 +1283,36 @@ stored choice, SPA navigation keeps each page's own `data-fontpack`.
 
 ### Styles
 
-`aesthetic.css` appends per-aesthetic surface rules keyed on
-`[data-aesthetic="<id>"]`: radius, `--surface-border`, and `--surface-shadow`
-tokens in `@layer tokens` (beating the contract's `:root` radius). Tokens use
-a bare attribute selector so Style cards scope them. Border/box-shadow rules
-for `pre`, `.card`, `.admonition`, `.embed-card`, `.blogroll-card`, and post
-tables/images live in `@layer utilities` and are keyed on
-`html[data-aesthetic]`. `minimal` defines tokens only (for previews); its
-surfaces are the theme's native look.
+The built-in preset TOML files define the shape, spacing, border, shadow and
+typography tokens; `aesthetic.css` supplies their CSS consumption rules.
+Generated aesthetic CSS includes these rules after the preset variables so
+the picker and a built site use the same styling. Tokens use bare
+`[data-aesthetic="<id>"]` selectors for Style card previews. Component rules
+are scoped to `html[data-aesthetic]` in the `overrides` layer, leaving
+unlayered site custom CSS and theme variable overrides authoritative.
+Balanced retains the theme's native spacing, surfaces and hover treatment;
+other presets adjust cards, code, quotes, admonitions, tables, media, forms,
+tags, header, picker and prose rhythm. Drawer shapes/depth only change when
+the fixed doc/feed sidebar is visible. No aesthetic changes palette colors.
 
-`brutal` derives its colors from the active palette so it fits every theme:
-borders use `--brutal-ink` (`--color-text` mixed 82% with
-`--color-background`), and the hard 5px offset shadow uses `--brutal-accent`
-(`--color-primary`). Brutal also squares and borders every control in page
-content and the header: `button`, `input`, `select`, `textarea`,
-`.share-button`, `.post-copy__summary`, and the Pagefind search input. It
-excludes `.theme-card` and anything inside `.theme-picker-panel`. Blockquotes
-get a 6px accent left rule. On hover, cards deepen to an 8px accent shadow and
-controls gain a 3px accent shadow, without transforms.
+Brutal uses square corners, thick borders, hard offset shadows and mono UI
+accents; precision uses tight spacing, small radii, hairlines and crisp
+shadows; elevated uses generous spacing, rounded corners and layered soft
+shadows; minimal is airy and flat, with borders only where needed.
+
+Because low-alpha shadows and small radius changes are nearly invisible on
+dark palettes, each non-balanced preset MUST also carry one surface signature
+that reads on light and dark palettes:
+
+| Preset | Signature |
+|--------|-----------|
+| brutal | thick strong borders, hard offset primary shadows |
+| precision | visible hairline borders, gridded table cells, uppercase mono table headers, 2px primary rule on code blocks, mono tags, no soft shadow |
+| elevated | borderless tinted surfaces with an inset highlight and a deep drop shadow, tinted quotes, pill tags, cards lift 2px on hover |
+| minimal | no card/table borders or backgrounds, faintly tinted code, 1px quote rule, underlined text tags |
+
+Signature rules use `html[data-aesthetic][data-aesthetic="<id>"]` so they
+outrank the shared non-balanced rules in the same layer.
 
 ### Seasonal
 
