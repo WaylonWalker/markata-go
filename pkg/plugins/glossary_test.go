@@ -225,7 +225,7 @@ func TestGlossaryPlugin_LinkTerms_Basic(t *testing.T) {
 	html := "<p>The API allows communication between services.</p>"
 	result := p.linkTerms(html, nil)
 
-	expected := `<a href="/glossary/api/" class="glossary-term" title="Application Programming Interface">API</a>`
+	expected := `<a href="/glossary/api/" class="glossary-term" title="Application Programming Interface" data-hover-title="API">API</a>`
 	if !strings.Contains(result, expected) {
 		t.Errorf("expected link in output:\nwant: %s\ngot: %s", expected, result)
 	}

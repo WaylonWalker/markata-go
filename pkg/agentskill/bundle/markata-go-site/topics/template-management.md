@@ -269,6 +269,24 @@ SSG
 :::
 ```
 
+## Hover Cards In Content
+
+The default theme's `js/tooltips.js` is the shared hover preview component. Wikilinks and glossary terms get cards automatically. For other hover previews in Markdown, use its attributes instead of hand-writing `wa-tooltip` plus inline scripts:
+
+```html
+<span data-hover-title="Static Site Generator" data-hover-description="Builds HTML ahead of time.">SSG</span>
+
+<span data-hover-card="#term-card">rich card</span>
+<template id="term-card"><strong><a href="/term/">Term</a></strong><p>Details.</p></template>
+```
+
+- Cards follow the active palette and open on hover and keyboard focus. On a wrapped link they open on the side the pointer is on (above for the first line, below for the last) and flip when there is no room.
+- Custom popups can reuse the placement with `window.MarkataHoverCards.placement(target, width, height)`, which returns `{ top, left, placement }` in viewport pixels.
+- Style them with `.hover-card` (plus `.wikilink-tooltip`, `.hover-card--glossary`, `.hover-card--external`, or `.hover-card--rich`).
+- External links get cards only when `[markata-go.external_link_hover] enabled = true`. It reuses the embeds metadata cache, blogroll feed entries, and link titles, and makes no network requests unless `fetch = true`. Add `data-no-preview` to an inline `<a>` to skip one link. Don't hand-write `data-link-*` attributes; the plugin generates them.
+- Theme scripts can add sources with `window.MarkataHoverCards.register(selector, el => node)`.
+- If a template override drops `js/tooltips.js`, no cards appear.
+
 ## Per-Post Template Selection
 
 Common frontmatter options:

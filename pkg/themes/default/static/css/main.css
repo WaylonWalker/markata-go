@@ -1657,8 +1657,8 @@ a.wikilink.wikilink-missing:focus-visible {
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
-/* Wikilink hover previews (tooltips.js) */
-.wikilink-tooltip {
+/* Hover cards (tooltips.js): wikilinks, glossary terms, custom hovers */
+.hover-card {
   position: fixed;
   z-index: 1200;
   box-sizing: border-box;
@@ -1677,7 +1677,7 @@ a.wikilink.wikilink-missing:focus-visible {
   animation: tooltipFadeIn 0.14s ease-out;
 }
 
-.wikilink-tooltip[data-placement="above"] {
+.hover-card[data-placement="above"] {
   animation-name: tooltipFadeInAbove;
 }
 
@@ -1709,6 +1709,105 @@ a.wikilink.wikilink-missing:focus-visible {
   font-size: var(--text-xs);
 }
 
+.tooltip-kind {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hover-card--external {
+  width: min(22rem, calc(100vw - 16px));
+}
+
+.hover-card-image {
+  display: block;
+  width: calc(100% + 1.75rem);
+  max-width: none;
+  height: 8.5rem;
+  margin: -0.75rem -0.875rem 0.625rem;
+  object-fit: cover;
+  border-radius: var(--radius-lg, 8px) var(--radius-lg, 8px) 0 0;
+  background: var(--color-background);
+}
+
+.hover-card-image[hidden] {
+  display: none;
+}
+
+.tooltip-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tooltip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.hover-card--rich {
+  max-height: min(24rem, calc(100vh - 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hover-card-body > :first-child {
+  margin-top: 0;
+}
+
+.hover-card-body > :last-child {
+  margin-bottom: 0;
+}
+
+.hover-card-body p {
+  margin: 0.375rem 0;
+  color: var(--color-text-muted);
+}
+
+.hover-card-body strong:first-child,
+.hover-card-body h4,
+.hover-card-body h5 {
+  display: block;
+  margin: 0 0 0.25rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hover-card-body a {
+  color: var(--color-link, var(--color-primary));
+}
+
+.hover-card-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md, 6px);
+}
+
+[data-hover-card],
+[data-hover-title],
+[data-hover-description] {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 70%, transparent);
+  text-underline-offset: 0.18em;
+  cursor: help;
+  border-radius: 2px;
+}
+
+[data-hover-card]:hover,
+[data-hover-card]:focus-visible,
+[data-hover-title]:hover,
+[data-hover-title]:focus-visible,
+[data-hover-description]:hover,
+[data-hover-description]:focus-visible {
+  text-decoration-style: solid;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  outline: none;
+}
+
 .tooltip-path {
   font-family: var(--font-mono);
   color: var(--color-primary);
@@ -1726,7 +1825,7 @@ a.wikilink.wikilink-missing:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wikilink-tooltip {
+  .hover-card {
     animation: none;
   }
 }

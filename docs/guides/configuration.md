@@ -414,8 +414,28 @@ flourish = { enabled = true }
 infogram = { enabled = true }
 reddit = { enabled = true }
 dailymotion = { enabled = true }
-wistia = { enabled = true }
-giphy = { enabled = true }
+```
+
+### External Link Hover (`[markata-go.external_link_hover]`)
+
+Adds hover preview cards to links that point to other sites. Disabled by
+default. See the [plugin reference](../reference/plugins.md#external_link_hover)
+for data sources and output.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable/disable external link cards |
+| `fetch` | bool | `false` | Fetch metadata for URLs missing from the embeds cache (no network when `false`) |
+| `include_image` | bool | `true` | Include the page's preview image |
+| `favicon_service` | string | `""` | Icon URL template with `{host}` / `{origin}`; empty disables icons |
+| `ignore_domains` | list | `[]` | Hosts (and subdomains) that never get cards |
+
+```toml
+[markata-go.external_link_hover]
+enabled = true
+fetch = true
+favicon_service = "https://icons.duckduckgo.com/ip3/{host}.ico"
+ignore_domains = ["localhost"]
 ```
 
 ### Vendor Assets (`[markata-go.assets]`)

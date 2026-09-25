@@ -4,7 +4,8 @@
  * Displays contextual information (post count, reading time) when hovering over #tag hashtag links.
  *
  * Features:
- * - Smart positioning (above/below based on viewport)
+ * - Shared placement (MarkataHoverCards.placement): opens on the side of a
+ *   wrapped link the pointer is on, flipping when there is no room
  * - Data from data-* attributes (instant, no network requests)
  * - 300ms show delay, 200ms hide delay to prevent flickering
  * - Keyboard support (Escape to dismiss, focus shows card)
@@ -107,6 +108,17 @@
    * @param {HTMLElement} target
    */
   function positionCard(card, target) {
+    var shared = window.MarkataHoverCards && window.MarkataHoverCards.placement;
+    if (shared) {
+      var pos = shared(target, card.offsetWidth, card.offsetHeight);
+      var above = pos.placement === 'above';
+      card.classList.toggle('tag-card--above', above);
+      card.classList.toggle('tag-card--below', !above);
+      card.style.top = (pos.top + (window.scrollY || window.pageYOffset)) + 'px';
+      card.style.left = (pos.left + (window.scrollX || window.pageXOffset)) + 'px';
+      return;
+    }
+
     var rect = target.getBoundingClientRect();
     var cardRect = card.getBoundingClientRect();
     var viewportHeight = window.innerHeight;

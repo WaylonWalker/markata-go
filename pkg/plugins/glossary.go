@@ -28,7 +28,8 @@ type GlossaryConfig struct {
 	// CaseSensitive controls whether term matching is case-sensitive (default: false)
 	CaseSensitive bool `json:"case_sensitive" yaml:"case_sensitive" toml:"case_sensitive"`
 
-	// Tooltip controls whether to add a title attribute with description (default: true)
+	// Tooltip controls whether to add hover-card data (a title attribute with the
+	// description and data-hover-title with the term name) (default: true)
 	Tooltip bool `json:"tooltip" yaml:"tooltip" toml:"tooltip"`
 
 	// MaxLinksPerTerm limits how many times each term is linked (0 = all, default: 1)
@@ -621,6 +622,10 @@ func (p *GlossaryPlugin) buildLink(term *GlossaryTerm, matchedText string) strin
 	if p.config.Tooltip && term.Description != "" {
 		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
 		_, _ = attrs.WriteString(fmt.Sprintf(` title="%s"`, html.EscapeString(term.Description)))
+		if term.Term != "" {
+			//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
+			_, _ = attrs.WriteString(fmt.Sprintf(` data-hover-title="%s"`, html.EscapeString(term.Term)))
+		}
 	}
 
 	return fmt.Sprintf(`<a %s>%s</a>`, attrs.String(), html.EscapeString(matchedText))
