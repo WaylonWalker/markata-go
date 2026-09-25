@@ -215,7 +215,6 @@ func validateRenderingTheme(config *models.Config) []error {
 	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {
 		errs = append(errs, ValidationError{Field: "theme.text_size", Message: `must be one of: "small", "medium", "large", "x-large"; using "large"`, IsWarn: true})
 	}
-<<<<<<< HEAD
 	if !fontpackInCatalog(config, config.Theme.Fontpack) {
 		// A legacy top-level fontpack is copied into theme.fontpack during
 		// normalization; report it under the key the user actually wrote.
