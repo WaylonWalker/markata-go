@@ -23,6 +23,7 @@ markata-go supports standard Markdown (CommonMark), GitHub Flavored Markdown (GF
 - [Attribute Syntax](#attribute-syntax)
 - [Admonitions](#admonitions)
 - [Wikilinks](#wikilinks)
+- [Hover Cards](#hover-cards)
 - [Table of Contents](#table-of-contents)
 - [Heading Anchors](#heading-anchors)
 - [Footnotes](#footnotes)
@@ -1808,6 +1809,151 @@ strict_wikilinks = true
 | `[[slug\|Text]]` | Custom text | Link with "Text" |
 | `[[slug#section]]` | Section link | Link to heading anchor |
 | `[[slug#section\|Text]]` | Section with text | Custom text to section |
+
+---
+
+## Hover Cards
+
+The default theme shows a small preview card when a reader hovers or
+keyboard-focuses certain links. One component (`js/tooltips.js`) draws every
+card, so they share the same look, placement, and keyboard behavior.
+
+| Source | What the card shows |
+|--------|---------------------|
+| Wikilinks (`[[slug]]`) | Target title, description, date, and path |
+| Glossary terms | Term name, definition, and path (replaces the browser's native `title` tooltip) |
+| `data-hover-title` / `data-hover-description` | Your own title and text |
+| `data-hover-card="#id"` | Rich HTML copied from a `<template>` |
+| External links (opt-in) | Page title, description, preview image, site icon, and path |
+
+Wikilinks and glossary terms get cards automatically. External links get cards
+when you enable the [`external_link_hover`](/docs/reference/plugins/#external_link_hover)
+plugin. For anything else, add attributes to inline HTML in your Markdown.
+
+### Simple Text Card
+
+```html
+Markata supports <span data-hover-title="Static Site Generator"
+  data-hover-description="Builds plain HTML files ahead of time.">SSGs</span>.
+```
+
+**Live example:**
+
+Markata supports <span data-hover-title="Static Site Generator" data-hover-description="Builds plain HTML files ahead of time.">SSGs</span>.
+
+### Rich Card From a Template
+
+Point `data-hover-card` at a `<template>` (or any element) by CSS selector.
+The template can hold links and markup, and the reader can move the pointer
+into the card to click them.
+
+```html
+Try <span data-hover-card="#vibe-card">vibe coding</span> today.
+
+<template id="vibe-card">
+  <strong><a href="/vibe-coding/">Vibe Coding</a></strong>
+  <p>Describe intent to an AI assistant and iterate on the result.</p>
+</template>
+```
+
+**Live example:**
+
+Try <span data-hover-card="#vibe-card-example">vibe coding</span> today.
+
+<template id="vibe-card-example">
+  <strong>Vibe Coding</strong>
+  <p>Describe intent to an AI assistant and iterate on the result.</p>
+</template>
+
+### External Link Cards
+
+Turn on the `external_link_hover` plugin and ordinary Markdown links to other
+sites get preview cards:
+
+```toml
+[markata-go.external_link_hover]
+enabled = true
+fetch = true                 # look up pages that aren't cached yet
+favicon_service = "https://icons.duckduckgo.com/ip3/{host}.ico"
+```
+
+```markdown
+See the [markata-go repo](https://github.com/WaylonWalker/markata-go).
+```
+
+The card uses metadata markata-go already has: Open Graph and oEmbed data from
+the embeds cache, your blogroll feed entries, and the link's Markdown title.
+With `fetch = false` (the default) the build makes no network requests, and
+links without metadata still get a small card with the host and path.
+
+To skip one link, add `data-no-preview` with inline HTML:
+
+```html
+<a href="https://example.com/" data-no-preview>no card here</a>
+```
+
+### Behavior
+
+- Cards open after a short delay, stay open while the pointer is over the
+  target or the card, and close on pointer leave, scroll, click elsewhere, or
+  <kbd>Escape</kbd>.
+- Cards open on keyboard focus. Custom targets get `tabindex="0"`
+  automatically, so plain `<span>` elements are reachable with <kbd>Tab</kbd>.
+- Cards open on the side your pointer is on. For a link that wraps across
+  lines, hovering the first line opens the card above the link, and hovering
+  the last line opens it below. The card never covers the link, and it flips
+  sides when there isn't room. Single-line links and keyboard focus open below.
+- Mention cards use the same placement rules.
+- Touch devices don't get hover cards; tapping a link follows it.
+
+### Styling Hover Cards
+
+Every card has the `hover-card` class, plus a modifier for its source:
+`wikilink-tooltip`, `hover-card--glossary`, `hover-card--external`, or
+`hover-card--rich`. Override them in your own CSS:
+
+```css
+.hover-card {
+  max-width: 28rem;
+  border-color: var(--color-accent);
+}
+
+.hover-card--rich {
+  max-height: 16rem;
+}
+```
+
+### Adding Your Own Hover Source
+
+Theme and plugin scripts can register more sources. The build function gets
+the hovered element and returns a DOM node (or `null` to skip):
+
+```javascript
+window.MarkataHoverCards.register('abbr[title]', function (el) {
+  var node = document.createElement('div');
+  node.className = 'tooltip-desc';
+  node.textContent = el.getAttribute('title');
+  return node;
+});
+```
+
+Built-in sources take precedence over sources you register.
+
+If a script draws its own popup, reuse the placement rules so it opens on the
+same side as every other card:
+
+```javascript
+var pos = window.MarkataHoverCards.placement(link, popup.offsetWidth, popup.offsetHeight);
+popup.style.position = 'fixed';
+popup.style.top = pos.top + 'px';
+popup.style.left = pos.left + 'px';
+```
+
+!!! tip "Prefer this over ad-hoc tooltips"
+
+    Use hover cards instead of hand-written `wa-tooltip` + script combinations
+    for link and term previews. They follow the active palette, handle
+    keyboard focus, and stay inside the viewport.
 
 ---
 

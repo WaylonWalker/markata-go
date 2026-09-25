@@ -4,7 +4,8 @@
  * Displays contextual information (avatar, name, bio) when hovering over @mention links.
  *
  * Features:
- * - Smart positioning (above/below based on viewport)
+ * - Shared placement (MarkataHoverCards.placement): opens on the side of a
+ *   wrapped link the pointer is on, flipping when there is no room
  * - Data fetching from blogroll cache first, then meta tags from URL
  * - 5-minute cache TTL for performance
  * - 300ms show delay, 200ms hide delay to prevent flickering
@@ -160,6 +161,17 @@
    * @param {HTMLElement} target
    */
   function positionCard(card, target) {
+    var shared = window.MarkataHoverCards && window.MarkataHoverCards.placement;
+    if (shared) {
+      var pos = shared(target, card.offsetWidth, card.offsetHeight);
+      var above = pos.placement === 'above';
+      card.classList.toggle('mention-card--above', above);
+      card.classList.toggle('mention-card--below', !above);
+      card.style.top = (pos.top + (window.scrollY || window.pageYOffset)) + 'px';
+      card.style.left = (pos.left + (window.scrollX || window.pageXOffset)) + 'px';
+      return;
+    }
+
     var rect = target.getBoundingClientRect();
     var cardRect = card.getBoundingClientRect();
     var viewportHeight = window.innerHeight;

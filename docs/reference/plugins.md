@@ -2101,6 +2101,85 @@ exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
 
 ---
 
+### external_link_hover
+
+**Name:** `external_link_hover`  
+**Stage:** Render (after glossary, before templates)  
+**Purpose:** Adds preview data to links that point to other sites, so the
+default theme shows a hover card with the page title, description, image, and
+site icon.
+
+**Status:** Disabled by default. Set `enabled = true` to turn it on.
+
+**Configuration (TOML):**
+```toml
+[markata-go.external_link_hover]
+enabled = true
+fetch = false           # true: look up URLs missing from the embeds cache
+include_image = true    # add the page's preview image
+favicon_service = ""    # e.g. "https://icons.duckduckgo.com/ip3/{host}.ico"
+ignore_domains = ["localhost"]
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `false` | Enable/disable the plugin |
+| `fetch` | `false` | Fetch oEmbed/Open Graph metadata for URLs that aren't cached. When `false` the plugin makes no network requests. |
+| `include_image` | `true` | Add `data-link-image` when metadata has an image |
+| `favicon_service` | `""` | URL template for a site icon; `{host}` and `{origin}` are replaced. Empty disables icons. |
+| `ignore_domains` | `[]` | Hosts (and their subdomains) that never get cards |
+
+**Where the data comes from** (first match wins per field):
+1. The embeds metadata cache (`[embeds] cache_dir`, default `.cache/embeds`):
+   oEmbed first, then Open Graph. With `fetch = true`, missing URLs are
+   fetched once per build using the embeds `resolution_strategy`, `timeout`,
+   and cache settings, and the result is cached for later builds.
+2. Your `[[markata-go.blogroll.feeds]]` entries, matched by host: `title`,
+   `description`, and `image_url`. This works even when blogroll is disabled.
+3. The link's Markdown title (`[text](url "title")`), used as the description.
+4. The host name, so every external link gets at least a small card.
+
+**Skipped links:** links to your own site (`url`), relative links, private
+posts, posts with `skip: true`, ignored domains, links that already have
+hover data (`data-hover-*`, `data-link-preview`), links with
+`data-no-preview`, and links created by other features (wikilinks, mentions,
+glossary terms, heading anchors, embed and link cards).
+
+**Data attributes added:**
+| Attribute | Description |
+|-----------|-------------|
+| `data-link-preview` | Marks the link for the hover card |
+| `data-link-host` | Host name (always set) |
+| `data-link-title` | Page title (max 140 characters) |
+| `data-link-description` | Page description (max 280 characters) |
+| `data-link-site` | Site or provider name |
+| `data-link-image` | Preview image URL (if `include_image`) |
+| `data-link-icon` | Site icon URL (if `favicon_service` is set) |
+
+**Before:**
+```html
+<a href="https://github.com/WaylonWalker/markata-go">markata-go repo</a>
+```
+
+**After:**
+```html
+<a href="https://github.com/WaylonWalker/markata-go" data-link-preview
+   data-link-host="github.com" data-link-title="GitHub - WaylonWalker/markata-go"
+   data-link-description="Contribute to WaylonWalker/markata-go development..."
+   data-link-site="GitHub" data-link-image="https://opengraph.githubassets.com/...">markata-go repo</a>
+```
+
+**Privacy:** With the defaults, the build makes no requests, and readers'
+browsers only load a preview image when they hover a link. Setting
+`favicon_service` makes browsers request icons from that service as the card
+opens, and `fetch = true` makes the build request each linked page once.
+
+See [Hover Cards](/docs/guides/markdown/#external-link-cards) for how the card
+looks and how to style it.
+
+---
+
 ### wikilink_hover
 
 **Name:** `wikilink_hover`  
@@ -2150,16 +2229,11 @@ screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url
    data-preview-image="/images/featured.jpg">My Post</a>
 ```
 
-**JavaScript for hover previews:**
-```javascript
-document.querySelectorAll('.wikilink[data-preview]').forEach(link => {
-  link.addEventListener('mouseenter', (e) => {
-    const preview = e.target.dataset.preview;
-    const image = e.target.dataset.previewImage;
-    // Show tooltip with preview content and optional image
-  });
-});
-```
+**Hover display:** The default theme's `js/tooltips.js` renders the card for
+every wikilink with a `data-title` (added by the `wikilinks` plugin), falling
+back to `data-preview` when the target has no description. You don't need to
+write any JavaScript. See [Hover Cards](/docs/guides/markdown/#hover-cards) for
+styling and for adding cards to glossary terms or your own elements.
 
 **Image field lookup order:**
 The plugin checks these Extra fields for images:
@@ -2192,92 +2266,18 @@ For advanced users, check out [[plugin-development]].
    data-preview="Learn how to extend markata-go with custom plugins that hook into the build lifecycle.">Plugin Development</a>
 ```
 
-#### Implementing Hover Previews with JavaScript
+#### Styling Hover Previews
 
-Add this JavaScript to enable hover preview tooltips:
-
-```javascript
-// Simple tooltip implementation for wikilink hover previews
-document.addEventListener('DOMContentLoaded', () => {
-  const tooltip = document.createElement('div');
-  tooltip.className = 'wikilink-tooltip';
-  tooltip.style.cssText = `
-    position: absolute;
-    max-width: 300px;
-    padding: 12px;
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-size: 0.875rem;
-    z-index: 1000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-  `;
-  document.body.appendChild(tooltip);
-
-  document.querySelectorAll('.wikilink[data-preview]').forEach(link => {
-    link.addEventListener('mouseenter', (e) => {
-      const preview = e.target.dataset.preview;
-      const image = e.target.dataset.previewImage;
-
-      let content = '';
-      if (image) {
-        content += `<img src="${image}" style="width:100%;border-radius:4px;margin-bottom:8px;">`;
-      }
-      content += `<p style="margin:0">${preview}</p>`;
-
-      tooltip.innerHTML = content;
-      tooltip.style.opacity = '1';
-
-      const rect = e.target.getBoundingClientRect();
-      tooltip.style.left = `${rect.left + window.scrollX}px`;
-      tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`;
-    });
-
-    link.addEventListener('mouseleave', () => {
-      tooltip.style.opacity = '0';
-    });
-  });
-});
-```
-
-#### CSS Styling for Wikilinks
-
-Style your wikilinks to indicate they have preview functionality:
+The built-in card uses the `hover-card` and `wikilink-tooltip` classes and
+follows the active palette. Override them in your site CSS:
 
 ```css
-/* Base wikilink styling */
-.wikilink {
-  color: var(--color-primary);
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-  cursor: pointer;
+.hover-card.wikilink-tooltip {
+  max-width: 26rem;
 }
 
-/* Indicate preview availability */
-.wikilink[data-preview] {
-  text-decoration-style: dashed;
-}
-
-.wikilink[data-preview]:hover {
-  text-decoration-style: solid;
-  background: var(--color-primary-light, rgba(0, 120, 212, 0.1));
-  border-radius: 2px;
-}
-
-/* Tooltip styling */
-.wikilink-tooltip {
-  line-height: 1.5;
-  color: var(--color-text);
-}
-
-.wikilink-tooltip img {
-  display: block;
-  max-height: 150px;
-  object-fit: cover;
+.hover-card .tooltip-path {
+  display: none;
 }
 ```
 
@@ -4170,7 +4170,7 @@ See the [[webawesome-components|Web Awesome Components]] guide for demos and sel
 enabled = true              # Enabled by default; set to false to disable
 link_class = "glossary-term"  # CSS class for glossary links (default)
 case_sensitive = false      # Case-sensitive term matching (default: false)
-tooltip = true              # Add title attribute with description (default: true)
+tooltip = true              # Show the definition in a hover card (default: true)
 max_links_per_term = 1      # Max times to link each term (0 = all, default: 1)
 exclude_tags = ["glossary"] # Tags to exclude from linking (default: ["glossary"])
 export_json = true          # Export glossary.json file (default: true)

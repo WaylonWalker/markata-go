@@ -684,13 +684,23 @@
     };
     {% endif %}
 
-    // Mention Cards - only load if mention links exist
-    if (document.querySelector('a.mention')) {
-      const mentionScript = document.createElement('script');
-      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset_hashed }}';
-      mentionScript.defer = true;
-      document.body.appendChild(mentionScript);
-    }
+    // Mention Cards - load once, the first time a page has mention links.
+    // SPA navigation can reach such a page after a first page without any;
+    // once loaded the script re-initialises itself on view-transition-complete.
+    (function() {
+      var mentionCardsLoaded = false;
+      function loadMentionCards() {
+        if (mentionCardsLoaded || !document.querySelector('a.mention')) return;
+        mentionCardsLoaded = true;
+        window.removeEventListener('view-transition-complete', loadMentionCards);
+        var mentionScript = document.createElement('script');
+        mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset_hashed }}';
+        mentionScript.defer = true;
+        document.body.appendChild(mentionScript);
+      }
+      loadMentionCards();
+      if (!mentionCardsLoaded) window.addEventListener('view-transition-complete', loadMentionCards);
+    })();
 
     // Keyboard Shortcuts Registry - load the core registry first, then load dependent scripts
     const shortcutsRegistryScript = document.createElement('script');

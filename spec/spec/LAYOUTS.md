@@ -559,16 +559,55 @@ with a themed scrollbar.
   closes any open drawers.
 - Print hides drawers and handles; reduced motion removes the slide.
 
-### Wikilink Previews (default theme)
+### Hover Cards (default theme)
 
-`tooltips.js` shows a preview card for `a.wikilink[data-title]` on mouse hover
-(180ms open delay, 120ms close delay) and on keyboard focus. The card shows
-the title, the description (clamped), the date and the target path. Content is
-set with `textContent`, never HTML. Moving the pointer onto the card keeps it
-open. It is placed below the link, or flipped above, and clamped to the
-viewport. It closes on `Escape`, scroll, or leaving the link. Events are
-delegated from `document`, so previews work after SPA navigation without
-re-binding.
+`tooltips.js` is the single hover/focus preview component for the default
+theme. It exposes `window.MarkataHoverCards` with `register(selector, build,
+options)`, `placement(target, width, height)`, `show(el)`, `hide()`, and
+`refresh()`. `build(el)` returns a DOM node,
+or `null` to show no card. Built-in sources are tried first, in this order:
+
+| Source | Card content | Extra class |
+|--------|--------------|-------------|
+| `a.wikilink[data-title]` | title, description (falls back to `data-preview`), date, target path | `wikilink-tooltip` |
+| `a.glossary-term` | `data-hover-title` (or link text), definition from `data-hover-description` or `title`, "Glossary" label, path | `hover-card--glossary` |
+| `a[data-link-preview]` | optional image, `data-link-title` (or host), description, icon, site name (or host), path | `hover-card--external` |
+| `[data-hover-card]` | children of the element or `<template>` matched by the attribute's CSS selector, with `id`s removed | `hover-card--rich` |
+| `[data-hover-title]`, `[data-hover-description]` | title and description (falls back to `title`) | none |
+
+Rules:
+
+- Every card is a `div.hover-card[role=tooltip]` appended to `<body>` with
+  `position: fixed`. The target gets `aria-describedby` while it's open. Only
+  one card is open at a time.
+- Built-in text sources set content with `textContent`, never HTML. Rich cards
+  clone author-controlled DOM from the page.
+- When a card opens for an element with a `title`, the title moves to
+  `data-hover-native-title` so the browser tooltip doesn't also appear.
+- Pointer hover (not touch) opens after 180ms, or immediately when moving
+  from one open card's target to another. Keyboard focus opens only for
+  `:focus-visible`. Leaving the target and card closes after 150ms. Moving
+  onto the card or focusing inside it keeps it open.
+- It closes on `Escape` (returning focus to the target if focus was inside the
+  card), window scroll, or a pointer down outside the card.
+- Placement follows the pointer. For a target that wraps across lines,
+  hovering the first line opens the card above the first line, hovering the
+  last line opens it below the last line, and a middle line picks the nearer
+  end. Single-line targets and keyboard focus open below. When the preferred
+  side is too short for the card and the other side has more room, it flips.
+  The card aligns with the left edge of the line it attaches to, clamped to
+  8px from the viewport edges, and never overlaps any line of the target when
+  either side fits.
+- `MarkataHoverCards.placement(target, width, height)` returns
+  `{ top, left, placement }` in viewport pixels using these rules. Other theme
+  popups (`mention-cards.js`, `tag-cards.js`) use it when it's available, so
+  every popup opens on the same side.
+- `[data-hover-card]`, `[data-hover-title]`, and `[data-hover-description]`
+  elements that aren't focusable get `tabindex="0"` on load and after view
+  transitions.
+- Events are delegated from `document`, so cards work after SPA navigation
+  without re-binding. `window.initTooltips` and `view-transition-complete`
+  remove stale cards.
 
 ### Header Component
 
