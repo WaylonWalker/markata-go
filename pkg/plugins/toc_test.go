@@ -614,8 +614,8 @@ func TestTocPlugin_IDsMatchRenderedHeadings(t *testing.T) {
 	if err := md.Convert([]byte(content), &buf); err != nil {
 		t.Fatalf("convert: %v", err)
 	}
-	matches := regexp.MustCompile(`<h[2-4] id="([^"]+)"`).FindAllStringSubmatch(buf.String(), -1)
-	var want []string
+	matches := regexp.MustCompile(`<h[234] id="([^"]+)"`).FindAllStringSubmatch(buf.String(), -1)
+	want := make([]string, 0, len(matches))
 	for _, m := range matches {
 		want = append(want, m[1])
 	}

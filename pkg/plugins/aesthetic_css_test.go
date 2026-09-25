@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func TestAestheticCSSPlugin_BundlesConsumptionRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(hashed) != string(got) {
+	if !bytes.Equal(hashed, got) {
 		t.Fatal("hashed asset differs from generated aesthetic CSS")
 	}
 }
