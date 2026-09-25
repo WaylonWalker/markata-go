@@ -1,6 +1,7 @@
 package configdocs
 
 import (
+	"bytes"
 	"os"
 	"testing"
 )
@@ -21,7 +22,9 @@ func TestSettingsDocsGenerated_UpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != string(want) {
+	// Windows checkouts may convert the generated file to CRLF.
+	got = bytes.ReplaceAll(got, []byte("\r\n"), []byte("\n"))
+	if !bytes.Equal(got, bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))) {
 		t.Fatal("pkg/config/settings_docs_gen.go is stale; run `go generate ./pkg/config`")
 	}
 }

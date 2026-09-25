@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/xml"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ func assertWellFormedXML(t *testing.T, name string, data []byte) {
 	dec := xml.NewDecoder(strings.NewReader(string(data)))
 	for {
 		_, err := dec.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return
 		}
 		if err != nil {
@@ -122,7 +123,10 @@ func TestXMLSafeHead(t *testing.T) {
 
 func TestCopyXSLStylesheets_EscapesPaletteForScript(t *testing.T) {
 	config := newFeedXSLThemeConfig(t)
-	theme := config.Extra["theme"].(models.ThemeConfig)
+	theme, ok := config.Extra["theme"].(models.ThemeConfig)
+	if !ok {
+		t.Fatal("theme is not a ThemeConfig")
+	}
 	theme.Palette = "st.-patrick's-day"
 	config.Extra["theme"] = theme
 	config.Extra["palette_dark_effective"] = "st.-patrick's-day"

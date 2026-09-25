@@ -83,7 +83,10 @@ func TestHandleThemeBake_WritesIncludedThemeFile(t *testing.T) {
 	if string(got) != want {
 		t.Errorf("config/theme.toml =\n%s\nwant:\n%s", got, want)
 	}
-	root, _ := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	root, err := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if strings.Contains(string(root), "theme") {
 		t.Errorf("root config should not be edited:\n%s", root)
 	}
@@ -98,7 +101,10 @@ func TestHandleThemeBake_SeasonalKeepsPalettes(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST = %d %+v", rec.Code, resp)
 	}
-	got, _ := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	got, err := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "[markata-go.theme]\npalette = \"catppuccin\"\nseasonal = true\nfallback_mode = \"light\"\n"
 	if string(got) != want {
 		t.Errorf("markata-go.toml =\n%s\nwant:\n%s", got, want)
@@ -116,7 +122,10 @@ func TestHandleThemeBake_CreatesConfigForConfigLessSite(t *testing.T) {
 	if rec.Code != http.StatusOK || resp.Target != "markata-go.toml" {
 		t.Fatalf("POST = %d %+v", rec.Code, resp)
 	}
-	got, _ := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	got, err := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(got) != "[markata-go.theme]\npalette = \"nord-dark\"\nfallback_mode = \"dark\"\n" {
 		t.Errorf("markata-go.toml =\n%s", got)
 	}
@@ -148,7 +157,10 @@ func TestHandleThemeBake_RejectsUnsafeRequests(t *testing.T) {
 			}
 		})
 	}
-	got, _ := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	got, err := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(got) != "[markata-go]\ntitle = \"Site\"\n" {
 		t.Errorf("config changed by rejected requests:\n%s", got)
 	}

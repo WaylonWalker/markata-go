@@ -171,6 +171,8 @@ func (p BakePlan) Write() error {
 
 // PlanBake computes and verifies the edit BakeSettings would make to the
 // config file at path without writing it.
+//
+//nolint:gocyclo // Planning verifies paths, formats, and unchanged keys before writing.
 func PlanBake(path string, settings []BakeSetting) (BakePlan, error) {
 	plan := BakePlan{Path: path, mode: 0o644}
 	if len(settings) == 0 {
@@ -802,6 +804,7 @@ func tomlValueSpan(lines []string, scanned []tomlLine, i, end int) (last int, co
 	return 0, "", false
 }
 
+//nolint:gocyclo // TOML edits must preserve multiline values, comments, and insertion order.
 func tomlEditSection(lines []string, scanned []tomlLine, start, end int, prefix []string, values []BakeValue, newline string) ([]byte, error) {
 	out := append([]string{}, lines...)
 	lastKey := start
@@ -856,7 +859,7 @@ func tomlEditSection(lines []string, scanned []tomlLine, start, end int, prefix 
 		}
 	}
 
-	var inserts []string
+	inserts := make([]string, 0, len(values))
 	for _, v := range values {
 		if found[v.Key] || IsBakeRemove(v.Value) {
 			continue
@@ -934,6 +937,8 @@ func checkYAMLMapping(keyNode, valueNode *yaml.Node, name string) error {
 
 // bakeYAML writes values into the mapping markata-go.<table...>, creating
 // missing mappings below the deepest one that exists.
+//
+//nolint:gocyclo // YAML indentation and source annotations require line-aware handling.
 func bakeYAML(data []byte, table []string, values []BakeValue) ([]byte, error) {
 	newline := detectNewline(data)
 	lines := splitLinesKeepEnds(data)
@@ -1112,8 +1117,7 @@ func decodeOrderedJSON(dec *json.Decoder) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch t := tok.(type) {
-	case json.Delim:
+	if t, ok := tok.(json.Delim); ok {
 		switch t {
 		case '{':
 			obj := &orderedObject{values: map[string]any{}}
@@ -1122,7 +1126,10 @@ func decodeOrderedJSON(dec *json.Decoder) (any, error) {
 				if err != nil {
 					return nil, err
 				}
-				key, _ := keyTok.(string)
+				key, ok := keyTok.(string)
+				if !ok {
+					return nil, fmt.Errorf("JSON object key is %T, want string", keyTok)
+				}
 				val, err := decodeOrderedJSON(dec)
 				if err != nil {
 					return nil, err
@@ -1164,7 +1171,10 @@ func encodeOrderedJSON(b *bytes.Buffer, value any, indent string, depth int) err
 		}
 		b.WriteString("{\n")
 		for i, key := range v.keys {
-			keyJSON, _ := json.Marshal(key)
+			keyJSON, err := json.Marshal(key)
+			if err != nil {
+				return fmt.Errorf("encode JSON key %q: %w", key, err)
+			}
 			b.WriteString(pad + indent)
 			b.Write(keyJSON)
 			b.WriteString(": ")
@@ -1208,6 +1218,7 @@ func encodeOrderedJSON(b *bytes.Buffer, value any, indent string, depth int) err
 
 var jsonIndentPattern = regexp.MustCompile(`(?m)^([ \t]+)"`)
 
+//nolint:gocyclo // JSON baking must distinguish absent, null, and non-object ancestors.
 func bakeJSON(data []byte, table []string, values []BakeValue) ([]byte, error) {
 	var root any = &orderedObject{values: map[string]any{}}
 	if len(bytes.TrimSpace(data)) > 0 {
@@ -1254,7 +1265,11 @@ func bakeJSON(data []byte, table []string, values []BakeValue) ([]byte, error) {
 			node = next
 		}
 		child = func(parent *orderedObject, key string) (*orderedObject, error) {
-			return parent.values[key].(*orderedObject), nil
+			obj, ok := parent.values[key].(*orderedObject)
+			if !ok {
+				return nil, fmt.Errorf("%w: %s is not an object", ErrBakeUnsupportedLayout, key)
+			}
+			return obj, nil
 		}
 	}
 	section, err := child(rootObj, "markata-go")

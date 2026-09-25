@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-// seasonalPaletteName is the sentinel stored by the theme picker (and implied
-// by theme.seasonal) meaning "pick the palette for today's date".
-const seasonalPaletteName = "seasonal"
-
 // seasonalLeadDays is how many days before a holiday its palette appears.
 const seasonalLeadDays = 3
 

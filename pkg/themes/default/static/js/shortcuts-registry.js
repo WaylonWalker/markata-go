@@ -272,11 +272,22 @@
    * @param {Element} element
    * @returns {boolean}
    */
+  function deepActiveElement() {
+    var active = document.activeElement;
+    while (active && active.shadowRoot && active.shadowRoot.activeElement) {
+      active = active.shadowRoot.activeElement;
+    }
+    return active;
+  }
+
   function isInputElement(element) {
-    // Check both the provided element and document.activeElement as fallback
+    // Events from inside a shadow root (e.g. the serve settings panel) are
+    // retargeted to the shadow host, so also check the focused element inside
+    // any open shadow roots.
     var elementsToCheck = [element];
-    if (document.activeElement && document.activeElement !== element) {
-      elementsToCheck.push(document.activeElement);
+    var active = deepActiveElement();
+    if (active && active !== element) {
+      elementsToCheck.push(active);
     }
 
     for (var i = 0; i < elementsToCheck.length; i++) {
@@ -347,7 +358,8 @@
     }
 
     // Skip shortcuts when typing in input fields
-    if (isInputElement(e.target)) {
+    var origin = typeof e.composedPath === 'function' ? e.composedPath()[0] : e.target;
+    if (isInputElement(origin || e.target)) {
       return;
     }
 

@@ -128,7 +128,7 @@ func servePreviewConfig() configPreview {
 
 func previewConfig(planned []plannedSetting) configPreview {
 	var preview configPreview
-	var settings []config.BakeSetting
+	settings := make([]config.BakeSetting, 0, len(planned))
 	for _, p := range planned {
 		if p.unset {
 			preview.remove = append(preview.remove, p.path)
@@ -275,7 +275,9 @@ func settingDefaults() map[string]any {
 	if err != nil {
 		return defaults
 	}
-	for _, field := range config.Settings(cfg) {
+	fields := config.Settings(cfg)
+	for i := range fields {
+		field := &fields[i]
 		defaults[field.Key] = field.Value
 	}
 	return defaults
@@ -287,14 +289,16 @@ func (s *settingsState) describe() (settingsResponse, error) {
 		resp.Files = append(resp.Files, displayConfigPath(path))
 	}
 	defaults := settingDefaults()
-	for _, field := range config.Settings(s.cfg) {
+	fields := config.Settings(s.cfg)
+	for i := range fields {
+		field := &fields[i]
 		path := field.SettingPath()
 		target, err := s.target(path)
 		if err != nil {
 			return resp, err
 		}
 		entry := settingsFieldJSON{
-			SettingField: field,
+			SettingField: *field,
 			Target:       displayConfigPath(target),
 			TargetKind:   s.kinds[target],
 			Env:          settingEnvOverride(field.Key),
@@ -416,8 +420,7 @@ func handleSettingsPreview(w http.ResponseWriter, r *http.Request) {
 	writeSettingsJSON(w, status, resp)
 }
 
-func previewSettingsChanges(state *settingsState, changes []settingsChange) (settingsResponse, int) {
-	var resp settingsResponse
+func previewSettingsChanges(state *settingsState, changes []settingsChange) (resp settingsResponse, status int) {
 	planned, err := planSettingsChanges(state, changes, true)
 	if err != nil {
 		resp.Error = err.Error()
@@ -594,8 +597,9 @@ func globalTargetError(path string) error {
 // applySettingsChanges writes changes grouped by target file. If any write,
 // reload, validation, or effect check fails, every touched file is restored.
 // A dry run returns the diffs without writing.
-func applySettingsChanges(state *settingsState, changes []settingsChange, dryRun bool) (settingsResponse, int) {
-	var resp settingsResponse
+//
+//nolint:gocyclo // Batch writes must report distinct validation, rollback, and preview failures.
+func applySettingsChanges(state *settingsState, changes []settingsChange, dryRun bool) (resp settingsResponse, status int) {
 	planned, err := planSettingsChanges(state, changes, false)
 	if err != nil {
 		resp.Error = err.Error()
@@ -656,7 +660,7 @@ func applySettingsChanges(state *settingsState, changes []settingsChange, dryRun
 		return resp, http.StatusUnprocessableEntity
 	}
 
-	var backups []fileBackup
+	backups := make([]fileBackup, 0, len(plans))
 	rollback := func() {
 		for i := len(backups) - 1; i >= 0; i-- {
 			if err := backups[i].restore(); err != nil {

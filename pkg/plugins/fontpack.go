@@ -75,6 +75,7 @@ func configuredFontpackName(extra map[string]any) string {
 	return "system"
 }
 
+//nolint:gocyclo // Font assets have separate local, remote, and fallback write paths.
 func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 	rendered := strings.Builder{}
 	names := []string{p.name}

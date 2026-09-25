@@ -14,11 +14,13 @@ func settingsByKey(t *testing.T) map[string]SettingField {
 	cfg := DefaultConfig()
 	cfg.Title = "Example"
 	fields := make(map[string]SettingField)
-	for _, f := range Settings(cfg) {
+	allFields := Settings(cfg)
+	for i := range allFields {
+		f := &allFields[i]
 		if _, dup := fields[f.Key]; dup {
 			t.Fatalf("duplicate setting key %q", f.Key)
 		}
-		fields[f.Key] = f
+		fields[f.Key] = *f
 	}
 	return fields
 }

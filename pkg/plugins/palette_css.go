@@ -612,6 +612,8 @@ func (p *PaletteCSSPlugin) filterPalettes(allPalettes []palettes.PaletteInfo, sw
 // the opposite mode, so each mode lists every family exactly once without
 // duplicate or derived-of-derived entries. The configured default light and
 // dark palettes are always included.
+//
+//nolint:gocyclo // Pairing explicit and derived palettes requires mode-specific fallback rules.
 func (p *PaletteCSSPlugin) generatePaletteManifest(paletteInfos []palettes.PaletteInfo, defaultLight, defaultDark string) []PaletteManifestEntry {
 	explicit := make(map[string]palettes.PaletteInfo)
 	derived := make(map[string]palettes.PaletteInfo)
