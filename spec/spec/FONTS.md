@@ -17,10 +17,11 @@ font filenames in `output/assets/fonts/.markata-fonts.json` and removes only
 stale files listed by that manifest on later builds.
 
 Config validation MUST accept a `fontpack` or `theme.fontpack` value that
-resolves to a pack or alias in the active font catalog (`fontpacks_file` when
-set, otherwise the built-in catalog), even when the name is not listed in the
-rendering contract's `fontpacks` enum. Names found in neither are rejected
-with `theme.fontpack: unsupported value`.
+resolves to a pack or alias in the built-in font catalog, even when the name
+is not listed in the rendering contract's `fontpacks` enum. When
+`fontpacks_file` is set, any name is accepted and the fontpack plugin reports
+unknown packs at build time. Other names are rejected with an
+`unsupported value` error.
 
 `fonts verify` checks manifest and lockfile provenance, license metadata, full
 64-character SHA-256 hashes, and WOFF2 assets. Every bundled manifest must
