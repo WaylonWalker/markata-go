@@ -173,7 +173,7 @@ func redactSensitiveLines(diff string) string {
 			continue
 		}
 		m := sensitiveLinePattern.FindStringSubmatch(line[1:])
-		if m != nil && config.SensitiveSettingName(m[2]) {
+		if len(m) > 2 && config.SensitiveSettingName(m[2]) {
 			lines[i] = line[:1] + m[1] + "\"…\""
 		}
 	}

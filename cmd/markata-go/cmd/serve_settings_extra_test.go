@@ -76,6 +76,7 @@ func TestHandleSettings_UnsetResetsToDefault(t *testing.T) {
 func TestHandleSettings_RefusesGlobalConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // os.UserHomeDir on Windows
 	global := filepath.Join(home, ".config", "markata-go", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(global), 0o755); err != nil {
 		t.Fatal(err)
@@ -95,7 +96,11 @@ func TestHandleSettings_RefusesGlobalConfig(t *testing.T) {
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status %d, want 409: %s", rec.Code, resp.Error)
 	}
-	if data, _ := os.ReadFile(global); string(data) != content {
+	data, err := os.ReadFile(global)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != content {
 		t.Fatalf("global config changed:\n%s", data)
 	}
 	rec, _ = doThemeBake(t, http.MethodPost, `{"palette":"gruvbox-dark"}`, nil)
@@ -130,7 +135,10 @@ func TestCreateManager_PreviewUsesSeparateCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, _ := m.Config().Extra["cache_dir"].(string)
+	dir, ok := m.Config().Extra["cache_dir"].(string)
+	if !ok {
+		t.Fatal("cache_dir is not a string")
+	}
 	if filepath.Base(dir) != servePreviewCacheDir || !strings.HasPrefix(dir, site) && !strings.HasPrefix(dir, ".markata") {
 		t.Fatalf("cache_dir = %q", dir)
 	}
@@ -139,8 +147,14 @@ func TestCreateManager_PreviewUsesSeparateCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dir, _ := m.Config().Extra["cache_dir"].(string); strings.Contains(dir, servePreviewCacheDir) {
-		t.Fatalf("cache_dir without preview = %q", dir)
+	if rawDir, exists := m.Config().Extra["cache_dir"]; exists {
+		dir, ok = rawDir.(string)
+		if !ok {
+			t.Fatal("cache_dir is not a string")
+		}
+		if strings.Contains(dir, servePreviewCacheDir) {
+			t.Fatalf("cache_dir without preview = %q", dir)
+		}
 	}
 }
 

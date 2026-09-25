@@ -75,7 +75,10 @@ func TestCreateSinglePageManager_BuildsOnlyRootIndex(t *testing.T) {
 			return err
 		}
 		if !d.IsDir() && strings.HasSuffix(path, ".html") {
-			rel, _ := filepath.Rel(outputDir, path)
+			rel, err := filepath.Rel(outputDir, path)
+			if err != nil {
+				return err
+			}
 			htmlFiles = append(htmlFiles, rel)
 		}
 		return nil

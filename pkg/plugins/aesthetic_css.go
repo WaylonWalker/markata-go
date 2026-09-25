@@ -39,6 +39,9 @@ const (
 	renderingScopeAll           = "all"
 	renderingHeadingInherit     = "inherit"
 	renderingMotifLetter        = "letter"
+	renderingMotifAccent        = "accent"
+	renderingMotifMuted         = "muted"
+	renderingMotifShadow        = "shadow"
 )
 
 // NewAestheticCSSPlugin creates a new AestheticCSSPlugin.
@@ -282,7 +285,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 			motifImage = motifImageFor(theme.Motif.Kind, motifColor, theme.Motif.Glyph)
 		}
 	}
-	if bundle, err := compileMotifBundle(config); err == nil && len(bundle.Assets) != 0 && theme.Motif.Kind == "block-w" {
+	if bundle, err := compileMotifBundle(config); err == nil && len(bundle.Assets) != 0 && theme.Motif.Kind == renderingMotifBlockW {
 		// Canonical consumers attach the compiler-owned field. Keep the local CSS
 		// layer and pseudo-element integration, but do not regenerate geometry.
 		if _, exists := bundle.Assets["assets/motif-block-w-v1.svg"]; exists {
@@ -292,7 +295,7 @@ func (p *AestheticCSSPlugin) generatePresentationCSSBody(config *lifecycle.Confi
 	customMotifURL := validMotifURL(contract, theme.Motif.URL) && !strings.ContainsAny(theme.Motif.URL, "\"'()\n\r\t")
 	// The canonical W is portable contract artwork, not a network dependency.
 	// Keep the URL as authoring metadata but render the vendored path locally.
-	if customMotifURL && theme.Motif.Kind == "block-w" {
+	if customMotifURL && theme.Motif.Kind == renderingMotifBlockW {
 		// block-w is compiler-owned. Custom artwork is not silently substituted
 		// into the canonical field because that would change its digest.
 		customMotifURL = false
@@ -353,11 +356,11 @@ func liveMotifCSS(theme models.ThemeConfig, motifImage string, mix float64) stri
 	target := "var(--color-text)"
 	weight := mix
 	switch theme.Motif.Color {
-	case "accent":
+	case renderingMotifAccent:
 		target = "var(--color-link, var(--color-primary))"
-	case "muted":
+	case renderingMotifMuted:
 		weight = mix * .55
-	case "shadow":
+	case renderingMotifShadow:
 		weight = mix * .28
 	}
 	z := "var(--theme-motif-z)"

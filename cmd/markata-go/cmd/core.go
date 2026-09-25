@@ -231,18 +231,18 @@ func createSinglePageManager(cfgPath, sourcePath string) (*lifecycle.Manager, er
 		return nil, fmt.Errorf("resolve Markdown file %q relative to content directory: %w", sourcePath, err)
 	}
 	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
-		return nil, fmt.Errorf("Markdown file %q is outside content directory %q", sourcePath, m.Config().ContentDir)
+		return nil, fmt.Errorf("markdown file %q is outside content directory %q", sourcePath, m.Config().ContentDir)
 	}
 	info, err := os.Stat(sourceAbs)
 	if err != nil {
-		return nil, fmt.Errorf("Markdown file %q: %w", sourcePath, err)
+		return nil, fmt.Errorf("markdown file %q: %w", sourcePath, err)
 	}
 	if info.IsDir() {
-		return nil, fmt.Errorf("Markdown file %q is a directory", sourcePath)
+		return nil, fmt.Errorf("markdown file %q is a directory", sourcePath)
 	}
 	extension := strings.ToLower(filepath.Ext(sourceAbs))
 	if extension != ".md" && extension != ".markdown" {
-		return nil, fmt.Errorf("Markdown file %q must end in .md or .markdown", sourcePath)
+		return nil, fmt.Errorf("markdown file %q must end in .md or .markdown", sourcePath)
 	}
 
 	m.Config().GlobPatterns = []string{relativePath}

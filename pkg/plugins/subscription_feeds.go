@@ -52,12 +52,22 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	}
 
 	// Start from the resolved config so built-in feeds (including /archive/)
-	// remain present on a first build. A prior collect plugin may have added
-	// runtime feeds to the cache, which take precedence when available.
+	// and feeds injected earlier in Collect (e.g. series) are present. Cached
+	// configs may predate those injections, so they only add feeds whose slug
+	// the resolved config does not already define.
 	feedConfigs := getFeedConfigs(config)
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
-		if fcs, ok := cached.([]models.FeedConfig); ok && len(fcs) > 0 {
-			feedConfigs = fcs
+		if fcs, ok := cached.([]models.FeedConfig); ok {
+			known := make(map[string]bool, len(feedConfigs))
+			for i := range feedConfigs {
+				known[feedConfigs[i].Slug] = true
+			}
+			for i := range fcs {
+				if !known[fcs[i].Slug] {
+					known[fcs[i].Slug] = true
+					feedConfigs = append(feedConfigs, fcs[i])
+				}
+			}
 		}
 	}
 

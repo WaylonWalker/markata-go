@@ -31,9 +31,10 @@ func doSettings(t *testing.T, method, body string, headers map[string]string) (*
 
 func settingsField(t *testing.T, resp settingsResponse, key string) settingsFieldJSON {
 	t.Helper()
-	for _, f := range resp.Fields {
+	for i := range resp.Fields {
+		f := &resp.Fields[i]
 		if f.Key == key {
-			return f
+			return *f
 		}
 	}
 	t.Fatalf("setting %q not listed", key)
@@ -154,7 +155,7 @@ func TestHandleSettings_RejectsCrossOriginAndRebinding(t *testing.T) {
 		t.Errorf("cross-origin status = %d", rec.Code)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "http://rebind.evil.example:8000"+serveSettingsEndpoint, nil)
+	req := httptest.NewRequest(http.MethodGet, "http://rebind.evil.example:8000"+serveSettingsEndpoint, http.NoBody)
 	req.RemoteAddr = "127.0.0.1:52100"
 	req.Header.Set("Origin", "http://rebind.evil.example:8000")
 	rec := httptest.NewRecorder()
@@ -222,7 +223,11 @@ func TestHandleSettingsPreview_AppliesWithoutWritingThenBakeAndReset(t *testing.
 	if len(resp.Preview) != 2 || rebuilds != 1 {
 		t.Fatalf("preview = %v, rebuilds = %d", resp.Preview, rebuilds)
 	}
-	if data, _ := os.ReadFile(filepath.Join(site, "markata-go.toml")); string(data) != root {
+	data, err := os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != root {
 		t.Fatalf("preview wrote the config file:\n%s", data)
 	}
 	cfg, _, _, err := loadManagerConfig("")
@@ -254,7 +259,11 @@ func TestHandleSettingsPreview_AppliesWithoutWritingThenBakeAndReset(t *testing.
 	if len(resp.Preview) != 1 || resp.Preview[0].Key != "concurrency" {
 		t.Fatalf("preview after bake = %v", resp.Preview)
 	}
-	if data, _ := os.ReadFile(filepath.Join(site, "markata-go.toml")); !strings.Contains(string(data), "title = \"Preview\" # keep") {
+	data, err = os.ReadFile(filepath.Join(site, "markata-go.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "title = \"Preview\" # keep") {
 		t.Fatalf("bake did not write title:\n%s", data)
 	}
 
@@ -263,7 +272,11 @@ func TestHandleSettingsPreview_AppliesWithoutWritingThenBakeAndReset(t *testing.
 	if rec.Code != http.StatusOK || len(resp.Preview) != 0 {
 		t.Fatalf("reset status %d preview %v", rec.Code, resp.Preview)
 	}
-	if cfg, _, _, _ := loadManagerConfig(""); cfg.Concurrency != 0 {
+	cfg, _, _, err = loadManagerConfig("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Concurrency != 0 {
 		t.Fatalf("reset left concurrency = %d", cfg.Concurrency)
 	}
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -163,7 +164,10 @@ func TestBakeValues_UnsupportedLayoutsLeaveFileUntouched(t *testing.T) {
 			if !errors.Is(err, ErrBakeUnsupportedLayout) {
 				t.Fatalf("error = %v, want ErrBakeUnsupportedLayout", err)
 			}
-			got, _ := os.ReadFile(path)
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if string(got) != tt.input {
 				t.Errorf("file changed after failed bake:\n%s", got)
 			}
@@ -294,7 +298,10 @@ func TestBakeSettings_RejectsNonTableAncestor(t *testing.T) {
 	if !errors.Is(err, ErrBakeUnsupportedLayout) {
 		t.Fatalf("error = %v, want ErrBakeUnsupportedLayout", err)
 	}
-	got, _ := os.ReadFile(path)
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(got) != input {
 		t.Errorf("file changed:\n%s", got)
 	}
@@ -377,13 +384,21 @@ func TestPlanBake_DoesNotWriteUntilAsked(t *testing.T) {
 	if !plan.Exists || !plan.Changed() || string(plan.Before) != input || !strings.Contains(string(plan.After), "title = \"New\"") {
 		t.Fatalf("plan = %+v", plan)
 	}
-	if got, _ := os.ReadFile(path); string(got) != input {
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != input {
 		t.Fatalf("PlanBake wrote the file:\n%s", got)
 	}
 	if err := plan.Write(); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := os.ReadFile(path); string(got) != string(plan.After) {
+	got, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, plan.After) {
 		t.Fatalf("Write() wrote:\n%s", got)
 	}
 

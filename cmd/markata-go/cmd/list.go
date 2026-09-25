@@ -24,6 +24,7 @@ const (
 	listFormatCSV   = "csv"
 	listFormatPath  = "path"
 	listSortDate    = "date"
+	listSortTitle   = "title"
 	listSortName    = "name"
 	listSortPosts   = "posts"
 	listSortCount   = "count"
@@ -307,7 +308,7 @@ func parseSortOrder(order string) (services.SortOrder, error) {
 
 func isValidPostSort(field string) bool {
 	switch strings.ToLower(field) {
-	case listSortDate, "title", listSortWords, "path", listSortReading, "tags":
+	case listSortDate, listSortTitle, listSortWords, "path", listSortReading, "tags":
 		return true
 	default:
 		return false

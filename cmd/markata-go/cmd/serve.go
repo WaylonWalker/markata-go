@@ -32,6 +32,7 @@ import (
 // HTTP server timeout constants.
 const (
 	serverReadHeaderTimeout = 10 * time.Second
+	serveIndexFile          = "index.html"
 )
 
 // searchResult represents a search result for the no-JS fallback search.
@@ -507,6 +508,8 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 
 // createHandler creates an HTTP handler that serves files with live reload injection
 // and mounts the bleve search API at the configured endpoint.
+//
+//nolint:gocyclo // The handler dispatches independent dev endpoints and static-file fallbacks.
 func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
 	absOutputDir, err := filepath.Abs(outputDir)
@@ -595,9 +598,9 @@ func createHandler(outputDir string, m *lifecycle.Manager, searchEndpoint string
 		info, err := os.Stat(fullPath)
 		if err == nil && info.IsDir() {
 			// Try index.html in directory
-			indexPath := filepath.Join(fullPath, "index.html")
+			indexPath := filepath.Join(fullPath, serveIndexFile)
 			if _, err := os.Stat(indexPath); err == nil {
-				requestPath = path.Join(requestPath, "index.html")
+				requestPath = path.Join(requestPath, serveIndexFile)
 				fullPath = indexPath
 			}
 		}
@@ -1877,14 +1880,14 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 
 func resolveRequestPath(outputDir, requestPath string) (fullPath, cleanURLPath string, err error) {
 	if requestPath == "" || requestPath == "/" {
-		requestPath = "/index.html"
+		requestPath = "/" + serveIndexFile
 	}
 
 	cleanURLPath = path.Clean("/" + requestPath)
 	relPath := strings.TrimPrefix(cleanURLPath, "/")
 	if relPath == "" {
-		relPath = "index.html"
-		cleanURLPath = "/index.html"
+		relPath = serveIndexFile
+		cleanURLPath = "/" + serveIndexFile
 	}
 
 	fullPath = filepath.Join(outputDir, filepath.FromSlash(relPath))

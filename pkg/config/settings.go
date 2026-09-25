@@ -98,7 +98,8 @@ func Settings(cfg *models.Config) []SettingField {
 	out := make([]SettingField, len(templates))
 	root := reflect.ValueOf(cfg)
 	memo := &settingOptionsMemo{}
-	for i, field := range templates {
+	for i := range templates {
+		field := templates[i]
 		field.Options, field.Closed = memo.options(field, cfg)
 		field.Min, field.Max = settingRange(field.Key)
 		if v, ok := settingReflectValue(root, field.path); ok && !field.Sensitive {
@@ -123,9 +124,11 @@ func LookupSettingIn(cfg *models.Config, key string) (SettingField, bool) {
 
 // LookupSetting returns the editable setting for key.
 func LookupSetting(key string) (SettingField, bool) {
-	for _, field := range settingFieldTemplates() {
+	templates := settingFieldTemplates()
+	for i := range templates {
+		field := &templates[i]
 		if field.Key == key {
-			return field, field.Editable
+			return *field, field.Editable
 		}
 	}
 	return SettingField{}, false
@@ -138,7 +141,9 @@ func (f SettingField) SettingPath() []string {
 
 // SettingValue returns the effective value of key in cfg.
 func SettingValue(cfg *models.Config, key string) (any, bool) {
-	for _, field := range settingFieldTemplates() {
+	templates := settingFieldTemplates()
+	for i := range templates {
+		field := &templates[i]
 		if field.Key != key {
 			continue
 		}
@@ -154,6 +159,8 @@ func SettingValue(cfg *models.Config, key string) (any, bool) {
 
 // CoerceSettingValue converts a JSON-decoded value to the Go type stored for
 // field, rejecting values of the wrong shape.
+//
+//nolint:gocyclo // Each setting kind has distinct coercion and validation rules.
 func CoerceSettingValue(field SettingField, raw any) (any, error) {
 	switch field.Kind {
 	case SettingString:

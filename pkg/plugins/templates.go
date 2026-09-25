@@ -585,7 +585,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	// If post has a sidebar feed, use that; otherwise use site default
 	// Single-file builds publish no feeds, so skip feed discovery links and
 	// site-level fallbacks that would point at missing pages.
-	if singlePage, _ := config.Extra["single_page"].(bool); singlePage {
+	if singlePage, ok := config.Extra["single_page"].(bool); ok && singlePage {
 		ctx.Set("single_page", true)
 	} else if discoveryFeed := p.getDiscoveryFeed(post, sidebarFeed, m); discoveryFeed != nil {
 		ctx.Set("discovery_feed", DiscoveryFeedToMap(discoveryFeed))
