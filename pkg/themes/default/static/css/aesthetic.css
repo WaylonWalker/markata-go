@@ -59,9 +59,9 @@
   --border-width-normal: 2px;
   --border-width-thick: 4px;
   --shadow-sm: none;
-  --shadow-md: 4px 4px 0 var(--color-border);
-  --shadow-lg: 6px 6px 0 var(--color-border);
-  --shadow-xl: 8px 8px 0 var(--color-border);
+  --shadow-md: 4px 4px 0 var(--color-primary, var(--color-border));
+  --shadow-lg: 6px 6px 0 var(--color-primary, var(--color-border));
+  --shadow-xl: 8px 8px 0 var(--color-primary, var(--color-border));
   --font-primary: var(--font-mono, monospace);
   --leading-scale: 1.5;
 }

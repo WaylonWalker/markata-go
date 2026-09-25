@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
@@ -206,15 +207,29 @@ func configFilesHash(paths []string) string {
 	}
 
 	normalized := make([]string, 0, len(paths))
-	for _, path := range paths {
-		if path == "" {
-			continue
-		}
+	seen := make(map[string]bool, len(paths))
+	add := func(path string) {
 		absPath, err := filepath.Abs(path)
 		if err != nil {
 			absPath = filepath.Clean(path)
 		}
-		normalized = append(normalized, absPath)
+		if !seen[absPath] {
+			seen[absPath] = true
+			normalized = append(normalized, absPath)
+		}
+	}
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		add(path)
+		// Included config files (include = [...]) affect output too, so an
+		// edit to any of them must invalidate the cache.
+		if included, err := config.DiscoverIncludedConfigPaths(path); err == nil {
+			for _, inc := range included {
+				add(inc)
+			}
+		}
 	}
 
 	sort.Strings(normalized)
@@ -236,6 +251,11 @@ func configHashInput(config *lifecycle.Config, paths []string) string {
 	}
 	if config != nil {
 		components = append(components, config.ContentDir, strings.Join(config.GlobPatterns, "\x00"))
+		// Unsaved settings previewed by `markata-go serve` change the config
+		// without changing any file.
+		if overlay, ok := config.Extra["config_overlay"].(string); ok && overlay != "" {
+			components = append(components, "overlay:"+overlay)
+		}
 	}
 	return strings.Join(components, "\n")
 }

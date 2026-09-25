@@ -90,7 +90,7 @@ Press the first key (`g`), then the second key within 800ms.
 ### Respects User Preferences
 
 - **Reduced Motion:** When `prefers-reduced-motion` is enabled, smooth scrolling is disabled for instant navigation.
-- **Input Context:** Shortcuts are automatically disabled when typing in text inputs, textareas, or contenteditable elements.
+- **Input Context:** Shortcuts are automatically disabled when typing in text inputs, textareas, or contenteditable elements, including fields inside shadow DOM such as the `markata-go serve` settings sidebar.
 
 ### Disable Shortcuts
 

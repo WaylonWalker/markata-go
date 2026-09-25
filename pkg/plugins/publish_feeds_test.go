@@ -834,6 +834,43 @@ func TestFeedConfigWithRenderablePosts_KeepsTitleOnlyPosts(t *testing.T) {
 	}
 }
 
+func TestEnsureDefaultCollectionPage_EmptyRootGetsHomepage(t *testing.T) {
+	feed := &models.FeedConfig{
+		ItemsPerPage:   10,
+		PaginationType: models.PaginationManual,
+	}
+
+	ensureDefaultCollectionPage(feed)
+
+	if len(feed.Pages) != 1 {
+		t.Fatalf("pages = %#v, want one homepage", feed.Pages)
+	}
+	page := feed.Pages[0]
+	if page.Number != 1 || page.TotalPages != 1 || len(page.Posts) != 0 {
+		t.Fatalf("homepage page = %#v, want an empty first page", page)
+	}
+}
+
+func TestEnsureDefaultCollectionPage_EmptyArchiveGetsPage(t *testing.T) {
+	feed := &models.FeedConfig{Slug: "archive"}
+
+	ensureDefaultCollectionPage(feed)
+
+	if len(feed.Pages) != 1 || feed.Pages[0].Number != 1 {
+		t.Fatalf("pages = %#v, want one archive page", feed.Pages)
+	}
+}
+
+func TestEnsureDefaultCollectionPage_EmptyNonDefaultFeedStaysWithoutPages(t *testing.T) {
+	feed := &models.FeedConfig{Slug: "tags/go"}
+
+	ensureDefaultCollectionPage(feed)
+
+	if len(feed.Pages) != 0 {
+		t.Fatalf("pages = %#v, want no pages", feed.Pages)
+	}
+}
+
 func TestComputeFeedHash_RenderDecorationsDoNotChangeHash(t *testing.T) {
 	p := NewPublishFeedsPlugin()
 	title := "Post"

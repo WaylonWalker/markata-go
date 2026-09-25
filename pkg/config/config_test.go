@@ -81,8 +81,11 @@ func TestConfig_DefaultGlobPatterns(t *testing.T) {
 	// Test case: "default glob patterns"
 	config := DefaultConfig()
 
-	expectedPatterns := []string{"pages/**/*.md", "posts/**/*.md"}
-	if len(config.GlobConfig.Patterns) != len(expectedPatterns) || config.GlobConfig.Patterns[0] != expectedPatterns[0] || config.GlobConfig.Patterns[1] != expectedPatterns[1] {
+	expectedPatterns := []string{"*.md", "pages/**/*.md", "posts/**/*.md"}
+	if len(config.GlobConfig.Patterns) != len(expectedPatterns) ||
+		config.GlobConfig.Patterns[0] != expectedPatterns[0] ||
+		config.GlobConfig.Patterns[1] != expectedPatterns[1] ||
+		config.GlobConfig.Patterns[2] != expectedPatterns[2] {
 		t.Errorf("glob.patterns: got %v, want %v", config.GlobConfig.Patterns, expectedPatterns)
 	}
 }
@@ -99,6 +102,12 @@ func TestConfig_DefaultValues(t *testing.T) {
 	}
 	if config.AssetsDir != "static" {
 		t.Errorf("assets_dir: got %q, want 'static'", config.AssetsDir)
+	}
+	if license, ok := config.License.Key(); !ok || license != models.DefaultLicenseKey {
+		t.Errorf("license: got %q (configured=%t), want %q", license, ok, models.DefaultLicenseKey)
+	}
+	if config.NeedsLicenseWarning() {
+		t.Error("default configuration should not require a license warning")
 	}
 	if len(config.Hooks) != 1 || config.Hooks[0] != "default" {
 		t.Errorf("hooks: got %v, want ['default']", config.Hooks)
@@ -817,5 +826,23 @@ func TestSpec_DiscoverAll(t *testing.T) {
 		if cp.Source == "" {
 			t.Error("Path.Source should be set")
 		}
+	}
+}
+
+func TestLoadWithDefaults_MatchesEmptyConfigTheme(t *testing.T) {
+	noFile, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatalf("LoadWithDefaults error: %v", err)
+	}
+	emptyFile, err := LoadFromString("[markata-go]\n", FormatTOML)
+	if err != nil {
+		t.Fatalf("LoadFromString error: %v", err)
+	}
+	if noFile.Theme.Palette == "" {
+		t.Fatal("config-less sites need a default palette for the theme picker")
+	}
+	if noFile.Theme.Palette != emptyFile.Theme.Palette || noFile.Theme.Aesthetic != emptyFile.Theme.Aesthetic {
+		t.Errorf("no config file theme = %q/%q, empty config file theme = %q/%q",
+			noFile.Theme.Palette, noFile.Theme.Aesthetic, emptyFile.Theme.Palette, emptyFile.Theme.Aesthetic)
 	}
 }

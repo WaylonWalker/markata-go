@@ -7,6 +7,8 @@ Use this topic for everyday site work and safe project inspection.
 ### Build And Serve
 
 - `markata-go build`
+- `markata-go build pages/sample.md` (render one Markdown file to `<output>/index.html` with the default theme; no feeds, listings, sitemap, search index, or build cache)
+- `markata-go pages/sample.md` (equivalent one-file invocation)
 - `markata-go build --clean` (remove output + build cache)
 - `markata-go build --clean-all` (also remove external caches: blogroll, embeds, mentions)
 - `markata-go build --fast` (skip minification, CSS purging, Pagefind indexing)
@@ -17,8 +19,9 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go build --benchmark-json benchmark.json`
 - `markata-go build -v --benchmark-detailed`
 - `markata-go buildlab run --fixture /path/to/site` (compare clean and incremental builds)
-- `markata-go serve` (dev server with live reload)
+- `markata-go serve` (dev server with live reload; its theme picker adds a **Bake** button that writes the chosen look into the config file holding `[markata-go.theme]`, and a gear button opens a settings sidebar that live-previews any setting in memory (Reset discards) and bakes it into the config file that owns it after showing a diff, and can reset a setting to its default by removing it from the file; neither exists in `build` output, and neither writes the global `~/.config/markata-go/config.toml`. Previews build into `.markata/serve-preview/`, so the main cache is untouched. What the served site shows may be an unbaked preview, so trust config files, not the browser, and re-read them before editing)
 - `markata-go serve --fast`
+- `markata-go serve pages/post.md` (serve only that file at `/`, same single-file mode as `build pages/post.md`)
 - `markata-go serve --incremental` (reuse unchanged posts while retaining normal output processing)
 
 ### Config And Inspection

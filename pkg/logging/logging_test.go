@@ -113,3 +113,24 @@ func TestLoggerEncodesMetadata(t *testing.T) {
 		t.Fatalf("message = %q", message)
 	}
 }
+
+func TestStylePrefixedMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+		want    string
+	}{
+		{"already prefixed", "Warning: disk full", "Warning: disk full"},
+		{"lowercase prefix", "warning: disk full", "Warning: disk full"},
+		{"unprefixed keeps full message", "config warning: license: missing", "Warning: config warning: license: missing"},
+		{"short unprefixed", "oops", "Warning: oops"},
+		{"empty", "", "Warning:"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := stylePrefixedMessage(tt.message, "Warning:", "", false); got != tt.want {
+				t.Fatalf("stylePrefixedMessage(%q) = %q, want %q", tt.message, got, tt.want)
+			}
+		})
+	}
+}

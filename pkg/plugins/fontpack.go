@@ -16,7 +16,7 @@ import (
 
 const (
 	fontpackCacheFile    = ".markata-fontpack-cache"
-	fontpackCacheVersion = "1"
+	fontpackCacheVersion = "2"
 )
 
 // FontpackPlugin installs one site-wide typography stylesheet. It never calls
@@ -75,6 +75,7 @@ func configuredFontpackName(extra map[string]any) string {
 	return "system"
 }
 
+//nolint:gocyclo // Font assets have separate local, remote, and fallback write paths.
 func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 	rendered := strings.Builder{}
 	names := []string{p.name}
@@ -105,15 +106,29 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	output := m.Config().OutputDir
-	_, _, err := p.source.Catalog.ResolvePack(p.name)
+	defaultName, _, err := p.source.Catalog.ResolvePack(p.name)
 	if err != nil {
 		return err
+	}
+	pickerEnabled := themeSwitcherEnabled(m.Config().Extra)
+	if pickerEnabled {
+		// The theme picker lets visitors choose any pack. @font-face files are
+		// fetched only when a pack is actually used, so offering all of them
+		// costs CSS bytes, not downloads.
+		for _, name := range fontpacks.SortedKeys(p.source.Catalog.FontPacks) {
+			if !slices.Contains(names, name) {
+				names = append(names, name)
+			}
+		}
 	}
 	cacheKey := fontpackCacheKey(rendered.String(), names, p.source.Catalog)
 	if !p.source.Builtin || !fontpackOutputCached(output, cacheKey) {
 		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
 		if err != nil {
 			return err
+		}
+		if pickerEnabled {
+			resolved.CSS += fontpackManifestCSS(p.source.Catalog, defaultName, resolved.Packs)
 		}
 		if err := resolved.CopyFS(p.source.FS, p.source.Root, output); err != nil {
 			return err
@@ -132,6 +147,76 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	return nil
+}
+
+// FontpackManifestEntry describes one pack offered by the theme picker.
+type FontpackManifestEntry struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Heading     string `json:"heading"`
+	Body        string `json:"body"`
+	Code        string `json:"code,omitempty"`
+	// CSS font-family stacks and heading weight used by picker previews.
+	HeadingFont   string  `json:"headingFont,omitempty"`
+	HeadingWeight float64 `json:"headingWeight,omitempty"`
+	BodyFont      string  `json:"bodyFont,omitempty"`
+	CodeFont      string  `json:"codeFont,omitempty"`
+}
+
+// fontpackManifestCSS exposes the offered packs to the theme picker through
+// custom properties, mirroring the palette and aesthetic manifests.
+func fontpackManifestCSS(catalog *fontpacks.Catalog, defaultName string, packs map[string]fontpacks.FontPack) string {
+	entries := make([]FontpackManifestEntry, 0, len(packs))
+	for _, name := range fontpacks.SortedKeys(packs) {
+		pack := packs[name]
+		display := pack.Name
+		if display == "" {
+			display = name
+		}
+		// Single-quoted families keep the JSON free of backslash escapes, which
+		// would not survive the CSS custom property round trip.
+		headingFont, headingWeight := catalog.RoleFontFamily(pack, "display", "heading")
+		bodyFont, _ := catalog.RoleFontFamily(pack, "body")
+		codeFont, _ := catalog.RoleFontFamily(pack, "code", "mono")
+		headingFont = strings.ReplaceAll(headingFont, `"`, `'`)
+		bodyFont = strings.ReplaceAll(bodyFont, `"`, `'`)
+		codeFont = strings.ReplaceAll(codeFont, `"`, `'`)
+		entries = append(entries, FontpackManifestEntry{
+			Name:          name,
+			DisplayName:   display,
+			Heading:       fontpackRoleFamily(catalog, pack, "display", "heading"),
+			Body:          fontpackRoleFamily(catalog, pack, "body"),
+			Code:          fontpackRoleFamily(catalog, pack, "code", "mono"),
+			HeadingFont:   headingFont,
+			HeadingWeight: headingWeight,
+			BodyFont:      bodyFont,
+			CodeFont:      codeFont,
+		})
+	}
+	data, err := json.Marshal(entries)
+	if err != nil {
+		return ""
+	}
+	escaped := strings.NewReplacer(`\`, `\\`, `'`, `\'`, "\n", "").Replace(string(data))
+	return fmt.Sprintf(":root{--fontpack-default:%q;--fontpack-manifest:'%s'}\n", defaultName, escaped)
+}
+
+// fontpackRoleFamily returns a human label for the first matching role:
+// the font family for bundled sources or a generic name for system stacks.
+func fontpackRoleFamily(catalog *fontpacks.Catalog, pack fontpacks.FontPack, roles ...string) string {
+	for _, role := range roles {
+		r, ok := pack.Roles[role]
+		if !ok {
+			continue
+		}
+		if src, ok := catalog.FontSources[r.Source]; ok && src.Family != "" {
+			return src.Family
+		}
+		if r.Stack != "" {
+			return "System " + strings.ReplaceAll(r.Stack, "-", " ")
+		}
+	}
+	return ""
 }
 
 func fontpackCacheKey(rendered string, names []string, catalog *fontpacks.Catalog) string {

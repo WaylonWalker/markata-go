@@ -37,6 +37,10 @@ type Context struct {
 	// Core provides access to the lifecycle manager for filter/map operations
 	Core interface{}
 
+	// BlogLayout reports whether the page renders with the blog layout template
+	// (post.html). It enables layout.blog settings such as show_toc.
+	BlogLayout bool
+
 	// Extra holds additional context values
 	Extra map[string]interface{}
 }
@@ -65,6 +69,12 @@ func NewFeedContext(feed *models.FeedConfig, page *models.FeedPage, config *mode
 // WithCore returns a copy of the context with the Core field set.
 func (c Context) WithCore(core interface{}) Context {
 	c.Core = core
+	return c
+}
+
+// WithBlogLayout returns a copy of the context with the BlogLayout field set.
+func (c Context) WithBlogLayout(blog bool) Context {
+	c.BlogLayout = blog
 	return c
 }
 
@@ -1034,6 +1044,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 		"palette_light":    t.PaletteLight,
 		"palette_dark":     t.PaletteDark,
 		"fallback_mode":    t.FallbackMode,
+		"seasonal":         t.Seasonal,
 		"contract_version": t.ContractVersion,
 		"fontpack":         t.Fontpack,
 		"aesthetic":        t.Aesthetic,
@@ -1058,7 +1069,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 func SwitcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 	if s == nil {
 		return map[string]interface{}{
-			"enabled":     false,
+			"enabled":     true,
 			"mode_toggle": true,
 			"include_all": true,
 			"position":    "header",
@@ -1330,6 +1341,9 @@ func (c Context) ToPongo2() pongo2.Context {
 		"sidebar_items":            sidebarItemsToMaps(c.SidebarItems),
 		"sidebar_title":            c.SidebarTitle,
 		"resolved_content_sidebar": resolvedContentSidebar,
+		"resolved_doc_sidebar":     ResolveDocSidebar(c.Config, c.BlogLayout),
+		// now is the render time, e.g. {{ now | date:"2006" }} for copyright years.
+		"now": time.Now(),
 	}
 
 	addPostContext(&ctx, postMap, c.Post, resolvedContentSidebar)
@@ -1338,6 +1352,54 @@ func (c Context) ToPongo2() pongo2.Context {
 	addExtraContext(&ctx, c.Extra)
 
 	return ctx
+}
+
+// ResolveDocSidebar returns the effective table-of-contents sidebar settings.
+// components.doc_sidebar is used when enabled. Otherwise, when blog is true and
+// layout.blog.show_toc is enabled, the sidebar is enabled using the blog
+// layout's toc_position and toc_width.
+func ResolveDocSidebar(cfg *models.Config, blog bool) map[string]interface{} {
+	resolved := map[string]interface{}{
+		"enabled":   false,
+		"position":  "right",
+		"width":     "250px",
+		"min_depth": 2,
+		"max_depth": 4,
+	}
+	if cfg == nil {
+		return resolved
+	}
+
+	sidebar := cfg.Components.DocSidebar
+	if sidebar.Position != "" {
+		resolved["position"] = sidebar.Position
+	}
+	if sidebar.Width != "" {
+		resolved["width"] = sidebar.Width
+	}
+	if sidebar.MinDepth > 0 {
+		resolved["min_depth"] = sidebar.MinDepth
+	}
+	if sidebar.MaxDepth > 0 {
+		resolved["max_depth"] = sidebar.MaxDepth
+	}
+
+	if cfg.Components.IsDocSidebarEnabled() {
+		resolved["enabled"] = true
+		return resolved
+	}
+
+	if blog && cfg.Layout.Blog.IsShowToc() {
+		resolved["enabled"] = true
+		if pos := cfg.Layout.Blog.TocPosition; pos != "" {
+			resolved["position"] = pos
+		}
+		if width := cfg.Layout.Blog.TocWidth; width != "" {
+			resolved["width"] = width
+		}
+	}
+
+	return resolved
 }
 
 func resolveContentSidebar(configMap map[string]interface{}, post *models.Post) map[string]interface{} {
@@ -1512,6 +1574,7 @@ func (c Context) Clone() Context {
 		Feed:         c.Feed,
 		FeedPage:     c.FeedPage,
 		Core:         c.Core,
+		BlogLayout:   c.BlogLayout,
 		SidebarTitle: c.SidebarTitle,
 	}
 

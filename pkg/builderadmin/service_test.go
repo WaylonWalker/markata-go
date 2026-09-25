@@ -621,6 +621,19 @@ Delete this post.
 	t.Cleanup(func() { _ = svc.leaderLock.Close() })
 	svc.executable = binary
 
+	// runBuild schedules release pruning in the background, and that goroutine
+	// persists state under siteDir/.builder-admin. Wait for it so TempDir
+	// cleanup does not race with the final state write.
+	waitForPrune := func() {
+		svc.pruneScheduleMu.Lock()
+		done := svc.pruneDone
+		svc.pruneScheduleMu.Unlock()
+		if done != nil {
+			<-done
+		}
+	}
+	t.Cleanup(waitForPrune)
+
 	run := func(id string) BuildRecord {
 		t.Helper()
 		svc.runBuild(context.Background(), queueRequest{QueuedOperation: QueuedOperation{
@@ -630,6 +643,7 @@ Delete this post.
 			TriggerType: "test",
 			EnqueuedAt:  time.Now().UTC(),
 		}})
+		waitForPrune()
 		state := svc.snapshotState()
 		if len(state.Builds) == 0 {
 			t.Fatal("build did not record a result")

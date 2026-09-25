@@ -115,6 +115,37 @@ and the open state is remembered per side. Below that width the feed sidebar
 becomes a collapsible bar above the article. If a site's custom CSS positions
 `.feed-sidebar` or `.doc-sidebar`, remove it and rely on the theme.
 
+Every site ships a live theme picker by default. The header shows one
+palette-swatch button and the light/dark toggle, and visitors can preview and
+choose any palette. The configured `palette` and `aesthetic` remain the
+defaults for first-time visitors. Do not add extra theme buttons to the nav.
+To lock the site to its configured palette, set:
+
+```toml
+[markata-go.theme.switcher]
+enabled = false
+```
+
+Use `include` or `exclude` under the same table to limit the palettes offered.
+The picker has Colors, Style (aesthetic), and Font (every bundled fontpack,
+plus text size) tabs of live preview cards, with ‹ › buttons to step through
+the active tab. Colors includes a **Seasonal** option: northern hemisphere
+seasons, switching to holiday palettes a few days before and on world
+holidays. To make that the default for visitors, add `seasonal = true` to
+`[markata-go.theme]` and keep `palette` as the fallback. Under `markata-go serve` only, its **Bake** button writes the current choices
+into `[markata-go.theme]` (color mode and text size only when the visitor
+picked them). It edits whichever config file already holds the
+theme table (including `include`d files such as `config/theme.toml`), keeps
+comments, and triggers a rebuild. When a user says "use the look I picked",
+have them click Bake in `serve`, then review the diff of the named file. The
+default fontpack is `brush` (Knewave headings, Space Grotesk body, DM Mono
+code). Sites are dark by default (`fallback_mode = "dark"`).
+Builds with no config file (such as `markata-go build post.md`) use the
+contract defaults (`ayu-dark`, `minimal`). The motif is off by default; set
+`[markata-go.theme.motif] kind = "block-w"` only when the site wants it.
+Enabled motifs recolor automatically when a visitor picks another palette, so
+do not hard-code motif colors per palette.
+
 `heading_texture.kind = "inherit"` uses the surface texture kind while keeping
 the heading texture's own `color_mix` and `scale`.
 
@@ -163,7 +194,8 @@ repositories. Run it from the markata-go repository root.
 
 ## Fonts
 
-Select a `fontpack` from the contract. A fontpack assigns named roles instead
+Select a `fontpack` from the contract or from `markata-go fonts packs` (built-in
+catalog packs and aliases such as `typewriter` or `reader` are valid). A fontpack assigns named roles instead
 of requiring each selector to name a font family. The contract roles are
 `body`, `heading`, and `mono`; use the roles supplied by the selected pack. The
 `mono` role controls code and diagrams. Do not invent a fontpack ID or a role

@@ -75,8 +75,8 @@ func TestSubscriptionFeedsPlugin_Collect_InjectsFeedConfigs(t *testing.T) {
 			if fc.Title != "Test Site Feed" {
 				t.Errorf("Root feed title = %q, want %q", fc.Title, "Test Site Feed")
 			}
-			if fc.Formats.HTML {
-				t.Error("Root feed should have HTML=false")
+			if !fc.Formats.HTML {
+				t.Error("Root feed should have HTML=true")
 			}
 			if !fc.Formats.RSS {
 				t.Error("Root feed should have RSS=true")
@@ -108,6 +108,47 @@ func TestSubscriptionFeedsPlugin_Collect_InjectsFeedConfigs(t *testing.T) {
 	}
 	if !foundArchive {
 		t.Error("Archive subscription feed (slug='archive') not found")
+	}
+}
+
+func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T) {
+	plugin := NewSubscriptionFeedsPlugin()
+	archive := models.FeedConfig{
+		Slug:  "archive",
+		Title: "Configured Archive",
+		Formats: models.FeedFormats{
+			HTML: true,
+		},
+	}
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{archive},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+
+	feedConfigs := getFeedConfigs(m.Config())
+	if len(feedConfigs) != 2 {
+		t.Fatalf("feed configs = %#v, want configured archive and implicit root", feedConfigs)
+	}
+	for _, fc := range feedConfigs {
+		switch fc.Slug {
+		case "":
+			if !fc.Formats.HTML {
+				t.Error("implicit root feed should render the homepage")
+			}
+		case "archive":
+			if fc.Title != archive.Title || !fc.Formats.HTML {
+				t.Errorf("archive = %#v, want configured archive %#v", fc, archive)
+			}
+		default:
+			t.Errorf("unexpected feed %q", fc.Slug)
+		}
 	}
 }
 

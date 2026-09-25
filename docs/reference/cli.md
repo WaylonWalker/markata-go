@@ -22,6 +22,22 @@ The markata-go CLI follows a subcommand pattern similar to tools like `git` and 
 markata-go [global flags] <command> [command flags] [arguments]
 ```
 
+For a one-file preview, pass a Markdown file directly. The file is rendered
+with the default theme and published at the site root (`<output>/index.html`),
+along with the theme's CSS, JS, and fonts. Site-wide output is skipped: feeds,
+the archive, tag/feed listings, sitemaps, `.well-known` files, the image
+library, 404 page, and the Pagefind search index (search UI is hidden). The
+build cache is not used, so a single-file build never touches the full-site
+cache:
+
+```bash
+markata-go pages/sample.md
+# equivalent:
+markata-go build pages/sample.md
+# live preview of just that file, rebuilt on every change:
+markata-go serve pages/sample.md
+```
+
 ## Global Flags
 
 These flags are available for all commands:
@@ -610,8 +626,10 @@ Start a development server with live reload support.
 #### Usage
 
 ```bash
-markata-go serve [flags]
+markata-go serve [flags] [markdown-file]
 ```
+
+Pass a Markdown file to serve only that page at `/`, using the same single-file mode as `build`. Every rebuild stays in single-file mode.
 
 #### Flags
 
@@ -666,6 +684,9 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 - **Early 404**: Minimal 404 is served until the generated 404.html exists
 - **Incremental mode**: `serve --incremental` rebuilds only changed posts and dependents while retaining minification, CSS purging, Tailwind, redirects, and Pagefind processing
 - **Fast mode**: `serve --fast` rebuilds only changed posts and dependents, but skips production output steps for iteration speed
+- **Bake theme**: the theme picker gains a **Bake** button that writes your current palette, style, and font (and text size or color mode when you picked them) into `[markata-go.theme]`. It edits the config file (including `include`d files) that already holds the theme, keeping comments, then rebuilds. It never writes your global `~/.config/markata-go/config.toml`. Only `serve` offers it. See [Themes Guide](/docs/guides/themes/#baking-a-look-into-your-config).
+- **Settings sidebar**: a gear button at the bottom left (or `Alt+,`) opens a sidebar with every config setting, its current value, and its description. Changes preview live on the site right away without touching your files; click **Bake** to review a diff and write them into the config file that owns each one, or **Reset** to discard them. **Reset to default** removes a setting from your config. Settings with fixed values are dropdowns, and invalid values are rejected. Previews build into `.markata/serve-preview/` so your main build cache is kept. Only `serve` shows it. See [Configuration Guide](/docs/guides/configuration/#edit-settings-while-serving).
+- **Local only**: the settings and Bake endpoints accept requests only from the machine running `serve` (a loopback client address). With `--host 0.0.0.0`, other devices can browse the site but cannot change your config.
 
 #### Development Workflow
 

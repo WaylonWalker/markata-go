@@ -239,8 +239,17 @@ func (l *Loader) Discover() ([]PaletteInfo, error) {
 	}
 
 	// Every family exposes both modes: add a derived counterpart for palettes
-	// that have no explicit opposite-variant partner.
-	for name, info := range infos {
+	// that have no explicit opposite-variant partner. Iterate over a sorted
+	// snapshot so derived palettes are never derived again (map iteration may
+	// otherwise visit entries added during the loop, producing duplicates such
+	// as "<name>-light-dark" nondeterministically).
+	explicitNames := make([]string, 0, len(infos))
+	for name := range infos {
+		explicitNames = append(explicitNames, name)
+	}
+	sort.Strings(explicitNames)
+	for _, name := range explicitNames {
+		info := infos[name]
 		if info.Variant != VariantLight && info.Variant != VariantDark {
 			continue
 		}
