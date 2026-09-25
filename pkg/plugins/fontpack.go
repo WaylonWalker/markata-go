@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,23 +14,41 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 const (
-	fontpackCacheFile    = ".markata-fontpack-cache"
-	fontpackCacheVersion = "2"
+	fontpackCacheFile        = ".markata-fontpack-cache"
+	fontpackPreloadCacheFile = ".markata-fontpack-preloads.json"
+	fontpackCacheVersion     = "3"
 )
 
 // FontpackPlugin installs one site-wide typography stylesheet. It never calls
 // a subsetter: bundled tiers are immutable catalog artifacts.
 type FontpackPlugin struct {
-	name   string
-	source *fontpacks.CatalogSource
+	name     string
+	source   *fontpacks.CatalogSource
+	prepared *fontpackBuild
+}
+
+type fontpackBuild struct {
+	resolved   *fontpacks.Resolved
+	cacheKey   string
+	cacheReady bool
+	preloads   fontpackPreloadCache
+}
+
+type fontpackPreloadCache struct {
+	Hash string              `json:"hash"`
+	URLs map[string][]string `json:"urls"`
 }
 
 func NewFontpackPlugin() *FontpackPlugin { return &FontpackPlugin{} }
 func (p *FontpackPlugin) Name() string   { return "fontpack" }
 func (p *FontpackPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageRender {
+		return lifecycle.PriorityLate - 1 // After Markdown, before page templates.
+	}
 	if stage == lifecycle.StageWrite {
 		return lifecycle.PriorityFirst
 	}
@@ -55,6 +75,7 @@ func (p *FontpackPlugin) Configure(m *lifecycle.Manager) error {
 		return fmt.Errorf("load font catalog for pack %q: %w", name, err)
 	}
 	m.Config().Extra["fontpack_css"] = true
+	p.prepared = nil
 	return nil
 }
 
@@ -75,8 +96,17 @@ func configuredFontpackName(extra map[string]any) string {
 	return "system"
 }
 
-//nolint:gocyclo // Font assets have separate local, remote, and fallback write paths.
-func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
+// Render resolves the actual emitted tiers after Markdown and before the
+// templates, so preload URLs and the stylesheet hash agree with Write.
+func (p *FontpackPlugin) Render(m *lifecycle.Manager) error {
+	_, err := p.prepare(m)
+	return err
+}
+
+func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
+	if p.prepared != nil {
+		return p.prepared, nil
+	}
 	rendered := strings.Builder{}
 	names := []string{p.name}
 	pageNames := make(map[string]string)
@@ -93,7 +123,7 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		if p.source != nil {
 			resolvedName, _, err := p.source.Catalog.ResolvePack(name)
 			if err != nil {
-				return fmt.Errorf("post %q fontpack %q: %w", post.Path, name, err)
+				return nil, fmt.Errorf("post %q fontpack %q: %w", post.Path, name, err)
 			}
 			pageNames[post.Path] = resolvedName
 			if post.Extra == nil {
@@ -105,10 +135,9 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 			}
 		}
 	}
-	output := m.Config().OutputDir
 	defaultName, _, err := p.source.Catalog.ResolvePack(p.name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pickerEnabled := themeSwitcherEnabled(m.Config().Extra)
 	if pickerEnabled {
@@ -122,27 +151,139 @@ func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	cacheKey := fontpackCacheKey(rendered.String(), names, p.source.Catalog)
-	if !p.source.Builtin || !fontpackOutputCached(output, cacheKey) {
+	build := &fontpackBuild{cacheKey: cacheKey}
+	output := m.Config().OutputDir
+	if p.source.Builtin && fontpackOutputCached(output, cacheKey) {
+		data, readErr := os.ReadFile(filepath.Join(output, fontpackPreloadCacheFile))
+		if readErr == nil && json.Unmarshal(data, &build.preloads) == nil && validFontpackPreloadCache(output, names, p.source.Catalog, build.preloads) {
+			build.cacheReady = true
+		}
+	}
+	if !build.cacheReady {
 		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if pickerEnabled {
 			resolved.CSS += fontpackManifestCSS(p.source.Catalog, defaultName, resolved.Packs)
 		}
-		if err := resolved.CopyFS(p.source.FS, p.source.Root, output); err != nil {
-			return err
+		build.resolved = resolved
+		build.preloads.Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(resolved.CSS)))[:8]
+		build.preloads.URLs = make(map[string][]string, len(resolved.Packs))
+		for name, pack := range resolved.Packs {
+			build.preloads.URLs[name] = fontpackPreloadURLs(pack, resolved.Assets)
 		}
-		if p.source.Builtin {
-			if err := os.WriteFile(filepath.Join(output, fontpackCacheFile), []byte(cacheKey), 0o600); err != nil {
-				return err
-			}
-		} else if err := os.Remove(filepath.Join(output, fontpackCacheFile)); err != nil && !os.IsNotExist(err) {
-			return err
+	}
+	m.SetAssetHash("css/fonts.css", build.preloads.Hash)
+	templates.SetAssetHashes(map[string]string{"css/fonts.css": build.preloads.Hash})
+	m.Config().Extra["fontpack_preload_urls"] = build.preloads.URLs[defaultName]
+	// JSON is escaped by encoding/json (including HTML metacharacters), and
+	// inserted as an object literal only when the picker is enabled.
+	if pickerEnabled {
+		data, err := json.Marshal(build.preloads.URLs)
+		if err != nil {
+			return nil, fmt.Errorf("encode font preloads: %w", err)
 		}
+		m.Config().Extra["fontpack_preloads_json"] = string(data)
 	}
 	for _, post := range m.Posts() {
 		if name := pageNames[post.Path]; name != "" {
+			post.Extra["_fontpack_preload_urls"] = build.preloads.URLs[name]
+		}
+	}
+	p.prepared = build
+	return p.prepared, nil
+}
+
+func validFontpackPreloadCache(output string, names []string, catalog *fontpacks.Catalog, cached fontpackPreloadCache) bool {
+	if len(cached.Hash) != 8 || len(cached.URLs) == 0 {
+		return false
+	}
+	if _, err := hex.DecodeString(cached.Hash); err != nil {
+		return false
+	}
+	for _, name := range names {
+		resolved, _, err := catalog.ResolvePack(name)
+		if err != nil {
+			return false
+		}
+		urls, ok := cached.URLs[resolved]
+		if !ok {
+			return false
+		}
+		for _, url := range urls {
+			file := strings.TrimPrefix(url, "/assets/fonts/")
+			if file == url || file != filepath.Base(file) {
+				return false
+			}
+			if info, err := os.Stat(filepath.Join(output, "assets", "fonts", file)); err != nil || !info.Mode().IsRegular() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Prefer the full tier if present (it supersedes subsets in CSS), otherwise
+// preload the core tier. Other coverage tiers and code fonts load on demand.
+func fontpackPreloadURLs(pack fontpacks.FontPack, assets []fontpacks.Asset) []string {
+	urls := []string{}
+	seen := map[string]bool{}
+	for _, role := range []string{"body", "display", "heading"} {
+		if role == "heading" && pack.Roles["display"].Source != "" {
+			continue
+		}
+		source := pack.Roles[role].Source
+		if source == "" || seen[source] {
+			continue
+		}
+		seen[source] = true
+		var best *fontpacks.Asset
+		for i := range assets {
+			a := &assets[i]
+			if a.Source == source && (best == nil || a.Tier == "full" || (best.Tier != "prose-core" && a.Tier == "prose-core")) {
+				best = a
+			}
+		}
+		if best != nil {
+			urls = append(urls, best.URL)
+		}
+	}
+	return urls
+}
+
+//nolint:gocyclo // Font assets have separate local, remote, and fallback write paths.
+func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
+	build, err := p.prepare(m)
+	if err != nil {
+		return err
+	}
+	output := m.Config().OutputDir
+	if !build.cacheReady {
+		if err := build.resolved.CopyFS(p.source.FS, p.source.Root, output); err != nil {
+			return err
+		}
+		if p.source.Builtin {
+			data, err := json.Marshal(build.preloads)
+			if err != nil {
+				return fmt.Errorf("encode font preload cache: %w", err)
+			}
+			if err := os.WriteFile(filepath.Join(output, fontpackPreloadCacheFile), data, 0o600); err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(output, fontpackCacheFile), []byte(build.cacheKey), 0o600); err != nil {
+				return err
+			}
+		} else {
+			for _, name := range []string{fontpackCacheFile, fontpackPreloadCacheFile} {
+				if err := os.Remove(filepath.Join(output, name)); err != nil && !os.IsNotExist(err) {
+					return err
+				}
+			}
+		}
+	}
+	for _, post := range m.Posts() {
+		if name, ok := post.Extra["_resolved_fontpack"].(string); ok && name != "" {
 			post.HTML = markPostFontpack(post.HTML, name)
 		}
 	}
@@ -260,7 +401,7 @@ func markPostFontpack(content, name string) string {
 		return content
 	}
 	content = markHTMLFontpack(content, name)
-	if !strings.Contains(content, `href="/css/fonts.css"`) {
+	if !strings.Contains(content, `href="/css/fonts.css"`) && !strings.Contains(content, `href="/css/fonts.`) {
 		content = strings.Replace(content, "</head>", `  <link rel="stylesheet" href="/css/fonts.css">`+"\n</head>", 1)
 	}
 	return content
@@ -298,5 +439,6 @@ func markHTMLFontpack(content, name string) string {
 }
 
 var _ lifecycle.ConfigurePlugin = (*FontpackPlugin)(nil)
+var _ lifecycle.RenderPlugin = (*FontpackPlugin)(nil)
 var _ lifecycle.WritePlugin = (*FontpackPlugin)(nil)
 var _ lifecycle.PriorityPlugin = (*FontpackPlugin)(nil)

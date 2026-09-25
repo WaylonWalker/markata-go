@@ -979,32 +979,64 @@ header:has(.theme-picker.is-open),
   padding: 0;
 }
 
-.theme-picker-bake[hidden] {
+.theme-picker-bar-btn[hidden] {
   display: none;
 }
 
-.theme-picker-bake {
-  max-width: 14rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0.25rem 0.625rem;
-  background: var(--color-surface, #f5f5f5);
-  color: var(--color-text, #333);
-  border: 1px solid var(--color-border, #ddd);
+/* Reset / Bake / All settings: compact icon buttons so the bar fits beside
+   the key hints. Bake expands a label for its confirm and result states. */
+.theme-picker-bar-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0 0.5rem;
+  background: transparent;
+  color: var(--color-text-muted, #888);
+  border: 1px solid transparent;
   border-radius: 999px;
   font: inherit;
   font-size: 0.75rem;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.theme-picker-bake:hover {
-  border-color: var(--color-primary, #6366f1);
+.theme-picker-bar-btn svg {
+  flex: none;
 }
 
-.theme-picker-bake:focus-visible {
+.theme-picker-bar-btn:hover {
+  color: var(--color-text, #333);
+  background: color-mix(in srgb, var(--color-text, #333) 8%, transparent);
+}
+
+.theme-picker-bar-btn:focus-visible {
   outline: 2px solid var(--color-primary, #6366f1);
   outline-offset: 1px;
+}
+
+.theme-picker-reset {
+  margin-left: auto;
+}
+
+.theme-picker-bake__label:empty {
+  display: none;
+}
+
+.theme-picker-bake.has-label {
+  max-width: 14rem;
+  border-color: var(--color-border, #ddd);
+}
+
+.theme-picker-bake__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .theme-picker-bake.is-armed {
@@ -1020,23 +1052,6 @@ header:has(.theme-picker.is-open),
 .theme-picker-bake.is-error {
   border-color: var(--color-error, #dc2626);
   color: var(--color-error, #dc2626);
-}
-
-.theme-picker-reset {
-  margin: 0 0 0 auto;
-  padding: 0.25rem 0.375rem;
-  background: transparent;
-  color: var(--color-text-muted, #888);
-  border: 0;
-  border-radius: 0.25rem;
-  font: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.theme-picker-reset:hover {
-  color: var(--color-text, #333);
-  text-decoration: underline;
 }
 
 .theme-picker-hint {
@@ -1144,11 +1159,9 @@ header:has(.theme-picker.is-open),
     border-top: 1px solid var(--color-border, #ddd);
   }
 
-  .theme-picker-reset,
-  .theme-picker-bake {
-    min-height: 2.5rem;
-    padding-left: 0.875rem;
-    padding-right: 0.875rem;
+  .theme-picker-bar-btn {
+    min-width: 2.5rem;
+    height: 2.5rem;
     font-size: 0.8125rem;
   }
 }

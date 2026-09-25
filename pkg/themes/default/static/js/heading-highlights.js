@@ -7,7 +7,6 @@
 
   var selector = "html[data-fontpack] :is(.post-header h1, .post-content h1, .post-content h2) .heading-highlight";
   var scheduled = false;
-  var observers = [];
 
   function schedule() {
     if (scheduled) return;
@@ -98,24 +97,45 @@
     wrapper.classList.add("is-measured");
   }
 
+  var resizeObserver = window.ResizeObserver ? new ResizeObserver(schedule) : null;
+  var observed = new WeakSet();
+
+  function observeTargets() {
+    if (!resizeObserver) return;
+    document.querySelectorAll(selector).forEach(function (element) {
+      if (observed.has(element)) return;
+      observed.add(element);
+      resizeObserver.observe(element);
+    });
+  }
+
   function observe() {
-    if (window.ResizeObserver) {
-      document.querySelectorAll(selector).forEach(function (element) {
-        var observer = new ResizeObserver(schedule);
-        observer.observe(element);
-        observers.push(observer);
-      });
-    }
+    observeTargets();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+    // Re-measure when heading text changes or the typography/palette on
+    // <html> changes. Attribute changes elsewhere (including this script's own
+    // is-measured class and style writes such as --sidebar-top) are ignored so
+    // the observer cannot feed itself.
     new MutationObserver(function (records) {
       var relevant = records.some(function (record) {
-        if (record.type === "attributes" || record.type === "characterData") return true;
+        var target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+        var inHeading = target && target.closest && target.closest(".post-header, .post-content");
+        if (record.type === "characterData") return !!inHeading;
         return Array.from(record.addedNodes).concat(Array.from(record.removedNodes)).some(function (node) {
-          return !(node.nodeType === 1 && node.classList.contains("heading-highlight__contour"));
+          if (node.nodeType !== 1) return !!inHeading;
+          if (node.classList.contains("heading-highlight__contour")) return false;
+          return !!inHeading || node.matches(".heading-highlight") || !!node.querySelector(".heading-highlight");
         });
       });
-      if (relevant) schedule();
-    }).observe(document.documentElement, { attributes: true, characterData: true, childList: true, subtree: true });
+      if (relevant) {
+        observeTargets();
+        schedule();
+      }
+    }).observe(document.body, { characterData: true, childList: true, subtree: true });
+    new MutationObserver(schedule).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-fontpack", "data-palette", "data-theme", "data-aesthetic", "data-text-size"]
+    });
     window.addEventListener("resize", schedule, { passive: true });
     schedule();
   }

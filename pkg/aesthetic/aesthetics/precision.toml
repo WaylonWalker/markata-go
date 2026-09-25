@@ -25,5 +25,5 @@ lg = "0 4px 6px rgba(0,0,0,0.05)"
 xl = "0 8px 10px rgba(0,0,0,0.05)"
 
 [tokens.typography]
-font_primary = "var(--font-sans)"
-leading_scale = 0.95
+font_primary = "var(--font-body, system-ui)"
+leading_scale = "0.96"

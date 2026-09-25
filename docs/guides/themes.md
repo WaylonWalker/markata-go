@@ -180,17 +180,17 @@ These CSS custom properties can be overridden:
 | `--content-width` | Article measure in `ch` (relative to article text size) | `64ch` at the `large` preset |
 | `--font-family` | Body font | System fonts |
 | `--font-family-mono` | Code font | Monospace fonts |
-| `--article-progress-height` | Sticky article progress bar height | `4px` |
-| `--article-progress-track` | Background for the empty progress track | `color-mix(in srgb, var(--color-text) 90%, transparent 60%)` |
+| `--article-progress-height` | Sticky article progress bar height | `3px` |
+| `--article-progress-track` | Background for the empty progress track | `color-mix(in srgb, var(--color-text) 8%, transparent)` |
 | `--article-progress-start` | Gradient start color for the filled portion | `var(--color-primary)` |
-| `--article-progress-end` | Gradient end color for the filled portion | `color-mix(in srgb, var(--color-primary) 40%, var(--color-primary-light, var(--color-primary)) 60%)` |
-| `--article-progress-glow` | Glow color around the indicator | `color-mix(in srgb, var(--color-primary) 70%, transparent 50%)` |
+| `--article-progress-end` | Gradient end color for the filled portion | `var(--color-primary-light, var(--color-primary))` |
+| `--article-progress-glow` | Glow color around the indicator | `color-mix(in srgb, var(--color-primary) 35%, transparent)` |
 
 ---
 
 ## Article Reading Progress Indicator
 
-Each article page renders a slim, sticky progress track (`.article-progress`) that follows the reader as they scroll. The indicator is powered by the `initArticleProgressIndicator` script, which throttles scroll events with `requestAnimationFrame` and updates the fill amount by transforming `.article-progress__indicator`. The track is hidden on non-post pages and honors `prefers-reduced-motion` via CSS.
+Each article page renders a slim, sticky progress track (`.article-progress`) that follows the reader as they scroll. The indicator is powered by the `initArticleProgressIndicator` script, which throttles scroll events with `requestAnimationFrame` and updates the fill amount by transforming `.article-progress__indicator`. The fill tracks the scroll position directly, with no easing lag, and uses the palette's primary colors in light and dark mode. The track is hidden on non-post pages and honors `prefers-reduced-motion` via CSS.
 
 Override the CSS variables above to tune the look. Example:
 
@@ -825,7 +825,7 @@ markata-go includes 5 built-in aesthetics:
 |-----------|-------------|----------|
 | `balanced` | **Default.** Comfortable rounding, subtle shadows, normal spacing | General purpose, blogs |
 | `brutal` | Sharp corners, thick borders, tight spacing, hard accent-colored offset shadows | Bold statements, portfolios |
-| `minimal` | No rounding, maximum whitespace, no shadows, hairline borders | Documentation, reading-focused |
+| `minimal` | Restrained rounding, airy whitespace, flat surfaces and selective borders | Documentation, reading-focused |
 | `elevated` | Generous rounding, layered shadows, generous spacing | Premium/SaaS, card-heavy layouts |
 | `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows | Technical docs, data-heavy sites |
 
@@ -836,7 +836,7 @@ markata-go includes 5 built-in aesthetics:
 ┌────────────────────────┐
 │ No rounding            │
 │ Thick 3px borders      │
-│ Tight spacing          │
+│ Compact spacing        │
 │ Hard accent shadows    │
 └────────────────────────┘
 ```
@@ -864,6 +864,14 @@ markata-go includes 5 built-in aesthetics:
 ```
 
 ### Configuration Examples
+
+Styles affect the feed and post cards, code, admonitions, quotes, tables and
+images, buttons and inputs, tags, header edge, picker panel, prose rhythm and
+open doc/feed drawers. Balanced keeps the theme's native surface treatment.
+Precision is compact and crisp; elevated is soft and lifted; minimal stays
+flat and airy. Style cards preview their own shape and depth without changing
+the active palette. Site `custom_css` and `[theme.variables]` can still override
+the layered aesthetic rules.
 
 **Basic usage:**
 

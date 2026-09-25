@@ -1,5 +1,5 @@
 name = "Brutal"
-description = "Brutalist design: sharp corners, tight spacing, thick borders, no shadows"
+description = "Brutalist design: sharp corners, tight spacing, thick borders, hard shadows"
 
 [tokens.radius]
 none = "0"
@@ -10,7 +10,7 @@ xl = "0"
 full = "0"
 
 [tokens.spacing]
-scale = 0.75
+scale = 0.85
 
 [tokens.border]
 width_thin = "2px"
@@ -20,10 +20,10 @@ style = "solid"
 
 [tokens.shadow]
 sm = "none"
-md = "none"
-lg = "none"
-xl = "none"
+md = "4px 4px 0 var(--color-primary, var(--color-border))"
+lg = "6px 6px 0 var(--color-primary, var(--color-border))"
+xl = "8px 8px 0 var(--color-primary, var(--color-border))"
 
 [tokens.typography]
-font_primary = "var(--font-mono)"
-leading_scale = 1.0
+font_primary = "var(--font-mono, monospace)"
+leading_scale = "0.94"

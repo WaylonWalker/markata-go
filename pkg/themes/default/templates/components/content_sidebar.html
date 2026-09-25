@@ -7,9 +7,10 @@
 {% if sidebar.enabled and sidebar.slug %}
 <aside class="content-sidebar content-sidebar--{{ sidebar.position | default:'right' }}"
        aria-label="Content sidebar">
-    <button type="button" class="sidebar-toggle" aria-expanded="false" aria-label="Open sidebar sidebar" data-sidebar-label="sidebar">
+    <button type="button" class="sidebar-toggle" aria-expanded="false" aria-label="Open sidebar" data-sidebar-label="sidebar" {% if (sidebar.position | default:'right') == 'left' %}aria-keyshortcuts="b" data-sidebar-hotkey="b"{% else %}aria-keyshortcuts="Shift+B" data-sidebar-hotkey="Shift+B"{% endif %}>
         <svg class="sidebar-toggle__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="sidebar-toggle__label">Sidebar</span>
+        <kbd class="sidebar-toggle__kbd" aria-hidden="true">{% if (sidebar.position | default:'right') == 'left' %}b{% else %}&#8679;B{% endif %}</kbd>
     </button>
     <div class="content-sidebar-inner">
         {{ include_post(sidebar.slug) | safe }}

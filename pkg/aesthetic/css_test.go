@@ -1,9 +1,60 @@
 package aesthetic
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
+
+// Built-in presets feed the generated stylesheet; the embedded default CSS is
+// also served by the theme and must not silently drift from those presets.
+func TestBuiltinAestheticTokensMatchThemeCSS(t *testing.T) {
+	css, err := themes.ReadStatic("css/aesthetic.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"balanced", "brutal", "precision", "elevated", "minimal"} {
+		t.Run(name, func(t *testing.T) {
+			a, err := LoadBuiltin(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			block := regexp.MustCompile(`(?s)\[data-aesthetic="` + name + `"\]\s*\{([^}]*)\}`).FindSubmatch(css)
+			if block == nil {
+				t.Fatal("missing scoped tokens")
+			}
+			tokens := make(map[string]string)
+			for _, line := range strings.Split(string(block[1]), ";") {
+				key, val, ok := strings.Cut(strings.TrimSpace(line), ":")
+				if ok {
+					tokens[strings.TrimSpace(key)] = strings.TrimSpace(val)
+				}
+			}
+			for category, entries := range map[string]map[string]string{
+				"radius":     a.Tokens.Radius,
+				"border":     a.Tokens.Border,
+				"shadow":     a.Tokens.Shadow,
+				"typography": a.Tokens.Typography,
+			} {
+				for key, want := range entries {
+					// Not every preset token is consumed by the default theme.
+					cssKey := "--" + tokenToCSSName(key, map[string]string{"radius": "radius", "border": "border", "shadow": "shadow", "typography": ""}[category])
+					if got, ok := tokens[cssKey]; ok && got != want {
+						t.Errorf("%s: CSS %q, preset %q", cssKey, got, want)
+					}
+				}
+			}
+			got, err := strconv.ParseFloat(tokens["--spacing-scale"], 64)
+			if err != nil || got != a.GetSpacingScale() {
+				t.Errorf("spacing-scale: CSS %q, preset %s", tokens["--spacing-scale"], fmt.Sprint(a.GetSpacingScale()))
+			}
+		})
+	}
+}
 
 func TestGenerateCSS_Brutal(t *testing.T) {
 	// Create a brutalist aesthetic

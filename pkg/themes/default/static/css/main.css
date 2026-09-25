@@ -781,6 +781,11 @@ th, td {
   border-bottom: 1px solid var(--color-border-soft);
 }
 
+/* Long unbroken values (URLs, dotted keys) must not push tables past the column. */
+.post-content :is(th, td) {
+  overflow-wrap: anywhere;
+}
+
 th {
   font-weight: 600;
   background: color-mix(in srgb, var(--color-surface) 70%, transparent);
@@ -1652,26 +1657,78 @@ a.wikilink.wikilink-missing:focus-visible {
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
 
-/* Wikilink Tooltips */
+/* Wikilink hover previews (tooltips.js) */
 .wikilink-tooltip {
   position: fixed;
+  z-index: 1200;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 16px));
+  padding: 0.75rem 0.875rem;
+  color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 12px;
-  max-width: 300px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
-  animation: tooltipFadeIn 0.2s ease;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  text-align: left;
+  animation: tooltipFadeIn 0.14s ease-out;
 }
 
-.tooltip-title { font-weight: 600; margin-bottom: 4px; }
-.tooltip-desc { font-size: var(--text-sm); color: var(--color-text-muted); }
-.tooltip-date { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 8px; }
+.wikilink-tooltip[data-placement="above"] {
+  animation-name: tooltipFadeInAbove;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tooltip-desc {
+  margin-top: 0.25rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tooltip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.tooltip-date {
+  font-size: var(--text-xs);
+}
+
+.tooltip-path {
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+}
 
 @keyframes tooltipFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tooltipFadeInAbove {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wikilink-tooltip {
+    animation: none;
+  }
 }
 
 /* Reading Time (reading_time plugin) */

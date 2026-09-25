@@ -784,9 +784,11 @@
     var feedList = document.querySelector('#feed-nav-collapsible');
     var savedScrollTop = feedList ? feedList.scrollTop : 0;
 
-    // Preserve sidebar pinned state across DOM swap
-    var pinnedLeft = !!document.querySelector('.feed-sidebar--left.sidebar--pinned, .doc-sidebar--left.sidebar--pinned, .content-sidebar--left.sidebar--pinned');
-    var pinnedRight = !!document.querySelector('.feed-sidebar--right.sidebar--pinned, .doc-sidebar--right.sidebar--pinned, .content-sidebar--right.sidebar--pinned');
+    // Preserve docked sidebar pinned state across DOM swap. Overlay drawers
+    // (<= 1200px) close on navigation.
+    var dockedSidebars = !(typeof window.isSidebarOverlayMode === 'function' && window.isSidebarOverlayMode());
+    var pinnedLeft = dockedSidebars && !!document.querySelector('.feed-sidebar--left.sidebar--pinned, .doc-sidebar--left.sidebar--pinned, .content-sidebar--left.sidebar--pinned');
+    var pinnedRight = dockedSidebars && !!document.querySelector('.feed-sidebar--right.sidebar--pinned, .doc-sidebar--right.sidebar--pinned, .content-sidebar--right.sidebar--pinned');
 
     // Replace the full wrapper so page-specific layout classes do not leak
     // across feed -> post and post -> feed navigations.
@@ -862,9 +864,19 @@
     // Scroll to top (or to hash if present)
     if (config.scrollToTop) {
       if (window.location.hash) {
-        const target = document.querySelector(window.location.hash);
+        // New page: land on the anchor directly. getElementById avoids
+        // selector errors for ids such as "2024-notes".
+        let targetId = window.location.hash.slice(1);
+        try {
+          targetId = decodeURIComponent(targetId);
+        } catch (_) {
+          // keep the raw fragment
+        }
+        const target = document.getElementById(targetId);
         if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
+          target.scrollIntoView({ block: 'start', behavior: 'instant' });
+        } else {
+          window.scrollTo(0, 0);
         }
       } else {
         window.scrollTo(0, 0);
@@ -1323,11 +1335,25 @@
     });
   };
 
-  // ── Sidebar drawers (desktop ≥ 1201px) ──
-  // Drawers open only on explicit action: the edge handle (.sidebar-toggle),
-  // the b / B shortcuts, or keyboard focus. Open state is remembered per side
-  // in localStorage so a reader who wants the series list keeps it.
+  // ── Sidebar drawers ──
+  // Drawers open only on explicit action: the edge handle (.sidebar-toggle)
+  // or the b / B shortcuts. Docked mode (>= 1201px) pushes content aside and
+  // remembers open state per side in localStorage. Overlay mode (<= 1200px)
+  // slides a single drawer over a scrim; Escape, the scrim, or following a
+  // link closes it, and nothing is persisted.
   var SIDEBAR_STORAGE_PREFIX = 'markata-sidebar:';
+  var DRAWER_SELECTOR = '.feed-sidebar, .doc-sidebar, .content-sidebar';
+  var OVERLAY_DRAWER_SELECTOR = '.feed-sidebar, .doc-sidebar';
+  var sidebarOverlayQuery = window.matchMedia ? window.matchMedia('(max-width: 1200px)') : null;
+
+  function isSidebarOverlayMode() {
+    return !!(sidebarOverlayQuery && sidebarOverlayQuery.matches);
+  }
+
+  function isActiveDrawer(sidebar) {
+    // Content sidebars flow below the article in overlay mode.
+    return !(isSidebarOverlayMode() && sidebar.classList.contains('content-sidebar'));
+  }
 
   function sidebarSide(el) {
     return /--left\b/.test(el.className) ? 'left' : 'right';
@@ -1358,30 +1384,87 @@
     if (!btn) return;
     var open = sidebar.classList.contains('sidebar--pinned');
     var label = btn.getAttribute('data-sidebar-label') || 'sidebar';
+    var hotkey = btn.getAttribute('data-sidebar-hotkey');
+    var action = (open ? 'Close ' : 'Open ') + label + (label === 'sidebar' ? '' : ' sidebar');
     btn.setAttribute('aria-expanded', String(open));
-    btn.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + label + ' sidebar');
+    btn.setAttribute('aria-label', action);
+    btn.title = hotkey ? action + ' (' + hotkey + ')' : action;
+  }
+
+  function withoutSidebarMotion(sidebar, fn) {
+    sidebar.classList.add('sidebar--no-motion');
+    fn();
+    // Two frames so the class change lands before transitions resume.
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        sidebar.classList.remove('sidebar--no-motion');
+      });
+    });
+  }
+
+  function focusDrawerStart(sidebar) {
+    var target = sidebar.querySelector('.toc-link--active, .feed-nav-item--active a, .toc a[href], .feed-nav a[href], a[href], button:not(.sidebar-toggle)');
+    if (target && typeof target.focus === 'function') {
+      target.focus({ preventScroll: true });
+    }
   }
 
   function setSidebarOpen(sidebar, open, persist) {
+    var overlay = isSidebarOverlayMode();
+    if (open && overlay) {
+      document.querySelectorAll(OVERLAY_DRAWER_SELECTOR).forEach(function(other) {
+        if (other !== sidebar && other.classList.contains('sidebar--pinned')) {
+          setSidebarOpen(other, false, false);
+        }
+      });
+    }
     sidebar.classList.toggle('sidebar--pinned', open);
     syncSidebarToggle(sidebar);
+    if (open && overlay) {
+      // Wait for visibility to flip before moving focus into the drawer.
+      requestAnimationFrame(function() { focusDrawerStart(sidebar); });
+    }
     if (!open) {
-      // Drop focus so :focus-within cannot hold the drawer open after closing.
       var active = document.activeElement;
-      if (active && sidebar.contains(active) && typeof active.blur === 'function') {
-        active.blur();
+      var btn = sidebar.querySelector(':scope > .sidebar-toggle');
+      if (active && sidebar.contains(active) && active !== btn) {
+        if (overlay && btn) {
+          btn.focus({ preventScroll: true });
+        } else if (typeof active.blur === 'function') {
+          active.blur();
+        }
       }
     }
-    if (persist) writeSidebarState(sidebarSide(sidebar), open);
+    if (persist && !overlay) writeSidebarState(sidebarSide(sidebar), open);
+  }
+
+  function closeOverlayDrawers() {
+    var closed = null;
+    document.querySelectorAll(OVERLAY_DRAWER_SELECTOR).forEach(function(sidebar) {
+      if (sidebar.classList.contains('sidebar--pinned')) {
+        setSidebarOpen(sidebar, false, false);
+        closed = sidebar;
+      }
+    });
+    return closed;
+  }
+
+  function openOverlayDrawer() {
+    return document.querySelector('.feed-sidebar.sidebar--pinned, .doc-sidebar.sidebar--pinned');
   }
 
   // Keep fixed drawers flush with the bottom edge of the header while it is
   // on screen, then let them grow to the top once the header scrolls away.
+  // Writing a root custom property restyles the whole document, so only
+  // write when the value actually changes.
   var sidebarTopFrame = null;
+  var sidebarTopValue = null;
   function updateSidebarTop() {
     sidebarTopFrame = null;
     var header = document.querySelector('.site-header');
-    var bottom = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+    var bottom = header ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0;
+    if (bottom === sidebarTopValue) return;
+    sidebarTopValue = bottom;
     document.documentElement.style.setProperty('--sidebar-top', bottom + 'px');
   }
   function scheduleSidebarTop() {
@@ -1390,6 +1473,7 @@
     }
   }
   window.initSidebarTop = function() {
+    sidebarTopValue = null;
     if (window._sidebarTopBound) {
       updateSidebarTop();
       return;
@@ -1401,21 +1485,17 @@
   };
 
   // Restore persisted drawer state without animating the initial slide.
+  // Overlay drawers always start closed.
   window.restoreSidebarState = function() {
-    document.querySelectorAll('.feed-sidebar, .doc-sidebar, .content-sidebar').forEach(function(sidebar) {
-      var stored = readSidebarState(sidebarSide(sidebar));
-      if (stored === 'open') {
-        sidebar.classList.add('sidebar--no-motion');
-        setSidebarOpen(sidebar, true, false);
-        // Two frames so the class change lands before transitions resume.
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            sidebar.classList.remove('sidebar--no-motion');
-          });
+    var overlay = isSidebarOverlayMode();
+    document.querySelectorAll(DRAWER_SELECTOR).forEach(function(sidebar) {
+      var wantOpen = !overlay && readSidebarState(sidebarSide(sidebar)) === 'open';
+      if (wantOpen !== sidebar.classList.contains('sidebar--pinned')) {
+        withoutSidebarMotion(sidebar, function() {
+          sidebar.classList.toggle('sidebar--pinned', wantOpen);
         });
-      } else {
-        syncSidebarToggle(sidebar);
       }
+      syncSidebarToggle(sidebar);
     });
   };
 
@@ -1425,23 +1505,85 @@
       btn._sidebarToggleBound = true;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        var sidebar = btn.closest('.feed-sidebar, .doc-sidebar, .content-sidebar');
+        var sidebar = btn.closest(DRAWER_SELECTOR);
         if (!sidebar) return;
         setSidebarOpen(sidebar, !sidebar.classList.contains('sidebar--pinned'), true);
       });
     });
+
+    if (window._sidebarDocumentBound) return;
+    window._sidebarDocumentBound = true;
+
+    // Scrim tap: any click outside the open overlay drawer closes it.
+    document.addEventListener('click', function(e) {
+      if (!isSidebarOverlayMode() || !openOverlayDrawer()) return;
+      var target = e.target;
+      var inDrawer = target && target.closest && target.closest(OVERLAY_DRAWER_SELECTOR);
+      if (!inDrawer) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeOverlayDrawers();
+        return;
+      }
+      // Following a link (TOC jump or feed navigation) dismisses the overlay.
+      if (target.closest('a[href]')) {
+        setSidebarOpen(inDrawer, false, false);
+      }
+    }, true);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape' || !isSidebarOverlayMode()) return;
+      var closed = closeOverlayDrawers();
+      if (closed) {
+        e.preventDefault();
+        var btn = closed.querySelector(':scope > .sidebar-toggle');
+        if (btn) btn.focus({ preventScroll: true });
+      }
+    });
+
+    if (sidebarOverlayQuery) {
+      var onModeChange = function() {
+        if (isSidebarOverlayMode()) {
+          document.querySelectorAll(DRAWER_SELECTOR).forEach(function(sidebar) {
+            if (sidebar.classList.contains('sidebar--pinned')) {
+              withoutSidebarMotion(sidebar, function() {
+                sidebar.classList.remove('sidebar--pinned');
+              });
+              syncSidebarToggle(sidebar);
+            }
+          });
+        } else {
+          window.restoreSidebarState();
+        }
+      };
+      if (typeof sidebarOverlayQuery.addEventListener === 'function') {
+        sidebarOverlayQuery.addEventListener('change', onModeChange);
+      } else if (typeof sidebarOverlayQuery.addListener === 'function') {
+        sidebarOverlayQuery.addListener(onModeChange);
+      }
+    }
   };
+
+  // Used by updateLayoutRegions to decide whether open drawers survive SPA
+  // navigation (docked only).
+  window.isSidebarOverlayMode = isSidebarOverlayMode;
 
   // ── Keyboard shortcuts to open/close sidebars ──
   // b = toggle left drawer, B = toggle right drawer
   // Registered via shortcuts registry in navigation-shortcuts.js.
   window.toggleSidebarPinned = function(side) {
-    if (window.innerWidth < 1201) return;
     var selector = side === 'left'
       ? '.feed-sidebar--left, .doc-sidebar--left, .content-sidebar--left'
       : '.feed-sidebar--right, .doc-sidebar--right, .content-sidebar--right';
-    document.querySelectorAll(selector).forEach(function(el) {
-      setSidebarOpen(el, !el.classList.contains('sidebar--pinned'), true);
+    var drawers = Array.prototype.filter.call(document.querySelectorAll(selector), isActiveDrawer);
+    if (!drawers.length) return;
+    var anyOpen = drawers.some(function(el) { return el.classList.contains('sidebar--pinned'); });
+    if (isSidebarOverlayMode()) {
+      setSidebarOpen(drawers[0], !anyOpen, false);
+      return;
+    }
+    drawers.forEach(function(el) {
+      setSidebarOpen(el, !anyOpen, true);
     });
   };
 

@@ -93,12 +93,13 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
-  /* Article reading progress indicator - minimal, no glow */
+  /* Article reading progress indicator - follows the palette accent in both
+     light and dark modes (tokens resolve against the active palette). */
   --article-progress-height: 3px;
-  --article-progress-track: color-mix(in srgb, var(--color-text) 20%, var(--color-background) 80%);
-  --article-progress-start: var(--color-text-muted);
-  --article-progress-end: var(--color-text);
-  --article-progress-glow: transparent;
+  --article-progress-track: color-mix(in srgb, var(--color-text) 8%, transparent);
+  --article-progress-start: var(--color-primary);
+  --article-progress-end: var(--color-primary-light, var(--color-primary));
+  --article-progress-glow: color-mix(in srgb, var(--color-primary) 35%, transparent);
 
   /* Accent gradients - editorial, subdued tones */
   --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
@@ -140,8 +141,6 @@
 
     /* Darker article shadow for dark mode */
     --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --article-progress-track: color-mix(in srgb, var(--color-background) 65%, white 35%);
-    --article-progress-glow: color-mix(in srgb, var(--color-primary) 50%, transparent 60%);
   }
 }
 }
