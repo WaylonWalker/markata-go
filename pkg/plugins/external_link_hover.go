@@ -96,7 +96,9 @@ func (p *ExternalLinkHoverPlugin) Configure(m *lifecycle.Manager) error {
 	p.fetchTitle = p.embeds.config.FallbackTitle
 
 	p.blogroll = map[string]models.ExternalFeedConfig{}
-	for _, feed := range getBlogrollConfig(cfg).Feeds {
+	feeds := getBlogrollConfig(cfg).Feeds
+	for i := range feeds {
+		feed := feeds[i]
 		for _, raw := range []string{feed.SiteURL, feed.URL} {
 			host := externalLinkHost(raw)
 			if host == "" {
@@ -210,7 +212,7 @@ func (p *ExternalLinkHoverPlugin) annotateTag(tag string) string {
 	}
 
 	parsed, err := url.Parse(href)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+	if err != nil || (parsed.Scheme != schemeHTTP && parsed.Scheme != schemeHTTPS) || parsed.Host == "" {
 		return tag
 	}
 	host := strings.ToLower(parsed.Hostname())

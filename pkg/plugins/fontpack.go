@@ -23,6 +23,8 @@ const (
 	fontpackCacheVersion     = "3"
 )
 
+const fontpackRoleHeading = "heading"
+
 // FontpackPlugin installs one site-wide typography stylesheet. It never calls
 // a subsetter: bundled tiers are immutable catalog artifacts.
 type FontpackPlugin struct {
@@ -103,6 +105,7 @@ func (p *FontpackPlugin) Render(m *lifecycle.Manager) error {
 	return err
 }
 
+//nolint:gocyclo // Resolving page overrides, picker packs, cache state, and preloads is one coordinated preparation pass.
 func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 	if p.prepared != nil {
 		return p.prepared, nil
@@ -229,8 +232,8 @@ func validFontpackPreloadCache(output string, names []string, catalog *fontpacks
 func fontpackPreloadURLs(pack fontpacks.FontPack, assets []fontpacks.Asset) []string {
 	urls := []string{}
 	seen := map[string]bool{}
-	for _, role := range []string{"body", "display", "heading"} {
-		if role == "heading" && pack.Roles["display"].Source != "" {
+	for _, role := range []string{"body", "display", fontpackRoleHeading} {
+		if role == fontpackRoleHeading && pack.Roles["display"].Source != "" {
 			continue
 		}
 		source := pack.Roles[role].Source
@@ -252,7 +255,6 @@ func fontpackPreloadURLs(pack fontpacks.FontPack, assets []fontpacks.Asset) []st
 	return urls
 }
 
-//nolint:gocyclo // Font assets have separate local, remote, and fallback write paths.
 func (p *FontpackPlugin) Write(m *lifecycle.Manager) error {
 	build, err := p.prepare(m)
 	if err != nil {

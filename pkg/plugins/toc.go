@@ -163,7 +163,7 @@ func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 		// so this runs before the level filter.
 		var id string
 		if explicit := tocExplicitIDRegex.FindStringSubmatch(match[2]); explicit != nil {
-			id = explicit[1]
+			id = explicitHeadingID(explicit[1])
 		} else {
 			id = p.generateID(text, idCounts)
 		}
@@ -199,15 +199,27 @@ var (
 	// tocHeadingAttrRegex matches a trailing {#id .class} attribute block.
 	tocHeadingAttrRegex = regexp.MustCompile(`\s*\{[^}]*\}\s*$`)
 	// tocExplicitIDRegex captures the id from a trailing {#id .class} block.
-	// Like goldmark's attribute parser, the id runs until whitespace or ASCII
-	// punctuation other than "_-:.", so non-ASCII ids are kept whole.
-	tocExplicitIDRegex = regexp.MustCompile("\\{[^}]*#([^\\s!-,/;-@\\[-^`{-~]+)[^}]*\\}\\s*$")
+	// Capture to whitespace, then validate ASCII punctuation separately. This
+	// avoids an ambiguous punctuation range while preserving _-:.
+	tocExplicitIDRegex = regexp.MustCompile(`\{[^}]*#([^\s}]+)[^}]*\}\s*$`)
 	// tocInlineMarkupRegex matches emphasis, strike and mark delimiters.
 	// Underscores are handled separately because intraword `_` is literal.
 	tocInlineMarkupRegex = regexp.MustCompile("[*`~=]+")
 	// tocWhitespaceRegex collapses runs of whitespace.
 	tocWhitespaceRegex = regexp.MustCompile(`\s+`)
 )
+
+func explicitHeadingID(candidate string) string {
+	for i, r := range candidate {
+		if r < '!' || r > '~' || r == '_' || r == '-' || r == ':' || r == '.' {
+			continue
+		}
+		if (r >= '!' && r <= '/') || (r >= ':' && r <= '@') || (r >= '[' && r <= '`') || (r >= '{' && r <= '~') {
+			return candidate[:i]
+		}
+	}
+	return candidate
+}
 
 // cleanHeadingText reduces a markdown heading line to its visible text so the
 // TOC never shows raw HTML or markdown syntax. Earlier Transform plugins
@@ -240,11 +252,10 @@ func cleanHeadingText(raw string) string {
 
 // protectCodeSpans swaps inline code spans for placeholders and returns
 // their literal contents in order.
-func protectCodeSpans(s string) (string, []string) {
+func protectCodeSpans(s string) (protected string, spans []string) {
 	if !strings.Contains(s, "`") {
 		return s, nil
 	}
-	var spans []string
 	var b strings.Builder
 	for i := 0; i < len(s); {
 		if s[i] != '`' {
@@ -298,6 +309,8 @@ func codeSpanPlaceholder(i int) string {
 // stripEmphasisUnderscores removes paired `_` emphasis delimiters while
 // keeping intraword underscores (snake_case) and unpaired ones (_headers),
 // approximating CommonMark's rules for heading text.
+//
+//nolint:gocyclo // The scanner coordinates delimiter-run pairing and context rules in one pass.
 func stripEmphasisUnderscores(s string) string {
 	if !strings.Contains(s, "_") {
 		return s

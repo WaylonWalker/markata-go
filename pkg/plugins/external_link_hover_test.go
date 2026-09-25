@@ -12,9 +12,9 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-func newExternalLinkHoverManager(t *testing.T, hover map[string]any, extra map[string]any) (*lifecycle.Manager, string) {
+func newExternalLinkHoverManager(t *testing.T, hover, extra map[string]any) (manager *lifecycle.Manager, cacheDir string) {
 	t.Helper()
-	cacheDir := filepath.Join(t.TempDir(), "embeds")
+	cacheDir = filepath.Join(t.TempDir(), "embeds")
 	cfgExtra := map[string]interface{}{
 		"models_config":       &models.Config{URL: "https://mysite.test"},
 		"external_link_hover": hover,

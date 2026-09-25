@@ -241,7 +241,7 @@ func TestAestheticSurfaceCSS_DistinctPerAesthetic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read aesthetic.css: %v", err)
 	}
-	combined := aestheticSurfaceCSS + string(themeCSS)
+	combined := aestheticSurfaceCSS + strings.ReplaceAll(string(themeCSS), "\r\n", "\n")
 	for _, name := range []string{"balanced", "elevated", "precision", "brutal", "minimal"} {
 		if !strings.Contains(combined, `[data-aesthetic="`+name+`"] {`+"\n  --radius-sm:") {
 			t.Errorf("aesthetic %q has no radius tokens", name)
