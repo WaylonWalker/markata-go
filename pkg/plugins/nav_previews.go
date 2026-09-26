@@ -12,7 +12,7 @@ import (
 
 // buildNavPreviews resolves configured local navigation links once per build.
 // The result is read-only while templates render concurrently.
-func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []models.FeedConfig) map[string]map[string]interface{} {
+func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []models.FeedConfig, blogroll models.BlogrollConfig, random RandomPostConfig) map[string]map[string]interface{} {
 	if config == nil {
 		return nil
 	}
@@ -20,6 +20,7 @@ func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []model
 	if len(items) == 0 {
 		items = config.Nav
 	}
+	items = append(append([]models.NavItem{}, items...), config.Components.Footer.Links...)
 	if len(items) == 0 {
 		return nil
 	}
@@ -49,9 +50,51 @@ func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []model
 			previews[item.URL] = feedNavPreview(feed)
 		} else if post := postsByPath[key]; post != nil {
 			previews[item.URL] = postNavPreview(post)
+		} else if special := specialNavPreview(key, posts, blogroll, random); special != nil {
+			previews[item.URL] = special
 		}
 	}
 	return previews
+}
+
+func specialNavPreview(key string, posts []*models.Post, blogroll models.BlogrollConfig, random RandomPostConfig) map[string]interface{} {
+	if blogroll.Enabled {
+		blogrollSlug := blogroll.BlogrollSlug
+		if blogrollSlug == "" {
+			blogrollSlug = defaultBlogrollSlug
+		}
+		readerSlug := blogroll.ReaderSlug
+		if readerSlug == "" {
+			readerSlug = defaultReaderSlug
+		}
+		blogrollPath := cleanNavPath("/" + blogrollSlug)
+		readerPath := cleanNavPath("/" + readerSlug)
+		if key == blogrollPath || key == readerPath {
+			count := 0
+			for i := range blogroll.Feeds {
+				if blogroll.Feeds[i].IsActive() {
+					count++
+				}
+			}
+			if key == readerPath {
+				return map[string]interface{}{
+					"kind": "reader", "description": "Recent articles, videos, and podcasts from followed RSS feeds.",
+					"count": count, "count_label": "sources",
+				}
+			}
+			return map[string]interface{}{
+				"kind": "followed", "description": "The blogs and feeds I follow.",
+				"count": count, "count_label": "sources",
+			}
+		}
+	}
+	if random.Enabled && key == cleanNavPath("/"+normalizeRandomPostPath(random.Path)) {
+		return map[string]interface{}{
+			"kind": "surprise", "description": "Find a post you might have missed.",
+			"count": len(eligibleRandomPostHrefs(posts, random.ExcludeTags)), "count_label": "posts in the draw",
+		}
+	}
+	return nil
 }
 
 func eligibleNavPost(post *models.Post) bool {

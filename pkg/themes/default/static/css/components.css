@@ -329,6 +329,16 @@
   color: var(--color-link, var(--color-primary));
 }
 
+.footer-links .nav-link {
+  padding: 0;
+}
+
+.footer-links .nav-preview {
+  top: auto;
+  bottom: calc(100% + 0.65rem);
+  text-decoration: none;
+}
+
 .footer-copyright {
   font-size: 0.875rem;
   color: var(--color-text-muted);

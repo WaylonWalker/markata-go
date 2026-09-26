@@ -340,7 +340,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			navFeeds = feeds
 		}
 	}
-	navPreviews := buildNavPreviews(ToModelsConfig(config), m.Posts(), navFeeds)
+	navPreviews := buildNavPreviews(ToModelsConfig(config), m.Posts(), navFeeds, getBlogrollConfig(config), parseRandomPostConfig(config))
 	m.Cache().Set("nav_previews", navPreviews)
 
 	// Get build cache to check if posts need rebuilding

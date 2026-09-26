@@ -4,7 +4,7 @@ This document specifies the template system for rendering content.
 
 ## Navigation previews
 
-The default navigation component resolves local nav URLs against generated feeds and published posts. A matching feed or post may show a compact preview on hover or keyboard focus. Feed previews show their description when present, the count of public posts, total words and estimated reading time when available, and a monthly publication rhythm for dated posts. Post previews show their description, tags, word count, and reading time when available. Missing values are omitted. External links and local links without a matching feed or post remain ordinary links.
+The default header and footer navigation components resolve local URLs against generated feeds, published posts, and the enabled Reader, Blogroll, and Random routes. A matching link may show a compact preview on hover or keyboard focus. Feed previews show their description when present, the count of public posts, total words and estimated reading time when available, and a monthly publication rhythm for dated posts. Post previews show their description, tags, word count, and reading time when available. Reader and Blogroll previews show the number of active followed sources. Random previews show the number of posts eligible for its configured draw. Missing values are omitted. External and unmatched links remain ordinary links.
 
 Preview content is generated at build time and escaped by the template engine. Private or unpublished post metadata must never appear in a preview. The nav link remains directly navigable, and preview content is supplementary. On narrow viewports, previews must not obstruct the scrollable navigation strip. Keyboard focus and reduced-motion preferences must be supported.
 

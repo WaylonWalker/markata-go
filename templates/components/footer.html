@@ -13,7 +13,7 @@
         {% if footer.links %}
         <nav class="footer-links">
             {% for link in footer.links %}
-            <a href="{{ link.url }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}{% if link.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
+            {% with item = link %}{% include "components/nav_link.html" %}{% endwith %}
             {% endfor %}
         </nav>
         {% endif %}

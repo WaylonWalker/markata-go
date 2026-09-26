@@ -31,7 +31,7 @@ func TestNavPreviews_ResolveAndRender(t *testing.T) {
 		{Label: "Outside", URL: "https://example.com/journal/", External: true},
 	}
 	feeds := []models.FeedConfig{{Slug: "journal", Description: "Occasional dispatches", Posts: []*models.Post{public, second, private}}}
-	previews := buildNavPreviews(config, []*models.Post{public, second, private}, feeds)
+	previews := buildNavPreviews(config, []*models.Post{public, second, private}, feeds, models.BlogrollConfig{}, RandomPostConfig{})
 	if len(previews) != 2 {
 		t.Fatalf("got %d previews, want 2", len(previews))
 	}
@@ -63,6 +63,57 @@ func TestNavPreviews_ResolveAndRender(t *testing.T) {
 	}
 	if strings.Contains(html, "9000") || strings.Contains(html, "Secret</span>") {
 		t.Errorf("private metadata appeared in nav: %s", html)
+	}
+}
+
+func TestNavPreviews_GeneratedRoutesAndFooter(t *testing.T) {
+	config := models.NewConfig()
+	enabled := true
+	config.Components.Nav.Enabled = &enabled
+	config.Nav = []models.NavItem{
+		{Label: "Reader", URL: "/reading/"},
+		{Label: "Random", URL: "/surprise/"},
+	}
+	config.Components.Footer.Links = []models.NavItem{{Label: "Blogroll", URL: "/following/"}}
+	posts := []*models.Post{
+		{Href: "/one/", Published: true},
+		{Href: "/two/", Published: true, Tags: []string{"exclude"}},
+		{Href: "/secret/", Published: true, Private: true},
+	}
+	blogroll := models.BlogrollConfig{
+		Enabled: true, BlogrollSlug: "following", ReaderSlug: "reading",
+		Feeds: []models.ExternalFeedConfig{{URL: "https://one.example/feed"}, {URL: "https://two.example/feed"}},
+	}
+	random := RandomPostConfig{Enabled: true, Path: "surprise", ExcludeTags: []string{"exclude"}}
+	previews := buildNavPreviews(config, posts, nil, blogroll, random)
+	if previews["/reading/"]["kind"] != "reader" || previews["/reading/"]["count"] != 2 {
+		t.Fatalf("reader preview = %#v", previews["/reading/"])
+	}
+	if previews["/following/"]["kind"] != "followed" || previews["/following/"]["count"] != 2 {
+		t.Fatalf("blogroll preview = %#v", previews["/following/"])
+	}
+	if previews["/surprise/"]["kind"] != "surprise" || previews["/surprise/"]["count"] != 1 {
+		t.Fatalf("random preview = %#v", previews["/surprise/"])
+	}
+	engine, err := templates.NewEngine("../../templates")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := templates.NewContext(nil, "", config)
+	ctx.Set("nav_previews", previews)
+	html, err := engine.Render("components/footer.html", ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, "Followed sites") || !strings.Contains(html, "2</strong> sources") {
+		t.Fatalf("footer link lacks blogroll preview: %s", html)
+	}
+	navHTML, err := engine.Render("components/nav.html", ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(navHTML, "RSS reader") || !strings.Contains(navHTML, "followed RSS feeds") {
+		t.Fatalf("reader link lacks RSS preview: %s", navHTML)
 	}
 }
 
