@@ -588,7 +588,7 @@ func runConfigGetCommand(_ *cobra.Command, args []string) error {
 
 	value, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, config.ErrKeyNotFound) {
 			return newUsageError(configKeyError(key))
 		}
 		return fmt.Errorf("cannot read %q from %s: %w", key, configPath, err)
@@ -724,7 +724,7 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 	oldValue, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
 		oldValue = nil
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, config.ErrKeyNotFound) {
 			candidate := configKeyError(key)
 			var input *inputError
 			if errors.As(candidate, &input) && len(input.matches) > 0 && safeConfigSetSuggestion(key, input.matches[0]) {
@@ -759,6 +759,8 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 }
 
 func safeConfigSetSuggestion(key, candidate string) bool {
+	key = strings.TrimPrefix(key, "markata-go.")
+	candidate = strings.TrimPrefix(candidate, "markata-go.")
 	keyParent, _, keyNested := strings.Cut(key, ".")
 	candidateParent, _, candidateNested := strings.Cut(candidate, ".")
 	if keyNested || candidateNested {

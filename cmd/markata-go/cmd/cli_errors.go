@@ -12,10 +12,11 @@ import (
 )
 
 type inputError struct {
-	problem string
-	matches []string
-	prefix  string
-	next    string
+	problem     string
+	matches     []string
+	prefix      string
+	next        string
+	knownIntent bool
 }
 
 func (e *inputError) Error() string {
@@ -26,7 +27,7 @@ func (e *inputError) Error() string {
 		for _, match := range e.matches {
 			fmt.Fprintf(&b, "\n  %s%s", e.prefix, match)
 		}
-	} else {
+	} else if !e.knownIntent {
 		b.WriteString("\nmarkata-go cannot infer what you intended.")
 	}
 	if e.next != "" {
@@ -104,12 +105,15 @@ func styleErrorLines(message string) string {
 }
 
 func configKeyError(key string) error {
+	lookupKey := strings.TrimPrefix(key, "markata-go.")
+	prefix := strings.TrimSuffix(key, lookupKey)
 	candidates := make([]string, 0)
 	for _, field := range configSettingsForSuggestions() {
-		if field == key {
+		if field == lookupKey {
 			return &inputError{
-				problem: fmt.Sprintf("configuration key %q is not set in this file", key),
-				next:    "Run 'markata-go config show' to see its resolved value, including defaults.",
+				problem:     fmt.Sprintf("configuration key %q is not set in this file", key),
+				next:        "Run 'markata-go config show' to see its resolved value, including defaults.",
+				knownIntent: true,
 			}
 		}
 		candidates = append(candidates, field)
@@ -117,7 +121,8 @@ func configKeyError(key string) error {
 	sort.Strings(candidates)
 	return &inputError{
 		problem: fmt.Sprintf("unknown configuration key %q", key),
-		matches: suggest.Closest(key, candidates, 3),
+		matches: suggest.Closest(lookupKey, candidates, 3),
+		prefix:  prefix,
 		next:    "Run 'markata-go config show' to inspect the active configuration.",
 	}
 }

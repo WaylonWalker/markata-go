@@ -218,8 +218,27 @@ func stopCPUProfile() {
 	verbosef("CPU profile written to %s", cpuProfile)
 }
 
+func runHelpCommand(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return rootCmd.Help()
+	}
+	target, remaining, err := rootCmd.Find(args)
+	if err != nil {
+		return newUsageError(err)
+	}
+	if len(remaining) > 0 {
+		return unknownCommandError(target, remaining[0])
+	}
+	return target.Help()
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SetHelpCommand(&cobra.Command{
+		Use:   "help [command]",
+		Short: "Show help for a command",
+		RunE:  runHelpCommand,
+	})
 	rootCmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		renderCommandHelp(cmd)
 	})

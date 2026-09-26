@@ -68,6 +68,21 @@ func TestUnknownConfigSubcommandDoesNotShowConfiguration(t *testing.T) {
 	}
 }
 
+func TestHelpTypoReturnsSuggestion(t *testing.T) {
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"sevre"}, "markata-go serve"},
+		{[]string{"config", "sho"}, "markata-go config show"},
+	} {
+		err := runHelpCommand(nil, test.args)
+		if ExitCodeForError(err) != exitCodeUsage || !strings.Contains(err.Error(), test.want) {
+			t.Errorf("help %v error = %v; want %s", test.args, err, test.want)
+		}
+	}
+}
+
 func TestUnknownCommandGroupChildIsUsageError(t *testing.T) {
 	prepareCommandGroups(rootCmd)
 	for _, group := range []*cobra.Command{paletteCmd, agentCmd, readerCmd} {
@@ -108,6 +123,13 @@ func TestConfigSetSuggestionPreservesExtensionKeys(t *testing.T) {
 	}
 	if !safeConfigSetSuggestion("output_dr", "output_dir") {
 		t.Fatal("a close multiword top-level key should be diagnosed")
+	}
+}
+
+func TestKnownConfigKeyErrorDoesNotClaimAmbiguity(t *testing.T) {
+	message := configKeyError("markata-go.output_dir").Error()
+	if !strings.Contains(message, "not set") || strings.Contains(message, "cannot infer") {
+		t.Fatalf("message = %q", message)
 	}
 }
 
