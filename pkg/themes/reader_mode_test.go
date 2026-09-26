@@ -27,6 +27,7 @@ func TestReaderMode_LayoutKeepsPostReadable(t *testing.T) {
 		{"restore full page width", string(components), "body.reader-mode .page-wrapper", "max-width: var(--page-width, 1200px)"},
 		{"remove pinned sidebar push", string(components), "body.reader-mode .page-wrapper > .main-content", "width: 100%"},
 		{"remove empty TOC column", string(components), "body.reader-mode .content-wrapper--with-sidebar", "display: block"},
+		{"keep exit hint from covering the page", string(components), "body.reader-mode::after", "inset: auto 1rem 1rem auto"},
 		{"widen article measure", string(main), "body.reader-mode article.post", "max-width: 82ch"},
 		{"keep padding inside mobile width", string(main), "body.reader-mode article.post", "box-sizing: border-box"},
 	}

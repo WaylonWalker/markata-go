@@ -4819,8 +4819,8 @@ body.reader-mode .content-wrapper--with-sidebar {
 body.reader-mode::after {
   content: 'reader mode (s)';
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  /* Reset the full-viewport body::after used by theme motifs. */
+  inset: auto 1rem 1rem auto;
   font-size: 0.75rem;
   font-family: var(--font-mono, monospace);
   color: var(--color-text-muted);
