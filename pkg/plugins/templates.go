@@ -38,9 +38,11 @@ const (
 // TemplatesPlugin wraps rendered markdown content in HTML templates.
 // It operates during the render stage, after markdown has been converted to HTML.
 type TemplatesPlugin struct {
-	engine       *templates.Engine
-	layoutConfig *models.LayoutConfig
-	config       *lifecycle.Config
+	engine        *templates.Engine
+	layoutConfig  *models.LayoutConfig
+	config        *lifecycle.Config
+	localPreviews map[string]string
+	siteURL       string
 }
 
 // NewTemplatesPlugin creates a new templates plugin.
@@ -340,8 +342,11 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			navFeeds = feeds
 		}
 	}
+	navFeeds = previewFeeds(config, m.Posts(), navFeeds)
 	navPreviews := buildNavPreviews(ToModelsConfig(config), m.Posts(), navFeeds, getBlogrollConfig(config), parseRandomPostConfig(config))
 	m.Cache().Set("nav_previews", navPreviews)
+	p.localPreviews = encodeLocalPreviews(buildLocalPreviews(m.Posts(), navFeeds))
+	p.siteURL = ToModelsConfig(config).URL
 
 	// Get build cache to check if posts need rebuilding
 	cache := GetBuildCache(m)
@@ -373,7 +378,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
-		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) {
+		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
 			cacheablePosts = append(cacheablePosts, post)
 		} else {
 			postsNeedingRender = append(postsNeedingRender, post)
@@ -411,6 +416,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		if cache != nil && post.InputHash != "" {
 			//nolint:errcheck // caching is best-effort, failures are non-fatal
 			cache.CacheFullHTML(post.Path, html)
+			cache.SetLocalPreviewHash(post.Path, localPreviewHash(post, p.localPreviews, p.siteURL))
 			// Store feed membership hash for future builds
 			if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
 				cache.SetFeedMembershipHash(post.Path, membershipHash)
@@ -548,7 +554,15 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 
 	// Create template context
 	modelsConfig := applyPostFormatsToConfig(ToModelsConfig(config), resolvePostFormats(post, config))
-	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
+	articleHTML := annotateLocalPreviewLinks(post.ArticleHTML, post.Href, p.siteURL, p.localPreviews)
+	ctx := templates.NewContext(post, articleHTML, modelsConfig)
+	tagPreviews := make(map[string]string, len(post.Tags))
+	for _, tag := range post.Tags {
+		if preview := localPreviewForTag(tag, p.localPreviews); preview != "" {
+			tagPreviews[tag] = preview
+		}
+	}
+	ctx.Set("tag_preview_json", tagPreviews)
 	ctx = ctx.WithCore(m).WithBlogLayout(templateName == models.LayoutToTemplate("blog"))
 	ctx.Set("canonical_rendering_fixture", isCanonicalRenderingFixture(post))
 	ctx.Set("feed_posts", createFeedPostsFunc(m))

@@ -216,6 +216,8 @@ type PostCache struct {
 	// When feed membership changes (posts added/removed from a tag), this hash
 	// changes and the post is rebuilt with the updated sidebar.
 	FeedMembershipHash string `json:"feed_membership_hash,omitempty"`
+	// LocalPreviewHash tracks preview data used by links and tags on this page.
+	LocalPreviewHash string `json:"local_preview_hash,omitempty"`
 
 	// LinkAvatarsHash is a hash of the ArticleHTML input used for link_avatars caching.
 	// When ArticleHTML changes, this hash changes and the post is re-processed.
@@ -1322,6 +1324,26 @@ func (c *Cache) GetFeedMembershipHash(sourcePath string) string {
 	defer c.mu.RUnlock()
 	if cached, ok := c.Posts[sourcePath]; ok {
 		return cached.FeedMembershipHash
+	}
+	return ""
+}
+
+// SetLocalPreviewHash stores the preview fingerprint for a rendered page.
+func (c *Cache) SetLocalPreviewHash(sourcePath, hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.LocalPreviewHash = hash
+		c.dirty = true
+	}
+}
+
+// GetLocalPreviewHash returns the preview fingerprint for a rendered page.
+func (c *Cache) GetLocalPreviewHash(sourcePath string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if cached, ok := c.Posts[sourcePath]; ok {
+		return cached.LocalPreviewHash
 	}
 	return ""
 }

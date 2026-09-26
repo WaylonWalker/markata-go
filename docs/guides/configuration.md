@@ -498,6 +498,8 @@ external = true
 
 The default theme adds a small preview when a local header or footer navigation URL matches a generated feed or published post. For a feed such as `/blog/`, hovering the link or focusing it with a keyboard shows its description, public post count, total words, reading time, and publication rhythm when those values are available. For a post, the preview uses its description, tags, word count, and reading time. Enabled Reader and Blogroll links show the number of active followed sources; an enabled Random post link shows how many posts are in its draw. External and unmatched links stay as ordinary links. Previews are hidden on narrow or touch screens, where the navigation is a scrollable strip.
 
+Links inside a post can use the same preview. Write a normal Markdown link such as `[Start here](/start/)` or a wikilink such as `[[start]]`. When its destination is a public post or feed, hover or keyboard focus shows the destination title and available metadata. An absolute URL for the configured site also works; `http://localhost:8000/start/` works during local development. Tags shown on a post get a collection preview when their `/tags/<tag>/` feed exists. Links to other sites and links without a matching public page keep their usual behavior.
+
 To give a feed link useful preview text, set `description` on its `[[markata-go.feeds]]` entry. For a post link, set `description` and `tags` in that post's frontmatter. The link URL must match the generated page path, such as `/blog/` or `/about/`.
 
 To add a built-in **Random post** link:

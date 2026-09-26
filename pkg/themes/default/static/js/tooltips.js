@@ -5,6 +5,7 @@
  * floating card: wikilinks, glossary terms, and author-defined hovers.
  *
  * Built-in sources (first match wins):
+ *   a[data-local-preview]          local feed/post stats and publication rhythm
  *   a.wikilink[data-title]        title, description, date, and path
  *   a.glossary-term[title]        term and definition (native title is suppressed)
  *   a[data-link-preview]          external link title, description, image, site, path
@@ -80,6 +81,56 @@
     if (meta.childNodes.length) wrap.appendChild(meta);
     if (!wrap.childNodes.length) return null;
     while (wrap.firstChild) frag.appendChild(wrap.firstChild);
+    return frag;
+  }
+
+  function localPreviewCard(link) {
+    var data;
+    try { data = JSON.parse(link.dataset.localPreview); } catch (e) { return null; }
+    var frag = document.createDocumentFragment();
+    addLine(frag, 'tooltip-kind', data.kind === 'feed' ? 'Collection' : 'Article');
+    addLine(frag, 'tooltip-title', data.title || link.textContent.trim());
+    addLine(frag, 'tooltip-desc', data.description);
+    if (data.tags && data.tags.length) {
+      var tags = document.createElement('div');
+      tags.className = 'local-preview-tags';
+      data.tags.forEach(function(tag) {
+        var chip = document.createElement('span');
+        chip.textContent = tag;
+        tags.appendChild(chip);
+      });
+      frag.appendChild(tags);
+    }
+    var stats = document.createElement('div');
+    stats.className = 'local-preview-stats';
+    function stat(value, label) {
+      if (!value && value !== 0) return;
+      var item = document.createElement('span');
+      var strong = document.createElement('strong');
+      strong.textContent = value;
+      item.appendChild(strong);
+      item.appendChild(document.createTextNode(' ' + label));
+      stats.appendChild(item);
+    }
+    if (data.kind === 'feed') stat(data.count, data.count === 1 ? 'post' : 'posts');
+    if (data.words) stat(data.words_display, 'words');
+    if (data.minutes) stat(data.reading_display, 'read');
+    if (stats.childNodes.length) frag.appendChild(stats);
+    if (data.sparkline) {
+      var rhythm = document.createElement('div');
+      rhythm.className = 'local-preview-rhythm';
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 96 28');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      svg.setAttribute('aria-hidden', 'true');
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      line.setAttribute('points', data.sparkline);
+      svg.appendChild(line);
+      rhythm.appendChild(svg);
+      addLine(rhythm, 'local-preview-rhythm-label', 'Publication rhythm');
+      frag.appendChild(rhythm);
+    }
+    addLine(frag, 'tooltip-path', linkPath(link));
     return frag;
   }
 
@@ -248,6 +299,8 @@
       }
     });
   }
+
+  register('a[data-local-preview]', localPreviewCard, { className: 'hover-card--local' });
 
   register('a.wikilink[data-title]', function(link) {
     return textCard(

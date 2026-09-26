@@ -7,8 +7,50 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+// previewFeeds includes auto tag pages before their feed configs are published
+// in the Collect stage, which runs after post templates render.
+func previewFeeds(config *lifecycle.Config, posts []*models.Post, configured []models.FeedConfig) []models.FeedConfig {
+	auto := getAutoFeedsConfig(config)
+	if !auto.Tags.Enabled || !auto.Tags.Formats.HTML {
+		return configured
+	}
+	prefix := autoFeedSlugPrefix(auto.Tags.SlugPrefix, defaultTagsPrefix)
+	privateTags := getPrivateTagSlugs(config)
+	seen := make(map[string]bool, len(configured))
+	for i := range configured {
+		seen[configured[i].Slug] = true
+	}
+	result := append([]models.FeedConfig{}, configured...)
+	postsByTag := make(map[string][]*models.Post)
+	for _, post := range posts {
+		if !eligibleNavPost(post) {
+			continue
+		}
+		seenTag := make(map[string]bool, len(post.Tags))
+		for _, tag := range post.Tags {
+			slug := models.Slugify(tag)
+			if slug != "" && !seenTag[slug] {
+				postsByTag[slug] = append(postsByTag[slug], post)
+				seenTag[slug] = true
+			}
+		}
+	}
+	for _, group := range collectAutoTagGroups(posts) {
+		slug := prefix + "/" + group.SlugPart
+		if seen[slug] || privateTags[group.SlugPart] {
+			continue
+		}
+		feed := models.FeedConfig{Slug: slug, Title: "Posts tagged: " + group.Display, Description: fmt.Sprintf("All posts with the tag %q", group.Display), Posts: postsByTag[group.SlugPart]}
+		if len(feed.Posts) > 0 {
+			result = append(result, feed)
+		}
+	}
+	return result
+}
 
 // buildNavPreviews resolves configured local navigation links once per build.
 // The result is read-only while templates render concurrently.
@@ -25,20 +67,7 @@ func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []model
 		return nil
 	}
 
-	feedsByPath := make(map[string]*models.FeedConfig, len(feeds))
-	for i := range feeds {
-		feed := &feeds[i]
-		if !feed.IncludesPrivate() {
-			feedsByPath[cleanNavPath("/"+feed.Slug)] = feed
-		}
-	}
-	postsByPath := make(map[string]*models.Post, len(posts))
-	for _, post := range posts {
-		if !eligibleNavPost(post) {
-			continue
-		}
-		postsByPath[cleanNavPath(post.Href)] = post
-	}
+	localPreviews := buildLocalPreviews(posts, feeds)
 
 	previews := make(map[string]map[string]interface{}, len(items))
 	for _, item := range items {
@@ -46,12 +75,27 @@ func buildNavPreviews(config *models.Config, posts []*models.Post, feeds []model
 		if !ok {
 			continue
 		}
-		if feed := feedsByPath[key]; feed != nil {
-			previews[item.URL] = feedNavPreview(feed)
-		} else if post := postsByPath[key]; post != nil {
-			previews[item.URL] = postNavPreview(post)
+		if preview := localPreviews[key]; preview != nil {
+			previews[item.URL] = preview
 		} else if special := specialNavPreview(key, posts, blogroll, random); special != nil {
 			previews[item.URL] = special
+		}
+	}
+	return previews
+}
+
+// buildLocalPreviews indexes every public feed and post for article links.
+// Feeds take precedence when a feed and post publish the same route.
+func buildLocalPreviews(posts []*models.Post, feeds []models.FeedConfig) map[string]map[string]interface{} {
+	previews := make(map[string]map[string]interface{}, len(posts)+len(feeds))
+	for _, post := range posts {
+		if eligibleNavPost(post) {
+			previews[cleanNavPath(post.Href)] = postNavPreview(post)
+		}
+	}
+	for i := range feeds {
+		if !feeds[i].IncludesPrivate() {
+			previews[cleanNavPath("/"+feeds[i].Slug)] = feedNavPreview(&feeds[i])
 		}
 	}
 	return previews
@@ -123,6 +167,7 @@ func cleanNavPath(raw string) string {
 func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 	preview := map[string]interface{}{
 		"kind":        "feed",
+		"title":       feed.Title,
 		"description": feed.Description,
 	}
 	count, words, minutes := 0, 0, 0
@@ -151,6 +196,9 @@ func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 func postNavPreview(post *models.Post) map[string]interface{} {
 	preview := map[string]interface{}{
 		"kind": "post",
+	}
+	if post.Title != nil {
+		preview["title"] = *post.Title
 	}
 	words := postStat(post, "word_count")
 	minutes := postStat(post, "reading_time")

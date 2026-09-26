@@ -14,11 +14,11 @@ func TestNavPreviews_ResolveAndRender(t *testing.T) {
 	description := "A focused article"
 	public := &models.Post{
 		Href: "/article/", Published: true, Description: &description,
-		Tags: []string{"go", "notes"}, Date: datePtr(2026, time.January, 1),
+		Tags: []string{"go", "notes"}, Date: datePtr(time.January),
 		Extra: map[string]interface{}{"word_count": 800, "reading_time": 4},
 	}
 	second := &models.Post{
-		Href: "/another/", Published: true, Date: datePtr(2026, time.February, 1),
+		Href: "/another/", Published: true, Date: datePtr(time.February),
 		Extra: map[string]interface{}{"word_count": 200, "reading_time": 1},
 	}
 	private := &models.Post{Href: "/secret/", Published: true, Private: true, Extra: map[string]interface{}{"word_count": 9000}}
@@ -117,7 +117,7 @@ func TestNavPreviews_GeneratedRoutesAndFooter(t *testing.T) {
 	}
 }
 
-func datePtr(year int, month time.Month, day int) *time.Time {
-	date := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+func datePtr(month time.Month) *time.Time {
+	date := time.Date(2026, month, 1, 0, 0, 0, 0, time.UTC)
 	return &date
 }

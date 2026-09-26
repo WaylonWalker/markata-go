@@ -171,7 +171,7 @@
 }
 
 .nav-preview__eyebrow {
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-primary) 78%, var(--color-text));
   font-size: 0.67rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -181,14 +181,14 @@
 
 .nav-preview__title {
   font-size: 1.05rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .nav-preview__description {
   display: -webkit-box;
   overflow: hidden;
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-text) 78%, var(--color-surface));
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
@@ -204,26 +204,27 @@
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: var(--color-background, var(--color-surface));
-  color: var(--color-text-muted);
+  color: var(--color-text);
   font-size: 0.72rem;
 }
 
 .nav-preview__stats {
   padding-top: 0.65rem;
   border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-text) 76%, var(--color-surface));
   font-size: 0.75rem;
 }
 
 .nav-preview__stats strong {
   color: var(--color-text);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .nav-preview__rhythm {
   display: grid;
   gap: 0.25rem;
-  color: var(--color-text-muted);
+  color: color-mix(in srgb, var(--color-text) 76%, var(--color-surface));
   font-size: 0.67rem;
   letter-spacing: 0.04em;
 }
