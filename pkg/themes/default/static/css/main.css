@@ -919,6 +919,13 @@ article.post {
   border-radius: var(--radius-xl);
 }
 
+/* A wider reading measure without allowing card padding to overflow on phones. */
+body.reader-mode article.post {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 82ch;
+}
+
 /* When background decorations are present, ensure content stands out */
 body:has(.background-layer) article.post,
 body:has(.background-decoration) article.post {
