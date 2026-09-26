@@ -4821,10 +4821,13 @@ body.reader-mode::after {
   position: fixed;
   /* Reset the full-viewport body::after used by theme motifs. */
   inset: auto 1rem 1rem auto;
+  mask-image: none;
+  -webkit-mask-image: none;
   font-size: 0.75rem;
   font-family: var(--font-mono, monospace);
   color: var(--color-text-muted);
   background: var(--color-surface);
+  background-image: none;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   border: 1px solid var(--color-border);

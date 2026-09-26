@@ -21,8 +21,9 @@ between simple and rich feeds. The `?` shortcut help MUST describe both contexts
 Reader mode is also restored from `?reader=1` on a post URL and can be exited
 with `s`. It MUST hide navigation chrome and sidebars, including pinned drawer
 handles and their dimming scrims, while keeping the article and its text at full
-contrast. Its exit hint MUST NOT inherit a full-screen overlay from the theme's
-decorative `body::after`. The post layout MUST center the article without
+contrast. Its exit hint MUST NOT inherit the theme's decorative `body::after`
+overlay, background image, or mask; the hint text MUST remain readable when a
+motif is enabled. The post layout MUST center the article without
 reserving sidebar columns or reducing its available width below the normal
 reading measure. It MUST fit narrow screens without horizontal overflow. Other
 pages and the normal post layout are unchanged.
