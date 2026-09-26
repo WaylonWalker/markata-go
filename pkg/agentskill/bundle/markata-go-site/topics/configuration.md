@@ -32,6 +32,10 @@ When `--config` is not passed, markata-go looks for config in this order:
 
 Bare `markata-go config` behaves like `markata-go config show`.
 
+## Navigation previews
+
+For a nav link that should show the default theme's hover preview, use the exact local URL of a generated feed or published post, such as `/blog/` or `/about/`. Set a feed's `description` in `[[markata-go.feeds]]`; set a post's `description` and `tags` in frontmatter. The preview draws public feed counts, reading statistics, and publication rhythm from the build. External links and unmatched paths render as ordinary links. Check the generated URL when a preview is missing.
+
 ## Core Namespace
 
 Most settings live under `[markata-go]` and nested namespaces like `[markata-go.glob]` and `[markata-go.theme]`.
