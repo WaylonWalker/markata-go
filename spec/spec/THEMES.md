@@ -14,6 +14,18 @@ Themes control the visual appearance of the generated site. The system supports:
 5. **Readable by default** - Typography, contrast, and spacing optimized for reading
 6. **Accessible first** - WCAG 2.1 AA compliant colors, focus states, and compact touch targets
 
+## Reader Mode
+
+On post pages, `s` toggles reader mode; on dedicated feed pages it still switches
+between simple and rich feeds. The `?` shortcut help MUST describe both contexts.
+Reader mode is also restored from `?reader=1` on a post URL and can be exited
+with `s`. It MUST hide navigation chrome and sidebars, including pinned drawer
+handles and their dimming scrims, while keeping the article and its text at full
+contrast. The post layout MUST center the article without reserving sidebar
+columns or reducing its available width below the normal reading measure. It
+MUST fit narrow screens without horizontal overflow. Other pages and the normal
+post layout are unchanged.
+
 ## Reading Size Preferences
 
 The default theme provides a visitor-controlled reading-size preference for

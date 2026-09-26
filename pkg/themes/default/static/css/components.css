@@ -4773,6 +4773,10 @@ body.reader-mode .content-sidebar {
   display: none;
 }
 
+body.reader-mode .doc-sidebar {
+  display: none;
+}
+
 body.reader-mode .site-footer {
   display: none;
 }
@@ -4791,14 +4795,24 @@ body.reader-mode .slot-after-post {
 
 body.reader-mode .page-wrapper {
   display: block;
-  max-width: var(--content-width);
+  max-width: var(--page-width, 1200px);
   margin: 0 auto;
-  padding: 2rem 1rem;
-  grid-template-columns: none;
+  padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
 }
 
-body.reader-mode article.post {
+/* An open drawer must not leave its scrim or pushed layout behind. */
+body.reader-mode .page-wrapper::before {
+  display: none;
+}
+
+body.reader-mode .page-wrapper > .main-content {
+  width: 100%;
   max-width: 100%;
+  margin-inline: auto;
+}
+
+body.reader-mode .content-wrapper--with-sidebar {
+  display: block;
 }
 
 /* Subtle reader-mode exit hint -- fixed bottom-right */
