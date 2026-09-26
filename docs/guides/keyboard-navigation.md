@@ -80,8 +80,19 @@ Press the first key (`g`), then the second key within 800ms.
 | `b` | Toggle the left sidebar drawer (series). Works at every width; hover a drawer handle to see its key |
 | `Shift+B` | Toggle the right sidebar drawer (on this page) |
 | `{` / `}` | Switch the sidebar to the previous / next primary feed |
+| `s` | On a post, toggle reader mode; on a feed, switch between simple and rich views |
 | `?` | Show shortcuts help modal |
 | `Escape` | Close modals and overlay drawers, clear highlight, blur inputs |
+
+---
+
+## Reader Mode
+
+On a post, press `s` to hide the site header, footer, and sidebars and center a
+wider reading column without dimming the text. Press `s` again to restore the
+normal layout. The address gains `?reader=1` while reader mode is active, so you
+can bookmark or share that view. On feed pages, `s` switches between simple and
+rich views instead.
 
 ---
 
