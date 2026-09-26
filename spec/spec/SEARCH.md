@@ -37,6 +37,11 @@ Fast mode (`build --fast`, `serve --fast`) skips Pagefind indexing.
 3. User queries are matched against the pre-built index
 4. Results display with excerpts and highlighting
 
+For navbar search, the results panel overlays page content and remains above
+the article beneath it. The header must establish a stacking context above the
+main content; increasing the panel's own `z-index` cannot escape a lower
+ancestor stacking context.
+
 ### Private Content Rules
 
 Private posts use a reduced search surface.

@@ -305,7 +305,7 @@ For feeds, visitors see subscription options:
 
 ## Copying Posts for Chat and Notes
 
-Post pages also expose a `Copy this post` control near the top of the article. It is designed for the common workflow of dropping a post into Slack, Teams, notes apps, or a code editor without manually selecting the page.
+Post pages also expose a `Copy this post` control near the top of the article. It is designed for the common workflow of dropping a post into Slack, Teams, notes apps, or a code editor without manually selecting the page. Set `components.post_copy.enabled = false` to hide the menu without disabling the post-format files (see [Configuration](/docs/guides/configuration/#share-component-markata-gocomponentsshare)).
 
 Available copy modes:
 

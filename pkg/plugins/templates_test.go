@@ -845,6 +845,59 @@ func TestTemplatesPlugin_Render_PostCopyShowsOnlyAvailableRoutes(t *testing.T) {
 	}
 }
 
+func TestTemplatesPlugin_Render_PostCopyDisabled(t *testing.T) {
+	tmpDir := t.TempDir()
+	componentDir := filepath.Join(tmpDir, "components")
+	if err := os.MkdirAll(componentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	component, err := os.ReadFile(filepath.Join("..", "..", "templates", "components", "post_copy.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(componentDir, "post_copy.html"), component, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// A custom post template must not expose the copy payload when disabled.
+	if err := os.WriteFile(filepath.Join(tmpDir, "post.html"), []byte(`{% include "components/post_copy.html" %}<div class="post-content">{{ body | safe }}</div>`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		enabled *bool
+		want    bool
+	}{
+		{"default", nil, true},
+		{"disabled", new(bool), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := NewTemplatesPlugin()
+			m := lifecycle.NewManager()
+			m.Config().Extra["templates_dir"] = tmpDir
+			m.Config().Extra["url"] = "https://example.com"
+			m.Config().Extra["components"] = models.ComponentsConfig{
+				PostCopy: models.PostCopyComponentConfig{Enabled: tc.enabled},
+			}
+			if err := p.Configure(m); err != nil {
+				t.Fatal(err)
+			}
+			title := "Test Post"
+			post := &models.Post{Title: &title, Slug: "test-post", Href: "/test-post/", Template: "post.html", Content: "hello", ArticleHTML: "<p>Hello World</p>"}
+			m.AddPost(post)
+			if err := p.Render(m); err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(post.HTML, "Copy this post"); got != tc.want {
+				t.Fatalf("copy menu present = %v, want %v", got, tc.want)
+			}
+			if got := strings.Contains(post.HTML, "post-copy__payload"); got != tc.want {
+				t.Fatalf("clipboard payload present = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestTemplatesPlugin_Render_SkippedPost(t *testing.T) {
 	p := NewTemplatesPlugin()
 	m := lifecycle.NewManager()

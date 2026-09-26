@@ -983,8 +983,8 @@ header:has(.theme-picker.is-open),
   display: none;
 }
 
-/* Reset / Bake / All settings: compact icon buttons so the bar fits beside
-   the key hints. Bake expands a label for its confirm and result states. */
+/* Keep Reset labeled so visitors can find it; Bake and All settings stay
+   compact until Bake needs room for its confirmation or result. */
 .theme-picker-bar-btn {
   display: inline-flex;
   flex: none;
@@ -1023,6 +1023,8 @@ header:has(.theme-picker.is-open),
 
 .theme-picker-reset {
   margin-left: auto;
+  border-color: var(--color-border, #ddd);
+  color: var(--color-text, #333);
 }
 
 .theme-picker-bake__label:empty {

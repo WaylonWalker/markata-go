@@ -52,6 +52,7 @@ these settings when a feature appears to ignore the site config:
 - `error_pages`
 - `resource_hints`
 - `markdown.highlight`
+- `components.post_copy.enabled` (set to `false` to remove the post-header copy menu; share buttons and post-format files remain available)
 
 Use `markata-go config show` or `markata-go config get <key>` to inspect the
 resolved typed values. Explicit `false` values are valid settings and must not

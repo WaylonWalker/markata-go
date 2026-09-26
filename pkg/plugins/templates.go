@@ -585,9 +585,11 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 		}
 	}
 
-	postCopyPayloads := buildPostCopyPayloads(post, config, modelsConfig.URL)
-	ctx.Set("post_copy_payloads", postCopyPayloads)
-	ctx.Set("post_copy_payloads_json", postCopyPayloads.JSON())
+	if modelsConfig.Components.PostCopy.IsEnabled() {
+		postCopyPayloads := buildPostCopyPayloads(post, config, modelsConfig.URL)
+		ctx.Set("post_copy_payloads", postCopyPayloads)
+		ctx.Set("post_copy_payloads_json", postCopyPayloads.JSON())
+	}
 
 	// Inject feed sidebar posts if configured
 	sidebarPosts, sidebarFeed := p.getFeedSidebarPosts(post, config, m)

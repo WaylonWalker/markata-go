@@ -276,7 +276,7 @@ With a mouse, hovering a card shows that theme, style, or font on the whole page
 
 To move fast, use the **‹ ›** buttons in the picker's top bar. They step through the current tab and show the name of the current choice, and the page updates on every tap. Arrow keys, Home/End, and PageUp/PageDown do the same from the keyboard. The picker remembers the last tab you used.
 
-The bottom bar has **Reset**, which goes back to the site's default theme, style, and font. While you run `markata-go serve`, it also shows **Bake**, which writes the current choices into your site config (see below). Published sites never show Bake.
+The bottom bar has a labeled **Reset** button, which goes back to the site's default theme, style, and font. While you run `markata-go serve`, it also shows **Bake**, which writes the current choices into your site config (see below). Published sites never show Bake.
 
 On phones, every control is at least 40px tall, the search field uses 16px text so iOS does not zoom, and the sheet leaves room for the home indicator.
 
