@@ -62,6 +62,11 @@ html = "feed-photo-grid.html"
 
 Use that first when the request is “change one feed’s archive layout” and the built-in variant already matches the need.
 
+For a gallery page, prefer `template: gallery.html` in post frontmatter with a
+`gallery` list. Each item needs `src` and `alt`; `caption`, `width`, and `height`
+are optional. The built-in template provides responsive columns and an image
+viewer. Keep original image links so the gallery works without JavaScript.
+
 For first sites, assume:
 
 - `post.html` is the single-content template

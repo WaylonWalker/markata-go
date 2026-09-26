@@ -1,0 +1,36 @@
+{% extends "post.html" %}
+
+{% block head %}
+{{ block.Super() }}
+<link rel="stylesheet" href="{{ 'css/gallery.css' | theme_asset_hashed }}">
+{% endblock %}
+
+{% block content %}
+<article class="gallery-page h-entry" data-pagefind-body>
+  <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
+  <header class="gallery-page__header">
+    <h1 class="p-name" data-pagefind-meta="title">{{ post.title_html | safe }}</h1>
+    {% if post.description %}<p class="p-summary">{{ post.description }}</p>{% endif %}
+  </header>
+  {% if body %}<div class="gallery-page__intro e-content">{{ body | safe }}</div>{% endif %}
+  {% if post.Extra.gallery %}
+  <div class="gallery-grid" data-gallery aria-label="{{ post.title_text }} images">
+    {% for photo in post.Extra.gallery %}
+    {% if photo.src and photo.alt %}
+    <figure class="gallery-grid__item">
+      <a class="gallery-grid__link" href="{{ photo.src | media_url }}" data-gallery-image aria-label="Open full image: {{ photo.alt }}">
+        <img src="{{ photo.src | media_url | with_size:'800' }}" alt="{{ photo.alt }}"{% if photo.width and photo.height %} width="{{ photo.width }}" height="{{ photo.height }}"{% endif %} loading="{% if forloop.Counter <= 2 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 2 %} fetchpriority="high"{% endif %} decoding="async">
+      </a>
+      {% if photo.caption %}<figcaption>{{ photo.caption }}</figcaption>{% endif %}
+    </figure>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+</article>
+{% endblock %}
+
+{% block scripts %}
+{{ block.Super() }}
+<script src="{{ 'js/gallery.js' | theme_asset_hashed }}" defer></script>
+{% endblock %}

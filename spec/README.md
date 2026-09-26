@@ -1,5 +1,7 @@
 # Static Site Generator Specification
 
+The [galleries specification](spec/GALLERIES.md) defines built-in gallery pages, photo-grid feeds, and initial post title sizing.
+
 A language-agnostic specification for building plugin-driven static site generators.
 
 ## Philosophy

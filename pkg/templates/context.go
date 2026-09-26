@@ -3,6 +3,7 @@ package templates
 import (
 	"reflect"
 	"time"
+	"unicode/utf8"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/flosch/pongo2/v6"
@@ -149,6 +150,7 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	m["title_html"] = p.TitleHTML
 	m["title_text"] = p.PlainTitle()
 	m["title_text_derived"] = p.TitleTextDerived
+	m["title_size"] = titleSize(p.PlainTitle())
 
 	if p.Date != nil {
 		m["date"] = *p.Date
@@ -211,6 +213,19 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	}
 
 	return m
+}
+
+// titleSize gives templates a conservative first-paint hint for long titles.
+// Font metrics and viewport width still need browser measurement.
+func titleSize(title string) string {
+	switch n := utf8.RuneCountInString(title); {
+	case n > 70:
+		return "very-long"
+	case n > 35:
+		return "long"
+	default:
+		return "normal"
+	}
 }
 
 func linksToMaps(links []*models.Link) []map[string]interface{} {

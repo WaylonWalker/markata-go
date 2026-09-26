@@ -202,6 +202,10 @@ article.post > .post-content > .feed.h-feed {
   opacity: 0.8;
 }
 
+.feed--photo-grid .shot-card-meta { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.feed--photo-grid .shot-card-word-count { color: inherit; font-size: .78rem; opacity: .8; }
+.feed--photo-grid .shot-card-date + .shot-card-word-count::before { content: "·"; margin-right: .5rem; }
+
 .feed--photo-grid .shot-card:hover .shot-card-media,
 .feed--photo-grid .shot-card:focus-within .shot-card-media {
   transform: scale(1.04);

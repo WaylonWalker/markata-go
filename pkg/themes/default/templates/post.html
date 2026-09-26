@@ -79,7 +79,7 @@
 
         <header class="post-header">
             <div class="post-header__title-row">
-                <h1 class="p-name" data-pagefind-meta="title">{{ post.title_html | safe }}</h1>
+                <h1 class="p-name" data-pagefind-meta="title" data-title-size="{{ post.title_size }}">{{ post.title_html | safe }}</h1>
 
                 {# Author byline and post metadata #}
             {% include "components/post_byline.html" %}

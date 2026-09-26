@@ -951,7 +951,13 @@ body:has(.background-decoration) article.post {
   margin-top: 0;
   margin-bottom: 0;
   flex: 1 1 20rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+/* The build supplies a readable first paint; font-aware fitting runs later. */
+.post-header h1[data-title-size="long"] { font-size: clamp(var(--text-3xl), 3vw, var(--text-4xl)); }
+.post-header h1[data-title-size="very-long"] { font-size: clamp(var(--text-2xl), 2.5vw, var(--text-3xl)); }
 
 .post-meta {
   display: flex;

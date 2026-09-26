@@ -1,0 +1,5 @@
+output/
+cache/
+.markata/
+.markata-cache/
+static/markata-tailwind.css
