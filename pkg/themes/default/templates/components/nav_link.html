@@ -1,0 +1,27 @@
+{% if nav_previews and nav_previews[item.url] %}
+{% with preview = nav_previews[item.url] %}
+<span class="nav-entry nav-entry--preview">
+  <a href="{{ item.url }}" class="nav-link">{{ item.label }}</a>
+  <span class="nav-preview" aria-hidden="true">
+    <span class="nav-preview__eyebrow">{% if preview.kind == 'feed' %}Collection{% elif preview.kind == 'reader' %}RSS reader{% elif preview.kind == 'followed' %}Followed sites{% elif preview.kind == 'surprise' %}Serendipity{% else %}Article{% endif %}</span>
+    <span class="nav-preview__title">{{ item.label }}</span>
+    {% if preview.description %}<span class="nav-preview__description">{{ preview.description }}</span>{% endif %}
+    {% if preview.tags %}<span class="nav-preview__tags">{% for tag in preview.tags %}<span class="nav-preview__tag">{{ tag }}</span>{% endfor %}</span>{% endif %}
+    {% if preview.kind == 'feed' %}
+    <span class="nav-preview__stats">
+      <span><strong>{{ preview.count }}</strong> {% if preview.count == 1 %}post{% else %}posts{% endif %}</span>
+      {% if preview.words %}<span><strong>{{ preview.words_display }}</strong> words</span>{% endif %}
+      {% if preview.minutes %}<span><strong>{{ preview.reading_display }}</strong> read</span>{% endif %}
+    </span>
+    {% if preview.sparkline %}<span class="nav-preview__rhythm"><svg viewBox="0 0 96 28" preserveAspectRatio="none" focusable="false"><polyline points="{{ preview.sparkline }}" /></svg><span>Publication rhythm</span></span>{% endif %}
+    {% elif preview.kind == 'post' %}
+    {% if preview.words or preview.minutes %}<span class="nav-preview__stats">{% if preview.words %}<span><strong>{{ preview.words_display }}</strong> words</span>{% endif %}{% if preview.minutes %}<span><strong>{{ preview.reading_display }}</strong> read</span>{% endif %}</span>{% endif %}
+    {% else %}
+    <span class="nav-preview__stats"><span><strong>{{ preview.count }}</strong> {{ preview.count_label }}</span></span>
+    {% endif %}
+  </span>
+</span>
+{% endwith %}
+{% else %}
+<a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}{% if item.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
+{% endif %}

@@ -327,6 +327,22 @@ func TestCache_ImageLibraryHash_PersistsAndTemplateInvalidates(t *testing.T) {
 	}
 }
 
+func TestCache_NavPreviewHash_InvalidatesSharedPages(t *testing.T) {
+	cache := New(t.TempDir())
+	cache.Posts["post.md"] = &PostCache{}
+	cache.Feeds["journal"] = &FeedCache{}
+	if !cache.SetNavPreviewHash("first") {
+		t.Fatal("initial preview hash should invalidate existing pages")
+	}
+	if len(cache.Posts) != 0 || len(cache.Feeds) != 0 {
+		t.Fatal("preview change left stale pages in cache")
+	}
+	cache.Posts["post.md"] = &PostCache{}
+	if cache.SetNavPreviewHash("first") || len(cache.Posts) != 1 {
+		t.Fatal("unchanged preview hash invalidated a page")
+	}
+}
+
 func TestCache_ImageLibraryMedia_PersistsFingerprints(t *testing.T) {
 	dir := t.TempDir()
 	cache := New(dir)

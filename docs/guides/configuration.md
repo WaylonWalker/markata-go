@@ -496,6 +496,10 @@ url = "https://github.com/WaylonWalker/markata-go"
 external = true
 ```
 
+The default theme adds a small preview when a local header or footer navigation URL matches a generated feed or published post. For a feed such as `/blog/`, hovering the link or focusing it with a keyboard shows its description, public post count, total words, reading time, and publication rhythm when those values are available. For a post, the preview uses its description, tags, word count, and reading time. Enabled Reader and Blogroll links show the number of active followed sources; an enabled Random post link shows how many posts are in its draw. External and unmatched links stay as ordinary links. Previews are hidden on narrow or touch screens, where the navigation is a scrollable strip.
+
+To give a feed link useful preview text, set `description` on its `[[markata-go.feeds]]` entry. For a post link, set `description` and `tags` in that post's frontmatter. The link URL must match the generated page path, such as `/blog/` or `/about/`.
+
 To add a built-in **Random post** link:
 
 ```toml

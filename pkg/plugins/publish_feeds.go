@@ -30,6 +30,7 @@ var publishFeedsLog = logging.Component("publish_feeds").Phase("write")
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
 // It also registers synthetic posts in the Configure stage so they can be resolved by wikilinks.
 type PublishFeedsPlugin struct {
+	navPreviews map[string]map[string]interface{}
 	// engineCache caches template engines to avoid re-parsing templates for each feed
 	engineMu    sync.RWMutex
 	engineCache map[string]*templates.Engine
@@ -130,6 +131,12 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 // Uses incremental build cache to skip feeds with unchanged content.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	p.resetPostFeedHashCache()
+	p.navPreviews = nil
+	if previews, ok := m.Cache().Get("nav_previews"); ok {
+		if resolved, ok := previews.(map[string]map[string]interface{}); ok {
+			p.navPreviews = resolved
+		}
+	}
 
 	config := m.Config()
 	feedConfigs := getCachedFeedConfigs(m)
@@ -1111,6 +1118,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 			modelsConfig = ToModelsConfig(config)
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		ctx.Set("nav_previews", p.navPreviews)
 		p.addFeedStatsContext(&ctx, fc, renderCtx)
 		setEncryptedFeedContext(&ctx, page)
 
@@ -1174,6 +1182,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		ctx.Set("nav_previews", p.navPreviews)
 		ctx.Set("feed_robots", fc.Robots)
 		p.addFeedStatsContext(&ctx, fc, renderCtx)
 

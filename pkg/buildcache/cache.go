@@ -66,6 +66,8 @@ type Cache struct {
 
 	// TemplatesHash is the combined hash of all template files
 	TemplatesHash string `json:"templates_hash"`
+	// NavPreviewHash invalidates pages when shared navigation preview data changes.
+	NavPreviewHash string `json:"nav_preview_hash,omitempty"`
 
 	// TemplatesFingerprint is a cheap filesystem fingerprint used to skip
 	// recomputing TemplatesHash when the template tree is unchanged.
@@ -429,6 +431,21 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 	c.ImageLibraryHash = ""
 	c.TailwindManifestHash = ""
 	c.PagefindCorpusHash = ""
+	c.dirty = true
+	return true
+}
+
+// SetNavPreviewHash invalidates rendered pages when shared nav metadata changes.
+func (c *Cache) SetNavPreviewHash(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.NavPreviewHash == hash {
+		return false
+	}
+	c.NavPreviewHash = hash
+	c.preservePostOwnershipLocked()
+	c.Posts = make(map[string]*PostCache)
+	c.Feeds = make(map[string]*FeedCache)
 	c.dirty = true
 	return true
 }

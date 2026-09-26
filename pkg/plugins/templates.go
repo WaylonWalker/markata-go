@@ -334,9 +334,24 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Ensure feed_configs are available in cache for sidebar auto-discovery.
 	// The Collect stage (feeds) runs AFTER Render, so we pre-compute here.
 	ensureFeedConfigsCached(config, m)
+	var navFeeds []models.FeedConfig
+	if feedConfigs, ok := m.Cache().Get("feed_configs"); ok {
+		if feeds, ok := feedConfigs.([]models.FeedConfig); ok {
+			navFeeds = feeds
+		}
+	}
+	navPreviews := buildNavPreviews(ToModelsConfig(config), m.Posts(), navFeeds, getBlogrollConfig(config), parseRandomPostConfig(config))
+	m.Cache().Set("nav_previews", navPreviews)
 
 	// Get build cache to check if posts need rebuilding
 	cache := GetBuildCache(m)
+	if cache != nil {
+		encoded, err := json.Marshal(navPreviews)
+		if err != nil {
+			return fmt.Errorf("encode navigation previews: %w", err)
+		}
+		cache.SetNavPreviewHash(buildcache.ContentHash(string(encoded)))
+	}
 	changedSlugs := getChangedSlugsMap(cache)
 
 	// Collect private paths for robots.txt template variable
@@ -541,6 +556,9 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	ctx.Set("render_slashes", createRenderSlashesFunc(m))
 	ctx.Set("include_post", createIncludePostFunc(m))
 	ctx.Set("private_paths", privatePaths)
+	if previews, ok := m.Cache().Get("nav_previews"); ok {
+		ctx.Set("nav_previews", previews)
+	}
 	if modelsConfig.Garden.IsExportJSON() {
 		ctx.Set("graph_json", "/"+modelsConfig.Garden.GetPath()+"/graph.json")
 	}

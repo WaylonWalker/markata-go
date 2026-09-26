@@ -2086,6 +2086,9 @@ func readerDomain(rawURL string) string {
 
 // renderTemplate attempts to render using the template engine.
 func (p *BlogrollPlugin) renderTemplate(m *lifecycle.Manager, templateName string, ctx map[string]interface{}) (string, error) {
+	if previews, ok := m.Cache().Get("nav_previews"); ok {
+		ctx["nav_previews"] = previews
+	}
 	// Check if template engine is available
 	// The templates plugin stores it as "templates.engine"
 	engine, ok := m.Cache().Get("templates.engine")
