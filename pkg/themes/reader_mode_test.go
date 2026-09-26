@@ -51,8 +51,9 @@ func TestReaderMode_ShortcutHelpDescribesBothContexts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(content), "<kbd>s</kbd></td>\n") ||
-				!strings.Contains(string(content), "Toggle reader mode (posts) / simple/rich view (feeds)") {
+			help := strings.ReplaceAll(string(content), "\r\n", "\n")
+			if !strings.Contains(help, "<kbd>s</kbd></td>\n") ||
+				!strings.Contains(help, "Toggle reader mode (posts) / simple/rich view (feeds)") {
 				t.Error("s shortcut help must describe both post and feed behavior")
 			}
 		})
