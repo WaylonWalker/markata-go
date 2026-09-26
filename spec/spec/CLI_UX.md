@@ -180,6 +180,31 @@ Error messages SHOULD:
 - name the relevant flag, argument, path, or topic when possible
 - suggest the next command or action when there is a clear fix
 
+Unknown commands, long flags, and configuration keys MUST offer up to three
+close, deterministic suggestions. Suggestions MUST be labeled as possibilities;
+the CLI MUST never run or write a guessed command or key. When no candidate is
+close enough, the error MUST say that the CLI cannot infer the intended input
+and give the exact help command or documentation path. A command typo MUST NOT
+fall through to the root single-file build shortcut. That shortcut accepts only
+Markdown paths.
+
+`serve` accepts `s` as a command alias. Its `--bind` flag is an alias for
+`--host`; both set the same listening address, and conflicting values are a
+usage error.
+
+Configuration key suggestions apply to `config get` and `config set`. Missing
+file keys remain errors even when a similarly named key exists. Validation of
+closed-choice configuration values SHOULD show the closest permitted value and
+the set of choices. Diagnostics MUST never echo secret values.
+Config file loading MUST preserve unknown plugin sections. It MAY reject a
+likely typo of a built-in key within a known section or a close spelling of a
+multiword top-level key; it MUST name the file and suggested key.
+
+Fatal errors are printed once to `stderr`. An interactive `stderr` uses themed
+color to distinguish the error, candidate commands, and next step. Redirected
+output, `--no-color`, `NO_COLOR`, and plain log mode receive stable text without
+ANSI escapes. Ordinary runtime failures do not dump usage text.
+
 Unexpected diagnostic detail belongs in verbose/debug modes, not normal output.
 
 ## Core Command Expectations

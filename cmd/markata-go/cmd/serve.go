@@ -49,6 +49,7 @@ var (
 
 	// serveHost is the host to serve on.
 	serveHost string
+	serveBind string
 
 	// serveSourceFile is the Markdown file passed to `serve <file>`. When set,
 	// every build and rebuild uses single-page mode.
@@ -162,8 +163,9 @@ func getModelsConfig(m *lifecycle.Manager) *models.Config {
 
 // serveCmd represents the serve command.
 var serveCmd = &cobra.Command{
-	Use:   "serve [markdown-file]",
-	Short: "Build and serve locally with live reload",
+	Use:     "serve [markdown-file]",
+	Aliases: []string{"s"},
+	Short:   "Build and serve locally with live reload",
 	Long: `Serve builds the site and starts a local development server with file watching.
 
 Features:
@@ -187,6 +189,7 @@ Example usage:
   markata-go serve post.md      # Serve just post.md at the root index
   markata-go serve --fast       # Serve with fast mode (skip minification)
   markata-go serve -p 3000      # Serve on localhost:3000
+  markata-go serve --bind 0.0.0.0 # Listen on all interfaces
   markata-go serve -m fast.toml # Serve with merged config overrides
   markata-go serve --watch      # Explicitly enable file watching (default)
   markata-go serve --watch=false # Disable file watching
@@ -201,6 +204,7 @@ func init() {
 
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", 8000, "port to serve on")
 	serveCmd.Flags().StringVar(&serveHost, "host", "localhost", "host to serve on")
+	serveCmd.Flags().StringVar(&serveBind, "bind", "localhost", "address to listen on (alias for --host)")
 	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
@@ -209,6 +213,9 @@ func init() {
 
 func runServeCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
+	if err := resolveServeHost(cmd); err != nil {
+		return err
+	}
 	serveSourceFile = ""
 	if len(args) == 1 {
 		serveSourceFile = args[0]
@@ -296,6 +303,17 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	waitForGoroutines(&wg)
 
 	errln("Server stopped")
+	return nil
+}
+
+func resolveServeHost(cmd *cobra.Command) error {
+	if !cmd.Flags().Changed("bind") {
+		return nil
+	}
+	if cmd.Flags().Changed("host") && serveHost != serveBind {
+		return newUsageError(fmt.Errorf("--host and --bind specify different addresses; use one flag or give both the same value"))
+	}
+	serveHost = serveBind
 	return nil
 }
 

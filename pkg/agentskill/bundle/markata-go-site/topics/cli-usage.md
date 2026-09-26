@@ -254,3 +254,14 @@ markata-go encryption encrypt-posts --dry-run
 - Use `--verbose` only when normal output is not enough.
 - Keep primary results script-friendly by using built-in machine-readable output when available.
 - Prefer merged config overrides over editing the main config for temporary local or CI changes.
+# CLI discovery and mistakes
+
+`markata-go b`, `markata-go s`, and `markata-go ls` are aliases for `build`,
+`serve`, and `list`. Use the canonical names in scripts and examples. To listen
+on all network interfaces during local preview, run
+`markata-go serve --bind 0.0.0.0`; `--bind` and `--host` mean the same thing.
+
+Unknown commands, flags, and close config key typos report possible matches.
+Treat each suggestion as a hint and use the fully spelled command or key.
+Run the specific command's `--help` when no suggestion fits. A bare Markdown
+path such as `markata-go post.md` still runs a one-file build.

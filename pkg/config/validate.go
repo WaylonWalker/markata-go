@@ -11,6 +11,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/renderingcontract"
+	"github.com/WaylonWalker/markata-go/pkg/suggest"
 )
 
 // ValidationError represents a configuration validation error.
@@ -186,10 +187,22 @@ func validateRenderingTheme(config *models.Config) []error {
 				return
 			}
 		}
-		errs = append(errs, ValidationError{Field: field, Message: fmt.Sprintf("unsupported value %q", value)})
+		message := fmt.Sprintf("unsupported value %q; choose one of: %s", value, strings.Join(c.Enums[group], ", "))
+		if matches := suggest.Closest(value, c.Enums[group], 1); len(matches) > 0 {
+			message += fmt.Sprintf("; did you mean %q?", matches[0])
+		}
+		errs = append(errs, ValidationError{Field: field, Message: message})
 	}
 	if palette := config.Theme.Palette; palette != "" && !knownPalette(&c, palette) {
-		errs = append(errs, ValidationError{Field: "theme.palette", Message: fmt.Sprintf("unknown palette %q", config.Theme.Palette)})
+		message := fmt.Sprintf("unknown palette %q; run 'markata-go palette list' to see available palettes", palette)
+		candidates := make([]string, 0, len(c.Palettes))
+		for _, item := range c.Palettes {
+			candidates = append(candidates, item.ID)
+		}
+		if matches := suggest.Closest(palette, candidates, 1); len(matches) > 0 {
+			message += fmt.Sprintf("; did you mean %q?", matches[0])
+		}
+		errs = append(errs, ValidationError{Field: "theme.palette", Message: message})
 	}
 	valid("aesthetics", config.Theme.Aesthetic, "theme.aesthetic")
 	if config.Theme.TextSize != "" && !isValidTextSize(config.Theme.TextSize) {

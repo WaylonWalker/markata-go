@@ -33,8 +33,9 @@ const (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List posts, tags, or feeds",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List posts, tags, or feeds",
 	Long: `List posts, tags, or feeds for quick inspection and scripting.
 
 Use subcommands to select the data source:

@@ -140,6 +140,20 @@ The path must remain inside `output_dir`. Environment variables use the
 `MARKATA_GO_IMAGES_` prefix. See the [Image Library guide](/docs/guides/image-library/)
 for discovery rules and template context.
 
+## Correcting Configuration Mistakes
+
+Run `markata-go config validate` after editing a config file. If a key closely
+resembles a built-in setting, markata-go reports the file and a possible
+spelling. For example, `output_dr` suggests `output_dir`, and
+`theme.palete` suggests `theme.palette`. Correct the key in the file and rerun
+the command; markata-go never changes the file for you. Custom plugin sections
+remain supported.
+
+`markata-go config get <key>` also suggests close key names. If the key is
+valid but absent from the file, use `markata-go config show` to see its resolved
+value, including defaults. For a theme choice with a fixed list of values,
+validation shows allowed values and, when close enough, a possible correction.
+
 ## Configuration File Locations
 
 markata-go searches for configuration files in the following order (first found wins):
