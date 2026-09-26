@@ -812,7 +812,7 @@ func (p *LinkAvatarsPlugin) processHTMLConcurrent(htmlContent, publicBase, asset
 		if parseErr != nil || !parsed.IsAbs() {
 			return
 		}
-		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		if parsed.Scheme != schemeHTTP && parsed.Scheme != schemeHTTPS {
 			return
 		}
 

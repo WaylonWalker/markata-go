@@ -8,6 +8,8 @@ The default header and footer navigation components resolve local URLs against g
 
 Preview content is generated at build time and escaped by the template engine. Private or unpublished post metadata must never appear in a preview. The nav link remains directly navigable, and preview content is supplementary. On narrow viewports, previews must not obstruct the scrollable navigation strip. Keyboard focus and reduced-motion preferences must be supported.
 
+Local Markdown links and wikilinks in a post also resolve against public generated feeds and posts. Matching links show the same feed or post statistics as navigation previews, with the destination title rather than the link label. Absolute links to the configured site or a loopback development host resolve by path; other external links keep their existing hover behavior. A post's tag links show a feed preview when a public tag feed exists. Unmatched links and tags remain ordinary links. These article hover cards support keyboard focus and do not expose private or unpublished metadata.
+
 ## Overview
 
 Templates wrap rendered markdown content in HTML layouts. The system supports:

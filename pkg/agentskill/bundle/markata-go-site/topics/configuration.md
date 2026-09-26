@@ -36,6 +36,8 @@ Bare `markata-go config` behaves like `markata-go config show`.
 
 For a header or footer nav link that should show the default theme's hover preview, use the local URL of a generated feed or published post, such as `/blog/` or `/about/`. Set a feed's `description` in `[[markata-go.feeds]]`; set a post's `description` and `tags` in frontmatter. Enabled Reader, Blogroll, and Random routes also receive previews. The preview draws public counts and available reading statistics from the build. External links and unmatched paths render as ordinary links. Check the generated URL and plugin enablement when a preview is missing.
 
+Post body links and wikilinks to public posts or feeds show the same metadata on hover and keyboard focus. A configured-site URL or absolute localhost URL resolves by its path during local development. Post tag links show feed counts and publication rhythm when a public `/tags/<slug>/` feed exists. Keep descriptions and dates in frontmatter so these previews have useful content.
+
 ## Core Namespace
 
 Most settings live under `[markata-go]` and nested namespaces like `[markata-go.glob]` and `[markata-go.theme]`.

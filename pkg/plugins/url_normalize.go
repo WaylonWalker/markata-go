@@ -29,14 +29,14 @@ func normalizeExternalURL(raw string) string {
 	if err != nil {
 		return raw
 	}
-	if parsed.Scheme != "http" || parsed.Hostname() == "" {
+	if parsed.Scheme != schemeHTTP || parsed.Hostname() == "" {
 		return raw
 	}
 	if shouldKeepHTTP(parsed.Hostname()) {
 		return raw
 	}
 
-	parsed.Scheme = "https"
+	parsed.Scheme = schemeHTTPS
 	return parsed.String()
 }
 
