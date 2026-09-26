@@ -28,7 +28,7 @@ func localPreviewPath(href, basePath, siteURL string) string {
 		return ""
 	}
 	if ref.IsAbs() || ref.Host != "" {
-		if ref.Scheme != "http" && ref.Scheme != "https" {
+		if ref.Scheme != schemeHTTP && ref.Scheme != schemeHTTPS {
 			return ""
 		}
 		siteHost := ""
