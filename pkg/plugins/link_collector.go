@@ -168,100 +168,111 @@ func (p *LinkCollectorPlugin) buildBaseURL(post *models.Post) string {
 	return strings.TrimSuffix(p.siteURL, "/") + post.Href
 }
 
+type anchorExtractionState struct {
+	hrefs       []string
+	textMap     map[string]string
+	seen        map[string]bool
+	currentHref string
+	currentText strings.Builder
+	inAnchor    bool
+}
+
+func newAnchorExtractionState() *anchorExtractionState {
+	return &anchorExtractionState{
+		hrefs:   make([]string, 0),
+		textMap: make(map[string]string),
+		seen:    make(map[string]bool),
+	}
+}
+
+func (s *anchorExtractionState) flushAnchor() {
+	href := strings.TrimSpace(s.currentHref)
+	if href == "" || href == "#" || s.seen[href] {
+		return
+	}
+	s.seen[href] = true
+	s.hrefs = append(s.hrefs, href)
+	s.textMap[href] = strings.Join(strings.Fields(s.currentText.String()), " ")
+}
+
+func (s *anchorExtractionState) startAnchor(token html.Token) {
+	// Malformed nested anchors should not discard the outer href.
+	if s.inAnchor {
+		s.flushAnchor()
+	}
+	s.currentHref = anchorHref(token)
+	s.currentText.Reset()
+	s.inAnchor = true
+}
+
+func (s *anchorExtractionState) finishAnchor() {
+	if s.inAnchor {
+		s.flushAnchor()
+	}
+	s.currentHref = ""
+	s.currentText.Reset()
+	s.inAnchor = false
+}
+
+func (s *anchorExtractionState) addText(text string) {
+	if s.inAnchor {
+		s.currentText.WriteString(text)
+	}
+}
+
+func (s *anchorExtractionState) addSeparator(tag string) {
+	if s.inAnchor && linkTextSeparatorTag(tag) && s.currentText.Len() > 0 {
+		s.currentText.WriteByte(' ')
+	}
+}
+
+func anchorHref(token html.Token) string {
+	for _, attr := range token.Attr {
+		if strings.EqualFold(attr.Key, "href") {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
 // extractHrefsAndText extracts all href values and their associated visible
 // link text from HTML. It uses the HTML tokenizer so anchors with nested markup
 // (for example card divs, spans, or images) are collected correctly.
 func extractHrefsAndText(htmlContent string) (hrefs []string, textMap map[string]string) {
 	tokenizer := html.NewTokenizer(strings.NewReader(htmlContent))
-	hrefs = make([]string, 0)
-	textMap = make(map[string]string)
-	seen := make(map[string]bool)
-
-	var currentHref string
-	var currentText strings.Builder
-	inAnchor := false
-
-	flushAnchor := func() {
-		href := strings.TrimSpace(currentHref)
-		if href == "" || href == "#" || seen[href] {
-			return
-		}
-		seen[href] = true
-		hrefs = append(hrefs, href)
-		textMap[href] = strings.Join(strings.Fields(currentText.String()), " ")
-	}
+	state := newAnchorExtractionState()
 
 	for {
-		tokenType := tokenizer.Next()
-		switch tokenType {
+		switch tokenizer.Next() {
 		case html.ErrorToken:
-			if inAnchor {
-				flushAnchor()
-			}
-			return hrefs, textMap
-
+			state.finishAnchor()
+			return state.hrefs, state.textMap
 		case html.StartTagToken:
 			token := tokenizer.Token()
 			if token.Data == "a" {
-				// Malformed nested anchors should not discard the outer href.
-				if inAnchor {
-					flushAnchor()
-				}
-				currentHref = ""
-				currentText.Reset()
-				inAnchor = true
-				for _, attr := range token.Attr {
-					if strings.EqualFold(attr.Key, "href") {
-						currentHref = attr.Val
-						break
-					}
-				}
+				state.startAnchor(token)
 				continue
 			}
-			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
-				currentText.WriteByte(' ')
-			}
-
+			state.addSeparator(token.Data)
 		case html.SelfClosingTagToken:
 			token := tokenizer.Token()
 			if token.Data == "a" {
-				currentHref = ""
-				currentText.Reset()
-				for _, attr := range token.Attr {
-					if strings.EqualFold(attr.Key, "href") {
-						currentHref = attr.Val
-						break
-					}
-				}
-				flushAnchor()
-				currentHref = ""
-				currentText.Reset()
-				inAnchor = false
+				state.startAnchor(token)
+				state.finishAnchor()
 				continue
 			}
-			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
-				currentText.WriteByte(' ')
-			}
-
+			state.addSeparator(token.Data)
 		case html.TextToken:
-			if inAnchor {
-				currentText.WriteString(tokenizer.Token().Data)
-			}
-
+			state.addText(tokenizer.Token().Data)
 		case html.EndTagToken:
 			token := tokenizer.Token()
 			if token.Data == "a" {
-				if inAnchor {
-					flushAnchor()
-				}
-				currentHref = ""
-				currentText.Reset()
-				inAnchor = false
+				state.finishAnchor()
 				continue
 			}
-			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
-				currentText.WriteByte(' ')
-			}
+			state.addSeparator(token.Data)
+		case html.CommentToken, html.DoctypeToken:
+			continue
 		}
 	}
 }
