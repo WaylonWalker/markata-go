@@ -20,26 +20,8 @@ func renderContainerMarkdown(t *testing.T, input string) string {
 	return output.String()
 }
 
-func TestContainerExtension_NestedContainersUseMatchingDelimiterDepth(t *testing.T) {
-	got := renderContainerMarkdown(t, `::: outer
-outer before
-
-:::: inner
-inner body
-::::
-
-outer after
-:::`)
-
-	wantInOrder := []string{
-		`<div class="outer">`,
-		`<p>outer before</p>`,
-		`<div class="inner">`,
-		`<p>inner body</p>`,
-		`</div>`,
-		`<p>outer after</p>`,
-		`</div>`,
-	}
+func assertContainerHTMLInOrder(t *testing.T, got string, wantInOrder ...string) {
+	t.Helper()
 
 	cursor := 0
 	for _, want := range wantInOrder {
@@ -51,6 +33,63 @@ outer after
 	}
 }
 
+func TestContainerExtension_NestedContainersUseMatchingDelimiterDepth(t *testing.T) {
+	got := renderContainerMarkdown(t, `::: outer
+outer before
+
+:::: inner
+inner body
+::::
+
+outer after
+:::`)
+
+	assertContainerHTMLInOrder(t, got,
+		`<div class="outer">`,
+		`<p>outer before</p>`,
+		`<div class="inner">`,
+		`<p>inner body</p>`,
+		`</div>`,
+		`<p>outer after</p>`,
+		`</div>`,
+	)
+}
+
+func TestContainerExtension_ShorterCloserPropagatesToParent(t *testing.T) {
+	got := renderContainerMarkdown(t, `::: outer
+outer before
+
+:::: inner
+inner body
+:::
+
+after containers`)
+
+	assertContainerHTMLInOrder(t, got,
+		`<div class="outer">`,
+		`<p>outer before</p>`,
+		`<div class="inner">`,
+		`<p>inner body</p>`,
+		`</div>`,
+		`</div>`,
+		`<p>after containers</p>`,
+	)
+}
+
+func TestContainerExtension_CloseMarkerAllowsSurroundingWhitespace(t *testing.T) {
+	got := renderContainerMarkdown(t, "::: outer\nbody\n   :::   \nafter")
+
+	assertContainerHTMLInOrder(t, got,
+		`<div class="outer">`,
+		`<p>body</p>`,
+		`</div>`,
+		`<p>after</p>`,
+	)
+	if strings.Contains(got, ":::") {
+		t.Fatalf("closing marker leaked into rendered HTML:\n%s", got)
+	}
+}
+
 func TestContainerCloseMarkerMustBeColonOnly(t *testing.T) {
 	tests := []struct {
 		name string
@@ -58,8 +97,7 @@ func TestContainerCloseMarkerMustBeColonOnly(t *testing.T) {
 		want bool
 	}{
 		{name: "too short", line: "::", want: false},
-		{name: "three colons", line: "::: ", want: false},
-		{name: "three colons trimmed", line: "::: ", want: false},
+		{name: "trailing whitespace is normalized by parser", line: "::: ", want: false},
 		{name: "three colons exact", line: ":::", want: true},
 		{name: "four colons exact", line: "::::", want: true},
 		{name: "named container", line: "::: card", want: false},
