@@ -62,8 +62,13 @@ supports feed search, feed detail, entry search, and navigation to existing page
 detail. Nested resource traversal keeps a navigation stack so `Esc` returns one
 level at a time. Source actions resolve relative page paths from the configured
 content directory. The local web dashboard uses system fonts and does not load
-external assets. Builder Admin serves its control projection from memory during
-state polling and refreshes it when its state changes.
+external assets. The local browser capabilities include build, rerun, page rebuild,
+preview, and local source-fix actions. Production Builder Admin can reuse the
+semantic theme and shell assets, but its capability set remains limited to its
+protected queue, refresh, release, rollback, and diagnostic APIs. The production
+view does not inherit local source mutation actions. Builder Admin serves its
+control projection from memory during state polling and refreshes it when its
+state changes.
 
 ## Clients
 
@@ -72,10 +77,33 @@ warning and error inboxes, pages, and feeds. Navigation, filtering, resize, and
 scroll position are client-only state. Scrolling away from the log tail freezes
 position while new lines accumulate. Narrow terminals use a single-column view.
 The web client presents the same runtime objects and contextual actions through
-the session API. A warning or error never exists only in transient scrollback.
-During active work, the TUI may show a fixed-width, palette-aware pulsing dot.
-Animation is limited to interactive terminals and does not appear in plain
-output. `NO_COLOR` disables TUI color.
+the session API. Its semantic browser theme uses the shared token stylesheet and
+Builder Admin palette roles: background, panel, surface, elevated, primary and
+secondary text, accent, link, border, focus, success, warning, error, info, code,
+and button colors. Both browser surfaces resolve these roles from the configured
+Markata palette, with complete dark and light fallback values when a role is
+unavailable. Palette CSS values are validated hex colors; invalid values use the
+fallback for the active mode.
+
+This contract shares theme tokens and a small focus primitive. Local and Builder
+Admin page markup and navigation remain separately implemented. Their browser
+shell convergence is tracked in issue #1300; local source-fix capabilities remain
+unavailable in production Builder Admin.
+
+The local browser URL stores the current section and selected resource in its
+fragment. Loading a copied URL restores that view, and browser Back/Forward
+restores earlier selections. Keyboard navigation uses `j`/`k` or arrow keys to
+move through the current list, Enter to inspect, Escape to clear selection,
+`/` to focus the filter, and `?` to show help. Section shortcuts include `w`
+(warnings), `e` (errors), `p` (pages), `f` (feeds), and `l` (logs). Shortcuts are
+inactive while focus is in a text input, textarea, select, or editable element.
+The master/detail view collapses to a single column at narrow widths and keeps
+visible focus indicators.
+
+A warning or error never exists only in transient scrollback. During active
+work, the TUI may show a fixed-width, palette-aware pulsing dot. Animation is
+limited to interactive terminals and does not appear in plain output. `NO_COLOR`
+disables TUI color.
 
 Safe source fixes are planned against a source digest. Clients preview selected
 changes before applying them. Apply rechecks the digest and edit spans; stale or

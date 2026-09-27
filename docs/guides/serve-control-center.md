@@ -57,6 +57,35 @@ page from its page entry when it has a URL. The Feeds section uses the same
 feed and post metadata as the build, and its post links open the matching page
 details.
 
+### Browser navigation and appearance
+
+The browser URL records the current section, selected item, and filter in its
+fragment. You can copy a link to a job, problem, page, feed, or filtered log
+view. Browser Back and Forward restore earlier selections and sections.
+
+| Key | Action |
+| --- | --- |
+| `j` / `k`, arrows | Move through the current list |
+| `Enter` | Move focus to the selected item's details |
+| `Esc` | Clear the current selection or close keyboard help |
+| `/` | Focus the current section's filter |
+| `g` / `G` | Select the first or last item |
+| `w` / `e` | Show warnings or errors |
+| `p` / `f` / `l` | Open pages, feeds, or logs |
+| `r` | Rerun the selected completed job while Jobs is active |
+| `?` | Show keyboard help |
+
+Shortcuts pause while a text field or editable element has focus. At narrow
+window widths, the list and details use a single-column layout with a fixed
+section bar. Focus indicators remain visible for keyboard use.
+
+The browser colors follow the configured Markata palette through semantic roles
+for surfaces, text, links, focus, status, code, and buttons. The shared semantic
+token stylesheet is also used by Builder Admin, which keeps its separate
+production workflows and page structure. A shared browser shell is tracked in
+[#1300](https://github.com/WaylonWalker/markata-go/issues/1300); the local fix
+preview and source mutation actions remain available only in local Serve.
+
 ## Terminal controls
 
 | Key | Action |

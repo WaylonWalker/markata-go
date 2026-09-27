@@ -410,6 +410,10 @@ func TestHandleIndex_RendersOperationalSummary(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
+		`<style>:root{color-scheme:dark;--markata-background:#09090b`,
+		`data-capabilities=`, `sourceMutation&#34;:false`, `enqueueBuild&#34;:true`,
+		`const capabilities = JSON.parse(document.body.dataset.capabilities || '{}')`,
+		`data-capability="enqueueBuild"`,
 		`id="active-work-detail"`,
 		`let buildsFingerprint = ''`,
 		`let refreshFingerprint = ''`,

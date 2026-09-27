@@ -71,7 +71,7 @@ func TestHandleIndex_RendersConfiguredTheme(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	for _, want := range []string{"--bg: #2d353b;", "--success: #a7c080;", "--button-bg: #a7c080;"} {
+	for _, want := range []string{"--markata-background:#2d353b", "--markata-success:#a7c080", "--markata-button-background:#a7c080"} {
 		if !strings.Contains(recorder.Body.String(), want) {
 			t.Errorf("rendered index missing %q", want)
 		}
@@ -95,7 +95,7 @@ func TestBuildDetail_RendersConfiguredTheme(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	if !strings.Contains(recorder.Body.String(), "--bg:#2d353b") {
+	if !strings.Contains(recorder.Body.String(), "--markata-background:#2d353b") {
 		t.Error("rendered build detail is missing the configured background color")
 	}
 }
