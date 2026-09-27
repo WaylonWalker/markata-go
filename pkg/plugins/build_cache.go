@@ -137,7 +137,7 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 
 	posts := m.Posts()
 	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
-	slugByPath := make(map[string]string, len(posts))
+	identitiesByPath := make(map[string][]string, len(posts))
 	for _, post := range posts {
 		// Empty slugs (the homepage) cannot participate in slug-based dependency
 		// expansion, but they must still be marked affected when their input
@@ -150,7 +150,7 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 			InputHash: post.InputHash,
 			Template:  post.Template,
 		})
-		slugByPath[post.Path] = post.Slug
+		identitiesByPath[post.Path] = postDependencyIdentities(post)
 	}
 
 	changedPaths := p.cache.ShouldRebuildBatch(batch)
@@ -159,8 +159,8 @@ func (p *BuildCachePlugin) Load(m *lifecycle.Manager) error {
 		affected = make(map[string]bool, len(changedPaths))
 	}
 	for path := range changedPaths {
-		if slug := slugByPath[path]; slug != "" {
-			p.cache.MarkSlugChanged(slug)
+		for _, identity := range identitiesByPath[path] {
+			p.cache.MarkSlugChanged(identity)
 		}
 		affected[path] = true
 	}
@@ -383,8 +383,10 @@ func (p *BuildCachePlugin) Transform(m *lifecycle.Manager) error {
 		if post.Skip {
 			continue
 		}
-		if len(post.Dependencies) > 0 {
-			p.cache.SetDependencies(post.Path, post.Slug, post.Dependencies)
+		dependencies := append([]string(nil), post.Dependencies...)
+		dependencies = append(dependencies, unresolvedLogicalDependencies(post.Content)...)
+		if len(dependencies) > 0 {
+			p.cache.SetDependencies(post.Path, post.Slug, dependencies)
 			depsRecorded++
 		}
 	}
