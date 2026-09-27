@@ -36,7 +36,7 @@ gallery:
 An optional introduction can follow the frontmatter.
 ```
 
-Each image needs `src` and meaningful `alt` text. `caption` is optional. Add the original image's `width` and `height` when you know them so the page reserves space while loading. Images without both fields still render. The page uses two columns on small screens, three on medium screens, and four on wide screens. Readers can open an image, use the arrow keys or swipe to move through the gallery, and press Escape to close it. The original image links work without JavaScript.
+Each image needs `src` and meaningful `alt` text. `caption` is optional; when present, it appears below the thumbnail and in the full-screen viewer. Add the original image's `width` and `height` when you know them so the page reserves space while loading. Images without both fields still render. The page uses two columns on small screens, three on medium screens, and four on wide screens. Readers can open an image, use the centered icon buttons or arrow keys to move through the gallery, swipe horizontally on touch screens, and press Escape to close it. Image changes slide into view; the motion respects the device's reduced-motion preference. The original image links work without JavaScript.
 
 Relative image paths and trusted media hosts receive an 800-pixel-wide preview. Other image URLs are used as supplied. See [template media settings](/docs/guides/templates/) if your images live on another CDN.
 
