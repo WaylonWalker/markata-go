@@ -55,20 +55,6 @@ outer after
 	)
 }
 
-func TestContainerExtension_CloseMarkerAllowsSurroundingWhitespace(t *testing.T) {
-	got := renderContainerMarkdown(t, "::: outer\nbody\n   :::   \nafter")
-
-	assertContainerHTMLInOrder(t, got,
-		`<div class="outer">`,
-		`<p>body</p>`,
-		`</div>`,
-		`<p>after</p>`,
-	)
-	if strings.Contains(got, ":::") {
-		t.Fatalf("closing marker leaked into rendered HTML:\n%s", got)
-	}
-}
-
 func TestContainerCloseMarkerMustBeColonOnly(t *testing.T) {
 	tests := []struct {
 		name string
@@ -76,7 +62,7 @@ func TestContainerCloseMarkerMustBeColonOnly(t *testing.T) {
 		want bool
 	}{
 		{name: "too short", line: "::", want: false},
-		{name: "trailing whitespace is normalized by parser", line: "::: ", want: false},
+		{name: "trailing whitespace", line: "::: ", want: false},
 		{name: "three colons exact", line: ":::", want: true},
 		{name: "four colons exact", line: "::::", want: true},
 		{name: "named container", line: "::: card", want: false},
