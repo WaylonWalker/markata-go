@@ -11,6 +11,7 @@ The redirects plugin MUST:
 - emit an nginx include suitable for direct server-side redirects
 - preserve HTML redirect pages by default for static-host compatibility
 - avoid leaving stale nginx rules active when redirect input is cleared or removed
+- never silently overwrite a user-managed nginx redirect file
 
 ## Configuration
 
@@ -68,9 +69,11 @@ Requirements:
 - source and destination strings MUST be quoted and escaped for nginx syntax
 - literal `$` characters MUST NOT become nginx variable interpolation
 - the generated file MUST be valid for inclusion inside an nginx `server` block
+- generated files MUST carry a recognizable ownership header
 - an existing but empty redirects source MUST produce a valid header-only `redirects.conf`, clearing any previously generated native rules
 - if the redirects source is removed, a normal build MUST remove a stale `redirects.conf` only when the file is recognizable as markata-go generated output
 - a user-authored `redirects.conf` MUST NOT be deleted merely because the redirects source is absent
+- if `_redirects` exists and `<output_dir>/redirects.conf` already exists without the markata-go ownership header, the build MUST fail rather than overwrite that file
 
 ## HTML fallback
 
@@ -120,6 +123,8 @@ server {
 
 Nginx reads included configuration as part of loading its configuration. Replacing a release directory or changing a `current` symlink does not by itself apply changed redirect rules to an already-running nginx process. Deployments that rebuild redirects in place MUST reload or restart nginx after the active redirect configuration changes.
 
+`redirects.conf` is a generated-output path when `_redirects` is present. Sites that intentionally manage their own nginx include at that path MUST rename or remove it before enabling generated nginx redirects; the plugin MUST fail rather than silently clobber it.
+
 ## Processing and conflicts
 
 The redirects plugin runs late in the write stage. For HTML fallbacks, it creates the source directory and writes `index.html`. A source that resolves to an existing file path is skipped rather than replacing that file.
@@ -143,6 +148,7 @@ Extra `_redirects` fields such as `302` are ignored and generated nginx redirect
 |---|---|
 | Missing redirects source | Remove only stale markata-go-generated `redirects.conf`; otherwise no-op |
 | Empty redirects source | Write a header-only `redirects.conf` |
+| Existing user-managed `redirects.conf` while `_redirects` exists | Fail rather than overwrite it |
 | Malformed or unsupported rule | Skip the rule |
 | Nginx output write failure | Fail the redirects write stage |
 | HTML fallback write failure | Warn and continue with other fallbacks |
