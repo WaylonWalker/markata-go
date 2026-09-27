@@ -660,6 +660,10 @@ Pass a Markdown file to serve only that page at `/`, using the same single-file 
 |------|-------|-------------|---------|
 | `--port` | `-p` | Port to listen on | `8000` |
 | `--host` | | Host address to bind to | `localhost` |
+| `--bind` | | Address to listen on (alias for `--host`) | `localhost` |
+| `--admin` | | Explicitly enable the local Control Center on loopback | Loopback default |
+| `--no-admin` | | Disable the local Control Center | `false` |
+| `--no-tui` | | Use line-oriented output | `false` |
 | `--watch` | | Enable file watching and auto-rebuild | `true` |
 | `--no-watch` | | Disable file watching (legacy, overrides --watch) | `false` |
 | `--fast` | | Skip minification/CSS purge, Tailwind rebuilds, Pagefind indexing, and disable blogroll/mentions | `false` |
@@ -678,6 +682,9 @@ markata-go serve --port 3000
 
 # Bind to all network interfaces (accessible from other devices)
 markata-go serve --host 0.0.0.0
+
+# Disable the local Control Center on a loopback listener
+markata-go serve --no-admin
 
 # Explicitly enable file watching (default behavior)
 markata-go serve --watch
@@ -703,6 +710,7 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 - **Static file serving**: Serves the output directory
 - **MIME type detection**: Correct content types for all file types
 - **Immediate serve**: Server starts before the initial build completes
+- **Local Control Center**: `http://localhost:8000/_markata/` is available by default on loopback. A non-loopback bind leaves it disabled. `--admin` is rejected there, and `--admin --no-admin` is invalid. The TUI shows `⚙ Admin`; press `a` to open it in a browser.
 - **Build status banner**: Shows build progress and errors during serve
 - **Early 404**: Minimal 404 is served until the generated 404.html exists
 - **Incremental mode**: `serve --incremental` rebuilds only changed posts and dependents while retaining minification, CSS purging, Tailwind, redirects, and Pagefind processing

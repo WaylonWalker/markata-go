@@ -24,8 +24,9 @@ The design reference is [clig.dev](https://clig.dev).
 terminals and interactivity is enabled. `--no-tui` forces line-oriented output.
 Redirected input/output, `--no-input`, and dumb terminals also use the plain
 renderer. The TUI receives structured runtime snapshots; it does not parse log
-text for build state. `serve --admin` and `admin` expose the same session in a
-loopback-only web dashboard at `/_markata/`. The `a` alias selects `admin`.
+text for build state. `serve` on loopback and `admin` expose the same session in
+a loopback-only web dashboard at `/_markata/`. `serve --no-admin` disables it;
+`serve --admin` explicitly enables it on loopback. The `a` alias selects `admin`.
 
 When the interactive TUI is active, it owns the terminal. Build and plugin
 logs MUST pass through the Serve logger observer into runtime logs and

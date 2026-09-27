@@ -44,10 +44,16 @@ and non-TTY output use line-oriented text. A real interactive terminal defaults
 to the TUI. No build output may write beneath the alternate screen; producers
 send structured events to the runtime or a captured log sink.
 
-`serve --admin` mounts the local control center under `/_markata/` on the same
-listener. `markata-go admin` starts the local web experience with serve's build
-and watch runtime. Local admin access binds to loopback by default. Production
-Builder Admin authentication remains unchanged.
+`serve` mounts the local control center under `/_markata/` on the same listener
+when the bind address is loopback (`localhost`, `127.0.0.1`, `::1`, or another
+parsed loopback IP). `--no-admin` disables it. `--admin` remains an explicit
+opt-in but is rejected on a non-loopback listener; combining `--admin` and
+`--no-admin` is a usage error. Non-loopback listeners do not mount local admin
+by default. `markata-go admin` starts the loopback-only local web experience
+with serve's build and watch runtime. The session server state contains the
+admin URL only when the route is mounted. Plain output advertises that URL,
+and the TUI offers an Admin shortcut that opens the same loopback URL.
+Production Builder Admin authentication remains unchanged.
 
 The runtime feed inventory projects lifecycle feed names, titles, output paths,
 and post entries. Each entry retains its source path, title, date, and preview

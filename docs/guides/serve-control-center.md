@@ -34,12 +34,18 @@ does not overwrite the dashboard, including while the terminal is resized.
 
 ```bash
 markata-go serve --admin
-# Site:  http://localhost:8000
+# Site:  http://localhost:8000/
 # Admin: http://localhost:8000/_markata/
 ```
 
+`markata-go serve` enables this dashboard by default on a loopback listener.
+`markata-go serve --admin` remains supported. Use `--no-admin` to disable the
+dashboard. A non-loopback bind, such as `--bind 0.0.0.0`, leaves it disabled;
+requesting `--admin` on such a bind fails. The dashboard URL appears in plain
+startup output and as an Admin shortcut in the TUI.
+
 `markata-go admin` starts the same local serve session with the web dashboard
-enabled and line-oriented terminal output. Both commands show the same jobs,
+and line-oriented terminal output. Both commands show the same jobs,
 warnings, errors, and pages that the terminal dashboard sees. The local admin
 dashboard only binds to loopback. For remote, release-oriented operations use
 the protected [Builder Admin deployment guide](/docs/guides/deployment/builder-admin/).
@@ -64,6 +70,7 @@ details.
 | `l` | Open logs |
 | `p` / `f` | Open pages or feeds |
 | `o` / `v` | Open selected source or local preview |
+| `a` | Open Admin in the browser when available |
 | `/` | Search or filter the current view |
 | `g` / `G` | Jump to first or last item |
 | `PgUp` / `PgDn` | Scroll by a page |
