@@ -3,13 +3,13 @@ package plugins
 
 import (
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"golang.org/x/net/html"
 )
 
 // LinkCollectorPlugin collects all hyperlinks from posts and tracks inlinks
@@ -168,61 +168,123 @@ func (p *LinkCollectorPlugin) buildBaseURL(post *models.Post) string {
 	return strings.TrimSuffix(p.siteURL, "/") + post.Href
 }
 
-// hrefRegex matches <a href="..."> elements in HTML.
-// Captures the href value in group 1 and anchor text in group 2.
-var hrefRegex = regexp.MustCompile(`<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)</a>`)
-
-// extractHrefsAndText extracts all href values and their associated link text
-// from HTML content in a single pass, avoiding the need for a separate
-// extractLinkText call per href.
-func extractHrefsAndText(html string) (hrefs []string, textMap map[string]string) {
-	matches := hrefRegex.FindAllStringSubmatch(html, -1)
-	hrefs = make([]string, 0, len(matches))
-	textMap = make(map[string]string, len(matches))
+// extractHrefsAndText extracts all href values and their associated visible
+// link text from HTML. It uses the HTML tokenizer so anchors with nested markup
+// (for example card divs, spans, or images) are collected correctly.
+func extractHrefsAndText(htmlContent string) (hrefs []string, textMap map[string]string) {
+	tokenizer := html.NewTokenizer(strings.NewReader(htmlContent))
+	hrefs = make([]string, 0)
+	textMap = make(map[string]string)
 	seen := make(map[string]bool)
 
-	for _, match := range matches {
-		if len(match) >= 3 {
-			href := match[1]
-			// Skip empty hrefs and anchors-only links
-			if href == "" || href == "#" {
+	var currentHref string
+	var currentText strings.Builder
+	inAnchor := false
+
+	flushAnchor := func() {
+		href := strings.TrimSpace(currentHref)
+		if href == "" || href == "#" || seen[href] {
+			return
+		}
+		seen[href] = true
+		hrefs = append(hrefs, href)
+		textMap[href] = strings.Join(strings.Fields(currentText.String()), " ")
+	}
+
+	for {
+		tokenType := tokenizer.Next()
+		switch tokenType {
+		case html.ErrorToken:
+			if inAnchor {
+				flushAnchor()
+			}
+			return hrefs, textMap
+
+		case html.StartTagToken:
+			token := tokenizer.Token()
+			if token.Data == "a" {
+				// Malformed nested anchors should not discard the outer href.
+				if inAnchor {
+					flushAnchor()
+				}
+				currentHref = ""
+				currentText.Reset()
+				inAnchor = true
+				for _, attr := range token.Attr {
+					if strings.EqualFold(attr.Key, "href") {
+						currentHref = attr.Val
+						break
+					}
+				}
 				continue
 			}
-			// Keep first occurrence text for each unique href
-			if !seen[href] {
-				seen[href] = true
-				hrefs = append(hrefs, href)
-				textMap[href] = strings.TrimSpace(match[2])
+			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
+				currentText.WriteByte(' ')
+			}
+
+		case html.SelfClosingTagToken:
+			token := tokenizer.Token()
+			if token.Data == "a" {
+				currentHref = ""
+				currentText.Reset()
+				for _, attr := range token.Attr {
+					if strings.EqualFold(attr.Key, "href") {
+						currentHref = attr.Val
+						break
+					}
+				}
+				flushAnchor()
+				currentHref = ""
+				currentText.Reset()
+				inAnchor = false
+				continue
+			}
+			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
+				currentText.WriteByte(' ')
+			}
+
+		case html.TextToken:
+			if inAnchor {
+				currentText.WriteString(tokenizer.Token().Data)
+			}
+
+		case html.EndTagToken:
+			token := tokenizer.Token()
+			if token.Data == "a" {
+				if inAnchor {
+					flushAnchor()
+				}
+				currentHref = ""
+				currentText.Reset()
+				inAnchor = false
+				continue
+			}
+			if inAnchor && linkTextSeparatorTag(token.Data) && currentText.Len() > 0 {
+				currentText.WriteByte(' ')
 			}
 		}
 	}
+}
 
-	return hrefs, textMap
+func linkTextSeparatorTag(tag string) bool {
+	switch tag {
+	case "br", "div", "p", "li", "dt", "dd", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote":
+		return true
+	default:
+		return false
+	}
 }
 
 // extractHrefTextMap builds a map from href to link text by scanning HTML.
 // Used when hrefs are restored from cache but link text is not cached.
-func extractHrefTextMap(html string) map[string]string {
-	matches := hrefRegex.FindAllStringSubmatch(html, -1)
-	textMap := make(map[string]string, len(matches))
-	for _, match := range matches {
-		if len(match) >= 3 {
-			href := match[1]
-			if href == "" || href == "#" {
-				continue
-			}
-			// Keep first occurrence
-			if _, exists := textMap[href]; !exists {
-				textMap[href] = strings.TrimSpace(match[2])
-			}
-		}
-	}
+func extractHrefTextMap(htmlContent string) map[string]string {
+	_, textMap := extractHrefsAndText(htmlContent)
 	return textMap
 }
 
 // extractHrefs extracts all href values from HTML content.
-func extractHrefs(html string) []string {
-	hrefs, _ := extractHrefsAndText(html)
+func extractHrefs(htmlContent string) []string {
+	hrefs, _ := extractHrefsAndText(htmlContent)
 	return hrefs
 }
 
