@@ -109,6 +109,11 @@
   align-items: center;
 }
 
+.site-header {
+  position: relative;
+  z-index: var(--z-header, 100);
+}
+
 .nav-preview {
   position: absolute;
   z-index: 40;
@@ -139,11 +144,31 @@
   left: auto;
 }
 
+.nav-preview::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  left: 0;
+  height: 0.65rem;
+}
+
+.footer-links .nav-preview::before {
+  bottom: auto;
+  top: 100%;
+}
+
 .nav-entry:hover .nav-preview,
 .nav-entry:focus-within .nav-preview {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
   transform: translateY(0);
+}
+
+.nav-entry--preview:hover,
+.nav-entry--preview:focus-within {
+  z-index: 1;
 }
 
 .nav-entry--preview > .nav-link {
