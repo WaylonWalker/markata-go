@@ -14,7 +14,9 @@ import (
 //
 // This plugin also computes the discovery feed for each post during rendering,
 // enabling dynamic <link rel="alternate"> tags based on the post's sidebar feed.
-type SubscriptionFeedsPlugin struct{}
+type SubscriptionFeedsPlugin struct {
+	implicitRoot bool
+}
 
 // NewSubscriptionFeedsPlugin creates a new SubscriptionFeedsPlugin.
 func NewSubscriptionFeedsPlugin() *SubscriptionFeedsPlugin {
@@ -71,20 +73,36 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Check if root subscription feed already exists
-	hasRootFeed := false
+	// Check if root subscription feed already exists.
+	rootFeedIndex := -1
 	hasArchiveFeed := false
 	for i := range feedConfigs {
 		if feedConfigs[i].Slug == "" {
-			hasRootFeed = true
+			rootFeedIndex = i
 		}
 		if feedConfigs[i].Slug == defaultArchivePrefix {
 			hasArchiveFeed = true
 		}
 	}
 
-	// Create root subscription feed (slug="") if not already defined
-	if !hasRootFeed {
+	authoredHomepage := hasAuthoredHomepage(m.Posts())
+	configuredRoot := hasConfiguredRootFeed(config)
+
+	// A root feed we injected on a previous Collect call is runtime state, not
+	// explicit site configuration. Re-evaluate whether it should own index.html
+	// so serve/incremental rebuilds react when an authored homepage appears or
+	// disappears. A configured root feed always remains authoritative.
+	if rootFeedIndex >= 0 && p.implicitRoot && !configuredRoot {
+		feedConfigs[rootFeedIndex].Formats.HTML = !authoredHomepage
+	}
+	if configuredRoot {
+		p.implicitRoot = false
+	}
+
+	// Create root subscription feed (slug="") if not already defined. An authored
+	// homepage keeps ownership of /index.html while the implicit feed still
+	// provides RSS and Atom at the root.
+	if rootFeedIndex < 0 {
 		rootFeed := models.FeedConfig{
 			Slug:        "",
 			Title:       getSubscriptionFeedTitle(config, "root"),
@@ -93,13 +111,14 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			Sort:        "date",
 			Reverse:     true,
 			Formats: models.FeedFormats{
-				HTML: true,
+				HTML: !authoredHomepage,
 				RSS:  true,
 				Atom: true,
 				JSON: false,
 			},
 		}
 		feedConfigs = append(feedConfigs, rootFeed)
+		p.implicitRoot = true
 	}
 
 	// Create archive subscription feed (slug="archive") if not already defined
@@ -127,6 +146,31 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+func hasAuthoredHomepage(posts []*models.Post) bool {
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft {
+			continue
+		}
+		if post.Slug == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasConfiguredRootFeed(config *lifecycle.Config) bool {
+	modelsConfig, ok := getModelsConfig(config)
+	if !ok || modelsConfig == nil {
+		return false
+	}
+	for i := range modelsConfig.Feeds {
+		if modelsConfig.Feeds[i].Slug == "" {
+			return true
+		}
+	}
+	return false
 }
 
 // getSubscriptionFeedTitle returns the title for a subscription feed.
