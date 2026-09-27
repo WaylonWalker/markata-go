@@ -454,6 +454,8 @@ Post templates render individual content pages. They receive the `post` and `bod
 
 **Default template:** `post.html`
 
+For an image collection, use the built-in `gallery.html` template and `gallery` frontmatter. See the [photo galleries guide](/docs/guides/galleries/).
+
 ```html
 {# templates/post.html #}
 {% extends "base.html" %}

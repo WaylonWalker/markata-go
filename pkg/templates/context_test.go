@@ -7,6 +7,27 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+func TestPostToMap_TitleSize(t *testing.T) {
+	tests := []struct {
+		name  string
+		title string
+		want  string
+	}{
+		{"short", "A short title", "normal"},
+		{"long", "A moderately long title that needs room", "long"},
+		{"very long", "A deliberately long title about how afternoon light changes color across every wall", "very-long"},
+		{"unicode", "🌷🌷🌷🌷🌷🌷🌷🌷🌷🌷", "normal"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{Title: &tt.title}
+			if got := postToMap(post)["title_size"]; got != tt.want {
+				t.Errorf("title_size = %v, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPostToMap_InlinksOutlinks(t *testing.T) {
 	sourceTitle := "Source"
 	targetTitle := "Target"

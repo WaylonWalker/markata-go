@@ -1,0 +1,33 @@
+[markata-go]
+title = "Gallery Demo"
+description = "A small gallery and shots feed"
+url = "http://localhost:8765"
+author = "Gallery Demo"
+assets_dir = "static"
+output_dir = "output"
+hooks = ["default"]
+
+[markata-go.glob]
+patterns = ["pages/**/*.md"]
+
+[markata-go.layout]
+name = "blog"
+
+[[markata-go.nav]]
+label = "Gallery"
+url = "/gallery/"
+
+[[markata-go.nav]]
+label = "Shots"
+url = "/shots/"
+
+[[markata-go.feeds]]
+slug = "shots"
+title = "Shots"
+description = "Individual frames and their stories"
+filter = "published == true and 'shots' in tags"
+sort = "date"
+reverse = true
+
+[markata-go.feeds.templates]
+html = "feed-photo-grid.html"

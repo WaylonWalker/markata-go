@@ -83,7 +83,7 @@
         <div class="shot-card-frame">
           {% if media_src %}
           {% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="shot-card-media shot-card-media--video u-video" data-hover-play muted loop playsinline preload="none"{% if poster_candidate %} poster="{{ poster_candidate | with_size:media_size }}"{% endif %} aria-label="{{ post.title | default:post.description | default:'Shot' }}"><source src="{{ media_src|with_size:media_size }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}></video>
-          {% else %}<img src="{{ media_src|with_size:media_size }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 12 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 8 %} fetchpriority="high"{% endif %}>{% endif %}
+          {% else %}<img src="{{ media_src|with_size:media_size }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 4 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 2 %} fetchpriority="high"{% endif %} decoding="async">{% endif %}
           {% else %}
           <div class="shot-card-fallback" aria-hidden="true"></div>
           {% endif %}
@@ -92,7 +92,7 @@
               <h2 class="shot-card-title p-name">{{ post.title | default:post.slug }}</h2>
               {% if post.description %}<p class="shot-card-description p-summary">{{ post.description }}</p>{% endif %}
             </div>
-            {% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
+            {% if post.date or post.Extra.char_count > 280 %}<div class="shot-card-meta">{% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}{% if post.Extra.char_count > 280 and post.Extra.word_count %}<span class="shot-card-word-count">{{ post.Extra.word_count }} words</span>{% endif %}</div>{% endif %}
           </div>
         </div>
       </a>
@@ -108,7 +108,7 @@
         <div class="shot-card-frame">
           {% if media_src %}
           {% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="shot-card-media shot-card-media--video u-video" data-hover-play muted loop playsinline preload="none"{% if poster_candidate %} poster="{{ poster_candidate | with_size:media_size }}"{% endif %} aria-label="{{ post.title | default:post.description | default:'Shot' }}"><source src="{{ media_src|with_size:media_size }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}></video>
-          {% else %}<img src="{{ media_src|with_size:media_size }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 12 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 8 %} fetchpriority="high"{% endif %}>{% endif %}
+          {% else %}<img src="{{ media_src|with_size:media_size }}" alt="{{ post.title | default:post.description | default:'Shot' }}" class="shot-card-media u-photo" loading="{% if forloop.Counter <= 4 %}eager{% else %}lazy{% endif %}"{% if forloop.Counter <= 2 %} fetchpriority="high"{% endif %} decoding="async">{% endif %}
           {% else %}
           <div class="shot-card-fallback" aria-hidden="true"></div>
           {% endif %}
@@ -117,7 +117,7 @@
               <h2 class="shot-card-title p-name">{{ post.title | default:post.slug }}</h2>
               {% if post.description %}<p class="shot-card-description p-summary">{{ post.description }}</p>{% endif %}
             </div>
-            {% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
+            {% if post.date or post.Extra.char_count > 280 %}<div class="shot-card-meta">{% if post.date %}<time class="shot-card-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}{% if post.Extra.char_count > 280 and post.Extra.word_count %}<span class="shot-card-word-count">{{ post.Extra.word_count }} words</span>{% endif %}</div>{% endif %}
           </div>
         </div>
       </a>
