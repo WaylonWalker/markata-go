@@ -16,7 +16,7 @@ markata-go supports fenced Markdown containers for grouping content in a `<div>`
 
 ## Basic container
 
-Use three or more colons followed by a class name or attributes to open a container. Close it with a line containing only the same number of colons. Surrounding whitespace on a closing line is ignored.
+Use three or more colons followed by a class name or attributes to open a container. Close it with a bare line containing only the same number of colons.
 
 ````markdown
 ::: card {#intro .featured data-kind="note"}
@@ -24,11 +24,11 @@ This Markdown is inside the card.
 :::
 ````
 
-The closing line must be **colon-only** after trimming whitespace. A line such as `::: card` or `::: {.card}` is an opening line, not a closing line.
+The closing line must be **colon-only**. A line such as `::: card`, `::: {.card}`, or a decorated/indented marker should not be used as a closer.
 
 ## Nested containers
 
-Use a longer fence for each nested level and close each level with its matching fence. This makes the structure predictable and keeps content after an inner close inside its parent container.
+Use a longer fence for each nested level and close each level with its matching bare fence. This makes the structure predictable and keeps content after an inner close inside its parent container.
 
 ````markdown
 ::: cards
