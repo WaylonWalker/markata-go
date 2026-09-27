@@ -84,6 +84,7 @@ func TestRuntime_SetPagesClearsCurrentDiagnosticsButKeepsHistory(t *testing.T) {
 func TestRuntime_SnapshotsAndSubscribersAreDetached(t *testing.T) {
 	r := NewRuntime()
 	r.SetPages([]Page{{Path: "posts/a.md"}})
+	r.SetFeeds([]Feed{{Name: "thoughts", Entries: []FeedEntry{{Path: "posts/a.md", Title: "A"}}}})
 	id := r.QueueJob(JobSpec{Name: "build", Pages: []string{"posts/a.md"}})
 	first, stopFirst := r.Subscribe()
 	defer stopFirst()
@@ -93,10 +94,14 @@ func TestRuntime_SnapshotsAndSubscribersAreDetached(t *testing.T) {
 	other := <-second
 	initial.Jobs[0].Pages[0] = "changed"
 	initial.Pages[0].Path = "changed"
+	initial.Feeds[0].Entries[0].Title = "changed"
 	if other.Jobs[0].Pages[0] != "posts/a.md" || other.Pages[0].Path != "posts/a.md" {
 		t.Fatal("subscriber snapshots share mutable slices")
 	}
-	if actual := r.Snapshot(); actual.Jobs[0].ID != id || actual.Jobs[0].Pages[0] != "posts/a.md" || actual.Pages[0].Path != "posts/a.md" {
+	if other.Feeds[0].Entries[0].Title != "A" {
+		t.Fatal("subscriber feed entries share mutable slices")
+	}
+	if actual := r.Snapshot(); actual.Jobs[0].ID != id || actual.Jobs[0].Pages[0] != "posts/a.md" || actual.Pages[0].Path != "posts/a.md" || actual.Feeds[0].Entries[0].Title != "A" {
 		t.Fatalf("runtime state mutated by subscriber: %+v", actual)
 	}
 
@@ -211,5 +216,21 @@ func TestRuntime_ReplaceSnapshotPreservesWiringAndCopiesInput(t *testing.T) {
 	}
 	if id := r.QueueJob(JobSpec{Name: "next"}); id != "job-44" {
 		t.Fatalf("generated ID after import = %q", id)
+	}
+}
+
+func TestRuntime_ThemeAndSiteSnapshotsAreDetached(t *testing.T) {
+	r := NewRuntime()
+	colors := map[string]string{"primary": "#123456"}
+	r.SetTheme(colors)
+	r.SetSite(SiteState{Status: StateFailed, Message: "render failed", PageCount: 3})
+	colors["primary"] = "changed"
+	snapshot := r.Snapshot()
+	if snapshot.Theme["primary"] != "#123456" || snapshot.Site.Status != StateFailed {
+		t.Fatalf("snapshot = %+v", snapshot)
+	}
+	snapshot.Theme["primary"] = "mutated"
+	if r.Snapshot().Theme["primary"] != "#123456" {
+		t.Fatal("client modified runtime theme")
 	}
 }

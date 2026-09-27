@@ -196,7 +196,7 @@ func processCSSFilesConcurrently(cssFiles []string, outputDir string, used *cssp
 	}
 
 	if verbose {
-		fmt.Printf("[css_purge] Processing %d CSS files with %d workers\n", len(cssFiles), concurrency)
+		cssPurgeLog.Infof("Processing %d CSS files with %d workers", len(cssFiles), concurrency)
 	}
 
 	jobs := make(chan string, len(cssFiles))
@@ -252,7 +252,7 @@ func processCSSFilesConcurrently(cssFiles []string, outputDir string, used *cssp
 	close(errors)
 
 	for err := range errors {
-		fmt.Printf("[css_purge] WARNING: %v\n", err)
+		cssPurgeLog.Warnf("%v", err)
 	}
 
 	var stats purgeProcessingStats
@@ -265,10 +265,10 @@ func processCSSFilesConcurrently(cssFiles []string, outputDir string, used *cssp
 
 		if verbose && result.removed > 0 {
 			savings := float64(result.origSize-result.purgedSize) / float64(result.origSize) * 100
-			fmt.Printf("[css_purge] %s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)\n",
+			cssPurgeLog.Infof("%s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)",
 				result.relPath, result.removed, result.rules, savings, result.origSize, result.purgedSize)
 		} else if verbose {
-			fmt.Printf("[css_purge] %s: all %d rules are used\n", result.relPath, result.rules)
+			cssPurgeLog.Infof("%s: all %d rules are used", result.relPath, result.rules)
 		}
 	}
 

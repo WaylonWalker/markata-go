@@ -26,13 +26,19 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/searchapi"
+	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
+	"github.com/WaylonWalker/markata-go/pkg/servetui"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // HTTP server timeout constants.
 const (
+	rebuildPageAction       = "rebuild-page"
+	rebuildPageLegacyAction = "rebuild_page"
 	serverReadHeaderTimeout = 10 * time.Second
 	serveIndexFile          = "index.html"
 )
@@ -70,6 +76,8 @@ var (
 	// serveIncremental reuses unchanged build results while retaining normal
 	// production output processing.
 	serveIncremental bool
+	serveNoTUI       bool
+	serveAdmin       bool
 
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
@@ -212,6 +220,8 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
 	serveCmd.Flags().BoolVar(&serveIncremental, "incremental", false, "reuse unchanged posts without skipping production output processing")
+	serveCmd.Flags().BoolVar(&serveNoTUI, "no-tui", false, "use line-oriented output instead of the interactive dashboard")
+	serveCmd.Flags().BoolVar(&serveAdmin, "admin", false, "serve the local control center at /_markata/")
 }
 
 func runServeCommand(cmd *cobra.Command, args []string) error {
@@ -222,10 +232,19 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	if err := resolveServeHost(cmd); err != nil {
 		return err
 	}
+	if serveAdmin && !serveLoopbackHost(serveHost) {
+		return newUsageError(fmt.Errorf("local admin requires a loopback address; use --bind localhost or --bind 127.0.0.1"))
+	}
 	serveSourceFile = ""
 	if len(args) == 1 {
 		serveSourceFile = args[0]
 	}
+	runtime := servecontrol.NewRuntime()
+	tui := shouldRunServeTUI(serveNoTUI, noInput, inReader(), outWriter())
+	paletteUpdates := make(chan *palettes.Palette, 1)
+	setServeControl(runtime, tui, paletteUpdates)
+	defer clearServeControl()
+	configureServeLogger()
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -235,6 +254,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	// Create manager (config and plugin setup)
 	m, err := createServeManager()
 	if err != nil {
+		runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateFailed, Message: err.Error()})
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 	// Do not let a previous serve session's post pointers become visible while
@@ -242,6 +262,8 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	setServePosts(nil)
 	setServeSearchPosts(nil)
 	configureLoggerForManager(m)
+	configureServeLogger()
+	palette := publishServePalette(m)
 
 	// Apply fast mode if requested
 	if serveFast {
@@ -274,6 +296,12 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
 	serveSearchEndpoint = searchEndpoint
 	handler := createHandler(outputPath, m, searchHandlerPath)
+	if serveAdmin {
+		mux := http.NewServeMux()
+		mux.Handle("/_markata/", servecontrol.NewWebHandlerWithSourceRoot(runtime, m.Config().ContentDir))
+		mux.Handle("/", handler)
+		handler = mux
+	}
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -300,21 +328,100 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 		}
 	}
 	defer func() { serveRequestFullRebuild = nil }()
+	runtime.SetActionHandler(func(action servecontrol.ActionRequest) error {
+		switch action.Kind {
+		case "build", "rerun", "rerun_job", rebuildPageLegacyAction, rebuildPageAction:
+			if action.Kind == "rerun" || action.Kind == "rerun_job" {
+				found := false
+				snapshot := runtime.Snapshot()
+				for i := range snapshot.Jobs {
+					job := snapshot.Jobs[i]
+					if job.ID == action.JobID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("job %q was not found", action.JobID)
+				}
+			}
+			if action.Kind == rebuildPageLegacyAction || action.Kind == rebuildPageAction {
+				if !strings.HasSuffix(action.Page, ".md") && !strings.HasSuffix(action.Page, ".markdown") {
+					return fmt.Errorf("page %q has no editable Markdown source", action.Page)
+				}
+				found := false
+				for _, page := range runtime.Snapshot().Pages {
+					if page.Path == action.Page {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("page %q was not found", action.Page)
+				}
+			}
+			serveChangedPathsMu.Lock()
+			serveForceFullRebuild = action.Kind != rebuildPageLegacyAction && action.Kind != rebuildPageAction
+			if action.Kind == rebuildPageLegacyAction || action.Kind == rebuildPageAction {
+				serveChangedPaths[action.Page] = fsnotify.Write
+			}
+			serveChangedPathsMu.Unlock()
+			if isRebuilding.Load() {
+				rebuildPending.Store(true)
+				return nil
+			}
+			if rebuildCh == nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					doRebuild(ctx, make(chan struct{}, 1))
+				}()
+				return nil
+			}
+			if serveRequestFullRebuild != nil {
+				serveRequestFullRebuild()
+			}
+			return nil
+		default:
+			return fmt.Errorf("unsupported serve action %q", action.Kind)
+		}
+	})
 
 	if rebuildCh != nil {
 		infof("Watching for file changes...")
 	}
 	infof("\nServing at http://%s", addr)
+	if serveAdmin {
+		infof("Admin at http://%s/_markata/", addr)
+	}
 	infof("Press Ctrl+C to stop")
 	server, serverErr := startHTTPServer(listener, handler)
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateSuccess, Address: addr})
 
 	startInitialBuild(m, rebuildCh, &wg)
-
-	if err := waitForShutdown(ctx, server, serverErr); err != nil {
-		return err
+	tuiErrors := make(chan error, 1)
+	if tui {
+		go func() {
+			if tuiErr := servetui.Run(ctx, runtime, palette, paletteUpdates); tuiErr != nil {
+				runtime.AddDiagnostic(servecontrol.Diagnostic{Code: "serve.tui_error", Severity: "error", Message: tuiErr.Error(), SuggestedFix: "Run markata-go serve --no-tui to inspect the session as plain logs."})
+				tuiErrors <- tuiErr
+			}
+			cancel()
+		}()
 	}
 
+	if err := waitForShutdown(ctx, server, serverErr); err != nil {
+		runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateFailed, Address: addr, Message: err.Error()})
+		return err
+	}
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateCancelled, Address: addr})
+
 	waitForGoroutines(&wg)
+	select {
+	case tuiErr := <-tuiErrors:
+		return fmt.Errorf("serve terminal UI failed: %w; rerun with --no-tui", tuiErr)
+	default:
+	}
 
 	errln("Server stopped")
 	return nil
@@ -468,6 +575,23 @@ func isAddressInUseError(err error) bool {
 		strings.Contains(message, "only one usage of each socket address")
 }
 
+func shouldRunServeTUI(disabled, noInput bool, input, output any) bool {
+	if disabled || noInput || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	in, inOK := input.(*os.File)
+	out, outOK := output.(*os.File)
+	return inOK && outOK && term.IsTerminal(int(in.Fd())) && term.IsTerminal(int(out.Fd()))
+}
+
+func serveLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
 	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
@@ -496,7 +620,9 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 			}
 		}()
 
-		result, buildErr := runBuild(m)
+		jobID := startServeJob("Initial build", "startup", nil)
+		result, buildErr := runServeBuild(m, jobID)
+		finishServeJob(jobID, m, result, buildErr)
 		if buildErr != nil {
 			setBuildStatus(buildStatusError, buildErr.Error(), "")
 			notifyBuildStatus()
@@ -1674,6 +1800,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
 	startTime := time.Now()
+	jobID := startServeJob("Rebuild", "watch", nil)
 
 	// Check if context is canceled before starting rebuild
 	select {
@@ -1685,12 +1812,14 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	m, err := createServeManager()
 	if err != nil {
+		finishServeJob(jobID, nil, nil, err)
 		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
 	configureLoggerForManager(m)
+	publishServePalette(m)
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
 	configureRebuildManager(m)
@@ -1703,7 +1832,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	default:
 	}
 
-	result, err := runBuild(m)
+	result, err := runServeBuild(m, jobID)
+	finishServeJob(jobID, m, result, err)
 	if err != nil {
 		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()

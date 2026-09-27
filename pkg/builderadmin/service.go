@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
+	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
 	"github.com/WaylonWalker/markata-go/pkg/sourcegit"
 	"github.com/fsnotify/fsnotify"
 )
@@ -112,53 +114,56 @@ type RunningOperation struct {
 	TriggerType string    `json:"trigger_type"`
 	Detail      string    `json:"detail,omitempty"`
 	StartedAt   time.Time `json:"started_at"`
+	EnqueuedAt  time.Time `json:"enqueued_at,omitempty"`
 	Phase       string    `json:"phase"`
 	Impact      string    `json:"impact,omitempty"`
 }
 
 type BuildRecord struct {
-	ID              string    `json:"id"`
-	Kind            string    `json:"kind"`
-	Status          string    `json:"status"`
-	TriggerType     string    `json:"trigger_type"`
-	TriggerDetail   string    `json:"trigger_detail,omitempty"`
-	ChangedPaths    []string  `json:"changed_paths,omitempty"`
-	Impact          string    `json:"impact,omitempty"`
-	EnqueuedAt      time.Time `json:"enqueued_at"`
-	StartedAt       time.Time `json:"started_at"`
-	FinishedAt      time.Time `json:"finished_at"`
-	QueueWaitMS     int64     `json:"queue_wait_ms"`
-	PrepareMS       int64     `json:"prepare_ms"`
-	BuildMS         int64     `json:"build_ms"`
-	PromoteMS       int64     `json:"promote_ms"`
-	PruneMS         int64     `json:"prune_ms"`
-	TotalMS         int64     `json:"total_ms"`
-	ReleaseID       string    `json:"release_id,omitempty"`
-	ReleasePath     string    `json:"release_path,omitempty"`
-	BecameLive      bool      `json:"became_live"`
-	LogPath         string    `json:"log_path,omitempty"`
-	PerfSummary     []string  `json:"perf_summary,omitempty"`
-	Error           string    `json:"error,omitempty"`
-	RollbackRelease string    `json:"rollback_release,omitempty"`
+	ID              string                    `json:"id"`
+	Kind            string                    `json:"kind"`
+	Status          string                    `json:"status"`
+	TriggerType     string                    `json:"trigger_type"`
+	TriggerDetail   string                    `json:"trigger_detail,omitempty"`
+	ChangedPaths    []string                  `json:"changed_paths,omitempty"`
+	Impact          string                    `json:"impact,omitempty"`
+	EnqueuedAt      time.Time                 `json:"enqueued_at"`
+	StartedAt       time.Time                 `json:"started_at"`
+	FinishedAt      time.Time                 `json:"finished_at"`
+	QueueWaitMS     int64                     `json:"queue_wait_ms"`
+	PrepareMS       int64                     `json:"prepare_ms"`
+	BuildMS         int64                     `json:"build_ms"`
+	PromoteMS       int64                     `json:"promote_ms"`
+	PruneMS         int64                     `json:"prune_ms"`
+	TotalMS         int64                     `json:"total_ms"`
+	ReleaseID       string                    `json:"release_id,omitempty"`
+	ReleasePath     string                    `json:"release_path,omitempty"`
+	BecameLive      bool                      `json:"became_live"`
+	LogPath         string                    `json:"log_path,omitempty"`
+	LogDiagnostics  []servecontrol.Diagnostic `json:"log_diagnostics,omitempty"`
+	PerfSummary     []string                  `json:"perf_summary,omitempty"`
+	Error           string                    `json:"error,omitempty"`
+	RollbackRelease string                    `json:"rollback_release,omitempty"`
 }
 
 type RefreshRecord struct {
-	ID                    string    `json:"id"`
-	TaskName              string    `json:"task_name"`
-	Status                string    `json:"status"`
-	TriggerType           string    `json:"trigger_type"`
-	TriggerDetail         string    `json:"trigger_detail,omitempty"`
-	EnqueuedAt            time.Time `json:"enqueued_at"`
-	StartedAt             time.Time `json:"started_at"`
-	FinishedAt            time.Time `json:"finished_at"`
-	QueueWaitMS           int64     `json:"queue_wait_ms"`
-	RunMS                 int64     `json:"run_ms"`
-	TotalMS               int64     `json:"total_ms"`
-	LogPath               string    `json:"log_path,omitempty"`
-	EnqueuedBuildID       string    `json:"enqueued_build_id,omitempty"`
-	EnqueueBuildOnSuccess bool      `json:"enqueue_build_on_success"`
-	Command               []string  `json:"command,omitempty"`
-	Error                 string    `json:"error,omitempty"`
+	ID                    string                    `json:"id"`
+	TaskName              string                    `json:"task_name"`
+	Status                string                    `json:"status"`
+	TriggerType           string                    `json:"trigger_type"`
+	TriggerDetail         string                    `json:"trigger_detail,omitempty"`
+	EnqueuedAt            time.Time                 `json:"enqueued_at"`
+	StartedAt             time.Time                 `json:"started_at"`
+	FinishedAt            time.Time                 `json:"finished_at"`
+	QueueWaitMS           int64                     `json:"queue_wait_ms"`
+	RunMS                 int64                     `json:"run_ms"`
+	TotalMS               int64                     `json:"total_ms"`
+	LogPath               string                    `json:"log_path,omitempty"`
+	LogDiagnostics        []servecontrol.Diagnostic `json:"log_diagnostics,omitempty"`
+	EnqueuedBuildID       string                    `json:"enqueued_build_id,omitempty"`
+	EnqueueBuildOnSuccess bool                      `json:"enqueue_build_on_success"`
+	Command               []string                  `json:"command,omitempty"`
+	Error                 string                    `json:"error,omitempty"`
 }
 
 type ReleaseView struct {
@@ -197,6 +202,7 @@ type Service struct {
 	watchTimer           *time.Timer
 	stateMu              sync.Mutex
 	state                State
+	controlRuntime       *servecontrol.Runtime
 	releaseMu            sync.Mutex
 	pruneScheduleMu      sync.Mutex
 	pruneRunning         bool
@@ -315,6 +321,7 @@ func New(cfg Config) (*Service, error) {
 		overrideDir:          filepath.Join(cfg.HistoryDir, defaultOverrideName),
 		leaderPath:           filepath.Join(cfg.HistoryDir, defaultLeaderName),
 		queueCh:              make(chan queueRequest, 128),
+		controlRuntime:       servecontrol.NewRuntime(),
 		watchChanged:         make(map[string]struct{}),
 		instanceID:           os.Getenv("POD_NAME"),
 		trustedProxyPrefixes: trustedProxyPrefixes,
@@ -344,6 +351,7 @@ func New(cfg Config) (*Service, error) {
 		_ = lockFile.Close()
 		return nil, err
 	}
+	s.refreshControlStateWithFiles(s.state)
 	return s, nil
 }
 
@@ -686,20 +694,23 @@ func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (s *Service) handleState(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	state := s.viewState()
+	s.refreshControlStateWithFiles(state)
 	_ = json.NewEncoder(w).Encode(struct {
-		State        State         `json:"state"`
-		Releases     []ReleaseView `json:"releases"`
-		CurrentID    string        `json:"current_release_id,omitempty"`
-		CurrentPath  string        `json:"current_release_path,omitempty"`
-		Config       Config        `json:"config"`
-		RefreshTasks []string      `json:"refresh_tasks"`
+		State         State                 `json:"state"`
+		Releases      []ReleaseView         `json:"releases"`
+		CurrentID     string                `json:"current_release_id,omitempty"`
+		CurrentPath   string                `json:"current_release_path,omitempty"`
+		Config        Config                `json:"config"`
+		RefreshTasks  []string              `json:"refresh_tasks"`
+		ControlCenter servecontrol.Snapshot `json:"control_center"`
 	}{
-		State:        state,
-		Releases:     s.discoverReleases(),
-		CurrentID:    s.currentReleaseID(),
-		CurrentPath:  s.currentReleasePath(),
-		Config:       s.cfg,
-		RefreshTasks: s.refreshTaskNames(),
+		State:         state,
+		Releases:      s.discoverReleases(),
+		CurrentID:     s.currentReleaseID(),
+		CurrentPath:   s.currentReleasePath(),
+		Config:        s.cfg,
+		RefreshTasks:  s.refreshTaskNames(),
+		ControlCenter: s.controlRuntime.Snapshot(),
 	})
 }
 
@@ -1659,6 +1670,7 @@ func (s *Service) setRunning(req queueRequest) {
 		TriggerType: req.TriggerType,
 		Detail:      req.Detail,
 		StartedAt:   time.Now().UTC(),
+		EnqueuedAt:  req.EnqueuedAt,
 		Phase:       "starting",
 		Impact:      classifyBuildImpact(req.Changed),
 	}
@@ -1700,6 +1712,7 @@ func (s *Service) clearRunning() {
 }
 
 func (s *Service) finishBuild(record BuildRecord) {
+	record.LogDiagnostics = s.readControlLogDiagnostics(record.LogPath, record.ID)
 	s.stateMu.Lock()
 	s.state.Builds = append([]BuildRecord{record}, s.state.Builds...)
 	s.pruneBuildHistoryLocked()
@@ -1708,6 +1721,7 @@ func (s *Service) finishBuild(record BuildRecord) {
 }
 
 func (s *Service) finishRefresh(record RefreshRecord) {
+	record.LogDiagnostics = s.readControlLogDiagnostics(record.LogPath, record.ID)
 	s.stateMu.Lock()
 	s.state.Refresh = append([]RefreshRecord{record}, s.state.Refresh...)
 	s.pruneRefreshHistoryLocked()
@@ -1766,6 +1780,7 @@ func (s *Service) loadState() error {
 }
 
 func (s *Service) saveStateLocked() {
+	defer s.refreshControlState(s.state)
 	data, err := json.MarshalIndent(s.state, "", "  ")
 	if err != nil {
 		return
@@ -1775,6 +1790,350 @@ func (s *Service) saveStateLocked() {
 		return
 	}
 	_ = os.Rename(tmp, s.statePath)
+}
+
+// refreshControlState projects the persisted Builder Admin queue into the
+// shared serve model. Builder Admin remains the owner of its queue and release
+// operations; the control runtime is a read model with the same job IDs.
+func (s *Service) refreshControlState(state State) {
+	if s.controlRuntime == nil {
+		return
+	}
+	s.controlRuntime.ReplaceSnapshot(s.controlSnapshot(state))
+}
+
+func (s *Service) refreshControlStateWithFiles(state State) {
+	if s.controlRuntime == nil {
+		return
+	}
+	snapshot := s.controlSnapshot(state)
+	s.addRecentControlLogs(&snapshot, state)
+	s.addCurrentReleaseDiagnostics(&snapshot, state)
+	s.controlRuntime.ReplaceSnapshot(snapshot)
+}
+
+func (s *Service) controlSnapshot(state State) servecontrol.Snapshot {
+	snapshot := projectControlState(state)
+	snapshot.Server = servecontrol.ServerState{
+		Status:  servecontrol.StateSuccess,
+		Address: fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port),
+	}
+	return snapshot
+}
+
+func projectControlState(state State) servecontrol.Snapshot {
+	snapshot := servecontrol.Snapshot{
+		Jobs:        make([]servecontrol.Job, 0, len(state.Queue)+len(state.Builds)+len(state.Refresh)+1),
+		Diagnostics: []servecontrol.Diagnostic{},
+		Pages:       []servecontrol.Page{},
+		Logs:        []servecontrol.LogEntry{},
+	}
+	queuedByID := make(map[string]QueuedOperation, len(state.Queue))
+	for _, queued := range state.Queue {
+		queuedByID[queued.ID] = queued
+		if state.Running != nil && state.Running.ID == queued.ID {
+			continue
+		}
+		snapshot.Jobs = append(snapshot.Jobs, servecontrol.Job{
+			ID: queued.ID, Name: queued.Label, Type: queued.Kind, Trigger: queued.TriggerType,
+			State: servecontrol.StateQueued, QueuedAt: queued.EnqueuedAt,
+			Pages: append([]string(nil), queued.Changed...),
+		})
+	}
+	if running := state.Running; running != nil {
+		queuedAt := running.EnqueuedAt
+		pages := []string(nil)
+		if queued, ok := queuedByID[running.ID]; ok {
+			if queuedAt.IsZero() {
+				queuedAt = queued.EnqueuedAt
+			}
+			pages = append(pages, queued.Changed...)
+		}
+		if queuedAt.IsZero() {
+			queuedAt = running.StartedAt
+		}
+		job := servecontrol.Job{
+			ID: running.ID, Name: running.Label, Type: running.Kind, Trigger: running.TriggerType,
+			State: servecontrol.StateRunning, QueuedAt: queuedAt, StartedAt: running.StartedAt,
+			Pages: pages,
+		}
+		if running.Phase != "" {
+			job.Steps = []servecontrol.Step{{ID: running.ID + "/" + running.Phase, Name: running.Phase, State: servecontrol.StateRunning, StartedAt: running.StartedAt}}
+		}
+		snapshot.Jobs = append(snapshot.Jobs, job)
+	}
+	for _, record := range state.Builds {
+		job := servecontrol.Job{
+			ID: record.ID, Name: "Build", Type: record.Kind, Trigger: record.TriggerType,
+			State: controlState(record.Status), QueuedAt: record.EnqueuedAt,
+			StartedAt: record.StartedAt, EndedAt: record.FinishedAt,
+			Pages: append([]string(nil), record.ChangedPaths...),
+			Steps: buildControlSteps(record),
+		}
+		if record.Kind == "rollback" {
+			job.Name = "Rollback " + record.RollbackRelease
+		}
+		if record.Error != "" {
+			diagnostic := servecontrol.Diagnostic{
+				Code: "MARKATA-E901", Severity: "error", Message: record.Error, JobID: record.ID,
+				SuggestedFix: "Open this job's log, correct the failed build command, then trigger another build.",
+			}
+			job.Diagnostics = append(job.Diagnostics, diagnostic)
+			snapshot.Diagnostics = append(snapshot.Diagnostics, diagnostic)
+		}
+		job.Diagnostics = append(job.Diagnostics, record.LogDiagnostics...)
+		snapshot.Diagnostics = append(snapshot.Diagnostics, record.LogDiagnostics...)
+		snapshot.Jobs = append(snapshot.Jobs, job)
+	}
+	for _, record := range state.Refresh {
+		job := servecontrol.Job{
+			ID: record.ID, Name: "Refresh " + record.TaskName, Type: "refresh", Trigger: record.TriggerType,
+			State: controlState(record.Status), QueuedAt: record.EnqueuedAt,
+			StartedAt: record.StartedAt, EndedAt: record.FinishedAt,
+			Steps: []servecontrol.Step{{ID: record.ID + "/refresh", Name: "refresh", State: controlState(record.Status), StartedAt: record.StartedAt, EndedAt: record.FinishedAt}},
+		}
+		if record.Error != "" {
+			diagnostic := servecontrol.Diagnostic{
+				Code: "MARKATA-E902", Severity: "error", Message: record.Error, JobID: record.ID,
+				SuggestedFix: "Open this refresh job's log, correct the command failure, then run the refresh again.",
+			}
+			job.Diagnostics = append(job.Diagnostics, diagnostic)
+			snapshot.Diagnostics = append(snapshot.Diagnostics, diagnostic)
+		}
+		job.Diagnostics = append(job.Diagnostics, record.LogDiagnostics...)
+		snapshot.Diagnostics = append(snapshot.Diagnostics, record.LogDiagnostics...)
+		snapshot.Jobs = append(snapshot.Jobs, job)
+	}
+	sort.SliceStable(snapshot.Jobs, func(i, j int) bool {
+		if snapshot.Jobs[i].QueuedAt.Equal(snapshot.Jobs[j].QueuedAt) {
+			return snapshot.Jobs[i].ID < snapshot.Jobs[j].ID
+		}
+		return snapshot.Jobs[i].QueuedAt.Before(snapshot.Jobs[j].QueuedAt)
+	})
+	return snapshot
+}
+
+func controlState(status string) servecontrol.State {
+	switch status {
+	case "queued":
+		return servecontrol.StateQueued
+	case "running":
+		return servecontrol.StateRunning
+	case "success":
+		return servecontrol.StateSuccess
+	case "warning":
+		return servecontrol.StateWarning
+	//nolint:misspell // Accepts the legacy serialized spelling for compatibility.
+	case "cancelled":
+		return servecontrol.StateCancelled
+	default:
+		return servecontrol.StateFailed
+	}
+}
+
+func buildControlSteps(record BuildRecord) []servecontrol.Step {
+	phases := []struct {
+		name string
+		ms   int64
+	}{{"prepare", record.PrepareMS}, {"build", record.BuildMS}, {"promote", record.PromoteMS}, {"prune", record.PruneMS}}
+	steps := make([]servecontrol.Step, 0, len(phases))
+	started := record.StartedAt
+	for _, phase := range phases {
+		if phase.ms == 0 {
+			continue
+		}
+		ended := started.Add(time.Duration(phase.ms) * time.Millisecond)
+		steps = append(steps, servecontrol.Step{
+			ID: record.ID + "/" + phase.name, Name: phase.name, State: servecontrol.StateSuccess,
+			StartedAt: started, EndedAt: ended,
+		})
+		started = ended
+	}
+	if record.Status == "failed" && len(steps) > 0 {
+		steps[len(steps)-1].State = servecontrol.StateFailed
+	}
+	return steps
+}
+
+// readControlLogDiagnostics scans the completed file once so warnings and
+// errors survive later log output and subsequent builds in persisted history.
+func (s *Service) readControlLogDiagnostics(logPath, jobID string) []servecontrol.Diagnostic {
+	if logPath == "" || filepath.Base(logPath) != logPath {
+		return nil
+	}
+	file, err := os.Open(filepath.Join(s.logDir, logPath))
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64<<10), 16<<20)
+	var found []servecontrol.Diagnostic
+	seen := make(map[string]struct{})
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		severity := controlLogSeverity(line)
+		if severity == "" {
+			continue
+		}
+		key := severity + "\x00" + line
+		if _, duplicate := seen[key]; duplicate {
+			continue
+		}
+		seen[key] = struct{}{}
+		code := "MARKATA-W900"
+		if severity == "error" {
+			code = "MARKATA-E900"
+		}
+		found = append(found, servecontrol.Diagnostic{
+			Code: code, Severity: severity, Message: line, JobID: jobID,
+			Explanation:  "This message came from the builder command output.",
+			SuggestedFix: "Review the full job log and the source file named in this message, then rerun the job.",
+		})
+	}
+	return found
+}
+
+func controlLogSeverity(line string) string {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	switch {
+	case strings.HasPrefix(lower, "error:"), strings.HasPrefix(lower, "error "),
+		strings.HasPrefix(lower, "fatal:"), strings.HasPrefix(lower, "fatal "),
+		strings.Contains(lower, "level=error"), strings.Contains(lower, "level=fatal"):
+		return "error"
+	case strings.HasPrefix(lower, "warning:"), strings.HasPrefix(lower, "warning "),
+		strings.HasPrefix(lower, "warn:"), strings.HasPrefix(lower, "warn "),
+		strings.Contains(lower, "level=warn"):
+		return "warning"
+	default:
+		return ""
+	}
+}
+
+// addRecentControlLogs imports a bounded tail of active and recent job files.
+// Older full logs remain available through Builder Admin's existing /logs URL.
+func (s *Service) addRecentControlLogs(snapshot *servecontrol.Snapshot, state State) {
+	logPaths := make(map[string]string, len(state.Builds)+len(state.Refresh)+1)
+	for _, record := range state.Builds {
+		logPaths[record.ID] = record.LogPath
+	}
+	for _, record := range state.Refresh {
+		logPaths[record.ID] = record.LogPath
+	}
+	if state.Running != nil {
+		logPaths[state.Running.ID] = state.Running.ID + ".log"
+	}
+	imported := 0
+	for i := len(snapshot.Jobs) - 1; i >= 0 && imported < 12; i-- {
+		job := &snapshot.Jobs[i]
+		path := logPaths[job.ID]
+		if path == "" {
+			continue
+		}
+		logs := s.readControlLogTail(path, job.ID)
+		if len(logs) == 0 {
+			continue
+		}
+		job.Logs = logs
+		snapshot.Logs = append(snapshot.Logs, logs...)
+		imported++
+	}
+}
+
+func (s *Service) readControlLogTail(logPath, jobID string) []servecontrol.LogEntry {
+	if logPath == "" || filepath.Base(logPath) != logPath {
+		return nil
+	}
+	file, err := os.Open(filepath.Join(s.logDir, logPath))
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil
+	}
+	start := max(int64(0), info.Size()-(16<<10))
+	if _, err := file.Seek(start, io.SeekStart); err != nil {
+		return nil
+	}
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 16<<10), 1<<20)
+	if start > 0 {
+		scanner.Scan() // Discard the partial first line.
+	}
+	logs := make([]servecontrol.LogEntry, 0, 64)
+	for scanner.Scan() {
+		line := scanner.Text()
+		logs = append(logs, servecontrol.LogEntry{JobID: jobID, Level: controlLogSeverity(line), Message: line})
+		if len(logs) > 200 {
+			logs = logs[1:]
+		}
+	}
+	return logs
+}
+
+// addCurrentReleaseDiagnostics reads only the live release's bounded,
+// validated diagnostics artifact. Old releases retain their own artifact.
+func (s *Service) addCurrentReleaseDiagnostics(snapshot *servecontrol.Snapshot, state State) {
+	if s.cfg.SiteDir == "" {
+		return
+	}
+	releaseID := s.currentReleaseID()
+	if releaseID == "" {
+		return
+	}
+	path := filepath.Join(s.cfg.SiteDir, "current", diagnostics.DefaultArtifactPath)
+	info, err := os.Stat(path)
+	if err != nil || info.Size() > 16<<20 {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	artifact, err := diagnostics.ParseArtifact(data)
+	if err != nil {
+		return
+	}
+	jobID := ""
+	for _, build := range state.Builds {
+		if build.ReleaseID == releaseID && build.Kind == "build" && build.Status == "success" {
+			jobID = build.ID
+			break
+		}
+	}
+	jobIndex := -1
+	for i := range snapshot.Jobs {
+		if snapshot.Jobs[i].ID == jobID {
+			jobIndex = i
+			break
+		}
+	}
+	for _, entry := range artifact.Entries {
+		page := servecontrol.Page{Path: entry.Path, LastJobID: jobID}
+		if entry.Emitted {
+			page.Status = servecontrol.StateSuccess
+		}
+		for _, issue := range entry.Diagnostics {
+			diagnostic := servecontrol.Diagnostic{
+				Code: issue.Code, Severity: issue.Severity.String(), Message: issue.Message,
+				File: issue.File, Page: entry.Path, Line: issue.Range.StartLine + 1,
+				Column: issue.Range.StartCol + 1, JobID: jobID,
+			}
+			page.Diagnostics = append(page.Diagnostics, diagnostic)
+			snapshot.Diagnostics = append(snapshot.Diagnostics, diagnostic)
+			if jobIndex >= 0 {
+				snapshot.Jobs[jobIndex].Diagnostics = append(snapshot.Jobs[jobIndex].Diagnostics, diagnostic)
+			}
+			if diagnostic.Severity == "error" {
+				page.Status = servecontrol.StateFailed
+			} else if diagnostic.Severity == "warning" && page.Status != servecontrol.StateFailed {
+				page.Status = servecontrol.StateWarning
+			}
+		}
+		snapshot.Pages = append(snapshot.Pages, page)
+	}
 }
 
 func (s *Service) discoverReleases() []ReleaseView {

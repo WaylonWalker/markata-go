@@ -22,8 +22,8 @@ The markata-go CLI follows a subcommand pattern similar to tools like `git` and 
 markata-go [global flags] <command> [command flags] [arguments]
 ```
 
-The common short forms are `b` for `build`, `s` and `serv` for `serve`, and `ls` for
-`list`. For example, `markata-go s --bind 0.0.0.0` starts the development
+The common short forms are `b` for `build`, `s` and `serv` for `serve`, `a` for
+`admin`, and `ls` for `list`. For example, `markata-go s --bind 0.0.0.0` starts the development
 server on every network interface. `--bind` and `--host` select the same
 listening address; if both are set, their values must agree.
 The semantic names `dev` and `preview` suggest `serve` but do not execute it.
