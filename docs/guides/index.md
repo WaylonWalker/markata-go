@@ -124,6 +124,7 @@ For developers who want full control and customization.
 ### Deployment
 - [Deployment](/docs/guides/deployment/) - GitHub Pages, Netlify, Vercel, Docker
 - [Self-Hosting](/docs/guides/self-hosting/) - nginx, Caddy, and manual deployment
+- [Nginx-native Redirects](/docs/guides/nginx-redirects/) - Generate and safely deploy `redirects.conf` with HTML fallbacks
 
 ### Advanced
 - [Agent Skills](/docs/guides/agent-skills/) - Install the bundled markata-go site skill for coding agents
@@ -143,6 +144,7 @@ For developers who want full control and customization.
 | Add RSS feed | [Syndication Feeds](/docs/guides/syndication-feeds/) |
 | Fix excessive dns-prefetch | [Resource Hints Quick Fix](/docs/guides/resource-hints-quick-fix/) |
 | Deploy to GitHub Pages | [Deployment](/docs/guides/deployment/#deploying-to-github-pages) |
+| Configure nginx redirects | [Nginx-native Redirects](/docs/guides/nginx-redirects/) |
 | Create a custom template | [Templates](/docs/guides/templates/#template-inheritance) |
 | Install the agent skill | [Agent Skills](/docs/guides/agent-skills/) |
 | Filter posts by tag | [Feeds](/docs/guides/feeds/#filtering-posts) |
@@ -152,5 +154,5 @@ For developers who want full control and customization.
 ## Need Help?
 
 - **[Troubleshooting](/docs/troubleshooting/)** - Common issues and solutions
-- **[Quick Reference](/docs/guides/quick-reference/)** - Common commands and config snippets
+- **[Quick Reference](/docs/guides/quick-reference/) - Common commands and config snippets
 - **[GitHub Issues](https://github.com/WaylonWalker/markata-go/issues)** - Report bugs or request features
