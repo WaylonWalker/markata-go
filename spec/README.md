@@ -35,6 +35,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
+| `REDIRECTS.md` | `docs/guides/nginx-redirects.md`, `docs/reference/plugins.md` |
 | `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
 | `SPEC.md` (CLI) | `docs/reference/cli.md` |
 | `CONTAINERS.md` | `docs/guides/deployment/docker.md` |
@@ -58,6 +59,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
+| [REDIRECTS.md](./spec/REDIRECTS.md) | Native nginx redirects and portable HTML fallbacks |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
