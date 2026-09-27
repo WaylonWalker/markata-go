@@ -22,20 +22,22 @@ Text after the marker MAY provide classes and an attribute block. A named or att
 
 ## Closing syntax
 
-A closing marker MUST contain only three or more colons after surrounding whitespace is removed.
+A documented closing marker MUST be a bare line containing only three or more colons.
 
 ```markdown
 :::
 ::::
 ```
 
-These are not closing markers:
+These are not documented closing forms:
 
 ```markdown
 ::: card
 ::: {.card}
 :::: nested
 ```
+
+Authors SHOULD use exact, undecorated colon-only lines as closers rather than depending on whitespace or indentation normalization.
 
 ## Nesting semantics
 
@@ -99,5 +101,4 @@ Implementations SHOULD test at minimum:
 2. nested three/four-colon containers with matching closing markers
 3. content after an inner close remains inside the outer container
 4. named and attributed `:::` lines are treated as openers
-5. colon-only markers are the only closing markers
-6. surrounding whitespace on a colon-only closing marker is ignored
+5. bare colon-only markers are the documented closing form
