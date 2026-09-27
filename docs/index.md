@@ -18,6 +18,7 @@ A comprehensive, extendable static site generator written in Go.
 
 - [[quickstart|Quickstart]] - Get running in 5 minutes
 - [[getting-started|Getting Started]] - Full tutorial walkthrough
+- [Serve Control Center](/docs/guides/serve-control-center/) - Inspect builds, warnings, and pages while serving
 
 ---
 

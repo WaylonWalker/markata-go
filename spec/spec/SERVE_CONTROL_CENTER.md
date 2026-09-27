@@ -11,9 +11,9 @@ view uses the same runtime representation as the terminal.
 
 ## Runtime records
 
-The runtime records server status, jobs, steps, pages, diagnostics, and structured
-logs. Jobs have stable session IDs, source/trigger, queued/start/end times, state,
-affected pages, steps, and related logs and diagnostics. Steps use the build
+The runtime records server status, jobs, steps, pages, feeds, diagnostics, and
+structured logs. Jobs have stable session IDs, source/trigger, queued/start/end
+times, state, affected pages, steps, and related logs and diagnostics. Steps use the build
 lifecycle vocabulary. Diagnostics have severity, stable code, message, optional
 explanation, source location, page, job and step identity, and an optional fix.
 Missing optional fields remain empty. The runtime makes defensive snapshots for
@@ -49,14 +49,31 @@ listener. `markata-go admin` starts the local web experience with serve's build
 and watch runtime. Local admin access binds to loopback by default. Production
 Builder Admin authentication remains unchanged.
 
+The runtime feed inventory projects lifecycle feed names, titles, output paths,
+and post entries. Each entry retains its source path, title, date, and preview
+URL. Clients use this metadata rather than parsing generated HTML. The TUI
+supports feed search, feed detail, entry search, and navigation to existing page
+detail. Nested resource traversal keeps a navigation stack so `Esc` returns one
+level at a time. Source actions resolve relative page paths from the configured
+content directory. The local web dashboard uses system fonts and does not load
+external assets. Builder Admin serves its control projection from memory during
+state polling and refreshes it when its state changes.
+
 ## Clients
 
 The TUI shows server/site state, jobs and steps, recent and job-scoped logs,
-warning and error inboxes, and page details. Navigation, filtering, resize, and
+warning and error inboxes, pages, and feeds. Navigation, filtering, resize, and
 scroll position are client-only state. Scrolling away from the log tail freezes
 position while new lines accumulate. Narrow terminals use a single-column view.
 The web client presents the same runtime objects and contextual actions through
 the session API. A warning or error never exists only in transient scrollback.
+During active work, the TUI may show a fixed-width, palette-aware pulsing dot.
+Animation is limited to interactive terminals and does not appear in plain
+output. `NO_COLOR` disables TUI color.
+
+Safe source fixes are planned against a source digest. Clients preview selected
+changes before applying them. Apply rechecks the digest and edit spans; stale or
+ambiguous changes are rejected without modifying the file.
 
 ## Failure and shutdown
 

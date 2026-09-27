@@ -45,7 +45,10 @@ type Theme struct {
 }
 
 type Options struct {
-	Writer     io.Writer
+	Writer io.Writer
+	// Observer receives decoded entries before presentation. It must not log
+	// through the standard logger, which would recursively call the writer.
+	Observer   func(Entry, string)
 	Format     Format
 	ForceColor bool
 	NoColor    bool
@@ -54,12 +57,13 @@ type Options struct {
 }
 
 type Writer struct {
-	mu     sync.Mutex
-	out    io.Writer
-	format Format
-	color  bool
-	theme  Theme
-	buf    bytes.Buffer
+	mu       sync.Mutex
+	out      io.Writer
+	format   Format
+	color    bool
+	theme    Theme
+	buf      bytes.Buffer
+	observer func(Entry, string)
 }
 
 type Entry struct {
@@ -120,10 +124,11 @@ func NewWriter(opts Options) *Writer {
 	}
 
 	return &Writer{
-		out:    writer,
-		format: resolveFormat(format, opts.IsTTY),
-		color:  allowColor(opts),
-		theme:  theme,
+		out:      writer,
+		observer: opts.Observer,
+		format:   resolveFormat(format, opts.IsTTY),
+		color:    allowColor(opts),
+		theme:    theme,
 	}
 }
 
@@ -248,7 +253,12 @@ func (w *Writer) Write(p []byte) (int, error) {
 			_, _ = w.buf.WriteString(remaining)
 			break
 		}
-		if _, err := io.WriteString(w.out, w.render(strings.TrimSuffix(line, "\n"))+"\n"); err != nil {
+		line = strings.TrimSuffix(line, "\n")
+		if w.observer != nil {
+			entry, body := decodeEntry(line)
+			w.observer(entry, body)
+		}
+		if _, err := io.WriteString(w.out, w.render(line)+"\n"); err != nil {
 			return written, err
 		}
 	}

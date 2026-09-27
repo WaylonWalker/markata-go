@@ -15,6 +15,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
+	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
 )
 
 // createManager creates and configures a lifecycle manager with all plugins.
@@ -51,6 +52,12 @@ func createManagerWithPlugins(cfgPath string, pluginSet func() []lifecycle.Plugi
 
 	// Print warnings
 	for _, w := range warnings {
+		if runtime, jobID, _ := currentServeControl(); runtime != nil {
+			runtime.AddDiagnostic(servecontrol.Diagnostic{
+				Code: "config.validation_warning", Severity: "warning", Message: w.Error(),
+				JobID: jobID, SuggestedFix: "Review this setting in markata-go.toml, then rebuild.",
+			})
+		}
 		if verbose || isLicenseWarning(w) {
 			warnf("%v", w)
 		}
@@ -417,6 +424,12 @@ type BlogrollStatus struct {
 
 // runBuild executes a full build and returns the result.
 func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
+	return runBuildObserved(m, nil)
+}
+
+// runBuildObserved reports lifecycle stage transitions to serve clients. The
+// ordinary build command passes no observer and keeps its existing behavior.
+func runBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
 	profile := buildstats.Start()
 	defer func() {
 		summary := profile.Stop()
@@ -440,11 +453,20 @@ func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
 
 	for _, stage := range stages {
 		stageStart := time.Now()
+		if observe != nil {
+			observe(stage, true, nil)
+		}
 		buildstats.SetActiveStage(string(stage))
 		verbosef("  [%s] running...", stage)
 		if err := m.RunTo(stage); err != nil {
+			if observe != nil {
+				observe(stage, false, err)
+			}
 			buildstats.SetActiveStage("")
 			return nil, fmt.Errorf("stage %s: %w", stage, err)
+		}
+		if observe != nil {
+			observe(stage, false, nil)
 		}
 		buildstats.SetActiveStage("")
 		stageElapsed := time.Since(stageStart)

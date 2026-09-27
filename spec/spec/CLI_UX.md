@@ -18,6 +18,18 @@ The design reference is [clig.dev](https://clig.dev).
 
 ## Output Streams
 
+### Serve sessions
+
+`serve` uses the Serve Control Center TUI when both input and output are real
+terminals and interactivity is enabled. `--no-tui` forces line-oriented output.
+Redirected input/output, `--no-input`, and dumb terminals also use the plain
+renderer. The TUI receives structured runtime snapshots; it does not parse log
+text for build state. `serve --admin` and `admin` expose the same session in a
+loopback-only web dashboard at `/_markata/`. The `a` alias selects `admin`.
+
+Warnings and errors observed during a serve session are retained as runtime
+diagnostics. A fatal TUI error is reported after the alternate screen exits.
+
 ### `stdout`
 
 Commands MUST send primary results to `stdout`.

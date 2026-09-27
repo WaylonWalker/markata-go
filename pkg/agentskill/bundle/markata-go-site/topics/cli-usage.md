@@ -23,6 +23,15 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go serve --fast`
 - `markata-go serve pages/post.md` (serve only that file at `/`, same single-file mode as `build pages/post.md`)
 - `markata-go serve --incremental` (reuse unchanged posts while retaining normal output processing)
+- `markata-go serve --no-tui` (line-oriented logs for scripts, CI, or terminal capture)
+- `markata-go serve --admin` (site and local jobs, diagnostics, and pages dashboard at `http://localhost:8000/_markata/`)
+- `markata-go admin` (same local serve session and web dashboard, with line-oriented terminal output)
+
+In a real terminal, `serve` opens the Serve Control Center. Inspect the warnings
+and errors inboxes or select a page to find a diagnostic's source location and
+suggested fix. Build failures remain in job history after later rebuilds. The
+local web dashboard and terminal use one session state. Use `builder-admin` for
+the separate deployed release workflow behind proxy authentication.
 
 ### Config And Inspection
 

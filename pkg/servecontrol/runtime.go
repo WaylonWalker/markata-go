@@ -35,6 +35,13 @@ type ServerState struct {
 	Message string `json:"message,omitempty"`
 }
 
+// SiteState describes the latest build independently of HTTP listener state.
+type SiteState struct {
+	Status    State  `json:"status"`
+	Message   string `json:"message,omitempty"`
+	PageCount int    `json:"page_count"`
+}
+
 type Step struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -74,6 +81,22 @@ type Page struct {
 	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
 }
 
+// Feed and FeedEntry project lifecycle feed metadata for session clients.
+type Feed struct {
+	Name    string      `json:"name"`
+	Title   string      `json:"title,omitempty"`
+	Path    string      `json:"path,omitempty"`
+	Status  State       `json:"status,omitempty"`
+	Entries []FeedEntry `json:"entries"`
+}
+
+type FeedEntry struct {
+	Path  string    `json:"path"`
+	Title string    `json:"title,omitempty"`
+	URL   string    `json:"url,omitempty"`
+	Date  time.Time `json:"date,omitempty"`
+}
+
 type JobSpec struct {
 	Name    string   `json:"name"`
 	Type    string   `json:"type,omitempty"`
@@ -97,11 +120,14 @@ type Job struct {
 }
 
 type Snapshot struct {
-	Server      ServerState  `json:"server"`
-	Jobs        []Job        `json:"jobs"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
-	Pages       []Page       `json:"pages"`
-	Logs        []LogEntry   `json:"logs"`
+	Server      ServerState       `json:"server"`
+	Site        SiteState         `json:"site"`
+	Theme       map[string]string `json:"theme,omitempty"`
+	Jobs        []Job             `json:"jobs"`
+	Diagnostics []Diagnostic      `json:"diagnostics"`
+	Pages       []Page            `json:"pages"`
+	Feeds       []Feed            `json:"feeds"`
+	Logs        []LogEntry        `json:"logs"`
 }
 
 type ActionRequest struct {
@@ -127,7 +153,7 @@ type Runtime struct {
 
 func NewRuntime() *Runtime {
 	return &Runtime{
-		state:       Snapshot{Jobs: []Job{}, Diagnostics: []Diagnostic{}, Pages: []Page{}, Logs: []LogEntry{}},
+		state:       Snapshot{Jobs: []Job{}, Diagnostics: []Diagnostic{}, Pages: []Page{}, Feeds: []Feed{}, Logs: []LogEntry{}},
 		subscribers: make(map[chan Snapshot]struct{}),
 	}
 }
@@ -215,6 +241,24 @@ func (r *Runtime) SetServer(state ServerState) {
 	r.mu.Unlock()
 }
 
+func (r *Runtime) SetSite(state SiteState) {
+	r.mu.Lock()
+	r.state.Site = state
+	r.broadcastLocked()
+	r.mu.Unlock()
+}
+
+// SetTheme publishes resolved semantic colors for all session clients.
+func (r *Runtime) SetTheme(theme map[string]string) {
+	r.mu.Lock()
+	r.state.Theme = make(map[string]string, len(theme))
+	for key, value := range theme {
+		r.state.Theme[key] = value
+	}
+	r.broadcastLocked()
+	r.mu.Unlock()
+}
+
 func (r *Runtime) QueueJob(spec JobSpec) string {
 	r.mu.Lock()
 	r.nextID++
@@ -281,6 +325,16 @@ func (r *Runtime) FinishJob(id string, state State) {
 	r.mu.Unlock()
 }
 
+// SetJobPages attaches the pages affected by a completed build to its history.
+func (r *Runtime) SetJobPages(id string, pages []string) {
+	r.mu.Lock()
+	if job := r.jobLocked(id); job != nil {
+		job.Pages = append([]string(nil), pages...)
+		r.broadcastLocked()
+	}
+	r.mu.Unlock()
+}
+
 func (r *Runtime) AddLog(entry LogEntry) {
 	r.mu.Lock()
 	if entry.Time.IsZero() {
@@ -329,6 +383,14 @@ func (r *Runtime) SetPages(pages []Page) {
 	for i, page := range pages {
 		r.state.Pages[i] = clonePage(page)
 	}
+	r.broadcastLocked()
+	r.mu.Unlock()
+}
+
+// SetFeeds replaces feed inventory using projected lifecycle metadata.
+func (r *Runtime) SetFeeds(feeds []Feed) {
+	r.mu.Lock()
+	r.state.Feeds = cloneFeeds(feeds)
 	r.broadcastLocked()
 	r.mu.Unlock()
 }
@@ -415,6 +477,12 @@ func appendBounded[T any](items []T, item T, limit int) []T {
 
 func cloneSnapshot(source Snapshot) Snapshot {
 	copyOf := source
+	if source.Theme != nil {
+		copyOf.Theme = make(map[string]string, len(source.Theme))
+		for key, value := range source.Theme {
+			copyOf.Theme[key] = value
+		}
+	}
 	copyOf.Jobs = make([]Job, len(source.Jobs))
 	for i := range source.Jobs {
 		job := &source.Jobs[i]
@@ -429,8 +497,18 @@ func cloneSnapshot(source Snapshot) Snapshot {
 	for i, page := range source.Pages {
 		copyOf.Pages[i] = clonePage(page)
 	}
+	copyOf.Feeds = cloneFeeds(source.Feeds)
 	copyOf.Logs = append([]LogEntry(nil), source.Logs...)
 	return copyOf
+}
+
+func cloneFeeds(feeds []Feed) []Feed {
+	cloned := make([]Feed, len(feeds))
+	for i, feed := range feeds {
+		cloned[i] = feed
+		cloned[i].Entries = append([]FeedEntry(nil), feed.Entries...)
+	}
+	return cloned
 }
 
 func clonePage(page Page) Page {
