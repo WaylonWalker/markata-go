@@ -10,13 +10,7 @@ import (
 )
 
 func TestUnresolvedLogicalDependencies(t *testing.T) {
-	content := `Missing [[Future Target]] and ![[Another Target]].
-
-\`\`\`
-[[ignored-target]]
-![[ignored-embed]]
-\`\`\`
-`
+	content := "Missing [[Future Target]] and ![[Another Target]].\n\n```\n[[ignored-target]]\n![[ignored-embed]]\n```\n"
 
 	deps := unresolvedLogicalDependencies(content)
 	for _, want := range []string{"future-target", "another-target"} {
