@@ -490,10 +490,10 @@ func cloneSnapshot(source Snapshot) Snapshot {
 		copyOf.Jobs[i] = *job
 		copyOf.Jobs[i].Steps = append([]Step(nil), job.Steps...)
 		copyOf.Jobs[i].Logs = append([]LogEntry(nil), job.Logs...)
-		copyOf.Jobs[i].Diagnostics = append([]Diagnostic(nil), job.Diagnostics...)
+		copyOf.Jobs[i].Diagnostics = deduplicateLogDiagnostics(append([]Diagnostic(nil), job.Diagnostics...))
 		copyOf.Jobs[i].Pages = append([]string(nil), job.Pages...)
 	}
-	copyOf.Diagnostics = append([]Diagnostic(nil), source.Diagnostics...)
+	copyOf.Diagnostics = deduplicateLogDiagnostics(append([]Diagnostic(nil), source.Diagnostics...))
 	copyOf.Pages = make([]Page, len(source.Pages))
 	for i, page := range source.Pages {
 		copyOf.Pages[i] = clonePage(page)
@@ -513,6 +513,42 @@ func cloneFeeds(feeds []Feed) []Feed {
 }
 
 func clonePage(page Page) Page {
-	page.Diagnostics = append([]Diagnostic(nil), page.Diagnostics...)
+	page.Diagnostics = deduplicateLogDiagnostics(append([]Diagnostic(nil), page.Diagnostics...))
 	return page
+}
+
+// deduplicateLogDiagnostics hides a generic log-derived inbox item only when
+// a structured diagnostic for the same job and severity has the same
+// whitespace-normalized message. Original log entries remain untouched.
+func deduplicateLogDiagnostics(source []Diagnostic) []Diagnostic {
+	structured := make(map[string]struct{}, len(source))
+	for i := range source {
+		item := source[i]
+		if strings.HasPrefix(item.Code, "serve.log_") {
+			continue
+		}
+		structured[diagnosticMessageKey(item.JobID, item.Severity, item.Message)] = struct{}{}
+	}
+	result := make([]Diagnostic, 0, len(source))
+	for i := range source {
+		item := source[i]
+		if strings.HasPrefix(item.Code, "serve.log_") {
+			if _, exists := structured[diagnosticMessageKey(item.JobID, item.Severity, item.Message)]; exists {
+				continue
+			}
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
+func diagnosticMessageKey(jobID, severity, message string) string {
+	message = strings.TrimSpace(message)
+	for _, prefix := range []string{"warning:", "error:"} {
+		if strings.HasPrefix(strings.ToLower(message), prefix) {
+			message = strings.TrimSpace(message[len(prefix):])
+			break
+		}
+	}
+	return jobID + "\x00" + severity + "\x00" + strings.Join(strings.Fields(message), " ")
 }
