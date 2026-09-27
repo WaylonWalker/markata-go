@@ -491,6 +491,25 @@ The default `rss.xsl` and `atom.xsl` MUST render with the same theme as the site
   templates directory) are copied unchanged. If rendering fails, the region is
   left as-is so the static fallback links still apply.
 
+The default browser reading view MUST:
+
+- identify the document as a web feed and explain how to subscribe;
+- show the feed title, description, entry count, and update date when present;
+- render entry titles as links, with publication date and summary when present;
+- preserve the RSS/Atom document as machine-readable XML; the XSL only controls
+  the browser's HTML presentation;
+- use responsive layout, visible keyboard focus, and reduced-motion-aware
+  animation while inheriting the site theme through the marker region above.
+
+### Themed 404 Page
+
+The generated `404.html` MUST use the site's post page shell and active theme,
+identify the missing page clearly, and retain the requested path, search form,
+suggestions, and a direct route back to the site. Its layout MUST remain usable
+on narrow screens and provide visible keyboard focus. Both the root template set
+and the packaged default theme include the built-in 404 template; site templates
+may override it with `custom_404_template`.
+
 ---
 
 ## Integration with Head/Style System
