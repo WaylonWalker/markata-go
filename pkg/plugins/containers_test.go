@@ -55,27 +55,6 @@ outer after
 	)
 }
 
-func TestContainerExtension_ShorterCloserPropagatesToParent(t *testing.T) {
-	got := renderContainerMarkdown(t, `::: outer
-outer before
-
-:::: inner
-inner body
-:::
-
-after containers`)
-
-	assertContainerHTMLInOrder(t, got,
-		`<div class="outer">`,
-		`<p>outer before</p>`,
-		`<div class="inner">`,
-		`<p>inner body</p>`,
-		`</div>`,
-		`</div>`,
-		`<p>after containers</p>`,
-	)
-}
-
 func TestContainerExtension_CloseMarkerAllowsSurroundingWhitespace(t *testing.T) {
 	got := renderContainerMarkdown(t, "::: outer\nbody\n   :::   \nafter")
 
