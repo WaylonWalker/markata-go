@@ -219,6 +219,11 @@ func (p *RedirectsPlugin) writeNginxRedirects(redirects []Redirect, outputDir st
 		return fmt.Errorf("creating output directory %s: %w", outputDir, err)
 	}
 
+	outputPath := filepath.Join(outputDir, nginxRedirectsFilename)
+	if err := ensureGeneratedNginxRedirectsWritable(outputPath); err != nil {
+		return err
+	}
+
 	var buf bytes.Buffer
 	buf.WriteString(nginxGeneratedHeader)
 	buf.WriteString("# Include this file inside an nginx server block.\n\n")
@@ -229,12 +234,27 @@ func (p *RedirectsPlugin) writeNginxRedirects(redirects []Redirect, outputDir st
 		buf.WriteString("}\n\n")
 	}
 
-	outputPath := filepath.Join(outputDir, nginxRedirectsFilename)
 	//nolint:gosec // G306: generated nginx configuration is intended to be web-server readable
 	if err := os.WriteFile(outputPath, buf.Bytes(), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 
+	return nil
+}
+
+// ensureGeneratedNginxRedirectsWritable prevents the plugin from silently
+// clobbering a redirects.conf copied from static assets or managed by the user.
+func ensureGeneratedNginxRedirectsWritable(outputPath string) error {
+	content, err := os.ReadFile(outputPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading existing %s: %w", outputPath, err)
+	}
+	if !bytes.HasPrefix(content, []byte(nginxGeneratedHeader)) {
+		return fmt.Errorf("refusing to overwrite user-managed %s; remove or rename it to use generated nginx redirects", outputPath)
+	}
 	return nil
 }
 
@@ -347,7 +367,7 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 	return nil
 }
 
-// hashContent creates a simple hash of content for caching.
+// hashContent creates a simple deterministic hash of content.
 func hashContent(content []byte) uint64 {
 	var hash uint64 = 5381
 	for _, b := range content {
