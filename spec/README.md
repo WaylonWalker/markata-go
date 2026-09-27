@@ -35,7 +35,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
-| `REDIRECTS.md` | `docs/guides/nginx-redirects.md`, `docs/reference/plugins.md` |
+| `REDIRECTS.md` | `docs/guides/nginx-redirects.md` |
 | `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
 | `SPEC.md` (CLI) | `docs/reference/cli.md` |
 | `CONTAINERS.md` | `docs/guides/deployment/docker.md` |
