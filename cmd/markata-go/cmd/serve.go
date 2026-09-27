@@ -78,6 +78,7 @@ var (
 	serveIncremental bool
 	serveNoTUI       bool
 	serveAdmin       bool
+	serveNoAdmin     bool
 
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
@@ -202,6 +203,7 @@ Example usage:
   markata-go serve --fast       # Serve with fast mode (skip minification)
   markata-go serve -p 3000      # Serve on localhost:3000
   markata-go serve --bind 0.0.0.0 # Listen on all interfaces
+  markata-go serve --no-admin  # Disable the local Control Center
   markata-go serve -m fast.toml # Serve with merged config overrides
   markata-go serve --watch      # Explicitly enable file watching (default)
   markata-go serve --watch=false # Disable file watching
@@ -222,7 +224,8 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
 	serveCmd.Flags().BoolVar(&serveIncremental, "incremental", false, "reuse unchanged posts without skipping production output processing")
 	serveCmd.Flags().BoolVar(&serveNoTUI, "no-tui", false, "use line-oriented output instead of the interactive dashboard")
-	serveCmd.Flags().BoolVar(&serveAdmin, "admin", false, "serve the local control center at /_markata/")
+	serveCmd.Flags().BoolVar(&serveAdmin, "admin", false, "explicitly enable the local Control Center (loopback only; enabled by default on loopback)")
+	serveCmd.Flags().BoolVar(&serveNoAdmin, "no-admin", false, "disable the local Control Center at /_markata/")
 }
 
 func runServeCommand(cmd *cobra.Command, args []string) error {
@@ -233,8 +236,9 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	if err := resolveServeHost(cmd); err != nil {
 		return err
 	}
-	if serveAdmin && !serveLoopbackHost(serveHost) {
-		return newUsageError(fmt.Errorf("local admin requires a loopback address; use --bind localhost or --bind 127.0.0.1"))
+	adminEnabled, err := resolveServeAdmin(serveHost, serveAdmin, serveNoAdmin)
+	if err != nil {
+		return err
 	}
 	serveSourceFile = ""
 	if len(args) == 1 {
@@ -277,13 +281,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	addr := net.JoinHostPort(serveHost, strconv.Itoa(servePort))
 	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
 	serveSearchEndpoint = searchEndpoint
-	handler := createHandler(outputPath, m, searchHandlerPath)
-	if serveAdmin {
-		mux := http.NewServeMux()
-		mux.Handle("/_markata/", servecontrol.NewWebHandlerWithSourceRoot(runtime, m.Config().ContentDir))
-		mux.Handle("/", handler)
-		handler = mux
-	}
+	handler := mountServeAdmin(createHandler(outputPath, m, searchHandlerPath), runtime, m.Config().ContentDir, adminEnabled)
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -316,12 +314,14 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 		infof("Watching for file changes...")
 	}
 	infof("\nServing at http://%s", addr)
-	if serveAdmin {
-		infof("Admin at http://%s/_markata/", addr)
+	adminURL := ""
+	if adminEnabled {
+		adminURL = "http://" + addr + "/_markata/"
+		infof("Admin at %s", adminURL)
 	}
 	infof("Press Ctrl+C to stop")
 	server, serverErr := startHTTPServer(listener, handler)
-	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateSuccess, Address: addr})
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateSuccess, Address: addr, AdminURL: adminURL})
 
 	startInitialBuild(m, rebuildCh, &wg)
 	tuiErrors := make(chan error, 1)
@@ -339,7 +339,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 		runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateFailed, Address: addr, Message: err.Error()})
 		return err
 	}
-	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateCancelled, Address: addr})
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateCancelled, Address: addr, AdminURL: adminURL})
 
 	waitForGoroutines(&wg)
 	select {
@@ -598,6 +598,26 @@ func serveLoopbackHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+func mountServeAdmin(site http.Handler, runtime *servecontrol.Runtime, sourceRoot string, enabled bool) http.Handler {
+	if !enabled {
+		return site
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/_markata/", servecontrol.NewWebHandlerWithSourceRoot(runtime, sourceRoot))
+	mux.Handle("/", site)
+	return mux
+}
+
+func resolveServeAdmin(host string, force, disabled bool) (bool, error) {
+	if force && disabled {
+		return false, newUsageError(fmt.Errorf("--admin and --no-admin cannot be used together"))
+	}
+	if force && !serveLoopbackHost(host) {
+		return false, newUsageError(fmt.Errorf("local admin requires a loopback address; use --bind localhost or --bind 127.0.0.1"))
+	}
+	return !disabled && serveLoopbackHost(host), nil
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {

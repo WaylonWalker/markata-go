@@ -5,6 +5,7 @@ import (
 	stdlog "log"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -69,7 +70,7 @@ func TestServeLoggerManagerSetupKeepsTUITerminalOwned(t *testing.T) {
 }
 
 func TestServeLoopbackHost(t *testing.T) {
-	for _, host := range []string{"localhost", "127.0.0.1", "::1"} {
+	for _, host := range []string{"localhost", "LOCALHOST", "127.0.0.1", "127.2.3.4", "::1"} {
 		if !serveLoopbackHost(host) {
 			t.Errorf("%q should be loopback", host)
 		}
@@ -77,6 +78,62 @@ func TestServeLoopbackHost(t *testing.T) {
 	for _, host := range []string{"0.0.0.0", "example.com", "192.168.1.2"} {
 		if serveLoopbackHost(host) {
 			t.Errorf("%q should not be loopback", host)
+		}
+	}
+}
+
+func TestResolveServeAdmin(t *testing.T) {
+	tests := []struct {
+		name, host      string
+		force, disabled bool
+		want, wantErr   bool
+	}{
+		{"loopback default", "localhost", false, false, true, false},
+		{"IPv6 loopback default", "::1", false, false, true, false},
+		{"loopback opt out", "127.0.0.1", false, true, false, false},
+		{"loopback explicit", "localhost", true, false, true, false},
+		{"wildcard default", "0.0.0.0", false, false, false, false},
+		{"LAN default", "192.168.1.2", false, false, false, false},
+		{"hostname default", "dev.example.com", false, false, false, false},
+		{"wildcard explicit", "0.0.0.0", true, false, false, true},
+		{"conflicting flags", "localhost", true, true, false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveServeAdmin(tt.host, tt.force, tt.disabled)
+			if got != tt.want || (err != nil) != tt.wantErr {
+				t.Fatalf("resolveServeAdmin(%q, %v, %v) = %v, %v; want %v, error %v", tt.host, tt.force, tt.disabled, got, err, tt.want, tt.wantErr)
+			}
+			if tt.wantErr && ExitCodeForError(err) != exitCodeUsage {
+				t.Fatalf("error = %v; want usage error", err)
+			}
+		})
+	}
+}
+
+func TestMountServeAdmin(t *testing.T) {
+	site := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	runtime := servecontrol.NewRuntime()
+	for _, tt := range []struct {
+		host      string
+		noAdmin   bool
+		wantAdmin bool
+	}{
+		{"localhost", false, true},
+		{"localhost", true, false},
+		{"0.0.0.0", false, false},
+	} {
+		enabled, err := resolveServeAdmin(tt.host, false, tt.noAdmin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := mountServeAdmin(site, runtime, t.TempDir(), enabled)
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "http://localhost/_markata/", http.NoBody)
+		handler.ServeHTTP(response, request)
+		gotAdmin := strings.Contains(response.Body.String(), "Control Center")
+		if gotAdmin != tt.wantAdmin {
+			t.Errorf("host %q, noAdmin %v: admin response = %v, want %v", tt.host, tt.noAdmin, gotAdmin, tt.wantAdmin)
 		}
 	}
 }
@@ -105,7 +162,7 @@ func TestAdminCommand_IsDiscoverable(t *testing.T) {
 			t.Errorf("admin flag %q is missing", name)
 		}
 	}
-	for _, name := range []string{"admin", "no-tui"} {
+	for _, name := range []string{"admin", "no-admin", "no-tui"} {
 		if serveCmd.Flags().Lookup(name) == nil {
 			t.Errorf("serve flag %q is missing", name)
 		}

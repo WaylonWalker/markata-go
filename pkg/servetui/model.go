@@ -202,6 +202,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "a":
+			if m.snapshot.Server.AdminURL != "" {
+				cmd, err := serveopen.BrowserCommand(m.snapshot.Server.AdminURL)
+				if err != nil {
+					m.message = err.Error()
+					return m, nil
+				}
+				return m, tea.ExecProcess(cmd, func(err error) tea.Msg { return actionResultMsg{err: err} })
+			}
 		case "?":
 			m.changeView(screenHelp)
 		case keyEsc:
@@ -769,6 +778,9 @@ func (m Model) bodyLines() []string {
 		}
 	case screenHelp:
 		lines = []string{"Navigation", "j/k, arrows  move or scroll", "Enter        inspect selected resource", "Esc          back", "/            search current view", "g/G          top/bottom", "PgUp/PgDn    scroll", "", "Views", "w warnings  e errors  p pages  f feeds  l logs", "b job from diagnostic or page", "", "Actions", "t trigger build  r rerun selected job", "R rebuild selected Markdown page", "q quit"}
+		if m.snapshot.Server.AdminURL != "" {
+			lines = append(lines, "a open Admin in browser")
+		}
 	}
 	if len(lines) == 0 {
 		return []string{"No items to show."}
@@ -833,6 +845,9 @@ func (m Model) View() string {
 		}
 	}
 	header := fmt.Sprintf("markata-go serve · %s", strings.ToUpper(string(m.view)))
+	if m.snapshot.Server.AdminURL != "" {
+		header += " · ⚙ Admin (a)"
+	}
 	if m.snapshot.Server.Address != "" {
 		header += " · " + m.snapshot.Server.Address
 	}
@@ -907,7 +922,13 @@ func (m Model) footer(width int) string {
 		footer = "j/k move  enter inspect  Esc back"
 	}
 	if width < 80 {
+		if m.snapshot.Server.AdminURL != "" {
+			return "j/k move  enter inspect  a admin  / search  ? help  q quit"
+		}
 		return "j/k move  enter inspect  / search  ? help  q quit"
+	}
+	if m.snapshot.Server.AdminURL != "" {
+		footer += "  a admin"
 	}
 	return footer + "  ? help  q quit"
 }
