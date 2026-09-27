@@ -221,7 +221,7 @@ type DiscoveryFeed struct {
 // may need to inspect post metadata (e.g., explicit feed assignment).
 // This function is called from templates.go renderPost to inject discovery_feed context.
 func GetDiscoveryFeed(_ *models.Post, sidebarFeed *models.FeedConfig, allFeeds []models.FeedConfig) *DiscoveryFeed {
-	// If post has a sidebar feed, use that feed for discovery
+	// If post has a sidebar feed, use that for discovery
 	if sidebarFeed != nil {
 		return feedConfigToDiscoveryFeed(sidebarFeed)
 	}
