@@ -73,9 +73,13 @@ spec:
           imagePullPolicy: {{ .Values.search.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.searchSecurityContext | nindent 12 }}
-          # Palette discovery is project-relative; run from the mounted source tree
-          # while keeping the writable Bleve index explicitly under /data/search.
+          {{- if eq .Values.search.mode "read-only-index" }}
+          workingDir: /data/search
+          {{- else }}
+          # Palette discovery is project-relative; source-backed modes run from
+          # the mounted source tree while the Bleve index stays under /data/search.
           workingDir: /data/source
+          {{- end }}
           command:
             - markata-go
             - search-server
