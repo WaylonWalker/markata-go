@@ -1,11 +1,11 @@
 ---
-title: "Coral Study"
-description: "A composition of coral circles."
-date: 2026-09-24
+title: "Coast at Evening"
+description: "The final color of the day settles over the shore."
+date: 2026-09-26
 published: true
 slug: shots/coral
 tags: [shots]
-image: /images/coral.svg
+image: /images/unsplash/coast-evening.jpg
 ---
 
-Warm circles in late light.
+A quiet horizon at the end of a bright day.

@@ -1,11 +1,11 @@
 ---
-title: "Blue Study"
-description: "A composition of blue arcs."
-date: 2026-09-25
+title: "Blue Architecture"
+description: "A sculptural glass facade folds into the sky."
+date: 2026-09-27
 published: true
 slug: shots/blue
 tags: [shots]
-image: /images/blue.svg
+image: /images/unsplash/blue-architecture.jpg
 ---
 
-Blue arcs under a pale sky.
+The curve changes shape as the light moves across it.
