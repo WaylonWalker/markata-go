@@ -154,5 +154,5 @@ For developers who want full control and customization.
 ## Need Help?
 
 - **[Troubleshooting](/docs/troubleshooting/)** - Common issues and solutions
-- **[Quick Reference](/docs/guides/quick-reference/) - Common commands and config snippets
+- **[Quick Reference](/docs/guides/quick-reference/)** - Common commands and config snippets
 - **[GitHub Issues](https://github.com/WaylonWalker/markata-go/issues)** - Report bugs or request features
