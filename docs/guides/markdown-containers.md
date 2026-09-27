@@ -16,7 +16,7 @@ markata-go supports fenced Markdown containers for grouping content in a `<div>`
 
 ## Basic container
 
-Use three or more colons followed by a class name or attributes to open a container. Close it with a line containing only the same number of colons.
+Use three or more colons followed by a class name or attributes to open a container. Close it with a line containing only the same number of colons. Surrounding whitespace on a closing line is ignored.
 
 ````markdown
 ::: card {#intro .featured data-kind="note"}
@@ -24,11 +24,11 @@ This Markdown is inside the card.
 :::
 ````
 
-The closing line must be **colon-only**. A line such as `::: card` or `::: {.card}` is an opening line, not a closing line.
+The closing line must be **colon-only** after trimming whitespace. A line such as `::: card` or `::: {.card}` is an opening line, not a closing line.
 
 ## Nested containers
 
-Use a longer fence for each nested level. Matching fence lengths make it clear which container closes at each point.
+Use a longer fence for each nested level and close each level with its matching fence. This makes the structure predictable and keeps content after an inner close inside its parent container.
 
 ````markdown
 ::: cards
@@ -53,11 +53,7 @@ A useful rule is:
 | Close nested container | `::::` |
 | Close outer container | `:::` |
 
-## Why shorter closing fences can look surprising
-
-Container depth is determined by the number of opening colons. When a shorter colon-only closing fence is encountered while a deeper container is open, the deeper container closes without consuming that line so the parent container can process it. This lets an outer fence close the remaining nested levels, but it can look like multiple containers closed at once.
-
-For predictable one-level-at-a-time nesting, give inner containers longer fences and close each one with its matching fence before closing the parent.
+Do not rely on a shorter outer closing fence to implicitly close deeper nested containers. Close the innermost container first with the same number of colons it used to open, then close the parent.
 
 ## Classes and attributes
 
