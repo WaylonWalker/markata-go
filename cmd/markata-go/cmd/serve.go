@@ -266,25 +266,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	configureServeLogger()
 	palette := publishServePalette(m)
 
-	// Apply fast mode if requested
-	if serveFast {
-		applyFastMode(m)
-		m.Config().Extra["cache_cleanup_async"] = true
-	}
-	if serveIncremental {
-		lifecycle.SetServeIncremental(m, true)
-		if m.Config().Extra == nil {
-			m.Config().Extra = make(map[string]any)
-		}
-		m.Config().Extra["incremental_mode"] = true
-	}
-
-	if !serveFast && !serveIncremental {
-		lifecycle.SetServeFullRebuild(m, true)
-		lifecycle.SetServeChangedPaths(m, nil)
-		lifecycle.SetServeRemovedPaths(m, nil)
-		lifecycle.SetServeGlobDirty(m, true)
-	}
+	configureServeBuildModes(m)
 
 	// Determine output directory
 	outputPath, absOutputPath := resolveServeOutputPath(m)
@@ -369,6 +351,28 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 
 	errln("Server stopped")
 	return nil
+}
+
+func configureServeBuildModes(m *lifecycle.Manager) {
+	// Apply fast mode if requested
+	if serveFast {
+		applyFastMode(m)
+		m.Config().Extra["cache_cleanup_async"] = true
+	}
+	if serveIncremental {
+		lifecycle.SetServeIncremental(m, true)
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["incremental_mode"] = true
+	}
+
+	if !serveFast && !serveIncremental {
+		lifecycle.SetServeFullRebuild(m, true)
+		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeRemovedPaths(m, nil)
+		lifecycle.SetServeGlobDirty(m, true)
+	}
 }
 
 func configureServeActionHandler(ctx context.Context, runtime *servecontrol.Runtime, rebuildCh chan struct{}, wg *sync.WaitGroup) {
