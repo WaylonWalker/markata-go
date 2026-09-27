@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"bytes"
+	stdlog "log"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
+	"github.com/spf13/cobra"
 )
 
 func TestShouldRunServeTUI_RequiresRealTerminal(t *testing.T) {
@@ -25,6 +31,40 @@ func TestShouldRunServeTUI_RequiresRealTerminal(t *testing.T) {
 	}
 	if shouldRunServeTUI(false, false, strings.NewReader(""), os.Stdout) {
 		t.Fatal("redirected input must disable the terminal UI")
+	}
+}
+
+func TestServeLoggerManagerSetupKeepsTUITerminalOwned(t *testing.T) {
+	previousWriter, previousFlags, previousPrefix := stdlog.Writer(), stdlog.Flags(), stdlog.Prefix()
+	previousCommand := currentCmd
+	previousTheme := currentLogTheme
+	t.Cleanup(func() {
+		stdlog.SetOutput(previousWriter)
+		stdlog.SetFlags(previousFlags)
+		stdlog.SetPrefix(previousPrefix)
+		currentCmd = previousCommand
+		currentLogTheme = previousTheme
+		clearServeControl()
+	})
+
+	var terminal bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetErr(&terminal)
+	currentCmd = cmd
+	runtime := servecontrol.NewRuntime()
+	setServeControl(runtime, true, nil)
+
+	// Manager setup reconfigures the global logger. The Serve wrapper must
+	// immediately restore the observer/discard policy after that reconfiguration.
+	configureServeLoggerForManager(lifecycle.NewManager())
+	stdlog.Printf("[authors] resolved 3 authors")
+
+	if got := terminal.String(); got != "" {
+		t.Fatalf("plugin log escaped to the TUI terminal: %q", got)
+	}
+	logs := runtime.Snapshot().Logs
+	if len(logs) != 1 || logs[0].Message != "[authors] resolved 3 authors" {
+		t.Fatalf("runtime logs = %#v, want the observed plugin entry", logs)
 	}
 }
 

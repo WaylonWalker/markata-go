@@ -2,9 +2,9 @@
 package plugins
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -335,26 +335,29 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, contentPaths
 	cmd.Env = os.Environ()
 	start := time.Now()
 	tailwindLog.Printf("Running subprocess: %s %s", cliPath, strings.Join(args, " "))
-
+	var stdoutLog, stderrLog *subprocessLineWriter
+	var stderrTail *subprocessTailWriter
+	cmd.Stdout = io.Discard
 	if p.config.IsVerbose() {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		stdoutLog = newSubprocessLineWriter(tailwindLog)
+		stderrLog = newSubprocessLineWriter(tailwindLog.Level("error"))
+		cmd.Stdout, cmd.Stderr = stdoutLog, stderrLog
 	} else {
-		var stderr bytes.Buffer
-		cmd.Stdout = nil
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			if stderr.Len() > 0 {
-				fmt.Fprintf(os.Stderr, "%s", stderr.String())
-			}
-			return fmt.Errorf("tailwind build failed: %w", err)
-		}
-		tailwindLog.Printf("Subprocess completed in %v", time.Since(start))
-		return nil
+		stderrTail = newSubprocessTailWriter(64 * 1024)
+		cmd.Stderr = stderrTail
 	}
-
 	if err := cmd.Run(); err != nil {
+		if stdoutLog != nil {
+			stdoutLog.Flush()
+			stderrLog.Flush()
+		} else if output := stderrTail.String(); output != "" {
+			logSubprocessOutput(tailwindLog.Level("error"), output)
+		}
 		return fmt.Errorf("tailwind build failed: %w", err)
+	}
+	if stdoutLog != nil {
+		stdoutLog.Flush()
+		stderrLog.Flush()
 	}
 	tailwindLog.Printf("Subprocess completed in %v", time.Since(start))
 
