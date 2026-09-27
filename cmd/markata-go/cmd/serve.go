@@ -116,6 +116,7 @@ const (
 	buildStatusBuilding    = "building"
 	buildStatusSuccess     = "success"
 	buildStatusError       = "error"
+	buildStatusWarning     = "warning"
 
 	buildStatusEventPrefix = "status:"
 )
@@ -328,6 +329,49 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 		}
 	}
 	defer func() { serveRequestFullRebuild = nil }()
+	configureServeActionHandler(ctx, runtime, rebuildCh, &wg)
+
+	if rebuildCh != nil {
+		infof("Watching for file changes...")
+	}
+	infof("\nServing at http://%s", addr)
+	if serveAdmin {
+		infof("Admin at http://%s/_markata/", addr)
+	}
+	infof("Press Ctrl+C to stop")
+	server, serverErr := startHTTPServer(listener, handler)
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateSuccess, Address: addr})
+
+	startInitialBuild(m, rebuildCh, &wg)
+	tuiErrors := make(chan error, 1)
+	if tui {
+		go func() {
+			if tuiErr := servetui.RunWithSourceRoot(ctx, runtime, palette, m.Config().ContentDir, paletteUpdates); tuiErr != nil {
+				runtime.AddDiagnostic(servecontrol.Diagnostic{Code: "serve.tui_error", Severity: "error", Message: tuiErr.Error(), SuggestedFix: "Run markata-go serve --no-tui to inspect the session as plain logs."})
+				tuiErrors <- tuiErr
+			}
+			cancel()
+		}()
+	}
+
+	if err := waitForShutdown(ctx, server, serverErr); err != nil {
+		runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateFailed, Address: addr, Message: err.Error()})
+		return err
+	}
+	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateCancelled, Address: addr})
+
+	waitForGoroutines(&wg)
+	select {
+	case tuiErr := <-tuiErrors:
+		return fmt.Errorf("serve terminal UI failed: %w; rerun with --no-tui", tuiErr)
+	default:
+	}
+
+	errln("Server stopped")
+	return nil
+}
+
+func configureServeActionHandler(ctx context.Context, runtime *servecontrol.Runtime, rebuildCh chan struct{}, wg *sync.WaitGroup) {
 	runtime.SetActionHandler(func(action servecontrol.ActionRequest) error {
 		switch action.Kind {
 		case "build", "rerun", "rerun_job", rebuildPageLegacyAction, rebuildPageAction:
@@ -386,45 +430,6 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unsupported serve action %q", action.Kind)
 		}
 	})
-
-	if rebuildCh != nil {
-		infof("Watching for file changes...")
-	}
-	infof("\nServing at http://%s", addr)
-	if serveAdmin {
-		infof("Admin at http://%s/_markata/", addr)
-	}
-	infof("Press Ctrl+C to stop")
-	server, serverErr := startHTTPServer(listener, handler)
-	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateSuccess, Address: addr})
-
-	startInitialBuild(m, rebuildCh, &wg)
-	tuiErrors := make(chan error, 1)
-	if tui {
-		go func() {
-			if tuiErr := servetui.RunWithSourceRoot(ctx, runtime, palette, m.Config().ContentDir, paletteUpdates); tuiErr != nil {
-				runtime.AddDiagnostic(servecontrol.Diagnostic{Code: "serve.tui_error", Severity: "error", Message: tuiErr.Error(), SuggestedFix: "Run markata-go serve --no-tui to inspect the session as plain logs."})
-				tuiErrors <- tuiErr
-			}
-			cancel()
-		}()
-	}
-
-	if err := waitForShutdown(ctx, server, serverErr); err != nil {
-		runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateFailed, Address: addr, Message: err.Error()})
-		return err
-	}
-	runtime.SetServer(servecontrol.ServerState{Status: servecontrol.StateCancelled, Address: addr})
-
-	waitForGoroutines(&wg)
-	select {
-	case tuiErr := <-tuiErrors:
-		return fmt.Errorf("serve terminal UI failed: %w; rerun with --no-tui", tuiErr)
-	default:
-	}
-
-	errln("Server stopped")
-	return nil
 }
 
 func validateServePort(port int) error {

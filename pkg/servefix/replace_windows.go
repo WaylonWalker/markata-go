@@ -7,6 +7,18 @@ import (
 )
 
 func replacePath(source, destination string) error {
+	security, err := windows.GetNamedSecurityInfo(destination, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return err
+	}
+	acl, _, err := security.DACL()
+	if err != nil {
+		return err
+	}
+	if err := windows.SetNamedSecurityInfo(source, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+		return err
+	}
+
 	sourcePath, err := windows.UTF16PtrFromString(source)
 	if err != nil {
 		return err

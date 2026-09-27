@@ -412,9 +412,9 @@ func runMigrateTemplatesCommand(_ *cobra.Command, args []string) error {
 	var errorIssues, warningIssues, infoIssues []migrate.TemplateIssue
 	for _, issue := range issues {
 		switch issue.Severity {
-		case "error":
+		case buildStatusError:
 			errorIssues = append(errorIssues, issue)
-		case "warning":
+		case buildStatusWarning:
 			warningIssues = append(warningIssues, issue)
 		default:
 			infoIssues = append(infoIssues, issue)

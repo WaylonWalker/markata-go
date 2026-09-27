@@ -208,11 +208,11 @@ func finishServeJob(id string, m *lifecycle.Manager, result *BuildResult, buildE
 			}
 			for i := range job.Diagnostics {
 				diagnostic := job.Diagnostics[i]
-				if diagnostic.Severity == "error" {
+				if diagnostic.Severity == buildStatusError {
 					state = servecontrol.StateFailed
 					break
 				}
-				if diagnostic.Severity == "warning" && state == servecontrol.StateSuccess {
+				if diagnostic.Severity == buildStatusWarning && state == servecontrol.StateSuccess {
 					state = servecontrol.StateWarning
 				}
 			}
