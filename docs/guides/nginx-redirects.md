@@ -58,6 +58,8 @@ On normal builds, nginx output is refreshed whenever the configured `_redirects`
 
 If the `_redirects` source is deleted, markata-go removes an existing `redirects.conf` only when it recognizes the file as its own generated artifact. A user-managed `redirects.conf` is left untouched.
 
+When `_redirects` exists, `redirects.conf` is the plugin's generated output path. If the output directory already contains a file at that path that is not marked as Markata-generated—for example `static/redirects.conf` copied by the static-assets plugin—the build fails with a clear conflict instead of overwriting it. Rename or remove the manually managed file before enabling generated nginx redirects.
+
 ## Include from nginx
 
 Include the generated file from inside the nginx `server` block that serves the built site:
