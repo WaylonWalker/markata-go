@@ -15,7 +15,7 @@ func TestIconsPluginLoadsCanonicalAndSlashSyntax(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(iconPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(iconPath, []byte(testIconSVG), 0o644); err != nil {
+	if err := os.WriteFile(iconPath, []byte(testIconSVG), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,7 +76,7 @@ func TestIconsPluginPackAllowlist(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, []byte(testIconSVG), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(testIconSVG), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -103,7 +103,7 @@ func TestIconsPluginRejectsActiveSVGContent(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(`<svg viewBox="0 0 1 1"><script>alert(1)</script></svg>`), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(`<svg viewBox="0 0 1 1"><script>alert(1)</script></svg>`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
