@@ -30,9 +30,10 @@ const (
 )
 
 type ServerState struct {
-	Status  State  `json:"status"`
-	Address string `json:"address,omitempty"`
-	Message string `json:"message,omitempty"`
+	Status   State  `json:"status"`
+	Address  string `json:"address,omitempty"`
+	AdminURL string `json:"admin_url,omitempty"`
+	Message  string `json:"message,omitempty"`
 }
 
 // SiteState describes the latest build independently of HTTP listener state.

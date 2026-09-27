@@ -44,6 +44,27 @@ func sampleSnapshot() servecontrol.Snapshot {
 	}
 }
 
+func TestAdminAffordanceUsesMountedURL(t *testing.T) {
+	snapshot := sampleSnapshot()
+	without := NewModel(snapshot, nil)
+	if strings.Contains(without.View(), "Admin") {
+		t.Fatal("disabled Admin should not be advertised")
+	}
+	snapshot.Server.AdminURL = "http://localhost:8000/_markata/"
+	with := NewModel(snapshot, nil)
+	if !strings.Contains(with.View(), "Admin (a)") {
+		t.Fatal("mounted Admin should be discoverable")
+	}
+	_, command := with.Update(key("a"))
+	if command == nil {
+		t.Fatal("Admin shortcut should open the mounted URL")
+	}
+	_, command = without.Update(key("a"))
+	if command != nil {
+		t.Fatal("disabled Admin shortcut should do nothing")
+	}
+}
+
 func TestNavigationAndDiagnosticsRemainDiscoverable(t *testing.T) {
 	m := NewModel(sampleSnapshot(), nil)
 	m = update(t, m, key("enter"))
