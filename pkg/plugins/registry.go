@@ -81,6 +81,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["blogroll"] = func() lifecycle.Plugin { return NewBlogrollPlugin() }
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 	pluginRegistry.constructors["hashtag_tags"] = func() lifecycle.Plugin { return NewHashtagTagsPlugin() }
+	pluginRegistry.constructors[iconPluginName] = func() lifecycle.Plugin { return NewIconsPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["webmentions_fetch"] = func() lifecycle.Plugin { return NewWebmentionsFetchPlugin() }
 	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
@@ -186,6 +187,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewWebmentionsLeaderboardPlugin(), // Calculate top posts by webmentions (after fetch)
 		NewTocPlugin(),                    // Extract TOC before rendering
 		NewJinjaMdPlugin(),                // Process Jinja templates in markdown
+		NewIconsPlugin(),                  // Expand local SVG icon shortcodes after Markdown source transforms
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
@@ -255,6 +257,7 @@ func MinimalPlugins() []lifecycle.Plugin {
 		NewLoadPlugin(),
 		NewAutoTitlePlugin(),
 		NewInlineTitlesPlugin(),
+		NewIconsPlugin(),
 		NewRenderMarkdownPlugin(),
 		NewTemplatesPlugin(),
 		NewPublishHTMLPlugin(),
@@ -278,6 +281,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewHashtagTagsPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),
+		NewIconsPlugin(),
 	}
 }
 
