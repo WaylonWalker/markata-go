@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -82,8 +83,14 @@ sort = "title"
 	if err != nil {
 		t.Fatal(err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	_ = listener.Close()
+	address, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("unexpected listener address type %T", listener.Addr())
+	}
+	port := address.Port
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command(binaryPath, "serve", "--config", "markata-go.toml", "--port", fmt.Sprint(port), "--fast")
 	cmd.Dir = siteDir
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "MARKATA_GO_ENCRYPTION_ENABLED=false")
@@ -93,10 +100,16 @@ sort = "title"
 	}
 	t.Cleanup(func() {
 		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
+			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Logf("kill Serve process during cleanup: %v", err)
+			}
+			if _, err := cmd.Process.Wait(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Logf("wait for Serve process during cleanup: %v", err)
+			}
 		}
-		_ = terminal.Close()
+		if err := terminal.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+			t.Logf("close PTY during cleanup: %v", err)
+		}
 	})
 
 	var output bytes.Buffer
@@ -166,7 +179,7 @@ sort = "title"
 		}
 	}
 	beforeLogs := len(snapshotOutput())
-	if _, err := terminal.Write([]byte("l")); err != nil {
+	if _, err := terminal.WriteString("l"); err != nil {
 		t.Fatal(err)
 	}
 	if !waitForOutput("LOGS", beforeLogs, 2*time.Second) {
@@ -209,7 +222,7 @@ sort = "title"
 		}
 	}
 
-	if _, err := terminal.Write([]byte("q")); err != nil {
+	if _, err := terminal.WriteString("q"); err != nil {
 		t.Fatal(err)
 	}
 	wait := make(chan error, 1)
@@ -240,5 +253,5 @@ func markataGoModuleRoot(t *testing.T) string {
 	if !ok {
 		t.Fatal("resolve test source path")
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "../../.."))
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }

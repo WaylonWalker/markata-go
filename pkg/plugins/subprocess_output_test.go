@@ -42,8 +42,12 @@ func TestSubprocessLineWriter_TruncatesOversizedLine(t *testing.T) {
 
 func TestSubprocessTailWriterKeepsOnlyNewestBytes(t *testing.T) {
 	writer := newSubprocessTailWriter(8)
-	_, _ = writer.Write([]byte("first"))
-	_, _ = writer.Write([]byte("-last"))
+	if _, err := writer.Write([]byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write([]byte("-last")); err != nil {
+		t.Fatal(err)
+	}
 	if got := writer.String(); got != "[earlier subprocess output truncated]\nrst-last" {
 		t.Fatalf("tail = %q, want truncated tail", got)
 	}
