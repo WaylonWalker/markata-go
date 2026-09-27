@@ -35,7 +35,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
-| `REDIRECTS.md` | `docs/guides/nginx-redirects.md` |
+| `REDIRECTS.md` | `docs/guides/nginx-redirects.md`, `docs/reference/redirects.md` |
 | `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
 | `SPEC.md` (CLI) | `docs/reference/cli.md` |
 | `CONTAINERS.md` | `docs/guides/deployment/docker.md` |
@@ -65,7 +65,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
 | [CONTENT_INDEX.md](./spec/CONTENT_INDEX.md) | Versioned derived metadata artifact and parser contract |
 | [IMAGE_INDEX.md](./spec/IMAGE_INDEX.md) | Canonical image inventory, JSON artifact, and authoring page |
-| [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
+| [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions, wikilinks |
 | [CONTENT_DIAGNOSTICS.md](./spec/CONTENT_DIAGNOSTICS.md) | Deterministic content dispositions and frontmatter diagnostics |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |
 | [OPTIONAL_PLUGINS.md](./spec/OPTIONAL_PLUGINS.md) | Optional enhancement plugins |
