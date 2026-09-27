@@ -143,6 +143,44 @@ func TestRedirectsPlugin_Write_MissingSourcePreservesUserNativeConfig(t *testing
 	}
 }
 
+func TestRedirectsPlugin_Write_RefusesToOverwriteUserNativeConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatalf("create output dir: %v", err)
+	}
+	if err := os.WriteFile(redirectsFile, []byte("/old /new\n"), 0o600); err != nil {
+		t.Fatalf("write redirects file: %v", err)
+	}
+
+	userConfig := "# user managed\nlocation = /keep { return 302 /still-here; }\n"
+	outputPath := filepath.Join(outputDir, nginxRedirectsFilename)
+	if err := os.WriteFile(outputPath, []byte(userConfig), 0o600); err != nil {
+		t.Fatalf("write user config: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	m.Config().OutputDir = outputDir
+	p := NewRedirectsPlugin()
+	p.SetConfig(RedirectsConfig{RedirectsFile: redirectsFile})
+	err := p.Write(m)
+	if err == nil {
+		t.Fatal("expected Write() to refuse user-managed redirects.conf")
+	}
+	if !strings.Contains(err.Error(), "refusing to overwrite user-managed") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, readErr := os.ReadFile(outputPath)
+	if readErr != nil {
+		t.Fatalf("read user config: %v", readErr)
+	}
+	if string(content) != userConfig {
+		t.Fatalf("user-managed redirects.conf was modified:\n%s", content)
+	}
+}
+
 func TestRedirectsPlugin_Write_HTMLFallbackCanBeDisabled(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
