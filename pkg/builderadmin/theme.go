@@ -8,6 +8,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
 )
 
 // uiTheme contains the semantic palette values used by the builder-admin UI.
@@ -71,25 +72,26 @@ func loadUITheme(cfg Config) uiTheme {
 		return theme
 	}
 
-	theme.IsDark = palette.Variant != palettes.VariantLight
-	theme.Background = paletteColor(palette, "bg-primary", theme.Background)
-	theme.Panel = paletteColor(palette, "bg-secondary", theme.Panel)
-	theme.Surface = paletteColor(palette, "bg-surface", theme.Surface)
-	theme.Elevated = paletteColor(palette, "bg-elevated", theme.Elevated)
-	theme.Text = paletteColor(palette, "text-primary", theme.Text)
-	theme.Muted = paletteColor(palette, "text-muted", theme.Muted)
-	theme.Accent = paletteColor(palette, "accent", theme.Accent)
-	theme.Link = paletteColor(palette, "link", theme.Link)
-	theme.Border = paletteColor(palette, "border", theme.Border)
-	theme.Focus = paletteColor(palette, "border-focus", theme.Focus)
-	theme.Success = paletteColor(palette, "success", theme.Success)
-	theme.Warning = paletteColor(palette, "warning", theme.Warning)
-	theme.Error = paletteColor(palette, "error", theme.Error)
-	theme.Info = paletteColor(palette, "info", theme.Info)
-	theme.CodeBG = paletteColor(palette, "code-bg", theme.CodeBG)
-	theme.CodeText = paletteColor(palette, "code-text", theme.CodeText)
-	theme.ButtonBG = paletteColor(palette, "button-primary-bg", theme.Accent)
-	theme.ButtonText = paletteColor(palette, "button-primary-text", theme.Background)
+	colors := servecontrol.BrowserTheme(palette.Resolve, palette.Variant != palettes.VariantLight)
+	theme.IsDark = colors["mode"] == "dark"
+	theme.Background = colors["background"]
+	theme.Panel = colors["panel"]
+	theme.Surface = colors["surface"]
+	theme.Elevated = colors["elevated"]
+	theme.Text = colors["text-primary"]
+	theme.Muted = colors["text-secondary"]
+	theme.Accent = colors["accent"]
+	theme.Link = colors["link"]
+	theme.Border = colors["border"]
+	theme.Focus = colors["focus"]
+	theme.Success = colors["success"]
+	theme.Warning = colors["warning"]
+	theme.Error = colors["error"]
+	theme.Info = colors["info"]
+	theme.CodeBG = colors["code-background"]
+	theme.CodeText = colors["code-text"]
+	theme.ButtonBG = colors["button-background"]
+	theme.ButtonText = colors["button-text"]
 	return theme
 }
 
@@ -154,9 +156,19 @@ func loadThemePalette(loader *palettes.Loader, theme models.ThemeConfig) (*palet
 	return nil, false
 }
 
-func paletteColor(palette *palettes.Palette, name, fallback string) string {
-	if color := palette.Resolve(name); color != "" {
-		return color
+func browserThemeMap(theme uiTheme) map[string]string {
+	mode := "dark"
+	if !theme.IsDark {
+		mode = "light"
 	}
-	return fallback
+	return map[string]string{
+		"mode": mode, "background": theme.Background, "panel": theme.Panel,
+		"surface": theme.Surface, "elevated": theme.Elevated,
+		"text-primary": theme.Text, "text-secondary": theme.Muted,
+		"accent": theme.Accent, "link": theme.Link, "border": theme.Border,
+		"focus": theme.Focus, "success": theme.Success, "warning": theme.Warning,
+		"error": theme.Error, "info": theme.Info, "code-background": theme.CodeBG,
+		"code-text": theme.CodeText, "button-background": theme.ButtonBG,
+		"button-text": theme.ButtonText,
+	}
 }

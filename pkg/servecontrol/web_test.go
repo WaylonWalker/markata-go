@@ -172,10 +172,18 @@ func TestWebHandler_OnlyServesItsPrefixAndEscapesDynamicState(t *testing.T) {
 	if strings.Contains(response.Body.String(), "<script>alert(1)</script>") {
 		t.Fatal("runtime text appeared in initial HTML")
 	}
+	if !strings.Contains(response.Body.String(), "--markata-background:#09090b") || !strings.Contains(response.Body.String(), "--markata-focus:#93c5fd") {
+		t.Fatal("local dashboard did not receive the shared semantic token stylesheet")
+	}
 	if !strings.Contains(response.Body.String(), "arr(item.diagnostics)") || !strings.Contains(response.Body.String(), "Open page") {
 		t.Fatal("dashboard lacks current page diagnostics or page preview link")
 	}
-	for _, affordance := range []string{"applyTheme(state.snapshot.theme)", "data-page", "matches.slice(-200)", "site.page_count", "Session history"} {
+	for _, affordance := range []string{
+		"applyTheme(state.snapshot.theme)", "data-page", "matches.slice(-200)", "site.page_count", "Session history",
+		"--markata-text-primary", "routeHash()", "history.pushState", "history.replaceState",
+		"window.addEventListener('popstate'", "window.addEventListener('hashchange'", "editableTarget(e.target)",
+		"moveSelection(1)", "moveSelection(-1)", "keyboard-help", "const capabilities=Object.freeze",
+	} {
 		if !strings.Contains(response.Body.String(), affordance) {
 			t.Errorf("dashboard lacks %q", affordance)
 		}

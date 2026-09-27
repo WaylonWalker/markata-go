@@ -86,7 +86,9 @@ palette = "everforest-dark"
 When your site config uses `palette_light`, `palette_dark`, or `fallback_mode`, builder admin uses
 the same fallback palette. Keep the site config and any custom palette files under the mounted
 source directory. If the palette cannot be loaded, builder admin remains available with its
-default colors.
+default colors. Builder Admin and local Serve share a semantic browser token stylesheet for these
+colors and keyboard focus treatment; their page structure and production/local capabilities remain
+separate while a shared shell is developed.
 
 ## Read Build History Quickly
 

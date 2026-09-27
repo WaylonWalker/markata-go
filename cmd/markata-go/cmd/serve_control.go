@@ -55,12 +55,7 @@ func publishServePalette(m *lifecycle.Manager) *palettes.Palette {
 	if palette == nil {
 		return nil
 	}
-	colors := make(map[string]string)
-	for _, key := range []string{"background", "surface", "text", "text-muted", "primary", "accent", "success", "warning", "error", "border", "link"} {
-		if value := palette.Resolve(key); value != "" {
-			colors[key] = value
-		}
-	}
+	colors := servecontrol.BrowserTheme(palette.Resolve, palette.Variant != palettes.VariantLight)
 	serveControl.RLock()
 	runtime, updates := serveControl.runtime, serveControl.paletteUpdates
 	serveControl.RUnlock()

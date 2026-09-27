@@ -35,6 +35,15 @@ suggested fix. Build failures remain in job history after later rebuilds. The
 local web dashboard and terminal use one session state. Use `builder-admin` for
 the separate deployed release workflow behind proxy authentication.
 
+In the local browser dashboard, the URL fragment preserves the section, selected
+item, and filter for sharing or browser Back/Forward. Use `j`/`k` or arrows to
+move through results, Enter to inspect, `/` to focus the filter, `w`/`e` for
+warnings/errors, and `p`/`f`/`l` for pages/feeds/logs. Press `?` for the full key
+list. Press `r` in Jobs to rerun the selected completed job. These shortcuts
+pause while editing text. Preview suggested source fixes
+before applying them; the local source actions are not part of deployed
+Builder Admin.
+
 ### Config And Inspection
 
 - `markata-go config show`
