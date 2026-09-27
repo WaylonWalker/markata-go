@@ -32,13 +32,35 @@ func configureCommandLogger(theme logging.Theme) error {
 }
 
 func configureLoggerForManager(m *lifecycle.Manager) {
+	theme := loggerThemeForManager(m)
+	if err := configureCommandLogger(theme); err != nil {
+		errlnf("Warning: failed to configure themed logging: %v", err)
+	}
+}
+
+// configureServeLoggerForManager applies the site's normal logging theme and
+// immediately installs Serve's terminal ownership and runtime observation
+// policy. Keep this as the only manager-specific logger setup used by Serve,
+// including rebuild managers.
+func configureServeLoggerForManager(m *lifecycle.Manager) {
+	theme := loggerThemeForManager(m)
+	currentLogTheme = theme
+	format, err := logging.ParseFormat(logFormat)
+	if err != nil {
+		format = logging.FormatAuto
+	}
+	configureServeLoggerWithOptions(theme, format)
+	if err != nil {
+		logging.Component("serve").Warnf("failed to configure themed logging: %v", err)
+	}
+}
+
+func loggerThemeForManager(m *lifecycle.Manager) logging.Theme {
 	theme := logging.DefaultTheme()
 	if resolved, ok := resolveLoggerTheme(m); ok {
 		theme = resolved
 	}
-	if err := configureCommandLogger(theme); err != nil {
-		errlnf("Warning: failed to configure themed logging: %v", err)
-	}
+	return theme
 }
 
 func resolveLoggerTheme(m *lifecycle.Manager) (logging.Theme, bool) {

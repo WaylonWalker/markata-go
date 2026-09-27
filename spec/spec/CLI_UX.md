@@ -27,6 +27,14 @@ renderer. The TUI receives structured runtime snapshots; it does not parse log
 text for build state. `serve --admin` and `admin` expose the same session in a
 loopback-only web dashboard at `/_markata/`. The `a` alias selects `admin`.
 
+When the interactive TUI is active, it owns the terminal. Build and plugin
+logs MUST pass through the Serve logger observer into runtime logs and
+diagnostics; they MUST NOT write directly to stdout or stderr. This policy is
+reinstalled after each manager is configured, including every rebuild.
+Plugins that run child processes MUST capture their output and forward it
+through the configured logger so the TUI can display it without terminal
+corruption.
+
 Warnings and errors observed during a serve session are retained as runtime
 diagnostics. A fatal TUI error is reported after the alternate screen exits.
 

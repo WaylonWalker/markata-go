@@ -277,6 +277,14 @@ func serveSuggestedFix(code string) string {
 }
 
 func configureServeLogger() {
+	runtime, _, _ := currentServeControl()
+	if runtime == nil {
+		return
+	}
+	configureServeLoggerWithOptions(currentLogTheme, logging.FormatPlain)
+}
+
+func configureServeLoggerWithOptions(theme logging.Theme, format logging.Format) {
 	runtime, _, tui := currentServeControl()
 	if runtime == nil {
 		return
@@ -286,7 +294,8 @@ func configureServeLogger() {
 		writer = io.Discard
 	}
 	logging.ConfigureStandardLogger(logging.Options{
-		Writer: writer, Format: logging.FormatPlain, NoColor: tui,
+		Writer: writer, Format: format, ForceColor: forceColor, NoColor: noColor || tui,
+		IsTTY: errorOutputIsTerminal(), Theme: theme,
 		Observer: func(entry logging.Entry, message string) {
 			_, id, _ := currentServeControl()
 			level := entry.Level

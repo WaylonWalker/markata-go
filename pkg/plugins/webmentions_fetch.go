@@ -15,8 +15,11 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+var webmentionsFetchLog = logging.Component("webmentions_fetch").Phase("transform")
 
 // Compile-time interface verification.
 var (
@@ -235,7 +238,7 @@ func (p *WebmentionsFetchPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	if attachCount > 0 {
-		fmt.Fprintf(os.Stderr, "[webmentions_fetch] Attached webmentions to %d posts\n", attachCount)
+		webmentionsFetchLog.Printf("Attached webmentions to %d posts", attachCount)
 	}
 
 	return nil

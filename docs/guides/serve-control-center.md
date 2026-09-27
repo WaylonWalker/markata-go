@@ -26,6 +26,9 @@ successful one.
 For line-oriented output, use `markata-go serve --no-tui`. Markata also chooses
 line-oriented output when input or output is redirected, when `--no-input` is
 set, or when the terminal is unavailable. This mode works in scripts and CI.
+While the interactive dashboard is open, build and plugin messages appear in
+its Logs and Problems views. Serve keeps terminal ownership so rebuild output
+does not overwrite the dashboard, including while the terminal is resized.
 
 ## Local web dashboard
 

@@ -143,7 +143,7 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 	for _, redirect := range redirects {
 		if err := p.writeRedirect(redirect, tmpl, outputDir, config); err != nil {
 			// Log error but continue with other redirects
-			fmt.Fprintf(os.Stderr, "warning: failed to write redirect for %s: %v\n", redirect.Original, err)
+			log.Printf("warning: failed to write redirect for %s: %v", redirect.Original, err)
 		}
 	}
 

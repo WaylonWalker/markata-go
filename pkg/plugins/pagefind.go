@@ -2,7 +2,6 @@
 package plugins
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -179,36 +178,29 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 	start := time.Now()
 	pagefindLog.Printf("Running subprocess: %s %s", pagefindPath, strings.Join(args, " "))
 
-	// Capture output - show all in verbose mode, only errors when quiet
+	var stdoutLog, stderrLog *subprocessLineWriter
+	var stderrTail *subprocessTailWriter
+	cmd.Stdout = io.Discard
 	if verbose {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		stdoutLog = newSubprocessLineWriter(pagefindLog)
+		stderrLog = newSubprocessLineWriter(pagefindLog.Level("error"))
+		cmd.Stdout, cmd.Stderr = stdoutLog, stderrLog
 	} else {
-		// Capture stderr to show errors only
-		var stderrBuf bytes.Buffer
-		cmd.Stdout = io.Discard
-		cmd.Stderr = &stderrBuf
-
-		if err := cmd.Run(); err != nil {
-			// Show captured stderr on error
-			if stderrBuf.Len() > 0 {
-				fmt.Fprintf(os.Stderr, "%s", stderrBuf.String())
-			}
-			return fmt.Errorf("pagefind indexing failed: %w", err)
-		}
-		pagefindLog.Printf("Subprocess completed in %v", time.Since(start))
-
-		// Verify the index was created
-		indexPath := filepath.Join(outputDir, bundleDir, "pagefind.js")
-		if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-			return fmt.Errorf("pagefind did not create expected index file: %s", indexPath)
-		}
-
-		return nil
+		stderrTail = newSubprocessTailWriter(64 * 1024)
+		cmd.Stderr = stderrTail
 	}
-
 	if err := cmd.Run(); err != nil {
+		if stdoutLog != nil {
+			stdoutLog.Flush()
+			stderrLog.Flush()
+		} else if output := stderrTail.String(); output != "" {
+			logSubprocessOutput(pagefindLog.Level("error"), output)
+		}
 		return fmt.Errorf("pagefind indexing failed: %w", err)
+	}
+	if stdoutLog != nil {
+		stdoutLog.Flush()
+		stderrLog.Flush()
 	}
 	pagefindLog.Printf("Subprocess completed in %v", time.Since(start))
 

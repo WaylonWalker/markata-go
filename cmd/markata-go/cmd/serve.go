@@ -262,8 +262,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	// the new manager is still populating and transforming its posts.
 	setServePosts(nil)
 	setServeSearchPosts(nil)
-	configureLoggerForManager(m)
-	configureServeLogger()
+	configureServeLoggerForManager(m)
 	palette := publishServePalette(m)
 
 	configureServeBuildModes(m)
@@ -1827,7 +1826,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
-	configureLoggerForManager(m)
+	configureServeLoggerForManager(m)
 	publishServePalette(m)
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
