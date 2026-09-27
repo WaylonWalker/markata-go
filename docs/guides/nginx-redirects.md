@@ -1,6 +1,6 @@
 # Nginx-native redirects
 
-The built-in redirects plugin can generate nginx-native redirect rules from the same `static/_redirects` file used for static HTML fallbacks.
+The built-in redirects plugin generates nginx-native redirect rules from the same `static/_redirects` file used for static HTML fallbacks.
 
 ## Default behavior
 
@@ -43,14 +43,20 @@ redirect_template = "templates/redirect.html" # optional
 html_fallback = true
 ```
 
-Set `html_fallback = false` when the deployment is guaranteed to use the generated nginx rules and you do not want per-path HTML redirect pages:
+Set `html_fallback = false` when the deployment is guaranteed to use the generated nginx rules and you do not want new per-path HTML redirect pages:
 
 ```toml
 [markata-go.redirects]
 html_fallback = false
 ```
 
-The nginx output itself is always generated when the redirects file contains at least one supported redirect.
+When changing this setting on an existing incremental output directory, use a clean build if you also want old HTML fallback files removed. Markata-go deliberately does not delete arbitrary `index.html` files because redirect paths can overlap normal site content and custom templates do not provide a safe ownership marker.
+
+## Keeping `redirects.conf` current
+
+On normal builds, nginx output is refreshed whenever the configured `_redirects` file exists. If that file is empty, markata-go writes a valid header-only `redirects.conf`, so previously generated native rules cannot remain active.
+
+If the `_redirects` source is deleted, markata-go removes an existing `redirects.conf` only when it recognizes the file as its own generated artifact. A user-managed `redirects.conf` is left untouched.
 
 ## Include from nginx
 
@@ -70,7 +76,18 @@ server {
 }
 ```
 
-The include path must match the deployed `output_dir`. If your deployment uses release directories or a `current` symlink, point nginx at the active release's `redirects.conf` just as you do for the site root.
+The include path must match the deployed `output_dir`.
+
+### Release directories and `current` symlinks
+
+If a deployment serves releases through a `current` symlink, point the include at the active release only when the nginx process will be reloaded as part of the release switch. Nginx reads included configuration when it loads or reloads its configuration; changing the symlink alone does not make an already-running nginx process reread `redirects.conf`.
+
+For builder-admin or other in-place release switching, either:
+
+- reload nginx after activating a release whose redirect config changed, or
+- keep nginx-native redirects out of that live-switch path until a reload hook is part of the deployment.
+
+HTML fallbacks continue to work without an nginx reload because they are served as ordinary files from the active release.
 
 ## Supported rules
 
@@ -88,4 +105,4 @@ This keeps nginx output and HTML fallback behavior aligned. Use hand-written ngi
 
 ## Fast builds
 
-As with the existing HTML redirect generation, the redirects plugin is skipped in `--fast` mode. Run a normal build before publishing or validating `redirects.conf`.
+The redirects plugin is skipped in `--fast` mode. Run a normal build before publishing, validating, or reloading nginx with `redirects.conf`.
