@@ -72,6 +72,25 @@ func TestRenderCommandHelp_IncludesAliases(t *testing.T) {
 	}
 }
 
+func TestRootHelpListsAliasesBesideCommand(t *testing.T) {
+	oldTerminalWidth := cliTerminalWidth
+	cliTerminalWidth = func(io.Writer) int { return 20 }
+	defer func() { cliTerminalWidth = oldTerminalWidth }()
+	parent := &cobra.Command{Use: "markata-go"}
+	parent.AddCommand(&cobra.Command{Use: "serve", Short: "Start the server", Aliases: []string{"s", "serv"}, Run: func(*cobra.Command, []string) {}})
+	output := &strings.Builder{}
+	parent.SetOut(output)
+	renderCommandHelp(parent)
+	if !strings.Contains(output.String(), "s, serv") || !strings.Contains(output.String(), "serve") {
+		t.Fatalf("help output = %q; want aliases and command", output.String())
+	}
+	for _, line := range strings.Split(output.String(), "\n") {
+		if utf8.RuneCountInString(line) > 20 {
+			t.Errorf("narrow help line is %d columns: %q", utf8.RuneCountInString(line), line)
+		}
+	}
+}
+
 func TestRenderHelpDescription_UsesThemedUnicodeSections(t *testing.T) {
 	oldCmd := currentCmd
 	defer func() { currentCmd = oldCmd }()

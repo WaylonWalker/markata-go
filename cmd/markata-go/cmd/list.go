@@ -33,8 +33,9 @@ const (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List posts, tags, or feeds",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List posts, tags, or feeds",
 	Long: `List posts, tags, or feeds for quick inspection and scripting.
 
 Use subcommands to select the data source:
@@ -87,7 +88,7 @@ func listPostsCmd() *cobra.Command {
 			}
 
 			if !isValidPostSort(sortBy) {
-				return fmt.Errorf("invalid sort field %q", sortBy)
+				return invalidChoiceError("--sort", sortBy, []string{"date", "title", "words", "path", "reading_time", "tags"}, cmd.CommandPath())
 			}
 
 			listOpts := services.ListOptions{
@@ -150,7 +151,7 @@ func listTagsCmd() *cobra.Command {
 			}
 
 			if !isValidTagSort(sortBy) {
-				return fmt.Errorf("invalid sort field %q", sortBy)
+				return invalidChoiceError("--sort", sortBy, []string{"name", "count", "words", "reading_time"}, cmd.CommandPath())
 			}
 
 			tags, err := app.Tags.List(cmd.Context())
@@ -202,7 +203,7 @@ func listFeedsCmd() *cobra.Command {
 			}
 
 			if !isValidFeedSort(sortBy) {
-				return fmt.Errorf("invalid sort field %q", sortBy)
+				return invalidChoiceError("--sort", sortBy, []string{"name", "posts", "words", "reading_time", "avg_reading_time"}, cmd.CommandPath())
 			}
 
 			feeds, err := app.Feeds.List(cmd.Context())
@@ -290,7 +291,7 @@ func parseListFormat(format string) (string, error) {
 	case listFormatTable, listFormatJSON, listFormatCSV, listFormatPath:
 		return format, nil
 	default:
-		return "", fmt.Errorf("invalid format %q", format)
+		return "", invalidChoiceError("--format", format, []string{listFormatTable, listFormatJSON, listFormatCSV, listFormatPath}, currentCommandPath())
 	}
 }
 
@@ -302,8 +303,15 @@ func parseSortOrder(order string) (services.SortOrder, error) {
 	case string(services.SortDesc):
 		return services.SortDesc, nil
 	default:
-		return "", fmt.Errorf("invalid order %q", order)
+		return "", invalidChoiceError("--order", order, []string{"asc", "desc"}, currentCommandPath())
 	}
+}
+
+func currentCommandPath() string {
+	if currentCmd != nil {
+		return currentCmd.CommandPath()
+	}
+	return "markata-go list"
 }
 
 func isValidPostSort(field string) bool {

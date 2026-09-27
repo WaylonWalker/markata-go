@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/logging"
+	"github.com/WaylonWalker/markata-go/pkg/suggest"
 	"github.com/spf13/cobra"
 )
 
@@ -86,8 +88,13 @@ Profiling:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       Version,
-	Args:          cobra.MaximumNArgs(1),
-	RunE:          runRootCommand,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 && !strings.HasSuffix(strings.ToLower(args[0]), ".md") && !strings.HasSuffix(strings.ToLower(args[0]), ".markdown") {
+			return unknownCommandError(cmd, args[0])
+		}
+		return cobra.MaximumNArgs(1)(cmd, args)
+	},
+	RunE: runRootCommand,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
 		// Build Lab resolves and binds every child to its copied workspace. Do
@@ -149,7 +156,37 @@ func runRootCommand(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return cmd.Help()
 	}
+	if !strings.HasSuffix(strings.ToLower(args[0]), ".md") && !strings.HasSuffix(strings.ToLower(args[0]), ".markdown") {
+		return unknownCommandError(cmd, args[0])
+	}
 	return runBuildCommand(cmd, args)
+}
+
+func unknownCommandError(parent *cobra.Command, name string) error {
+	families := make([]suggest.Family, 0)
+	for _, child := range parent.Commands() {
+		if child.IsAvailableCommand() && !child.IsAdditionalHelpTopicCommand() {
+			families = append(families, suggest.Family{Name: child.Name(), Aliases: child.Aliases, SuggestFor: child.SuggestFor})
+		}
+	}
+	matches := suggest.Ranked(name, families, 2)
+	labels := make(map[string]string, len(families))
+	for _, family := range families {
+		label := family.Name
+		if len(family.Aliases) > 0 {
+			label += " (aliases: " + strings.Join(family.Aliases, ", ") + ")"
+		}
+		labels[family.Name] = label
+	}
+	for i, match := range matches {
+		matches[i] = labels[match]
+	}
+	return newUsageError(&inputError{
+		problem: fmt.Sprintf("unknown command %q", name),
+		matches: matches,
+		prefix:  parent.CommandPath() + " ",
+		next:    "Run '" + parent.CommandPath() + " --help' to see available commands and aliases.",
+	})
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -159,7 +196,27 @@ func Execute() error {
 	// profiles valid for failed Build Lab/product runs as well as successful
 	// commands.
 	defer stopCPUProfile()
+	prepareCommandGroups(rootCmd)
 	return rootCmd.Execute()
+}
+
+// Cobra otherwise shows help and exits successfully for a mistyped child of a
+// non-runnable command group. Give those groups a help action and argument
+// validator so unknown children return a useful usage error.
+func prepareCommandGroups(parent *cobra.Command) {
+	for _, child := range parent.Commands() {
+		prepareCommandGroups(child)
+	}
+	if parent == rootCmd || !parent.HasAvailableSubCommands() || parent.Runnable() {
+		return
+	}
+	parent.Args = func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return unknownCommandError(cmd, args[0])
+		}
+		return nil
+	}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error { return cmd.Help() }
 }
 
 func stopCPUProfile() {
@@ -172,13 +229,32 @@ func stopCPUProfile() {
 	verbosef("CPU profile written to %s", cpuProfile)
 }
 
+func runHelpCommand(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return rootCmd.Help()
+	}
+	target, remaining, err := rootCmd.Find(args)
+	if err != nil {
+		return newUsageError(err)
+	}
+	if len(remaining) > 0 {
+		return unknownCommandError(target, remaining[0])
+	}
+	return target.Help()
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SetHelpCommand(&cobra.Command{
+		Use:   "help [command]",
+		Short: "Show help for a command",
+		RunE:  runHelpCommand,
+	})
 	rootCmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		renderCommandHelp(cmd)
 	})
-	rootCmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
-		return newUsageError(err)
+	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return newUsageError(clarifyFlagError(cmd, err))
 	})
 
 	// Global flags

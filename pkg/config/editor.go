@@ -2,11 +2,15 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ErrKeyNotFound means a valid key path is absent from the config file.
+var ErrKeyNotFound = errors.New("config key not found")
 
 // GetValueFromFile reads a config file and returns the value for a key path.
 func GetValueFromFile(path, key string) (any, error) {
@@ -22,16 +26,48 @@ func GetValueFromFile(path, key string) (any, error) {
 		return nil, fmt.Errorf("read config file: %w", err)
 	}
 
+	var value any
 	switch format {
 	case FormatTOML:
-		return getTomlValue(data, segments)
+		value, err = getTomlValue(data, segments)
 	case FormatYAML:
-		return getYamlValue(data, segments)
+		value, err = getYamlValue(data, segments)
 	case FormatJSON:
-		return getJSONValue(data, segments)
+		value, err = getJSONValue(data, segments)
 	default:
 		return nil, fmt.Errorf("unsupported config format: %s", format)
 	}
+	if err == nil {
+		return value, nil
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		return nil, err
+	}
+	// Syntax-tree lookups can miss keys inside a table. Confirm absence against
+	// the parsed document before reporting a missing key.
+	raw, err := loadRawConfigData(data, format)
+	if err != nil {
+		return nil, fmt.Errorf("parse config file: %w", err)
+	}
+	var current any = raw
+	for _, segment := range segments {
+		values, ok := current.(map[string]any)
+		if !ok {
+			return nil, ErrKeyNotFound
+		}
+		current, ok = values[segment.Key]
+		if !ok {
+			return nil, ErrKeyNotFound
+		}
+		if segment.Index != nil {
+			items, ok := current.([]any)
+			if !ok || *segment.Index < 0 || *segment.Index >= len(items) {
+				return nil, ErrKeyNotFound
+			}
+			current = items[*segment.Index]
+		}
+	}
+	return current, nil
 }
 
 // SetValueInFile updates a config file in place with the provided key path/value.

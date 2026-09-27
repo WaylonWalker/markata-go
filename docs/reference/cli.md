@@ -22,6 +22,29 @@ The markata-go CLI follows a subcommand pattern similar to tools like `git` and 
 markata-go [global flags] <command> [command flags] [arguments]
 ```
 
+The common short forms are `b` for `build`, `s` and `serv` for `serve`, and `ls` for
+`list`. For example, `markata-go s --bind 0.0.0.0` starts the development
+server on every network interface. `--bind` and `--host` select the same
+listening address; if both are set, their values must agree.
+The semantic names `dev` and `preview` suggest `serve` but do not execute it.
+
+If a command, flag, or config key is misspelled, markata-go suggests close
+matches and shows the exact help command to run. A clear alias executes; a
+semantic synonym or typo only suggests. Suggestions are advisory: the
+CLI never executes or writes a guessed name. For example:
+
+```text
+Error: unknown flag: --hst
+Did you mean:
+  --host
+Next: Run 'markata-go serve --help' to see valid flags.
+```
+
+Unknown command names exit with status `2`. The direct file shortcut accepts
+Markdown paths such as `markata-go post.md`; other unknown names produce an
+error. Errors use color when `stderr` is a terminal, and plain text when it is
+redirected or `--no-color` is set.
+
 For a one-file preview, pass a Markdown file directly. The file is rendered
 with the default theme and published at the site root (`<output>/index.html`),
 along with the theme's CSS, JS, and fonts. Site-wide output is skipped: feeds,

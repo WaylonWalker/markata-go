@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -49,6 +51,7 @@ var (
 
 	// serveHost is the host to serve on.
 	serveHost string
+	serveBind string
 
 	// serveSourceFile is the Markdown file passed to `serve <file>`. When set,
 	// every build and rebuild uses single-page mode.
@@ -162,8 +165,10 @@ func getModelsConfig(m *lifecycle.Manager) *models.Config {
 
 // serveCmd represents the serve command.
 var serveCmd = &cobra.Command{
-	Use:   "serve [markdown-file]",
-	Short: "Build and serve locally with live reload",
+	Use:        "serve [markdown-file]",
+	Aliases:    []string{"s", "serv"},
+	SuggestFor: []string{"dev", "preview"},
+	Short:      "Build and serve locally with live reload",
 	Long: `Serve builds the site and starts a local development server with file watching.
 
 Features:
@@ -187,6 +192,7 @@ Example usage:
   markata-go serve post.md      # Serve just post.md at the root index
   markata-go serve --fast       # Serve with fast mode (skip minification)
   markata-go serve -p 3000      # Serve on localhost:3000
+  markata-go serve --bind 0.0.0.0 # Listen on all interfaces
   markata-go serve -m fast.toml # Serve with merged config overrides
   markata-go serve --watch      # Explicitly enable file watching (default)
   markata-go serve --watch=false # Disable file watching
@@ -201,6 +207,7 @@ func init() {
 
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", 8000, "port to serve on")
 	serveCmd.Flags().StringVar(&serveHost, "host", "localhost", "host to serve on")
+	serveCmd.Flags().StringVar(&serveBind, "bind", "localhost", "address to listen on (alias for --host)")
 	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
@@ -209,6 +216,12 @@ func init() {
 
 func runServeCommand(cmd *cobra.Command, args []string) error {
 	currentCmd = cmd
+	if err := validateServePort(servePort); err != nil {
+		return err
+	}
+	if err := resolveServeHost(cmd); err != nil {
+		return err
+	}
 	serveSourceFile = ""
 	if len(args) == 1 {
 		serveSourceFile = args[0]
@@ -256,6 +269,18 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	initServeInternalPaths()
 
 	var wg sync.WaitGroup
+	// Create HTTP server with search API
+	addr := net.JoinHostPort(serveHost, strconv.Itoa(servePort))
+	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
+	serveSearchEndpoint = searchEndpoint
+	handler := createHandler(outputPath, m, searchHandlerPath)
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return diagnoseServeListenError(err, addr)
+	}
+	defer listener.Close()
+
 	rebuildCh, closeWatcher, err := setupWatcher(ctx, m, &wg)
 	if err != nil {
 		return err
@@ -276,16 +301,12 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { serveRequestFullRebuild = nil }()
 
-	// Create HTTP server with search API
-	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	searchEndpoint, searchHandlerPath := configuredSearchEndpoints(getModelsConfig(m))
-	serveSearchEndpoint = searchEndpoint
-	handler := createHandler(outputPath, m, searchHandlerPath)
-
-	server, serverErr, serverStarted := startHTTPServer(addr, handler)
-
-	// Wait for server to start before entering select
-	<-serverStarted
+	if rebuildCh != nil {
+		infof("Watching for file changes...")
+	}
+	infof("\nServing at http://%s", addr)
+	infof("Press Ctrl+C to stop")
+	server, serverErr := startHTTPServer(listener, handler)
 
 	startInitialBuild(m, rebuildCh, &wg)
 
@@ -296,6 +317,24 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	waitForGoroutines(&wg)
 
 	errln("Server stopped")
+	return nil
+}
+
+func validateServePort(port int) error {
+	if port < 1 || port > 65535 {
+		return newUsageError(&Diagnostic{Severity: "error", Code: "serve.invalid_port", Problem: fmt.Sprintf("port %d is outside the valid range", port), Details: []string{"Valid ports: 1 to 65535"}, StatusCode: exitCodeUsage})
+	}
+	return nil
+}
+
+func resolveServeHost(cmd *cobra.Command) error {
+	if !cmd.Flags().Changed("bind") {
+		return nil
+	}
+	if cmd.Flags().Changed("host") && serveHost != serveBind {
+		return newUsageError(fmt.Errorf("--host and --bind specify different addresses; use one flag or give both the same value"))
+	}
+	serveHost = serveBind
 	return nil
 }
 
@@ -374,31 +413,59 @@ func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup)
 		return nil, func() {}, fmt.Errorf("failed to setup file watching: %w", err)
 	}
 
-	infof("Watching for file changes...")
-
 	return rebuildCh, func() { _ = watcher.Close() }, nil
 }
 
-func startHTTPServer(addr string, handler http.Handler) (server *http.Server, serverErr <-chan error, serverStarted <-chan struct{}) {
+func startHTTPServer(listener net.Listener, handler http.Handler) (server *http.Server, serverErr <-chan error) {
 	server = &http.Server{
-		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: serverReadHeaderTimeout,
 	}
 
 	// Start server in goroutine
 	serverErrCh := make(chan error, 1)
-	serverStartedCh := make(chan struct{})
 	go func() {
-		infof("\nServing at http://%s", addr)
-		infof("Press Ctrl+C to stop")
-		close(serverStartedCh) // Signal that server is ready
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			serverErrCh <- err
 		}
 	}()
 
-	return server, serverErrCh, serverStartedCh
+	return server, serverErrCh
+}
+
+func diagnoseServeListenError(err error, addr string) error {
+	if isAddressInUseError(err) {
+		port := servePort
+		if _, portText, splitErr := net.SplitHostPort(addr); splitErr == nil {
+			if parsedPort, parseErr := strconv.Atoi(portText); parseErr == nil {
+				port = parsedPort
+			}
+		}
+		available := 0
+		for candidate := port + 1; candidate <= min(port+20, 65535); candidate++ {
+			listener, listenErr := net.Listen("tcp", net.JoinHostPort(serveHost, strconv.Itoa(candidate)))
+			if listenErr == nil {
+				available = candidate
+				_ = listener.Close()
+				break
+			}
+		}
+		diagnostic := &Diagnostic{Severity: "error", Code: "serve.address_in_use", Problem: fmt.Sprintf("port %d is already in use", port), Cause: err, Tips: []string{fmt.Sprintf("Another Markata server may already be serving at http://%s", addr)}, StatusCode: 1}
+		if available > 0 {
+			diagnostic.Command = fmt.Sprintf("markata-go serve --port %d", available)
+		}
+		return diagnostic
+	}
+	return &Diagnostic{Severity: "error", Code: "serve.listen_failed", Problem: fmt.Sprintf("could not listen on %s", addr), Cause: err, Tips: []string{"Check that the address is valid and available."}, StatusCode: 1}
+}
+
+func isAddressInUseError(err error) bool {
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "address already in use") ||
+		strings.Contains(message, "only one usage of each socket address")
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {

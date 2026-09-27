@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -40,6 +41,12 @@ Subcommands:
 	  set      - Set a configuration value
 	  validate - Validate the configuration file
 	  init     - Create a new configuration file`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return unknownCommandError(cmd, args[0])
+		}
+		return nil
+	},
 	RunE: runConfigCommand,
 }
 
@@ -581,7 +588,10 @@ func runConfigGetCommand(_ *cobra.Command, args []string) error {
 
 	value, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
-		return err
+		if errors.Is(err, config.ErrKeyNotFound) {
+			return newUsageError(configKeyError(key))
+		}
+		return fmt.Errorf("cannot read %q from %s: %w", key, configPath, err)
 	}
 
 	// Print value
@@ -630,7 +640,7 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 
 	// Print warnings
 	if len(warnings) > 0 {
-		errln("Warnings:")
+		errln(colorize("Warnings:", currentLogTheme.Warning, colorEnabledFor(errorOutputIsTerminal())))
 		for _, w := range warnings {
 			errlnf("  - %v", w)
 		}
@@ -639,11 +649,12 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 
 	// Print errors
 	if len(actualErrors) > 0 {
-		errln("Errors:")
+		errln(colorize("Errors:", currentLogTheme.Error, colorEnabledFor(errorOutputIsTerminal())))
 		for _, e := range actualErrors {
 			errlnf("  - %v", e)
 		}
-		return fmt.Errorf("configuration validation failed")
+		errln("Next: Correct the listed settings and rerun 'markata-go config validate'.")
+		return newExitCodeError(1, nil)
 	}
 
 	// Print success
@@ -713,6 +724,13 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 	oldValue, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
 		oldValue = nil
+		if errors.Is(err, config.ErrKeyNotFound) {
+			candidate := configKeyError(key)
+			var input *inputError
+			if errors.As(candidate, &input) && len(input.matches) > 0 && safeConfigSetSuggestion(key, input.matches[0]) {
+				return newUsageError(candidate)
+			}
+		}
 	}
 
 	// If dry-run, just show what would change
@@ -738,6 +756,26 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 
 	outlnf("Updated %s in %s", key, configPath)
 	return nil
+}
+
+func safeConfigSetSuggestion(key, candidate string) bool {
+	key = strings.TrimPrefix(key, "markata-go.")
+	candidate = strings.TrimPrefix(candidate, "markata-go.")
+	keyParent, _, keyNested := strings.Cut(key, ".")
+	candidateParent, _, candidateNested := strings.Cut(candidate, ".")
+	if keyNested || candidateNested {
+		return keyNested && candidateNested && keyParent == candidateParent
+	}
+	return strings.Contains(key, "_") && strings.Contains(candidate, "_")
+}
+
+func configSettingsForSuggestions() []string {
+	fields := config.Settings(config.DefaultConfig())
+	keys := make([]string, 0, len(fields))
+	for i := range fields {
+		keys = append(keys, fields[i].Key)
+	}
+	return keys
 }
 
 // formatFromPath determines the config format from a file path.

@@ -114,7 +114,7 @@ Examples:
 					return err
 				}
 				if !isValidPostSort(sortBy) {
-					return fmt.Errorf("invalid sort field %q", sortBy)
+					return invalidChoiceError("--sort", sortBy, []string{"score", "date", "title", "words", "path", "reading_time", "tags"}, cmd.CommandPath())
 				}
 				sortSearchResults(results, sortBy, sortOrder)
 			}

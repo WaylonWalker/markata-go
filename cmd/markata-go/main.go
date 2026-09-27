@@ -4,7 +4,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/WaylonWalker/markata-go/cmd/markata-go/cmd"
 )
@@ -12,8 +11,8 @@ import (
 func main() {
 	if err := cmd.Execute(); err != nil {
 		exitCode := cmd.ExitCodeForError(err)
-		if message := strings.TrimSpace(err.Error()); message != "" {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		if message := cmd.FormatError(err); message != "" {
+			fmt.Fprintln(os.Stderr, message)
 		}
 		os.Exit(exitCode)
 	}

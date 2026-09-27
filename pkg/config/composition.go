@@ -215,6 +215,9 @@ func loadRawConfigData(data []byte, format Format) (map[string]any, error) {
 	if !ok {
 		return map[string]any{}, nil
 	}
+	if err := likelyConfigTypo(normalized); err != nil {
+		return nil, err
+	}
 
 	return normalized, nil
 }

@@ -45,8 +45,9 @@ var (
 
 // buildCmd represents the build command.
 var buildCmd = &cobra.Command{
-	Use:   "build [markdown-file]",
-	Short: "Build the static site",
+	Use:     "build [markdown-file]",
+	Aliases: []string{"b"},
+	Short:   "Build the static site",
 	Long: `Build runs all lifecycle stages to generate the static site.
 
 The build process includes:
