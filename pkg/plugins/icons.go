@@ -300,7 +300,7 @@ func (p *IconsPlugin) processContent(content string) string {
 	return out.String()
 }
 
-func markdownFenceMarker(line string) (byte, int) {
+func markdownFenceMarker(line string) (marker byte, markerLen int) {
 	line = strings.TrimSuffix(line, "\n")
 	line = strings.TrimSuffix(line, "\r")
 	indent := 0
@@ -310,7 +310,7 @@ func markdownFenceMarker(line string) (byte, int) {
 	if indent > 3 || indent >= len(line) {
 		return 0, 0
 	}
-	marker := line[indent]
+	marker = line[indent]
 	if marker != '`' && marker != '~' {
 		return 0, 0
 	}
