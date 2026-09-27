@@ -24,6 +24,7 @@
   /* Semantic colors */
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
+  --color-text-secondary: var(--color-text-muted);
   --color-background: #ffffff;
   --color-surface: #f9fafb;
   --color-border: #e5e7eb;
