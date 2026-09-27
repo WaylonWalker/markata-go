@@ -83,7 +83,9 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Create root subscription feed (slug="") if not already defined
+	// Create root subscription feed (slug="") if not already defined. An authored
+	// homepage keeps ownership of /index.html while the implicit feed still
+	// provides RSS and Atom at the root.
 	if !hasRootFeed {
 		rootFeed := models.FeedConfig{
 			Slug:        "",
@@ -93,7 +95,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			Sort:        "date",
 			Reverse:     true,
 			Formats: models.FeedFormats{
-				HTML: true,
+				HTML: !hasAuthoredHomepage(m.Posts()),
 				RSS:  true,
 				Atom: true,
 				JSON: false,
@@ -127,6 +129,18 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+func hasAuthoredHomepage(posts []*models.Post) bool {
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft {
+			continue
+		}
+		if post.Slug == "" {
+			return true
+		}
+	}
+	return false
 }
 
 // getSubscriptionFeedTitle returns the title for a subscription feed.
@@ -231,7 +245,7 @@ func GetDiscoveryFeed(_ *models.Post, sidebarFeed *models.FeedConfig, allFeeds [
 	}
 }
 
-// feedConfigToDiscoveryFeed converts a FeedConfig to a DiscoveryFeed.
+// feedConfigToDiscoveryFeed converts a FeedConfig to a map for template context.
 func feedConfigToDiscoveryFeed(fc *models.FeedConfig) *DiscoveryFeed {
 	df := &DiscoveryFeed{
 		Slug:    fc.Slug,
