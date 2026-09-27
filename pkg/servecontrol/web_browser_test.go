@@ -141,4 +141,25 @@ func TestBrowserKeyboardNavigationAndHistory(t *testing.T) {
 	if hash != "#/jobs?item=job%3Ajob-2" {
 		t.Fatalf("section navigation after browser interaction = %q", hash)
 	}
+	var focused string
+	if err := chromedp.Run(browser,
+		chromedp.Evaluate(`document.querySelector('#list [data-key="job:job-2"]').focus()`, nil),
+		chromedp.Sleep(2300*time.Millisecond),
+		chromedp.Evaluate(`document.activeElement?.dataset?.key || ''`, &focused),
+	); err != nil {
+		t.Fatal(err)
+	}
+	if focused != "job:job-2" {
+		t.Fatalf("poll replaced focused row: focus = %q", focused)
+	}
+	runtime.QueueJob(JobSpec{Name: "Third build", Type: "build"})
+	if err := chromedp.Run(browser,
+		chromedp.Sleep(2300*time.Millisecond),
+		chromedp.Evaluate(`document.activeElement?.dataset?.key || ''`, &focused),
+	); err != nil {
+		t.Fatal(err)
+	}
+	if focused != "job:job-2" {
+		t.Fatalf("state update lost focused row: focus = %q", focused)
+	}
 }
