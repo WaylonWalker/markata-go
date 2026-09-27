@@ -69,6 +69,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 					known[fcs[i].Slug] = true
 					feedConfigs = append(feedConfigs, fcs[i])
 				}
+			}
 		}
 	}
 
