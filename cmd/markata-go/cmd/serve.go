@@ -434,7 +434,7 @@ func startHTTPServer(listener net.Listener, handler http.Handler) (server *http.
 }
 
 func diagnoseServeListenError(err error, addr string) error {
-	if errors.Is(err, syscall.EADDRINUSE) {
+	if isAddressInUseError(err) {
 		port := servePort
 		if _, portText, splitErr := net.SplitHostPort(addr); splitErr == nil {
 			if parsedPort, parseErr := strconv.Atoi(portText); parseErr == nil {
@@ -457,6 +457,15 @@ func diagnoseServeListenError(err error, addr string) error {
 		return diagnostic
 	}
 	return &Diagnostic{Severity: "error", Code: "serve.listen_failed", Problem: fmt.Sprintf("could not listen on %s", addr), Cause: err, Tips: []string{"Check that the address is valid and available."}, StatusCode: 1}
+}
+
+func isAddressInUseError(err error) bool {
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "address already in use") ||
+		strings.Contains(message, "only one usage of each socket address")
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {

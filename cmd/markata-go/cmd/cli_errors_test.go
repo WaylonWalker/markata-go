@@ -96,6 +96,11 @@ func TestServePortAndListenDiagnostics(t *testing.T) {
 	if !strings.Contains(message, "already in use") || !strings.Contains(message, "Another Markata server may already be serving") || strings.Contains(message, "Serving at") {
 		t.Fatalf("occupied-port diagnostic = %q", message)
 	}
+
+	windowsCollision := errors.New("listen tcp 127.0.0.1:8000: bind: only one usage of each socket address")
+	if message := FormatError(diagnoseServeListenError(windowsCollision, "127.0.0.1:8000")); !strings.Contains(message, "port 8000 is already in use") {
+		t.Fatalf("Windows occupied-port diagnostic = %q", message)
+	}
 }
 
 func TestInvalidListChoicesAreActionable(t *testing.T) {

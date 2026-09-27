@@ -6,8 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// topicTemplates is the constant for the "templates" topic.
+// topicServe and topicTemplates are constants for built-in explain topics.
 const topicTemplates = "templates"
+const topicServe = "serve"
 
 // explainCmd represents the explain command.
 var explainCmd = &cobra.Command{
@@ -51,7 +52,7 @@ func init() {
 func explainValidArgs(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	return []string{
 		"build\tThe build command and process",
-		"serve\tThe development server",
+		topicServe + "\tThe development server",
 		"new\tCreating new content",
 		"content\tFinding, creating, and editing site content",
 		"init\tInitializing projects",
@@ -77,7 +78,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		content = explainGeneral
 	case "build":
 		content = explainBuild
-	case "serve":
+	case topicServe:
 		content = explainServe
 	case "new":
 		content = explainNew
