@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Atom XSL Stylesheet for markata-go
-  Transforms Atom feeds into human-readable HTML while maintaining machine compatibility.
-  Inspired by pretty-feed-v3.xsl (https://github.com/genmon/aboutfeeds/blob/main/tools/pretty-feed-v3.xsl)
--->
+<!-- Browser reading view for Markata RSS/Atom feeds. -->
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:atom="http://www.w3.org/2005/Atom"
   exclude-result-prefixes="atom">
-
   <xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>
 
   <xsl:template match="/">
@@ -16,175 +11,186 @@
       <head>
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <title><xsl:value-of select="/atom:feed/atom:title"/> - Atom Feed</title>
-        <!-- Site theme: publish_feeds replaces this region with partials/feed-xsl-head.html -->
+        <title><xsl:value-of select="/rss/channel/title | /atom:feed/atom:title"/> — Feed</title>
+        <!-- Markata injects the site's palette, fontpack, theme controls and styles here. -->
         <!-- markata:theme-head -->
         <link rel="stylesheet" href="/css/variables.css" />
         <link rel="stylesheet" href="/css/main.css" />
         <!-- /markata:theme-head -->
         <style>
-          /* Feed-specific styles */
-          .feed-banner {
-            background: var(--color-surface, #f9fafb);
-            border: 1px solid var(--color-border, #e5e7eb);
-            border-radius: var(--radius-lg, 0.5rem);
-            padding: var(--space-6, 1.5rem);
-            margin-bottom: var(--space-8, 2rem);
+          .feed-reader {
+            --reader-width: 56rem;
+            min-height: 100vh;
+            color: var(--color-text, CanvasText);
+            background: var(--color-background, Canvas);
+            font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
           }
-          .feed-banner p {
-            margin: 0 0 var(--space-3, 0.75rem) 0;
-            line-height: var(--leading-relaxed, 1.75);
+          .reader-shell {
+            width: min(calc(100% - 2rem), var(--reader-width));
+            margin-inline: auto;
+            padding-block: clamp(1rem, 3vw, 2.5rem) 5rem;
           }
-          .feed-banner p:last-child {
-            margin-bottom: 0;
+          .reader-masthead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: .9rem;
+            border-bottom: 1px solid var(--color-border, color-mix(in srgb, currentColor 20%, transparent));
+            color: var(--color-text-muted, currentColor);
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: .72rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
           }
-          .feed-banner a {
-            color: var(--color-primary, #3b82f6);
-            text-decoration: underline;
+          .reader-brand { color: var(--color-text, currentColor); font-weight: 750; }
+          .reader-subscribe {
+            margin-block: 1.25rem clamp(2.5rem, 7vw, 5rem);
+            padding: clamp(1rem, 3vw, 1.5rem);
+            border: 1px solid var(--color-border, color-mix(in srgb, currentColor 20%, transparent));
+            border-left: .3rem solid var(--color-primary, currentColor);
+            border-radius: var(--radius-lg, 1rem);
+            background: var(--color-surface, color-mix(in srgb, currentColor 4%, transparent));
           }
-          .feed-banner a:hover {
-            color: var(--color-primary-dark, #2563eb);
-          }
-          .feed-header {
-            margin-bottom: var(--space-8, 2rem);
-          }
-          .feed-header h1 {
-            margin: 0 0 var(--space-2, 0.5rem) 0;
-            font-size: var(--text-3xl, 1.875rem);
+          .reader-subscribe p { margin: 0; line-height: 1.65; }
+          .reader-subscribe p + p { margin-top: .45rem; color: var(--color-text-muted, currentColor); font-size: .92rem; }
+          .reader-subscribe strong { color: var(--color-text, currentColor); }
+          .reader-subscribe a { color: var(--color-link, var(--color-primary, currentColor)); text-underline-offset: .18em; }
+          .reader-hero { position: relative; padding-bottom: 1.6rem; }
+          .reader-index {
+            margin: 0 0 .7rem;
+            color: var(--color-primary, currentColor);
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: .74rem;
             font-weight: 700;
-            color: var(--color-text, #1f2937);
+            letter-spacing: .13em;
+            text-transform: uppercase;
           }
-          .feed-header .description {
-            color: var(--color-text-muted, #6b7280);
-            font-size: var(--text-lg, 1.125rem);
+          .reader-hero h1 {
+            max-width: 16ch;
             margin: 0;
+            font-family: var(--font-heading, var(--font-body, serif));
+            font-size: clamp(2.35rem, 7vw, 5.5rem);
+            font-weight: 750;
+            letter-spacing: -.055em;
+            line-height: .98;
+            text-wrap: balance;
           }
-          .feed-meta {
+          .reader-description {
+            max-width: 42rem;
+            margin: 1rem 0 0;
+            color: var(--color-text-muted, currentColor);
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            line-height: 1.7;
+          }
+          .reader-meta {
             display: flex;
-            gap: var(--space-4, 1rem);
-            margin-top: var(--space-4, 1rem);
-            font-size: var(--text-sm, 0.875rem);
-            color: var(--color-text-muted, #6b7280);
+            flex-wrap: wrap;
+            gap: .45rem 1rem;
+            margin-top: 1.2rem;
+            color: var(--color-text-muted, currentColor);
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: .72rem;
+            letter-spacing: .025em;
           }
-          .posts {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-6, 1.5rem);
+          .reader-list { margin: 0; padding: 0; list-style: none; counter-reset: feed-entry; }
+          .reader-entry {
+            display: grid;
+            grid-template-columns: 3.6rem minmax(0, 1fr);
+            gap: 1.1rem;
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--color-border, color-mix(in srgb, currentColor 20%, transparent));
+            counter-increment: feed-entry;
           }
-          .card {
-            background: var(--color-surface, #f9fafb);
-            border: 1px solid var(--color-border, #e5e7eb);
-            border-radius: var(--radius-lg, 0.5rem);
-            padding: var(--space-6, 1.5rem);
-            transition: border-color 0.2s, box-shadow 0.2s;
+          .reader-entry::before {
+            content: counter(feed-entry, decimal-leading-zero);
+            padding-top: .2rem;
+            color: var(--color-primary, currentColor);
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: .75rem;
           }
-          .card:hover {
-            border-color: var(--color-primary, #3b82f6);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-          .card h2 {
-            margin: 0 0 var(--space-2, 0.5rem) 0;
-            font-size: var(--text-xl, 1.25rem);
-            font-weight: 600;
-          }
-          .card h2 a {
-            color: var(--color-text, #1f2937);
-            text-decoration: none;
-          }
-          .card h2 a:hover {
-            color: var(--color-primary, #3b82f6);
-          }
-          .card time {
-            display: block;
-            font-size: var(--text-sm, 0.875rem);
-            color: var(--color-text-muted, #6b7280);
-            margin-bottom: var(--space-2, 0.5rem);
-          }
-          .card p {
+          .reader-entry h2 {
             margin: 0;
-            color: var(--color-text-muted, #6b7280);
-            line-height: var(--leading-normal, 1.5);
+            font-family: var(--font-heading, var(--font-body, serif));
+            font-size: clamp(1.25rem, 3.2vw, 1.9rem);
+            font-weight: 680;
+            letter-spacing: -.025em;
+            line-height: 1.18;
+            text-wrap: balance;
           }
-          .container {
-            max-width: var(--page-width, 1200px);
-            margin: 0 auto;
-            padding: var(--space-8, 2rem) var(--space-4, 1rem);
+          .reader-entry h2 a { color: var(--color-text, currentColor); text-decoration: none; text-decoration-color: var(--color-primary, currentColor); text-underline-offset: .2em; }
+          .reader-entry h2 a:hover { color: var(--color-link, var(--color-primary, currentColor)); text-decoration: underline; }
+          .reader-entry time { display: block; margin-top: .65rem; color: var(--color-text-muted, currentColor); font-family: var(--font-mono, ui-monospace, monospace); font-size: .72rem; }
+          .reader-entry p { max-width: 48rem; margin: .7rem 0 0; color: var(--color-text-muted, currentColor); line-height: 1.65; }
+          .reader-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-border, color-mix(in srgb, currentColor 20%, transparent)); color: var(--color-text-muted, currentColor); font-size: .8rem; }
+          .reader-footer a { color: var(--color-link, var(--color-primary, currentColor)); }
+          .reader-subscribe a:focus-visible, .reader-entry a:focus-visible, .reader-footer a:focus-visible { outline: 3px solid var(--color-primary, currentColor); outline-offset: 4px; border-radius: .15em; }
+          @media (max-width: 34rem) {
+            .reader-masthead { align-items: flex-start; flex-direction: column; gap: .35rem; }
+            .reader-entry { grid-template-columns: 2rem minmax(0, 1fr); gap: .55rem; }
           }
-          body {
-            font-family: var(--font-body, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            background: var(--color-background, #ffffff);
-            color: var(--color-text, #1f2937);
-            line-height: var(--leading-normal, 1.5);
-            margin: 0;
-          }
-          /* Dark mode support */
-          @media (prefers-color-scheme: dark) {
-            body {
-              --color-text: #f9fafb;
-              --color-text-muted: #9ca3af;
-              --color-background: #111827;
-              --color-surface: #1f2937;
-              --color-border: #374151;
-            }
+          @media (prefers-reduced-motion: no-preference) {
+            .reader-subscribe, .reader-hero, .reader-entry { animation: reader-arrive .45s ease both; }
+            .reader-hero { animation-delay: .04s; }
+            .reader-entry:nth-child(2) { animation-delay: .05s; }
+            .reader-entry:nth-child(3) { animation-delay: .1s; }
+            @keyframes reader-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
           }
         </style>
       </head>
-      <body>
-        <div class="container">
-          <div class="feed-banner">
-            <p>
-              <strong>This is a web feed</strong>, also known as an Atom feed.
-              <strong>Subscribe</strong> by copying the URL from the address bar into your newsreader.
-            </p>
-            <p>
-              Visit <a href="https://aboutfeeds.com">About Feeds</a> to get started with newsreaders and subscribing. It's free.
-            </p>
+      <body class="feed-reader">
+        <main class="reader-shell">
+          <div class="reader-masthead">
+            <span class="reader-brand">Markata · Reading view</span>
+            <span><xsl:choose><xsl:when test="/atom:feed">Atom feed</xsl:when><xsl:otherwise>RSS feed</xsl:otherwise></xsl:choose> · <xsl:value-of select="count(/rss/channel/item | /atom:feed/atom:entry)"/> entries</span>
           </div>
-
-          <header class="feed-header">
-            <h1><xsl:value-of select="/atom:feed/atom:title"/></h1>
-            <xsl:if test="/atom:feed/atom:subtitle">
-              <p class="description"><xsl:value-of select="/atom:feed/atom:subtitle"/></p>
+          <aside class="reader-subscribe" aria-label="How to subscribe">
+            <p><strong>This is a web feed.</strong> Copy this page’s address into your favorite feed reader to subscribe.</p>
+            <p>Prefer to read here? Browse the latest entries below. <a href="https://aboutfeeds.com/">Learn about feeds</a></p>
+          </aside>
+          <header class="reader-hero">
+            <p class="reader-index">The latest from this site</p>
+            <h1><xsl:value-of select="/rss/channel/title | /atom:feed/atom:title"/></h1>
+            <xsl:if test="/rss/channel/description | /atom:feed/atom:subtitle">
+              <p class="reader-description"><xsl:value-of select="/rss/channel/description | /atom:feed/atom:subtitle"/></p>
             </xsl:if>
-            <div class="feed-meta">
-              <span><xsl:value-of select="count(/atom:feed/atom:entry)"/> posts</span>
-              <xsl:if test="/atom:feed/atom:updated">
-                <span>Updated: <xsl:value-of select="/atom:feed/atom:updated"/></span>
+            <div class="reader-meta">
+              <span><xsl:value-of select="count(/rss/channel/item | /atom:feed/atom:entry)"/> entries</span>
+              <xsl:if test="/rss/channel/lastBuildDate | /atom:feed/atom:updated">
+                <span>Updated <xsl:value-of select="/rss/channel/lastBuildDate | /atom:feed/atom:updated"/></span>
               </xsl:if>
-              <xsl:if test="/atom:feed/atom:author/atom:name">
-                <span>By: <xsl:value-of select="/atom:feed/atom:author/atom:name"/></span>
-              </xsl:if>
+              <xsl:if test="/atom:feed/atom:author/atom:name"><span>By <xsl:value-of select="/atom:feed/atom:author/atom:name"/></span></xsl:if>
             </div>
           </header>
-
-          <div class="posts">
-            <xsl:for-each select="/atom:feed/atom:entry">
-              <article class="card">
-                <h2>
-                  <a>
-                    <xsl:attribute name="href">
-                      <xsl:value-of select="atom:link[@rel='alternate']/@href"/>
-                    </xsl:attribute>
-                    <xsl:value-of select="atom:title"/>
-                  </a>
-                </h2>
-                <xsl:if test="atom:published">
-                  <time>
-                    <xsl:attribute name="datetime">
-                      <xsl:value-of select="atom:published"/>
-                    </xsl:attribute>
-                    <xsl:value-of select="atom:published"/>
-                  </time>
-                </xsl:if>
-                <xsl:if test="atom:summary">
-                  <p><xsl:value-of select="atom:summary"/></p>
-                </xsl:if>
-              </article>
-            </xsl:for-each>
-          </div>
-        </div>
+          <ol class="reader-list">
+            <xsl:choose>
+              <xsl:when test="/rss/channel/item">
+                <xsl:for-each select="/rss/channel/item">
+                  <li class="reader-entry">
+                    <div>
+                      <h2><a><xsl:attribute name="href"><xsl:value-of select="link"/></xsl:attribute><xsl:value-of select="title"/></a></h2>
+                      <xsl:if test="pubDate"><time><xsl:attribute name="datetime"><xsl:value-of select="pubDate"/></xsl:attribute><xsl:value-of select="pubDate"/></time></xsl:if>
+                      <xsl:if test="description"><p><xsl:value-of select="description"/></p></xsl:if>
+                    </div>
+                  </li>
+                </xsl:for-each>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:for-each select="/atom:feed/atom:entry">
+                  <li class="reader-entry">
+                    <div>
+                      <h2><a><xsl:attribute name="href"><xsl:value-of select="atom:link[@rel='alternate']/@href | atom:link[not(@rel)]/@href"/></xsl:attribute><xsl:value-of select="atom:title"/></a></h2>
+                      <xsl:if test="atom:published"><time><xsl:attribute name="datetime"><xsl:value-of select="atom:published"/></xsl:attribute><xsl:value-of select="atom:published"/></time></xsl:if>
+                      <xsl:if test="atom:summary"><p><xsl:value-of select="atom:summary"/></p></xsl:if>
+                    </div>
+                  </li>
+                </xsl:for-each>
+              </xsl:otherwise>
+            </xsl:choose>
+          </ol>
+          <footer class="reader-footer">Feed content is also available as machine-readable XML. <a href="/">Return to the site</a>.</footer>
+        </main>
       </body>
     </html>
   </xsl:template>
-
 </xsl:stylesheet>

@@ -1240,6 +1240,12 @@ custom_404_template = "404.html"
 max_suggestions = 5
 ```
 
+The built-in `404.html` uses the site's theme and offers a search field, the
+requested address, and links back to the home page and archive. To customize its
+layout, provide a `404.html` template in your `templates/` directory. It extends
+the post page by default, so it can use the same navigation, palette, and theme
+controls as the rest of the site.
+
 ### Resource Hints
 
 Resource-hint settings use `[markata-go.resource_hints]`:
