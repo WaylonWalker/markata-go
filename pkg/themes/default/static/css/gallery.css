@@ -15,7 +15,7 @@
   .gallery-viewer[open] { display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; }
   .gallery-viewer::backdrop { background: rgb(0 0 0 / .85); }
   .gallery-viewer__figure { display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-content: center; gap: .75rem; width: 100%; min-width: 0; height: 100%; margin: 0; touch-action: pan-y; }
-  .gallery-viewer__image { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+  .gallery-viewer__image { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
   .gallery-viewer__image[hidden] { display: none; }
   .gallery-viewer__image--entering[data-direction="next"] { animation: gallery-viewer-enter-next .32s cubic-bezier(.2, .75, .25, 1) both; }
   .gallery-viewer__image--entering[data-direction="previous"] { animation: gallery-viewer-enter-previous .32s cubic-bezier(.2, .75, .25, 1) both; }
@@ -34,6 +34,6 @@
   @keyframes gallery-viewer-enter-previous { from { opacity: 0; transform: translateX(-3.5rem); } to { opacity: 1; transform: translateX(0); } }
   @media (min-width: 700px) { .gallery-grid { columns: 3; } }
   @media (min-width: 1200px) { .gallery-grid { columns: 4; } }
-  @media (max-width: 600px) { .gallery-viewer { padding: 3.5rem .75rem 1.5rem; } .gallery-viewer__prev, .gallery-viewer__next { top: auto; bottom: 3.25rem; transform: none; } .gallery-viewer__prev { left: .75rem; } .gallery-viewer__next { right: .75rem; } .gallery-viewer__prev:hover, .gallery-viewer__next:hover { transform: scale(1.06); } }
+  @media (max-width: 600px) { .gallery-viewer { padding: 3.5rem .75rem 1.5rem; } .gallery-viewer__prev, .gallery-viewer__next { top: auto; bottom: .5rem; transform: none; } .gallery-viewer__prev { left: .75rem; } .gallery-viewer__next { right: .75rem; } .gallery-viewer__prev:hover, .gallery-viewer__next:hover { transform: scale(1.06); } }
   @media (prefers-reduced-motion: reduce) { .gallery-grid__link img, .gallery-viewer button { transition: none; } .gallery-grid__link:hover img { transform: none; } .gallery-viewer__image--entering[data-direction] { animation: none; } }
 }
