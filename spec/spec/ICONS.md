@@ -85,7 +85,7 @@ Icon shortcodes are decorative by default and are hidden from assistive technolo
 
 The plugin must not transform shortcodes inside code:
 
-```markdown
+````markdown
 Visible :lucide-smile:
 
 `literal :lucide-smile:`
@@ -93,7 +93,7 @@ Visible :lucide-smile:
 ```text
 :lucide-smile:
 ```
-```
+````
 
 Only the first shortcode is expanded.
 
