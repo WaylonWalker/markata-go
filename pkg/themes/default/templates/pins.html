@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Pins" }}{% endblock %}
+{% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
+
+{% block content %}
+<main class="pins-page">
+  <header class="pins-header">
+    <p class="pins-eyebrow">Link collection</p>
+    <h1>{{ title | default:"Pins" }}</h1>
+    <p class="pins-intro">{{ description }}</p>
+    <p class="pins-count">{{ total_pins }} saved link{{ total_pins|pluralize }}</p>
+  </header>
+
+  <div class="pins-grid" aria-label="Saved links">
+    {% for pin in pins %}
+    <article class="pin-card">
+      {% if pin.Image %}
+      <a class="pin-media" href="{{ pin.Destination }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ pin.Image }}" alt="" loading="lazy" decoding="async">
+      </a>
+      {% endif %}
+      <div class="pin-copy">
+        <div class="pin-meta">
+          {% if pin.Domain %}<span>{{ pin.Domain }}</span>{% endif %}
+          {% if pin.Date %}<time>{{ pin.Date }}</time>{% endif %}
+        </div>
+        <h2><a href="{{ pin.Destination }}" target="_blank" rel="noopener noreferrer">{{ pin.Title }}</a></h2>
+        {% if pin.Description %}<p>{{ pin.Description }}</p>{% endif %}
+        <div class="pin-actions">
+          <a class="pin-destination" href="{{ pin.Destination }}" target="_blank" rel="noopener noreferrer">Visit link <span aria-hidden="true">↗</span></a>
+          {% if pin.Href %}<a class="pin-notes" href="{{ pin.Href }}">Read notes</a>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</main>
+
+<style>
+.pins-page {
+  width: min(100% - 2rem, 86rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 4rem) 0;
+}
+
+.pins-header {
+  max-width: 56rem;
+  margin-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.pins-eyebrow,
+.pins-count,
+.pin-meta {
+  color: var(--color-text-muted, #666);
+  font-size: 0.85rem;
+}
+
+.pins-eyebrow {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pins-header h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  line-height: 0.95;
+}
+
+.pins-intro {
+  max-width: 52ch;
+  margin: 1rem 0 0;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: var(--color-text-muted, #666);
+}
+
+.pins-count {
+  margin-top: 1rem;
+}
+
+.pins-grid {
+  columns: 18rem;
+  column-gap: clamp(0.8rem, 2vw, 1.35rem);
+}
+
+.pin-card {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 clamp(0.8rem, 2vw, 1.35rem);
+  overflow: hidden;
+  break-inside: avoid;
+  background: var(--color-surface, transparent);
+  border: 1px solid var(--color-border, rgba(127, 127, 127, 0.28));
+  border-radius: var(--radius-lg, 0.75rem);
+  vertical-align: top;
+}
+
+.pin-media {
+  display: block;
+  overflow: hidden;
+  background: var(--color-background, transparent);
+}
+
+.pin-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 0.25s ease;
+}
+
+.pin-media:hover img,
+.pin-media:focus-visible img {
+  transform: scale(1.02);
+}
+
+.pin-copy {
+  padding: 1rem;
+}
+
+.pin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+}
+
+.pin-card h2 {
+  margin: 0.55rem 0 0;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  line-height: 1.2;
+}
+
+.pin-card h2 a {
+  color: var(--color-text, inherit);
+  text-decoration: none;
+}
+
+.pin-card h2 a:hover,
+.pin-card h2 a:focus-visible {
+  color: var(--color-primary, currentColor);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.pin-copy > p {
+  margin: 0.7rem 0 0;
+  color: var(--color-text-muted, #666);
+  line-height: 1.5;
+}
+
+.pin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--color-border, rgba(127, 127, 127, 0.2));
+  font-size: 0.9rem;
+}
+
+.pin-actions a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pin-notes {
+  color: var(--color-text-muted, #666);
+}
+
+@media (max-width: 560px) {
+  .pins-page {
+    width: min(100% - 1rem, 86rem);
+  }
+
+  .pins-grid {
+    columns: 1;
+  }
+}
+</style>
+{% endblock %}
