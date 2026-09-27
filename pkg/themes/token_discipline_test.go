@@ -56,3 +56,14 @@ func TestComponentTypographyUsesSharedScale(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultThemeDefinesSecondaryTextSemanticToken(t *testing.T) {
+	data, err := ReadStatic("css/variables.css")
+	if err != nil {
+		t.Fatalf("read variables.css: %v", err)
+	}
+	css := string(data)
+	if !strings.Contains(css, "--color-text-secondary: var(--color-text-muted);") {
+		t.Error("variables.css should define secondary text as a semantic fallback to muted text")
+	}
+}
