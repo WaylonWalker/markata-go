@@ -26,7 +26,7 @@ const (
 	StateSuccess   State = "success"
 	StateWarning   State = "warning"
 	StateFailed    State = "failed"
-	StateCancelled State = "cancelled"
+	StateCancelled State = "canceled"
 )
 
 type ServerState struct {
@@ -145,10 +145,11 @@ func (r *Runtime) Snapshot() Snapshot {
 func (r *Runtime) ReplaceSnapshot(snapshot Snapshot) {
 	r.mu.Lock()
 	r.state = cloneSnapshot(snapshot)
-	for _, job := range r.state.Jobs {
+	for i := range r.state.Jobs {
+		job := &r.state.Jobs[i]
 		r.advanceIDLocked(job.ID, "job-")
-		for _, step := range job.Steps {
-			r.advanceIDLocked(step.ID, "step-")
+		for j := range job.Steps {
+			r.advanceIDLocked(job.Steps[j].ID, "step-")
 		}
 	}
 	r.broadcastLocked()
@@ -164,7 +165,7 @@ func (r *Runtime) advanceIDLocked(id, prefix string) {
 
 // Subscribe returns an immediate snapshot and subsequent latest-state updates.
 // A slow subscriber skips intermediate versions without blocking a build.
-func (r *Runtime) Subscribe() (<-chan Snapshot, func()) {
+func (r *Runtime) Subscribe() (updates <-chan Snapshot, unsubscribe func()) {
 	ch := make(chan Snapshot, 1)
 	r.mu.Lock()
 	if r.subscribers == nil {
@@ -415,8 +416,9 @@ func appendBounded[T any](items []T, item T, limit int) []T {
 func cloneSnapshot(source Snapshot) Snapshot {
 	copyOf := source
 	copyOf.Jobs = make([]Job, len(source.Jobs))
-	for i, job := range source.Jobs {
-		copyOf.Jobs[i] = job
+	for i := range source.Jobs {
+		job := &source.Jobs[i]
+		copyOf.Jobs[i] = *job
 		copyOf.Jobs[i].Steps = append([]Step(nil), job.Steps...)
 		copyOf.Jobs[i].Logs = append([]LogEntry(nil), job.Logs...)
 		copyOf.Jobs[i].Diagnostics = append([]Diagnostic(nil), job.Diagnostics...)
