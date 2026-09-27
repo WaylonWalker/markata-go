@@ -163,6 +163,11 @@ rule. Redirected output retains the Unicode separator but has no ANSI color.
 
 ## Error Handling
 
+The north star is that a user should almost never need to paste a Markata
+error or warning into a search engine or AI merely to discover the obvious
+next action. Markata SHOULD provide that action whenever it has enough context
+to make a useful recommendation.
+
 Commands SHOULD return errors instead of calling `os.Exit()` directly.
 
 Command invocation and usage errors MUST return exit code `2`.
@@ -180,15 +185,19 @@ Error messages SHOULD:
 - name the relevant flag, argument, path, or topic when possible
 - suggest the next command or action when there is a clear fix
 
-Unknown commands, long flags, and configuration keys MUST offer up to three
-close, deterministic suggestions. Suggestions MUST be labeled as possibilities;
-the CLI MUST never run or write a guessed command or key. When no candidate is
-close enough, the error MUST say that the CLI cannot infer the intended input
-and give the exact help command or documentation path. A command typo MUST NOT
-fall through to the root single-file build shortcut. That shortcut accepts only
+Unknown commands, long flags, and configuration keys MUST offer useful,
+deterministic suggestions when context supports them. Suggestions MUST be
+labeled as possibilities; the CLI MUST never run or write a guessed command or
+key. When Markata cannot confidently infer the intended input, it MUST NOT
+silently execute a guess. It SHOULD still present the most useful
+context-specific recovery actions available. A command typo MUST NOT fall
+through to the root single-file build shortcut. That shortcut accepts only
 Markdown paths.
 
-`serve` accepts `s` as a command alias. Its `--bind` flag is an alias for
+Command intent has three levels: an explicit alias executes the command; a
+semantic synonym suggests the command; a fuzzy typo or prefix suggests the
+command. Suggestions never execute. `serve` accepts `s` and `serv` as explicit
+command aliases and suggests itself for `dev` and `preview`. Its `--bind` flag is an alias for
 `--host`; both set the same listening address, and conflicting values are a
 usage error.
 

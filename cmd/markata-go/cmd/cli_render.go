@@ -89,6 +89,7 @@ func resolveCLIThemeFromConfig() logging.Theme {
 	return resolveCLITheme(cfg, configPaths)
 }
 
+//nolint:gocyclo // Handles distinct help sections and narrow-terminal variants.
 func renderCommandHelp(cmd *cobra.Command) {
 	currentCmd = cmd
 	theme := resolveCLIThemeFromConfig()
@@ -111,11 +112,28 @@ func renderCommandHelp(cmd *cobra.Command) {
 	if cmd.HasAvailableSubCommands() {
 		_, _ = fmt.Fprintln(writer)
 		_, _ = fmt.Fprintln(writer, colorizeOutput("Commands:", theme.Component))
+		width := min(cliTerminalWidth(writer), cliPreferredRuleWidth)
 		for _, child := range cmd.Commands() {
 			if !child.IsAvailableCommand() || child.IsAdditionalHelpTopicCommand() {
 				continue
 			}
-			_, _ = fmt.Fprintf(writer, "  %-16s %s\n", colorizeOutput(child.Name(), theme.Success), child.Short)
+			aliases := strings.Join(child.Aliases, ", ")
+			name := child.Name()
+			if width < 48 {
+				label := name
+				if aliases != "" {
+					label = aliases + " " + name
+				}
+				_, _ = fmt.Fprintf(writer, "  %s\n", colorizeOutput(label, theme.Success))
+				for _, line := range wrapCLIText(child.Short, width-4) {
+					_, _ = fmt.Fprintf(writer, "    %s\n", line)
+				}
+			} else {
+				if aliases != "" {
+					aliases += "  "
+				}
+				_, _ = fmt.Fprintf(writer, "  %-8s %-10s %s\n", colorizeOutput(aliases, theme.Component), colorizeOutput(name, theme.Success), child.Short)
+			}
 		}
 	}
 
@@ -141,21 +159,67 @@ func renderCommandHelp(cmd *cobra.Command) {
 		_, _ = fmt.Fprintln(writer)
 		_, _ = fmt.Fprintln(writer, colorizeOutput("Additional help topics:", theme.Component))
 		for _, topic := range helpTopics {
-			_, _ = fmt.Fprintf(writer, "  %-16s %s\n", colorizeOutput(topic.Name(), theme.Success), topic.Short)
+			if min(cliTerminalWidth(writer), cliPreferredRuleWidth) < 48 {
+				_, _ = fmt.Fprintf(writer, "  %s\n", colorizeOutput(topic.Name(), theme.Success))
+				for _, line := range wrapCLIText(topic.Short, min(cliTerminalWidth(writer), cliPreferredRuleWidth)-4) {
+					_, _ = fmt.Fprintf(writer, "    %s\n", line)
+				}
+			} else {
+				_, _ = fmt.Fprintf(writer, "  %-16s %s\n", colorizeOutput(topic.Name(), theme.Success), topic.Short)
+			}
 		}
 	}
 
 	if cmd.HasAvailableSubCommands() {
 		_, _ = fmt.Fprintln(writer)
-		_, _ = fmt.Fprintln(writer, "Run '"+cmd.CommandPath()+" <command> --help' for detailed command help.")
+		footer := "Run '" + cmd.CommandPath() + " <command> --help' for detailed command help."
+		if min(cliTerminalWidth(writer), cliPreferredRuleWidth) < 48 {
+			for _, line := range wrapCLIText(footer, min(cliTerminalWidth(writer), cliPreferredRuleWidth)) {
+				_, _ = fmt.Fprintln(writer, line)
+			}
+		} else {
+			_, _ = fmt.Fprintln(writer, footer)
+		}
 	}
 }
 
+func wrapCLIText(value string, width int) []string {
+	if width < 1 {
+		return []string{value}
+	}
+	words := strings.Fields(value)
+	var lines []string
+	line := ""
+	for _, word := range words {
+		if line != "" && utf8.RuneCountInString(line)+1+utf8.RuneCountInString(word) > width {
+			lines = append(lines, line)
+			line = ""
+		}
+		if line != "" {
+			line += " "
+		}
+		line += word
+	}
+	if line != "" {
+		lines = append(lines, line)
+	}
+	return lines
+}
+
 func renderHelpDescription(writer io.Writer, description string, theme logging.Theme) {
+	width := min(cliTerminalWidth(writer), cliPreferredRuleWidth)
 	for _, line := range strings.Split(description, "\n") {
 		if isHelpSectionHeading(line) {
 			heading := strings.TrimSuffix(strings.TrimSpace(line), ":")
 			_, _ = fmt.Fprintln(writer, colorizeOutput(cliSectionRule(heading), theme.Component))
+			continue
+		}
+		if width < 48 && strings.TrimSpace(line) != "" {
+			trimmed := strings.TrimLeft(line, " \t")
+			indent := line[:len(line)-len(trimmed)]
+			for _, wrapped := range wrapCLIText(trimmed, width-utf8.RuneCountInString(indent)) {
+				_, _ = fmt.Fprintln(writer, indent+wrapped)
+			}
 			continue
 		}
 		_, _ = fmt.Fprintln(writer, line)

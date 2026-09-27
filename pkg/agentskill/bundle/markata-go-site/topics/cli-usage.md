@@ -256,8 +256,9 @@ markata-go encryption encrypt-posts --dry-run
 - Prefer merged config overrides over editing the main config for temporary local or CI changes.
 # CLI discovery and mistakes
 
-`markata-go b`, `markata-go s`, and `markata-go ls` are aliases for `build`,
-`serve`, and `list`. Use the canonical names in scripts and examples. To listen
+`markata-go b`, `markata-go s`/`markata-go serv`, and `markata-go ls` are
+aliases for `build`, `serve`, and `list`. The words `dev` and `preview` suggest
+`serve`, but do not run it. Use the canonical names in scripts and examples. To listen
 on all network interfaces during local preview, run
 `markata-go serve --bind 0.0.0.0`; `--bind` and `--host` mean the same thing.
 

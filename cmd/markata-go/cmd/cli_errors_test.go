@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestCLICommandAliases(t *testing.T) {
-	for alias, want := range map[string]string{"s": "serve", "b": "build", "ls": "list"} {
+	for alias, want := range map[string]string{"s": "serve", "serv": "serve", "b": "build", "ls": "list"} {
 		command, _, err := rootCmd.Find([]string{alias})
 		if err != nil || command.Name() != want {
 			t.Errorf("%s resolves to %v, %v; want %s", alias, command, err, want)
@@ -51,13 +52,61 @@ func TestServeBindAliasAndConflict(t *testing.T) {
 }
 
 func TestUnknownRootCommandSuggestsAndDoesNotBuild(t *testing.T) {
+	for _, name := range []string{"ser", "sevre", "dev", "preview"} {
+		err := unknownCommandError(rootCmd, name)
+		if ExitCodeForError(err) != exitCodeUsage || !strings.Contains(err.Error(), "markata-go serve") {
+			t.Errorf("%q error = %v; want usage error suggesting serve", name, err)
+		}
+	}
+	familyMessage := unknownCommandError(rootCmd, "ser").Error()
+	if strings.Count(familyMessage, "serve") != 1 || !strings.Contains(familyMessage, "aliases: s, serv") {
+		t.Fatalf("command family suggestion = %q; want one serve result with aliases", familyMessage)
+	}
+	if command, _, err := rootCmd.Find([]string{"dev"}); err == nil && command.Name() == "serve" {
+		t.Fatal("semantic suggestion dev must not execute serve")
+	}
 	err := runRootCommand(rootCmd, []string{"sevre"})
 	if ExitCodeForError(err) != exitCodeUsage || !strings.Contains(err.Error(), "markata-go serve") {
-		t.Fatalf("error = %v; want usage error suggesting serve", err)
+		t.Fatalf("error = %v; want suggestion", err)
 	}
 	err = runRootCommand(rootCmd, []string{"xyzzy"})
-	if !strings.Contains(err.Error(), "cannot infer") || !strings.Contains(err.Error(), "markata-go --help") {
-		t.Fatalf("error = %v; want honest fallback", err)
+	if strings.Contains(err.Error(), "cannot infer") || !strings.Contains(err.Error(), "markata-go --help") {
+		t.Fatalf("error = %v; want contextual recovery without intent claim", err)
+	}
+}
+
+func TestServePortAndListenDiagnostics(t *testing.T) {
+	if err := validateServePort(65536); ExitCodeForError(err) != exitCodeUsage || !strings.Contains(FormatError(err), "1 to 65535") {
+		t.Fatalf("out-of-range port diagnostic = %v", err)
+	}
+	if got := FormatError(clarifyFlagError(serveCmd, errors.New(`invalid argument "nonsense" for "--port" flag: strconv.ParseInt: parsing "nonsense": invalid syntax`))); !strings.Contains(got, "whole number from 1 to 65535") || !strings.Contains(got, "--port 8001") {
+		t.Fatalf("port parse diagnostic = %q", got)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	addr := listener.Addr().String()
+	_, err = net.Listen("tcp", addr)
+	if err == nil {
+		t.Fatal("second listener unexpectedly bound")
+	}
+	message := FormatError(diagnoseServeListenError(err, addr))
+	if !strings.Contains(message, "already in use") || !strings.Contains(message, "Another Markata server may already be serving") || strings.Contains(message, "Serving at") {
+		t.Fatalf("occupied-port diagnostic = %q", message)
+	}
+}
+
+func TestInvalidListChoicesAreActionable(t *testing.T) {
+	_, err := parseListFormat("jsoon")
+	message := FormatError(err)
+	if ExitCodeForError(err) != exitCodeUsage || !strings.Contains(message, "invalid value \"jsoon\" for --format") || !strings.Contains(message, "Valid values: table, json, csv, path") || !strings.Contains(message, "json") {
+		t.Fatalf("format diagnostic = %q", message)
+	}
+	_, err = parseSortOrder("dec")
+	if !strings.Contains(FormatError(err), "desc") {
+		t.Fatalf("order diagnostic = %q", FormatError(err))
 	}
 }
 
@@ -152,5 +201,16 @@ func TestFormatErrorForcedColor(t *testing.T) {
 	message := FormatError(unknownCommandError(rootCmd, "sevre"))
 	if !strings.Contains(message, "\x1b[") {
 		t.Fatalf("formatted error = %q; want color", message)
+	}
+}
+
+func TestFormatErrorNoColorEnvironment(t *testing.T) {
+	previousNoColor, previousForceColor, previousLogFormat := noColor, forceColor, logFormat
+	noColor, forceColor, logFormat = false, false, "auto"
+	t.Setenv("NO_COLOR", "1")
+	t.Cleanup(func() { noColor, forceColor, logFormat = previousNoColor, previousForceColor, previousLogFormat })
+	message := FormatError(unknownCommandError(rootCmd, "xyzzy"))
+	if strings.Contains(message, "\x1b[") {
+		t.Fatalf("NO_COLOR output contains ANSI escape: %q", message)
 	}
 }

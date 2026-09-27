@@ -12,11 +12,44 @@ import (
 )
 
 type inputError struct {
-	problem     string
-	matches     []string
-	prefix      string
-	next        string
-	knownIntent bool
+	problem string
+	matches []string
+	prefix  string
+	next    string
+}
+
+// Diagnostic carries context needed to render actionable, consistently styled
+// command failures. Empty fields are omitted by the renderer.
+type Diagnostic struct {
+	Severity   string
+	Code       string
+	Problem    string
+	Cause      error
+	Source     string
+	Fix        string
+	Command    string
+	Tips       []string
+	Details    []string
+	StatusCode int
+}
+
+func (d *Diagnostic) Error() string {
+	if d == nil {
+		return ""
+	}
+	return d.Problem
+}
+func (d *Diagnostic) Unwrap() error {
+	if d == nil {
+		return nil
+	}
+	return d.Cause
+}
+func (d *Diagnostic) ExitCode() int {
+	if d == nil || d.StatusCode == 0 {
+		return 1
+	}
+	return d.StatusCode
 }
 
 func (e *inputError) Error() string {
@@ -27,8 +60,6 @@ func (e *inputError) Error() string {
 		for _, match := range e.matches {
 			fmt.Fprintf(&b, "\n  %s%s", e.prefix, match)
 		}
-	} else if !e.knownIntent {
-		b.WriteString("\nmarkata-go cannot infer what you intended.")
 	}
 	if e.next != "" {
 		fmt.Fprintf(&b, "\nNext: %s", e.next)
@@ -38,6 +69,9 @@ func (e *inputError) Error() string {
 
 func clarifyFlagError(cmd *cobra.Command, err error) error {
 	message := err.Error()
+	if strings.HasPrefix(message, "invalid argument ") && strings.Contains(message, `for "--port" flag`) {
+		return &inputError{problem: `invalid value for --port; enter a whole number from 1 to 65535`, next: "Example: 'markata-go serve --port 8001'."}
+	}
 	name, isUnknown := strings.CutPrefix(message, "unknown flag: --")
 	if isUnknown {
 		name = strings.TrimSpace(name)
@@ -75,12 +109,24 @@ func FormatError(err error) string {
 	if errors.As(err, &input) {
 		return styleErrorLines(message)
 	}
-	if !strings.Contains(message, "\nNext:") {
-		path := rootCmd.CommandPath()
-		if currentCmd != nil {
-			path = currentCmd.CommandPath()
+	var diagnostic *Diagnostic
+	if errors.As(err, &diagnostic) {
+		message = diagnostic.Problem
+		if diagnostic.Source != "" {
+			message += "\nFrom: " + diagnostic.Source
 		}
-		message += "\nNext: Run '" + path + " --help' for usage, or rerun with --verbose for more detail."
+		if diagnostic.Fix != "" {
+			message += "\nFix: " + diagnostic.Fix
+		}
+		if diagnostic.Command != "" {
+			message += "\nTry:\n  " + diagnostic.Command
+		}
+		for _, tip := range diagnostic.Tips {
+			message += "\nTip: " + tip
+		}
+		for _, detail := range diagnostic.Details {
+			message += "\n" + detail
+		}
 	}
 	return styleErrorLines(message)
 }
@@ -111,9 +157,8 @@ func configKeyError(key string) error {
 	for _, field := range configSettingsForSuggestions() {
 		if field == lookupKey {
 			return &inputError{
-				problem:     fmt.Sprintf("configuration key %q is not set in this file", key),
-				next:        "Run 'markata-go config show' to see its resolved value, including defaults.",
-				knownIntent: true,
+				problem: fmt.Sprintf("configuration key %q is not set in this file", key),
+				next:    "Run 'markata-go config show' to see its resolved value, including defaults.",
 			}
 		}
 		candidates = append(candidates, field)
@@ -125,4 +170,16 @@ func configKeyError(key string) error {
 		prefix:  prefix,
 		next:    "Run 'markata-go config show' to inspect the active configuration.",
 	}
+}
+
+func invalidChoiceError(flag, value string, choices []string, command string) error {
+	choice := suggest.Closest(value, choices, 1)
+	d := &Diagnostic{Severity: "error", Code: "input.invalid_choice", Problem: fmt.Sprintf("invalid value %q for %s", value, flag), Details: []string{"Valid values: " + strings.Join(choices, ", ")}, StatusCode: exitCodeUsage}
+	if len(choice) > 0 {
+		d.Fix = "use " + choice[0]
+		if command != "" {
+			d.Command = command + " " + flag + " " + choice[0]
+		}
+	}
+	return newUsageError(d)
 }

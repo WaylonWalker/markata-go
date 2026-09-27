@@ -163,18 +163,29 @@ func runRootCommand(cmd *cobra.Command, args []string) error {
 }
 
 func unknownCommandError(parent *cobra.Command, name string) error {
-	candidates := make([]string, 0)
+	families := make([]suggest.Family, 0)
 	for _, child := range parent.Commands() {
 		if child.IsAvailableCommand() && !child.IsAdditionalHelpTopicCommand() {
-			candidates = append(candidates, child.Name())
-			candidates = append(candidates, child.Aliases...)
+			families = append(families, suggest.Family{Name: child.Name(), Aliases: child.Aliases, SuggestFor: child.SuggestFor})
 		}
+	}
+	matches := suggest.Ranked(name, families, 2)
+	labels := make(map[string]string, len(families))
+	for _, family := range families {
+		label := family.Name
+		if len(family.Aliases) > 0 {
+			label += " (aliases: " + strings.Join(family.Aliases, ", ") + ")"
+		}
+		labels[family.Name] = label
+	}
+	for i, match := range matches {
+		matches[i] = labels[match]
 	}
 	return newUsageError(&inputError{
 		problem: fmt.Sprintf("unknown command %q", name),
-		matches: suggest.Closest(name, candidates, 3),
+		matches: matches,
 		prefix:  parent.CommandPath() + " ",
-		next:    "Run '" + parent.CommandPath() + " --help' to see available commands.",
+		next:    "Run '" + parent.CommandPath() + " --help' to see available commands and aliases.",
 	})
 }
 
