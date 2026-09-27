@@ -1,6 +1,7 @@
 package servetui
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,28 @@ func TestNavigationAndDiagnosticsRemainDiscoverable(t *testing.T) {
 	m = update(t, m, key("enter"))
 	if m.view != screenPage || !strings.Contains(m.View(), "published: true") {
 		t.Fatalf("page diagnostics missing: %q", m.View())
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenWarnings {
+		t.Fatalf("page back should return to warnings, got %s", m.view)
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenJob {
+		t.Fatalf("warnings back should return to job, got %s", m.view)
+	}
+	m = update(t, m, key("w"))
+	m = update(t, m, key("enter"))
+	m = update(t, m, key("b"))
+	if m.view != screenJob {
+		t.Fatalf("diagnostic page should open its job, got %s", m.view)
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenPage {
+		t.Fatalf("job back should return to page, got %s", m.view)
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenWarnings {
+		t.Fatalf("page back should return to warnings, got %s", m.view)
 	}
 	snapshot := sampleSnapshot()
 	for range 200 {
@@ -242,6 +265,38 @@ func TestFeedsSearchAndOpenExistingPageDetail(t *testing.T) {
 	m = update(t, m, key("enter"))
 	if m.view != screenPage || m.page != "posts/cli.md" {
 		t.Fatalf("feed entry did not open existing page detail: view=%s page=%s", m.view, m.page)
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenFeed {
+		t.Fatalf("page back should return to feed, got %s", m.view)
+	}
+	m = update(t, m, key("esc"))
+	if m.view != screenFeeds {
+		t.Fatalf("feed back should return to feeds, got %s", m.view)
+	}
+}
+
+func TestJobFooterAdvertisesLogsKey(t *testing.T) {
+	m := NewModel(sampleSnapshot(), nil)
+	m = update(t, m, key("enter"))
+	if !strings.Contains(m.footer(m.width), "l logs") {
+		t.Fatalf("job footer should advertise l for logs: %q", m.footer(m.width))
+	}
+	m = update(t, m, key("l"))
+	if m.view != screenLogs || m.logJobID != "job-1" {
+		t.Fatalf("l should open this job's logs: view=%s job=%s", m.view, m.logJobID)
+	}
+}
+
+func TestSourceOpeningUsesConfiguredContentRoot(t *testing.T) {
+	root := t.TempDir()
+	m := NewModel(sampleSnapshot(), nil)
+	m.view = screenPage
+	m.page = "posts/foo.md"
+	m.sourceRoot = root
+	path, _ := m.selectedSource()
+	if want := filepath.Join(root, "posts", "foo.md"); path != want {
+		t.Fatalf("source path = %q, want %q", path, want)
 	}
 }
 

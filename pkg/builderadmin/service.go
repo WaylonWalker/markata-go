@@ -694,7 +694,6 @@ func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (s *Service) handleState(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	state := s.viewState()
-	s.refreshControlStateWithFiles(state)
 	_ = json.NewEncoder(w).Encode(struct {
 		State         State                 `json:"state"`
 		Releases      []ReleaseView         `json:"releases"`
@@ -1780,7 +1779,10 @@ func (s *Service) loadState() error {
 }
 
 func (s *Service) saveStateLocked() {
-	defer s.refreshControlState(s.state)
+	// Refresh the richer projection when Builder Admin state changes. The state
+	// endpoint is polled frequently, so it must only read the already-built
+	// in-memory snapshot instead of reopening job logs and diagnostics artifacts.
+	defer s.refreshControlStateWithFiles(s.state)
 	data, err := json.MarshalIndent(s.state, "", "  ")
 	if err != nil {
 		return
@@ -1790,16 +1792,6 @@ func (s *Service) saveStateLocked() {
 		return
 	}
 	_ = os.Rename(tmp, s.statePath)
-}
-
-// refreshControlState projects the persisted Builder Admin queue into the
-// shared serve model. Builder Admin remains the owner of its queue and release
-// operations; the control runtime is a read model with the same job IDs.
-func (s *Service) refreshControlState(state State) {
-	if s.controlRuntime == nil {
-		return
-	}
-	s.controlRuntime.ReplaceSnapshot(s.controlSnapshot(state))
 }
 
 func (s *Service) refreshControlStateWithFiles(state State) {

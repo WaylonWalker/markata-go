@@ -312,7 +312,7 @@ func replaceFile(file string, original, updated []byte, mode os.FileMode) error 
 	if digest(current) != digest(original) {
 		return ErrStale
 	}
-	return os.Rename(tmp.Name(), file)
+	return replacePath(tmp.Name(), file)
 }
 
 func digest(content []byte) string      { return fmt.Sprintf("%x", sha256.Sum256(content)) }

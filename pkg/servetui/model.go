@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -75,26 +76,27 @@ func themeFromPalette(palette *palettes.Palette) theme {
 // Model renders an immutable runtime snapshot. It never reconstructs job or
 // diagnostic state from log text.
 type Model struct {
-	snapshot servecontrol.Snapshot
-	action   func(servecontrol.ActionRequest) error
-	view     screen
-	previous screen
-	jobID    string
-	logJobID string
-	page     string
-	feedName string
-	selected int
-	width    int
-	height   int
-	offset   int
-	query    string
-	search   bool
-	follow   bool
-	newLines int
-	lastLogs int
-	message  string
-	theme    theme
-	frame    int
+	snapshot   servecontrol.Snapshot
+	action     func(servecontrol.ActionRequest) error
+	view       screen
+	navStack   []screen
+	sourceRoot string
+	jobID      string
+	logJobID   string
+	page       string
+	feedName   string
+	selected   int
+	width      int
+	height     int
+	offset     int
+	query      string
+	search     bool
+	follow     bool
+	newLines   int
+	lastLogs   int
+	message    string
+	theme      theme
+	frame      int
 }
 
 // NewModel creates a testable terminal model from a runtime snapshot.
@@ -201,14 +203,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "?":
-			m.previous, m.view, m.offset = m.view, screenHelp, 0
+			m.changeView(screenHelp)
 		case keyEsc:
-			//nolint:gocritic // Ordered fallback depends on previous view and query state.
-			if m.view != screenJobs && m.previous != "" && m.previous != m.view {
-				m.view = m.previous
-			} else if m.query != "" {
+			switch {
+			case len(m.navStack) > 0:
+				m.view = m.navStack[len(m.navStack)-1]
+				m.navStack = m.navStack[:len(m.navStack)-1]
+			case m.query != "":
 				m.query = ""
-			} else {
+			default:
 				m.view = screenJobs
 			}
 			m.offset, m.selected = 0, 0
@@ -248,14 +251,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view == screenWarnings || m.view == screenErrors {
 				if d, ok := m.selectedDiagnostic(); ok && d.Page != "" {
 					m.page = d.Page
-					m.previous, m.view, m.offset = m.view, screenPage, 0
+					m.changeView(screenPage)
 				}
 			} else if m.view == screenJob {
 				for i := range m.snapshot.Jobs {
 					job := m.snapshot.Jobs[i]
 					if job.ID == m.jobID && len(job.Pages) > 0 {
 						m.page = job.Pages[0]
-						m.previous, m.view, m.offset = screenJob, screenPage, 0
+						m.changeView(screenPage)
 						break
 					}
 				}
@@ -280,7 +283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if jobID != "" {
 					m.jobID = jobID
-					m.previous, m.view, m.offset = m.view, screenJob, 0
+					m.changeView(screenJob)
 				}
 			}
 		case "t":
@@ -346,7 +349,10 @@ func (m Model) trigger(req servecontrol.ActionRequest) tea.Cmd {
 }
 
 func (m *Model) changeView(view screen) {
-	m.previous = m.view
+	if view == m.view {
+		return
+	}
+	m.navStack = append(m.navStack, m.view)
 	m.view, m.selected, m.offset = view, 0, 0
 }
 
@@ -356,7 +362,8 @@ func (m *Model) enter() {
 		feeds := m.filteredFeeds()
 		if m.selected < len(feeds) {
 			m.feedName = feeds[m.selected].Name
-			m.previous, m.view, m.offset, m.selected, m.query = screenFeeds, screenFeed, 0, 0, ""
+			m.query = ""
+			m.changeView(screenFeed)
 		}
 	case screenFeed:
 		feed, ok := m.selectedFeed()
@@ -364,24 +371,25 @@ func (m *Model) enter() {
 			entries := m.filteredFeedEntries(feed)
 			if m.selected < len(entries) {
 				m.page = entries[m.selected].Path
-				m.previous, m.view, m.offset, m.selected, m.query = screenFeed, screenPage, 0, 0, ""
+				m.query = ""
+				m.changeView(screenPage)
 			}
 		}
 	case screenJobs:
 		if job, ok := m.selectedJob(); ok {
 			m.jobID = job.ID
-			m.previous, m.view, m.offset = screenJobs, screenJob, 0
+			m.changeView(screenJob)
 		}
 	case screenPages:
 		pages := m.pages()
 		if m.selected < len(pages) {
 			m.page = pages[m.selected]
-			m.previous, m.view, m.offset = screenPages, screenPage, 0
+			m.changeView(screenPage)
 		}
 	case screenWarnings, screenErrors:
 		if d, ok := m.selectedDiagnostic(); ok && d.Page != "" {
 			m.page = d.Page
-			m.previous, m.view, m.offset = m.view, screenPage, 0
+			m.changeView(screenPage)
 		}
 	default:
 	}
@@ -490,13 +498,20 @@ func (m Model) selectedSource() (path string, line int) {
 			if path == "" {
 				path = diagnostic.Page
 			}
-			return path, diagnostic.Line
+			return m.resolveSource(path), diagnostic.Line
 		}
 	}
 	if page, ok := m.selectedPage(); ok {
-		return page.Path, 0
+		return m.resolveSource(page.Path), 0
 	}
 	return "", 0
+}
+
+func (m Model) resolveSource(path string) string {
+	if path == "" || m.sourceRoot == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(m.sourceRoot, path)
 }
 
 func (m Model) selectedPage() (servecontrol.Page, bool) {
@@ -875,7 +890,7 @@ func (m Model) footer(width int) string {
 	case screenJobs:
 		footer = "j/k move  enter job  t build  r rerun  w warnings  e errors  p pages  f feeds  l logs  / search"
 	case screenJob:
-		footer = "j/k scroll  p page  b logs  r rerun  Esc back"
+		footer = "j/k scroll  p page  l logs  r rerun  Esc back"
 	case screenPages:
 		footer = "j/k move  enter inspect  o source  v preview  R rebuild  / search"
 	case screenPage:
@@ -968,9 +983,20 @@ func Run(ctx context.Context, runtime interface {
 	Subscribe() (<-chan servecontrol.Snapshot, func())
 	Trigger(servecontrol.ActionRequest) error
 }, palette *palettes.Palette, paletteUpdates ...<-chan *palettes.Palette) error {
+	return RunWithSourceRoot(ctx, runtime, palette, "", paletteUpdates...)
+}
+
+// RunWithSourceRoot starts the terminal client with source paths resolved from
+// the configured content directory.
+func RunWithSourceRoot(ctx context.Context, runtime interface {
+	Snapshot() servecontrol.Snapshot
+	Subscribe() (<-chan servecontrol.Snapshot, func())
+	Trigger(servecontrol.ActionRequest) error
+}, palette *palettes.Palette, sourceRoot string, paletteUpdates ...<-chan *palettes.Palette) error {
 	updates, unsubscribe := runtime.Subscribe()
 	defer unsubscribe()
 	model := NewModelWithPalette(runtime.Snapshot(), runtime.Trigger, palette)
+	model.sourceRoot = sourceRoot
 	program := tea.NewProgram(model, tea.WithContext(ctx), tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if len(paletteUpdates) > 0 && paletteUpdates[0] != nil {
 		go func() {

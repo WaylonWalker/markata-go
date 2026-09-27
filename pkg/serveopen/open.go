@@ -4,6 +4,8 @@ package serveopen
 
 import (
 	"fmt"
+	"net"
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,7 +61,8 @@ func EditorCommand(path string, line int) (*exec.Cmd, error) {
 
 // BrowserCommand builds a preview command, honoring $BROWSER when set.
 func BrowserCommand(url string) (*exec.Cmd, error) {
-	if !strings.HasPrefix(url, "http://localhost:") && !strings.HasPrefix(url, "http://127.0.0.1:") && !strings.HasPrefix(url, "http://[::1]:") {
+	parsed, err := neturl.Parse(url)
+	if err != nil || parsed.Scheme != "http" || parsed.Opaque != "" || parsed.User != nil || !isLoopbackHost(parsed.Hostname()) {
 		return nil, fmt.Errorf("preview URL must use the local serve listener")
 	}
 	if browser := strings.TrimSpace(os.Getenv("BROWSER")); browser != "" {
@@ -74,6 +77,14 @@ func BrowserCommand(url string) (*exec.Cmd, error) {
 	default:
 		return exec.Command("xdg-open", url), nil
 	}
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // IsTerminalEditor reports whether a web action needs a terminal client to run

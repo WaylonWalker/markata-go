@@ -86,6 +86,65 @@ func TestBuilderAdminStateAPI_ContainsSharedControlRuntime(t *testing.T) {
 	}
 }
 
+func TestBuilderAdminStateAPI_UsesCachedControlProjection(t *testing.T) {
+	dir := t.TempDir()
+	siteDir := filepath.Join(dir, "site")
+	releaseDir := filepath.Join(siteDir, "releases", "release-1")
+	artifactPath := filepath.Join(releaseDir, diagnostics.DefaultArtifactPath)
+	if err := os.MkdirAll(filepath.Dir(artifactPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeArtifact := func(page string) {
+		t.Helper()
+		data, err := diagnostics.MarshalArtifact(diagnostics.ContentLedgerSnapshot{
+			Entries: []diagnostics.ContentDisposition{{Path: page, Emitted: true}},
+		}, diagnostics.ArtifactBuildInfo{BuiltAt: time.Now().UTC()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(artifactPath, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeArtifact("posts/first.md")
+	if err := os.Symlink(filepath.Join("releases", "release-1"), filepath.Join(siteDir, "current")); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(Config{SourceDir: dir, SiteDir: siteDir, HistoryDir: filepath.Join(dir, "history")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.leaderLock.Close() })
+
+	// Change the artifact without changing Builder Admin state. Polling must
+	// return the cached projection instead of rereading and reparsing the file.
+	writeArtifact("posts/second.md")
+	for range 2 {
+		response := httptest.NewRecorder()
+		svc.handleState(response, httptest.NewRequest(http.MethodGet, "/api/state", nil))
+		var payload struct {
+			ControlCenter servecontrol.Snapshot `json:"control_center"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		if len(payload.ControlCenter.Pages) != 1 || payload.ControlCenter.Pages[0].Path != "posts/first.md" {
+			t.Fatalf("poll refreshed files unexpectedly: pages = %+v", payload.ControlCenter.Pages)
+		}
+	}
+
+	// A state transition refreshes the projection and incorporates the new
+	// artifact contents for subsequent polls.
+	svc.stateMu.Lock()
+	svc.state.Queue = append(svc.state.Queue, QueuedOperation{ID: "build-next", Kind: "build", Label: "Build", EnqueuedAt: time.Now().UTC()})
+	svc.saveStateLocked()
+	svc.stateMu.Unlock()
+	snapshot := svc.controlRuntime.Snapshot()
+	if len(snapshot.Pages) != 1 || snapshot.Pages[0].Path != "posts/second.md" {
+		t.Fatalf("state transition did not refresh file projection: pages = %+v", snapshot.Pages)
+	}
+}
+
 func TestBuilderAdminControlRuntime_CurrentReleaseDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	siteDir := filepath.Join(dir, "site")

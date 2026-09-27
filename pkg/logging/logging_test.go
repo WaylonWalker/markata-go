@@ -63,6 +63,8 @@ func TestAllowColorForceColor(t *testing.T) {
 }
 
 func TestRichComponentUsesPhaseColor(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "xterm-256color")
 	buf := bytes.NewBuffer(nil)
 	writer := NewWriter(Options{Writer: buf, Format: FormatRich, ForceColor: true, Theme: DefaultTheme()})
 

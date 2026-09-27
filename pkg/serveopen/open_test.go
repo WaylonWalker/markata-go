@@ -27,14 +27,30 @@ func TestEditorCommand_UsesLocation(t *testing.T) {
 
 func TestBrowserCommand_StaysLocal(t *testing.T) {
 	t.Setenv("BROWSER", "firefox --new-tab")
-	cmd, err := BrowserCommand("http://localhost:8000/post/")
-	if err != nil {
-		t.Fatal(err)
+	for _, raw := range []string{
+		"http://localhost:8000/post/",
+		"http://127.0.0.1:8000/post/",
+		"http://[::1]:8000/post/",
+	} {
+		cmd, err := BrowserCommand(raw)
+		if err != nil {
+			t.Fatalf("BrowserCommand(%q): %v", raw, err)
+		}
+		if !reflect.DeepEqual(cmd.Args, []string{"firefox", "--new-tab", raw}) {
+			t.Fatalf("browser args = %q", cmd.Args)
+		}
 	}
-	if !reflect.DeepEqual(cmd.Args, []string{"firefox", "--new-tab", "http://localhost:8000/post/"}) {
-		t.Fatalf("browser args = %q", cmd.Args)
-	}
-	if _, err := BrowserCommand("https://example.com"); err == nil {
-		t.Fatal("expected nonlocal URL rejection")
+	for _, raw := range []string{
+		"https://localhost:8000/post/",
+		"http://example.com/",
+		"http://localhost.evil.example/",
+		"http://localhost@evil.example/",
+		"http://evil.example@localhost:8000/",
+		"http://localhost:bad/",
+		"http://[::1",
+	} {
+		if _, err := BrowserCommand(raw); err == nil {
+			t.Errorf("BrowserCommand(%q) accepted unsafe URL", raw)
+		}
 	}
 }

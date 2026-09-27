@@ -81,6 +81,31 @@ func TestApplyRejectsStaleFile(t *testing.T) {
 	}
 }
 
+func TestReplacePathReplacesExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	destination := filepath.Join(dir, "post.md")
+	source := filepath.Join(dir, ".markata-fix-temp")
+	if err := os.WriteFile(destination, []byte("old content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("new content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := replacePath(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "new content\n" {
+		t.Fatalf("destination content = %q", content)
+	}
+	if _, err := os.Stat(source); !os.IsNotExist(err) {
+		t.Fatalf("replacement source remains or stat failed unexpectedly: %v", err)
+	}
+}
+
 func TestApplyOneByOneAndUnknownID(t *testing.T) {
 	root, path := testSource(t, "# Heading\n[link](//example.com)\n")
 	plan, err := PlanFile(root, path)

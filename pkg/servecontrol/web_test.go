@@ -58,6 +58,15 @@ func TestWebHandler_SharedRuntimeStateAndActions(t *testing.T) {
 	}
 }
 
+func TestWebHTML_UsesOnlyLocalFonts(t *testing.T) {
+	if strings.Contains(webHTML, "fonts.googleapis.com") || strings.Contains(webHTML, "@import") {
+		t.Fatal("local dashboard must not load external font stylesheets")
+	}
+	if !strings.Contains(webHTML, "system-ui") || !strings.Contains(webHTML, "ui-monospace") {
+		t.Fatal("local dashboard should use system sans and monospace font stacks")
+	}
+}
+
 func TestWebHandler_FixPreviewApplyAndStaleProtection(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "post.md")

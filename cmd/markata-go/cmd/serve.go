@@ -402,7 +402,7 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	tuiErrors := make(chan error, 1)
 	if tui {
 		go func() {
-			if tuiErr := servetui.Run(ctx, runtime, palette, paletteUpdates); tuiErr != nil {
+			if tuiErr := servetui.RunWithSourceRoot(ctx, runtime, palette, m.Config().ContentDir, paletteUpdates); tuiErr != nil {
 				runtime.AddDiagnostic(servecontrol.Diagnostic{Code: "serve.tui_error", Severity: "error", Message: tuiErr.Error(), SuggestedFix: "Run markata-go serve --no-tui to inspect the session as plain logs."})
 				tuiErrors <- tuiErr
 			}

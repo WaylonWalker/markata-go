@@ -53,7 +53,11 @@ The runtime feed inventory projects lifecycle feed names, titles, output paths,
 and post entries. Each entry retains its source path, title, date, and preview
 URL. Clients use this metadata rather than parsing generated HTML. The TUI
 supports feed search, feed detail, entry search, and navigation to existing page
-detail.
+detail. Nested resource traversal keeps a navigation stack so `Esc` returns one
+level at a time. Source actions resolve relative page paths from the configured
+content directory. The local web dashboard uses system fonts and does not load
+external assets. Builder Admin serves its control projection from memory during
+state polling and refreshes it when its state changes.
 
 ## Clients
 
