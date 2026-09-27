@@ -42,10 +42,9 @@ These are not closing markers:
 Each container records the number of colons used by its opener.
 
 - A colon-only marker with the same depth closes the current container and consumes the marker.
-- A colon-only marker with fewer colons than the current container closes the current container without consuming the marker. The parent container can then process that same marker.
-- A colon-only marker with more colons than the current container does not close the current container.
-
-Authors SHOULD use a longer delimiter for each nested level and close each level with its matching delimiter when they want one-level-at-a-time behavior.
+- Authors SHOULD use a longer delimiter for each nested level and close each level with its matching delimiter.
+- Content after a matching inner close MUST remain inside the still-open parent container.
+- Authors MUST NOT rely on a shorter parent marker to implicitly unwind deeper open containers; nested containers should be closed from the inside out.
 
 Recommended example:
 
@@ -72,8 +71,6 @@ Expected structure:
 <p>Outer after.</p>
 </div>
 ```
-
-A shorter closing marker inside a deeper container MAY therefore close more than one nested level as the unconsumed marker propagates to ancestors. Implementations MUST preserve this behavior consistently if they implement depth-aware container parsing.
 
 ## Attributes
 
@@ -103,4 +100,4 @@ Implementations SHOULD test at minimum:
 3. content after an inner close remains inside the outer container
 4. named and attributed `:::` lines are treated as openers
 5. colon-only markers are the only closing markers
-6. shorter closing markers propagate to the parent rather than being consumed by the deeper container
+6. surrounding whitespace on a colon-only closing marker is ignored
