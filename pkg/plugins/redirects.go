@@ -128,9 +128,9 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("reading redirects file %s: %w", p.config.RedirectsFile, err)
 	}
 
-	// Parse redirect rules and always refresh the native nginx artifact. An empty
-	// redirects source intentionally produces a valid header-only include so a
-	// previously generated redirect cannot remain active by accident.
+	// Parse redirect rules and refresh the native nginx artifact. A source that
+	// becomes empty clears an existing generated include, while a fresh empty
+	// source does not create an unnecessary redirects.conf file.
 	redirects := p.parseRedirects(string(redirectsContent))
 	if err := p.writeNginxRedirects(redirects, outputDir); err != nil {
 		return fmt.Errorf("writing nginx redirects: %w", err)
@@ -220,6 +220,14 @@ func (p *RedirectsPlugin) writeNginxRedirects(redirects []Redirect, outputDir st
 	}
 
 	outputPath := filepath.Join(outputDir, nginxRedirectsFilename)
+	if len(redirects) == 0 {
+		if _, err := os.Stat(outputPath); err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return fmt.Errorf("stating existing %s: %w", outputPath, err)
+		}
+	}
 	if err := ensureGeneratedNginxRedirectsWritable(outputPath); err != nil {
 		return err
 	}
