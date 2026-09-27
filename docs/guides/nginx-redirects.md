@@ -11,10 +11,10 @@ Given:
 /go/docs https://docs.example.com/start
 ```
 
-A normal build writes:
+A normal build writes under the configured `output_dir`:
 
 ```text
-public/
+<output_dir>/
 ├── redirects.conf
 ├── old-post/index.html
 └── go/docs/index.html
