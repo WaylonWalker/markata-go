@@ -6,6 +6,9 @@
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const hoverMedia = window.matchMedia
+    ? window.matchMedia('(hover: hover) and (pointer: fine)')
+    : null;
 
   const pad2 = (value) => String(value).padStart(2, '0');
   const dateKey = (year, month, day) => `${year}-${pad2(month + 1)}-${pad2(day)}`;
@@ -35,6 +38,139 @@
     if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
+  }
+
+  function daySummary(posts) {
+    if (posts.length === 1) {
+      return posts[0].summary || posts[0].title;
+    }
+
+    const summaries = posts
+      .map((post) => post.summary)
+      .filter(Boolean)
+      .slice(0, 2);
+    if (summaries.length > 0) {
+      return summaries.join(' • ');
+    }
+
+    const titles = posts.slice(0, 3).map((post) => post.title);
+    const rest = posts.length > titles.length ? '…' : '';
+    return `${posts.length} posts: ${titles.join(', ')}${rest}`;
+  }
+
+  function hydratePreviewImages(details) {
+    for (const image of details.querySelectorAll('img[data-calendar-src]')) {
+      const src = image.getAttribute('data-calendar-src');
+      if (!src) continue;
+      image.src = src;
+      image.removeAttribute('data-calendar-src');
+    }
+  }
+
+  function positionPreview(details) {
+    const preview = details.querySelector('.calendar-day-posts');
+    if (!preview) return;
+
+    preview.removeAttribute('data-align');
+    window.requestAnimationFrame(() => {
+      if (!details.open) return;
+      const rect = preview.getBoundingClientRect();
+      const gutter = 12;
+      if (rect.left < gutter) {
+        preview.setAttribute('data-align', 'start');
+      } else if (rect.right > window.innerWidth - gutter) {
+        preview.setAttribute('data-align', 'end');
+      }
+    });
+  }
+
+  function closeDetails(root, except = null) {
+    for (const details of root.querySelectorAll('.calendar-day details[open]')) {
+      if (details === except) continue;
+      details.open = false;
+      details.removeAttribute('data-calendar-pinned');
+      const preview = details.querySelector('.calendar-day-posts');
+      if (preview) preview.removeAttribute('data-align');
+    }
+  }
+
+  function openDetails(root, details, pinned) {
+    closeDetails(root, details);
+    details.open = true;
+    if (pinned) {
+      details.setAttribute('data-calendar-pinned', 'true');
+    } else {
+      details.removeAttribute('data-calendar-pinned');
+    }
+    hydratePreviewImages(details);
+    positionPreview(details);
+  }
+
+  function attachDayInteractions(root, details) {
+    const summary = details.querySelector(':scope > summary');
+    if (!summary) return;
+
+    let closeTimer = 0;
+    const cancelClose = () => {
+      if (!closeTimer) return;
+      window.clearTimeout(closeTimer);
+      closeTimer = 0;
+    };
+    const scheduleClose = () => {
+      cancelClose();
+      if (details.hasAttribute('data-calendar-pinned')) return;
+      closeTimer = window.setTimeout(() => {
+        closeTimer = 0;
+        if (details.matches(':hover')) return;
+        if (details.contains(document.activeElement)) return;
+        details.open = false;
+      }, 70);
+    };
+
+    details.addEventListener('pointerenter', () => {
+      cancelClose();
+      if (!hoverMedia || !hoverMedia.matches) return;
+      openDetails(root, details, false);
+    });
+    details.addEventListener('pointerleave', () => {
+      if (!hoverMedia || !hoverMedia.matches) return;
+      scheduleClose();
+    });
+
+    summary.addEventListener('focus', () => {
+      cancelClose();
+      openDetails(root, details, false);
+    });
+    details.addEventListener('focusout', scheduleClose);
+
+    summary.addEventListener('click', (event) => {
+      event.preventDefault();
+      cancelClose();
+      const shouldPin = !details.hasAttribute('data-calendar-pinned');
+      if (shouldPin) {
+        openDetails(root, details, true);
+      } else {
+        details.removeAttribute('data-calendar-pinned');
+        details.open = false;
+      }
+    });
+
+    details.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !details.open) return;
+      event.preventDefault();
+      details.removeAttribute('data-calendar-pinned');
+      details.open = false;
+      summary.focus();
+    });
+
+    details.addEventListener('toggle', () => {
+      if (details.open) {
+        hydratePreviewImages(details);
+        positionPreview(details);
+      } else {
+        details.removeAttribute('data-calendar-pinned');
+      }
+    });
   }
 
   function renderMonth(year, month, postsByDate) {
@@ -75,17 +211,18 @@
         continue;
       }
 
+      cell.classList.add('calendar-day--active');
       const details = document.createElement('details');
+      details.setAttribute('data-calendar-count', String(posts.length));
       const summary = document.createElement('summary');
       const postWord = posts.length === 1 ? 'post' : 'posts';
-      summary.setAttribute(
-        'aria-label',
-        `${monthNames[month]} ${day}, ${year}: ${posts.length} ${postWord}`
-      );
+      const dateLabel = `${monthNames[month]} ${day}, ${year}`;
+      summary.setAttribute('aria-label', `${dateLabel}: ${posts.length} ${postWord}`);
       summary.append(element('span', 'calendar-day-number', String(day)));
 
       const marker = element('span', 'calendar-day-marker');
       marker.setAttribute('aria-hidden', 'true');
+      marker.style.setProperty('--calendar-density', String(Math.min(posts.length, 5)));
       summary.append(marker);
 
       if (posts.length > 1) {
@@ -97,11 +234,41 @@
       details.append(summary);
 
       const postList = element('ul', 'calendar-day-posts');
+      postList.setAttribute('aria-label', `${dateLabel} posts`);
+
+      const overview = element('li', 'calendar-day-overview');
+      const overviewHead = element('div', 'calendar-day-overview-head');
+      overviewHead.append(element('strong', 'calendar-day-overview-date', dateLabel));
+      overviewHead.append(element('span', 'calendar-day-overview-count', `${posts.length} ${postWord}`));
+      overview.append(overviewHead);
+      const overviewSummary = daySummary(posts);
+      if (overviewSummary) {
+        overview.append(element('p', 'calendar-day-overview-summary', overviewSummary));
+      }
+      postList.append(overview);
+
       for (const post of posts) {
-        const item = document.createElement('li');
-        const link = document.createElement('a');
+        const item = element('li', 'calendar-day-post');
+        const link = element('a', 'calendar-day-post-link');
         link.href = post.href;
-        link.textContent = post.title;
+
+        if (post.image) {
+          const image = element('img', 'calendar-day-post-image');
+          image.alt = '';
+          image.width = 64;
+          image.height = 40;
+          image.loading = 'lazy';
+          image.decoding = 'async';
+          image.setAttribute('data-calendar-src', post.image);
+          link.append(image);
+        }
+
+        const copy = element('span', 'calendar-day-post-copy');
+        copy.append(element('strong', 'calendar-day-post-title', post.title));
+        if (post.summary) {
+          copy.append(element('span', 'calendar-day-post-description', post.summary));
+        }
+        link.append(copy);
         item.append(link);
         postList.append(item);
       }
@@ -154,14 +321,9 @@
       calendar.append(yearSection);
     }
 
-    calendar.addEventListener('toggle', (event) => {
-      const opened = event.target;
-      if (!(opened instanceof HTMLDetailsElement) || !opened.open) return;
-
-      for (const details of root.querySelectorAll('.calendar-day details[open]')) {
-        if (details !== opened) details.open = false;
-      }
-    }, true);
+    for (const details of calendar.querySelectorAll('.calendar-day details')) {
+      attachDayInteractions(root, details);
+    }
 
     return true;
   }
@@ -214,10 +376,15 @@
       const date = item.getAttribute('data-date') || '';
       const link = item.querySelector('a[href]');
       if (!parseDate(date) || !link) continue;
+
+      const summary = item.querySelector('[data-calendar-summary]');
+      const image = item.querySelector('[data-calendar-image-url]');
       datedPosts.push({
         date,
         href: link.href,
-        title: link.textContent.trim() || link.href
+        title: link.textContent.trim() || link.href,
+        summary: summary ? summary.textContent.trim() : '',
+        image: image ? image.getAttribute('data-calendar-image-url') || '' : ''
       });
     }
 
@@ -231,6 +398,7 @@
       calendar.hidden = !calendarMode;
       for (const node of primaryNodes) node.hidden = calendarMode;
       if (!sourceIsPrimary) sourceList.hidden = true;
+      if (!calendarMode) closeDetails(root);
 
       for (const button of buttons) {
         button.setAttribute(
