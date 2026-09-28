@@ -64,6 +64,7 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		{"images_include_unreferenced", "false", []string{"Images", "IncludeUnreferenced"}, "*bool"},
 		{"glob_use_gitignore", "TRUE", []string{"GlobConfig", "UseGitignore"}, "bool"},
 		{"feed_defaults_formats_html", "true", []string{"FeedDefaults", "Formats", "HTML"}, "bool"},
+		{"feed_defaults_formats_rss", "true", []string{"FeedDefaults", "Formats", "RSS"}, "bool"},
 		{"feeds_defaults_formats_rss", "no", []string{"FeedDefaults", "Formats", "RSS"}, "bool"},
 		{"feeds_defaults_formats_html", "false", []string{"FeedDefaults", "Formats", "HTML"}, "bool"},
 		{"feeds_defaults_formats_atom", "no", []string{"FeedDefaults", "Formats", "Atom"}, "bool"},
@@ -95,12 +96,12 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 	for _, tc := range append(append(append(intCases, stringCases...), listCases...), boolCases...) {
 		t.Run(tc.key, func(t *testing.T) {
 			got := characterizedConfig()
-			before := *got
+			before := cloneCharacterizationConfig(got)
 			applyEnvOverride(got, tc.key, tc.value)
-			want := before
-			setCharacterizedField(t, reflect.ValueOf(&want).Elem(), tc.path, tc.kind, tc.value)
-			if !reflect.DeepEqual(*got, want) {
-				t.Fatalf("config after %s=%q differs from complete expected value\ngot:  %#v\nwant: %#v", tc.key, tc.value, *got, want)
+			want := cloneCharacterizationConfig(before)
+			setCharacterizedField(t, reflect.ValueOf(want).Elem(), tc.path, tc.kind, tc.value)
+			if !reflect.DeepEqual(*got, *want) {
+				t.Fatalf("config after %s=%q differs from complete expected value\ngot:  %#v\nwant: %#v", tc.key, tc.value, *got, *want)
 			}
 		})
 	}
@@ -113,7 +114,7 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 				"content_index": map[string]interface{}{"keep": "yes"},
 				"unrelated":     "preserved",
 			}}
-			before := *got
+			before := cloneCharacterizationConfig(got)
 			applyEnvOverride(got, tc.key, tc.value)
 			want := before
 			want.Extra = map[string]interface{}{
@@ -127,8 +128,8 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 				content["output"] = tc.value
 			}
 			want.Extra["content_index"] = content
-			if !reflect.DeepEqual(*got, want) {
-				t.Fatalf("got %#v, want %#v", *got, want)
+			if !reflect.DeepEqual(*got, *want) {
+				t.Fatalf("got %#v, want %#v", *got, *want)
 			}
 		})
 	}
@@ -142,7 +143,7 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 			existing := models.TailwindConfig{Input: "input.css", Output: "output.css", Build: &build, Preflight: &preflight}
 			got := &models.Config{Extra: map[string]interface{}{"sentinel": "preserved", "tailwind": existing}}
 			applyEnvOverride(got, tc.key, tc.value)
-			want := *got
+			want := cloneCharacterizationConfig(got)
 			wantTailwind := existing
 			value := parseBool(tc.value)
 			if tc.field == "Build" {
@@ -151,8 +152,9 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 				wantTailwind.Preflight = &value
 			}
 			want.Extra = map[string]interface{}{"sentinel": "preserved", "tailwind": wantTailwind}
-			if !reflect.DeepEqual(*got, want) {
-				t.Fatalf("got %#v, want %#v", *got, want)
+			applyEnvOverride(got, tc.key, tc.value)
+			if !reflect.DeepEqual(*got, *want) {
+				t.Fatalf("got %#v, want %#v", *got, *want)
 			}
 		})
 	}
@@ -209,6 +211,66 @@ func characterizedConfig() *models.Config {
 		Search:         models.SearchConfig{Endpoint: "/existing", Enabled: &falseValue},
 		Images:         models.ImagesConfig{Path: "existing-images"},
 		Extra:          map[string]interface{}{"sentinel": map[string]interface{}{"keep": "yes"}},
+	}
+}
+
+func cloneCharacterizationConfig(config *models.Config) *models.Config {
+	cloned := cloneCharacterizationValue(reflect.ValueOf(config))
+	configCopy, ok := cloned.Interface().(*models.Config)
+	if !ok {
+		panic("characterization clone did not return *models.Config")
+	}
+	return configCopy
+}
+
+func cloneCharacterizationValue(value reflect.Value) reflect.Value {
+	if !value.IsValid() {
+		return value
+	}
+	switch value.Kind() {
+	case reflect.Interface:
+		clonedValue := reflect.New(value.Type()).Elem()
+		if !value.IsNil() {
+			clonedValue.Set(cloneCharacterizationValue(value.Elem()))
+		}
+		return clonedValue
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		clonedValue := reflect.New(value.Type().Elem())
+		clonedValue.Elem().Set(cloneCharacterizationValue(value.Elem()))
+		return clonedValue
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		clonedValue := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			clonedValue.SetMapIndex(cloneCharacterizationValue(iter.Key()), cloneCharacterizationValue(iter.Value()))
+		}
+		return clonedValue
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		clonedValue := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := 0; i < value.Len(); i++ {
+			clonedValue.Index(i).Set(cloneCharacterizationValue(value.Index(i)))
+		}
+		return clonedValue
+	case reflect.Struct:
+		clonedValue := reflect.New(value.Type()).Elem()
+		clonedValue.Set(value)
+		for i := 0; i < value.NumField(); i++ {
+			if clonedValue.Field(i).CanSet() && value.Field(i).CanInterface() {
+				clonedValue.Field(i).Set(cloneCharacterizationValue(value.Field(i)))
+			}
+		}
+		return clonedValue
+	default:
+		return value
 	}
 }
 
