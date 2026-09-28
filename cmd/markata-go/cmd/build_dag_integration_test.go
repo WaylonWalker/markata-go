@@ -38,7 +38,7 @@ func TestBuildDAGMatchesLegacyInBuildLab(t *testing.T) {
 		},
 		Classes: map[string]buildlab.OutputClass{
 			".markata/diagnostics.json": buildlab.ClassVolatile,
-			".well-known/time":         buildlab.ClassVolatile,
+			".well-known/time":          buildlab.ClassVolatile,
 		},
 		CheckDeterminism: true,
 		GOMAXPROCS:       1,
