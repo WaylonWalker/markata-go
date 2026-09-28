@@ -31,6 +31,20 @@ const (
 	FeedTypeGuide FeedType = "guide"
 )
 
+const (
+	// FeedViewDefault is the feed's normal card/grid presentation.
+	FeedViewDefault = "default"
+	// FeedViewSimple is the compact simple-list presentation.
+	FeedViewSimple = "simple"
+	// FeedViewCalendar is the publishing-calendar presentation.
+	FeedViewCalendar = "calendar"
+)
+
+// DefaultFeedViews returns the presentation views enabled for feeds by default.
+func DefaultFeedViews() []string {
+	return []string{FeedViewDefault, FeedViewSimple, FeedViewCalendar}
+}
+
 // FeedConfig represents a feed configuration.
 type FeedConfig struct {
 	// Slug is the URL-safe identifier for the feed
@@ -53,6 +67,10 @@ type FeedConfig struct {
 
 	// Reverse indicates if the sort order should be reversed
 	Reverse bool `json:"reverse" yaml:"reverse" toml:"reverse"`
+
+	// Views controls which HTML presentations are exposed for this feed.
+	// Empty inherits FeedDefaults.Views.
+	Views []string `json:"views,omitempty" yaml:"views,omitempty" toml:"views,omitempty"`
 
 	// ItemsPerPage is the number of items per page (default: 10)
 	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
@@ -117,6 +135,21 @@ type FeedConfig struct {
 // Private is retained as a compatibility alias for IncludePrivate.
 func (f FeedConfig) IncludesPrivate() bool {
 	return f.IncludePrivate || f.Private
+}
+
+// HasView reports whether this feed exposes a presentation view. Unresolved
+// feed configs preserve the built-in three-view default for template callers.
+func (f FeedConfig) HasView(view string) bool {
+	views := f.Views
+	if len(views) == 0 {
+		views = DefaultFeedViews()
+	}
+	for _, candidate := range views {
+		if candidate == view {
+			return true
+		}
+	}
+	return false
 }
 
 // GetSidebarTitle returns the effective title for sidebar navigation.
@@ -231,6 +264,9 @@ type FeedDefaults struct {
 	// PaginationType is the default pagination strategy
 	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 
+	// Views specifies the default HTML presentations exposed by feeds.
+	Views []string `json:"views,omitempty" yaml:"views,omitempty" toml:"views,omitempty"`
+
 	// Formats specifies the default output formats
 	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
 
@@ -262,6 +298,7 @@ func NewFeedDefaults() FeedDefaults {
 		ItemsPerPage:    10,
 		OrphanThreshold: 3,
 		PaginationType:  PaginationManual,
+		Views:           DefaultFeedViews(),
 		Formats: FeedFormats{
 			HTML:       true,
 			SimpleHTML: true,
@@ -290,10 +327,15 @@ func NewFeedDefaults() FeedDefaults {
 
 // NewFeedConfig creates a new FeedConfig with default values from FeedDefaults.
 func NewFeedConfig(defaults FeedDefaults) *FeedConfig {
+	views := defaults.Views
+	if len(views) == 0 {
+		views = DefaultFeedViews()
+	}
 	return &FeedConfig{
 		ItemsPerPage:    defaults.ItemsPerPage,
 		OrphanThreshold: defaults.OrphanThreshold,
 		PaginationType:  defaults.PaginationType,
+		Views:           append([]string(nil), views...),
 		Formats:         defaults.Formats,
 		Templates:       defaults.Templates,
 		Posts:           []*Post{},
@@ -315,6 +357,13 @@ func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
 	}
 	if f.PaginationType == "" {
 		f.PaginationType = defaults.PaginationType
+	}
+	if len(f.Views) == 0 {
+		views := defaults.Views
+		if len(views) == 0 {
+			views = DefaultFeedViews()
+		}
+		f.Views = append([]string(nil), views...)
 	}
 
 	// Apply format defaults if no formats are explicitly enabled
