@@ -23,12 +23,18 @@ func TestBuildDAGMatchesLegacyInBuildLab(t *testing.T) {
 			{Type: buildlab.OpBuild},
 		}},
 		Baseline: buildlab.BuildCommand{
-			Binary: binary, Args: []string{"build", "-c", "markata-go.toml"}, OutputDir: "output",
-			Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"},
+			Binary:    binary,
+			Args:      []string{"build", "-c", "markata-go.toml"},
+			OutputDir: "output",
+			Timeout:   5 * time.Minute,
+			Env:       []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"},
 		},
 		Candidate: buildlab.BuildCommand{
-			Binary: binary, Args: []string{"build", "--dag", "-c", "markata-go.toml"}, OutputDir: "output",
-			Timeout: 5 * time.Minute, Env: []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"},
+			Binary:    binary,
+			Args:      []string{"build", "--dag", "-c", "markata-go.toml"},
+			OutputDir: "output",
+			Timeout:   5 * time.Minute,
+			Env:       []string{"MARKATA_GO_ENCRYPTION_ENABLED=false"},
 		},
 		Classes: map[string]buildlab.OutputClass{
 			".markata/diagnostics.json": buildlab.ClassVolatile,
