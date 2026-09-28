@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	cleanPublishAssetGrace    = 2 * time.Minute
+	cleanPublishAssetGrace     = 2 * time.Minute
 	cleanPublishServeMarkerTTL = 5 * time.Second
 )
 
