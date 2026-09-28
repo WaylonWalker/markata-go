@@ -277,6 +277,8 @@ storage:
     mode: pvc
     storageClassName: longhorn
     size: 10Gi
+    # Set only when binding a retained, pre-existing PV with copied site data.
+    volumeName: ""
     accessModes:
       - ReadWriteMany
     pvcNameSuffix: ""
