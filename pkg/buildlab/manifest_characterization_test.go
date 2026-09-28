@@ -3,6 +3,7 @@ package buildlab
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -36,6 +37,9 @@ func TestBuildManifestCharacterization(t *testing.T) {
 		if err := os.Symlink("../post.md", filepath.Join(root, "content", "latest.md")); err != nil {
 			t.Fatal(err)
 		}
+		if err := os.Symlink("nested", filepath.Join(root, "nested-link")); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	classes := map[string]OutputClass{
@@ -55,6 +59,8 @@ func TestBuildManifestCharacterization(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		target := "../post.md"
 		hash := sha256.Sum256([]byte(target))
+		directoryTarget := "nested"
+		directoryHash := sha256.Sum256([]byte(directoryTarget))
 		want.Records = []FileRecord{
 			want.Records[0],
 			{
@@ -63,6 +69,11 @@ func TestBuildManifestCharacterization(t *testing.T) {
 				Class: ClassDeterministic,
 			},
 			manifestRecord("content/post.md", files["content/post.md"], ClassDeterministic),
+			{
+				Path: "nested-link", SHA256: hex.EncodeToString(directoryHash[:]),
+				Size: int64(len(directoryTarget)), Mode: uint32(os.ModeSymlink | 0o777), Type: TypeSymlink,
+				Class: ClassDeterministic,
+			},
 			want.Records[1], want.Records[2],
 		}
 	} else {
@@ -75,6 +86,36 @@ func TestBuildManifestCharacterization(t *testing.T) {
 	// BuildManifest sorts records by normalized path.
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("manifest = %+v, want %+v", got, want)
+	}
+}
+
+func TestBuildManifestCharacterization_MetadataFiles(t *testing.T) {
+	root := t.TempDir()
+	metadata := []string{".markata-css_minify-cache", ".markata-fontpack-cache", ".markata-fonts.json", ".markata-js_minify-cache"}
+	for _, name := range metadata {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("ignored"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := BuildManifest(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Manifest{Records: []FileRecord{}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("manifest = %+v, want %+v", got, want)
+	}
+}
+
+func TestBuildManifestCharacterization_RootIsFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "root-file")
+	if err := os.WriteFile(path, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := BuildManifest(path, nil)
+	wantError := fmt.Sprintf("path %q escapes root", path)
+	if err == nil || err.Error() != wantError {
+		t.Fatalf("error = %v, want %q", err, wantError)
 	}
 }
 
