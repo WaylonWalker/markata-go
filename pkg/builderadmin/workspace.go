@@ -9,10 +9,50 @@ import (
 	"time"
 )
 
+type workspaceRenameFunc func(string, string) error
+
+// promoteWorkspaceRelease keeps the same-filesystem rename fast path. If the
+// workspace cannot be renamed into the release filesystem, it falls back to a
+// staged copy on the release filesystem before making the release visible.
+func promoteWorkspaceRelease(workspace, releasesDir, releaseID string) (string, error) {
+	return promoteWorkspaceReleaseWithRename(workspace, releasesDir, releaseID, os.Rename)
+}
+
+func promoteWorkspaceReleaseWithRename(workspace, releasesDir, releaseID string, rename workspaceRenameFunc) (string, error) {
+	if workspace == "" || releasesDir == "" || releaseID == "" {
+		return "", fmt.Errorf("workspace, releases directory, and release ID are required")
+	}
+	if info, err := os.Stat(workspace); err != nil {
+		return "", fmt.Errorf("stat build workspace: %w", err)
+	} else if !info.IsDir() {
+		return "", fmt.Errorf("build workspace is not a directory: %s", workspace)
+	}
+	if err := os.MkdirAll(releasesDir, 0o755); err != nil {
+		return "", fmt.Errorf("create releases directory: %w", err)
+	}
+
+	finalPath := filepath.Join(releasesDir, releaseID)
+	if _, err := os.Lstat(finalPath); err == nil {
+		return "", fmt.Errorf("release already exists: %s", finalPath)
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat release destination: %w", err)
+	}
+
+	renameErr := rename(workspace, finalPath)
+	if renameErr == nil {
+		return finalPath, nil
+	}
+	stagedPath, stageErr := stageWorkspaceRelease(workspace, releasesDir, releaseID)
+	if stageErr != nil {
+		return "", fmt.Errorf("rename build workspace: %v; staged promotion: %w", renameErr, stageErr)
+	}
+	return stagedPath, nil
+}
+
 // stageWorkspaceRelease copies a completed build workspace into a temporary
 // directory on the release filesystem, then atomically renames that directory
-// into the final retained release path. This is the safe promotion primitive
-// used when build work lives on a different filesystem from SiteDir.
+// into the final retained release path. The guarantee here is atomic visibility:
+// an incomplete copied tree never appears at the final release path.
 //
 // The source workspace is intentionally left intact. The caller owns workspace
 // cleanup so a failed promotion can retain the build output for diagnosis.
