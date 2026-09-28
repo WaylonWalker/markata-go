@@ -37,24 +37,52 @@ func (s FixtureState) Apply(root string) error {
 // GenerateFixture creates a small site fixture and returns the state used to
 // create it. The same seed and parameters produce identical bytes.
 //
-//nolint:gocyclo // The fixture schema maps each independently configurable section to files.
 func GenerateFixture(root string, cfg FixtureConfig) (FixtureState, error) {
-	if cfg.Posts < 0 || cfg.Feeds < 0 || cfg.Tags < 0 || cfg.Wikilinks < 0 || cfg.Embeds < 0 || cfg.WikilinkDensity < 0 || cfg.WikilinkDensity > 1 || cfg.EmbedDensity < 0 || cfg.EmbedDensity > 1 || cfg.DependencyDepth < 0 || cfg.Assets < 0 || cfg.TemplateVariations < 0 {
-		return FixtureState{}, fmt.Errorf("fixture counts must be non-negative")
+	if err := validateFixtureConfig(cfg); err != nil {
+		return FixtureState{}, err
 	}
 	//nolint:gosec // A seeded PRNG is required for reproducible fixture bytes.
 	r := rand.New(rand.NewSource(cfg.Seed))
 	state := FixtureState{Seed: cfg.Seed, Config: cfg}
-	write := func(name, data string) error {
-		p, e := safePath(root, name)
-		if e == nil {
-			e = os.MkdirAll(filepath.Dir(p), 0o755)
-		}
-		if e == nil {
-			e = os.WriteFile(p, []byte(data), 0o600)
-		}
-		return e
+	write := fixtureWriter(root)
+	if err := writePosts(write, cfg, r); err != nil {
+		return state, err
 	}
+	if err := write("markata-go.toml", generatedConfig(cfg)); err != nil {
+		return state, err
+	}
+	if err := writeFeedsAndTags(write, cfg); err != nil {
+		return state, err
+	}
+	if err := writeAssetsAndTemplates(write, cfg, r); err != nil {
+		return state, err
+	}
+	return state, nil
+}
+
+func validateFixtureConfig(cfg FixtureConfig) error {
+	if cfg.Posts < 0 || cfg.Feeds < 0 || cfg.Tags < 0 || cfg.Wikilinks < 0 || cfg.Embeds < 0 || cfg.WikilinkDensity < 0 || cfg.WikilinkDensity > 1 || cfg.EmbedDensity < 0 || cfg.EmbedDensity > 1 || cfg.DependencyDepth < 0 || cfg.Assets < 0 || cfg.TemplateVariations < 0 {
+		return fmt.Errorf("fixture counts must be non-negative")
+	}
+	return nil
+}
+
+type fixtureFileWriter func(name, data string) error
+
+func fixtureWriter(root string) fixtureFileWriter {
+	return func(name, data string) error {
+		p, err := safePath(root, name)
+		if err == nil {
+			err = os.MkdirAll(filepath.Dir(p), 0o755)
+		}
+		if err == nil {
+			err = os.WriteFile(p, []byte(data), 0o600)
+		}
+		return err
+	}
+}
+
+func writePosts(write fixtureFileWriter, cfg FixtureConfig, r *rand.Rand) error {
 	for i := 0; i < cfg.Posts; i++ {
 		links := ""
 		linkCount := cfg.Wikilinks
@@ -74,38 +102,43 @@ func GenerateFixture(root string, cfg FixtureConfig) (FixtureState, error) {
 			embeds += fmt.Sprintf("\n![[post-%d]]", target)
 		}
 		if e := write(fmt.Sprintf("content/post-%03d.md", i), fmt.Sprintf("---\ntitle: Post %d\n---\n# Post %d\n%s%s\n", i, i, links, embeds)); e != nil {
-			return state, e
+			return e
 		}
 	}
-	if e := write("markata-go.toml", generatedConfig(cfg)); e != nil {
-		return state, e
-	}
+	return nil
+}
+
+func writeFeedsAndTags(write fixtureFileWriter, cfg FixtureConfig) error {
 	for i := 0; i < cfg.Feeds; i++ {
 		if e := write(fmt.Sprintf("feeds/feed-%03d.toml", i), fmt.Sprintf("name = \"feed-%d\"\n", i)); e != nil {
-			return state, e
+			return e
 		}
 	}
 	for i := 0; i < cfg.Tags; i++ {
 		if e := write(fmt.Sprintf("tags/tag-%03d.txt", i), fmt.Sprintf("tag-%d\n", i)); e != nil {
-			return state, e
+			return e
 		}
 	}
+	return nil
+}
+
+func writeAssetsAndTemplates(write fixtureFileWriter, cfg FixtureConfig, r *rand.Rand) error {
 	for i := 0; i < cfg.Assets; i++ {
 		if e := write(fmt.Sprintf("assets/asset-%03d.bin", i), strconv.Itoa(r.Int())); e != nil {
-			return state, e
+			return e
 		}
 	}
 	for i := 0; i < cfg.DependencyDepth; i++ {
 		if e := write(fmt.Sprintf("templates/part-%03d.html", i), fmt.Sprintf("part-%d\n", i)); e != nil {
-			return state, e
+			return e
 		}
 	}
 	for i := 0; i < cfg.TemplateVariations; i++ {
 		if e := write(fmt.Sprintf("templates/variant-%03d.html", i), strings.Repeat("template\n", i+1)); e != nil {
-			return state, e
+			return e
 		}
 	}
-	return state, nil
+	return nil
 }
 func maxInt(a, b int) int {
 	if a > b {
