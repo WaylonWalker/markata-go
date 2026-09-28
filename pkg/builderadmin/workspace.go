@@ -1,6 +1,7 @@
 package builderadmin
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -44,7 +45,10 @@ func promoteWorkspaceReleaseWithRename(workspace, releasesDir, releaseID string,
 	}
 	stagedPath, stageErr := stageWorkspaceRelease(workspace, releasesDir, releaseID)
 	if stageErr != nil {
-		return "", fmt.Errorf("rename build workspace: %v; staged promotion: %w", renameErr, stageErr)
+		return "", errors.Join(
+			fmt.Errorf("rename build workspace: %w", renameErr),
+			fmt.Errorf("staged promotion: %w", stageErr),
+		)
 	}
 	return stagedPath, nil
 }
