@@ -37,6 +37,45 @@
     return node;
   }
 
+  function postPreview(post) {
+    const item = element('li', 'calendar-preview-post');
+    const link = element('a', 'calendar-preview-link');
+    link.href = post.href;
+
+    if (post.image) {
+      const image = document.createElement('img');
+      image.className = 'calendar-preview-image';
+      image.src = post.image;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.width = 72;
+      image.height = 54;
+      link.append(image);
+    }
+
+    const copy = element('span', 'calendar-preview-copy');
+    copy.append(element('strong', 'calendar-preview-title', post.title));
+    if (post.description) {
+      copy.append(element('span', 'calendar-preview-description', post.description));
+    }
+    link.append(copy);
+    item.append(link);
+    return item;
+  }
+
+  function renderPreview(details, year, month, day, posts) {
+    const preview = element('div', 'calendar-day-preview');
+    const dateLabel = `${monthNames[month]} ${day}, ${year}`;
+    const postWord = posts.length === 1 ? 'post' : 'posts';
+    preview.append(element('div', 'calendar-preview-summary', `${dateLabel} · ${posts.length} ${postWord}`));
+
+    const postList = element('ul', 'calendar-day-posts');
+    for (const post of posts) postList.append(postPreview(post));
+    preview.append(postList);
+    details.append(preview);
+  }
+
   function renderMonth(year, month, postsByDate) {
     const section = element('section', 'calendar-month');
     section.setAttribute('aria-labelledby', `calendar-${year}-${month + 1}`);
@@ -47,9 +86,7 @@
 
     const weekdayRow = element('div', 'calendar-weekdays');
     weekdayRow.setAttribute('aria-hidden', 'true');
-    for (const weekday of weekdayNames) {
-      weekdayRow.append(element('span', '', weekday));
-    }
+    for (const weekday of weekdayNames) weekdayRow.append(element('span', '', weekday));
     section.append(weekdayRow);
 
     const grid = element('div', 'calendar-days');
@@ -78,14 +115,13 @@
       const details = document.createElement('details');
       const summary = document.createElement('summary');
       const postWord = posts.length === 1 ? 'post' : 'posts';
-      summary.setAttribute(
-        'aria-label',
-        `${monthNames[month]} ${day}, ${year}: ${posts.length} ${postWord}`
-      );
+      details.dataset.postCount = String(posts.length);
+      summary.setAttribute('aria-label', `${monthNames[month]} ${day}, ${year}: ${posts.length} ${postWord}`);
       summary.append(element('span', 'calendar-day-number', String(day)));
 
       const marker = element('span', 'calendar-day-marker');
       marker.setAttribute('aria-hidden', 'true');
+      marker.style.setProperty('--calendar-density', String(Math.min(posts.length, 6)));
       summary.append(marker);
 
       if (posts.length > 1) {
@@ -95,17 +131,7 @@
       }
 
       details.append(summary);
-
-      const postList = element('ul', 'calendar-day-posts');
-      for (const post of posts) {
-        const item = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = post.href;
-        link.textContent = post.title;
-        item.append(link);
-        postList.append(item);
-      }
-      details.append(postList);
+      renderPreview(details, year, month, day, posts);
       cell.append(details);
       grid.append(cell);
     }
@@ -147,17 +173,33 @@
       yearSection.append(yearHeading);
 
       const months = element('div', 'calendar-months');
-      for (let month = 0; month < 12; month += 1) {
-        months.append(renderMonth(year, month, postsByDate));
-      }
+      for (let month = 0; month < 12; month += 1) months.append(renderMonth(year, month, postsByDate));
       yearSection.append(months);
       calendar.append(yearSection);
     }
 
+    const openExclusive = (details) => {
+      for (const candidate of root.querySelectorAll('.calendar-day details[open]')) {
+        if (candidate !== details) candidate.open = false;
+      }
+      details.open = true;
+    };
+
+    calendar.addEventListener('pointerover', (event) => {
+      if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      const details = event.target.closest('.calendar-day details');
+      if (!details || !calendar.contains(details)) return;
+      openExclusive(details);
+    });
+
+    calendar.addEventListener('focusin', (event) => {
+      const details = event.target.closest('.calendar-day details');
+      if (details && calendar.contains(details)) openExclusive(details);
+    });
+
     calendar.addEventListener('toggle', (event) => {
       const opened = event.target;
       if (!(opened instanceof HTMLDetailsElement) || !opened.open) return;
-
       for (const details of root.querySelectorAll('.calendar-day details[open]')) {
         if (details !== opened) details.open = false;
       }
@@ -177,11 +219,8 @@
   function updateURLMode(mode) {
     try {
       const url = new URL(window.location.href);
-      if (mode === 'calendar') {
-        url.searchParams.set('view', 'calendar');
-      } else if (url.searchParams.get('view') === 'calendar') {
-        url.searchParams.delete('view');
-      }
+      if (mode === 'calendar') url.searchParams.set('view', 'calendar');
+      else if (url.searchParams.get('view') === 'calendar') url.searchParams.delete('view');
       window.history.replaceState(window.history.state, '', url.toString());
     } catch (error) {
       // URL state is progressive enhancement only.
@@ -191,11 +230,7 @@
   function primaryNodesFor(root, sourceList) {
     const nodes = Array.from(root.querySelectorAll('[data-calendar-primary]'));
     for (const child of root.children) {
-      if (
-        child.classList.contains('pagination') ||
-        child.classList.contains('pagination-infinite') ||
-        child.classList.contains('feed-empty')
-      ) {
+      if (child.classList.contains('pagination') || child.classList.contains('pagination-infinite') || child.classList.contains('feed-empty')) {
         if (!nodes.includes(child)) nodes.push(child);
       }
     }
@@ -217,7 +252,9 @@
       datedPosts.push({
         date,
         href: link.href,
-        title: link.textContent.trim() || link.href
+        title: link.textContent.trim() || link.href,
+        description: item.getAttribute('data-description') || '',
+        image: item.getAttribute('data-image') || ''
       });
     }
 
@@ -233,31 +270,20 @@
       if (!sourceIsPrimary) sourceList.hidden = true;
 
       for (const button of buttons) {
-        button.setAttribute(
-          'aria-pressed',
-          button.getAttribute('data-calendar-mode') === mode ? 'true' : 'false'
-        );
+        button.setAttribute('aria-pressed', button.getAttribute('data-calendar-mode') === mode ? 'true' : 'false');
       }
 
-      if (persistURL && root.hasAttribute('data-calendar-url-state')) {
-        updateURLMode(mode);
-      }
+      if (persistURL && root.hasAttribute('data-calendar-url-state')) updateURLMode(mode);
     };
 
-    for (const button of buttons) {
-      button.addEventListener('click', () => setMode(button.getAttribute('data-calendar-mode')));
-    }
+    for (const button of buttons) button.addEventListener('click', () => setMode(button.getAttribute('data-calendar-mode')));
 
     let initialMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
-    if (root.hasAttribute('data-calendar-url-state') && calendarModeFromURL()) {
-      initialMode = 'calendar';
-    }
+    if (root.hasAttribute('data-calendar-url-state') && calendarModeFromURL()) initialMode = 'calendar';
 
     switcher.hidden = false;
     setMode(initialMode, false);
   }
 
-  for (const root of document.querySelectorAll('[data-calendar-feed]')) {
-    initialize(root);
-  }
+  for (const root of document.querySelectorAll('[data-calendar-feed]')) initialize(root);
 })();
