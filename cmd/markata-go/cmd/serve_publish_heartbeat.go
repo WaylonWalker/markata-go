@@ -38,7 +38,7 @@ func startCleanPublishServeHeartbeat(output string) (func(), error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return func() {}, err
 	}
-	marker := filepath.Join(dir, fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano()))
+	marker := filepath.Join(dir, fmt.Sprintf(".%d-%d", os.Getpid(), time.Now().UnixNano()))
 	touch := func() error {
 		now := time.Now()
 		file, err := os.OpenFile(marker, os.O_CREATE|os.O_WRONLY, 0o600)
