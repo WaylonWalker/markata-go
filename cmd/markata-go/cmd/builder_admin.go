@@ -21,6 +21,7 @@ var (
 	builderAdminPort                  int
 	builderAdminSourceDir             string
 	builderAdminSiteDir               string
+	builderAdminWorkDir               string
 	builderAdminCacheMount            string
 	builderAdminHistoryDir            string
 	builderAdminWatch                 bool
@@ -65,6 +66,7 @@ func init() {
 	builderAdminCmd.Flags().IntVar(&builderAdminPort, "port", 8080, "port to listen on")
 	builderAdminCmd.Flags().StringVar(&builderAdminSourceDir, "source-dir", ".", "source directory to watch and build from")
 	builderAdminCmd.Flags().StringVar(&builderAdminSiteDir, "release-dir", "public", "release root that contains releases/ and current")
+	builderAdminCmd.Flags().StringVar(&builderAdminWorkDir, "work-dir", "", "optional build workspace directory; defaults to <release-dir>/.build-work")
 	builderAdminCmd.Flags().StringVar(&builderAdminCacheMount, "cache-mount", "", "optional dedicated cache mount for .markata symlinks")
 	builderAdminCmd.Flags().StringVar(&builderAdminHistoryDir, "history-dir", "", "directory for persisted builder-admin state and logs")
 	builderAdminCmd.Flags().BoolVar(&builderAdminWatch, "watch", true, "enable recursive file watching")
@@ -112,6 +114,7 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 		Port:                 builderAdminPort,
 		SourceDir:            builderAdminSourceDir,
 		SiteDir:              builderAdminSiteDir,
+		WorkDir:              builderAdminWorkDir,
 		ConfigPath:           configPath,
 		CacheMount:           builderAdminCacheMount,
 		HistoryDir:           builderAdminHistoryDir,
