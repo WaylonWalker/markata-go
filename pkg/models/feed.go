@@ -79,7 +79,7 @@ type FeedConfig struct {
 	Reverse bool `json:"reverse" yaml:"reverse" toml:"reverse"`
 
 	// Views controls which HTML presentations are exposed for this feed.
-	// Empty inherits FeedDefaults.Views.
+	// Nil/unset inherits FeedDefaults.Views; an explicit empty list is invalid.
 	Views []string `json:"views,omitempty" yaml:"views,omitempty" toml:"views,omitempty"`
 
 	// ItemsPerPage is the number of items per page (default: 10)

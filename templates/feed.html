@@ -37,11 +37,15 @@
           {% if feed_stats_latest_post %}<span>latest post {{ feed_stats_latest_post }}</span>{% endif %}
         </div>
         {% if feed.posts %}
+        {% if feed.views.calendar %}
         <nav class="calendar-view-switch" data-calendar-switch hidden aria-label="Feed views">
           <button type="button" data-calendar-mode="list" aria-pressed="true">Posts</button>
           {% if feed.views.simple and feed.formats.simple_html %}<a class="feed-view-link" href="{% if feed.slug %}/{{ feed.slug }}/simple/{% else %}/simple/{% endif %}">Simple</a>{% endif %}
           <button type="button" data-calendar-mode="calendar" aria-pressed="false">Calendar</button>
         </nav>
+        {% elif feed.views.simple and feed.formats.simple_html %}
+        <nav class="feed-view-links" aria-label="Feed views"><span aria-current="page">Posts</span> <a class="feed-view-link" href="{% if feed.slug %}/{{ feed.slug }}/simple/{% else %}/simple/{% endif %}">Simple</a></nav>
+        {% endif %}
         {% endif %}
         {% if feed.type == "guide" or feed.type == "series" %}
         <div class="feed-meta">
@@ -87,7 +91,7 @@
   </div>
   {% endif %}
 
-  <div class="posts posts-list" id="posts-list" data-calendar-primary>
+  <div class="posts posts-list" id="posts-list"{% if feed.views.calendar %} data-calendar-primary{% endif %}>
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
@@ -101,7 +105,7 @@
     {% endif %}
   </div>
   {% if not feed.posts %}
-  <p class="feed-empty" data-calendar-primary>No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
+  <p class="feed-empty"{% if feed.views.calendar %} data-calendar-primary{% endif %}>No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
   {% endif %}
 
   {% include "partials/pagination.html" %}

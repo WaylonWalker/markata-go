@@ -1,4 +1,3 @@
-
 # Feed view contract
 
 ## Built-in views

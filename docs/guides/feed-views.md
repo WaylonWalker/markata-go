@@ -1,4 +1,3 @@
-
 # Feed views
 
 Built-in feeds expose three presentation views by default: `default`, `simple`, and `calendar`.
