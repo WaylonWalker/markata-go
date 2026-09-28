@@ -45,6 +45,11 @@
         <time class="dt-published" datetime="{{ post.date | date_format:"2006-01-02" }}">{{ post.date | date_format:"January 2, 2006" }}</time>
         <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
       </li>
+      {% else %}
+      <li class="h-entry">
+        <span class="calendar-feed-undated">Undated</span>
+        <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
+      </li>
       {% endif %}
     {% endfor %}
   </ul>
