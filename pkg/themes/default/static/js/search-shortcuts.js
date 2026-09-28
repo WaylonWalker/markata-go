@@ -5,6 +5,10 @@
  * - `/` or `Ctrl/Cmd+K` - Focus search input
  * - `?` - Show shortcuts help modal
  * - `Escape` - Close search/modals
+ *
+ * Also supports deep-linking into search with `?q=<query>`. This is used by
+ * recovery flows such as the generated 404 page, and is useful for shareable
+ * search links in general.
  */
 
 (function() {
@@ -60,6 +64,65 @@
     }
 
     return false;
+  }
+
+  /**
+   * Seed the site search from a `?q=` query parameter.
+   *
+   * Pagefind is lazy-loaded, so this deliberately waits for the normal loader
+   * instead of creating a second search implementation. Dispatching an input
+   * event lets Pagefind render the same results UI as an interactive search.
+   */
+  function applySearchQueryParam() {
+    var params = new URLSearchParams(window.location.search);
+    var query = (params.get('q') || '').trim();
+    if (!query) return false;
+
+    function seedSearchInput() {
+      var input = document.querySelector('.pagefind-ui__search-input, #pagefind-search input, #search input');
+      if (!input) return false;
+
+      input.value = query;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+      return true;
+    }
+
+    if (seedSearchInput()) {
+      return true;
+    }
+
+    if (window.loadPagefind) {
+      window.loadPagefind(function() {
+        seedSearchInput();
+      });
+      return true;
+    }
+
+    // The shortcut module is dynamically inserted before the Pagefind loader
+    // later in base.html. Give that loader a brief chance to register, then
+    // use the same callback path. This avoids dropping a recovery query due to
+    // script execution order on a fast page load.
+    var attempts = 0;
+    var timer = window.setInterval(function() {
+      attempts += 1;
+      if (seedSearchInput()) {
+        window.clearInterval(timer);
+        return;
+      }
+      if (window.loadPagefind) {
+        window.clearInterval(timer);
+        window.loadPagefind(function() {
+          seedSearchInput();
+        });
+        return;
+      }
+      if (attempts >= 50) {
+        window.clearInterval(timer);
+      }
+    }, 20);
+
+    return true;
   }
 
   /**
@@ -250,7 +313,7 @@
     var toggleBtn = document.getElementById('shortcuts-toggle');
     if (toggleBtn) {
       toggleBtn.addEventListener('click', function() {
-        var newDisabled = window.shortcutsRegistry.toggleAll();
+        window.shortcutsRegistry.toggleAll();
         updateToggleButton();
       });
       updateToggleButton();
@@ -264,6 +327,15 @@
 
     // Update modifier key display
     updateModifierKeyDisplay();
+  }
+
+  // Apply a deep-linked search independently of shortcut-registry readiness.
+  // The 404 recovery flow may arrive here specifically because there were no
+  // lightweight slug/title matches, so do not make this depend on keyboard UI.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applySearchQueryParam, { once: true });
+  } else {
+    applySearchQueryParam();
   }
 
   // Initialize when DOM is ready (or registry is available)
