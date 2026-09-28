@@ -604,7 +604,7 @@ func resolveInternalEmbed(post *models.Post, displayText string) internalEmbedDe
 	return internalEmbedDescriptor{href: href, title: title, description: description, mediaURL: mediaURL, mediaSource: mediaSource, posterURL: posterURL, isVideo: isVideo, isPhotoCard: isPhotoCard, date: post.Date}
 }
 
-func resolveInternalEmbedMedia(post *models.Post, mediaURL string, isPhotoCard, isVideo bool) (string, string) {
+func resolveInternalEmbedMedia(post *models.Post, mediaURL string, isPhotoCard, isVideo bool) (mediaSource, posterURL string) {
 	if mediaURL == "" {
 		return "", ""
 	}
@@ -612,8 +612,7 @@ func resolveInternalEmbedMedia(post *models.Post, mediaURL string, isPhotoCard, 
 	if isPhotoCard {
 		width, height = 1200, 0
 	}
-	mediaSource := templates.WithSize(mediaURL, width, height)
-	posterURL := ""
+	mediaSource = templates.WithSize(mediaURL, width, height)
 	if isVideo {
 		posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
 		if posterURL != "" {
