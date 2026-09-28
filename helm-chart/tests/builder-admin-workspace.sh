@@ -18,6 +18,7 @@ common=(
   --set builderAdmin.ingress.auth.enabled=true
   --set-string builderAdmin.ingress.auth.internalUrl=http://hlab-auth.default.svc.cluster.local:8000
   --set-string builderAdmin.ingress.host=builder.example.com
+  --set-string builderAdmin.ingress.ingressClassName=traefik
   --set builderAdmin.ingress.tls.enabled=true
   --set-string builderAdmin.ingress.tls.secretName=builder-tls
   --set builderAdmin.networkPolicy.enabled=true
