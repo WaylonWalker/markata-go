@@ -1,0 +1,25 @@
+<ul class="calendar-feed-list" data-calendar-list{% if calendar_source_primary %} data-calendar-primary aria-label="Posts by date"{% else %} hidden aria-hidden="true"{% endif %}>
+  {% for post in feed.posts %}
+    {% with post.image|default:post.cover|default:post.cover_image|default:post.og_image|media_url:post.video as media_src %}
+    {% if post.date %}
+    <li class="h-entry" data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}">
+      {% if calendar_source_primary %}<time class="dt-published" datetime="{{ post.date | date_format:"2006-01-02" }}">{{ post.date | date_format:"January 2, 2006" }}</time>{% endif %}
+      <a class="u-url p-name" href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
+      {% if post.description %}<span hidden data-calendar-summary>{{ post.description | summary:180 | safe }}</span>{% elif post.content %}<span hidden data-calendar-summary>{{ post.content | summary:180 | safe }}</span>{% endif %}
+      {% if media_src %}
+        {% if media_src|is_video %}
+          {% with post|poster_url:media_src as poster_candidate %}{% if poster_candidate %}<span hidden data-calendar-image-url="{{ poster_candidate | with_size:"160,96" }}"></span>{% endif %}{% endwith %}
+        {% else %}
+          <span hidden data-calendar-image-url="{{ media_src | with_size:"160,96" }}"></span>
+        {% endif %}
+      {% endif %}
+    </li>
+    {% elif calendar_source_primary %}
+    <li class="h-entry">
+      <span class="calendar-feed-undated">Undated</span>
+      <a class="u-url p-name" href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
+    </li>
+    {% endif %}
+    {% endwith %}
+  {% endfor %}
+</ul>
