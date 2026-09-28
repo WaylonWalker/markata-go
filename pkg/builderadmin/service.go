@@ -49,6 +49,7 @@ type Config struct {
 	Port                 int
 	SourceDir            string
 	SiteDir              string
+	WorkDir              string
 	ConfigPath           string
 	CacheMount           string
 	HistoryDir           string
@@ -268,6 +269,9 @@ func New(cfg Config) (*Service, error) {
 	}
 	if cfg.SiteDir == "" {
 		cfg.SiteDir = "public"
+	}
+	if cfg.WorkDir == "" {
+		cfg.WorkDir = filepath.Join(cfg.SiteDir, ".build-work")
 	}
 	if cfg.HistoryDir == "" {
 		cfg.HistoryDir = filepath.Join(cfg.SiteDir, ".builder-admin")
@@ -1117,7 +1121,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	}
 	record.PrepareMS = time.Since(phaseStart).Milliseconds()
 
-	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
+	buildWork := s.cfg.WorkDir
 	phaseStart = time.Now()
 	s.updateRunningPhase("build")
 	cmdArgs, cleanup, err := s.buildCommandArgs(req.ID, buildWork)
@@ -1301,7 +1305,7 @@ func (s *Service) prepareBuild(log io.Writer) error {
 			return err
 		}
 	}
-	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
+	buildWork := s.cfg.WorkDir
 	if err := os.RemoveAll(buildWork); err != nil {
 		return err
 	}
@@ -1345,11 +1349,9 @@ func (s *Service) promoteBuild(buildWork string) (string, string, error) {
 	s.releaseMu.Lock()
 	defer s.releaseMu.Unlock()
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
-	releasePath := filepath.Join(s.cfg.SiteDir, "releases", releaseID)
-	if err := os.RemoveAll(releasePath); err != nil {
-		return "", "", err
-	}
-	if err := os.Rename(buildWork, releasePath); err != nil {
+	releasesDir := filepath.Join(s.cfg.SiteDir, "releases")
+	releasePath, err := promoteWorkspaceRelease(buildWork, releasesDir, releaseID)
+	if err != nil {
 		return "", "", err
 	}
 	if err := s.switchCurrentRelease(releaseID); err != nil {

@@ -189,3 +189,74 @@ func TestPreviewMultipleEditsOnSameLine(t *testing.T) {
 		t.Fatalf("preview = %q, edits = %+v", content, edits)
 	}
 }
+
+func TestApplyBatchAppliesValidFilesAndSkipsStaleFiles(t *testing.T) {
+	root := t.TempDir()
+	first := filepath.Join(root, "first.md")
+	second := filepath.Join(root, "second.md")
+	firstSource := "# First\n[link](//first.example)\n"
+	secondSource := "# Second\n[link](//second.example)\n"
+	if err := os.WriteFile(first, []byte(firstSource), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte(secondSource), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	firstPlan, err := PlanFile(root, first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondPlan, err := PlanFile(root, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := Selection{All: true, SafeOnly: true}
+	previews, err := PreviewBatch(root, []FileSelection{{Path: "first.md", Selection: selection}, {Path: "second.md", Selection: selection}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(previews) != 2 || len(previews[0].Edits) != 2 {
+		t.Fatalf("previews = %+v", previews)
+	}
+	for _, edit := range previews[0].Edits {
+		if edit.Safety != SafetySafe || edit.Explanation == "" {
+			t.Fatalf("safe edit missing classification or explanation: %+v", edit)
+		}
+	}
+	if err := os.WriteFile(second, []byte(secondSource+"changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := ApplyBatch(root, []FileSelection{
+		{Path: "first.md", Digest: firstPlan.Digest, Selection: selection},
+		{Path: "second.md", Digest: secondPlan.Digest, Selection: selection},
+	})
+	statuses := map[string]string{}
+	for _, file := range result.Files {
+		statuses[file.Path] = file.Status
+	}
+	if len(result.Applied) != 2 || statuses["first.md"] != "applied" || statuses["second.md"] != "stale" {
+		t.Fatalf("batch result = %+v", result)
+	}
+	firstAfter, err := os.ReadFile(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondAfter, err := os.ReadFile(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(firstAfter), "https://first.example") || string(secondAfter) != secondSource+"changed\n" {
+		t.Fatalf("first=%q second=%q", firstAfter, secondAfter)
+	}
+}
+
+func TestPlanOmitsAmbiguousDate(t *testing.T) {
+	root, path := testSource(t, "---\ndate: 01/02/2026\n---\n")
+	plan, err := PlanFile(root, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Edits) != 0 {
+		t.Fatalf("ambiguous date should have no proposed edit: %+v", plan.Edits)
+	}
+}

@@ -101,6 +101,18 @@ builderAdmin:
     refreshRuns: 100
   buildTimeoutSeconds: 7200
   historyDir: /data/site/.builder-admin
+  # Optional transient workspace for build output. Disabled preserves the
+  # historical /data/site/.build-work behavior. emptyDir is useful when the
+  # durable site volume is slower for small-file writes.
+  workspace:
+    enabled: false
+    mode: emptyDir
+    mountPath: /data/work
+    workDir: /data/work/build
+    emptyDir: {}
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
   webhook:
     enabled: false
     branch: main
@@ -200,6 +212,9 @@ search:
     tag: "latest"
     pullPolicy: IfNotPresent
   mode: watch-content
+  localCache:
+    # Mount pod-local cache storage at /data/cache for source-root cache symlinks.
+    enabled: false
   writableIndexStorage:
     mode: emptyDir
   port: 3001
@@ -262,6 +277,8 @@ storage:
     mode: pvc
     storageClassName: longhorn
     size: 10Gi
+    # Set only when binding a retained, pre-existing PV with copied site data.
+    volumeName: ""
     accessModes:
       - ReadWriteMany
     pvcNameSuffix: ""

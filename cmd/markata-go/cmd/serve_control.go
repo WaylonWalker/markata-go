@@ -13,6 +13,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
+	"github.com/WaylonWalker/markata-go/pkg/servefix"
 )
 
 var serveControl struct {
@@ -151,22 +152,57 @@ func finishServeJob(id string, m *lifecycle.Manager, result *BuildResult, buildE
 		affected = append(affected, page.Path)
 	}
 	runtime.SetJobPages(id, affected)
-	if len(pages) > 0 {
+	if len(pages) > 0 || buildErr == nil {
 		runtime.SetPages(pages)
 	}
 	seen := make(map[string]struct{})
+	fixPlans := make(map[string]servefix.Plan)
 	add := func(issue diagnostics.Issue) {
-		key := fmt.Sprintf("%s:%d:%s", issue.File, issue.Range.StartLine, issue.Code)
+		key := fmt.Sprintf("%s:%d:%d:%d:%s:%s", issue.File, issue.Range.StartLine, issue.Range.StartCol, issue.Range.EndCol, issue.Code, issue.Message)
 		if _, ok := seen[key]; ok {
 			return
 		}
 		seen[key] = struct{}{}
-		runtime.AddDiagnostic(servecontrol.Diagnostic{
+		diagnostic := servecontrol.Diagnostic{
 			Code: issue.Code, Severity: issue.Severity.String(), Message: issue.Message,
 			File: issue.File, Page: issue.File, Line: issue.Range.StartLine + 1,
 			Column: issue.Range.StartCol + 1, JobID: id,
-			SuggestedFix: serveSuggestedFix(issue.Code),
-		})
+			Explanation: serveSuggestedFix(issue.Code), SuggestedFix: serveSuggestedFix(issue.Code),
+			FixSafety: string(servefix.SafetyManual),
+		}
+		if m != nil && issue.File != "" {
+			cacheKey := filepath.Clean(issue.File)
+			plan, ok := fixPlans[cacheKey]
+			if !ok {
+				var planErr error
+				plan, planErr = servefix.PlanFile(m.Config().ContentDir, issue.File)
+				if planErr != nil {
+					plan = servefix.Plan{}
+				}
+				fixPlans[cacheKey] = plan
+			}
+			for i := range plan.Edits {
+				edit := plan.Edits[i]
+				if edit.Code != issue.Code || edit.Line != issue.Range.StartLine+1 || edit.Column != issue.Range.StartCol+1 {
+					continue
+				}
+				file := filepath.ToSlash(issue.File)
+				if filepath.IsAbs(file) {
+					contentRoot, rootErr := filepath.Abs(m.Config().ContentDir)
+					if relative, err := filepath.Rel(contentRoot, issue.File); rootErr == nil && err == nil {
+						file = filepath.ToSlash(relative)
+					}
+				}
+				diagnostic.FixSafety = string(edit.Safety)
+				diagnostic.FixPlans = append(diagnostic.FixPlans, servecontrol.FixPlan{
+					ID: edit.ID, Category: edit.Category, Safety: string(edit.Safety), File: file,
+					Line: edit.Line, Column: edit.Column, EndLine: edit.EndLine,
+					EndColumn: edit.EndColumn, Before: edit.Before, After: edit.After,
+					Digest: plan.Digest, Explanation: edit.Explanation,
+				})
+			}
+		}
+		runtime.AddDiagnostic(diagnostic)
 	}
 	for _, entry := range snapshot.Entries {
 		for _, issue := range entry.Diagnostics {

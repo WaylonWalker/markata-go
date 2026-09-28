@@ -28,6 +28,17 @@ Before making changes:
 6. Use `markata-go build --fast` or `markata-go serve --fast` while iterating; use `markata-go serve --incremental` when you need production-style output processing.
 7. Only reach for Go plugin work after checking whether the change belongs in config, frontmatter, templates, CSS, or feeds.
 
+## Local Problems and safe fixes
+
+When debugging content in a running local site, use `markata-go serve` and open
+the local Control Center at `/_markata/`. Review each proposed source edit
+before applying it. `SAFE` plans are deterministic and support grouped review;
+`REVIEW` plans need closer inspection; diagnostics without a plan need manual
+editing. Markata checks a source digest when applying a preview and skips files
+that changed afterward. Ambiguous dates and duplicate frontmatter keys require
+manual decisions. Production Builder Admin does not provide local source-edit
+capabilities.
+
 ## Topic Files
 
 Read only the topic files relevant to the task:

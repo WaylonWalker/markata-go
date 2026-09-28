@@ -21,6 +21,7 @@ var (
 	builderAdminPort                  int
 	builderAdminSourceDir             string
 	builderAdminSiteDir               string
+	builderAdminWorkDir               string
 	builderAdminCacheMount            string
 	builderAdminHistoryDir            string
 	builderAdminWatch                 bool
@@ -65,6 +66,7 @@ func init() {
 	builderAdminCmd.Flags().IntVar(&builderAdminPort, "port", 8080, "port to listen on")
 	builderAdminCmd.Flags().StringVar(&builderAdminSourceDir, "source-dir", ".", "source directory to watch and build from")
 	builderAdminCmd.Flags().StringVar(&builderAdminSiteDir, "release-dir", "public", "release root that contains releases/ and current")
+	builderAdminCmd.Flags().StringVar(&builderAdminWorkDir, "work-dir", "", "optional build workspace directory; defaults to <release-dir>/.build-work")
 	builderAdminCmd.Flags().StringVar(&builderAdminCacheMount, "cache-mount", "", "optional dedicated cache mount for .markata symlinks")
 	builderAdminCmd.Flags().StringVar(&builderAdminHistoryDir, "history-dir", "", "directory for persisted builder-admin state and logs")
 	builderAdminCmd.Flags().BoolVar(&builderAdminWatch, "watch", true, "enable recursive file watching")
@@ -98,6 +100,9 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateBuilderAdminWorkDir(builderAdminWorkDir, builderAdminSourceDir, builderAdminSiteDir); err != nil {
+		return err
+	}
 	configPath := resolveBuilderAdminConfigPath(cfgFile, builderAdminSourceDir)
 	authHeaders, err := resolveBuilderAdminAuthHeaders(cmd, configPath)
 	if err != nil {
@@ -112,6 +117,7 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 		Port:                 builderAdminPort,
 		SourceDir:            builderAdminSourceDir,
 		SiteDir:              builderAdminSiteDir,
+		WorkDir:              builderAdminWorkDir,
 		ConfigPath:           configPath,
 		CacheMount:           builderAdminCacheMount,
 		HistoryDir:           builderAdminHistoryDir,
@@ -138,6 +144,60 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	return svc.Start(ctx)
+}
+
+func validateBuilderAdminWorkDir(workDir, sourceDir, siteDir string) error {
+	if strings.TrimSpace(workDir) == "" {
+		return nil
+	}
+	workAbs, err := filepath.Abs(workDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin work directory: %w", err)
+	}
+	if filepath.Dir(workAbs) == workAbs {
+		return fmt.Errorf("builder-admin work directory must not be a filesystem root: %s", workDir)
+	}
+	sourceAbs, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin source directory: %w", err)
+	}
+	siteAbs, err := filepath.Abs(siteDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin release directory: %w", err)
+	}
+	if workAbs == sourceAbs {
+		return fmt.Errorf("builder-admin work directory must not equal the source directory: %s", sourceDir)
+	}
+	if workAbs == siteAbs {
+		return fmt.Errorf("builder-admin work directory must not equal the release directory: %s", siteDir)
+	}
+	if pathWithin(workAbs, siteAbs) {
+		rel, err := filepath.Rel(siteAbs, workAbs)
+		if err != nil {
+			return fmt.Errorf("resolve builder-admin work directory relative to release directory: %w", err)
+		}
+		first := rel
+		if separator := strings.IndexRune(rel, os.PathSeparator); separator >= 0 {
+			first = rel[:separator]
+		}
+		switch first {
+		case "releases", "current", ".builder-admin":
+			return fmt.Errorf("builder-admin work directory must not use reserved release path %q: %s", first, workDir)
+		}
+		return nil
+	}
+	if pathWithin(workAbs, sourceAbs) {
+		return fmt.Errorf("builder-admin work directory must not be inside the source directory: %s", workDir)
+	}
+	return nil
+}
+
+func pathWithin(path, parent string) bool {
+	rel, err := filepath.Rel(parent, path)
+	if err != nil || rel == "." || rel == ".." {
+		return rel == "."
+	}
+	return !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 // resolveBuilderAdminWebhook applies site configuration and MARKATA_GO_ overrides,

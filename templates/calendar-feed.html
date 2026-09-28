@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
+{% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block page_wrapper_class %} page-wrapper--feed-only{% endblock %}
+{% block head %}
+{{ block.Super() }}
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
+<link rel="stylesheet" href="{{ 'css/calendar-feed.css' | theme_asset_hashed }}">
+<script src="{{ 'js/calendar-feed.js' | theme_asset_hashed }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="feed calendar-feed h-feed" data-calendar-feed>
+  <header class="feed-header">
+    <div class="feed-header-copy">
+      <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
+      {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
+      <div class="feed-stats">
+        <span><strong>{{ feed_stats_total_posts }}</strong> posts</span>
+        {% if feed_stats_latest_post %}<span>latest post {{ feed_stats_latest_post }}</span>{% endif %}
+      </div>
+      {% if feed.posts %}
+      <div class="calendar-view-switch" data-calendar-switch hidden aria-label="Archive view">
+        <button type="button" data-calendar-mode="list" aria-pressed="false">List</button>
+        <button type="button" data-calendar-mode="calendar" aria-pressed="true">Calendar</button>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if config.author %}
+  <div class="feed-author-card p-author h-card visually-hidden">
+    <a class="u-url u-uid p-name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
+  </div>
+  {% endif %}
+
+  {% if feed.posts %}
+  <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>
+
+  <ul class="calendar-feed-list" data-calendar-list aria-label="Posts by date">
+    {% for post in feed.posts %}
+      {% if post.date %}
+      <li class="h-entry" data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}">
+        <time class="dt-published" datetime="{{ post.date | date_format:"2006-01-02" }}">{{ post.date | date_format:"January 2, 2006" }}</time>
+        <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
+      </li>
+      {% else %}
+      <li class="h-entry">
+        <span class="calendar-feed-undated">Undated</span>
+        <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
+      </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="feed-empty">No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
+  {% endif %}
+</div>
+{% endblock %}
