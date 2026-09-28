@@ -50,6 +50,29 @@ jobs:
               text = path.read_text()
               if text.startswith('\\'):
                   path.write_text(text[1:])
+
+          # The generated TOML fixture uses a Go raw string, so make its escaped
+          # newlines real newlines rather than literal backslash-n TOML input.
+          path = Path('pkg/config/feed_views_test.go')
+          text = path.read_text()
+          old = '`[markata-go.feed_defaults]\\nviews = ["default", "calendar"]\\n[[markata-go.feeds]]\\nslug = "notes"\\nviews = ["default", "simple"]\\n`'
+          new = '`[markata-go.feed_defaults]\nviews = ["default", "calendar"]\n[[markata-go.feeds]]\nslug = "notes"\nviews = ["default", "simple"]\n`'
+          if old not in text:
+              raise SystemExit('TOML feed views fixture anchor missing')
+          path.write_text(text.replace(old, new, 1))
+
+          # Simple is a presentation as well as an output format; shared format
+          # links must obey the view opt-out contract too.
+          for filename in (
+              'pkg/themes/default/templates/components/format-links.html',
+              'templates/components/format-links.html',
+          ):
+              path = Path(filename)
+              text = path.read_text()
+              old = '{% if feed.formats.simple_html %}'
+              if old not in text:
+                  raise SystemExit(f'{filename}: simple format-link anchor missing')
+              path.write_text(text.replace(old, '{% if feed.views.simple and feed.formats.simple_html %}', 1))
           PY
           gofmt -w pkg/models/feed.go pkg/config/feed_views_validation.go pkg/config/feed_views_test.go pkg/templates/context.go pkg/templates/feed_views_test.go pkg/plugins/feed_views.go pkg/plugins/feed_views_test.go pkg/config/parser.go pkg/config/merge.go pkg/config/validate.go pkg/plugins/publish_feeds.go pkg/plugins/templates.go
           go test ./pkg/models ./pkg/config ./pkg/templates ./pkg/plugins
