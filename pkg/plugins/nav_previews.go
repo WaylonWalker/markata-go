@@ -163,12 +163,11 @@ func cleanNavPath(raw string) string {
 	return cleaned + "/"
 }
 
-// feedNavPreview intentionally contains only metadata that should invalidate
-// every page when it changes. Nav previews are rendered into the global shell,
-// so volatile aggregate statistics (total words/read time/sparklines) make an
-// ordinary edit to any archive member look like a global template dependency.
-// Membership count is retained because adding/removing a post genuinely changes
-// the visible nav preview and is comparatively infrequent.
+// feedNavPreview intentionally excludes body-derived aggregate statistics from
+// global nav state. Total words/read time can change on any ordinary body edit,
+// which previously turned a single archive edit into a whole-site cache miss.
+// Membership count and publication rhythm remain because they depend on visible
+// feed membership/dates, which legitimately change the shared nav preview.
 func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 	preview := map[string]interface{}{
 		"kind":        "feed",
@@ -183,6 +182,9 @@ func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 		count++
 	}
 	preview["count"] = count
+	window := computeSparklineWindow(feed.Posts, false)
+	preview["sparkline"] = buildFeedSparkline(feed.Posts, window, false)
+	preview["sparkline_title"] = buildFeedSparklineTitle(feed.Posts, window, false)
 	if strings.HasPrefix(feed.Slug, "tags/") {
 		preview["tags"] = []string{strings.TrimPrefix(feed.Slug, "tags/")}
 	}
