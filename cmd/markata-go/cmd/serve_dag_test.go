@@ -13,7 +13,7 @@ func TestServeRegistersDAGFlag(t *testing.T) {
 	if flag == nil {
 		t.Fatal("serve --dag flag is not registered")
 	}
-	if flag.DefValue != "false" {
+	if flag.DefValue != envValueDisabled {
 		t.Fatalf("serve --dag default = %q, want false", flag.DefValue)
 	}
 }
@@ -22,7 +22,7 @@ func TestDAGBuildPreservesServeStageObserver(t *testing.T) {
 	previous := buildDAG
 	buildDAG = true
 	t.Cleanup(func() { buildDAG = previous })
-	t.Setenv(dagBuildEnv, "false")
+	t.Setenv(dagBuildEnv, envValueDisabled)
 
 	manager := lifecycle.NewManager()
 	got := make([]string, 0, len(dagLifecycleStages)*2)
