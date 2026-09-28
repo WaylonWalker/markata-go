@@ -52,34 +52,22 @@ func TestBuildManifestCharacterization(t *testing.T) {
 	}
 
 	want := Manifest{Records: []FileRecord{
-		manifestRecord("assets/site.css", files["assets/site.css"], ClassSemantic),
-		manifestRecord("nested/cache/source", files["nested/cache/source"], ClassDeterministic),
-		manifestRecord("nested/output/source", files["nested/output/source"], ClassVolatile),
+		manifestRecord(t, root, "assets/site.css", files["assets/site.css"], ClassSemantic),
+		manifestRecord(t, root, "nested/cache/source", files["nested/cache/source"], ClassDeterministic),
+		manifestRecord(t, root, "nested/output/source", files["nested/output/source"], ClassVolatile),
 	}}
 	if runtime.GOOS != "windows" {
-		target := "../post.md"
-		hash := sha256.Sum256([]byte(target))
-		directoryTarget := "nested"
-		directoryHash := sha256.Sum256([]byte(directoryTarget))
 		want.Records = []FileRecord{
 			want.Records[0],
-			{
-				Path: "content/latest.md", SHA256: hex.EncodeToString(hash[:]),
-				Size: int64(len(target)), Mode: uint32(os.ModeSymlink | 0o777), Type: TypeSymlink,
-				Class: ClassDeterministic,
-			},
-			manifestRecord("content/post.md", files["content/post.md"], ClassDeterministic),
-			{
-				Path: "nested-link", SHA256: hex.EncodeToString(directoryHash[:]),
-				Size: int64(len(directoryTarget)), Mode: uint32(os.ModeSymlink | 0o777), Type: TypeSymlink,
-				Class: ClassDeterministic,
-			},
+			manifestSymlinkRecord(t, root, "content/latest.md", "../post.md"),
+			manifestRecord(t, root, "content/post.md", files["content/post.md"], ClassDeterministic),
+			manifestSymlinkRecord(t, root, "nested-link", "nested"),
 			want.Records[1], want.Records[2],
 		}
 	} else {
 		want.Records = []FileRecord{
 			want.Records[0],
-			manifestRecord("content/post.md", files["content/post.md"], ClassDeterministic),
+			manifestRecord(t, root, "content/post.md", files["content/post.md"], ClassDeterministic),
 			want.Records[1], want.Records[2],
 		}
 	}
@@ -119,11 +107,29 @@ func TestBuildManifestCharacterization_RootIsFile(t *testing.T) {
 	}
 }
 
-func manifestRecord(path string, contents []byte, class OutputClass) FileRecord {
+func manifestRecord(t *testing.T, root, path string, contents []byte, class OutputClass) FileRecord {
+	t.Helper()
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
+	if err != nil {
+		t.Fatal(err)
+	}
 	hash := sha256.Sum256(contents)
 	return FileRecord{
 		Path: path, SHA256: hex.EncodeToString(hash[:]), Size: int64(len(contents)),
-		Mode: 0o600, Type: TypeRegular, Class: class,
+		Mode: uint32(info.Mode()), Type: TypeRegular, Class: class,
+	}
+}
+
+func manifestSymlinkRecord(t *testing.T, root, path, target string) FileRecord {
+	t.Helper()
+	info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(path)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256([]byte(target))
+	return FileRecord{
+		Path: path, SHA256: hex.EncodeToString(hash[:]), Size: int64(len(target)),
+		Mode: uint32(info.Mode()), Type: TypeSymlink, Class: ClassDeterministic,
 	}
 }
 
