@@ -37,22 +37,8 @@
 
   {% if feed.posts %}
   <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>
-
-  <ul class="calendar-feed-list" data-calendar-list data-calendar-primary aria-label="Posts by date">
-    {% for post in feed.posts %}
-      {% if post.date %}
-      <li class="h-entry" data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}">
-        <time class="dt-published" datetime="{{ post.date | date_format:"2006-01-02" }}">{{ post.date | date_format:"January 2, 2006" }}</time>
-        <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
-      </li>
-      {% else %}
-      <li class="h-entry">
-        <span class="calendar-feed-undated">Undated</span>
-        <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
-      </li>
-      {% endif %}
-    {% endfor %}
-  </ul>
+  {% set calendar_source_primary = true %}
+  {% include "partials/calendar-source.html" %}
   {% else %}
   <p class="feed-empty">No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
   {% endif %}
