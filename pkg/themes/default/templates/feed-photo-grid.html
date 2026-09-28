@@ -55,7 +55,7 @@
           {% endfor %}
         </svg>
         <div class="feed-header-sparkline-meta" aria-live="polite">
-          <span class="feed-header-sparkline-value">{{ feed_sparkline_summary }}</span>
+          <span>{{ feed_sparkline_summary }}</span>
         </div>
         {% if feed_sparkline_start and feed_sparkline_end %}
         <div class="feed-header-sparkline-axis" aria-hidden="true">
@@ -73,7 +73,7 @@
     {% if config.seo.author_image %}
     <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
     {% elif config.seo.default_image %}
-    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.url }}{{ config.seo.default_image }}{% else %}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
+    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
     {% endif %}
     <a class="u-url u-uid p-name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
   </div>
