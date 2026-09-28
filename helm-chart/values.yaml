@@ -212,6 +212,9 @@ search:
     tag: "latest"
     pullPolicy: IfNotPresent
   mode: watch-content
+  localCache:
+    # Mount pod-local cache storage at /data/cache for source-root cache symlinks.
+    enabled: false
   writableIndexStorage:
     mode: emptyDir
   port: 3001
