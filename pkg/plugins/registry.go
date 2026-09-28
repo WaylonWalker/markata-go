@@ -82,6 +82,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 	pluginRegistry.constructors["hashtag_tags"] = func() lifecycle.Plugin { return NewHashtagTagsPlugin() }
 	pluginRegistry.constructors[iconPluginName] = func() lifecycle.Plugin { return NewIconsPlugin() }
+	pluginRegistry.constructors[iconVendorPluginName] = func() lifecycle.Plugin { return NewIconVendorPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["webmentions_fetch"] = func() lifecycle.Plugin { return NewWebmentionsFetchPlugin() }
 	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
@@ -163,6 +164,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewGlobPlugin(),
 		NewBackgroundPlugin(), // Configure background decorations early
 		NewCDNAssetsPlugin(),  // Download CDN assets for self-hosting (Configure + Write)
+		NewIconVendorPlugin(), // Download configured icon packs before icon indexing
 		NewTailwindPlugin(),   // Build Tailwind CSS and inject includes
 
 		// Load stage plugins
@@ -254,6 +256,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 func MinimalPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
 		NewGlobPlugin(),
+		NewIconVendorPlugin(),
 		NewLoadPlugin(),
 		NewAutoTitlePlugin(),
 		NewInlineTitlesPlugin(),
