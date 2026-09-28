@@ -26,6 +26,8 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		{"feeds_defaults_orphan_threshold", "11", []string{"FeedDefaults", "OrphanThreshold"}, "int"},
 		{"feed_defaults_syndication_max_items", "12", []string{"FeedDefaults", "Syndication", "MaxItems"}, "int"},
 		{"feeds_defaults_syndication_max_items", "13", []string{"FeedDefaults", "Syndication", "MaxItems"}, "int"},
+		{"feeds_defaults_items_per_page", "15", []string{"FeedDefaults", "ItemsPerPage"}, "int"},
+		{"feeds_defaults_orphan_threshold", "16", []string{"FeedDefaults", "OrphanThreshold"}, "int"},
 		{"encryption_min_password_length", "14", []string{"Encryption", "MinPasswordLength"}, "int"},
 	}
 	stringCases := []testCase{
@@ -63,6 +65,12 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		{"glob_use_gitignore", "TRUE", []string{"GlobConfig", "UseGitignore"}, "bool"},
 		{"feed_defaults_formats_html", "true", []string{"FeedDefaults", "Formats", "HTML"}, "bool"},
 		{"feeds_defaults_formats_rss", "no", []string{"FeedDefaults", "Formats", "RSS"}, "bool"},
+		{"feeds_defaults_formats_html", "false", []string{"FeedDefaults", "Formats", "HTML"}, "bool"},
+		{"feeds_defaults_formats_atom", "no", []string{"FeedDefaults", "Formats", "Atom"}, "bool"},
+		{"feeds_defaults_formats_json", "yes", []string{"FeedDefaults", "Formats", "JSON"}, "bool"},
+		{"feeds_defaults_formats_markdown", "no", []string{"FeedDefaults", "Formats", "Markdown"}, "bool"},
+		{"feeds_defaults_formats_text", "yes", []string{"FeedDefaults", "Formats", "Text"}, "bool"},
+		{"feeds_defaults_formats_sitemap", "no", []string{"FeedDefaults", "Formats", "Sitemap"}, "bool"},
 		{"feed_defaults_formats_atom", "1", []string{"FeedDefaults", "Formats", "Atom"}, "bool"},
 		{"feed_defaults_formats_json", "false", []string{"FeedDefaults", "Formats", "JSON"}, "bool"},
 		{"feed_defaults_formats_markdown", "yes", []string{"FeedDefaults", "Formats", "Markdown"}, "bool"},
@@ -71,9 +79,13 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		{"feed_defaults_syndication_include_content", "yes", []string{"FeedDefaults", "Syndication", "IncludeContent"}, "bool"},
 		{"feed_defaults_syndication_site_archive_disabled", "true", []string{"FeedDefaults", "Syndication", "SiteArchiveDisabled"}, "bool"},
 		{"feed_defaults_syndication_feed_archives_disabled", "false", []string{"FeedDefaults", "Syndication", "FeedArchivesDisabled"}, "bool"},
+		{"feeds_defaults_syndication_include_content", "no", []string{"FeedDefaults", "Syndication", "IncludeContent"}, "bool"},
+		{"feeds_defaults_syndication_site_archive_disabled", "no", []string{"FeedDefaults", "Syndication", "SiteArchiveDisabled"}, "bool"},
+		{"feeds_defaults_syndication_feed_archives_disabled", "yes", []string{"FeedDefaults", "Syndication", "FeedArchivesDisabled"}, "bool"},
 		{"search_pagefind_auto_install", "true", []string{"Search", "Pagefind", "AutoInstall"}, "*bool"},
 		{"search_pagefind_verbose", "no", []string{"Search", "Pagefind", "Verbose"}, "*bool"},
 		{"search_enabled", "yes", []string{"Search", "Enabled"}, "*bool"},
+		{"search_pagefind_verbose", " TRUE ", []string{"Search", "Pagefind", "Verbose"}, "*bool"},
 		{"encryption_enabled", "true", []string{"Encryption", "Enabled"}, "bool"},
 		{"encryption_enforce_strength", "no", []string{"Encryption", "EnforceStrength"}, "bool"},
 		{"blogroll_enabled", "true", []string{"Blogroll", "Enabled"}, "bool"},
@@ -82,7 +94,7 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 	}
 	for _, tc := range append(append(append(intCases, stringCases...), listCases...), boolCases...) {
 		t.Run(tc.key, func(t *testing.T) {
-			got := &models.Config{}
+			got := characterizedConfig()
 			before := *got
 			applyEnvOverride(got, tc.key, tc.value)
 			want := before
@@ -97,11 +109,17 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		{"content_index_enabled", "yes"}, {"contentindex_enabled", "no"}, {"content_index_output", "index.json"}, {"contentindex_output", "other.json"},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
-			got := &models.Config{Extra: map[string]interface{}{"content_index": map[string]interface{}{"keep": "yes"}}}
+			got := &models.Config{Extra: map[string]interface{}{
+				"content_index": map[string]interface{}{"keep": "yes"},
+				"unrelated":     "preserved",
+			}}
 			before := *got
 			applyEnvOverride(got, tc.key, tc.value)
 			want := before
-			want.Extra = map[string]interface{}{"content_index": map[string]interface{}{"keep": "yes"}}
+			want.Extra = map[string]interface{}{
+				"content_index": map[string]interface{}{"keep": "yes"},
+				"unrelated":     "preserved",
+			}
 			content := map[string]interface{}{"keep": "yes"}
 			if strings.HasSuffix(tc.key, "enabled") {
 				content["enabled"] = parseBool(tc.value)
@@ -120,23 +138,35 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 		field      string
 	}{{"tailwind_build", "true", "Build"}, {"tailwind_preflight", "no", "Preflight"}} {
 		t.Run(tc.key, func(t *testing.T) {
-			got := &models.Config{}
+			build, preflight := false, true
+			existing := models.TailwindConfig{Input: "input.css", Output: "output.css", Build: &build, Preflight: &preflight}
+			got := &models.Config{Extra: map[string]interface{}{"sentinel": "preserved", "tailwind": existing}}
 			applyEnvOverride(got, tc.key, tc.value)
-			cfg, ok := got.Extra["tailwind"].(models.TailwindConfig)
-			if !ok {
-				t.Fatalf("tailwind config type = %T", got.Extra["tailwind"])
+			want := *got
+			wantTailwind := existing
+			value := parseBool(tc.value)
+			if tc.field == "Build" {
+				wantTailwind.Build = &value
+			} else {
+				wantTailwind.Preflight = &value
 			}
-			v := reflect.ValueOf(cfg)
-			ptr := v.FieldByName(tc.field)
-			if ptr.IsNil() || ptr.Elem().Bool() != parseBool(tc.value) {
-				t.Fatalf("tailwind.%s = %v", tc.field, ptr)
+			want.Extra = map[string]interface{}{"sentinel": "preserved", "tailwind": wantTailwind}
+			if !reflect.DeepEqual(*got, want) {
+				t.Fatalf("got %#v, want %#v", *got, want)
 			}
 		})
 	}
 
-	for _, key := range []string{"concurrency", "feed_defaults_items_per_page", "encryption_min_password_length"} {
+	for _, key := range []string{
+		"concurrency", "feed_defaults_items_per_page", "feeds_defaults_items_per_page",
+		"feed_defaults_orphan_threshold", "feeds_defaults_orphan_threshold",
+		"feed_defaults_syndication_max_items", "feeds_defaults_syndication_max_items", "encryption_min_password_length",
+	} {
 		t.Run(key+"_invalid_integer", func(t *testing.T) {
-			got := &models.Config{Concurrency: 31}
+			got := characterizedConfig()
+			got.Concurrency = 31
+			got.FeedDefaults.Syndication.MaxItems = 31
+			got.Encryption.MinPasswordLength = 31
 			before := *got
 			applyEnvOverride(got, key, "not-an-integer")
 			if !reflect.DeepEqual(*got, before) {
@@ -155,6 +185,31 @@ func TestApplyEnvOverride_Characterization(t *testing.T) {
 			t.Fatalf("got %#v, want %#v", *got, *want)
 		}
 	})
+
+	t.Run("invalid_boolean_becomes_false", func(t *testing.T) {
+		got := characterizedConfig()
+		applyEnvOverride(got, "search_enabled", "sometimes")
+		want := *characterizedConfig()
+		falseValue := false
+		want.Search.Enabled = &falseValue
+		if !reflect.DeepEqual(*got, want) {
+			t.Fatalf("got %#v, want %#v", *got, want)
+		}
+	})
+}
+
+func characterizedConfig() *models.Config {
+	falseValue := false
+	return &models.Config{
+		OutputDir: "existing-output", URL: "https://old.test", Title: "existing-title",
+		Hooks: []string{"existing-hook"}, Concurrency: 23,
+		GlobConfig:     models.GlobConfig{Patterns: []string{"existing/**/*.md"}, SlugMode: "flat"},
+		MarkdownConfig: models.MarkdownConfig{Extensions: []string{"existing-extension"}},
+		FeedDefaults:   models.FeedDefaults{ItemsPerPage: 17, Formats: models.FeedFormats{HTML: true, RSS: true}},
+		Search:         models.SearchConfig{Endpoint: "/existing", Enabled: &falseValue},
+		Images:         models.ImagesConfig{Path: "existing-images"},
+		Extra:          map[string]interface{}{"sentinel": map[string]interface{}{"keep": "yes"}},
+	}
 }
 
 func setCharacterizedField(t *testing.T, target reflect.Value, path []string, kind, raw string) {
@@ -170,14 +225,14 @@ func setCharacterizedField(t *testing.T, target reflect.Value, path []string, ki
 	switch kind {
 	case "string":
 		target.SetString(raw)
+	case "*string":
+		s := raw
+		target.Set(reflect.ValueOf(&s))
 	case "bool":
 		target.SetBool(parseBool(raw))
 	case "*bool":
 		b := parseBool(raw)
 		target.Set(reflect.ValueOf(&b))
-	case "*string":
-		s := raw
-		target.Set(reflect.ValueOf(&s))
 	case "int":
 		n, err := strconv.Atoi(raw)
 		if err != nil {

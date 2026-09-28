@@ -46,14 +46,24 @@ func ApplyEnvOverrides(config *models.Config) error {
 	return nil
 }
 
-// applyEnvOverride applies a single environment variable override.
-//
-//nolint:gocyclo // This is a switch statement mapping env vars to config fields, complexity is unavoidable.
+// applyEnvOverride applies a single environment variable override. The related
+// setters keep each config area together, which makes supported keys easier to
+// inspect without changing the permissive behavior of unknown keys.
 func applyEnvOverride(config *models.Config, key, value string) {
-	// Normalize the key to lowercase for comparison
-	keyLower := strings.ToLower(key)
+	key = strings.ToLower(key)
+	if applySiteEnvOverride(config, key, value) ||
+		applyInputEnvOverride(config, key, value) ||
+		applyFeedEnvOverride(config, key, value) ||
+		applySearchEnvOverride(config, key, value) ||
+		applyEncryptionEnvOverride(config, key, value) ||
+		applyBlogrollEnvOverride(config, key, value) {
+		return
+	}
+	applyBuilderAdminEnvOverride(config, key, value)
+}
 
-	switch keyLower {
+func applySiteEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
 	case "output_dir":
 		config.OutputDir = value
 	case envKeyURL:
@@ -78,27 +88,32 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.AssetsDir = value
 	case "templates_dir":
 		config.TemplatesDir = value
-	case "images_enabled":
-		enabled := parseBool(value)
-		config.Images.Enabled = &enabled
-	case "images_path":
-		config.Images.Path = value
-	case "images_template":
-		config.Images.Template = value
-	case "images_export_json":
-		exportJSON := parseBool(value)
-		config.Images.ExportJSON = &exportJSON
-	case "images_include_unreferenced":
-		includeUnreferenced := parseBool(value)
-		config.Images.IncludeUnreferenced = &includeUnreferenced
 	case envKeyConcurrency:
-		if v, err := strconv.Atoi(value); err == nil {
-			config.Concurrency = v
+		if n, err := strconv.Atoi(value); err == nil {
+			config.Concurrency = n
 		}
 	case "hooks":
 		config.Hooks = parseStringList(value)
 	case "disabled_hooks":
 		config.DisabledHooks = parseStringList(value)
+	default:
+		return false
+	}
+	return true
+}
+
+func applyInputEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
+	case "images_enabled":
+		config.Images.Enabled = boolPointer(value)
+	case "images_path":
+		config.Images.Path = value
+	case "images_template":
+		config.Images.Template = value
+	case "images_export_json":
+		config.Images.ExportJSON = boolPointer(value)
+	case "images_include_unreferenced":
+		config.Images.IncludeUnreferenced = boolPointer(value)
 	case "glob_patterns":
 		config.GlobConfig.Patterns = parseStringList(value)
 	case "glob_use_gitignore":
@@ -107,13 +122,21 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.GlobConfig.SlugMode = value
 	case "markdown_extensions":
 		config.MarkdownConfig.Extensions = parseStringList(value)
+	default:
+		return false
+	}
+	return true
+}
+
+func applyFeedEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
 	case "feed_defaults_items_per_page", "feeds_defaults_items_per_page":
-		if v, err := strconv.Atoi(value); err == nil {
-			config.FeedDefaults.ItemsPerPage = v
+		if n, err := strconv.Atoi(value); err == nil {
+			config.FeedDefaults.ItemsPerPage = n
 		}
 	case "feed_defaults_orphan_threshold", "feeds_defaults_orphan_threshold":
-		if v, err := strconv.Atoi(value); err == nil {
-			config.FeedDefaults.OrphanThreshold = v
+		if n, err := strconv.Atoi(value); err == nil {
+			config.FeedDefaults.OrphanThreshold = n
 		}
 	case "feed_defaults_formats_html", "feeds_defaults_formats_html":
 		config.FeedDefaults.Formats.HTML = parseBool(value)
@@ -130,8 +153,8 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	case "feed_defaults_formats_sitemap", "feeds_defaults_formats_sitemap":
 		config.FeedDefaults.Formats.Sitemap = parseBool(value)
 	case "feed_defaults_syndication_max_items", "feeds_defaults_syndication_max_items":
-		if v, err := strconv.Atoi(value); err == nil {
-			config.FeedDefaults.Syndication.MaxItems = v
+		if n, err := strconv.Atoi(value); err == nil {
+			config.FeedDefaults.Syndication.MaxItems = n
 		}
 	case "feed_defaults_syndication_include_content", "feeds_defaults_syndication_include_content":
 		config.FeedDefaults.Syndication.IncludeContent = parseBool(value)
@@ -139,33 +162,22 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.FeedDefaults.Syndication.SiteArchiveDisabled = parseBool(value)
 	case "feed_defaults_syndication_feed_archives_disabled", "feeds_defaults_syndication_feed_archives_disabled":
 		config.FeedDefaults.Syndication.FeedArchivesDisabled = parseBool(value)
+	default:
+		return false
+	}
+	return true
+}
+
+func applySearchEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
 	case "search_endpoint":
 		config.Search.Endpoint = value
 	case "search_backend":
 		config.Search.Backend = value
 	case "search_bleve_endpoint":
 		config.Search.Bleve.Endpoint = value
-	case "content_index_enabled", "contentindex_enabled", "content_index_output", "contentindex_output":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		contentIndex, contentIndexOK := config.Extra["content_index"].(map[string]interface{})
-		if !contentIndexOK {
-			contentIndex = nil
-		}
-		if contentIndex == nil {
-			contentIndex = make(map[string]interface{})
-		}
-		if strings.HasSuffix(keyLower, "enabled") {
-			contentIndex["enabled"] = parseBool(value)
-		} else {
-			contentIndex["output"] = value
-		}
-		config.Extra["content_index"] = contentIndex
-	// Pagefind search settings
 	case "search_pagefind_auto_install":
-		autoInstall := parseBool(value)
-		config.Search.Pagefind.AutoInstall = &autoInstall
+		config.Search.Pagefind.AutoInstall = boolPointer(value)
 	case "search_pagefind_cache_dir":
 		config.Search.Pagefind.CacheDir = value
 	case "search_pagefind_version":
@@ -173,34 +185,59 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	case "search_pagefind_bundle_dir":
 		config.Search.Pagefind.BundleDir = value
 	case "search_pagefind_verbose":
-		verbose := parseBool(value)
-		config.Search.Pagefind.Verbose = &verbose
+		config.Search.Pagefind.Verbose = boolPointer(value)
 	case "search_enabled":
-		enabled := parseBool(value)
-		config.Search.Enabled = &enabled
+		config.Search.Enabled = boolPointer(value)
+	case "content_index_enabled", "contentindex_enabled", "content_index_output", "contentindex_output":
+		applyContentIndexEnvOverride(config, key, value)
 	case "tailwind_build":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+		config.Extra = ensureExtra(config.Extra)
+		tw, ok := config.Extra["tailwind"].(models.TailwindConfig)
 		if !ok {
-			tailwindConfig = models.NewTailwindConfig()
+			tw = models.NewTailwindConfig()
 		}
-		build := parseBool(value)
-		tailwindConfig.Build = &build
-		config.Extra["tailwind"] = tailwindConfig
+		tw.Build = boolPointer(value)
+		config.Extra["tailwind"] = tw
 	case "tailwind_preflight":
-		if config.Extra == nil {
-			config.Extra = make(map[string]interface{})
-		}
-		tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+		config.Extra = ensureExtra(config.Extra)
+		tw, ok := config.Extra["tailwind"].(models.TailwindConfig)
 		if !ok {
-			tailwindConfig = models.NewTailwindConfig()
+			tw = models.NewTailwindConfig()
 		}
-		preflight := parseBool(value)
-		tailwindConfig.Preflight = &preflight
-		config.Extra["tailwind"] = tailwindConfig
-	// Encryption settings
+		tw.Preflight = boolPointer(value)
+		config.Extra["tailwind"] = tw
+	default:
+		return false
+	}
+	return true
+}
+
+func applyContentIndexEnvOverride(config *models.Config, key, value string) {
+	config.Extra = ensureExtra(config.Extra)
+	contentIndex, contentIndexOK := config.Extra["content_index"].(map[string]interface{})
+	if !contentIndexOK {
+		contentIndex = nil
+	}
+	if contentIndex == nil {
+		contentIndex = make(map[string]interface{})
+	}
+	if strings.HasSuffix(key, "enabled") {
+		contentIndex["enabled"] = parseBool(value)
+	} else {
+		contentIndex["output"] = value
+	}
+	config.Extra["content_index"] = contentIndex
+}
+
+func ensureExtra(extra map[string]interface{}) map[string]interface{} {
+	if extra == nil {
+		return make(map[string]interface{})
+	}
+	return extra
+}
+
+func applyEncryptionEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
 	case "encryption_enabled":
 		config.Encryption.Enabled = parseBool(value)
 	case "encryption_default_key":
@@ -212,37 +249,56 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	case "encryption_min_estimated_crack_time":
 		config.Encryption.MinEstimatedCrackTime = value
 	case "encryption_min_password_length":
-		if v, err := strconv.Atoi(value); err == nil {
-			config.Encryption.MinPasswordLength = v
+		if n, err := strconv.Atoi(value); err == nil {
+			config.Encryption.MinPasswordLength = n
 		}
-	// Blogroll settings
+	default:
+		return false
+	}
+	return true
+}
+
+func applyBlogrollEnvOverride(config *models.Config, key, value string) bool {
+	switch key {
 	case "blogroll_enabled":
 		config.Blogroll.Enabled = parseBool(value)
 	case "blogroll_refresh_on_build":
-		refreshOnBuild := parseBool(value)
-		config.Blogroll.RefreshOnBuild = &refreshOnBuild
-	case "builder_admin_auth_headers_user_id":
-		config.BuilderAdmin.Auth.Headers.UserID = &value
-	case "builder_admin_auth_headers_username":
-		config.BuilderAdmin.Auth.Headers.Username = &value
-	case "builder_admin_auth_headers_display_name":
-		config.BuilderAdmin.Auth.Headers.DisplayName = &value
-	case "builder_admin_auth_headers_email":
-		config.BuilderAdmin.Auth.Headers.Email = &value
-	case "builder_admin_auth_headers_groups":
-		config.BuilderAdmin.Auth.Headers.Groups = &value
-	case "builder_admin_auth_headers_roles":
-		config.BuilderAdmin.Auth.Headers.Roles = &value
-	case "builder_admin_auth_headers_scopes":
-		config.BuilderAdmin.Auth.Headers.Scopes = &value
-	case "builder_admin_webhook_enabled":
-		enabled := parseBool(value)
-		config.BuilderAdmin.Webhook.Enabled = &enabled
-	case "builder_admin_webhook_branch":
-		config.BuilderAdmin.Webhook.Branch = &value
-	case "builder_admin_webhook_secret":
-		config.BuilderAdmin.Webhook.Secret = &value
+		config.Blogroll.RefreshOnBuild = boolPointer(value)
+	default:
+		return false
 	}
+	return true
+}
+
+func applyBuilderAdminEnvOverride(config *models.Config, key, value string) {
+	valuePointer := &value
+	switch key {
+	case "builder_admin_auth_headers_user_id":
+		config.BuilderAdmin.Auth.Headers.UserID = valuePointer
+	case "builder_admin_auth_headers_username":
+		config.BuilderAdmin.Auth.Headers.Username = valuePointer
+	case "builder_admin_auth_headers_display_name":
+		config.BuilderAdmin.Auth.Headers.DisplayName = valuePointer
+	case "builder_admin_auth_headers_email":
+		config.BuilderAdmin.Auth.Headers.Email = valuePointer
+	case "builder_admin_auth_headers_groups":
+		config.BuilderAdmin.Auth.Headers.Groups = valuePointer
+	case "builder_admin_auth_headers_roles":
+		config.BuilderAdmin.Auth.Headers.Roles = valuePointer
+	case "builder_admin_auth_headers_scopes":
+		config.BuilderAdmin.Auth.Headers.Scopes = valuePointer
+	case "builder_admin_webhook_enabled":
+		config.BuilderAdmin.Webhook.Enabled = boolPointer(value)
+	case "builder_admin_webhook_branch":
+		config.BuilderAdmin.Webhook.Branch = valuePointer
+	case "builder_admin_webhook_secret":
+		config.BuilderAdmin.Webhook.Secret = valuePointer
+	}
+}
+
+func boolPointer(value string) *bool {
+	parsed := parseBool(value)
+	return &parsed
 }
 
 // parseBool parses a string into a boolean.
