@@ -1,0 +1,51 @@
+name: PR 1402 synthetic feed defaults
+
+on:
+  push:
+    branches:
+      - feat/configurable-feed-views-1390
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/configurable-feed-views-1390
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Apply site defaults to synthetic sidebar feeds
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('pkg/plugins/templates.go')
+          text = path.read_text()
+
+          tag_old = '''\t\tfeedConfig := &models.FeedConfig{\n\t\t\tSlug:  feedSlug,\n\t\t\tTitle: fmt.Sprintf("Posts tagged: %s", tagName),\n\t\t\tPosts: sidebarPosts,\n\t\t}\n\n\t\treturn sidebarPosts, feedConfig\n'''
+          tag_new = '''\t\tfeedConfig := &models.FeedConfig{\n\t\t\tSlug:  feedSlug,\n\t\t\tTitle: fmt.Sprintf("Posts tagged: %s", tagName),\n\t\t\tPosts: sidebarPosts,\n\t\t}\n\t\tfeedConfig.ApplyDefaults(ToModelsConfig(config).FeedDefaults)\n\n\t\treturn sidebarPosts, feedConfig\n'''
+          if text.count(tag_old) != 1:
+              raise SystemExit('tag sidebar feed anchor missing')
+          text = text.replace(tag_old, tag_new, 1)
+
+          series_old = '''\tif group.cfg != nil && group.cfg.Description != "" {\n\t\tfeedConfig.Description = group.cfg.Description\n\t}\n\n\treturn publishedPosts, feedConfig\n'''
+          series_new = '''\tif group.cfg != nil && group.cfg.Description != "" {\n\t\tfeedConfig.Description = group.cfg.Description\n\t}\n\tfeedConfig.ApplyDefaults(ToModelsConfig(config).FeedDefaults)\n\n\treturn publishedPosts, feedConfig\n'''
+          if text.count(series_old) != 1:
+              raise SystemExit('series sidebar feed anchor missing')
+          path.write_text(text.replace(series_old, series_new, 1))
+          PY
+          gofmt -w pkg/plugins/templates.go
+          go test ./pkg/plugins ./pkg/templates ./pkg/config ./pkg/models
+      - name: Commit source fix
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add pkg/plugins/templates.go
+          git commit -m "fix(feeds): inherit view defaults in synthetic sidebars"
+          git push origin HEAD:feat/configurable-feed-views-1390
