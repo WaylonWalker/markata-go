@@ -58,7 +58,7 @@ func TestPlanBake_CharacterizationCorpus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), tt.file)
 			if tt.input != "" {
-				if err := os.WriteFile(path, []byte(tt.input), 0o640); err != nil {
+				if err := os.WriteFile(path, []byte(tt.input), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
