@@ -67,62 +67,14 @@ func TestWebHTML_UsesOnlyLocalFonts(t *testing.T) {
 	}
 }
 
-func TestWebHandler_FixPreviewApplyAndStaleProtection(t *testing.T) {
+func TestWebHandler_LegacySingleFileFixRoutesAreRetired(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "post.md")
-	original := "---\ndate: 09/26/2026\n---\n# Heading\n[link](//example.com)\n"
-	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	handler := NewWebHandlerWithSourceRoot(NewRuntime(), root)
-	request := fixRequest{Path: "post.md", Selection: servefix.Selection{All: true}}
-	body, err := json.Marshal(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response := serveLocalPost(handler, "/_markata/api/fixes/preview", body)
-	if response.Code != http.StatusOK {
-		t.Fatalf("preview status=%d body=%s", response.Code, response.Body.String())
-	}
-	var preview fixPreview
-	if err := json.Unmarshal(response.Body.Bytes(), &preview); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(preview.After, "## Heading") || !strings.Contains(preview.After, "https://example.com") {
-		t.Fatalf("preview did not contain safe fixes: %q", preview.After)
-	}
-	if got, err := os.ReadFile(path); err != nil || string(got) != original {
-		t.Fatalf("preview changed source: %q err=%v", got, err)
-	}
-	if err := os.WriteFile(path, []byte(original+"changed\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	applyBody, err := json.Marshal(fixApplyRequest{Path: "post.md", Digest: preview.Digest, Selection: preview.Selection})
-	if err != nil {
-		t.Fatal(err)
-	}
-	response = serveLocalPost(handler, "/_markata/api/fixes/apply", applyBody)
-	if response.Code != http.StatusConflict {
-		t.Fatalf("stale apply status=%d body=%s", response.Code, response.Body.String())
-	}
-	updatedPlan, err := servefix.PlanFile(root, "post.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	applyBody, err = json.Marshal(fixApplyRequest{Path: "post.md", Digest: updatedPlan.Digest, Selection: servefix.Selection{All: true}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	response = serveLocalPost(handler, "/_markata/api/fixes/apply", applyBody)
-	if response.Code != http.StatusOK {
-		t.Fatalf("apply status=%d body=%s", response.Code, response.Body.String())
-	}
-	got, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(got), "## Heading") || !strings.Contains(string(got), "https://example.com") {
-		t.Fatalf("applied source = %q", got)
+	for _, route := range []string{"/_markata/api/fixes/preview", "/_markata/api/fixes/apply"} {
+		response := serveLocalPost(handler, route, []byte(`{}`))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("%s status = %d, want %d", route, response.Code, http.StatusNotFound)
+		}
 	}
 }
 

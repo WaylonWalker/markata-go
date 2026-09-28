@@ -33,8 +33,6 @@ func NewWebHandlerWithFixHooks(runtime *Runtime, sourceRoot string, beforeApply 
 	mux.HandleFunc("/_markata/", dashboardHandler(runtime))
 	mux.HandleFunc("/_markata/api/state", stateHandler(runtime))
 	mux.HandleFunc("/_markata/api/actions", actionsHandler(runtime))
-	mux.HandleFunc("/_markata/api/fixes/preview", fixPreviewHandler(sourceRoot))
-	mux.HandleFunc("/_markata/api/fixes/apply", fixApplyHandler(sourceRoot))
 	mux.HandleFunc("/_markata/api/fixes/batch/preview", batchFixPreviewHandler(sourceRoot))
 	mux.HandleFunc("/_markata/api/fixes/batch/apply", batchFixApplyHandler(runtime, sourceRoot, beforeApply))
 	return mux
