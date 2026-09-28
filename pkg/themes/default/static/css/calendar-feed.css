@@ -161,13 +161,44 @@
 .calendar-day-marker {
   position: absolute;
   inset-inline-start: 50%;
-  inset-block-end: 0.2rem;
-  width: 0.38rem;
-  height: 0.38rem;
+  inset-block-end: 0.18rem;
+  width: var(--calendar-density-size, 0.38rem);
+  height: var(--calendar-density-size, 0.38rem);
   translate: -50% 0;
   border-radius: 999px;
   background: var(--calendar-active);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--calendar-active) 35%, transparent);
+  opacity: var(--calendar-density-opacity, 0.75);
+}
+
+.calendar-day details[data-post-count="1"] .calendar-day-marker {
+  --calendar-density-size: 0.315rem;
+  --calendar-density-opacity: 0.62;
+}
+
+.calendar-day details[data-post-count="2"] .calendar-day-marker {
+  --calendar-density-size: 0.35rem;
+  --calendar-density-opacity: 0.69;
+}
+
+.calendar-day details[data-post-count="3"] .calendar-day-marker {
+  --calendar-density-size: 0.385rem;
+  --calendar-density-opacity: 0.76;
+}
+
+.calendar-day details[data-post-count="4"] .calendar-day-marker {
+  --calendar-density-size: 0.42rem;
+  --calendar-density-opacity: 0.83;
+}
+
+.calendar-day details[data-post-count="5"] .calendar-day-marker {
+  --calendar-density-size: 0.455rem;
+  --calendar-density-opacity: 0.9;
+}
+
+.calendar-day details[data-post-count="6"] .calendar-day-marker,
+.calendar-day details:not([data-post-count="1"]):not([data-post-count="2"]):not([data-post-count="3"]):not([data-post-count="4"]):not([data-post-count="5"]) .calendar-day-marker {
+  --calendar-density-size: 0.49rem;
+  --calendar-density-opacity: 0.97;
 }
 
 .calendar-day-count {
@@ -183,47 +214,81 @@
   text-align: center;
 }
 
-.calendar-day-posts {
+.calendar-day-preview {
   position: absolute;
   z-index: 20;
   inset-inline-start: 50%;
-  inset-block-start: calc(100% + 0.35rem);
-  width: min(18rem, 78vw);
-  margin: 0;
-  padding: 0.55rem;
+  inset-block-start: calc(100% + 0.3rem);
+  width: min(22rem, 82vw);
+  padding: 0.65rem;
   translate: -50% 0;
-  list-style: none;
   border: 1px solid var(--calendar-border);
-  border-radius: 0.6rem;
+  border-radius: 0.7rem;
   background: var(--color-background, Canvas);
-  box-shadow: 0 0.7rem 2rem color-mix(in srgb, currentColor 16%, transparent);
+  box-shadow: 0 0.2rem 0.75rem color-mix(in srgb, currentColor 7%, transparent);
 }
 
-.calendar-day-posts::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-end: 100%;
-  width: 0.6rem;
-  height: 0.6rem;
-  translate: -50% 50%;
-  rotate: 45deg;
+.calendar-preview-summary {
+  margin-block-end: 0.45rem;
+  color: var(--calendar-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.calendar-day-posts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-preview-post + .calendar-preview-post {
   border-block-start: 1px solid var(--calendar-border);
-  border-inline-start: 1px solid var(--calendar-border);
-  background: var(--color-background, Canvas);
 }
 
-.calendar-day-posts li + li {
-  margin-block-start: 0.35rem;
-  padding-block-start: 0.35rem;
-  border-block-start: 1px solid var(--calendar-border);
+.calendar-preview-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  padding-block: 0.45rem;
+  color: inherit;
+  text-decoration: none;
 }
 
-.calendar-day-posts a {
-  position: relative;
-  z-index: 1;
-  display: block;
-  line-height: 1.3;
+.calendar-preview-link:hover .calendar-preview-title,
+.calendar-preview-link:focus-visible .calendar-preview-title {
+  text-decoration: underline;
+}
+
+.calendar-preview-image {
+  width: 4.5rem;
+  height: 3.4rem;
+  object-fit: cover;
+  border-radius: 0.38rem;
+  background: var(--calendar-soft);
+}
+
+.calendar-preview-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.calendar-preview-title {
+  line-height: 1.25;
+}
+
+.calendar-preview-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--calendar-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .calendar-feed-list {
@@ -265,18 +330,14 @@
     gap: 0.15rem;
   }
 
-  .calendar-day-posts {
+  .calendar-day-preview {
     position: fixed;
     inset-inline: 1rem;
     inset-block: auto 1rem;
     width: auto;
-    max-height: 45vh;
+    max-height: 48vh;
     overflow: auto;
     translate: 0;
-  }
-
-  .calendar-day-posts::before {
-    display: none;
   }
 }
 
