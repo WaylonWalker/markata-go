@@ -8,9 +8,11 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// SubscriptionFeedsPlugin creates built-in subscription feeds at root and /archive.
-// The root feed also renders the default homepage, while /archive retains the
-// configured archive page and both locations expose RSS and Atom feeds.
+const pinsFeedSlug = "pins"
+
+// SubscriptionFeedsPlugin creates built-in subscription feeds at root, /archive,
+// and /pins. The root feed also renders the default homepage, while /archive
+// retains the configured archive page and /pins collects link posts.
 //
 // This plugin also computes the discovery feed for each post during rendering,
 // enabling dynamic <link rel="alternate"> tags based on the post's sidebar feed.
@@ -41,7 +43,7 @@ func (p *SubscriptionFeedsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Collect injects built-in subscription feeds into the feed configs.
 // The implicit root feed generates an HTML homepage as well as RSS and Atom.
-// Explicit root or archive feed configuration remains authoritative.
+// Explicit root, archive, or pins feed configuration remains authoritative.
 func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
 	syndication := getSyndicationConfig(config)
@@ -73,15 +75,19 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Check if root subscription feed already exists.
+	// Check if built-in subscription feeds already exist.
 	rootFeedIndex := -1
 	hasArchiveFeed := false
+	hasPinsFeed := false
 	for i := range feedConfigs {
 		if feedConfigs[i].Slug == "" {
 			rootFeedIndex = i
 		}
 		if feedConfigs[i].Slug == defaultArchivePrefix {
 			hasArchiveFeed = true
+		}
+		if feedConfigs[i].Slug == pinsFeedSlug {
+			hasPinsFeed = true
 		}
 	}
 
@@ -140,6 +146,26 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		feedConfigs = append(feedConfigs, archiveFeed)
 	}
 
+	// Create a pins board for published posts with a link, unless a site has
+	// supplied its own feed configuration or an existing post already owns
+	// the /pins/ output path. Built-in convenience routes must never turn a
+	// previously valid content slug into an overwrite conflict on upgrade.
+	if !hasPinsFeed && !postOwnsFeedSlug(m.Posts(), pinsFeedSlug) {
+		pinsFeed := models.FeedConfig{
+			Slug:        pinsFeedSlug,
+			Title:       "Pins",
+			Description: "A field notebook of saved links",
+			Filter:      "published == true and link",
+			Sort:        "date",
+			Reverse:     true,
+			Templates: models.FeedTemplates{
+				HTML: "pins.html",
+			},
+			Formats: models.FeedFormats{HTML: true},
+		}
+		feedConfigs = append(feedConfigs, pinsFeed)
+	}
+
 	// FeedsPlugin reads the resolved config during collection. Keep it in sync
 	// with the cache so the injected feeds are collected on this build.
 	config.Extra["feeds"] = feedConfigs
@@ -167,6 +193,23 @@ func hasConfiguredRootFeed(config *lifecycle.Config) bool {
 	}
 	for i := range modelsConfig.Feeds {
 		if modelsConfig.Feeds[i].Slug == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func postOwnsFeedSlug(posts []*models.Post, slug string) bool {
+	slug = strings.Trim(strings.TrimSpace(slug), "/")
+	if slug == "" {
+		return false
+	}
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft {
+			continue
+		}
+		postSlug := strings.Trim(strings.TrimSpace(post.Slug), "/")
+		if postSlug == slug {
 			return true
 		}
 	}

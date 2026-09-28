@@ -1017,6 +1017,22 @@ func TestFilterPosts(t *testing.T) {
 	}
 }
 
+func TestFilterPosts_PinsFilterMatchesPublishedLinkedPosts(t *testing.T) {
+	posts := []*models.Post{
+		{Slug: "linked", Published: true, Extra: map[string]interface{}{"link": "https://example.com"}},
+		{Slug: "unlinked", Published: true},
+		{Slug: "unpublished", Published: false, Extra: map[string]interface{}{"link": "https://example.org"}},
+	}
+
+	got, err := filterPosts(posts, "published == true and link", false)
+	if err != nil {
+		t.Fatalf("filterPosts() error = %v", err)
+	}
+	if len(got) != 1 || got[0].Slug != "linked" {
+		t.Fatalf("pins posts = %#v, want only the published linked post", got)
+	}
+}
+
 func TestFilterPosts_IncludePrivate(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 

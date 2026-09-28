@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:"Pins" }}{% endblock %}
+{% block description %}{{ feed.description | default:"A field notebook of saved links." }}{% endblock %}
+{% block page_wrapper_class %} page-wrapper--feed-only{% endblock %}
+{% block head %}
+{{ block.Super() }}
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
+{% endblock %}
+
+{% block htmx %}
+{% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
+<script src="{% if config.Extra.asset_urls.htmx %}{{ config.Extra.asset_urls.htmx }}{% else %}/assets/vendor/htmx/htmx.min.js{% endif %}"></script>
+{% if page.pagination_type == "htmx-infinite" %}
+<script src="{{ 'js/infinite-scroll.js' | theme_asset }}" defer></script>
+{% endif %}
+{% elif page.pagination_type == "js" %}
+<script src="{{ 'js/pagination.js' | theme_asset }}" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="feed h-feed feed--pins">
+  <header class="pins-header">
+    <p class="pins-kicker">MARKATA FIELD NOTES <span aria-hidden="true">/</span> THE OPEN WEB</p>
+    <div class="pins-heading-row">
+      <div>
+        <h1 class="p-name">{{ feed.title | default:"Pins" }}</h1>
+        <p class="p-summary">{{ feed.description | default:"A field notebook of saved links." }}</p>
+      </div>
+      <div class="pins-count"><strong>{{ feed_stats_total_posts }}</strong><span>collected links</span></div>
+    </div>
+    <div class="pins-rule"><span>Worth keeping</span><span>{% if feed_stats_latest_post %}Last filed {{ feed_stats_latest_post }}{% else %}Collected as we go{% endif %}</span></div>
+  </header>
+
+  {% if config.author %}
+  <div class="feed-author-card p-author h-card visually-hidden">
+    <a class="u-url u-uid p-name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
+  </div>
+  {% endif %}
+
+  {% set pin_posts = page.posts %}
+  {% if page.pagination_type == "js" %}
+  {% set pin_posts = feed.posts %}
+  {% endif %}
+  <div class="pins-board" id="posts-list" aria-label="Saved links">
+    {% for post in pin_posts %}
+    <article class="pin-card h-entry{% if post.image %} pin-card--illustrated{% endif %}">
+      {% if post.image %}
+      <a class="pin-image-link" href="{{ post.href }}" tabindex="-1" aria-hidden="true">
+        <img class="pin-image u-photo" src="{{ post.image | with_size:'720' }}" alt="" loading="lazy" decoding="async">
+      </a>
+      {% endif %}
+      <div class="pin-card-content">
+        <div class="pin-source-row">
+          {% if post.link %}
+          <a class="pin-source" href="{{ post.link }}" target="_blank" rel="noopener noreferrer" aria-label="Visit {{ post.link | domain }} (opens in a new tab)">
+            <span class="pin-source-mark" aria-hidden="true">↗</span>{{ post.link | domain }}
+          </a>
+          {% else %}<span class="pin-source">Saved link</span>{% endif %}
+          {% if post.date %}<time class="pin-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
+        </div>
+        <h2 class="pin-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
+        {% if post.description %}<p class="pin-summary p-summary">{{ post.description }}</p>{% endif %}
+        {% if post.tags %}
+        <footer class="pin-footer">
+          <div class="pin-tags">
+            {% for tag in post.tags %}<a href="/tags/{{ tag | slugify }}/" class="pin-tag p-category">{{ tag }}</a>{% endfor %}
+          </div>
+          <a class="pin-note-link" href="{{ post.href }}" aria-label="Read {{ post.title | default:post.slug }} note">Note <span aria-hidden="true">↗</span></a>
+        </footer>
+        {% else %}
+        <footer class="pin-footer"><span></span><a class="pin-note-link" href="{{ post.href }}">Read note <span aria-hidden="true">↗</span></a></footer>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if not feed.posts %}
+  <p class="feed-empty">No links collected yet. Add a <code>link</code> URL to a published post to save it here.</p>
+  {% endif %}
+  {% if page.total_pages > 1 %}{% include "partials/pagination.html" %}{% endif %}
+</div>
+{% endblock %}

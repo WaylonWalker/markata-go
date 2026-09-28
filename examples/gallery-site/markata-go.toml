@@ -31,3 +31,7 @@ reverse = true
 
 [markata-go.feeds.templates]
 html = "feed-photo-grid.html"
+
+[[markata-go.nav]]
+label = "Pins"
+url = "/pins/"

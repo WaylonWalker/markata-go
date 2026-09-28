@@ -68,6 +68,7 @@ func TestSubscriptionFeedsPlugin_Collect_InjectsFeedConfigs(t *testing.T) {
 	// Check for root feed (slug="")
 	foundRoot := false
 	foundArchive := false
+	foundPins := false
 	for _, fc := range feedConfigs {
 		if fc.Slug == "" {
 			foundRoot = true
@@ -101,6 +102,15 @@ func TestSubscriptionFeedsPlugin_Collect_InjectsFeedConfigs(t *testing.T) {
 				t.Error("Archive feed should have Atom=true")
 			}
 		}
+		if fc.Slug == "pins" {
+			foundPins = true
+			if fc.Filter != "published == true and link" {
+				t.Errorf("pins filter = %q, want published linked posts", fc.Filter)
+			}
+			if fc.Templates.HTML != "pins.html" || !fc.Formats.HTML {
+				t.Errorf("pins template/formats = %#v / %#v", fc.Templates, fc.Formats)
+			}
+		}
 	}
 
 	if !foundRoot {
@@ -108,6 +118,9 @@ func TestSubscriptionFeedsPlugin_Collect_InjectsFeedConfigs(t *testing.T) {
 	}
 	if !foundArchive {
 		t.Error("Archive subscription feed (slug='archive') not found")
+	}
+	if !foundPins {
+		t.Error("Pins feed (slug='pins') not found")
 	}
 }
 
@@ -133,8 +146,8 @@ func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T
 	}
 
 	feedConfigs := getFeedConfigs(m.Config())
-	if len(feedConfigs) != 2 {
-		t.Fatalf("feed configs = %#v, want configured archive and implicit root", feedConfigs)
+	if len(feedConfigs) != 3 {
+		t.Fatalf("feed configs = %#v, want configured archive, implicit root, and implicit pins", feedConfigs)
 	}
 	for _, fc := range feedConfigs {
 		switch fc.Slug {
@@ -146,9 +159,39 @@ func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T
 			if fc.Title != archive.Title || !fc.Formats.HTML {
 				t.Errorf("archive = %#v, want configured archive %#v", fc, archive)
 			}
+		case "pins":
+			if fc.Templates.HTML != "pins.html" {
+				t.Errorf("implicit pins template = %q, want pins.html", fc.Templates.HTML)
+			}
 		default:
 			t.Errorf("unexpected feed %q", fc.Slug)
 		}
+	}
+}
+
+func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredPins(t *testing.T) {
+	plugin := NewSubscriptionFeedsPlugin()
+	want := models.FeedConfig{Slug: "pins", Title: "Reading shelf", Filter: "published == true and 'saved' in tags"}
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{"feeds": []models.FeedConfig{want}}
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	feedConfigs := getFeedConfigs(m.Config())
+	count := 0
+	for _, fc := range feedConfigs {
+		if fc.Slug == "pins" {
+			count++
+			if fc.Title != want.Title || fc.Filter != want.Filter {
+				t.Errorf("pins = %#v, want configured feed %#v", fc, want)
+			}
+		}
+	}
+	if count != 1 {
+		t.Fatalf("pins feed count = %d, want 1", count)
 	}
 }
 

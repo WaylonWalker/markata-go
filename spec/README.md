@@ -58,6 +58,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
+| [PINS.md](./spec/PINS.md) | Built-in pinboard feed for linked posts |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
