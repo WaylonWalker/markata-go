@@ -35,6 +35,21 @@ jobs:
           script = script.replace('if got != count:', 'if got < count:', 1)
           namespace = {'__name__': '__main__'}
           exec(compile(script, 'pr1402-integration.py', 'exec'), namespace)
+
+          generated = [
+              'pkg/config/feed_views_validation.go',
+              'pkg/config/feed_views_test.go',
+              'pkg/templates/feed_views_test.go',
+              'pkg/plugins/feed_views.go',
+              'pkg/plugins/feed_views_test.go',
+              'docs/guides/feed-views.md',
+              'spec/spec/FEED_VIEWS.md',
+          ]
+          for filename in generated:
+              path = Path(filename)
+              text = path.read_text()
+              if text.startswith('\\'):
+                  path.write_text(text[1:])
           PY
           gofmt -w pkg/models/feed.go pkg/config/feed_views_validation.go pkg/config/feed_views_test.go pkg/templates/context.go pkg/templates/feed_views_test.go pkg/plugins/feed_views.go pkg/plugins/feed_views_test.go pkg/config/parser.go pkg/config/merge.go pkg/config/validate.go pkg/plugins/publish_feeds.go pkg/plugins/templates.go
           go test ./pkg/models ./pkg/config ./pkg/templates ./pkg/plugins
