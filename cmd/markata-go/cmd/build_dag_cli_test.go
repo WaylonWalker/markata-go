@@ -7,12 +7,12 @@ func TestDAGBuildEnabled(t *testing.T) {
 	buildDAG = false
 	t.Cleanup(func() { buildDAG = previous })
 
-	t.Setenv(dagBuildEnv, "false")
+	t.Setenv(dagBuildEnv, envValueDisabled)
 	if dagBuildEnabled() {
 		t.Fatal("dagBuildEnabled() = true with flag=false and env=false")
 	}
 
-	t.Setenv(dagBuildEnv, "true")
+	t.Setenv(dagBuildEnv, boolStrTrue)
 	if !dagBuildEnabled() {
 		t.Fatal("dagBuildEnabled() = false with env=true")
 	}
@@ -23,7 +23,7 @@ func TestDAGBuildEnabled(t *testing.T) {
 	}
 
 	buildDAG = true
-	t.Setenv(dagBuildEnv, "false")
+	t.Setenv(dagBuildEnv, envValueDisabled)
 	if !dagBuildEnabled() {
 		t.Fatal("explicit --dag flag did not take precedence over env=false")
 	}
