@@ -6,9 +6,8 @@
  * - `?` - Show shortcuts help modal
  * - `Escape` - Close search/modals
  *
- * Also supports deep-linking into search with `?q=<query>`. This is used by
- * recovery flows such as the generated 404 page, and is useful for shareable
- * search links in general.
+ * Also supports deep-linking into search with `?q=<query>` and bridges the
+ * generated 404 recovery form into the site's real search UI.
  */
 
 (function() {
@@ -67,53 +66,50 @@
   }
 
   /**
-   * Seed the site search from a `?q=` query parameter.
-   *
-   * Pagefind is lazy-loaded, so this deliberately waits for the normal loader
-   * instead of creating a second search implementation. Dispatching an input
-   * event lets Pagefind render the same results UI as an interactive search.
+   * Put a query into the site's real search control and fire the same input
+   * event Pagefind/bleve receives during normal typing.
    */
-  function applySearchQueryParam() {
-    var params = new URLSearchParams(window.location.search);
-    var query = (params.get('q') || '').trim();
+  function seedSearchInput(query) {
+    var input = document.querySelector('.pagefind-ui__search-input, #pagefind-search input, #search input');
+    if (!input) return false;
+
+    input.value = query;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+    return true;
+  }
+
+  /**
+   * Open the site search for a query, accounting for Pagefind's lazy loader.
+   * The shortcuts bundle can execute before base.html has registered
+   * window.loadPagefind, so a short retry window avoids script-order races.
+   */
+  function openSiteSearch(query) {
+    query = (query || '').trim();
     if (!query) return false;
 
-    function seedSearchInput() {
-      var input = document.querySelector('.pagefind-ui__search-input, #pagefind-search input, #search input');
-      if (!input) return false;
-
-      input.value = query;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.focus();
-      return true;
-    }
-
-    if (seedSearchInput()) {
+    if (seedSearchInput(query)) {
       return true;
     }
 
     if (window.loadPagefind) {
       window.loadPagefind(function() {
-        seedSearchInput();
+        seedSearchInput(query);
       });
       return true;
     }
 
-    // The shortcut module is dynamically inserted before the Pagefind loader
-    // later in base.html. Give that loader a brief chance to register, then
-    // use the same callback path. This avoids dropping a recovery query due to
-    // script execution order on a fast page load.
     var attempts = 0;
     var timer = window.setInterval(function() {
       attempts += 1;
-      if (seedSearchInput()) {
+      if (seedSearchInput(query)) {
         window.clearInterval(timer);
         return;
       }
       if (window.loadPagefind) {
         window.clearInterval(timer);
         window.loadPagefind(function() {
-          seedSearchInput();
+          seedSearchInput(query);
         });
         return;
       }
@@ -123,6 +119,40 @@
     }, 20);
 
     return true;
+  }
+
+  /**
+   * Seed the site search from a `?q=` query parameter.
+   *
+   * The generated 404 historically falls back to `/?q=<query>`. Treating that
+   * URL as a first-class search deep link makes the fallback useful and also
+   * gives sites a simple shareable search URL.
+   */
+  function applySearchQueryParam() {
+    var params = new URLSearchParams(window.location.search);
+    var query = (params.get('q') || '').trim();
+    if (!query) return false;
+    return openSiteSearch(query);
+  }
+
+  /**
+   * Keep the generated 404 recovery form on the 404 page when the real site
+   * search is available. The 404 template's own submit listener is attached at
+   * the target/bubble phase; listening on document in capture phase lets us
+   * route the query into Pagefind before that legacy `/?q=` redirect runs.
+   */
+  function handle404RecoverySubmit(event) {
+    var form = event.target;
+    if (!form || form.id !== 'search-form') return;
+    if (!form.closest || !form.closest('.error-404')) return;
+
+    var input = form.querySelector('#search-input, [name="q"]');
+    var query = input ? input.value.trim() : '';
+    if (!query) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openSiteSearch(query);
   }
 
   /**
@@ -329,9 +359,12 @@
     updateModifierKeyDisplay();
   }
 
+  // Capture the 404 recovery submit before the generated template's legacy
+  // redirect handler. This keeps the user on the recovery page and opens the
+  // same Pagefind/bleve search used by the site's normal header search.
+  document.addEventListener('submit', handle404RecoverySubmit, true);
+
   // Apply a deep-linked search independently of shortcut-registry readiness.
-  // The 404 recovery flow may arrive here specifically because there were no
-  // lightweight slug/title matches, so do not make this depend on keyboard UI.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applySearchQueryParam, { once: true });
   } else {
