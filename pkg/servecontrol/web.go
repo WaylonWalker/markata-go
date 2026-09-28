@@ -2,11 +2,9 @@ package servecontrol
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
@@ -108,125 +106,11 @@ func actionsHandler(runtime *Runtime) http.HandlerFunc {
 	}
 }
 
-func fixPreviewHandler(sourceRoot string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.Header().Set("Allow", "POST")
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if !sameOriginLocalRequest(r, requestScheme(r)) {
-			http.Error(w, "fix preview requires a same-origin local request", http.StatusForbidden)
-			return
-		}
-		var request fixRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			http.Error(w, "invalid fix request", 400)
-			return
-		}
-		if sourceRoot == "" {
-			http.Error(w, "source fixes are unavailable", 404)
-			return
-		}
-		plan, err := servefix.PlanFile(sourceRoot, request.Path)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
-			return
-		}
-		original, err := os.ReadFile(plan.File)
-		if err != nil {
-			http.Error(w, "could not read fix source", 400)
-			return
-		}
-		selection := request.Selection
-		if len(selection.IDs) == 0 && len(selection.Categories) == 0 && !selection.All {
-			selection.All = true
-		}
-		preview, edits, err := servefix.Preview(plan, original, selection)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		if err := json.NewEncoder(w).Encode(fixPreview{Path: request.Path, Digest: plan.Digest, Edits: edits, Before: string(original), After: string(preview), Selection: selection}); err != nil {
-			return
-		}
-	}
-}
-
-func fixApplyHandler(sourceRoot string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.Header().Set("Allow", "POST")
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if !sameOriginLocalRequest(r, requestScheme(r)) {
-			http.Error(w, "fix apply requires a same-origin local request", http.StatusForbidden)
-			return
-		}
-		var request fixApplyRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			http.Error(w, "invalid fix request", 400)
-			return
-		}
-		if sourceRoot == "" {
-			http.Error(w, "source fixes are unavailable", 404)
-			return
-		}
-		plan, err := servefix.PlanFile(sourceRoot, request.Path)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
-			return
-		}
-		if plan.Digest != request.Digest {
-			http.Error(w, servefix.ErrStale.Error(), http.StatusConflict)
-			return
-		}
-		applied, err := servefix.Apply(sourceRoot, plan, request.Selection)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(map[string]any{"applied": applied}); err != nil {
-			return
-		}
-	}
-}
-
-type fixRequest struct {
-	Path      string             `json:"path"`
-	Selection servefix.Selection `json:"selection"`
-}
-type fixApplyRequest struct {
-	Path      string             `json:"path"`
-	Selection servefix.Selection `json:"selection"`
-	Digest    string             `json:"digest"`
-}
-type fixPreview struct {
-	Path      string             `json:"path"`
-	Digest    string             `json:"digest"`
-	Edits     []servefix.Edit    `json:"edits"`
-	Before    string             `json:"before"`
-	After     string             `json:"after"`
-	Selection servefix.Selection `json:"selection"`
-}
-
 func requestScheme(r *http.Request) string {
 	if r.TLS != nil {
 		return "https"
 	}
 	return "http"
-}
-
-func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		return fmt.Errorf("expected application/json")
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-	return json.NewDecoder(r.Body).Decode(dst)
 }
 
 func sameOriginLocalRequest(r *http.Request, scheme string) bool {
