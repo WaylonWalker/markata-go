@@ -9,6 +9,12 @@
 {{- $_ := required "builderAdmin.auth.trustedProxyCIDRs must be non-empty when builder-admin is enabled" (first .Values.builderAdmin.auth.trustedProxyCIDRs) }}
 {{- $_ := required "builderAdmin.auth.headers.userID is required when builder-admin is enabled" .Values.builderAdmin.auth.headers.userID }}
 {{- if .Values.builderAdmin.webhook.enabled }}{{- $_ := required "builderAdmin.webhook.existingSecretName is required when builderAdmin.webhook.enabled" .Values.builderAdmin.webhook.existingSecretName }}{{- $_ := required "builderAdmin.webhook.existingSecretKey is required when builderAdmin.webhook.enabled" .Values.builderAdmin.webhook.existingSecretKey }}{{- end }}
+{{- if .Values.builderAdmin.workspace.enabled }}
+{{- $_ := required "builderAdmin.workspace.mountPath is required when workspace is enabled" .Values.builderAdmin.workspace.mountPath }}
+{{- $_ := required "builderAdmin.workspace.workDir is required when workspace is enabled" .Values.builderAdmin.workspace.workDir }}
+{{- if and (ne .Values.builderAdmin.workspace.mode "emptyDir") (ne .Values.builderAdmin.workspace.mode "hostPath") }}{{ fail "builderAdmin.workspace.mode must be emptyDir or hostPath" }}{{ end }}
+{{- if eq .Values.builderAdmin.workspace.mode "hostPath" }}{{- $_ := required "builderAdmin.workspace.hostPath.path is required for hostPath workspace mode" .Values.builderAdmin.workspace.hostPath.path }}{{- end }}
+{{- end }}
 {{- range .Values.builderAdmin.auth.trustedProxyCIDRs }}
 {{- $trustedCIDR := trim . }}
 {{- if or (eq $trustedCIDR "0.0.0.0/0") (eq $trustedCIDR "::/0") }}{{ fail "builderAdmin.auth.trustedProxyCIDRs must not include a universal CIDR" }}{{ end }}
@@ -98,6 +104,10 @@ spec:
             - /data/source
             - --release-dir
             - /data/site
+            {{- if .Values.builderAdmin.workspace.enabled }}
+            - --work-dir
+            - {{ .Values.builderAdmin.workspace.workDir | quote }}
+            {{- end }}
             - --history-dir
             - {{ .Values.builderAdmin.historyDir | quote }}
             - --watch={{ ternary "true" "false" .Values.builderAdmin.watch.enabled }}
@@ -209,6 +219,10 @@ spec:
               mountPath: /data/source
             - name: site
               mountPath: /data/site
+            {{- if .Values.builderAdmin.workspace.enabled }}
+            - name: workspace
+              mountPath: {{ .Values.builderAdmin.workspace.mountPath | quote }}
+            {{- end }}
             {{- if .Values.storage.cache.enabled }}
             - name: cache
               mountPath: {{ .Values.storage.cache.mountPath | quote }}
@@ -246,6 +260,17 @@ spec:
           persistentVolumeClaim:
             claimName: "{{ include "markata-notes.sitePvcName" . }}"
           {{- end }}
+        {{- if .Values.builderAdmin.workspace.enabled }}
+        - name: workspace
+          {{- if eq .Values.builderAdmin.workspace.mode "hostPath" }}
+          hostPath:
+            path: {{ .Values.builderAdmin.workspace.hostPath.path | quote }}
+            type: {{ .Values.builderAdmin.workspace.hostPath.type | quote }}
+          {{- else }}
+          emptyDir:
+            {{- toYaml .Values.builderAdmin.workspace.emptyDir | nindent 12 }}
+          {{- end }}
+        {{- end }}
         {{- if .Values.storage.cache.enabled }}
         - name: cache
           {{- if eq (.Values.storage.cache.mode | default "pvc") "hostPath" }}
