@@ -23,20 +23,32 @@
   display: none;
 }
 
-.calendar-view-switch button {
+.calendar-view-switch button,
+.calendar-view-switch a {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
   border: 0;
   border-radius: 999px;
   padding: 0.4rem 0.8rem;
   font: inherit;
   color: inherit;
   background: transparent;
+  text-decoration: none;
+}
+
+.calendar-view-switch button {
   cursor: pointer;
 }
 
 .calendar-view-switch button[aria-pressed="true"] {
   color: var(--color-background, Canvas);
   background: var(--calendar-active);
+}
+
+.calendar-view-switch a:hover,
+.calendar-view-switch a:focus-visible {
+  background: color-mix(in srgb, var(--calendar-active) 12%, transparent);
 }
 
 .calendar-feed-years {
@@ -232,7 +244,8 @@
   border-block-end: 1px solid var(--calendar-border);
 }
 
-.calendar-feed-list time {
+.calendar-feed-list time,
+.calendar-feed-undated {
   color: var(--calendar-muted);
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;

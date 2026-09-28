@@ -53,7 +53,6 @@
     section.append(weekdayRow);
 
     const grid = element('div', 'calendar-days');
-
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -167,14 +166,51 @@
     return true;
   }
 
+  function calendarModeFromURL() {
+    try {
+      return new URLSearchParams(window.location.search).get('view') === 'calendar';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function updateURLMode(mode) {
+    try {
+      const url = new URL(window.location.href);
+      if (mode === 'calendar') {
+        url.searchParams.set('view', 'calendar');
+      } else if (url.searchParams.get('view') === 'calendar') {
+        url.searchParams.delete('view');
+      }
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch (error) {
+      // URL state is progressive enhancement only.
+    }
+  }
+
+  function primaryNodesFor(root, sourceList) {
+    const nodes = Array.from(root.querySelectorAll('[data-calendar-primary]'));
+    for (const child of root.children) {
+      if (
+        child.classList.contains('pagination') ||
+        child.classList.contains('pagination-infinite') ||
+        child.classList.contains('feed-empty')
+      ) {
+        if (!nodes.includes(child)) nodes.push(child);
+      }
+    }
+    if (nodes.length === 0) nodes.push(sourceList);
+    return nodes;
+  }
+
   function initialize(root) {
-    const list = root.querySelector('[data-calendar-list]');
+    const sourceList = root.querySelector('[data-calendar-list]');
     const calendar = root.querySelector('[data-calendar-years]');
     const switcher = root.querySelector('[data-calendar-switch]');
-    if (!list || !calendar || !switcher) return;
+    if (!sourceList || !calendar || !switcher) return;
 
     const datedPosts = [];
-    for (const item of list.querySelectorAll('[data-calendar-post]')) {
+    for (const item of sourceList.querySelectorAll('[data-calendar-post]')) {
       const date = item.getAttribute('data-date') || '';
       const link = item.querySelector('a[href]');
       if (!parseDate(date) || !link) continue;
@@ -187,16 +223,24 @@
 
     if (!renderCalendar(root, calendar, datedPosts)) return;
 
+    const primaryNodes = primaryNodesFor(root, sourceList);
+    const sourceIsPrimary = primaryNodes.includes(sourceList);
     const buttons = Array.from(switcher.querySelectorAll('[data-calendar-mode]'));
-    const setMode = (mode) => {
+    const setMode = (mode, persistURL = true) => {
       const calendarMode = mode === 'calendar';
       calendar.hidden = !calendarMode;
-      list.hidden = calendarMode;
+      for (const node of primaryNodes) node.hidden = calendarMode;
+      if (!sourceIsPrimary) sourceList.hidden = true;
+
       for (const button of buttons) {
         button.setAttribute(
           'aria-pressed',
           button.getAttribute('data-calendar-mode') === mode ? 'true' : 'false'
         );
+      }
+
+      if (persistURL && root.hasAttribute('data-calendar-url-state')) {
+        updateURLMode(mode);
       }
     };
 
@@ -204,8 +248,13 @@
       button.addEventListener('click', () => setMode(button.getAttribute('data-calendar-mode')));
     }
 
+    let initialMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
+    if (root.hasAttribute('data-calendar-url-state') && calendarModeFromURL()) {
+      initialMode = 'calendar';
+    }
+
     switcher.hidden = false;
-    setMode('calendar');
+    setMode(initialMode, false);
   }
 
   for (const root of document.querySelectorAll('[data-calendar-feed]')) {
