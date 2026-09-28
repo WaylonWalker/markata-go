@@ -101,6 +101,18 @@ builderAdmin:
     refreshRuns: 100
   buildTimeoutSeconds: 7200
   historyDir: /data/site/.builder-admin
+  # Optional transient workspace for build output. Disabled preserves the
+  # historical /data/site/.build-work behavior. emptyDir is useful when the
+  # durable site volume is slower for small-file writes.
+  workspace:
+    enabled: false
+    mode: emptyDir
+    mountPath: /data/work
+    workDir: /data/work/build
+    emptyDir: {}
+    hostPath:
+      path: ""
+      type: DirectoryOrCreate
   webhook:
     enabled: false
     branch: main

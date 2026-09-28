@@ -229,4 +229,5 @@ assert_no_cors "$tmp_dir/disabled-content-index.headers"
 assert_no_cors "$tmp_dir/disabled-preview-missing.headers"
 assert_no_cors "$tmp_dir/disabled-preview-no-index.headers"
 
-printf 'Helm nginx CORS tests passed.\n'
+bash "$repo_root/helm-chart/tests/builder-admin-workspace.sh"
+printf 'Helm nginx CORS and Builder Admin workspace tests passed.\n'
