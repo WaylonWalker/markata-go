@@ -157,22 +157,35 @@ func validateBuilderAdminWorkDir(workDir, sourceDir, siteDir string) error {
 	if filepath.Dir(workAbs) == workAbs {
 		return fmt.Errorf("builder-admin work directory must not be a filesystem root: %s", workDir)
 	}
-	for label, candidate := range map[string]string{"source": sourceDir, "release": siteDir} {
-		candidateAbs, err := filepath.Abs(candidate)
-		if err != nil {
-			return fmt.Errorf("resolve builder-admin %s directory: %w", label, err)
-		}
-		if workAbs == candidateAbs {
-			return fmt.Errorf("builder-admin work directory must not equal the %s directory: %s", label, candidate)
-		}
-		if label == "source" {
-			rel, relErr := filepath.Rel(candidateAbs, workAbs)
-			if relErr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return fmt.Errorf("builder-admin work directory must not be inside the source directory: %s", workDir)
-			}
-		}
+	sourceAbs, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin source directory: %w", err)
+	}
+	siteAbs, err := filepath.Abs(siteDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin release directory: %w", err)
+	}
+	if workAbs == sourceAbs {
+		return fmt.Errorf("builder-admin work directory must not equal the source directory: %s", sourceDir)
+	}
+	if workAbs == siteAbs {
+		return fmt.Errorf("builder-admin work directory must not equal the release directory: %s", siteDir)
+	}
+	if pathWithin(workAbs, siteAbs) {
+		return nil
+	}
+	if pathWithin(workAbs, sourceAbs) {
+		return fmt.Errorf("builder-admin work directory must not be inside the source directory: %s", workDir)
 	}
 	return nil
+}
+
+func pathWithin(path, parent string) bool {
+	rel, err := filepath.Rel(parent, path)
+	if err != nil || rel == "." || rel == ".." {
+		return rel == "."
+	}
+	return !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 // resolveBuilderAdminWebhook applies site configuration and MARKATA_GO_ overrides,
