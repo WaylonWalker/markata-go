@@ -45,6 +45,16 @@ func DefaultFeedViews() []string {
 	return []string{FeedViewDefault, FeedViewSimple, FeedViewCalendar}
 }
 
+// IsKnownFeedView reports whether view names a built-in feed presentation.
+func IsKnownFeedView(view string) bool {
+	switch view {
+	case FeedViewDefault, FeedViewSimple, FeedViewCalendar:
+		return true
+	default:
+		return false
+	}
+}
+
 // FeedConfig represents a feed configuration.
 type FeedConfig struct {
 	// Slug is the URL-safe identifier for the feed
@@ -141,7 +151,7 @@ func (f FeedConfig) IncludesPrivate() bool {
 // feed configs preserve the built-in three-view default for template callers.
 func (f FeedConfig) HasView(view string) bool {
 	views := f.Views
-	if len(views) == 0 {
+	if views == nil {
 		views = DefaultFeedViews()
 	}
 	for _, candidate := range views {
@@ -328,7 +338,7 @@ func NewFeedDefaults() FeedDefaults {
 // NewFeedConfig creates a new FeedConfig with default values from FeedDefaults.
 func NewFeedConfig(defaults FeedDefaults) *FeedConfig {
 	views := defaults.Views
-	if len(views) == 0 {
+	if views == nil {
 		views = DefaultFeedViews()
 	}
 	return &FeedConfig{
@@ -358,9 +368,9 @@ func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
 	if f.PaginationType == "" {
 		f.PaginationType = defaults.PaginationType
 	}
-	if len(f.Views) == 0 {
+	if f.Views == nil {
 		views := defaults.Views
-		if len(views) == 0 {
+		if views == nil {
 			views = DefaultFeedViews()
 		}
 		f.Views = append([]string(nil), views...)

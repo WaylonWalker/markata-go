@@ -6,8 +6,10 @@
 {% block head %}
 {{ block.Super() }}
 {% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
+{% if feed.views.calendar %}
 <link rel="stylesheet" href="{{ 'css/calendar-feed.css' | theme_asset_hashed }}">
 <script src="{{ 'js/calendar-feed.js' | theme_asset_hashed }}" defer></script>
+{% endif %}
 {% endblock %}
 
 {% block htmx %}
@@ -22,7 +24,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed calendar-feed h-feed feed--photo-grid" data-calendar-feed data-calendar-default="list" data-calendar-url-state>
+<div class="feed{% if feed.views.calendar %} calendar-feed{% endif %} h-feed feed--photo-grid"{% if feed.views.calendar %} data-calendar-feed data-calendar-default="list" data-calendar-url-state{% endif %}>
   {% if feed.title %}
   <header class="feed-header">
     <div class="feed-header-top">
@@ -36,7 +38,7 @@
         {% if feed.posts %}
         <nav class="calendar-view-switch" data-calendar-switch hidden aria-label="Feed views">
           <button type="button" data-calendar-mode="list" aria-pressed="true">Grid</button>
-          {% if feed.formats.simple_html %}<a class="feed-view-link" href="{% if feed.slug %}/{{ feed.slug }}/simple/{% else %}/simple/{% endif %}">Simple</a>{% endif %}
+          {% if feed.views.simple and feed.formats.simple_html %}<a class="feed-view-link" href="{% if feed.slug %}/{{ feed.slug }}/simple/{% else %}/simple/{% endif %}">Simple</a>{% endif %}
           <button type="button" data-calendar-mode="calendar" aria-pressed="false">Calendar</button>
         </nav>
         {% endif %}
@@ -137,7 +139,7 @@
   {% include "partials/pagination.html" %}
   {% endif %}
 
-  {% if feed.posts %}
+  {% if feed.posts and feed.views.calendar %}
   <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>
   <ul class="calendar-feed-list" data-calendar-list hidden aria-hidden="true">
     {% for post in feed.posts %}

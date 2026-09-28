@@ -1251,6 +1251,12 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		return nil
 	}
 
+	views := map[string]interface{}{
+		"default":  f.HasView(models.FeedViewDefault),
+		"simple":   f.HasView(models.FeedViewSimple),
+		"calendar": f.HasView(models.FeedViewCalendar),
+	}
+
 	formats := map[string]interface{}{
 		"html":        f.Formats.HTML,
 		"simple_html": f.Formats.SimpleHTML,
@@ -1278,6 +1284,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"limit":          f.Limit,
 		"offset":         f.Offset,
 		"posts":          PostsToMaps(f.Posts),
+		"views":          views,
 		"formats":        formats,
 	}
 }

@@ -597,6 +597,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 		ctx.Set("sidebar_posts", sidebarPosts)
 		if sidebarFeed != nil {
 			ctx.Set("sidebar_feed", sidebarFeed)
+			ctx.Set("sidebar_calendar_enabled", sidebarFeed.HasView(models.FeedViewCalendar))
 		}
 
 		// Calculate prev/next within the sidebar feed
@@ -1030,6 +1031,7 @@ type sidebarFeedJSON struct {
 	Primary             bool              `json:"primary,omitempty"`
 	ContainsCurrentPost bool              `json:"containsCurrentPost,omitempty"`
 	Variants            []sidebarVariant  `json:"variants,omitempty"`
+	Calendar            bool              `json:"calendar"`
 	Posts               []sidebarPostJSON `json:"posts"`
 	TotalPosts          int               `json:"totalPosts"`
 	Prev                *sidebarPostJSON  `json:"prev,omitempty"`
@@ -1158,6 +1160,7 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 		Primary:             fc.Primary,
 		ContainsCurrentPost: currentPos >= 0,
 		Variants:            buildSidebarVariants(fc, syndication, postFormats),
+		Calendar:            fc.HasView(models.FeedViewCalendar),
 		TotalPosts:          len(posts),
 		Posts:               make([]sidebarPostJSON, 0, len(windowedPosts)),
 	}
@@ -1217,7 +1220,7 @@ func buildSidebarVariants(fc *models.FeedConfig, syndication models.SyndicationC
 	if fc.Formats.HTML && postFormats.IsHTMLEnabled() {
 		add("html", "html", baseHref)
 	}
-	if fc.Formats.SimpleHTML {
+	if simpleHTMLViewEnabled(fc) {
 		add("simple", "simple", baseHref+"simple/")
 	}
 	if fc.Formats.Text && postFormats.Text {
