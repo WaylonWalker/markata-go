@@ -1,7 +1,7 @@
 ---
 title: "Calendar Feed Views"
-description: "Visualize a Markata-Go feed as year and month calendars with marked publishing days."
-date: 2026-09-27
+description: "Use the built-in calendar view available on every Markata-Go HTML feed."
+date: 2026-09-28
 published: true
 tags:
   - documentation
@@ -11,87 +11,63 @@ tags:
 
 # Calendar Feed Views
 
-Use the built-in `calendar-feed.html` template when you want a feed to communicate *when* you publish, not just list posts newest-first.
+Every normal Markata-Go HTML feed includes a **Calendar** view by default. You do not need a second feed, a template override, or special calendar configuration.
 
-The view is inspired by [Jim Nielsen's calendar archive](https://blog.jim-nielsen.com/archive/calendar/): each year contains twelve month grids, and days with posts are visibly marked. Select a marked day to reveal the post title or titles for that date.
+The interaction is inspired by [Jim Nielsen's calendar archive](https://blog.jim-nielsen.com/2026/blog-calendar-view/): the normal archive and its calendar are peer views of the same collection, and dates with posts are visibly marked. Select a marked date to reveal the title or titles published that day.
 
-## Quick start
+## Open Calendar
 
-```toml
-[[markata-go.feeds]]
-slug = "archive"
-title = "Archive"
-description = "Everything I've published, across time."
-filter = "published == true"
-sort = "date"
-reverse = true
+Open any feed normally and choose **Calendar** from its view control. For a feed at `/blog/`, the same state can be linked directly as:
 
-[markata-go.feeds.templates]
-html = "calendar-feed.html"
+```text
+/blog/?view=calendar
 ```
 
-Build the site normally:
+For the root feed, use:
 
-```bash
-markata-go build
+```text
+/?view=calendar
 ```
 
-Then open `/archive/`.
+The **Simple** view also links to Calendar. When feed sidebars are enabled on posts, the sidebar includes a `calendar` link for the currently selected feed.
 
 ## What the view shows
 
-The calendar uses the feed's complete `feed.posts` collection, so it represents the full feed even when the feed normally paginates its HTML output.
+Calendar uses the feed's complete `feed.posts` collection, so it represents the full feed even when the normal HTML presentation is paginated.
 
 For each represented year it renders all twelve months. Every day appears in the correct weekday column. Dates containing posts get an activity marker and an expandable list of titles. If multiple posts share a date, they all appear beneath that day.
 
-The calendar also includes a **List / Calendar** view switch. Calendar is the enhanced default; the list is plain HTML and remains the fallback when JavaScript is unavailable.
+Posts without a valid date cannot be placed in a month grid. They remain available through the normal feed presentation.
+
+## Three human-facing views
+
+A default feed now has three presentations:
+
+- **Posts** — the feed's normal card/list/template presentation
+- **Simple** — the existing compact HTML list at `/simple/`, when enabled
+- **Calendar** — the publishing-rhythm view, opened in place and deep-linkable with `?view=calendar`
+
+RSS, Atom, JSON, Markdown, and text remain feed export/subscription formats rather than presentation modes.
+
+Built-in alternate HTML layouts such as `feed-photo-grid.html` keep their existing primary presentation and gain Calendar as a peer view too.
 
 ## Accessibility and progressive enhancement
 
-The source HTML contains the full dated post list before any JavaScript runs. That means links remain available to crawlers, assistive technology, constrained browsers, and visitors with JavaScript disabled.
+The normal feed remains the server-rendered default. Calendar controls stay hidden until JavaScript successfully initializes, so visitors without JavaScript keep the existing feed experience.
 
-Calendar day disclosures use native `<details>` and `<summary>` controls, so marked dates are keyboard-operable without a custom keybinding layer. Weekday labels and day summaries expose useful accessible names while decorative activity marks stay hidden from assistive technology.
+The page embeds a hidden dated source built from the complete feed collection. Calendar day disclosures use native `<details>` and `<summary>` controls, so marked dates are keyboard-operable without a custom keybinding layer. Weekday labels and day summaries expose useful accessible names while decorative activity marks stay hidden from assistive technology.
 
 ## Pagination
 
-You do not need to disable pagination. The calendar template intentionally reads `feed.posts` rather than the current `page.posts` slice.
+You do not need to disable pagination. The visible Posts view may render `page.posts`, while Calendar intentionally reads the complete `feed.posts` collection.
 
-You can still set `items_per_page` for other feed templates or output behavior without truncating the calendar history.
+## Customizing Calendar
 
-## Undated posts
-
-Only posts with a valid `date` can be placed on a calendar. Undated posts are not placed in month grids. Give archive content a date when you want it represented in this view.
-
-## Customizing the calendar
-
-Like other built-in templates, `calendar-feed.html` can be copied into your site's `templates/` directory and edited. Its styling and behavior live in the default theme assets:
+Calendar styling and behavior live in the default theme assets:
 
 - `css/calendar-feed.css`
 - `js/calendar-feed.js`
 
 The CSS uses theme variables and `currentColor`-derived borders/backgrounds so it follows custom palettes without calendar-specific color configuration.
 
-## Keep a separate normal feed
-
-If you want both a normal card feed and a dedicated calendar URL, define two feeds with the same filter and sort but different slugs/templates:
-
-```toml
-[[markata-go.feeds]]
-slug = "blog"
-title = "Blog"
-filter = "published == true"
-sort = "date"
-reverse = true
-
-[[markata-go.feeds]]
-slug = "calendar"
-title = "Blog Calendar"
-filter = "published == true"
-sort = "date"
-reverse = true
-
-[markata-go.feeds.templates]
-html = "calendar-feed.html"
-```
-
-This leaves `/blog/` as the standard card feed and adds `/calendar/` as the activity-oriented archive.
+The previously shipped `calendar-feed.html` remains available for sites that intentionally want a dedicated calendar-first custom template. It is no longer required to enable Calendar on ordinary feeds.

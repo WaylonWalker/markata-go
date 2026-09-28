@@ -2,48 +2,60 @@
 
 ## Status
 
-Proposed and implemented as an additive built-in feed template.
+Implemented as a default peer view of normal HTML feeds.
 
 ## Purpose
 
-The feed calendar view visualizes publishing activity over time. It complements the normal reverse-chronological feed by making posting cadence, gaps, and clusters visible across years and months.
+The feed calendar view visualizes publishing activity over time. It complements the feed's normal presentation by making posting cadence, gaps, and clusters visible across years and months.
 
-The design is inspired by Jim Nielsen's calendar archive, where each year contains month calendars and dates with posts are visually marked.
+The design is inspired by Jim Nielsen's calendar archive, where List and Calendar are peer views of the same archive and dates with posts are visually marked.
 
-## Configuration
+## Availability
 
-Calendar rendering uses the existing per-feed HTML template override. No new feed data model or output format is required.
+Calendar MUST be available on every built-in normal HTML feed without requiring a second feed or a per-feed template override.
 
-```toml
-[[markata-go.feeds]]
-slug = "archive"
-title = "Archive"
-filter = "published == true"
-sort = "date"
-reverse = true
+The normal feed URL remains canonical for the feed's primary presentation. Calendar is an in-page alternate state and MUST be deep-linkable with the `view=calendar` query parameter:
 
-[markata-go.feeds.templates]
-html = "calendar-feed.html"
-```
+- `/blog/?view=calendar`
+- `/?view=calendar` for a root feed
 
-`calendar-feed.html` is a built-in template in the default theme and is also present in the legacy root template tree.
+The existing Simple HTML view remains a separate compact page at `/simple/` and MUST link to Calendar. Built-in alternate primary templates such as `feed-photo-grid.html` MUST expose Calendar as a peer view too.
+
+The dedicated `calendar-feed.html` template remains supported for intentional calendar-first customization, but selecting it MUST NOT be required to use Calendar on ordinary feeds.
 
 ## Rendering contract
 
-The template MUST:
+A normal feed calendar integration MUST:
 
-1. Read the complete collection from `feed.posts`, not `page.posts`, so pagination does not truncate the calendar history.
-2. Render a useful list of dated post links in HTML before enhancement. This is the accessible and no-JavaScript fallback.
-3. Enhance that list into year/month calendar grids when JavaScript is available.
-4. Include all twelve months for every represented year.
-5. Place every day of each month in its correct weekday column.
-6. Visually distinguish dates containing one or more posts.
-7. Expose all post titles and links for a marked date.
-8. Support multiple posts on the same date.
-9. Preserve post links as normal anchors so content remains navigable without client-side routing.
-10. Use theme color/spacing variables rather than site-specific colors.
+1. Preserve the existing server-rendered primary feed as the no-JavaScript default.
+2. Keep Calendar controls hidden until enhancement initializes successfully.
+3. Build calendar source data from the complete `feed.posts` collection, not `page.posts`, so pagination does not truncate history.
+4. Switch between the primary feed presentation and Calendar in place.
+5. Set `?view=calendar` when Calendar is selected and remove that query value when returning to the primary presentation.
+6. Honor an initial `?view=calendar` deep link when enhancement initializes.
+7. Include all twelve months for every represented year.
+8. Place every day of each month in its correct weekday column.
+9. Visually distinguish dates containing one or more posts.
+10. Expose all post titles and links for a marked date.
+11. Support multiple posts on the same date.
+12. Preserve post links as normal anchors.
+13. Use theme color/spacing variables rather than site-specific colors.
 
-Posts without a date are omitted from the calendar grid but remain visible in the fallback list when they can be rendered meaningfully.
+Posts without a date are omitted from the calendar grid and remain available through the feed's primary presentation. A dedicated `calendar-feed.html` template MAY retain an undated list fallback.
+
+## View navigation
+
+Normal feed headers SHOULD expose the human-facing presentation choices together:
+
+- primary presentation (`Posts`, `Grid`, or another template-appropriate label)
+- `Simple`, when simple HTML is enabled
+- `Calendar`
+
+The Simple view MUST provide links back to the primary presentation and Calendar.
+
+When the feed sidebar is enabled on post pages, it MUST expose a `calendar` view link. If the user changes the selected/cycled sidebar feed, that link MUST resolve to the selected feed's calendar state.
+
+RSS, Atom, JSON, Markdown, text, and sitemap outputs remain export/subscription formats and are not reclassified as human-facing view modes.
 
 ## Date semantics
 
@@ -56,14 +68,17 @@ Posts without a date are omitted from the calendar grid but remain visible in th
 
 The calendar is progressive enhancement over server-rendered feed data:
 
-- With JavaScript disabled, users see a complete dated list of posts.
-- With JavaScript enabled, the calendar becomes the default view and a `List` / `Calendar` control switches between representations.
-- Calendar day controls use native `<details>/<summary>` disclosure so keyboard users can reveal the posts for a day without custom key handling.
-- The generated calendar includes weekday labels and descriptive accessible labels for marked dates.
+- With JavaScript disabled, users see the existing primary feed presentation.
+- A hidden complete dated source supplies Calendar without duplicating visible content.
+- With JavaScript enabled, the view selector becomes available.
+- Calendar day controls use native `<details>/<summary>` disclosure so keyboard users can reveal posts for a day without custom key handling.
+- Generated calendars include weekday labels and descriptive accessible labels for marked dates.
 
-## Empty feeds
+The dedicated `calendar-feed.html` template MAY continue to use its complete server-rendered list as its no-JavaScript fallback and default to Calendar after enhancement.
 
-When `feed.posts` is empty, the template renders the same useful empty-state guidance as the normal feed template and does not attempt calendar enhancement.
+## Empty and undated feeds
+
+When no dated posts are available, Calendar enhancement MUST NOT replace the primary feed with an empty calendar. The normal feed remains usable.
 
 ## Theme assets
 
@@ -72,13 +87,11 @@ The default theme provides:
 - `static/css/calendar-feed.css`
 - `static/js/calendar-feed.js`
 
-The template loads them through `theme_asset_hashed` so normal asset hashing/caching behavior applies.
+Built-in feed templates load these through `theme_asset_hashed` so normal asset hashing/caching behavior applies.
 
 ## Compatibility
 
-This feature is additive:
-
-- Existing feeds continue to use `feed.html` by default.
-- Existing feed pagination and syndication formats are unchanged.
-- Custom themes can override `calendar-feed.html` or its static assets.
-- The existing feed template contract remains unchanged.
+- Feed membership, sorting, pagination, and syndication formats are unchanged.
+- Existing primary HTML templates keep their presentation semantics.
+- Custom templates do not automatically gain Calendar unless they opt into the calendar data/control hooks.
+- The dedicated `calendar-feed.html` template remains supported for compatibility and customization.
