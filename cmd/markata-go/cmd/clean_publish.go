@@ -15,7 +15,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const cleanPublishAssetGrace = 2 * time.Minute
+const (
+	cleanPublishAssetGrace    = 2 * time.Minute
+	cleanPublishServeMarkerTTL = 5 * time.Second
+)
 
 var (
 	errAtomicExchangeUnsupported = errors.New("atomic directory exchange unsupported")
@@ -71,11 +74,14 @@ func runStagedCleanBuild(cmd *cobra.Command, args []string, run func(*cobra.Comm
 		return err
 	}
 
-	// Keep in-flight browser assets outside the published output tree. This
-	// preserves clean-build determinism while allowing `serve` to satisfy a CSS,
-	// JS, or font request from HTML that left the server just before the swap.
-	if err := refreshBrowserAssetGrace(finalOutput); err != nil {
-		return fmt.Errorf("refresh previous generation browser assets: %w", err)
+	// Clean builds remain deterministic unless another markata-go process is
+	// actively serving this exact output directory. During serve, keep a bounded
+	// set of retired browser assets so HTML that left just before the atomic swap
+	// can still fetch its hashed CSS/JS/fonts after the swap.
+	if cleanPublishServeActive(finalOutput, time.Now()) {
+		if err := retainPreviousGenerationBrowserAssets(finalOutput, stage); err != nil {
+			return fmt.Errorf("retain previous generation browser assets: %w", err)
+		}
 	}
 	if err := publishStagedOutput(stage, finalOutput); err != nil {
 		return fmt.Errorf("publish staged clean build: %w", err)
@@ -103,17 +109,45 @@ func resolveCleanBuildOutput() (string, error) {
 	return filepath.Clean(configuredOutput), nil
 }
 
-func browserAssetGraceDir(output string) string {
+func cleanPublishServeMarkerDir(output string) string {
 	clean := filepath.Clean(output)
-	return filepath.Join(filepath.Dir(clean), "."+filepath.Base(clean)+".markata-browser-grace")
+	return filepath.Join(filepath.Dir(clean), "."+filepath.Base(clean)+".markata-serving")
 }
 
-// refreshBrowserAssetGrace snapshots browser-critical assets reachable from the
-// currently published HTML into a hidden sibling directory immediately before
-// the generation switch. The files are timestamped when they retire. Older
-// retired assets remain available for a bounded grace window without becoming
-// part of the new output generation or its deterministic manifest.
-func refreshBrowserAssetGrace(previousOutput string) error {
+func cleanPublishServeActive(output string, now time.Time) bool {
+	dir := cleanPublishServeMarkerDir(output)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	cutoff := now.Add(-cleanPublishServeMarkerTTL)
+	active := false
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			_ = os.Remove(path)
+			continue
+		}
+		active = true
+	}
+	return active
+}
+
+// retainPreviousGenerationBrowserAssets keeps browser-critical assets that may
+// still be requested by a page served immediately before a clean publish. The
+// current generation's HTML references are always retained, including CSS
+// dependencies. Assets becoming retired are timestamped when they enter the
+// grace set; already-retired assets preserve that retirement timestamp while
+// they are carried forward. This keeps the grace window bounded without
+// dropping an old-but-current asset immediately after it is replaced.
+func retainPreviousGenerationBrowserAssets(previousOutput, stagedOutput string) error {
 	info, err := os.Stat(previousOutput)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -125,17 +159,14 @@ func refreshBrowserAssetGrace(previousOutput string) error {
 		return nil
 	}
 
-	graceDir := browserAssetGraceDir(previousOutput)
-	if err := os.MkdirAll(graceDir, 0o755); err != nil {
-		return err
-	}
-
-	retiredAt := time.Now()
-	if err := pruneBrowserAssetGrace(graceDir, retiredAt.Add(-cleanPublishAssetGrace)); err != nil {
-		return err
-	}
-
 	visited := make(map[string]struct{})
+	if err := retainReferencedBrowserAssets(previousOutput, stagedOutput, visited); err != nil {
+		return err
+	}
+	return retainRecentBrowserAssets(previousOutput, stagedOutput, time.Now().Add(-cleanPublishAssetGrace), visited)
+}
+
+func retainReferencedBrowserAssets(previousOutput, stagedOutput string, visited map[string]struct{}) error {
 	return filepath.WalkDir(previousOutput, func(htmlPath string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -156,7 +187,7 @@ func refreshBrowserAssetGrace(previousOutput string) error {
 			if len(match) != 2 {
 				continue
 			}
-			if err := retireReferencedBrowserAsset(previousOutput, graceDir, relHTML, string(match[1]), retiredAt, visited); err != nil {
+			if err := retainReferencedBrowserAsset(previousOutput, stagedOutput, relHTML, string(match[1]), visited); err != nil {
 				return err
 			}
 		}
@@ -164,28 +195,52 @@ func refreshBrowserAssetGrace(previousOutput string) error {
 	})
 }
 
-func pruneBrowserAssetGrace(graceDir string, cutoff time.Time) error {
-	return filepath.WalkDir(graceDir, func(path string, entry fs.DirEntry, walkErr error) error {
+func retainRecentBrowserAssets(previousOutput, stagedOutput string, cutoff time.Time, visited map[string]struct{}) error {
+	return filepath.WalkDir(previousOutput, func(source string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() {
+		if entry.IsDir() || !isBrowserCriticalAsset(entry.Name()) {
 			return nil
 		}
+
+		relative, err := filepath.Rel(previousOutput, source)
+		if err != nil {
+			return err
+		}
+		if _, seen := visited[relative]; seen {
+			return nil
+		}
+
 		info, err := entry.Info()
 		if err != nil {
 			return err
 		}
 		if info.ModTime().Before(cutoff) {
-			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
-			}
+			return nil
 		}
-		return nil
+
+		visited[relative] = struct{}{}
+		destination := filepath.Join(stagedOutput, relative)
+		if _, err := os.Stat(destination); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return copyPublishedAsset(source, destination)
 	})
 }
 
-func retireReferencedBrowserAsset(previousOutput, graceDir, baseFile, rawRef string, retiredAt time.Time, visited map[string]struct{}) error {
+func isBrowserCriticalAsset(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".css", ".js", ".mjs", ".woff", ".woff2", ".ttf", ".otf":
+		return true
+	default:
+		return false
+	}
+}
+
+func retainReferencedBrowserAsset(previousOutput, stagedOutput, baseFile, rawRef string, visited map[string]struct{}) error {
 	relative, ok := resolveBrowserAssetPath(rawRef, baseFile)
 	if !ok {
 		return nil
@@ -207,18 +262,26 @@ func retireReferencedBrowserAsset(previousOutput, graceDir, baseFile, rawRef str
 		return nil
 	}
 
-	destination := filepath.Join(graceDir, relative)
-	if err := copyRetiredBrowserAsset(source, destination, retiredAt); err != nil {
+	destination := filepath.Join(stagedOutput, relative)
+	if _, err := os.Stat(destination); errors.Is(err, os.ErrNotExist) {
+		if err := copyPublishedAsset(source, destination); err != nil {
+			return err
+		}
+		retiredAt := time.Now()
+		if err := os.Chtimes(destination, retiredAt, retiredAt); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
 	if !strings.EqualFold(filepath.Ext(relative), ".css") {
 		return nil
 	}
-	return retireCSSDependencies(previousOutput, graceDir, relative, source, retiredAt, visited)
+	return retainCSSDependencies(previousOutput, stagedOutput, relative, source, visited)
 }
 
-func retireCSSDependencies(previousOutput, graceDir, relativeCSS, source string, retiredAt time.Time, visited map[string]struct{}) error {
+func retainCSSDependencies(previousOutput, stagedOutput, relativeCSS, source string, visited map[string]struct{}) error {
 	content, err := os.ReadFile(source)
 	if err != nil {
 		return err
@@ -228,7 +291,7 @@ func retireCSSDependencies(previousOutput, graceDir, relativeCSS, source string,
 			if len(match) != 2 {
 				continue
 			}
-			if err := retireReferencedBrowserAsset(previousOutput, graceDir, relativeCSS, string(match[1]), retiredAt, visited); err != nil {
+			if err := retainReferencedBrowserAsset(previousOutput, stagedOutput, relativeCSS, string(match[1]), visited); err != nil {
 				return err
 			}
 		}
@@ -261,23 +324,7 @@ func resolveBrowserAssetPath(rawRef, baseFile string) (string, bool) {
 	return relative, true
 }
 
-func browserGraceAssetPath(outputDir, requestPath string, now time.Time) (string, bool) {
-	relative, ok := resolveBrowserAssetPath(requestPath, "index.html")
-	if !ok {
-		return "", false
-	}
-	candidate := filepath.Join(browserAssetGraceDir(outputDir), relative)
-	info, err := os.Stat(candidate)
-	if err != nil || !info.Mode().IsRegular() {
-		return "", false
-	}
-	if info.ModTime().Before(now.Add(-cleanPublishAssetGrace)) {
-		return "", false
-	}
-	return candidate, true
-}
-
-func copyRetiredBrowserAsset(source, destination string, retiredAt time.Time) error {
+func copyPublishedAsset(source, destination string) error {
 	info, err := os.Stat(source)
 	if err != nil {
 		return err
@@ -289,40 +336,37 @@ func copyRetiredBrowserAsset(source, destination string, retiredAt time.Time) er
 		return err
 	}
 
-	temp, err := os.CreateTemp(filepath.Dir(destination), ".markata-grace-*")
-	if err != nil {
-		return err
-	}
-	tempName := temp.Name()
-	removeTemp := true
-	defer func() {
-		_ = temp.Close()
-		if removeTemp {
-			_ = os.Remove(tempName)
-		}
-	}()
-	if err := temp.Chmod(info.Mode().Perm()); err != nil {
-		return err
-	}
-
 	in, err := os.Open(source)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
-	if _, err := io.Copy(temp, in); err != nil {
+
+	out, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil
+		}
 		return err
 	}
-	if err := temp.Close(); err != nil {
+	removePartial := true
+	defer func() {
+		_ = out.Close()
+		if removePartial {
+			_ = os.Remove(destination)
+		}
+	}()
+
+	if _, err := io.Copy(out, in); err != nil {
 		return err
 	}
-	if err := os.Chtimes(tempName, retiredAt, retiredAt); err != nil {
+	if err := out.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tempName, destination); err != nil {
+	if err := os.Chtimes(destination, info.ModTime(), info.ModTime()); err != nil {
 		return err
 	}
-	removeTemp = false
+	removePartial = false
 	return nil
 }
 
