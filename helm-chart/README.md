@@ -28,6 +28,7 @@ This chart deploys a reusable markata-go notes workload that:
 - `site.contentIndexPath` keeps the Content Index on an exact nginx location. This location returns `404` instead of the HTML fallback when the artifact is missing.
 - Set `site.contentIndexPath` to an empty string to disable the exact Content Index location. This setting does not disable site-wide CORS.
 - Set `site.healthPath` when the published site does not serve a successful response at `/`. The path must be public and stable.
+- Set `storage.site.volumeName` only to bind an existing PV with copied site data. Keep the site's StorageClass and requested size consistent with that PV. A bound PVC cannot change its volume name or StorageClass in place.
 
 ## Setting up the encryption secret
 

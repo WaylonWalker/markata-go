@@ -28,6 +28,9 @@ spec:
   accessModes:
     {{- toYaml .Values.storage.site.accessModes | nindent 4 }}
   storageClassName: {{ .Values.storage.site.storageClassName | quote }}
+  {{- with .Values.storage.site.volumeName }}
+  volumeName: {{ . | quote }}
+  {{- end }}
   resources:
     requests:
       storage: {{ .Values.storage.site.size | quote }}
