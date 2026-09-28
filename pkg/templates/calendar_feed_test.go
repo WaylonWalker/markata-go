@@ -17,6 +17,7 @@ func TestCalendarFeedTemplateRendersCompleteFeed(t *testing.T) {
 	firstTitle := "Leap day, first"
 	secondTitle := "Leap day, second"
 	olderTitle := "Older post"
+	undatedTitle := "Undated note"
 	leapDay := time.Date(2024, time.February, 29, 12, 0, 0, 0, time.UTC)
 	olderDay := time.Date(2023, time.December, 31, 12, 0, 0, 0, time.UTC)
 
@@ -27,6 +28,7 @@ func TestCalendarFeedTemplateRendersCompleteFeed(t *testing.T) {
 			{Slug: "leap-one", Href: "/leap-one/", Title: &firstTitle, Date: &leapDay, Published: true},
 			{Slug: "leap-two", Href: "/leap-two/", Title: &secondTitle, Date: &leapDay, Published: true},
 			{Slug: "older", Href: "/older/", Title: &olderTitle, Date: &olderDay, Published: true},
+			{Slug: "undated", Href: "/undated/", Title: &undatedTitle, Published: true},
 		},
 	}
 
@@ -35,7 +37,7 @@ func TestCalendarFeedTemplateRendersCompleteFeed(t *testing.T) {
 	page := &models.FeedPage{
 		Number:     1,
 		Posts:      feed.Posts[:1],
-		TotalPages: 3,
+		TotalPages: 4,
 		TotalItems: len(feed.Posts),
 	}
 	config := &models.Config{Title: "Test Site", URL: "https://example.com"}
@@ -53,6 +55,9 @@ func TestCalendarFeedTemplateRendersCompleteFeed(t *testing.T) {
 	}
 	if !strings.Contains(html, `data-date="2023-12-31"`) || !strings.Contains(html, olderTitle) {
 		t.Fatalf("calendar source omitted a post outside the current pagination page")
+	}
+	if !strings.Contains(html, undatedTitle) || !strings.Contains(html, "Undated") {
+		t.Fatalf("undated post was omitted from the list fallback")
 	}
 	if !strings.Contains(html, "css/calendar-feed") {
 		t.Fatalf("calendar stylesheet is not linked")
