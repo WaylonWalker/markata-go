@@ -387,6 +387,8 @@ const (
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
 	embedOptionPhoto     = "photo"
+	embedOptionShot      = "shot"
+	embedOptionShots     = "shots"
 	embedOptionImage     = "image"
 	embedOptionVideo     = "video"
 	embedOptionLink      = "link"
@@ -598,7 +600,7 @@ func resolveInternalEmbed(post *models.Post, displayText string) internalEmbedDe
 	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == templateTypeGallery
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == embedOptionShot || templateName == embedOptionShots || templateName == embedOptionImage || templateName == templateTypeGallery
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource, posterURL := resolveInternalEmbedMedia(post, mediaURL, isPhotoCard, isVideo)
 	return internalEmbedDescriptor{href: href, title: title, description: description, mediaURL: mediaURL, mediaSource: mediaSource, posterURL: posterURL, isVideo: isVideo, isPhotoCard: isPhotoCard, date: post.Date}

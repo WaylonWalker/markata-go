@@ -111,7 +111,7 @@ func buildInternalEmbedCardReference(p *EmbedsPlugin, post *models.Post, display
 	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == templateTypeGallery
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == embedOptionShot || templateName == embedOptionShots || templateName == embedOptionImage || templateName == templateTypeGallery
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource, posterURL := "", ""
 	if mediaURL != "" {
