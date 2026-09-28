@@ -170,6 +170,37 @@
   opacity: var(--calendar-density-opacity, 0.75);
 }
 
+.calendar-day details[data-post-count="1"] .calendar-day-marker {
+  --calendar-density-size: 0.315rem;
+  --calendar-density-opacity: 0.62;
+}
+
+.calendar-day details[data-post-count="2"] .calendar-day-marker {
+  --calendar-density-size: 0.35rem;
+  --calendar-density-opacity: 0.69;
+}
+
+.calendar-day details[data-post-count="3"] .calendar-day-marker {
+  --calendar-density-size: 0.385rem;
+  --calendar-density-opacity: 0.76;
+}
+
+.calendar-day details[data-post-count="4"] .calendar-day-marker {
+  --calendar-density-size: 0.42rem;
+  --calendar-density-opacity: 0.83;
+}
+
+.calendar-day details[data-post-count="5"] .calendar-day-marker {
+  --calendar-density-size: 0.455rem;
+  --calendar-density-opacity: 0.9;
+}
+
+.calendar-day details[data-post-count="6"] .calendar-day-marker,
+.calendar-day details:not([data-post-count="1"]):not([data-post-count="2"]):not([data-post-count="3"]):not([data-post-count="4"]):not([data-post-count="5"]) .calendar-day-marker {
+  --calendar-density-size: 0.49rem;
+  --calendar-density-opacity: 0.97;
+}
+
 .calendar-day-count {
   position: absolute;
   inset-block-start: 0.1rem;
