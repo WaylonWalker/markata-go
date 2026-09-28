@@ -834,6 +834,7 @@ func (p *TemplatesPlugin) getTagFeedSidebarPosts(post *models.Post, config *life
 			Title: fmt.Sprintf("Posts tagged: %s", tagName),
 			Posts: sidebarPosts,
 		}
+		feedConfig.ApplyDefaults(ToModelsConfig(config).FeedDefaults)
 
 		return sidebarPosts, feedConfig
 	}
@@ -984,6 +985,7 @@ func (p *TemplatesPlugin) getSeriesSidebarPosts(post *models.Post, config *lifec
 	if group.cfg != nil && group.cfg.Description != "" {
 		feedConfig.Description = group.cfg.Description
 	}
+	feedConfig.ApplyDefaults(ToModelsConfig(config).FeedDefaults)
 
 	return publishedPosts, feedConfig
 }
