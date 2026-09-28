@@ -100,15 +100,8 @@
 
   {% if feed.posts %}
   <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>
-  <ul class="calendar-feed-list" data-calendar-list hidden aria-hidden="true">
-    {% for post in feed.posts %}
-      {% if post.date %}
-      <li data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}">
-        <a href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
-      </li>
-      {% endif %}
-    {% endfor %}
-  </ul>
+  {% set calendar_source_primary = false %}
+  {% include "partials/calendar-source.html" %}
   {% endif %}
 </div>
 {% endblock %}
