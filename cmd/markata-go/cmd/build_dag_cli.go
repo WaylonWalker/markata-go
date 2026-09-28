@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 const dagBuildEnv = "MARKATA_GO_DAG"
@@ -12,6 +14,11 @@ var buildDAG bool
 
 func init() {
 	buildCmd.Flags().BoolVar(&buildDAG, "dag", false, "use the experimental serial DAG executor")
+	buildCmd.PostRun = func(_ *cobra.Command, _ []string) {
+		if dagBuildEnabled() && buildBenchmarkJSON != "-" {
+			outlnf("  %s %s", buildLabel("Executor:"), "serial DAG (experimental)")
+		}
+	}
 }
 
 // dagBuildEnabled lets long-lived commands such as builder-admin pass the
