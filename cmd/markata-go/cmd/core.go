@@ -430,6 +430,10 @@ func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
 // runBuildObserved reports lifecycle stage transitions to serve clients. The
 // ordinary build command passes no observer and keeps its existing behavior.
 func runBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
+	if dagBuildEnabled() {
+		return runDAGBuildObserved(m, observe)
+	}
+
 	profile := buildstats.Start()
 	defer func() {
 		summary := profile.Stop()
