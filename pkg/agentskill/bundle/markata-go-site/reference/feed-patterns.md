@@ -39,21 +39,19 @@ reverse = true
 items_per_page = 10
 ```
 
-### Calendar Archive
+### Calendar View
 
-Use the built-in `calendar-feed.html` template when the goal is to visualize publishing rhythm across years and months instead of only showing a reverse-chronological card list. It keeps a no-JavaScript list fallback and uses the complete `feed.posts` collection, so ordinary pagination does not truncate the calendar history.
+Normal built-in HTML feeds expose Calendar by default. Do not duplicate the feed or replace its primary template just to show publishing rhythm.
 
-```toml
-[[markata-go.feeds]]
-slug = "calendar"
-title = "Calendar"
-filter = "published == True"
-sort = "date"
-reverse = true
+For a feed at `/blog/`, Calendar is available from the feed's view controls and can be deep-linked as:
 
-[markata-go.feeds.templates]
-html = "calendar-feed.html"
+```text
+/blog/?view=calendar
 ```
+
+The calendar reads the complete `feed.posts` collection, so ordinary primary-view pagination does not truncate its history. The post sidebar also exposes a calendar link for the currently selected feed.
+
+The dedicated `calendar-feed.html` template still exists for intentional calendar-first customization, not as the normal enablement path.
 
 ### Tag-Like Feed
 
@@ -92,6 +90,8 @@ markdown = false
 text = false
 ```
 
+Calendar is a presentation of HTML feed data, not a syndication/export format, so there is no `calendar_html` format toggle.
+
 ## Feed Defaults
 
 If the site uses shared feed defaults, check those before editing each feed:
@@ -120,6 +120,8 @@ Each feed can set `pagination_type` to control how page navigation works:
 - `"htmx"`: HTMX-powered seamless page loading
 - `"htmx-infinite"`: HTMX-powered infinite scroll
 - `"js"`: client-side JavaScript pagination
+
+Calendar intentionally uses the complete `feed.posts` collection even when the visible primary view uses a paginated `page.posts` slice.
 
 ## Auto-Generated Feeds
 
@@ -178,8 +180,10 @@ No additional config is needed. The sitemap plugin runs in the Write stage after
 ## Template Touchpoints
 
 - list/archive HTML usually uses `feed.html`
-- per-feed HTML can switch to another built-in template with `[markata-go.feeds.templates]`, including `feed-photo-grid.html` for image-first archives and `calendar-feed.html` for publishing-activity calendars
-- `calendar-feed.html` reads the complete `feed.posts` collection and progressively enhances a dated HTML list; keep that behavior when customizing it so pagination and no-JavaScript access remain correct
+- built-in normal and photo-grid feed templates expose primary, Simple, and Calendar presentations
+- per-feed HTML can still switch to another built-in primary template such as `[markata-go.feeds.templates] html = "feed-photo-grid.html"`
+- Calendar enhancement reads a hidden complete `feed.posts` source and toggles against the existing primary presentation; preserve that full-feed source when customizing built-in calendar hooks
+- `calendar-feed.html` is a dedicated calendar-first template for compatibility/customization, not a required calendar setting
 - card rendering often happens in a partial
 - RSS and Atom can use separate XML templates
 - `/rss.xsl` and `/atom.xsl` render with the site theme via the `<!-- markata:theme-head -->` ... `<!-- /markata:theme-head -->` region; keep that region when overriding them in `templates/` (customize the injected head with `partials/feed-xsl-head.html`)
@@ -203,4 +207,4 @@ A value of `0` or an omitted value means no cap. When capped, markata-go renders
 - if the task is “show only X posts”, check `filter`, `limit`, `offset`, and `items_per_page`
 - if the task is “make post sidebars shorter” or “speed up huge series sidebars”, check `components.feed_sidebar.max_posts`
 - if the task is “change archive card layout”, change the feed template or card partial before changing content
-- if the task is “show publishing cadence/history as a calendar”, prefer the built-in `calendar-feed.html` before inventing a site-specific archive template
+- if the task is “show publishing cadence/history as a calendar”, first use the feed's built-in Calendar view (`?view=calendar` for a deep link); do not create a duplicate calendar feed unless the site intentionally needs a separate custom route
