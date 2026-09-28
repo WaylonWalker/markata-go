@@ -85,6 +85,7 @@ token stylesheet is also used by Builder Admin, which keeps its separate
 production workflows and page structure. A shared browser shell is tracked in
 [#1300](https://github.com/WaylonWalker/markata-go/issues/1300); the local fix
 preview and source mutation actions remain available only in local Serve.
+
 ## Review and apply fixes
 
 The local Problems view can preview source fixes before applying them. Plans
@@ -96,7 +97,9 @@ approve the batch.
 `SAFE` fixes are deterministic edits that can be selected together; `REVIEW`
 fixes need closer inspection; `MANUAL` diagnostics provide guidance without an
 automatic edit. Markata never applies a fix until you review a preview and
-choose to apply it.
+choose to apply it. The server authorizes only the exact files, digests, and
+selections in that preview, and consumes that authorization after one apply
+attempt.
 
 Each source file is checked against the digest captured by the preview. If the
 file changes before apply, Markata skips that file and reports it. In a mixed
