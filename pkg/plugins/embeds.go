@@ -564,79 +564,88 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 }
 
 // buildInternalEmbedCard creates HTML for an internal embed card.
-//
-//nolint:gocyclo // multiple embed modes and media fallbacks are intentionally explicit
 func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText string) string {
-	var sb strings.Builder
+	card := resolveInternalEmbed(post, displayText)
+	return p.renderInternalEmbedCard(card)
+}
 
+type internalEmbedDescriptor struct {
+	href, title, description         string
+	mediaURL, mediaSource, posterURL string
+	isVideo, isPhotoCard             bool
+	date                             *time.Time
+}
+
+func resolveInternalEmbed(post *models.Post, displayText string) internalEmbedDescriptor {
 	href := post.Href
 	if href == "" {
 		href = "/" + post.Slug + "/"
 	}
-
 	title := displayText
 	if title == "" {
-		if post.PlainTitle() != "" {
-			title = post.PlainTitle()
-		} else {
+		title = post.PlainTitle()
+		if title == "" {
 			title = post.Slug
 		}
 	}
-
 	description := ""
 	if post.Description != nil {
 		description = *post.Description
-		// Truncate to reasonable length
 		if len(description) > 200 {
 			description = description[:197] + "..."
 		}
 	}
-
 	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
 	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == templateTypeGallery
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
-	mediaSource := ""
+	mediaSource, posterURL := resolveInternalEmbedMedia(post, mediaURL, isPhotoCard, isVideo)
+	return internalEmbedDescriptor{href: href, title: title, description: description, mediaURL: mediaURL, mediaSource: mediaSource, posterURL: posterURL, isVideo: isVideo, isPhotoCard: isPhotoCard, date: post.Date}
+}
+
+func resolveInternalEmbedMedia(post *models.Post, mediaURL string, isPhotoCard, isVideo bool) (string, string) {
+	if mediaURL == "" {
+		return "", ""
+	}
+	width, height := 200, 150
+	if isPhotoCard {
+		width, height = 1200, 0
+	}
+	mediaSource := templates.WithSize(mediaURL, width, height)
 	posterURL := ""
-	if mediaURL != "" {
-		if isPhotoCard {
-			mediaSource = templates.WithSize(mediaURL, 1200, 0)
-		} else {
-			mediaSource = templates.WithSize(mediaURL, 200, 150)
-		}
-		if isVideo {
-			posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
-			if posterURL != "" {
-				if isPhotoCard {
-					posterURL = templates.WithSize(posterURL, 1200, 0)
-				} else {
-					posterURL = templates.WithSize(posterURL, 200, 150)
-				}
-			}
+	if isVideo {
+		posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
+		if posterURL != "" {
+			posterURL = templates.WithSize(posterURL, width, height)
 		}
 	}
+	return mediaSource, posterURL
+}
 
-	if isPhotoCard && mediaSource != "" {
-		caption := description
+func (p *EmbedsPlugin) renderInternalEmbedCard(card internalEmbedDescriptor) string {
+	var sb strings.Builder
+
+	if card.isPhotoCard && card.mediaSource != "" {
+		caption := card.description
 		if caption == "" {
-			caption = title
+			caption = card.title
 		}
 
 		sb.WriteString(`<figure class="embed-figure">`)
 		sb.WriteString("\n")
 		sb.WriteString(`  <a href="`)
-		sb.WriteString(html.EscapeString(href))
+		sb.WriteString(html.EscapeString(card.href))
 		sb.WriteString(`" class="u-url">`)
 		sb.WriteString("\n")
 		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{
 			Indent:       "    ",
-			Source:       mediaSource,
-			URL:          mediaURL,
-			Poster:       posterURL,
-			Alt:          title,
+			Source:       card.mediaSource,
+			URL:          card.mediaURL,
+			Poster:       card.posterURL,
+			Alt:          card.title,
 			Width:        "1200",
-			Video:        isVideo,
+			Video:        card.isVideo,
 			VideoPreload: "metadata",
 		})
 		sb.WriteString(`  </a>`)
@@ -657,12 +666,12 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	sb.WriteString("\n")
 
 	sb.WriteString(`  <a href="`)
-	sb.WriteString(html.EscapeString(href))
+	sb.WriteString(html.EscapeString(card.href))
 	sb.WriteString(`" class="embed-card-link">`)
 	sb.WriteString("\n")
 
-	if mediaSource != "" {
-		if isPhotoCard {
+	if card.mediaSource != "" {
+		if card.isPhotoCard {
 			sb.WriteString(`    <figure class="embed-card-image">`)
 		} else {
 			sb.WriteString(`    <div class="embed-card-image">`)
@@ -670,19 +679,19 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		sb.WriteString("\n")
 		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{
 			Indent:     "      ",
-			Source:     mediaSource,
-			URL:        mediaURL,
-			Poster:     posterURL,
-			Alt:        title,
+			Source:     card.mediaSource,
+			URL:        card.mediaURL,
+			Poster:     card.posterURL,
+			Alt:        card.title,
 			Width:      "200",
 			Height:     "150",
-			Video:      isVideo,
+			Video:      card.isVideo,
 			VideoClass: "embed-card-video",
 		})
-		if isPhotoCard {
-			caption := description
+		if card.isPhotoCard {
+			caption := card.description
 			if caption == "" {
-				caption = title
+				caption = card.title
 			}
 			sb.WriteString(`      <figcaption>`)
 			sb.WriteString(html.EscapeString(caption))
@@ -699,20 +708,20 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	sb.WriteString("\n")
 
 	sb.WriteString(`      <div class="embed-card-title">`)
-	sb.WriteString(html.EscapeString(title))
+	sb.WriteString(html.EscapeString(card.title))
 	sb.WriteString(`</div>`)
 	sb.WriteString("\n")
 
-	if description != "" {
+	if card.description != "" {
 		sb.WriteString(`      <div class="embed-card-description">`)
-		sb.WriteString(html.EscapeString(description))
+		sb.WriteString(html.EscapeString(card.description))
 		sb.WriteString(`</div>`)
 		sb.WriteString("\n")
 	}
 
-	if post.Date != nil {
+	if card.date != nil {
 		sb.WriteString(`      <div class="embed-card-meta">`)
-		sb.WriteString(templates.FormatHumanDate(*post.Date))
+		sb.WriteString(templates.FormatHumanDate(*card.date))
 		sb.WriteString(`</div>`)
 		sb.WriteString("\n")
 	}
