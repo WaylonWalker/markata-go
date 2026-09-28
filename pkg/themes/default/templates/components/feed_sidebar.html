@@ -70,6 +70,10 @@
         </div>
         {% endif %}
 
+        <div class="feed-nav-links feed-nav-links--calendar">
+            <a id="feed-nav-calendar-link" href="{% if sidebar_feed.slug %}/{{ sidebar_feed.slug }}/{% else %}/{% endif %}?view=calendar" class="feed-nav-format-link" data-feed-format="calendar">calendar</a>
+        </div>
+
         <div class="feed-nav-hotkeys">
             {% if sidebar_prev or sidebar_next %}
             <span class="feed-nav-hotkey-group feed-nav-hotkey-group--nav">
@@ -124,6 +128,18 @@
 
     {% if sidebar_feeds_json %}
     <script type="application/json" id="feed-sidebar-data">{{ sidebar_feeds_json | safe }}</script>
+    <script>
+    (() => {
+        const calendarLink = document.getElementById('feed-nav-calendar-link');
+        if (!calendarLink) return;
+        calendarLink.addEventListener('click', () => {
+            const picker = document.getElementById('feed-nav-select');
+            if (!picker) return;
+            const slug = picker.value || '';
+            calendarLink.href = (slug ? `/${slug}/` : '/') + '?view=calendar';
+        });
+    })();
+    </script>
     {% endif %}
 </aside>
 {% endif %}
