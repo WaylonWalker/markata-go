@@ -162,12 +162,12 @@
   position: absolute;
   inset-inline-start: 50%;
   inset-block-end: 0.18rem;
-  width: calc(0.28rem + (min(var(--calendar-density, 1), 6) * 0.035rem));
-  height: calc(0.28rem + (min(var(--calendar-density, 1), 6) * 0.035rem));
+  width: var(--calendar-density-size, 0.38rem);
+  height: var(--calendar-density-size, 0.38rem);
   translate: -50% 0;
   border-radius: 999px;
   background: var(--calendar-active);
-  opacity: calc(0.55 + (min(var(--calendar-density, 1), 6) * 0.07));
+  opacity: var(--calendar-density-opacity, 0.75);
 }
 
 .calendar-day-count {
