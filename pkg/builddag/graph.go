@@ -36,14 +36,15 @@ func (b *Builder) Compile() (*Graph, error) {
 
 	byID := make(map[TaskID]TaskSpec, len(tasks))
 	providers := make(map[ArtifactID]TaskID)
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		if task.ID == "" {
 			return nil, fmt.Errorf("builddag: task ID is empty")
 		}
 		if _, ok := byID[task.ID]; ok {
 			return nil, fmt.Errorf("builddag: duplicate task ID %q", task.ID)
 		}
-		byID[task.ID] = task
+		byID[task.ID] = *task
 		for _, artifact := range task.Provides {
 			if !validArtifact(artifact) {
 				return nil, fmt.Errorf("builddag: task %q provides invalid artifact %q", task.ID, artifact.String())
@@ -56,7 +57,8 @@ func (b *Builder) Compile() (*Graph, error) {
 	}
 
 	deps := make(map[TaskID]map[TaskID]bool, len(tasks))
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		deps[task.ID] = make(map[TaskID]bool)
 		for _, artifact := range task.Requires {
 			if !validArtifact(artifact) {
@@ -89,11 +91,13 @@ func validArtifact(id ArtifactID) bool {
 
 func topologicalOrder(tasks []TaskSpec, deps map[TaskID]map[TaskID]bool) ([]TaskID, error) {
 	remaining := make(map[TaskID]int, len(tasks))
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		remaining[task.ID] = len(deps[task.ID])
 	}
 	ready := make([]TaskID, 0, len(tasks))
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		if remaining[task.ID] == 0 {
 			ready = append(ready, task.ID)
 		}
@@ -139,7 +143,6 @@ func findCycle(tasks []TaskSpec, deps map[TaskID]map[TaskID]bool) []TaskID {
 					if current == dependency {
 						return append(append([]TaskID(nil), path[index:]...), dependency)
 					}
-				}
 			}
 			if state[dependency] == 0 {
 				if cycle := visit(dependency); cycle != nil {
@@ -151,7 +154,8 @@ func findCycle(tasks []TaskSpec, deps map[TaskID]map[TaskID]bool) []TaskID {
 		state[id] = 2
 		return nil
 	}
-	for _, task := range tasks {
+	for i := range tasks {
+		task := &tasks[i]
 		if state[task.ID] == 0 {
 			if cycle := visit(task.ID); cycle != nil {
 				return cycle
@@ -209,8 +213,13 @@ func (g *Graph) Serialize() ([]byte, error) {
 		sort.Slice(requires, func(i, j int) bool { return requires[i].String() < requires[j].String() })
 		sort.Slice(provides, func(i, j int) bool { return provides[i].String() < provides[j].String() })
 		entries = append(entries, entry{
-			ID: task.ID, Group: task.Group, Requires: requires, Provides: provides,
-			Scope: task.Scope, Version: task.Version, Exclusive: task.Exclusive,
+			ID:           task.ID,
+			Group:        task.Group,
+			Requires:     requires,
+			Provides:     provides,
+			Scope:        task.Scope,
+			Version:      task.Version,
+			Exclusive:    task.Exclusive,
 			ParallelSafe: task.ParallelSafe,
 		})
 	}
