@@ -36,7 +36,7 @@ jobs:
           go-version: ${{ env.LINT_GO_VERSION }}
           cache: true
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v6.5.2
         with:
           version: v1.64.8
           args: --timeout=5m
