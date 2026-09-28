@@ -85,6 +85,27 @@ token stylesheet is also used by Builder Admin, which keeps its separate
 production workflows and page structure. A shared browser shell is tracked in
 [#1300](https://github.com/WaylonWalker/markata-go/issues/1300); the local fix
 preview and source mutation actions remain available only in local Serve.
+## Review and apply fixes
+
+The local Problems view can preview source fixes before applying them. Plans
+show their category, safety class, source location, and before/after text.
+Use **Review all safe** to review every currently safe fix, a category button
+to review one group, or **Select** on individual problems followed by
+**Review selected**. The review dialog lists every proposed edit before you
+approve the batch.
+`SAFE` fixes are deterministic edits that can be selected together; `REVIEW`
+fixes need closer inspection; `MANUAL` diagnostics provide guidance without an
+automatic edit. Markata never applies a fix until you review a preview and
+choose to apply it.
+
+Each source file is checked against the digest captured by the preview. If the
+file changes before apply, Markata skips that file and reports it. In a mixed
+batch, still-valid files may be applied while stale files remain untouched.
+Markata requests one rebuild after applying any fixes. The build job then
+refreshes the current diagnostics projection. The apply response means the
+rebuild was queued; the Problems view updates when that job completes.
+Ambiguous dates and duplicate frontmatter keys do not receive automatic safe
+edits.
 
 ## Terminal controls
 
@@ -114,7 +135,10 @@ Resize the terminal at any time; narrow windows use a single-column layout.
 
 A diagnostic has a stable code, source path and line when known, the job that
 found it, and a suggested fix. The warnings and errors inboxes retain entries
-for the session. Selecting a page shows its current status and diagnostics;
-selecting a job shows the diagnostics from that run. Some plugin messages do
+for the session history. The Problems view uses current diagnostics from the
+latest page inventory, newest completed job, and any running job; a successful
+rebuild removes resolved findings from that view. Their original job records remain available. Selecting
+a page shows its current status and diagnostics; selecting a job shows the
+diagnostics from that run. Some plugin messages do
 not include a source location. Those remain in the job and session inbox so
 they cannot disappear into log scrollback.

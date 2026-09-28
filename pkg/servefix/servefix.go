@@ -22,19 +22,34 @@ var ErrStale = errors.New("source changed since fix preview")
 
 var ambiguousSlashDate = regexp.MustCompile(`\b(\d{1,2})/(\d{1,2})/(?:\d{2}|\d{4})\b`)
 
+const codeH1InContent = "h1-in-content"
+
+// Safety describes how a proposed edit may be approved.
+type Safety string
+
+const (
+	SafetySafe   Safety = "safe"
+	SafetyReview Safety = "review"
+	SafetyManual Safety = "manual"
+)
+
 // Edit is one independently selectable, source-positioned fix.
 type Edit struct {
-	ID       string `json:"id"`
-	File     string `json:"file"`
-	Code     string `json:"code"`
-	Category string `json:"category"`
-	Message  string `json:"message"`
-	Line     int    `json:"line"`
-	Column   int    `json:"column"`
-	Before   string `json:"before"`
-	After    string `json:"after"`
-	Start    int    `json:"-"`
-	End      int    `json:"-"`
+	ID          string `json:"id"`
+	File        string `json:"file"`
+	Code        string `json:"code"`
+	Category    string `json:"category"`
+	Message     string `json:"message"`
+	Line        int    `json:"line"`
+	Column      int    `json:"column"`
+	EndLine     int    `json:"end_line"`
+	EndColumn   int    `json:"end_column"`
+	Before      string `json:"before"`
+	After       string `json:"after"`
+	Safety      Safety `json:"safety"`
+	Explanation string `json:"explanation"`
+	Start       int    `json:"-"`
+	End         int    `json:"-"`
 }
 
 // Plan is a snapshot of one file and the fixes that can be reviewed.
@@ -49,6 +64,38 @@ type Selection struct {
 	IDs        []string `json:"ids,omitempty"`
 	Categories []string `json:"categories,omitempty"`
 	All        bool     `json:"all,omitempty"`
+	SafeOnly   bool     `json:"safe_only,omitempty"`
+}
+
+// FileSelection freezes the selection and digest for one file in a batch.
+type FileSelection struct {
+	Path      string    `json:"path"`
+	Digest    string    `json:"digest"`
+	Selection Selection `json:"selection"`
+}
+
+// FilePreview contains one immutable file-level preview in a batch.
+type FilePreview struct {
+	Path      string    `json:"path"`
+	Digest    string    `json:"digest"`
+	Before    string    `json:"before"`
+	After     string    `json:"after"`
+	Edits     []Edit    `json:"edits"`
+	Selection Selection `json:"selection"`
+}
+
+// FileResult reports the outcome for one file in a batch apply.
+type FileResult struct {
+	Path    string `json:"path"`
+	Status  string `json:"status"`
+	Reason  string `json:"reason,omitempty"`
+	Applied []Edit `json:"applied,omitempty"`
+}
+
+// BatchResult reports applied, stale, and failed file outcomes.
+type BatchResult struct {
+	Files   []FileResult `json:"files"`
+	Applied []Edit       `json:"applied"`
 }
 
 // PlanFile reads a Markdown source under root and proposes precise fixes.
@@ -70,7 +117,7 @@ func PlanFile(root, path string) (Plan, error) {
 		return plan, nil
 	}
 	for _, issue := range diagnostics.Check(file, string(content), nil) {
-		if !issue.Fixable && issue.Code != "h1-in-content" && issue.Code != diagnostics.ReasonFrontmatterSuspiciousDelimiter && issue.Code != diagnostics.ReasonFrontmatterLeadingWhitespace && issue.Code != diagnostics.ReasonFrontmatterMalformedClosing {
+		if !issue.Fixable && issue.Code != codeH1InContent && issue.Code != diagnostics.ReasonFrontmatterSuspiciousDelimiter && issue.Code != diagnostics.ReasonFrontmatterLeadingWhitespace && issue.Code != diagnostics.ReasonFrontmatterMalformedClosing {
 			continue
 		}
 		edit, ok := candidate(content, issue)
@@ -100,7 +147,7 @@ func Preview(plan Plan, content []byte, selection Selection) ([]byte, []Edit, er
 	selected := make([]Edit, 0, len(plan.Edits))
 	for i := range plan.Edits {
 		edit := plan.Edits[i]
-		if selection.All || ids[edit.ID] || categories[edit.Category] {
+		if (selection.All || ids[edit.ID] || categories[edit.Category]) && (!selection.SafeOnly || edit.Safety == SafetySafe) {
 			selected = append(selected, edit)
 			delete(ids, edit.ID)
 		}
@@ -154,15 +201,162 @@ func Apply(root string, plan Plan, selection Selection) ([]Edit, error) {
 	return applied, nil
 }
 
+// PreviewBatch freezes each requested file independently. Paths are kept in
+// the caller's root-relative form so browser responses never expose absolute
+// source locations.
+func PreviewBatch(root string, requested []FileSelection) ([]FilePreview, error) {
+	if len(requested) == 0 {
+		return nil, errors.New("batch contains no files")
+	}
+	seen := make(map[string]struct{}, len(requested))
+	previews := make([]FilePreview, 0, len(requested))
+	for _, item := range requested {
+		path := filepath.Clean(item.Path)
+		if path == "." || filepath.IsAbs(path) {
+			return nil, fmt.Errorf("invalid fix path %q", item.Path)
+		}
+		if _, exists := seen[path]; exists {
+			return nil, fmt.Errorf("duplicate fix path %q", item.Path)
+		}
+		seen[path] = struct{}{}
+		plan, err := PlanFile(root, path)
+		if err != nil {
+			return nil, err
+		}
+		content, err := os.ReadFile(plan.File)
+		if err != nil {
+			return nil, fmt.Errorf("read fix source %s: %w", path, err)
+		}
+		selection := item.Selection
+		if len(selection.IDs) == 0 && len(selection.Categories) == 0 && !selection.All {
+			selection.All = true
+		}
+		updated, edits, err := Preview(plan, content, selection)
+		if err != nil {
+			return nil, fmt.Errorf("preview %s: %w", path, err)
+		}
+		for i := range edits {
+			edits[i].File = filepath.ToSlash(path)
+		}
+		previews = append(previews, FilePreview{Path: filepath.ToSlash(path), Digest: plan.Digest, Before: string(content), After: string(updated), Edits: edits, Selection: selection})
+	}
+	return previews, nil
+}
+
+// PreviewCurrentBatch returns only files that still match the frozen digests.
+// It is intended for pre-apply integrations such as a filesystem watcher that
+// needs to know the exact replacement content before the atomic write.
+func PreviewCurrentBatch(root string, requested []FileSelection) []FilePreview {
+	previews := make([]FilePreview, 0, len(requested))
+	for _, item := range requested {
+		plan, err := PlanFile(root, item.Path)
+		if err != nil || plan.Digest != item.Digest {
+			continue
+		}
+		content, err := os.ReadFile(plan.File)
+		if err != nil {
+			continue
+		}
+		updated, edits, err := Preview(plan, content, item.Selection)
+		if err != nil || len(edits) == 0 {
+			continue
+		}
+		for i := range edits {
+			edits[i].File = filepath.ToSlash(filepath.Clean(item.Path))
+		}
+		previews = append(previews, FilePreview{Path: filepath.ToSlash(filepath.Clean(item.Path)), Digest: plan.Digest, Before: string(content), After: string(updated), Edits: edits, Selection: item.Selection})
+	}
+	return previews
+}
+
+// ApplyBatch validates all file digests before mutating any file, then applies
+// each still-valid file independently. A stale or conflicted file is skipped;
+// other valid files can proceed. Each replacement retains Apply's last-moment
+// digest check to protect edits made during the batch itself.
+func ApplyBatch(root string, previews []FileSelection) BatchResult {
+	result := BatchResult{Files: make([]FileResult, 0, len(previews)), Applied: []Edit{}}
+	if len(previews) == 0 {
+		return result
+	}
+	type readyFile struct {
+		index   int
+		preview FileSelection
+		plan    Plan
+	}
+	ready := make([]readyFile, 0, len(previews))
+	outcomes := make([]FileResult, len(previews))
+	seen := make(map[string]struct{}, len(previews))
+	for index, preview := range previews {
+		path := filepath.ToSlash(filepath.Clean(preview.Path))
+		if _, exists := seen[path]; exists {
+			outcomes[index] = FileResult{Path: path, Status: "skipped", Reason: "duplicate file in batch"}
+			continue
+		}
+		seen[path] = struct{}{}
+		plan, err := PlanFile(root, path)
+		if err != nil {
+			outcomes[index] = FileResult{Path: path, Status: "skipped", Reason: err.Error()}
+			continue
+		}
+		if plan.Digest != preview.Digest {
+			outcomes[index] = FileResult{Path: path, Status: "stale", Reason: ErrStale.Error()}
+			continue
+		}
+		content, err := os.ReadFile(plan.File)
+		if err != nil {
+			outcomes[index] = FileResult{Path: path, Status: "skipped", Reason: err.Error()}
+			continue
+		}
+		_, edits, err := Preview(plan, content, preview.Selection)
+		if errors.Is(err, ErrStale) {
+			outcomes[index] = FileResult{Path: path, Status: "stale", Reason: ErrStale.Error()}
+			continue
+		}
+		if err != nil {
+			outcomes[index] = FileResult{Path: path, Status: "skipped", Reason: err.Error()}
+			continue
+		}
+		if len(edits) == 0 {
+			outcomes[index] = FileResult{Path: path, Status: "unchanged"}
+			continue
+		}
+		ready = append(ready, readyFile{index: index, preview: preview, plan: plan})
+	}
+	for i := range ready {
+		item := ready[i]
+		applied, err := Apply(root, item.plan, item.preview.Selection)
+		if errors.Is(err, ErrStale) {
+			outcomes[item.index] = FileResult{Path: item.preview.Path, Status: "stale", Reason: ErrStale.Error()}
+			continue
+		}
+		if err != nil {
+			outcomes[item.index] = FileResult{Path: item.preview.Path, Status: "failed", Reason: err.Error()}
+			continue
+		}
+		for i := range applied {
+			applied[i].File = filepath.ToSlash(filepath.Clean(item.preview.Path))
+		}
+		outcomes[item.index] = FileResult{Path: item.preview.Path, Status: "applied", Applied: applied}
+		result.Applied = append(result.Applied, applied...)
+	}
+	result.Files = outcomes
+	return result
+}
+
 //nolint:gocyclo // Each diagnostic code has a small independent safety-checked edit rule.
 func candidate(content []byte, issue diagnostics.Issue) (Edit, bool) {
 	line, offset, ok := lineAt(content, issue.Range.StartLine)
 	if !ok {
 		return Edit{}, false
 	}
-	edit := Edit{Code: issue.Code, Category: issue.Code, Message: issue.Message, Line: issue.Range.StartLine + 1, Column: issue.Range.StartCol + 1}
+	edit := Edit{
+		Code: issue.Code, Category: issue.Code, Message: issue.Message,
+		Line: issue.Range.StartLine + 1, Column: issue.Range.StartCol + 1,
+		EndLine: issue.Range.EndLine + 1, EndColumn: issue.Range.EndCol + 1,
+		Safety: SafetySafe,
+	}
 	switch issue.Code {
-	case "h1-in-content":
+	case codeH1InContent:
 		if !strings.HasPrefix(line, "# ") {
 			return Edit{}, false
 		}
@@ -176,6 +370,8 @@ func candidate(content []byte, issue diagnostics.Issue) (Edit, bool) {
 		edit.Start, edit.End = offset+start, offset+start+2
 		edit.Before, edit.After = "//", "https://"
 	case "admonition-fenced-code":
+		edit.Safety = SafetyReview
+		edit.Explanation = "Review the inserted blank line in the surrounding fenced code."
 		end := offset + len(line)
 		if end >= len(content) || content[end] != '\n' {
 			return Edit{}, false
@@ -217,7 +413,30 @@ func candidate(content []byte, issue diagnostics.Issue) (Edit, bool) {
 		// whole-file fixer is too destructive to approve a single occurrence.
 		return Edit{}, false
 	}
+	if edit.Explanation == "" {
+		edit.Explanation = safetyExplanation(edit.Code, edit.Safety)
+	}
 	return edit, true
+}
+
+func safetyExplanation(code string, safety Safety) string {
+	switch safety {
+	case SafetySafe:
+		switch code {
+		case codeH1InContent:
+			return "The body heading becomes level two because the page title supplies the level-one heading."
+		case "protocol-less-url":
+			return "Add https:// to the protocol-relative URL."
+		case "invalid-date":
+			return "Normalize the unambiguous date using Markata's configured date fixer."
+		default:
+			return "Normalize the recognized frontmatter delimiter to three hyphens."
+		}
+	case SafetyReview:
+		return "Review the surrounding Markdown before applying this edit."
+	default:
+		return "Open the source and correct this diagnostic manually."
+	}
 }
 
 func onlyHyphens(value string) bool {

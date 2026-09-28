@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +31,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/searchapi"
 	"github.com/WaylonWalker/markata-go/pkg/servecontrol"
+	"github.com/WaylonWalker/markata-go/pkg/servefix"
 	"github.com/WaylonWalker/markata-go/pkg/servetui"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -111,7 +114,19 @@ var (
 	serveSearchPosts      map[string]*models.Post
 )
 
+type expectedServeFixWrite struct {
+	before  string
+	after   string
+	expires time.Time
+}
+
+var serveFixExpectedWrites = struct {
+	sync.Mutex
+	files map[string]expectedServeFixWrite
+}{files: make(map[string]expectedServeFixWrite)}
+
 const (
+	serveBuildAction       = "build"
 	markdownExtension      = ".markdown"
 	markdownShortExtension = ".md"
 	buildStatusBuilding    = "building"
@@ -229,6 +244,8 @@ func init() {
 }
 
 func runServeCommand(cmd *cobra.Command, args []string) error {
+	clearExpectedServeFixWrites()
+	defer clearExpectedServeFixWrites()
 	currentCmd = cmd
 	if err := validateServePort(servePort); err != nil {
 		return err
@@ -377,7 +394,7 @@ func configureServeBuildModes(m *lifecycle.Manager) {
 func configureServeActionHandler(ctx context.Context, runtime *servecontrol.Runtime, rebuildCh chan struct{}, wg *sync.WaitGroup) {
 	runtime.SetActionHandler(func(action servecontrol.ActionRequest) error {
 		switch action.Kind {
-		case "build", "rerun", "rerun_job", rebuildPageLegacyAction, rebuildPageAction:
+		case serveBuildAction, "rerun", "rerun_job", rebuildPageLegacyAction, rebuildPageAction:
 			if action.Kind == "rerun" || action.Kind == "rerun_job" {
 				found := false
 				snapshot := runtime.Snapshot()
@@ -605,7 +622,9 @@ func mountServeAdmin(site http.Handler, runtime *servecontrol.Runtime, sourceRoo
 		return site
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/_markata/", servecontrol.NewWebHandlerWithSourceRoot(runtime, sourceRoot))
+	mux.Handle("/_markata/", servecontrol.NewWebHandlerWithFixHooks(runtime, sourceRoot, func(previews []servefix.FilePreview) {
+		registerExpectedServeFixWrites(sourceRoot, previews)
+	}))
 	mux.Handle("/", site)
 	return mux
 }
@@ -1438,6 +1457,92 @@ func shouldIgnoreEvent(event fsnotify.Event) bool {
 		strings.HasSuffix(event.Name, ".tmp")
 }
 
+func registerExpectedServeFixWrites(root string, previews []servefix.FilePreview) {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return
+	}
+	now := time.Now()
+	serveFixExpectedWrites.Lock()
+	for path, expected := range serveFixExpectedWrites.files {
+		if now.After(expected.expires) {
+			delete(serveFixExpectedWrites.files, path)
+		}
+	}
+	for i := range previews {
+		preview := previews[i]
+		if len(serveFixExpectedWrites.files) >= 1024 {
+			break
+		}
+		path, err := filepath.Abs(filepath.Join(root, filepath.FromSlash(preview.Path)))
+		if err != nil {
+			continue
+		}
+		serveFixExpectedWrites.files[filepath.Clean(path)] = expectedServeFixWrite{
+			before:  contentDigest([]byte(preview.Before)),
+			after:   contentDigest([]byte(preview.After)),
+			expires: now.Add(5 * time.Second),
+		}
+	}
+	serveFixExpectedWrites.Unlock()
+}
+
+func isExpectedServeFixEvent(eventPath string) bool {
+	path, err := filepath.Abs(eventPath)
+	if err != nil {
+		return false
+	}
+	path = filepath.Clean(path)
+	serveFixExpectedWrites.Lock()
+	expected, ok := serveFixExpectedWrites.files[path]
+	if !ok {
+		serveFixExpectedWrites.Unlock()
+		return false
+	}
+	if time.Now().After(expected.expires) {
+		delete(serveFixExpectedWrites.files, path)
+		serveFixExpectedWrites.Unlock()
+		return false
+	}
+	serveFixExpectedWrites.Unlock()
+	content, readErr := os.ReadFile(path)
+	if readErr != nil {
+		// An absent path can be a user deletion. Let the watcher process it;
+		// replacement remove/create bursts still coalesce in handleRebuilds.
+		clearExpectedServeFixWrite(path, expected)
+		return false
+	}
+	digest := contentDigest(content)
+	if digest == expected.before || digest == expected.after {
+		return true
+	}
+	serveFixExpectedWrites.Lock()
+	if current, exists := serveFixExpectedWrites.files[path]; exists && current == expected {
+		delete(serveFixExpectedWrites.files, path)
+	}
+	serveFixExpectedWrites.Unlock()
+	return false
+}
+
+func clearExpectedServeFixWrite(path string, expected expectedServeFixWrite) {
+	serveFixExpectedWrites.Lock()
+	if current, exists := serveFixExpectedWrites.files[path]; exists && current == expected {
+		delete(serveFixExpectedWrites.files, path)
+	}
+	serveFixExpectedWrites.Unlock()
+}
+
+func clearExpectedServeFixWrites() {
+	serveFixExpectedWrites.Lock()
+	clear(serveFixExpectedWrites.files)
+	serveFixExpectedWrites.Unlock()
+}
+
+func contentDigest(content []byte) string {
+	digest := sha256.Sum256(content)
+	return hex.EncodeToString(digest[:])
+}
+
 var globMagicPattern = regexp.MustCompile(`[*?\[{]`)
 
 func contentWatchRoots(config *lifecycle.Config) []string {
@@ -1521,6 +1626,10 @@ func handleNewDirectory(watcher *fsnotify.Watcher, event fsnotify.Event) {
 
 // watchFiles handles file system events.
 func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<- struct{}) {
+	watchFilesWithObserver(ctx, watcher, rebuildCh, nil)
+}
+
+func watchFilesWithObserver(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<- struct{}, observe func(fsnotify.Event, bool)) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -1535,6 +1644,16 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 
 			if shouldIgnoreEvent(event) {
 				continue
+			}
+
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
+				suppressed := isExpectedServeFixEvent(event.Name)
+				if observe != nil {
+					observe(event, suppressed)
+				}
+				if suppressed {
+					continue
+				}
 			}
 
 			// Handle newly created directories
@@ -1768,9 +1887,11 @@ func normalizeServeChangedPaths(paths []string, contentDir string) (normalized [
 
 // handleRebuilds processes rebuild requests with debouncing.
 func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
-	// Debounce timer
+	handleRebuildsWith(ctx, rebuildCh, 300*time.Millisecond, func() { doRebuild(ctx, rebuildCh) })
+}
+
+func handleRebuildsWith(ctx context.Context, rebuildCh chan struct{}, debounceDelay time.Duration, rebuild func()) {
 	var timer *time.Timer
-	debounceDelay := 300 * time.Millisecond
 
 	for {
 		select {
@@ -1802,7 +1923,7 @@ func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
 			if ctx.Err() != nil {
 				return
 			}
-			doRebuild(ctx, rebuildCh)
+			rebuild()
 		}
 	}
 }

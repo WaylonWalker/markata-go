@@ -126,6 +126,96 @@ func TestWebHandler_FixPreviewApplyAndStaleProtection(t *testing.T) {
 	}
 }
 
+func TestWebHandler_BatchFixSkipsStaleAndRequestsOneBuild(t *testing.T) {
+	root := t.TempDir()
+	firstSource := "# First\n[link](//first.example)\n"
+	secondSource := "# Second\n[link](//second.example)\n"
+	for name, source := range map[string]string{"first.md": firstSource, "second.md": secondSource} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	firstPlan, err := servefix.PlanFile(root, "first.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondPlan, err := servefix.PlanFile(root, "second.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := servefix.Selection{All: true, SafeOnly: true}
+	previewRequest := batchFixPreviewRequest{Files: []servefix.FileSelection{
+		{Path: "first.md", Selection: selection}, {Path: "second.md", Selection: selection},
+	}}
+	body, err := json.Marshal(previewRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := NewRuntime()
+	actionCount := 0
+	runtime.SetActionHandler(func(request ActionRequest) error {
+		if request.Kind != "build" {
+			t.Fatalf("action = %+v", request)
+		}
+		actionCount++
+		return nil
+	})
+	var prepared []servefix.FilePreview
+	handler := NewWebHandlerWithFixHooks(runtime, root, func(previews []servefix.FilePreview) { prepared = previews })
+	response := serveLocalPost(handler, "/_markata/api/fixes/batch/preview", body)
+	if response.Code != http.StatusOK {
+		t.Fatalf("preview status=%d body=%s", response.Code, response.Body.String())
+	}
+	var preview struct {
+		Files []servefix.FilePreview `json:"files"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &preview); err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Files) != 2 || len(preview.Files[0].Edits) != 2 {
+		t.Fatalf("preview = %+v", preview)
+	}
+	if err := os.WriteFile(filepath.Join(root, "second.md"), []byte(secondSource+"external change\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	applyRequest := batchFixApplyRequest{Files: []servefix.FileSelection{
+		{Path: "first.md", Digest: firstPlan.Digest, Selection: selection},
+		{Path: "second.md", Digest: secondPlan.Digest, Selection: selection},
+	}}
+	body, err = json.Marshal(applyRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response = serveLocalPost(handler, "/_markata/api/fixes/batch/apply", body)
+	if response.Code != http.StatusOK {
+		t.Fatalf("apply status=%d body=%s", response.Code, response.Body.String())
+	}
+	var applied batchFixApplyResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &applied); err != nil {
+		t.Fatal(err)
+	}
+	statuses := map[string]string{}
+	for _, file := range applied.Result.Files {
+		statuses[file.Path] = file.Status
+	}
+	if len(applied.Result.Applied) != 2 || statuses["first.md"] != "applied" || statuses["second.md"] != "stale" {
+		t.Fatalf("result = %+v", applied.Result)
+	}
+	if actionCount != 1 || !applied.RebuildRequested || applied.RebuildError != "" {
+		t.Fatalf("action count=%d response=%+v", actionCount, applied)
+	}
+	if len(prepared) != 1 || prepared[0].Path != "first.md" {
+		t.Fatalf("prepared watcher outputs = %+v", prepared)
+	}
+	secondAfter, err := os.ReadFile(filepath.Join(root, "second.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(secondAfter) != secondSource+"external change\n" {
+		t.Fatalf("stale source overwritten: %q", secondAfter)
+	}
+}
+
 func serveLocalPost(handler http.Handler, path string, body []byte) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, "http://localhost"+path, bytes.NewReader(body))
 	request.RemoteAddr = "127.0.0.1:45678"

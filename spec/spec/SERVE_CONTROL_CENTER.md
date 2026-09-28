@@ -27,6 +27,14 @@ after later builds. Logs are bounded; diagnostics and useful job history are
 retained for the session. Subscribers receive coalesced snapshots without holding
 up the build path.
 
+Snapshots expose both historical `diagnostics` and `current_diagnostics`.
+Current diagnostics combine the latest page inventory's source findings with
+non-source findings from the newest completed job and any current running job.
+A queued job does not clear existing findings. A successful rebuild replaces that
+projection, so resolved page findings and their old fix plans leave the current
+inbox while remaining attached to the historical job. A failed build with no
+page inventory retains the last successful page state.
+
 ## Actions
 
 The runtime accepts explicit build and rerun requests. An action is validated
@@ -108,6 +116,38 @@ disables TUI color.
 Safe source fixes are planned against a source digest. Clients preview selected
 changes before applying them. Apply rechecks the digest and edit spans; stale or
 ambiguous changes are rejected without modifying the file.
+
+### Problems and fix plans
+
+Local Serve diagnostics may include zero or more structured fix plans. A plan
+has a stable ID, category, safety class, root-relative source path, source range,
+before/after text, explanation, and source digest. `SAFE` plans are deterministic
+mechanical edits eligible for grouped approval; every edit still requires
+preview and explicit apply. `REVIEW` plans require individual review. `MANUAL`
+diagnostics provide source navigation and an explanation without a mutation
+plan. A diagnostic's legacy suggested-fix text may remain for clients that do
+not yet render plans.
+
+The local browser can preview one plan, an arbitrary selection, one or more
+categories, or all eligible `SAFE` plans. A batch preview freezes the selected
+IDs and one digest per source file. Applying a batch checks each file against
+its preview digest before any file is changed. Stale or conflicting files are
+skipped and reported; valid files may still be applied. File replacements use
+the existing atomic replacement path. A batch does not promise rollback across
+multiple files if a later filesystem replacement fails; each outcome is
+reported. The server requests one rebuild when at least one file changed, then
+replaces the current diagnostic projection when that build completes. The
+browser can compare the updated projection with the previewed Problems list.
+The apply response reports that the rebuild was queued, not that it completed.
+An apply request never silently selects or applies fixes.
+
+Log-derived warning/error inbox entries are deduplicated only when a structured
+diagnostic for the same job, severity, and normalized message exists. The
+original log remains visible, and a log-only warning/error remains in the
+inbox. Structured diagnostics retain their distinct source locations and codes.
+
+Source mutation is a local Serve capability. The production Builder Admin
+projection does not expose these fix endpoints or source edits.
 
 ## Failure and shutdown
 
