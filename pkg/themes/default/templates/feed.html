@@ -79,26 +79,24 @@
   </div>
   {% endif %}
 
-  <div data-calendar-primary>
-    <div class="posts posts-list" id="posts-list">
-      {% if page.pagination_type == "js" %}
-      {% for post in feed.posts %}
-      {% include "partials/cards/card-router.html" %}
-      {% endfor %}
-      {% else %}
-      {% for post in page.posts %}
-      {% include "partials/cards/card-router.html" %}
-      {% endfor %}
-      {% endif %}
-    </div>
-    {% if not feed.posts %}
-    <p class="feed-empty">No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
-    {% endif %}
-
-    {% if page.total_pages > 1 %}
-    {% include "partials/pagination.html" %}
+  <div class="posts posts-list" id="posts-list" data-calendar-primary>
+    {% if page.pagination_type == "js" %}
+    {% for post in feed.posts %}
+    {% include "partials/cards/card-router.html" %}
+    {% endfor %}
+    {% else %}
+    {% for post in page.posts %}
+    {% include "partials/cards/card-router.html" %}
+    {% endfor %}
     {% endif %}
   </div>
+  {% if not feed.posts %}
+  <p class="feed-empty" data-calendar-primary>No published posts yet. Set <code>published: true</code> in a post's frontmatter to add it here.</p>
+  {% endif %}
+
+  {% if page.total_pages > 1 %}
+  {% include "partials/pagination.html" %}
+  {% endif %}
 
   {% if feed.posts %}
   <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>
