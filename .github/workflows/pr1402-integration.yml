@@ -1,0 +1,428 @@
+name: PR 1402 integration patch
+
+on:
+  push:
+    branches:
+      - feat/configurable-feed-views-1390
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/configurable-feed-views-1390
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Apply integration patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              got = text.count(old)
+              if got != count:
+                  raise SystemExit(f"{path}: expected {count} copies, found {got}: {old[:80]!r}")
+              p.write_text(text.replace(old, new, count))
+
+          def replace_all(path, old, new, expected):
+              p = Path(path)
+              text = p.read_text()
+              got = text.count(old)
+              if got != expected:
+                  raise SystemExit(f"{path}: expected {expected} copies, found {got}: {old[:80]!r}")
+              p.write_text(text.replace(old, new))
+
+          # Model semantics: nil means inherit, while an explicitly empty list remains
+          # distinguishable for validation.
+          path = "pkg/models/feed.go"
+          replace(path,
+              'func DefaultFeedViews() []string {\n\treturn []string{FeedViewDefault, FeedViewSimple, FeedViewCalendar}\n}\n',
+              'func DefaultFeedViews() []string {\n\treturn []string{FeedViewDefault, FeedViewSimple, FeedViewCalendar}\n}\n\n// IsKnownFeedView reports whether view names a built-in feed presentation.\nfunc IsKnownFeedView(view string) bool {\n\tswitch view {\n\tcase FeedViewDefault, FeedViewSimple, FeedViewCalendar:\n\t\treturn true\n\tdefault:\n\t\treturn false\n\t}\n}\n')
+          replace_all(path, 'if len(views) == 0 {', 'if views == nil {', 3)
+          replace(path, 'if len(f.Views) == 0 {', 'if f.Views == nil {')
+
+          # Parse views in TOML/YAML/JSON for both site defaults and per-feed overrides.
+          path = "pkg/config/parser.go"
+          for tag in ("toml", "yaml", "json"):
+              replace(path,
+                  f'\tReverse         bool              `{tag}:"reverse"`\n\tPrimary',
+                  f'\tReverse         bool              `{tag}:"reverse"`\n\tViews           []string          `{tag}:"views"`\n\tPrimary')
+              defaults_type = {"toml":"tomlFeedFormats", "yaml":"yamlFeedFormats", "json":"jsonFeedFormats"}[tag]
+              replace(path,
+                  f'\tPaginationType  string                `{tag}:"pagination_type"`\n\tFormats         {defaults_type}',
+                  f'\tPaginationType  string                `{tag}:"pagination_type"`\n\tViews           []string              `{tag}:"views"`\n\tFormats         {defaults_type}')
+          replace_all(path,
+              '\t\tReverse:         f.Reverse,\n\t\tPrimary:',
+              '\t\tReverse:         f.Reverse,\n\t\tViews:           f.Views,\n\t\tPrimary:', 3)
+          replace_all(path,
+              '\t\tPaginationType:  models.PaginationType(d.PaginationType),\n\t\tFormats:',
+              '\t\tPaginationType:  models.PaginationType(d.PaginationType),\n\t\tViews:           d.Views,\n\t\tFormats:', 3)
+
+          # Config layering must allow a later config to replace the available view set.
+          path = "pkg/config/merge.go"
+          replace(path,
+              '\tif override.OrphanThreshold != 0 {\n\t\tresult.OrphanThreshold = override.OrphanThreshold\n\t}\n\n\tresult.Formats',
+              '\tif override.OrphanThreshold != 0 {\n\t\tresult.OrphanThreshold = override.OrphanThreshold\n\t}\n\tif override.Views != nil {\n\t\tresult.Views = append([]string(nil), override.Views...)\n\t}\n\n\tresult.Formats')
+
+          # Validate raw view declarations before defaults are applied.
+          path = "pkg/config/validate.go"
+          replace(path,
+              '\t// Validate feed configurations\n\t// Apply feed defaults before validation so we can check effective values\n\tfor i := range config.Feeds {\n\t\tfeedWithDefaults := config.Feeds[i]',
+              '\t// Validate feed configurations\n\t// Validate raw view declarations before applying defaults so an explicit\n\t// empty list remains distinguishable from an omitted list.\n\tfor i := range config.Feeds {\n\t\terrs = append(errs, validateFeedViews(fmt.Sprintf("feeds[%d].views", i), config.Feeds[i].Views)... )\n\t\tfeedWithDefaults := config.Feeds[i]')
+          replace(path,
+              '\t// Validate feed defaults\n\tif config.FeedDefaults.ItemsPerPage < 0 {',
+              '\t// Validate feed defaults\n\terrs = append(errs, validateFeedViews("feed_defaults.views", config.FeedDefaults.Views)... )\n\tif config.FeedDefaults.ItemsPerPage < 0 {')
+          replace(path,
+              '\t// Validate feed configurations\n\tfor i := range config.Feeds {\n\t\tfeedWithDefaults := config.Feeds[i]',
+              '\t// Validate feed configurations\n\tfor i := range config.Feeds {\n\t\tvalidateFeedViewsWithPositions(fmt.Sprintf("feeds[%d].views", i), config.Feeds[i].Views, tracker, configErrors)\n\t\tfeedWithDefaults := config.Feeds[i]')
+          replace(path,
+              '\t// Validate feed defaults\n\tif config.FeedDefaults.ItemsPerPage < 0 {',
+              '\t// Validate feed defaults\n\tvalidateFeedViewsWithPositions("feed_defaults.views", config.FeedDefaults.Views, tracker, configErrors)\n\tif config.FeedDefaults.ItemsPerPage < 0 {', 1)
+
+          Path("pkg/config/feed_views_validation.go").write_text(textwrap.dedent(r'''\
+          package config
+
+          import (
+              "fmt"
+              "strings"
+
+              "github.com/WaylonWalker/markata-go/pkg/models"
+          )
+
+          func validateFeedViews(field string, views []string) []error {
+              if views == nil {
+                  return nil
+              }
+              var errs []error
+              hasDefault := false
+              for i, view := range views {
+                  if view == models.FeedViewDefault {
+                      hasDefault = true
+                  }
+                  if !models.IsKnownFeedView(view) {
+                      errs = append(errs, ValidationError{
+                          Field: fmt.Sprintf("%s[%d]", field, i),
+                          Message: fmt.Sprintf("unknown feed view %q; supported views are %q, %q, %q", view, models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar),
+                      })
+                  }
+              }
+              if !hasDefault {
+                  errs = append(errs, ValidationError{
+                      Field: field,
+                      Message: fmt.Sprintf("must include %q; the primary feed presentation cannot be disabled", models.FeedViewDefault),
+                  })
+              }
+              return errs
+          }
+
+          func validateFeedViewsWithPositions(field string, views []string, tracker *PositionTracker, configErrors *ConfigErrors) {
+              if views == nil {
+                  return
+              }
+              for _, err := range validateFeedViews(field, views) {
+                  validationErr, ok := err.(ValidationError)
+                  if !ok {
+                      continue
+                  }
+                  configErrors.Add(NewConfigErrorWithFix(
+                      tracker,
+                      validationErr.Field,
+                      strings.Join(views, ", "),
+                      validationErr.Message,
+                      fmt.Sprintf("Use a subset of [%s, %s, %s] and always keep %s.", models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar, models.FeedViewDefault),
+                      false,
+                  ))
+              }
+          }
+          '''))
+
+          # Expose effective view booleans to templates.
+          path = "pkg/templates/context.go"
+          replace(path,
+              '\tformats := map[string]interface{}{\n\t\t"html":',
+              '\tviews := map[string]interface{}{\n\t\t"default":  f.HasView(models.FeedViewDefault),\n\t\t"simple":   f.HasView(models.FeedViewSimple),\n\t\t"calendar": f.HasView(models.FeedViewCalendar),\n\t}\n\n\tformats := map[string]interface{}{\n\t\t"html":')
+          replace(path,
+              '\t\t"posts":          PostsToMaps(f.Posts),\n\t\t"formats":        formats,',
+              '\t\t"posts":          PostsToMaps(f.Posts),\n\t\t"views":          views,\n\t\t"formats":        formats,')
+
+          # Keep generation, incremental output checks, and ledger semantics in sync.
+          Path("pkg/plugins/feed_views.go").write_text(textwrap.dedent(r'''\
+          package plugins
+
+          import "github.com/WaylonWalker/markata-go/pkg/models"
+
+          func simpleHTMLViewEnabled(fc *models.FeedConfig) bool {
+              return fc != nil && fc.Formats.SimpleHTML && fc.HasView(models.FeedViewSimple)
+          }
+          '''))
+          path = "pkg/plugins/publish_feeds.go"
+          replace_all(path, 'fc.Formats.HTML || fc.Formats.SimpleHTML', 'fc.Formats.HTML || simpleHTMLViewEnabled(fc)', 3)
+          replace(path, 'if fc.Formats.SimpleHTML && len(htmlPages) > 0 {', 'if simpleHTMLViewEnabled(fc) && len(htmlPages) > 0 {')
+          replace(path, '\tneedsHTML := fc.Formats.HTML || simpleHTMLViewEnabled(fc)', '\tneedsHTML := fc.Formats.HTML || simpleHTMLViewEnabled(fc)')
+          replace(path,
+              '\twriteBoolField(fc.Formats.SimpleHTML)\n\twriteBoolField(fc.Formats.RSS)',
+              '\twriteBoolField(fc.Formats.SimpleHTML)\n\twriteBoolField(fc.HasView(models.FeedViewDefault))\n\twriteBoolField(fc.HasView(models.FeedViewSimple))\n\twriteBoolField(fc.HasView(models.FeedViewCalendar))\n\twriteBoolField(fc.Formats.RSS)')
+          replace(path,
+              '{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish:',
+              '{name: "SimpleHTML", enabled: simpleHTMLViewEnabled(fc), publish:')
+          replace(path,
+              '\tif err := os.MkdirAll(feedDir, 0o755); err != nil {\n\t\treturn fmt.Errorf("creating feed directory: %w", err)\n\t}\n\n\t// Define all format publishers',
+              '\tif err := os.MkdirAll(feedDir, 0o755); err != nil {\n\t\treturn fmt.Errorf("creating feed directory: %w", err)\n\t}\n\tif !simpleHTMLViewEnabled(fc) {\n\t\tif err := os.RemoveAll(filepath.Join(feedDir, "simple")); err != nil {\n\t\t\treturn fmt.Errorf("removing disabled simple feed output: %w", err)\n\t\t}\n\t}\n\n\t// Define all format publishers')
+
+          # Sidebar variants and dynamic Calendar links use the same availability contract.
+          path = "pkg/plugins/templates.go"
+          replace(path,
+              '\tVariants            []sidebarVariant  `json:"variants,omitempty"`\n\tPosts',
+              '\tVariants            []sidebarVariant  `json:"variants,omitempty"`\n\tCalendar            bool              `json:"calendar"`\n\tPosts')
+          replace(path,
+              '\t\tVariants:            buildSidebarVariants(fc, syndication, postFormats),\n\t\tTotalPosts:',
+              '\t\tVariants:            buildSidebarVariants(fc, syndication, postFormats),\n\t\tCalendar:            fc.HasView(models.FeedViewCalendar),\n\t\tTotalPosts:')
+          replace(path, 'if fc.Formats.SimpleHTML {\n\t\tadd("simple", "simple", baseHref+"simple/")\n\t}', 'if simpleHTMLViewEnabled(fc) {\n\t\tadd("simple", "simple", baseHref+"simple/")\n\t}')
+          replace(path,
+              '\t\tif sidebarFeed != nil {\n\t\t\tctx.Set("sidebar_feed", sidebarFeed)\n\t\t}',
+              '\t\tif sidebarFeed != nil {\n\t\t\tctx.Set("sidebar_feed", sidebarFeed)\n\t\t\tctx.Set("sidebar_calendar_enabled", sidebarFeed.HasView(models.FeedViewCalendar))\n\t\t}')
+
+          # Built-in feed templates only ship Calendar assets/data when Calendar is enabled.
+          for path, label, opening in [
+              ("pkg/themes/default/templates/feed.html", "Posts", '<div class="feed calendar-feed h-feed" data-calendar-feed data-calendar-default="list" data-calendar-url-state>'),
+              ("pkg/themes/default/templates/feed-photo-grid.html", "Grid", '<div class="feed calendar-feed h-feed feed--photo-grid" data-calendar-feed data-calendar-default="list" data-calendar-url-state>'),
+          ]:
+              replace(path,
+                  '<link rel="stylesheet" href="{{ \'css/calendar-feed.css\' | theme_asset_hashed }}">\n<script src="{{ \'js/calendar-feed.js\' | theme_asset_hashed }}" defer></script>',
+                  '{% if feed.views.calendar %}\n<link rel="stylesheet" href="{{ \'css/calendar-feed.css\' | theme_asset_hashed }}">\n<script src="{{ \'js/calendar-feed.js\' | theme_asset_hashed }}" defer></script>\n{% endif %}')
+              new_open = opening.replace('feed calendar-feed', 'feed{% if feed.views.calendar %} calendar-feed{% endif %}').replace(' data-calendar-feed data-calendar-default="list" data-calendar-url-state', '{% if feed.views.calendar %} data-calendar-feed data-calendar-default="list" data-calendar-url-state{% endif %}')
+              replace(path, opening, new_open)
+              old_nav = f'''        <nav class="calendar-view-switch" data-calendar-switch hidden aria-label="Feed views">\n          <button type="button" data-calendar-mode="list" aria-pressed="true">{label}</button>\n          {{% if feed.formats.simple_html %}}<a class="feed-view-link" href="{{% if feed.slug %}}/{{{{ feed.slug }}}}/simple/{{% else %}}/simple/{{% endif %}}">Simple</a>{{% endif %}}\n          <button type="button" data-calendar-mode="calendar" aria-pressed="false">Calendar</button>\n        </nav>'''
+              new_nav = f'''        {{% if feed.views.calendar %}}\n        <nav class="calendar-view-switch" data-calendar-switch hidden aria-label="Feed views">\n          <button type="button" data-calendar-mode="list" aria-pressed="true">{label}</button>\n          {{% if feed.views.simple and feed.formats.simple_html %}}<a class="feed-view-link" href="{{% if feed.slug %}}/{{{{ feed.slug }}}}/simple/{{% else %}}/simple/{{% endif %}}">Simple</a>{{% endif %}}\n          <button type="button" data-calendar-mode="calendar" aria-pressed="false">Calendar</button>\n        </nav>\n        {{% elif feed.views.simple and feed.formats.simple_html %}}\n        <nav class="feed-view-links" aria-label="Feed views"><span aria-current="page">{label}</span> <a class="feed-view-link" href="{{% if feed.slug %}}/{{{{ feed.slug }}}}/simple/{{% else %}}/simple/{{% endif %}}">Simple</a></nav>\n        {{% endif %}}'''
+              replace(path, old_nav, new_nav)
+              replace(path, ' data-calendar-primary>', '{% if feed.views.calendar %} data-calendar-primary{% endif %}>')
+              replace(path,
+                  '{% if feed.posts %}\n  <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>',
+                  '{% if feed.posts and feed.views.calendar %}\n  <div class="calendar-feed-years" data-calendar-years hidden aria-label="Publishing calendar"></div>')
+
+          replace("pkg/themes/default/templates/simple-feed.html",
+              '          <a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}?view=calendar">Calendar</a>',
+              '          {% if feed.views.calendar %}<a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}?view=calendar">Calendar</a>{% endif %}')
+
+          # Sidebar Calendar control: static feeds use server context; dynamic feeds use JSON availability.
+          path = "pkg/themes/default/templates/components/feed_sidebar.html"
+          replace(path,
+              '        <div class="feed-nav-links feed-nav-links--calendar">\n            <a id="feed-nav-calendar-link" href="{% if sidebar_feed.slug %}/{{ sidebar_feed.slug }}/{% else %}/{% endif %}?view=calendar" class="feed-nav-format-link" data-feed-format="calendar">calendar</a>\n        </div>',
+              '        {% if sidebar_feeds_json or sidebar_calendar_enabled %}\n        <div class="feed-nav-links feed-nav-links--calendar">\n            <a id="feed-nav-calendar-link" href="{% if sidebar_feed.slug %}/{{ sidebar_feed.slug }}/{% else %}/{% endif %}?view=calendar" class="feed-nav-format-link" data-feed-format="calendar">calendar</a>\n        </div>\n        {% endif %}')
+          replace(path,
+              "        const calendarLink = document.getElementById('feed-nav-calendar-link');\n        const picker = document.getElementById('feed-nav-select');\n        if (!calendarLink || !picker) return;\n\n        const updateCalendarLink = () => {\n            const slug = picker.value || '';\n            calendarLink.href = (slug ? `/${slug}/` : '/') + '?view=calendar';\n        };",
+              "        const calendarLink = document.getElementById('feed-nav-calendar-link');\n        const picker = document.getElementById('feed-nav-select');\n        const dataNode = document.getElementById('feed-sidebar-data');\n        if (!calendarLink || !picker || !dataNode) return;\n        let feedData = [];\n        try { feedData = JSON.parse(dataNode.textContent || '{}').feeds || []; } catch (_) {}\n\n        const updateCalendarLink = () => {\n            const slug = picker.value || '';\n            const selectedFeed = feedData.find((entry) => (entry.slug || '') === slug);\n            calendarLink.hidden = Boolean(selectedFeed && selectedFeed.calendar === false);\n            calendarLink.href = (slug ? `/${slug}/` : '/') + '?view=calendar';\n        };")
+
+          # Root template copies retain equivalent behavior for custom template-dir users.
+          for path, label, opening in [
+              ("templates/feed.html", "Posts", '<div class="feed calendar-feed h-feed{% if feed.type == \'guide\' %} feed--guide{% elif feed.type == \'series\' %} feed--series{% endif %}" data-calendar-feed data-calendar-default="list" data-calendar-url-state>'),
+              ("templates/feed-photo-grid.html", "Grid", '<div class="feed calendar-feed h-feed feed--photo-grid" data-calendar-feed data-calendar-default="list" data-calendar-url-state>'),
+          ]:
+              p = Path(path)
+              if not p.exists():
+                  continue
+              text = p.read_text()
+              assets = '<link rel="stylesheet" href="{{ \'css/calendar-feed.css\' | theme_asset_hashed }}">\n<script src="{{ \'js/calendar-feed.js\' | theme_asset_hashed }}" defer></script>'
+              if assets in text:
+                  text = text.replace(assets, '{% if feed.views.calendar %}\n'+assets+'\n{% endif %}', 1)
+              if opening in text:
+                  new_open = opening.replace('feed calendar-feed', 'feed{% if feed.views.calendar %} calendar-feed{% endif %}').replace(' data-calendar-feed data-calendar-default="list" data-calendar-url-state', '{% if feed.views.calendar %} data-calendar-feed data-calendar-default="list" data-calendar-url-state{% endif %}')
+                  text = text.replace(opening, new_open, 1)
+              text = text.replace('{% if feed.formats.simple_html %}<a class="feed-view-link"', '{% if feed.views.simple and feed.formats.simple_html %}<a class="feed-view-link"')
+              text = text.replace('{% if feed.posts %}\n  <div class="calendar-feed-years"', '{% if feed.posts and feed.views.calendar %}\n  <div class="calendar-feed-years"', 1)
+              p.write_text(text)
+          if Path("templates/simple-feed.html").exists():
+              replace("templates/simple-feed.html",
+                  '          <a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}?view=calendar">Calendar</a>',
+                  '          {% if feed.views.calendar %}<a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}?view=calendar">Calendar</a>{% endif %}')
+
+          # Focused tests for parsing, validation, templates, generation, and sidebar variants.
+          Path("pkg/config/feed_views_test.go").write_text(textwrap.dedent(r'''\
+          package config
+
+          import (
+              "reflect"
+              "strings"
+              "testing"
+
+              "github.com/WaylonWalker/markata-go/pkg/models"
+          )
+
+          func TestFeedViewsParseAcrossFormats(t *testing.T) {
+              tests := []struct {
+                  name string
+                  parse func([]byte) (*models.Config, error)
+                  data string
+              }{
+                  {"toml", ParseTOML, `[markata-go.feed_defaults]\nviews = ["default", "calendar"]\n[[markata-go.feeds]]\nslug = "notes"\nviews = ["default", "simple"]\n`},
+                  {"yaml", ParseYAML, "markata-go:\n  feed_defaults:\n    views: [default, calendar]\n  feeds:\n    - slug: notes\n      views: [default, simple]\n"},
+                  {"json", ParseJSON, `{"markata-go":{"feed_defaults":{"views":["default","calendar"]},"feeds":[{"slug":"notes","views":["default","simple"]}]}}`},
+              }
+              for _, tt := range tests {
+                  t.Run(tt.name, func(t *testing.T) {
+                      cfg, err := tt.parse([]byte(tt.data))
+                      if err != nil { t.Fatalf("parse: %v", err) }
+                      if !reflect.DeepEqual(cfg.FeedDefaults.Views, []string{"default", "calendar"}) {
+                          t.Fatalf("defaults views = %#v", cfg.FeedDefaults.Views)
+                      }
+                      if len(cfg.Feeds) != 1 || !reflect.DeepEqual(cfg.Feeds[0].Views, []string{"default", "simple"}) {
+                          t.Fatalf("feed views = %#v", cfg.Feeds)
+                      }
+                  })
+              }
+          }
+
+          func TestValidateFeedViews(t *testing.T) {
+              errs := validateFeedViews("feeds[0].views", []string{"simple", "unknown"})
+              if len(errs) != 2 { t.Fatalf("errors = %d, want 2", len(errs)) }
+              joined := errs[0].Error() + "\n" + errs[1].Error()
+              if !strings.Contains(joined, "unknown feed view") || !strings.Contains(joined, `must include "default"`) {
+                  t.Fatalf("unexpected validation: %s", joined)
+              }
+          }
+          '''))
+
+          Path("pkg/templates/feed_views_test.go").write_text(textwrap.dedent(r'''\
+          package templates
+
+          import (
+              "strings"
+              "testing"
+              "time"
+
+              "github.com/WaylonWalker/markata-go/pkg/models"
+          )
+
+          func TestFeedViewOptOutsSuppressCalendarAssetsAndSimpleLink(t *testing.T) {
+              engine, err := NewEngineWithTheme("", "default")
+              if err != nil { t.Fatal(err) }
+              title := "Post"
+              date := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
+              feed := &models.FeedConfig{
+                  Slug: "blog", Title: "Blog", Views: []string{models.FeedViewDefault},
+                  Formats: models.FeedFormats{HTML: true, SimpleHTML: true},
+                  Posts: []*models.Post{{Slug: "post", Href: "/post/", Title: &title, Date: &date, Published: true}},
+              }
+              page := &models.FeedPage{Number: 1, Posts: feed.Posts, TotalPages: 1, TotalItems: 1}
+              ctx := NewFeedContext(feed, page, &models.Config{Title: "Test", URL: "https://example.com"})
+              html, err := engine.Render("feed.html", ctx)
+              if err != nil { t.Fatal(err) }
+              for _, forbidden := range []string{"css/calendar-feed", "js/calendar-feed", "data-calendar-feed", "?view=calendar", "/blog/simple/"} {
+                  if strings.Contains(html, forbidden) { t.Fatalf("disabled view leaked %q", forbidden) }
+              }
+          }
+
+          func TestSimpleFeedHidesDisabledCalendarPeer(t *testing.T) {
+              engine, err := NewEngineWithTheme("", "default")
+              if err != nil { t.Fatal(err) }
+              feed := &models.FeedConfig{Slug: "blog", Views: []string{models.FeedViewDefault, models.FeedViewSimple}}
+              page := &models.FeedPage{Number: 1}
+              ctx := NewFeedContext(feed, page, &models.Config{Title: "Test"})
+              html, err := engine.Render("simple-feed.html", ctx)
+              if err != nil { t.Fatal(err) }
+              if strings.Contains(html, "?view=calendar") { t.Fatal("calendar link rendered after opt-out") }
+          }
+          '''))
+
+          Path("pkg/plugins/feed_views_test.go").write_text(textwrap.dedent(r'''\
+          package plugins
+
+          import (
+              "testing"
+
+              "github.com/WaylonWalker/markata-go/pkg/models"
+          )
+
+          func TestSimpleHTMLViewEnabledRequiresFormatAndView(t *testing.T) {
+              fc := &models.FeedConfig{Formats: models.FeedFormats{SimpleHTML: true}, Views: []string{models.FeedViewDefault}}
+              if simpleHTMLViewEnabled(fc) { t.Fatal("simple output enabled after view opt-out") }
+              fc.Views = []string{models.FeedViewDefault, models.FeedViewSimple}
+              if !simpleHTMLViewEnabled(fc) { t.Fatal("simple output should be enabled") }
+          }
+
+          func TestSidebarVariantsHideDisabledSimpleView(t *testing.T) {
+              fc := &models.FeedConfig{Slug: "blog", Views: []string{models.FeedViewDefault}, Formats: models.FeedFormats{SimpleHTML: true}}
+              variants := buildSidebarVariants(fc, models.SyndicationConfig{}, models.PostFormatsConfig{})
+              for _, variant := range variants {
+                  if variant.Key == "simple" { t.Fatal("sidebar exposed disabled simple view") }
+              }
+          }
+          '''))
+
+          Path("docs/guides/feed-views.md").write_text(textwrap.dedent(r'''\
+          # Feed views
+
+          Built-in feeds expose three presentation views by default: `default`, `simple`, and `calendar`.
+          `default` is the feed's normal card/grid page and is always required. `simple` is the compact
+          `/simple/` page, and `calendar` is the interactive `?view=calendar` peer view.
+
+          To disable an alternate view for every feed, set site-wide feed defaults:
+
+          ```toml
+          [markata-go.feed_defaults]
+          views = ["default", "calendar"]
+          ```
+
+          A feed can override that set:
+
+          ```toml
+          [[markata-go.feeds]]
+          slug = "notes"
+          views = ["default", "simple"]
+          ```
+
+          Omitting `views` inherits the site defaults. Unknown view names are configuration errors, and an
+          explicit list must include `default`. Disabling `simple` also stops Markata from generating that
+          feed's `/simple/` HTML output even when `formats.simple_html` is enabled. Disabling `calendar`
+          removes Calendar controls and avoids loading its CSS, JavaScript, and hidden calendar source data.
+          Output-format settings for RSS, Atom, JSON, Markdown, text, and sitemaps are independent of views.
+          '''))
+
+          Path("spec/spec/FEED_VIEWS.md").write_text(textwrap.dedent(r'''\
+          # Feed view contract
+
+          ## Built-in views
+
+          The canonical built-in feed presentation identifiers are `default`, `simple`, and `calendar`.
+          When no view list is configured, all three are available. `default` is mandatory; `simple` and
+          `calendar` may be removed globally through `feed_defaults.views` or overridden per feed with
+          `feeds[].views`.
+
+          ## Rendering and generation
+
+          View controls MUST only link to enabled presentations. Calendar assets and its hidden source
+          payload MUST NOT be emitted when `calendar` is disabled. Simple HTML MUST NOT be generated when
+          `simple` is disabled, even if the `simple_html` output-format flag is otherwise enabled. Feed
+          view availability participates in incremental output hashing so configuration changes rebuild
+          affected feeds.
+
+          ## Validation
+
+          Explicit view lists MUST contain `default`. Unknown view identifiers MUST fail validation with
+          the supported identifiers in the diagnostic. Omitted lists inherit; explicitly empty lists are
+          invalid rather than meaning "inherit".
+          '''))
+          PY
+
+          gofmt -w pkg/models/feed.go pkg/config/feed_views_validation.go pkg/config/feed_views_test.go pkg/templates/context.go pkg/templates/feed_views_test.go pkg/plugins/feed_views.go pkg/plugins/feed_views_test.go pkg/config/parser.go pkg/config/merge.go pkg/config/validate.go pkg/plugins/publish_feeds.go pkg/plugins/templates.go
+          go test ./pkg/models ./pkg/config ./pkg/templates ./pkg/plugins
+      - name: Commit completed feature
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/pr1402-integration.yml
+          git add pkg docs spec templates
+          git commit -m "feat(feeds): complete configurable feed views"
+          git push origin HEAD:feat/configurable-feed-views-1390
