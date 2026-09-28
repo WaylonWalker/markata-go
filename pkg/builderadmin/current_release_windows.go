@@ -8,6 +8,9 @@ import (
 )
 
 func replaceCurrentRelease(currentNext, current string) error {
+	if err := validatePendingCurrentRelease(currentNext); err != nil {
+		return fmt.Errorf("refuse invalid release activation: %w", err)
+	}
 	// Windows cannot rename a symlink over an existing symlink. Remove only
 	// the link itself, then install the already-created replacement link. Keep
 	// the old target so a failed replacement does not strand the site without a
