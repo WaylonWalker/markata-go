@@ -58,8 +58,6 @@ func normalizeRelative(root, name string) (string, error) {
 // regular files as a stream. Known transient Markata-Go metadata files are not
 // part of the output contract. classes maps normalized paths to output classes.
 // excluded contains fixture-relative paths that are known build state.
-//
-//nolint:gocyclo // Walking and classifying the supported file types is one operation.
 func BuildManifest(root string, classes map[string]OutputClass, excluded ...string) (Manifest, error) {
 	records := make([]FileRecord, 0)
 	if _, err := os.Lstat(root); err != nil {
@@ -68,77 +66,102 @@ func BuildManifest(root string, classes map[string]OutputClass, excluded ...stri
 		}
 		return Manifest{}, err
 	}
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if path == root {
-				return nil
-			}
-			rel, err := normalizeRelative(root, path)
-			if err != nil {
-				return err
-			}
-			if isBuildMetadataPath(rel) || shouldExcludeFixturePath(rel, excluded) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		rel, err := normalizeRelative(root, path)
-		if err != nil {
-			return err
-		}
-		if isBuildMetadataPath(rel) || shouldExcludeFixturePath(rel, excluded) {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		class := classes[rel]
-		if class == "" {
-			class = ClassDeterministic
-		}
-		r := FileRecord{Path: rel, Mode: uint32(info.Mode()), Class: class}
-		switch {
-		case entry.Type()&os.ModeSymlink != 0:
-			target, e := os.Readlink(path)
-			if e != nil {
-				return e
-			}
-			h := sha256.Sum256([]byte(target))
-			r.SHA256 = hex.EncodeToString(h[:])
-			r.Size = int64(len(target))
-			r.Type = TypeSymlink
-		case info.Mode().IsRegular():
-			f, e := os.Open(path)
-			if e != nil {
-				return e
-			}
-			h := sha256.New()
-			n, e := io.Copy(h, f)
-			closeErr := f.Close()
-			if e != nil {
-				return e
-			}
-			if closeErr != nil {
-				return closeErr
-			}
-			r.SHA256 = hex.EncodeToString(h.Sum(nil))
-			r.Size = n
-			r.Type = TypeRegular
-		default:
-			return nil
-		}
-		records = append(records, r)
-		return nil
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		return visitManifestEntry(root, path, entry, walkErr, classes, excluded, &records)
 	})
 	if err != nil {
 		return Manifest{}, err
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].Path < records[j].Path })
 	return Manifest{Records: records}, nil
+}
+
+func visitManifestEntry(root, path string, entry fs.DirEntry, walkErr error, classes map[string]OutputClass, excluded []string, records *[]FileRecord) error {
+	if walkErr != nil {
+		return walkErr
+	}
+	if entry.IsDir() {
+		return visitManifestDirectory(root, path, excluded)
+	}
+	rel, err := normalizeRelative(root, path)
+	if err != nil {
+		return err
+	}
+	if isBuildMetadataPath(rel) || shouldExcludeFixturePath(rel, excluded) {
+		return nil
+	}
+	record, include, err := buildManifestRecord(path, rel, entry, classes[rel])
+	if err != nil {
+		return err
+	}
+	if include {
+		*records = append(*records, record)
+	}
+	return nil
+}
+
+func visitManifestDirectory(root, path string, excluded []string) error {
+	if path == root {
+		return nil
+	}
+	rel, err := normalizeRelative(root, path)
+	if err != nil {
+		return err
+	}
+	if isBuildMetadataPath(rel) || shouldExcludeFixturePath(rel, excluded) {
+		return fs.SkipDir
+	}
+	return nil
+}
+
+func buildManifestRecord(path, rel string, entry fs.DirEntry, class OutputClass) (FileRecord, bool, error) {
+	info, err := entry.Info()
+	if err != nil {
+		return FileRecord{}, false, err
+	}
+	if class == "" {
+		class = ClassDeterministic
+	}
+	record := FileRecord{Path: rel, Mode: uint32(info.Mode()), Class: class}
+	if entry.Type()&os.ModeSymlink != 0 {
+		return buildSymlinkRecord(path, record)
+	}
+	if !info.Mode().IsRegular() {
+		return FileRecord{}, false, nil
+	}
+	return buildRegularFileRecord(path, record)
+}
+
+func buildSymlinkRecord(path string, record FileRecord) (FileRecord, bool, error) {
+	target, err := os.Readlink(path)
+	if err != nil {
+		return FileRecord{}, false, err
+	}
+	hash := sha256.Sum256([]byte(target))
+	record.SHA256 = hex.EncodeToString(hash[:])
+	record.Size = int64(len(target))
+	record.Type = TypeSymlink
+	return record, true, nil
+}
+
+func buildRegularFileRecord(path string, record FileRecord) (FileRecord, bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return FileRecord{}, false, err
+	}
+	hash := sha256.New()
+	size, copyErr := io.Copy(hash, file)
+	closeErr := file.Close()
+	if copyErr != nil {
+		return FileRecord{}, false, copyErr
+	}
+	if closeErr != nil {
+		return FileRecord{}, false, closeErr
+	}
+	record.SHA256 = hex.EncodeToString(hash.Sum(nil))
+	record.Size = size
+	record.Type = TypeRegular
+	return record, true, nil
 }
 
 func isBuildMetadataPath(path string) bool {
