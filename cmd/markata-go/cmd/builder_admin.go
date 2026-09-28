@@ -172,6 +172,18 @@ func validateBuilderAdminWorkDir(workDir, sourceDir, siteDir string) error {
 		return fmt.Errorf("builder-admin work directory must not equal the release directory: %s", siteDir)
 	}
 	if pathWithin(workAbs, siteAbs) {
+		rel, err := filepath.Rel(siteAbs, workAbs)
+		if err != nil {
+			return fmt.Errorf("resolve builder-admin work directory relative to release directory: %w", err)
+		}
+		first := rel
+		if separator := strings.IndexRune(rel, os.PathSeparator); separator >= 0 {
+			first = rel[:separator]
+		}
+		switch first {
+		case "releases", "current", ".builder-admin":
+			return fmt.Errorf("builder-admin work directory must not use reserved release path %q: %s", first, workDir)
+		}
 		return nil
 	}
 	if pathWithin(workAbs, sourceAbs) {
