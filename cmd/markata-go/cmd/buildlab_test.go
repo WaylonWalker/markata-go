@@ -21,7 +21,7 @@ func TestBuildLabCLI_OnlyExposesReviewedDAGOptIn(t *testing.T) {
 	if dagFlag == nil {
 		t.Fatal("ordinary build does not expose the reviewed --dag opt-in")
 	}
-	if dagFlag.DefValue != "false" {
+	if dagFlag.DefValue != envValueDisabled {
 		t.Fatalf("build --dag default = %q, want false", dagFlag.DefValue)
 	}
 	if buildCmd.Flags().Lookup("dag-seed") != nil || buildCmd.Flags().Lookup("dag-random-ready") != nil {
