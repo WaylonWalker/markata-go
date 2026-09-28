@@ -22,6 +22,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git fetch origin main
           if git merge --no-commit --no-ff origin/main; then
             echo "main merged without conflicts"
@@ -55,8 +57,8 @@ jobs:
               if index < 0:
                   raise SystemExit("could not locate diff navigation insertion point")
               report = '''function diagnosticReport(items){const warnings=items.filter(item=>item.severity==='warning').length,errors=items.filter(item=>item.severity==='error').length,lines=['# Markata Problems Report','',items.length+' problem'+(items.length===1?'':'s')+' ('+errors+' errors, '+warnings+' warnings)'];if(state.severity)lines.push('Severity filter: '+state.severity);if(state.filter)lines.push('Text filter: '+state.filter);if(!items.length){lines.push('','No matching problems.');return lines.join('\\n')}items.forEach((item,index)=>{const location=[item.file||item.page,item.line,item.column].filter(value=>value!==undefined&&value!==null&&value!=='').join(':');lines.push('',(index+1)+'. ['+String(item.severity||'problem').toUpperCase()+'] '+(item.code?item.code+' — ':'')+(item.message||'Problem'));if(location)lines.push('   Location: '+location);if(item.explanation)lines.push('   Explanation: '+item.explanation);if(item.suggested_fix)lines.push('   Suggested fix: '+item.suggested_fix);if(item.job_id)lines.push('   Job: '+item.job_id);if(item.step_id)lines.push('   Step: '+item.step_id)});return lines.join('\\n')}
-          async function copyProblemReport(){const items=visibleItems().map(x=>x.item),report=diagnosticReport(items);if(!navigator.clipboard||!navigator.clipboard.writeText){notice('Clipboard access is unavailable in this browser.');return}try{await navigator.clipboard.writeText(report);notice('Copied '+items.length+' problem'+(items.length===1?'':'s')+' to clipboard.')}catch(err){notice('Could not copy problem report: '+(err&&err.message?err.message:'clipboard write failed'))}}
-          '''
+async function copyProblemReport(){const items=visibleItems().map(x=>x.item),report=diagnosticReport(items);if(!navigator.clipboard||!navigator.clipboard.writeText){notice('Clipboard access is unavailable in this browser.');return}try{await navigator.clipboard.writeText(report);notice('Copied '+items.length+' problem'+(items.length===1?'':'s')+' to clipboard.')}catch(err){notice('Could not copy problem report: '+(err&&err.message?err.message:'clipboard write failed'))}}
+'''
               source = source[:index] + report + source[index:]
 
           toggle = "el('copy-report-button').hidden=state.section!=='diagnostics';"
@@ -87,8 +89,6 @@ jobs:
       - name: Commit reconciliation
         run: |
           rm .github/workflows/reconcile-1304.yml
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
           git commit -m "Reconcile grouped fixes with current Control Center"
           git push origin HEAD:feat/serve-fix-plans
