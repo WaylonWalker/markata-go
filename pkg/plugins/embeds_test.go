@@ -12,6 +12,76 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+func TestBuildInternalEmbedCard_Characterization(t *testing.T) {
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	longDescription := "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+	tests := []struct {
+		name        string
+		post        *models.Post
+		displayText string
+		want        string
+	}{
+		{name: "basic", post: &models.Post{Slug: "target", Href: "/target/", Title: strptr("Target"), Description: strptr("A description"), Date: &date}, want: `<div class="embed-card">
+  <a href="/target/" class="embed-card-link">
+    <div class="embed-card-content">
+      <div class="embed-card-title">Target</div>
+      <div class="embed-card-description">A description</div>
+      <div class="embed-card-meta">Jan 15, 2024</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "fallbacks and escaping", post: &models.Post{Slug: `slug<&`, Title: strptr(`title & <tag>`), Href: `/href?x=<&`}, displayText: `display & <tag>`, want: `<div class="embed-card">
+  <a href="/href?x=&lt;&amp;" class="embed-card-link">
+    <div class="embed-card-content">
+      <div class="embed-card-title">display &amp; &lt;tag&gt;</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "description truncation", post: &models.Post{Slug: "long", Href: "/long/", Title: strptr("Long"), Description: &longDescription}, want: "<div class=\"embed-card\">\n  <a href=\"/long/\" class=\"embed-card-link\">\n    <div class=\"embed-card-content\">\n      <div class=\"embed-card-title\">Long</div>\n      <div class=\"embed-card-description\">" + longDescription[:197] + "...</div>\n    </div>\n  </a>\n</div>\n"},
+		{name: "photo", post: &models.Post{Slug: "photo", Href: "/photo/", Template: "photo", Title: strptr("Photo"), Description: strptr("Caption"), Extra: map[string]interface{}{"image": "/photo.png"}}, want: `<figure class="embed-figure">
+  <a href="/photo/" class="u-url">
+    <img src="/photo.png?w=1200" alt="Photo" width="1200" loading="lazy">
+  </a>
+  <figcaption>Caption</figcaption>
+</figure>
+`},
+		{name: "video with poster", post: &models.Post{Slug: "video", Href: "/video/", Title: strptr("Video"), Extra: map[string]interface{}{"video": "/video.mp4", "poster": "/poster.png"}}, want: `<div class="embed-card">
+  <a href="/video/" class="embed-card-link">
+    <div class="embed-card-image">
+      <video class="embed-card-video" autoplay muted loop playsinline poster="/poster.png?h=150&amp;w=200">
+        <source src="/video.mp4?h=150&amp;w=200" type="video/mp4">
+      </video>
+    </div>
+    <div class="embed-card-content">
+      <div class="embed-card-title">Video</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "image card", post: &models.Post{Slug: "image", Href: "/image/", Title: strptr("Image"), Extra: map[string]interface{}{"image": "/image.png"}}, want: `<figure class="embed-figure">
+  <a href="/image/" class="u-url">
+    <img src="/image.png?w=1200" alt="Image" width="1200" loading="lazy">
+  </a>
+  <figcaption>Image</figcaption>
+</figure>
+`},
+	}
+
+	p := NewEmbedsPlugin()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.buildInternalEmbedCard(tt.post, tt.displayText)
+			if got != tt.want {
+				t.Errorf("output mismatch:\n got:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func strptr(s string) *string { return &s }
+
 func TestEmbedsPlugin_Name(t *testing.T) {
 	p := NewEmbedsPlugin()
 	if p.Name() != "embeds" {
