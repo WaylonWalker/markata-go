@@ -22,12 +22,6 @@ var dagLifecycleStages = []lifecycle.Stage{
 	lifecycle.StageCleanup,
 }
 
-// runDAGBuild executes the existing lifecycle through an explicit serial task
-// and artifact graph. It intentionally changes no plugin boundaries yet.
-func runDAGBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
-	return runDAGBuildObserved(m, nil)
-}
-
 // runDAGBuildObserved is the feature-flagged DAG equivalent of
 // runBuildObserved. The observer contract is kept identical so serve can opt
 // into this executor without losing stage visibility.
