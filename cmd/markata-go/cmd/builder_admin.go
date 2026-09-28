@@ -100,6 +100,9 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateBuilderAdminWorkDir(builderAdminWorkDir, builderAdminSourceDir, builderAdminSiteDir); err != nil {
+		return err
+	}
 	configPath := resolveBuilderAdminConfigPath(cfgFile, builderAdminSourceDir)
 	authHeaders, err := resolveBuilderAdminAuthHeaders(cmd, configPath)
 	if err != nil {
@@ -141,6 +144,35 @@ func runBuilderAdmin(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	return svc.Start(ctx)
+}
+
+func validateBuilderAdminWorkDir(workDir, sourceDir, siteDir string) error {
+	if strings.TrimSpace(workDir) == "" {
+		return nil
+	}
+	workAbs, err := filepath.Abs(workDir)
+	if err != nil {
+		return fmt.Errorf("resolve builder-admin work directory: %w", err)
+	}
+	if filepath.Dir(workAbs) == workAbs {
+		return fmt.Errorf("builder-admin work directory must not be a filesystem root: %s", workDir)
+	}
+	for label, candidate := range map[string]string{"source": sourceDir, "release": siteDir} {
+		candidateAbs, err := filepath.Abs(candidate)
+		if err != nil {
+			return fmt.Errorf("resolve builder-admin %s directory: %w", label, err)
+		}
+		if workAbs == candidateAbs {
+			return fmt.Errorf("builder-admin work directory must not equal the %s directory: %s", label, candidate)
+		}
+		if label == "source" {
+			rel, relErr := filepath.Rel(candidateAbs, workAbs)
+			if relErr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return fmt.Errorf("builder-admin work directory must not be inside the source directory: %s", workDir)
+			}
+		}
+	}
+	return nil
 }
 
 // resolveBuilderAdminWebhook applies site configuration and MARKATA_GO_ overrides,
