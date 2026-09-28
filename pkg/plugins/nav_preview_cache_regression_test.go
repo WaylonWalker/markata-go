@@ -8,16 +8,12 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// TestArchiveNavPreviewStatsInvalidateUnrelatedPostCache characterizes the
-// production failure behind #1337. The archive nav preview contains aggregate
-// word/read-time stats for every post. Editing one post therefore changes the
-// global nav-preview hash, and SetNavPreviewHash clears every cached post even
-// when the build-cache dependency pass only invalidated the edited source.
-//
-// Keep this test while changing the invalidation design: the desired end state
-// is for the unrelated post to remain cacheable when only volatile archive
-// preview statistics changed.
-func TestArchiveNavPreviewStatsInvalidateUnrelatedPostCache(t *testing.T) {
+// TestArchiveNavPreviewBodyStatsDoNotInvalidateUnrelatedPostCache guards the
+// production failure behind #1337. /archive/ is a global nav target on
+// waylonwalker.com. Its preview must not depend on aggregate word/read-time
+// statistics, otherwise an ordinary body edit changes the nav hash and clears
+// every cached page.
+func TestArchiveNavPreviewBodyStatsDoNotInvalidateUnrelatedPostCache(t *testing.T) {
 	config := models.NewConfig()
 	config.Nav = []models.NavItem{{Label: "archive", URL: "/archive/"}}
 
@@ -47,17 +43,25 @@ func TestArchiveNavPreviewStatsInvalidateUnrelatedPostCache(t *testing.T) {
 	cache.MarkRebuiltWithSlug(changed.Path, changed.Slug, changed.InputHash, "output/changed/index.html", changed.Template)
 	cache.MarkRebuiltWithSlug(unrelated.Path, unrelated.Slug, unrelated.InputHash, "output/unrelated/index.html", unrelated.Template)
 
-	if reason := cache.ReasonForRebuild(unrelated.Path, unrelated.InputHash, unrelated.Template); reason != buildcache.RebuildReasonNone {
-		t.Fatalf("unrelated post unexpectedly missed cache before preview change: %q", reason)
-	}
-
 	changed.Extra["word_count"] = 101
-	if changedHash := cache.SetNavPreviewHash(navPreviewHashForTest(t, config, posts, feeds)); !changedHash {
-		t.Fatal("archive preview hash did not change after aggregate word count changed")
+	changed.Extra["reading_time"] = 3
+	if changedHash := cache.SetNavPreviewHash(navPreviewHashForTest(t, config, posts, feeds)); changedHash {
+		t.Fatal("body-only stats changed the global archive nav-preview hash")
+	}
+	if reason := cache.ReasonForRebuild(unrelated.Path, unrelated.InputHash, unrelated.Template); reason != buildcache.RebuildReasonNone {
+		t.Fatalf("unrelated post rebuild reason = %q after body-only edit", reason)
 	}
 
+	// Feed membership remains visible in the nav preview. Adding a published
+	// post should still change the shared hash so the displayed count is correct.
+	added := &models.Post{Path: "pages/added.md", Slug: "added", Href: "/added/", Published: true}
+	posts = append(posts, added)
+	feeds[0].Posts = posts
+	if changedHash := cache.SetNavPreviewHash(navPreviewHashForTest(t, config, posts, feeds)); !changedHash {
+		t.Fatal("archive membership change did not invalidate shared nav preview")
+	}
 	if reason := cache.ReasonForRebuild(unrelated.Path, unrelated.InputHash, unrelated.Template); reason != buildcache.RebuildReasonMissingEntry {
-		t.Fatalf("unrelated post rebuild reason = %q, want %q to reproduce global invalidation", reason, buildcache.RebuildReasonMissingEntry)
+		t.Fatalf("unrelated post rebuild reason = %q after visible membership change, want %q", reason, buildcache.RebuildReasonMissingEntry)
 	}
 }
 
