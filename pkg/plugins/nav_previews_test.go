@@ -36,12 +36,12 @@ func TestNavPreviews_ResolveAndRender(t *testing.T) {
 		t.Fatalf("got %d previews, want 2", len(previews))
 	}
 	feed := previews["/journal/"]
-	if feed["count"] != 2 {
+	if feed["count"] != 2 || feed["sparkline"] == "" || feed["sparkline_title"] == "" {
 		t.Fatalf("unexpected feed preview: %#v", feed)
 	}
-	for _, volatile := range []string{"words", "minutes", "words_display", "reading_display", "sparkline", "sparkline_title"} {
+	for _, volatile := range []string{"words", "minutes", "words_display", "reading_display"} {
 		if _, ok := feed[volatile]; ok {
-			t.Fatalf("feed preview retained volatile %q metadata: %#v", volatile, feed)
+			t.Fatalf("feed preview retained body-derived %q metadata: %#v", volatile, feed)
 		}
 	}
 	if previews["/article/"]["description"] != description {
@@ -61,13 +61,13 @@ func TestNavPreviews_ResolveAndRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, fragment := range []string{"Occasional dispatches", "A focused article", "target=\"_blank\""} {
+	for _, fragment := range []string{"Occasional dispatches", "Publication rhythm", "A focused article", "target=\"_blank\""} {
 		if !strings.Contains(html, fragment) {
 			t.Errorf("rendered nav missing %q", fragment)
 		}
 	}
-	if strings.Contains(html, "Publication rhythm") || strings.Contains(html, "9000") || strings.Contains(html, "Secret</span>") {
-		t.Errorf("volatile/private metadata appeared in nav: %s", html)
+	if strings.Contains(html, "1,000</strong> words") || strings.Contains(html, "9000") || strings.Contains(html, "Secret</span>") {
+		t.Errorf("body-derived/private metadata appeared in nav: %s", html)
 	}
 }
 
