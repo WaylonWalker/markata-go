@@ -131,13 +131,17 @@
     <script>
     (() => {
         const calendarLink = document.getElementById('feed-nav-calendar-link');
-        if (!calendarLink) return;
-        calendarLink.addEventListener('click', () => {
-            const picker = document.getElementById('feed-nav-select');
-            if (!picker) return;
+        const picker = document.getElementById('feed-nav-select');
+        if (!calendarLink || !picker) return;
+
+        const updateCalendarLink = () => {
             const slug = picker.value || '';
             calendarLink.href = (slug ? `/${slug}/` : '/') + '?view=calendar';
-        });
+        };
+
+        picker.addEventListener('change', updateCalendarLink);
+        new MutationObserver(updateCalendarLink).observe(picker, { childList: true, subtree: true });
+        updateCalendarLink();
     })();
     </script>
     {% endif %}
