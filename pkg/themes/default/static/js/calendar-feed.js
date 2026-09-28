@@ -53,8 +53,6 @@
     section.append(weekdayRow);
 
     const grid = element('div', 'calendar-days');
-    grid.setAttribute('role', 'grid');
-    grid.setAttribute('aria-label', `${monthNames[month]} ${year}`);
 
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -69,7 +67,6 @@
       const key = dateKey(year, month, day);
       const posts = postsByDate.get(key) || [];
       const cell = element('div', 'calendar-day');
-      cell.setAttribute('role', 'gridcell');
 
       if (posts.length === 0) {
         const quiet = element('span', 'calendar-day-quiet', String(day));
