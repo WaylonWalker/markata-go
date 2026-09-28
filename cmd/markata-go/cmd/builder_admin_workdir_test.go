@@ -9,7 +9,7 @@ import (
 func TestValidateBuilderAdminWorkDir(t *testing.T) {
 	root := t.TempDir()
 	sourceDir := filepath.Join(root, "source")
-	siteDir := filepath.Join(root, "site")
+	siteDir := filepath.Join(sourceDir, "public")
 	safeDir := filepath.Join(root, "work", "build")
 	filesystemRoot := filepath.VolumeName(root) + string(os.PathSeparator)
 
@@ -22,7 +22,7 @@ func TestValidateBuilderAdminWorkDir(t *testing.T) {
 		{name: "separate workspace", workDir: safeDir, wantErr: false},
 		{name: "filesystem root", workDir: filesystemRoot, wantErr: true},
 		{name: "source root", workDir: sourceDir, wantErr: true},
-		{name: "inside source", workDir: filepath.Join(sourceDir, ".work"), wantErr: true},
+		{name: "inside source outside release root", workDir: filepath.Join(sourceDir, ".work"), wantErr: true},
 		{name: "release root", workDir: siteDir, wantErr: true},
 		{name: "legacy workspace under release root", workDir: filepath.Join(siteDir, ".build-work"), wantErr: false},
 	}
