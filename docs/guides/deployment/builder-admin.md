@@ -62,6 +62,39 @@ builderAdmin:
         - update
 ```
 
+### Put transient build work on node-local storage
+
+By default Builder Admin preserves the historical behavior and creates `.build-work` under the
+release directory. For a write-heavy site whose durable site volume is slow at small-file I/O,
+move only the transient workspace onto node-local storage:
+
+```yaml
+builderAdmin:
+  workspace:
+    enabled: true
+    mode: emptyDir
+    mountPath: /data/work
+    workDir: /data/work/build
+    emptyDir: {}
+```
+
+`emptyDir` is node-local and disappears with the pod, which is safe because it contains only the
+in-progress build. Retained releases and the `current` symlink remain under `release-dir` on the
+durable site volume.
+
+Promotion keeps the existing fast path when the workspace and release directory share a
+filesystem: Builder Admin renames the completed workspace directly into `releases/`. When a
+node-local workspace cannot be renamed across filesystems, Builder Admin copies the completed tree
+into a hidden staging directory under `releases/` and renames that staging directory into the
+final release path only after the copy succeeds. Incomplete copies therefore never appear as a
+retained release, and `current` changes only after promotion succeeds. This is an atomic visibility
+guarantee, not a claim of full power-loss durability for every directory entry.
+
+Use `mode: hostPath` and set `workspace.hostPath.path` when you want a specific node-local disk
+instead of the pod's ephemeral storage. Keep `workDir` underneath `mountPath`; the CLI also rejects
+filesystem roots, the source tree, and the release root as explicit `--work-dir` values because the
+workspace is deleted and recreated before each build.
+
 Keep `builderAdmin.fast` at `false` when queued builds publish the live site. In this repo,
 `--fast` is an authoring optimization, not a production-equivalent build mode: it skips
 blogroll, mentions, and other expensive work that can affect user-facing output. Enable it
@@ -86,7 +119,9 @@ palette = "everforest-dark"
 When your site config uses `palette_light`, `palette_dark`, or `fallback_mode`, builder admin uses
 the same fallback palette. Keep the site config and any custom palette files under the mounted
 source directory. If the palette cannot be loaded, builder admin remains available with its
-default colors.
+default colors. Builder Admin and local Serve share a semantic browser token stylesheet for these
+colors and keyboard focus treatment; their page structure and production/local capabilities remain
+separate while a shared shell is developed.
 
 ## Read Build History Quickly
 

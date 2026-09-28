@@ -39,8 +39,9 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
-      {{- if and (ne .Values.search.mode "read-only-index") (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled }}
+      {{- if or (and (ne .Values.search.mode "read-only-index") (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled) (and (ne .Values.search.mode "read-only-index") .Values.search.localCache.enabled) }}
       initContainers:
+        {{- if and (ne .Values.search.mode "read-only-index") (ne (.Values.storage.source.mode | default "pvc") "hostPath") .Values.search.waitForSource.enabled }}
         - name: wait-for-source
           image: "{{ .Values.search.image.name }}:{{ .Values.search.image.tag }}"
           imagePullPolicy: {{ .Values.search.image.pullPolicy }}
@@ -66,6 +67,19 @@ spec:
           volumeMounts:
             - name: source
               mountPath: /data/source
+        {{- end }}
+        {{- if and (ne .Values.search.mode "read-only-index") .Values.search.localCache.enabled }}
+        - name: init-search-cache
+          image: "{{ .Values.search.image.name }}:{{ .Values.search.image.tag }}"
+          imagePullPolicy: {{ .Values.search.image.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args: ["mkdir -p /data/cache/build /data/cache/plugin"]
+          securityContext:
+            {{- toYaml .Values.searchSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: search-cache
+              mountPath: /data/cache
+        {{- end }}
       {{- end }}
       containers:
         - name: "{{ .Values.project_identifier }}-notes-search"
@@ -73,7 +87,13 @@ spec:
           imagePullPolicy: {{ .Values.search.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.searchSecurityContext | nindent 12 }}
+          {{- if eq .Values.search.mode "read-only-index" }}
           workingDir: /data/search
+          {{- else }}
+          # Palette discovery is project-relative; source-backed modes run from
+          # the mounted source tree while the Bleve index stays under /data/search.
+          workingDir: /data/source
+          {{- end }}
           command:
             - markata-go
             - search-server
@@ -121,6 +141,10 @@ spec:
             - name: source
               mountPath: /data/source
             {{- end }}
+            {{- if and (ne .Values.search.mode "read-only-index") .Values.search.localCache.enabled }}
+            - name: search-cache
+              mountPath: /data/cache
+            {{- end }}
             - name: search
               mountPath: /data/search
           startupProbe:
@@ -148,6 +172,10 @@ spec:
           persistentVolumeClaim:
             claimName: "{{ include "markata-notes.sourcePvcName" . }}"
           {{- end }}
+        {{- end }}
+        {{- if and (ne .Values.search.mode "read-only-index") .Values.search.localCache.enabled }}
+        - name: search-cache
+          emptyDir: {}
         {{- end }}
         - name: search
           {{- if and (ne .Values.search.mode "read-only-index") (eq .Values.search.writableIndexStorage.mode "emptyDir") }}

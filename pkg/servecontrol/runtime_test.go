@@ -67,6 +67,51 @@ func TestRuntime_DiagnosticsRemainAvailableAfterLogsAndRebuilds(t *testing.T) {
 	}
 }
 
+func TestRuntime_DeduplicatesEquivalentLogDiagnosticsInInbox(t *testing.T) {
+	runtime := NewRuntime()
+	jobID := runtime.QueueJob(JobSpec{Name: "build", Type: "build"})
+	runtime.AddLog(LogEntry{Level: "warning", Message: " warning: missing title  ", JobID: jobID})
+	runtime.AddDiagnostic(Diagnostic{Code: "serve.log_warning", Severity: "warning", Message: " warning: missing title  ", JobID: jobID})
+	runtime.AddDiagnostic(Diagnostic{Code: "frontmatter.invalid_title", Severity: "warning", Message: "missing title", File: "one.md", Line: 4, JobID: jobID})
+	runtime.AddDiagnostic(Diagnostic{Code: "frontmatter.invalid_date", Severity: "warning", Message: "invalid date", File: "two.md", Line: 7, JobID: jobID})
+	runtime.AddDiagnostic(Diagnostic{Code: "serve.log_warning", Severity: "warning", Message: "another warning", JobID: jobID})
+	snapshot := runtime.Snapshot()
+	if len(snapshot.Diagnostics) != 3 {
+		t.Fatalf("inbox diagnostics = %+v", snapshot.Diagnostics)
+	}
+	if len(snapshot.Jobs[0].Diagnostics) != 3 {
+		t.Fatalf("job diagnostics = %+v", snapshot.Jobs[0].Diagnostics)
+	}
+	if len(snapshot.Logs) != 1 || len(snapshot.Jobs[0].Logs) != 1 {
+		t.Fatalf("source log should remain visible, logs=%+v job logs=%+v", snapshot.Logs, snapshot.Jobs[0].Logs)
+	}
+}
+
+func TestRuntime_CurrentDiagnosticsRescanKeepsHistoricalJobFindings(t *testing.T) {
+	runtime := NewRuntime()
+	firstJob := runtime.QueueJob(JobSpec{Name: "initial build", Type: "build"})
+	runtime.StartJob(firstJob)
+	diagnostic := Diagnostic{Code: "protocol-less-url", Severity: "warning", Message: "Add https", File: "post.md", Page: "post.md", Line: 3, JobID: firstJob, FixSafety: "safe", FixPlans: []FixPlan{{ID: "url-1", Safety: "safe", File: "post.md"}}}
+	runtime.AddDiagnostic(diagnostic)
+	if got := runtime.Snapshot().CurrentDiagnostics; len(got) != 1 || len(got[0].FixPlans) != 1 {
+		t.Fatalf("initial current diagnostics = %+v", got)
+	}
+	runtime.FinishJob(firstJob, StateWarning)
+	secondJob := runtime.QueueJob(JobSpec{Name: "fix build", Type: "build"})
+	if got := runtime.Snapshot().CurrentDiagnostics; len(got) != 1 {
+		t.Fatalf("queuing a new job cleared current findings: %+v", got)
+	}
+	runtime.StartJob(secondJob)
+	runtime.SetPages([]Page{{Path: "post.md", Status: StateSuccess, LastJobID: secondJob}})
+	snapshot := runtime.Snapshot()
+	if len(snapshot.CurrentDiagnostics) != 0 {
+		t.Fatalf("resolved finding remains current: %+v", snapshot.CurrentDiagnostics)
+	}
+	if len(snapshot.Diagnostics) != 1 || len(snapshot.Jobs[0].Diagnostics) != 1 || snapshot.Jobs[0].Diagnostics[0].Code != diagnostic.Code {
+		t.Fatalf("historical finding disappeared: session=%+v jobs=%+v", snapshot.Diagnostics, snapshot.Jobs)
+	}
+}
+
 func TestRuntime_SetPagesClearsCurrentDiagnosticsButKeepsHistory(t *testing.T) {
 	r := NewRuntime()
 	id := r.QueueJob(JobSpec{Name: "build"})

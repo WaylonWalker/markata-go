@@ -779,6 +779,8 @@ The post copy control provides a compact "Copy this post" menu near the top of a
 
 **Placement**: Injected into `post.html` (and theme equivalents) inside the article header after description/metadata so it is visible before the article body.
 
+**Configuration**: Set `enabled = false` under `[markata-go.components.post_copy]` to omit the control from rendered post pages. The default is `true`; omitting the key preserves the existing menu. This setting does not disable the separate share component or post-format outputs. An explicitly disabled control must not expose its clipboard payload in the page HTML, including when a custom post template includes the component.
+
 **Behavior**:
 
 1. Renders a disclosure button labeled "Copy this post" with four actions: `URL`, `Rich`, `Markdown`, and `Text`.
@@ -790,7 +792,7 @@ The post copy control provides a compact "Copy this post" menu near the top of a
 
 **Implementation notes**:
 
-- The control is automatic on post pages and does not require extra configuration.
+- The control is automatic on post pages unless disabled in site configuration.
 - Rich copy must rewrite relative links/media URLs in the copied fragment to absolute URLs before writing HTML to the clipboard.
 - The menu closes after a successful copy and exposes short-lived visual feedback for the chosen action.
 

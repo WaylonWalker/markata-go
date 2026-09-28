@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -164,26 +163,25 @@ func cleanNavPath(raw string) string {
 	return cleaned + "/"
 }
 
+// feedNavPreview intentionally excludes body-derived aggregate statistics from
+// global nav state. Total words/read time can change on any ordinary body edit,
+// which previously turned a single archive edit into a whole-site cache miss.
+// Membership count and publication rhythm remain because they depend on visible
+// feed membership/dates, which legitimately change the shared nav preview.
 func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 	preview := map[string]interface{}{
 		"kind":        "feed",
 		"title":       feed.Title,
 		"description": feed.Description,
 	}
-	count, words, minutes := 0, 0, 0
+	count := 0
 	for _, post := range feed.Posts {
 		if post == nil || post.Private || post.Skip || !post.Published || post.Draft {
 			continue
 		}
 		count++
-		words += postStat(post, "word_count")
-		minutes += postStat(post, "reading_time")
 	}
 	preview["count"] = count
-	preview["words"] = words
-	preview["minutes"] = minutes
-	preview["words_display"] = formatNavNumber(words)
-	preview["reading_display"] = formatNavReadingTime(minutes)
 	window := computeSparklineWindow(feed.Posts, false)
 	preview["sparkline"] = buildFeedSparkline(feed.Posts, window, false)
 	preview["sparkline_title"] = buildFeedSparklineTitle(feed.Posts, window, false)
@@ -193,6 +191,9 @@ func feedNavPreview(feed *models.FeedConfig) map[string]interface{} {
 	return preview
 }
 
+// postNavPreview likewise avoids word/read-time statistics. A nav-targeted
+// article still invalidates the global shell when visible title, description,
+// or tags change, while an ordinary body-only edit stays incremental.
 func postNavPreview(post *models.Post) map[string]interface{} {
 	preview := map[string]interface{}{
 		"kind": "post",
@@ -200,12 +201,6 @@ func postNavPreview(post *models.Post) map[string]interface{} {
 	if post.Title != nil {
 		preview["title"] = *post.Title
 	}
-	words := postStat(post, "word_count")
-	minutes := postStat(post, "reading_time")
-	preview["words"] = words
-	preview["minutes"] = minutes
-	preview["words_display"] = formatNavNumber(words)
-	preview["reading_display"] = formatNavReadingTime(minutes)
 	if post.Description != nil {
 		preview["description"] = *post.Description
 	}
@@ -213,33 +208,4 @@ func postNavPreview(post *models.Post) map[string]interface{} {
 		preview["tags"] = post.Tags[:min(len(post.Tags), 3)]
 	}
 	return preview
-}
-
-func postStat(post *models.Post, key string) int {
-	if post.Extra == nil {
-		return 0
-	}
-	value, ok := post.Extra[key].(int)
-	if !ok || value < 0 {
-		return 0
-	}
-	return value
-}
-
-func formatNavNumber(value int) string {
-	digits := strconv.Itoa(value)
-	for i := len(digits) - 3; i > 0; i -= 3 {
-		digits = digits[:i] + "," + digits[i:]
-	}
-	return digits
-}
-
-func formatNavReadingTime(minutes int) string {
-	if minutes < 60 {
-		return fmt.Sprintf("%d min", minutes)
-	}
-	if minutes%60 == 0 {
-		return fmt.Sprintf("%d hr", minutes/60)
-	}
-	return fmt.Sprintf("%d hr %d min", minutes/60, minutes%60)
 }

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Series" }}{% endblock %}
+{% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
+
+{% block content %}
+<div class="series-listing">
+  <header class="series-listing__header">
+    <h1>{{ title | default:"Series" }}</h1>
+    {% if description %}<p class="series-listing__description">{{ description }}</p>{% endif %}
+    <p class="series-listing__count">{{ total_series }} series</p>
+  </header>
+
+  {% if series_list %}
+  <div class="series-listing__grid">
+    {% for series in series_list %}
+    <a class="series-listing__card" href="{{ series.Href }}">
+      <div class="series-listing__card-body">
+        <h2>{{ series.Title }}</h2>
+        {% if series.Description %}
+        <p>{{ series.Description }}</p>
+        {% endif %}
+      </div>
+      <span class="series-listing__post-count">{{ series.Count }} post{{ series.Count|pluralize }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>No series found.</p>
+  {% endif %}
+</div>
+
+<style>
+.series-listing {
+  width: min(100%, var(--content-width, 72rem));
+  margin: 0 auto;
+  padding: var(--spacing-lg, 2rem);
+}
+
+.series-listing__header {
+  margin-bottom: var(--spacing-xl, 3rem);
+}
+
+.series-listing__header h1 {
+  margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.series-listing__description,
+.series-listing__count {
+  color: var(--color-text-muted, #666);
+}
+
+.series-listing__description {
+  max-width: 60ch;
+}
+
+.series-listing__count {
+  margin-top: var(--spacing-sm, 0.5rem);
+  font-size: 0.9em;
+}
+
+.series-listing__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--spacing-md, 1rem);
+}
+
+.series-listing__card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 10rem;
+  gap: var(--spacing-lg, 2rem);
+  padding: var(--spacing-lg, 2rem);
+  color: var(--color-text, inherit);
+  text-decoration: none;
+  background: var(--color-surface, transparent);
+  border: 1px solid var(--color-border, currentColor);
+  border-radius: var(--radius-lg, 0.5rem);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.series-listing__card:hover,
+.series-listing__card:focus-visible {
+  border-color: var(--color-primary, currentColor);
+  transform: translateY(-2px);
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.series-listing__card h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.series-listing__card-body p {
+  margin: var(--spacing-sm, 0.5rem) 0 0;
+  color: var(--color-text-muted, #666);
+}
+
+.series-listing__post-count {
+  color: var(--color-text-muted, #666);
+  font-size: 0.875em;
+}
+
+@media (max-width: 600px) {
+  .series-listing {
+    padding: var(--spacing-md, 1rem);
+  }
+
+  .series-listing__card {
+    min-height: 0;
+    padding: var(--spacing-md, 1rem);
+  }
+}
+</style>
+{% endblock %}

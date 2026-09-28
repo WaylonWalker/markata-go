@@ -61,6 +61,7 @@ If a private post has no explicit `title` or `description` in frontmatter, searc
 - **Fast and lightweight** - Only loads the index chunks needed for each query
 - **Offline capable** - Works entirely client-side, no server required
 - **Theme integrated** - Automatically matches your site's color palette
+- **Navbar overlay** - Results display above page content without being obscured by the current article
 - **Secure** - SHA256 checksum verification for all downloaded binaries
 
 ## Quick Start

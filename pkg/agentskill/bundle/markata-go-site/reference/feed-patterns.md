@@ -39,6 +39,22 @@ reverse = true
 items_per_page = 10
 ```
 
+### Calendar Archive
+
+Use the built-in `calendar-feed.html` template when the goal is to visualize publishing rhythm across years and months instead of only showing a reverse-chronological card list. It keeps a no-JavaScript list fallback and uses the complete `feed.posts` collection, so ordinary pagination does not truncate the calendar history.
+
+```toml
+[[markata-go.feeds]]
+slug = "calendar"
+title = "Calendar"
+filter = "published == True"
+sort = "date"
+reverse = true
+
+[markata-go.feeds.templates]
+html = "calendar-feed.html"
+```
+
 ### Tag-Like Feed
 
 ```toml
@@ -162,7 +178,8 @@ No additional config is needed. The sitemap plugin runs in the Write stage after
 ## Template Touchpoints
 
 - list/archive HTML usually uses `feed.html`
-- per-feed HTML can switch to another built-in template with `[markata-go.feeds.templates] html = "feed-photo-grid.html"`
+- per-feed HTML can switch to another built-in template with `[markata-go.feeds.templates]`, including `feed-photo-grid.html` for image-first archives and `calendar-feed.html` for publishing-activity calendars
+- `calendar-feed.html` reads the complete `feed.posts` collection and progressively enhances a dated HTML list; keep that behavior when customizing it so pagination and no-JavaScript access remain correct
 - card rendering often happens in a partial
 - RSS and Atom can use separate XML templates
 - `/rss.xsl` and `/atom.xsl` render with the site theme via the `<!-- markata:theme-head -->` ... `<!-- /markata:theme-head -->` region; keep that region when overriding them in `templates/` (customize the injected head with `partials/feed-xsl-head.html`)
@@ -186,3 +203,4 @@ A value of `0` or an omitted value means no cap. When capped, markata-go renders
 - if the task is “show only X posts”, check `filter`, `limit`, `offset`, and `items_per_page`
 - if the task is “make post sidebars shorter” or “speed up huge series sidebars”, check `components.feed_sidebar.max_posts`
 - if the task is “change archive card layout”, change the feed template or card partial before changing content
+- if the task is “show publishing cadence/history as a calendar”, prefer the built-in `calendar-feed.html` before inventing a site-specific archive template

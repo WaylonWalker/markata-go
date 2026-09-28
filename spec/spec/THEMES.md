@@ -1292,7 +1292,8 @@ Tabs with fewer than two choices are hidden (Font stays while the size
 control is shown). The top bar has ‹ › step buttons and a live label with
 the current choice. The buttons move through the active tab's visible cards,
 wrap at the ends, and apply each choice immediately. The last tab is stored
-as `theme-picker-tab`. The bottom bar holds Reset (clears all stored choices)
+as `theme-picker-tab`. The bottom bar holds a visibly labeled Reset button
+(clears the stored palette, aesthetic, and font choices)
 and, under `markata-go serve` only, Bake. The popover uses a fixed system UI font, so it does not
 reflow while fonts are previewed. On small screens, every control is at least
 40px tall and the sheet pads for `env(safe-area-inset-bottom)`.

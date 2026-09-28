@@ -65,6 +65,9 @@ type ComponentsConfig struct {
 	// Share configures the per-post share component
 	Share ShareComponentConfig `json:"share" yaml:"share" toml:"share"`
 
+	// PostCopy configures the copy menu in post headers
+	PostCopy PostCopyComponentConfig `json:"post_copy" yaml:"post_copy" toml:"post_copy"`
+
 	// PostConnections configures inlink/outlink list and graph rendering on posts
 	PostConnections PostConnectionsComponentConfig `json:"post_connections" yaml:"post_connections" toml:"post_connections"`
 }
@@ -203,6 +206,17 @@ type ShareComponentConfig struct {
 
 	// Custom maps platform keys to bespoke definitions
 	Custom map[string]SharePlatformConfig `json:"custom,omitempty" yaml:"custom,omitempty" toml:"custom,omitempty"`
+}
+
+// PostCopyComponentConfig configures the copy menu in post headers.
+type PostCopyComponentConfig struct {
+	// Enabled shows the copy menu (default: true).
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+}
+
+// IsEnabled reports whether the post copy menu is enabled.
+func (c PostCopyComponentConfig) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 // PostConnectionsComponentConfig configures post connection UI (list/graph).
@@ -397,6 +411,7 @@ func (c *CardRouterConfig) MergedMappings() map[string]string {
 // NewComponentsConfig creates a new ComponentsConfig with default values.
 func NewComponentsConfig() ComponentsConfig {
 	navEnabled := true
+	postCopyEnabled := true
 	footerEnabled := true
 	docSidebarEnabled := false
 	feedSidebarEnabled := false
@@ -433,6 +448,7 @@ func NewComponentsConfig() ComponentsConfig {
 			Width:    "380px",
 		},
 		Share:           NewShareComponentConfig(),
+		PostCopy:        PostCopyComponentConfig{Enabled: &postCopyEnabled},
 		PostConnections: NewPostConnectionsComponentConfig(),
 	}
 }

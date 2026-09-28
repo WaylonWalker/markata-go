@@ -37,6 +37,11 @@ Fast mode (`build --fast`, `serve --fast`) skips Pagefind indexing.
 3. User queries are matched against the pre-built index
 4. Results display with excerpts and highlighting
 
+For navbar search, the results panel overlays page content and remains above
+the article beneath it. The header must establish a stacking context above the
+main content; increasing the panel's own `z-index` cannot escape a lower
+ancestor stacking context.
+
 ### Private Content Rules
 
 Private posts use a reduced search surface.
@@ -684,6 +689,11 @@ The implementation and docs MUST support three recommended deployment patterns.
 - content and config mounted into the container
 - bleve index stored on ephemeral or pod-local writable storage
 - restart pod after new content is deployed
+- When the source tree contains cache symlinks that target `/data/cache`, the Helm
+  search pod MAY mount a separate pod-local `emptyDir` at `/data/cache`.
+  `search.localCache.enabled` opts into this mount and defaults to `false`.
+  It does not change the source or index volumes, and `read-only-index` pods
+  never receive the mount. Its cache contents do not survive pod replacement.
 
 #### Pattern B: Multiple search pods with per-pod writable cache
 

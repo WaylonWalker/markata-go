@@ -51,6 +51,8 @@
 
 /* Ensure search results dropdown can overflow the header */
 .site-header {
+  position: relative;
+  z-index: var(--z-header, 100);
   overflow: visible !important;
 }
 

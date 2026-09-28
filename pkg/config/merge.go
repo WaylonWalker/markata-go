@@ -899,6 +899,9 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 	if override.Share.Custom != nil && len(override.Share.Custom) == 0 {
 		result.Share.Custom = nil
 	}
+	if override.PostCopy.Enabled != nil {
+		result.PostCopy.Enabled = override.PostCopy.Enabled
+	}
 
 	return result
 }

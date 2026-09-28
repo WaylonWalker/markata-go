@@ -907,7 +907,14 @@ nav strip).
 
 Add a "Share this post" grid to the end of every article so readers can send your content to social platforms or copy the link.
 
-Post pages also include a separate `Copy this post` control near the article title. That top-of-post menu always exposes `URL`, `Rich`, `Markdown`, and `Text` clipboard options based on the current post output and does not require extra configuration.
+Post pages also include a separate `Copy this post` control near the article title. That top-of-post menu exposes `URL`, `Rich`, `Markdown`, and `Text` clipboard options based on the current post output. To remove the menu without removing the share grid or disabling post formats, set:
+
+```toml
+[markata-go.components.post_copy]
+enabled = false
+```
+
+`components.post_copy.enabled` defaults to `true`. The setting applies to post pages, including custom post templates that include the built-in copy component.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

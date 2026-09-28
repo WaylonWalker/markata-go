@@ -52,17 +52,36 @@ type Step struct {
 }
 
 type Diagnostic struct {
-	Code         string `json:"code,omitempty"`
-	Severity     string `json:"severity"`
-	Message      string `json:"message"`
-	Explanation  string `json:"explanation,omitempty"`
-	File         string `json:"file,omitempty"`
-	Line         int    `json:"line,omitempty"`
-	Column       int    `json:"column,omitempty"`
-	Page         string `json:"page,omitempty"`
-	JobID        string `json:"job_id,omitempty"`
-	StepID       string `json:"step_id,omitempty"`
-	SuggestedFix string `json:"suggested_fix,omitempty"`
+	Code         string    `json:"code,omitempty"`
+	Severity     string    `json:"severity"`
+	Message      string    `json:"message"`
+	Explanation  string    `json:"explanation,omitempty"`
+	File         string    `json:"file,omitempty"`
+	Line         int       `json:"line,omitempty"`
+	Column       int       `json:"column,omitempty"`
+	Page         string    `json:"page,omitempty"`
+	JobID        string    `json:"job_id,omitempty"`
+	StepID       string    `json:"step_id,omitempty"`
+	SuggestedFix string    `json:"suggested_fix,omitempty"`
+	FixSafety    string    `json:"fix_safety,omitempty"`
+	FixPlans     []FixPlan `json:"fix_plans,omitempty"`
+}
+
+// FixPlan describes one previewable local source edit. Production projections
+// may omit these plans when source mutation is unavailable.
+type FixPlan struct {
+	ID          string `json:"id"`
+	Category    string `json:"category"`
+	Safety      string `json:"safety"`
+	File        string `json:"file"`
+	Line        int    `json:"line"`
+	Column      int    `json:"column"`
+	EndLine     int    `json:"end_line"`
+	EndColumn   int    `json:"end_column"`
+	Before      string `json:"before"`
+	After       string `json:"after"`
+	Digest      string `json:"digest"`
+	Explanation string `json:"explanation"`
 }
 
 type LogEntry struct {
@@ -121,14 +140,15 @@ type Job struct {
 }
 
 type Snapshot struct {
-	Server      ServerState       `json:"server"`
-	Site        SiteState         `json:"site"`
-	Theme       map[string]string `json:"theme,omitempty"`
-	Jobs        []Job             `json:"jobs"`
-	Diagnostics []Diagnostic      `json:"diagnostics"`
-	Pages       []Page            `json:"pages"`
-	Feeds       []Feed            `json:"feeds"`
-	Logs        []LogEntry        `json:"logs"`
+	Server             ServerState       `json:"server"`
+	Site               SiteState         `json:"site"`
+	Theme              map[string]string `json:"theme,omitempty"`
+	Jobs               []Job             `json:"jobs"`
+	Diagnostics        []Diagnostic      `json:"diagnostics"`
+	CurrentDiagnostics []Diagnostic      `json:"current_diagnostics"`
+	Pages              []Page            `json:"pages"`
+	Feeds              []Feed            `json:"feeds"`
+	Logs               []LogEntry        `json:"logs"`
 }
 
 type ActionRequest struct {
@@ -490,16 +510,17 @@ func cloneSnapshot(source Snapshot) Snapshot {
 		copyOf.Jobs[i] = *job
 		copyOf.Jobs[i].Steps = append([]Step(nil), job.Steps...)
 		copyOf.Jobs[i].Logs = append([]LogEntry(nil), job.Logs...)
-		copyOf.Jobs[i].Diagnostics = append([]Diagnostic(nil), job.Diagnostics...)
+		copyOf.Jobs[i].Diagnostics = cloneDiagnostics(job.Diagnostics)
 		copyOf.Jobs[i].Pages = append([]string(nil), job.Pages...)
 	}
-	copyOf.Diagnostics = append([]Diagnostic(nil), source.Diagnostics...)
+	copyOf.Diagnostics = deduplicateLogDiagnostics(cloneDiagnostics(source.Diagnostics))
 	copyOf.Pages = make([]Page, len(source.Pages))
 	for i, page := range source.Pages {
 		copyOf.Pages[i] = clonePage(page)
 	}
 	copyOf.Feeds = cloneFeeds(source.Feeds)
 	copyOf.Logs = append([]LogEntry(nil), source.Logs...)
+	copyOf.CurrentDiagnostics = currentDiagnostics(copyOf)
 	return copyOf
 }
 
@@ -513,6 +534,91 @@ func cloneFeeds(feeds []Feed) []Feed {
 }
 
 func clonePage(page Page) Page {
-	page.Diagnostics = append([]Diagnostic(nil), page.Diagnostics...)
+	page.Diagnostics = cloneDiagnostics(page.Diagnostics)
 	return page
+}
+
+func cloneDiagnostics(source []Diagnostic) []Diagnostic {
+	cloned := make([]Diagnostic, len(source))
+	for i := range source {
+		cloned[i] = source[i]
+		cloned[i].FixPlans = append([]FixPlan(nil), source[i].FixPlans...)
+	}
+	return deduplicateLogDiagnostics(cloned)
+}
+
+// deduplicateLogDiagnostics hides a generic log-derived inbox item only when
+// a structured diagnostic for the same job and severity has the same
+// whitespace-normalized message. Original log entries remain untouched.
+func deduplicateLogDiagnostics(source []Diagnostic) []Diagnostic {
+	structured := make(map[string]struct{}, len(source))
+	for i := range source {
+		item := source[i]
+		if strings.HasPrefix(item.Code, "serve.log_") {
+			continue
+		}
+		structured[diagnosticMessageKey(item.JobID, item.Severity, item.Message)] = struct{}{}
+	}
+	result := make([]Diagnostic, 0, len(source))
+	for i := range source {
+		item := source[i]
+		if strings.HasPrefix(item.Code, "serve.log_") {
+			if _, exists := structured[diagnosticMessageKey(item.JobID, item.Severity, item.Message)]; exists {
+				continue
+			}
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
+func diagnosticMessageKey(jobID, severity, message string) string {
+	message = strings.TrimSpace(message)
+	for _, prefix := range []string{"warning:", "error:"} {
+		if strings.HasPrefix(strings.ToLower(message), prefix) {
+			message = strings.TrimSpace(message[len(prefix):])
+			break
+		}
+	}
+	return jobID + "\x00" + severity + "\x00" + strings.Join(strings.Fields(message), " ")
+}
+
+// currentDiagnostics combines the latest page diagnostics with non-source
+// findings from the newest completed job and the current running job.
+// Historical session and job diagnostics remain available separately.
+func currentDiagnostics(snapshot Snapshot) []Diagnostic {
+	current := make([]Diagnostic, 0)
+	for _, page := range snapshot.Pages {
+		current = append(current, page.Diagnostics...)
+	}
+	completedJobID := ""
+	runningJobID := ""
+	for i := len(snapshot.Jobs) - 1; i >= 0; i-- {
+		job := snapshot.Jobs[i]
+		if completedJobID == "" && !job.EndedAt.IsZero() {
+			completedJobID = job.ID
+		}
+		if runningJobID == "" && job.State == StateRunning {
+			runningJobID = job.ID
+		}
+	}
+	if completedJobID == "" && runningJobID == "" && len(snapshot.Jobs) > 0 {
+		// Before the initial build starts, there is no prior completed job.
+		// Use its queued diagnostics only if they have already been recorded.
+		latest := snapshot.Jobs[len(snapshot.Jobs)-1]
+		completedJobID = latest.ID
+	}
+	for i := range snapshot.Jobs {
+		job := &snapshot.Jobs[i]
+		if job.ID != completedJobID && job.ID != runningJobID {
+			continue
+		}
+		for j := range job.Diagnostics {
+			diagnostic := job.Diagnostics[j]
+			if diagnostic.File == "" && diagnostic.Page == "" {
+				current = append(current, diagnostic)
+			}
+		}
+	}
+	return deduplicateLogDiagnostics(current)
 }

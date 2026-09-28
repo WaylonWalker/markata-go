@@ -49,6 +49,7 @@ type Config struct {
 	Port                 int
 	SourceDir            string
 	SiteDir              string
+	WorkDir              string
 	ConfigPath           string
 	CacheMount           string
 	HistoryDir           string
@@ -268,6 +269,9 @@ func New(cfg Config) (*Service, error) {
 	}
 	if cfg.SiteDir == "" {
 		cfg.SiteDir = "public"
+	}
+	if cfg.WorkDir == "" {
+		cfg.WorkDir = filepath.Join(cfg.SiteDir, ".build-work")
 	}
 	if cfg.HistoryDir == "" {
 		cfg.HistoryDir = filepath.Join(cfg.SiteDir, ".builder-admin")
@@ -815,6 +819,16 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 			return lines[len(lines)-6:]
 		},
 		"statusClass": uiStatusClass,
+		"json": func(value any) string {
+			data, err := json.Marshal(value)
+			if err != nil {
+				return "{}"
+			}
+			return string(data)
+		},
+		"browserTokens": func(theme uiTheme) template.CSS {
+			return template.CSS(servecontrol.BrowserTokenStylesheet(browserThemeMap(theme)))
+		},
 		"queueWait": func(items []QueuedOperation) string {
 			if len(items) == 0 {
 				return "none"
@@ -848,6 +862,7 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		CompletedJobs []completedJobView
 		PreviewOrigin string
 		Theme         uiTheme
+		Capabilities  map[string]bool
 	}{
 		State:         state,
 		Releases:      s.discoverReleases(),
@@ -860,6 +875,10 @@ func (s *Service) handleIndex(w http.ResponseWriter, r *http.Request) {
 		CompletedJobs: completedJobs(state),
 		PreviewOrigin: s.cfg.PreviewOrigin,
 		Theme:         s.theme,
+		Capabilities: map[string]bool{
+			"enqueueBuild": true, "enqueueRefresh": len(s.cfg.RefreshTasks) > 0,
+			"promoteRelease": true, "sourceMutation": false,
+		},
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = tmpl.Execute(w, data)
@@ -886,6 +905,9 @@ func (s *Service) handleBuildDetail(w http.ResponseWriter, r *http.Request) {
 			"msToSeconds": func(ms int64) string { return fmt.Sprintf("%.2fs", float64(ms)/1000) },
 			"since":       func(t time.Time) string { return formatUITimestamp(t, time.Now().UTC()) },
 			"statusClass": uiStatusClass,
+			"browserTokens": func(theme uiTheme) template.CSS {
+				return template.CSS(servecontrol.BrowserTokenStylesheet(browserThemeMap(theme)))
+			},
 		}).Parse(buildDetailHTML)).Execute(w, struct {
 			BuildRecord
 			PreviewURL string
@@ -1099,7 +1121,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	}
 	record.PrepareMS = time.Since(phaseStart).Milliseconds()
 
-	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
+	buildWork := s.cfg.WorkDir
 	phaseStart = time.Now()
 	s.updateRunningPhase("build")
 	cmdArgs, cleanup, err := s.buildCommandArgs(req.ID, buildWork)
@@ -1283,7 +1305,7 @@ func (s *Service) prepareBuild(log io.Writer) error {
 			return err
 		}
 	}
-	buildWork := filepath.Join(s.cfg.SiteDir, ".build-work")
+	buildWork := s.cfg.WorkDir
 	if err := os.RemoveAll(buildWork); err != nil {
 		return err
 	}
@@ -1327,11 +1349,9 @@ func (s *Service) promoteBuild(buildWork string) (string, string, error) {
 	s.releaseMu.Lock()
 	defer s.releaseMu.Unlock()
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
-	releasePath := filepath.Join(s.cfg.SiteDir, "releases", releaseID)
-	if err := os.RemoveAll(releasePath); err != nil {
-		return "", "", err
-	}
-	if err := os.Rename(buildWork, releasePath); err != nil {
+	releasesDir := filepath.Join(s.cfg.SiteDir, "releases")
+	releasePath, err := promoteWorkspaceRelease(buildWork, releasesDir, releaseID)
+	if err != nil {
 		return "", "", err
 	}
 	if err := s.switchCurrentRelease(releaseID); err != nil {
@@ -2359,27 +2379,27 @@ const indexHTML = `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Builder Admin</title>
   <link id="app-favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23525562'/%3E%3Ccircle cx='32' cy='32' r='13' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-dasharray='0.01 82'/%3E%3C/svg%3E">
+  <style>{{ browserTokens .Theme }}</style>
   <style>
     :root {
-	  color-scheme: {{ if .Theme.IsDark }}dark{{ else }}light{{ end }};
-	  --bg: {{ .Theme.Background }};
-	  --panel: {{ .Theme.Panel }};
-	  --panel-strong: {{ .Theme.Surface }};
-	  --line: {{ .Theme.Border }};
-	  --line-soft: {{ .Theme.Elevated }};
-	  --text: {{ .Theme.Text }};
-	  --muted: {{ .Theme.Muted }};
-	  --accent: {{ .Theme.Accent }};
-	  --link: {{ .Theme.Link }};
-	  --focus: {{ .Theme.Focus }};
-	  --success: {{ .Theme.Success }};
-	  --warning: {{ .Theme.Warning }};
-	  --error: {{ .Theme.Error }};
-	  --info: {{ .Theme.Info }};
-	  --code-bg: {{ .Theme.CodeBG }};
-	  --code-text: {{ .Theme.CodeText }};
-	  --button-bg: {{ .Theme.ButtonBG }};
-	  --button-text: {{ .Theme.ButtonText }};
+	  --bg: var(--markata-background);
+	  --panel: var(--markata-panel);
+	  --panel-strong: var(--markata-surface);
+	  --line: var(--markata-border);
+	  --line-soft: var(--markata-elevated);
+	  --text: var(--markata-text-primary);
+	  --muted: var(--markata-text-secondary);
+	  --accent: var(--markata-accent);
+	  --link: var(--markata-link);
+	  --focus: var(--markata-focus);
+	  --success: var(--markata-success);
+	  --warning: var(--markata-warning);
+	  --error: var(--markata-error);
+	  --info: var(--markata-info);
+	  --code-bg: var(--markata-code-background);
+	  --code-text: var(--markata-code-text);
+	  --button-bg: var(--markata-button-background);
+	  --button-text: var(--markata-button-text);
     }
     * { box-sizing: border-box; }
     html { background: var(--bg); }
@@ -2496,7 +2516,6 @@ const indexHTML = `<!doctype html>
     button.secondary { background: transparent; color: var(--text); }
 	button:hover { background: var(--accent); }
     button.secondary:hover { background: var(--panel); }
-    button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
     .stack { display: flex; flex-direction: column; gap: 10px; }
     .panel-head {
       display: flex;
@@ -2655,7 +2674,7 @@ const indexHTML = `<!doctype html>
     }
   </style>
 </head>
-<body>
+<body data-capabilities='{{ json .Capabilities }}'>
 <main>
   <div class="topbar">
     <div class="titleblock">
@@ -2692,9 +2711,9 @@ const indexHTML = `<!doctype html>
       </div>
     </section>
     <section class="actions" aria-label="Build actions">
-      <form method="post" action="/api/builds"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><button type="submit">Enqueue Build</button></form>
+      <form method="post" action="/api/builds" data-capability="enqueueBuild"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><button type="submit">Enqueue Build</button></form>
       {{ range .RefreshTasks }}
-      <form method="post" action="/api/refresh/{{ .Name }}"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
+      <form method="post" action="/api/refresh/{{ .Name }}" data-capability="enqueueRefresh"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Run {{ .Name }}</button></form>
       {{ end }}
     </section>
   </div>
@@ -2755,7 +2774,7 @@ const indexHTML = `<!doctype html>
           <td data-label="Created" class="time-stamp">{{ since .CreatedAt }}</td>
           <td data-label="Build">{{ if .BuildID }}<a class="record-link" href="/builds/{{ .BuildID }}">View build record →</a>{{ end }}</td>
           <td data-label="Status">{{ if .BuildStatus }}<span class="pill {{ statusClass .BuildStatus }}">{{ .BuildStatus }}</span>{{ end }}</td>
-          <td data-label="Action">{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
+          <td data-label="Action">{{ if not .Current }}<form method="post" action="/api/releases/{{ .ID }}/rollback" data-capability="promoteRelease"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary" type="submit">Promote</button></form>{{ end }}</td>
         </tr>
         <tr class="detail-row"><td colspan="6"><div class="row-detail"><div class="row-detail-meta"><span>Created {{ .CreatedAt.UTC.Format "02 Jan 2006 15:04:05 UTC" }}</span><code>{{ .ID }}</code>{{ if .BuildID }}<code>{{ .BuildID }}</code>{{ end }}</div>{{ if .BuildID }}<a class="record-link" href="/builds/{{ .BuildID }}">Open full build details →</a>{{ end }}</div></td></tr>
         {{ else }}
@@ -2768,6 +2787,10 @@ const indexHTML = `<!doctype html>
 </main>
 <script>
   const csrfToken = {{ printf "%q" .CSRFToken }};
+  const capabilities = JSON.parse(document.body.dataset.capabilities || '{}');
+  document.querySelectorAll('[data-capability]').forEach((node) => {
+    if (!capabilities[node.dataset.capability]) node.remove();
+  });
   const favicon = document.getElementById('app-favicon');
   const syncStatus = document.getElementById('sync-status');
   const currentRelease = document.getElementById('current-release');
@@ -3116,7 +3139,7 @@ const indexHTML = `<!doctype html>
       return;
     }
     releasesBody.innerHTML = items.map((item) => {
-      const action = item.current ? '' : '<form method="post" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><input type="hidden" name="csrf_token" value="' + csrfToken + '"><button class="secondary" type="submit">Promote</button></form>';
+      const action = item.current || !capabilities.promoteRelease ? '' : '<form method="post" data-capability="promoteRelease" action="/api/releases/' + encodeURIComponent(item.id) + '/rollback"><input type="hidden" name="csrf_token" value="' + csrfToken + '"><button class="secondary" type="submit">Promote</button></form>';
       const created = new Date(item.created_at);
       const label = Number.isNaN(created.getTime()) ? 'Release' : created.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       const detail = '<tr class="detail-row"><td colspan="6"><div class="row-detail"><div class="row-detail-meta"><span>Created ' + escapeHtml(fmtTime(item.created_at)) + '</span><code>' + escapeHtml(item.id) + '</code>' + (item.build_id ? '<code>' + escapeHtml(item.build_id) + '</code>' : '') + '</div>' + (item.build_id ? '<a class="record-link" href="/builds/' + encodeURIComponent(item.build_id) + '">Open full build details →</a>' : '') + '</div></td></tr>';

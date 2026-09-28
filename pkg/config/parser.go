@@ -1291,14 +1291,19 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type tomlComponentsConfig struct {
-	Nav            tomlNavComponentConfig    `toml:"nav"`
-	Footer         tomlFooterComponentConfig `toml:"footer"`
-	DocSidebar     tomlDocSidebarConfig      `toml:"doc_sidebar"`
-	FeedSidebar    tomlFeedSidebarConfig     `toml:"feed_sidebar"`
-	ContentSidebar tomlContentSidebarConfig  `toml:"content_sidebar"`
-	CardRouter     tomlCardRouterConfig      `toml:"card_router"`
-	Share          tomlShareComponentConfig  `toml:"share"`
-	PostConn       tomlPostConnectionsConfig `toml:"post_connections"`
+	Nav            tomlNavComponentConfig      `toml:"nav"`
+	Footer         tomlFooterComponentConfig   `toml:"footer"`
+	DocSidebar     tomlDocSidebarConfig        `toml:"doc_sidebar"`
+	FeedSidebar    tomlFeedSidebarConfig       `toml:"feed_sidebar"`
+	ContentSidebar tomlContentSidebarConfig    `toml:"content_sidebar"`
+	CardRouter     tomlCardRouterConfig        `toml:"card_router"`
+	Share          tomlShareComponentConfig    `toml:"share"`
+	PostCopy       tomlPostCopyComponentConfig `toml:"post_copy"`
+	PostConn       tomlPostConnectionsConfig   `toml:"post_connections"`
+}
+
+type tomlPostCopyComponentConfig struct {
+	Enabled *bool `toml:"enabled"`
 }
 
 type tomlPostConnectionsConfig struct {
@@ -1908,6 +1913,7 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
 		},
+		PostCopy: models.PostCopyComponentConfig{Enabled: c.PostCopy.Enabled},
 		PostConnections: models.PostConnectionsComponentConfig{
 			Enabled:       c.PostConn.Enabled,
 			Display:       append([]string{}, c.PostConn.Display...),
@@ -3085,14 +3091,19 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type yamlComponentsConfig struct {
-	Nav            yamlNavComponentConfig    `yaml:"nav"`
-	Footer         yamlFooterComponentConfig `yaml:"footer"`
-	DocSidebar     yamlDocSidebarConfig      `yaml:"doc_sidebar"`
-	FeedSidebar    yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
-	ContentSidebar yamlContentSidebarConfig  `yaml:"content_sidebar"`
-	CardRouter     yamlCardRouterConfig      `yaml:"card_router"`
-	Share          yamlShareComponentConfig  `yaml:"share"`
-	PostConn       yamlPostConnectionsConfig `yaml:"post_connections"`
+	Nav            yamlNavComponentConfig      `yaml:"nav"`
+	Footer         yamlFooterComponentConfig   `yaml:"footer"`
+	DocSidebar     yamlDocSidebarConfig        `yaml:"doc_sidebar"`
+	FeedSidebar    yamlFeedSidebarConfig       `yaml:"feed_sidebar"`
+	ContentSidebar yamlContentSidebarConfig    `yaml:"content_sidebar"`
+	CardRouter     yamlCardRouterConfig        `yaml:"card_router"`
+	Share          yamlShareComponentConfig    `yaml:"share"`
+	PostCopy       yamlPostCopyComponentConfig `yaml:"post_copy"`
+	PostConn       yamlPostConnectionsConfig   `yaml:"post_connections"`
+}
+
+type yamlPostCopyComponentConfig struct {
+	Enabled *bool `yaml:"enabled"`
 }
 
 type yamlPostConnectionsConfig struct {
@@ -3579,6 +3590,7 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
 		},
+		PostCopy: models.PostCopyComponentConfig{Enabled: c.PostCopy.Enabled},
 		PostConnections: models.PostConnectionsComponentConfig{
 			Enabled:       c.PostConn.Enabled,
 			Display:       append([]string{}, c.PostConn.Display...),
@@ -4678,14 +4690,19 @@ func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type jsonComponentsConfig struct {
-	Nav            jsonNavComponentConfig    `json:"nav"`
-	Footer         jsonFooterComponentConfig `json:"footer"`
-	DocSidebar     jsonDocSidebarConfig      `json:"doc_sidebar"`
-	FeedSidebar    jsonFeedSidebarConfig     `json:"feed_sidebar"`
-	ContentSidebar jsonContentSidebarConfig  `json:"content_sidebar"`
-	CardRouter     jsonCardRouterConfig      `json:"card_router"`
-	Share          jsonShareComponentConfig  `json:"share"`
-	PostConn       jsonPostConnectionsConfig `json:"post_connections"`
+	Nav            jsonNavComponentConfig      `json:"nav"`
+	Footer         jsonFooterComponentConfig   `json:"footer"`
+	DocSidebar     jsonDocSidebarConfig        `json:"doc_sidebar"`
+	FeedSidebar    jsonFeedSidebarConfig       `json:"feed_sidebar"`
+	ContentSidebar jsonContentSidebarConfig    `json:"content_sidebar"`
+	CardRouter     jsonCardRouterConfig        `json:"card_router"`
+	Share          jsonShareComponentConfig    `json:"share"`
+	PostCopy       jsonPostCopyComponentConfig `json:"post_copy"`
+	PostConn       jsonPostConnectionsConfig   `json:"post_connections"`
+}
+
+type jsonPostCopyComponentConfig struct {
+	Enabled *bool `json:"enabled"`
 }
 
 type jsonPostConnectionsConfig struct {
@@ -5172,6 +5189,7 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
 		},
+		PostCopy: models.PostCopyComponentConfig{Enabled: c.PostCopy.Enabled},
 		PostConnections: models.PostConnectionsComponentConfig{
 			Enabled:       c.PostConn.Enabled,
 			Display:       append([]string{}, c.PostConn.Display...),

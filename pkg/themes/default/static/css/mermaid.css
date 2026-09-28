@@ -47,7 +47,7 @@ pre.mermaid svg * {
   min-width: 2rem;
   height: 2rem;
   padding: 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   font-family: var(--font-body, sans-serif);
   color: var(--color-text);

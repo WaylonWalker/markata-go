@@ -67,62 +67,104 @@ func TestWebHTML_UsesOnlyLocalFonts(t *testing.T) {
 	}
 }
 
-func TestWebHandler_FixPreviewApplyAndStaleProtection(t *testing.T) {
+func TestWebHandler_LegacySingleFileFixRoutesAreRetired(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "post.md")
-	original := "---\ndate: 09/26/2026\n---\n# Heading\n[link](//example.com)\n"
-	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	handler := NewWebHandlerWithSourceRoot(NewRuntime(), root)
-	request := fixRequest{Path: "post.md", Selection: servefix.Selection{All: true}}
-	body, err := json.Marshal(request)
+	for _, route := range []string{"/_markata/api/fixes/preview", "/_markata/api/fixes/apply"} {
+		response := serveLocalPost(handler, route, []byte(`{}`))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("%s status = %d, want %d", route, response.Code, http.StatusNotFound)
+		}
+	}
+}
+
+func TestWebHandler_BatchFixSkipsStaleAndRequestsOneBuild(t *testing.T) {
+	root := t.TempDir()
+	firstSource := "# First\n[link](//first.example)\n"
+	secondSource := "# Second\n[link](//second.example)\n"
+	for name, source := range map[string]string{"first.md": firstSource, "second.md": secondSource} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	firstPlan, err := servefix.PlanFile(root, "first.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	response := serveLocalPost(handler, "/_markata/api/fixes/preview", body)
+	secondPlan, err := servefix.PlanFile(root, "second.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := servefix.Selection{All: true, SafeOnly: true}
+	previewRequest := batchFixPreviewRequest{Files: []servefix.FileSelection{
+		{Path: "first.md", Selection: selection}, {Path: "second.md", Selection: selection},
+	}}
+	body, err := json.Marshal(previewRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := NewRuntime()
+	actionCount := 0
+	runtime.SetActionHandler(func(request ActionRequest) error {
+		if request.Kind != "build" {
+			t.Fatalf("action = %+v", request)
+		}
+		actionCount++
+		return nil
+	})
+	var prepared []servefix.FilePreview
+	handler := NewWebHandlerWithFixHooks(runtime, root, func(previews []servefix.FilePreview) { prepared = previews })
+	response := serveLocalPost(handler, "/_markata/api/fixes/batch/preview", body)
 	if response.Code != http.StatusOK {
 		t.Fatalf("preview status=%d body=%s", response.Code, response.Body.String())
 	}
-	var preview fixPreview
+	var preview struct {
+		Files []servefix.FilePreview `json:"files"`
+	}
 	if err := json.Unmarshal(response.Body.Bytes(), &preview); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(preview.After, "## Heading") || !strings.Contains(preview.After, "https://example.com") {
-		t.Fatalf("preview did not contain safe fixes: %q", preview.After)
+	if len(preview.Files) != 2 || len(preview.Files[0].Edits) != 2 {
+		t.Fatalf("preview = %+v", preview)
 	}
-	if got, err := os.ReadFile(path); err != nil || string(got) != original {
-		t.Fatalf("preview changed source: %q err=%v", got, err)
-	}
-	if err := os.WriteFile(path, []byte(original+"changed\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "second.md"), []byte(secondSource+"external change\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	applyBody, err := json.Marshal(fixApplyRequest{Path: "post.md", Digest: preview.Digest, Selection: preview.Selection})
+	applyRequest := batchFixApplyRequest{Files: []servefix.FileSelection{
+		{Path: "first.md", Digest: firstPlan.Digest, Selection: selection},
+		{Path: "second.md", Digest: secondPlan.Digest, Selection: selection},
+	}}
+	body, err = json.Marshal(applyRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response = serveLocalPost(handler, "/_markata/api/fixes/apply", applyBody)
-	if response.Code != http.StatusConflict {
-		t.Fatalf("stale apply status=%d body=%s", response.Code, response.Body.String())
-	}
-	updatedPlan, err := servefix.PlanFile(root, "post.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	applyBody, err = json.Marshal(fixApplyRequest{Path: "post.md", Digest: updatedPlan.Digest, Selection: servefix.Selection{All: true}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	response = serveLocalPost(handler, "/_markata/api/fixes/apply", applyBody)
+	response = serveLocalPost(handler, "/_markata/api/fixes/batch/apply", body)
 	if response.Code != http.StatusOK {
 		t.Fatalf("apply status=%d body=%s", response.Code, response.Body.String())
 	}
-	got, err := os.ReadFile(path)
+	var applied batchFixApplyResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &applied); err != nil {
+		t.Fatal(err)
+	}
+	statuses := map[string]string{}
+	for _, file := range applied.Result.Files {
+		statuses[file.Path] = file.Status
+	}
+	if len(applied.Result.Applied) != 2 || statuses["first.md"] != "applied" || statuses["second.md"] != "stale" {
+		t.Fatalf("result = %+v", applied.Result)
+	}
+	if actionCount != 1 || !applied.RebuildRequested || applied.RebuildError != "" {
+		t.Fatalf("action count=%d response=%+v", actionCount, applied)
+	}
+	if len(prepared) != 1 || prepared[0].Path != "first.md" {
+		t.Fatalf("prepared watcher outputs = %+v", prepared)
+	}
+	secondAfter, err := os.ReadFile(filepath.Join(root, "second.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(got), "## Heading") || !strings.Contains(string(got), "https://example.com") {
-		t.Fatalf("applied source = %q", got)
+	if string(secondAfter) != secondSource+"external change\n" {
+		t.Fatalf("stale source overwritten: %q", secondAfter)
 	}
 }
 
@@ -172,10 +214,18 @@ func TestWebHandler_OnlyServesItsPrefixAndEscapesDynamicState(t *testing.T) {
 	if strings.Contains(response.Body.String(), "<script>alert(1)</script>") {
 		t.Fatal("runtime text appeared in initial HTML")
 	}
+	if !strings.Contains(response.Body.String(), "--markata-background:#09090b") || !strings.Contains(response.Body.String(), "--markata-focus:#93c5fd") {
+		t.Fatal("local dashboard did not receive the shared semantic token stylesheet")
+	}
 	if !strings.Contains(response.Body.String(), "arr(item.diagnostics)") || !strings.Contains(response.Body.String(), "Open page") {
 		t.Fatal("dashboard lacks current page diagnostics or page preview link")
 	}
-	for _, affordance := range []string{"applyTheme(state.snapshot.theme)", "data-page", "matches.slice(-200)", "site.page_count", "Session history"} {
+	for _, affordance := range []string{
+		"applyTheme(state.snapshot.theme)", "data-page", "matches.slice(-200)", "site.page_count", "Session history",
+		"--markata-text-primary", "routeHash()", "history.pushState", "history.replaceState",
+		"window.addEventListener('popstate'", "window.addEventListener('hashchange'", "editableTarget(e.target)",
+		"moveSelection(1)", "moveSelection(-1)", "keyboard-help", "const capabilities=Object.freeze",
+	} {
 		if !strings.Contains(response.Body.String(), affordance) {
 			t.Errorf("dashboard lacks %q", affordance)
 		}
