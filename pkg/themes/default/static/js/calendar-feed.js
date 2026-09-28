@@ -188,12 +188,26 @@
     }
   }
 
+  function primaryNodesFor(root, sourceList) {
+    const nodes = Array.from(root.querySelectorAll('[data-calendar-primary]'));
+    for (const child of root.children) {
+      if (
+        child.classList.contains('pagination') ||
+        child.classList.contains('pagination-infinite') ||
+        child.classList.contains('feed-empty')
+      ) {
+        if (!nodes.includes(child)) nodes.push(child);
+      }
+    }
+    if (nodes.length === 0) nodes.push(sourceList);
+    return nodes;
+  }
+
   function initialize(root) {
     const sourceList = root.querySelector('[data-calendar-list]');
-    const primary = root.querySelector('[data-calendar-primary]') || sourceList;
     const calendar = root.querySelector('[data-calendar-years]');
     const switcher = root.querySelector('[data-calendar-switch]');
-    if (!sourceList || !primary || !calendar || !switcher) return;
+    if (!sourceList || !calendar || !switcher) return;
 
     const datedPosts = [];
     for (const item of sourceList.querySelectorAll('[data-calendar-post]')) {
@@ -209,12 +223,13 @@
 
     if (!renderCalendar(root, calendar, datedPosts)) return;
 
-    const sourceIsPrimary = sourceList === primary;
+    const primaryNodes = primaryNodesFor(root, sourceList);
+    const sourceIsPrimary = primaryNodes.includes(sourceList);
     const buttons = Array.from(switcher.querySelectorAll('[data-calendar-mode]'));
     const setMode = (mode, persistURL = true) => {
       const calendarMode = mode === 'calendar';
       calendar.hidden = !calendarMode;
-      primary.hidden = calendarMode;
+      for (const node of primaryNodes) node.hidden = calendarMode;
       if (!sourceIsPrimary) sourceList.hidden = true;
 
       for (const button of buttons) {
