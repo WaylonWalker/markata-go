@@ -30,6 +30,7 @@
   };
 
   var navHoverSuppressed = false;
+  var navHoverReleaseArmed = false;
   var NAV_HOVER_ATTRIBUTE = 'data-nav-hover-suppressed';
   var NAV_HOVER_STYLE_ID = 'markata-nav-hover-reset-style';
 
@@ -161,6 +162,7 @@
       '  z-index: auto !important;',
       '}'
     ].join('\n');
+    style.setAttribute('data-markata-persist', 'true');
     document.head.appendChild(style);
   }
 
@@ -171,15 +173,19 @@
 
   function clearNavHoverSuppression() {
     navHoverSuppressed = false;
+    navHoverReleaseArmed = false;
     document.documentElement.removeAttribute(NAV_HOVER_ATTRIBUTE);
   }
 
   function suppressNavHoverUntilPointerMoves() {
     navHoverSuppressed = true;
+    navHoverReleaseArmed = false;
     applyNavHoverSuppression();
   }
 
   function shouldResetNavHover(event, link) {
+    if (!document.startViewTransition) return false;
+    if (window.VIEW_TRANSITIONS_CONFIG && window.VIEW_TRANSITIONS_CONFIG.enabled === false) return false;
     if (!link || event.defaultPrevented || event.button !== 0) return false;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
     if (link.target && link.target !== '_self') return false;
@@ -199,7 +205,8 @@
   // A SPA navigation swaps in a new nav underneath an unmoved pointer. Without
   // an explicit reset, the new element immediately matches :hover and makes a
   // preview look like it survived the page transition. Keep pointer-only hover
-  // suppressed until the user actually moves again; :focus-within still works.
+  // suppressed through the swap and only release it on pointer movement after
+  // the transition is complete; :focus-within still works throughout.
   document.addEventListener('click', function(event) {
     var target = event.target;
     if (!target || !target.closest) return;
@@ -211,7 +218,7 @@
   }, true);
 
   window.addEventListener('pointermove', function() {
-    if (!navHoverSuppressed) return;
+    if (!navHoverSuppressed || !navHoverReleaseArmed) return;
     clearNavHoverSuppression();
   }, true);
 
@@ -227,6 +234,7 @@
     ensureNavHoverResetStyle();
     if (navHoverSuppressed) {
       applyNavHoverSuppression();
+      navHoverReleaseArmed = true;
     }
   });
 })();
