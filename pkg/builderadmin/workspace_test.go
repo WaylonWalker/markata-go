@@ -1,6 +1,7 @@
 package builderadmin
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,10 +9,8 @@ import (
 	"testing"
 )
 
-func TestStageWorkspaceReleaseCopiesAndCommitsAtomically(t *testing.T) {
-	root := t.TempDir()
-	workspace := filepath.Join(root, "workspace")
-	releases := filepath.Join(root, "site", "releases")
+func writeWorkspaceFixture(t *testing.T, workspace string) {
+	t.Helper()
 	if err := os.MkdirAll(filepath.Join(workspace, "post"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -23,14 +22,10 @@ func TestStageWorkspaceReleaseCopiesAndCommitsAtomically(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
 
-	finalPath, err := stageWorkspaceRelease(workspace, releases, "release-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(releases, "release-1"); finalPath != want {
-		t.Fatalf("final path = %q, want %q", finalPath, want)
-	}
+func assertWorkspaceRelease(t *testing.T, finalPath string) {
+	t.Helper()
 	content, err := os.ReadFile(filepath.Join(finalPath, "post", "index.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -38,8 +33,44 @@ func TestStageWorkspaceReleaseCopiesAndCommitsAtomically(t *testing.T) {
 	if string(content) != "<h1>hello</h1>" {
 		t.Fatalf("copied content = %q", content)
 	}
+}
+
+func TestPromoteWorkspaceReleaseUsesRenameFastPath(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, "workspace")
+	releases := filepath.Join(root, "releases")
+	writeWorkspaceFixture(t, workspace)
+	called := false
+	finalPath, err := promoteWorkspaceReleaseWithRename(workspace, releases, "release-1", func(oldPath, newPath string) error {
+		called = true
+		return os.Rename(oldPath, newPath)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("rename fast path was not attempted")
+	}
+	assertWorkspaceRelease(t, finalPath)
+	if _, err := os.Stat(workspace); !os.IsNotExist(err) {
+		t.Fatalf("same-filesystem rename should consume workspace, stat err = %v", err)
+	}
+}
+
+func TestPromoteWorkspaceReleaseFallsBackToStagedCopy(t *testing.T) {
+	root := t.TempDir()
+	workspace := filepath.Join(root, "workspace")
+	releases := filepath.Join(root, "releases")
+	writeWorkspaceFixture(t, workspace)
+	finalPath, err := promoteWorkspaceReleaseWithRename(workspace, releases, "release-1", func(string, string) error {
+		return errors.New("cross-device rename")
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertWorkspaceRelease(t, finalPath)
 	if _, err := os.Stat(workspace); err != nil {
-		t.Fatalf("source workspace should remain for caller cleanup: %v", err)
+		t.Fatalf("staged fallback should leave source workspace for caller cleanup: %v", err)
 	}
 	entries, err := os.ReadDir(releases)
 	if err != nil {
@@ -50,14 +81,26 @@ func TestStageWorkspaceReleaseCopiesAndCommitsAtomically(t *testing.T) {
 			t.Fatalf("staging directory leaked after commit: %s", entry.Name())
 		}
 	}
-	if runtime.GOOS != "windows" {
-		target, err := os.Readlink(filepath.Join(finalPath, "index-link.html"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if target != "post/index.html" {
-			t.Fatalf("symlink target = %q", target)
-		}
+}
+
+func TestStageWorkspaceReleaseCopiesSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires Windows developer mode or elevated privileges")
+	}
+	root := t.TempDir()
+	workspace := filepath.Join(root, "workspace")
+	releases := filepath.Join(root, "releases")
+	writeWorkspaceFixture(t, workspace)
+	finalPath, err := stageWorkspaceRelease(workspace, releases, "release-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := os.Readlink(filepath.Join(finalPath, "index-link.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target != "post/index.html" {
+		t.Fatalf("symlink target = %q", target)
 	}
 }
 
@@ -78,7 +121,6 @@ func TestStageWorkspaceReleaseDoesNotOverwriteExistingRelease(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(finalPath, "index.html"), []byte("old"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
 	if _, err := stageWorkspaceRelease(workspace, releases, "release-1"); err == nil {
 		t.Fatal("stageWorkspaceRelease() succeeded over an existing release")
 	}
@@ -95,5 +137,25 @@ func TestStageWorkspaceReleaseRejectsMissingWorkspace(t *testing.T) {
 	root := t.TempDir()
 	if _, err := stageWorkspaceRelease(filepath.Join(root, "missing"), filepath.Join(root, "releases"), "release-1"); err == nil {
 		t.Fatal("stageWorkspaceRelease() succeeded with missing workspace")
+	}
+}
+
+func TestPrepareBuildUsesConfiguredWorkDir(t *testing.T) {
+	root := t.TempDir()
+	siteDir := filepath.Join(root, "site")
+	workDir := filepath.Join(root, "fast-work", "build")
+	sourceDir := filepath.Join(root, "source")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	service := &Service{cfg: Config{SiteDir: siteDir, WorkDir: workDir, SourceDir: sourceDir}}
+	if err := service.prepareBuild(os.Stderr); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(workDir); err != nil || !info.IsDir() {
+		t.Fatalf("configured work dir was not prepared: info=%v err=%v", info, err)
+	}
+	if _, err := os.Stat(filepath.Join(siteDir, ".build-work")); !os.IsNotExist(err) {
+		t.Fatalf("legacy workspace should not be created when WorkDir is configured: %v", err)
 	}
 }
