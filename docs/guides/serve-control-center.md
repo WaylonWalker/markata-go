@@ -99,7 +99,8 @@ fixes need closer inspection; `MANUAL` diagnostics provide guidance without an
 automatic edit. Markata never applies a fix until you review a preview and
 choose to apply it. The server authorizes only the exact files, digests, and
 selections in that preview, and consumes that authorization after one apply
-attempt.
+attempt. The retired single-file preview/apply endpoints are not exposed; all
+source mutation uses the grouped batch preview/apply contract.
 
 Each source file is checked against the digest captured by the preview. If the
 file changes before apply, Markata skips that file and reports it. In a mixed
