@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"unicode/utf8"
 )
 
 const (
@@ -179,8 +180,16 @@ func boundReportValue(value string, maxBytes int) string {
 	if maxBytes <= 0 || len(value) <= maxBytes {
 		return value
 	}
-	if maxBytes <= 3 {
-		return value[:maxBytes]
+
+	suffix := "..."
+	limit := maxBytes
+	if maxBytes > len(suffix) {
+		limit = maxBytes - len(suffix)
+	} else {
+		suffix = ""
 	}
-	return value[:maxBytes-3] + "..."
+	for limit > 0 && !utf8.ValidString(value[:limit]) {
+		limit--
+	}
+	return value[:limit] + suffix
 }
