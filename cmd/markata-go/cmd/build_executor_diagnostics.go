@@ -8,19 +8,27 @@ const (
 )
 
 func init() {
-	previousPreRunE := buildCmd.PreRunE
-	buildCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+	wrapExecutorDiagnostic(buildCmd, func() bool { return dagBuildEnabled() }, true)
+	wrapExecutorDiagnostic(serveCmd, func() bool { return buildDAG }, false)
+	wrapExecutorDiagnostic(builderAdminCmd, func() bool { return builderAdminDAG }, false)
+}
+
+func wrapExecutorDiagnostic(cmd *cobra.Command, dagEnabled func() bool, preserveJSONStdout bool) {
+	previousPreRunE := cmd.PreRunE
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if previousPreRunE != nil {
 			if err := previousPreRunE(cmd, args); err != nil {
 				return err
 			}
 		}
 
-		name, experimental := selectedBuildExecutorDiagnostic()
+		name, experimental := executorDiagnostic(dagEnabled())
 		if experimental {
-			// Use stderr so `build --benchmark-json -` remains valid JSON on stdout.
+			// Keep diagnostics on stderr. This is required for
+			// `build --benchmark-json -`, and is also the right stream for
+			// long-lived serve/admin process startup notices.
 			errlnf("Build executor: %s", name)
-		} else {
+		} else if !preserveJSONStdout || verbose {
 			verbosef("Build executor: %s", name)
 		}
 		return nil
@@ -28,7 +36,11 @@ func init() {
 }
 
 func selectedBuildExecutorDiagnostic() (name string, experimental bool) {
-	if dagBuildEnabled() {
+	return executorDiagnostic(dagBuildEnabled())
+}
+
+func executorDiagnostic(dagEnabled bool) (name string, experimental bool) {
+	if dagEnabled {
 		return dagExecutorDiagnostic, true
 	}
 	return legacyExecutorDiagnostic, false
