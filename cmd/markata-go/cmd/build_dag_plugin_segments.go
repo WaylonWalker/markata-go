@@ -98,21 +98,13 @@ func executeDAGPluginStageSegments(
 			pluginBuilder := builddag.NewBuilder()
 			addDAGExternalInputs(pluginBuilder, legacyTask.Requires)
 			for taskIndex := range expanded {
-				task := expanded[taskIndex]
-				original := task.Func
-				task.Func = func(ctx context.Context) error {
-					if err := original(ctx); err != nil {
-						finishDAGPluginStageError(stage, err, observe)
-						return err
-					}
-					return nil
-				}
-				pluginBuilder.AddTask(task)
+				pluginBuilder.AddTask(expanded[taskIndex])
 			}
 
 			segmentName := fmt.Sprintf("%s.plugin.%03d.%s", stage, index, legacyTask.ID)
 			pluginSegment, pluginCount, executeErr := compileExecuteDAGSegment(executor, pluginBuilder, segmentName)
 			if executeErr != nil {
+				finishDAGPluginStageError(stage, executeErr, observe)
 				return nil, 0, executeErr
 			}
 			segments = append(segments, pluginSegment)
@@ -133,12 +125,10 @@ func executeDAGPluginStageSegments(
 		Exclusive: true,
 		Func: func(ctx context.Context) error {
 			if err := ctx.Err(); err != nil {
-				finishDAGPluginStageError(stage, err, observe)
 				return err
 			}
 			if !skipStage {
 				if err := m.MarkStageComplete(stage); err != nil {
-					finishDAGPluginStageError(stage, err, observe)
 					return err
 				}
 			}
@@ -158,6 +148,7 @@ func executeDAGPluginStageSegments(
 
 	segment, count, err = compileExecuteDAGSegment(executor, completeBuilder, string(stage)+".complete")
 	if err != nil {
+		finishDAGPluginStageError(stage, err, observe)
 		return nil, 0, err
 	}
 	segments = append(segments, segment)
