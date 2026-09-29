@@ -43,23 +43,35 @@ func (p *ReadingTimePlugin) Configure(m *lifecycle.Manager) error {
 // post-local operation is separated so the DAG can schedule explicit item
 // tasks without duplicating reading-time semantics.
 func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
+	return m.ProcessPostsSliceConcurrently(p.PostsForTransform(m), p.TransformPost)
+}
+
+// PostsForTransform returns the posts reading_time would process for the
+// current manager state. Keeping selection here ensures the legacy hook and
+// scheduler-owned item tasks share skip/empty and Serve-incremental behavior.
+func (p *ReadingTimePlugin) PostsForTransform(m *lifecycle.Manager) []*models.Post {
+	if m == nil {
+		return nil
+	}
+
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return readingTimePostEligible(post)
 	})
-
-	if lifecycle.IsServeIncremental(m) {
-		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
-			filtered := posts[:0]
-			for _, post := range posts {
-				if affected[post.Path] {
-					filtered = append(filtered, post)
-				}
-			}
-			posts = filtered
-		}
+	if !lifecycle.IsServeIncremental(m) {
+		return posts
 	}
 
-	return m.ProcessPostsSliceConcurrently(posts, p.TransformPost)
+	affected := lifecycle.GetServeAffectedPaths(m)
+	if len(affected) == 0 {
+		return posts
+	}
+	filtered := posts[:0]
+	for _, post := range posts {
+		if affected[post.Path] {
+			filtered = append(filtered, post)
+		}
+	}
+	return filtered
 }
 
 // TransformPost calculates and stores reading-time fields for one post. It is
