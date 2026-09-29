@@ -45,7 +45,7 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		stage := lifecycleStage
 		provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(stage)}
 
-		if stage == lifecycle.StageLoad || stage == lifecycle.StageTransform || stage == lifecycle.StageRender || stage == lifecycle.StageCollect {
+		if stage == lifecycle.StageLoad || stage == lifecycle.StageTransform || stage == lifecycle.StageRender || stage == lifecycle.StageCollect || stage == lifecycle.StageWrite {
 			addDAGLegacyPluginStage(builder, m, stage, requires, provided, observe)
 		} else {
 			addDAGLifecycleStage(builder, m, stage, requires, provided, observe)
