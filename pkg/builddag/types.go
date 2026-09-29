@@ -29,15 +29,17 @@ const (
 // TaskFunc performs one task. The first executor is intentionally serial.
 type TaskFunc func(context.Context) error
 
-// TaskSpec declares one computation boundary and its artifact dependencies.
+// TaskSpec declares one computation boundary, its artifact dependencies, and
+// any mutable/shared resources it reads or writes.
 type TaskSpec struct {
-	ID           TaskID       `json:"id"`
-	Group        string       `json:"group,omitempty"`
-	Requires     []ArtifactID `json:"requires,omitempty"`
-	Provides     []ArtifactID `json:"provides,omitempty"`
-	Scope        Scope        `json:"scope,omitempty"`
-	Version      string       `json:"version,omitempty"`
-	Exclusive    bool         `json:"exclusive,omitempty"`
-	ParallelSafe bool         `json:"parallel_safe,omitempty"`
-	Func         TaskFunc     `json:"-"`
+	ID           TaskID          `json:"id"`
+	Group        string          `json:"group,omitempty"`
+	Requires     []ArtifactID    `json:"requires,omitempty"`
+	Provides     []ArtifactID    `json:"provides,omitempty"`
+	Resources    []ResourceClaim `json:"resources,omitempty"`
+	Scope        Scope           `json:"scope,omitempty"`
+	Version      string          `json:"version,omitempty"`
+	Exclusive    bool            `json:"exclusive,omitempty"`
+	ParallelSafe bool            `json:"parallel_safe,omitempty"`
+	Func         TaskFunc        `json:"-"`
 }
