@@ -68,8 +68,8 @@
 
 .calendar-months {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
   align-items: start;
 }
 
@@ -320,11 +320,31 @@
   display: none !important;
 }
 
-@media (max-width: 36rem) {
+@media (min-width: 30rem) {
   .calendar-months {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+@media (min-width: 48rem) {
+  .calendar-months {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .calendar-months {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 96rem) {
+  .calendar-months {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 36rem) {
   .calendar-feed-list li {
     grid-template-columns: 1fr;
     gap: 0.15rem;
