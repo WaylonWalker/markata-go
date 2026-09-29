@@ -52,6 +52,9 @@ func (b *Builder) Compile() (*Graph, error) {
 		if _, exists := byID[task.ID]; exists {
 			return nil, fmt.Errorf("builddag: duplicate task ID %q", task.ID)
 		}
+		if err := validateTaskResources(*task); err != nil {
+			return nil, fmt.Errorf("builddag: task %q: %w", task.ID, err)
+		}
 		byID[task.ID] = *task
 
 		for _, artifact := range task.Provides {
@@ -106,6 +109,30 @@ func (b *Builder) Compile() (*Graph, error) {
 		order:    order,
 		external: external,
 	}, nil
+}
+
+func validateTaskResources(task TaskSpec) error {
+	if task.Exclusive && task.ParallelSafe {
+		return fmt.Errorf("exclusive task cannot be parallel-safe")
+	}
+	if task.ParallelSafe && len(task.Resources) == 0 {
+		return fmt.Errorf("parallel-safe task must declare resource claims")
+	}
+
+	seen := make(map[ResourceID]AccessMode, len(task.Resources))
+	for _, claim := range task.Resources {
+		if !validResourceClaim(claim) {
+			return fmt.Errorf("invalid resource claim %q", claim.String())
+		}
+		if previous, exists := seen[claim.Resource]; exists {
+			return fmt.Errorf(
+				"resource %s declared more than once (%s and %s)",
+				claim.Resource.String(), previous, claim.Access,
+			)
+		}
+		seen[claim.Resource] = claim.Access
+	}
+	return nil
 }
 
 func validArtifact(id ArtifactID) bool {
@@ -221,14 +248,15 @@ func (g *Graph) Serialize() ([]byte, error) {
 	}
 
 	type entry struct {
-		ID           TaskID       `json:"id"`
-		Group        string       `json:"group,omitempty"`
-		Requires     []ArtifactID `json:"requires,omitempty"`
-		Provides     []ArtifactID `json:"provides,omitempty"`
-		Scope        Scope        `json:"scope,omitempty"`
-		Version      string       `json:"version,omitempty"`
-		Exclusive    bool         `json:"exclusive,omitempty"`
-		ParallelSafe bool         `json:"parallel_safe,omitempty"`
+		ID           TaskID          `json:"id"`
+		Group        string          `json:"group,omitempty"`
+		Requires     []ArtifactID    `json:"requires,omitempty"`
+		Provides     []ArtifactID    `json:"provides,omitempty"`
+		Resources    []ResourceClaim `json:"resources,omitempty"`
+		Scope        Scope           `json:"scope,omitempty"`
+		Version      string          `json:"version,omitempty"`
+		Exclusive    bool            `json:"exclusive,omitempty"`
+		ParallelSafe bool            `json:"parallel_safe,omitempty"`
 	}
 
 	entries := make([]entry, 0, len(g.order))
@@ -236,13 +264,16 @@ func (g *Graph) Serialize() ([]byte, error) {
 		task := g.tasks[id]
 		requires := append([]ArtifactID(nil), task.Requires...)
 		provides := append([]ArtifactID(nil), task.Provides...)
+		resources := append([]ResourceClaim(nil), task.Resources...)
 		sort.Slice(requires, func(i, j int) bool { return requires[i].String() < requires[j].String() })
 		sort.Slice(provides, func(i, j int) bool { return provides[i].String() < provides[j].String() })
+		sort.Slice(resources, func(i, j int) bool { return resources[i].String() < resources[j].String() })
 		entries = append(entries, entry{
 			ID:           task.ID,
 			Group:        task.Group,
 			Requires:     requires,
 			Provides:     provides,
+			Resources:    resources,
 			Scope:        task.Scope,
 			Version:      task.Version,
 			Exclusive:    task.Exclusive,
