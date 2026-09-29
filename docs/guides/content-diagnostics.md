@@ -28,6 +28,7 @@ Use a JSON viewer such as `jq`:
 
 ```bash
 jq . public/.markata/diagnostics.json
+jq '.executor' public/.markata/diagnostics.json
 jq '.summary' public/.markata/diagnostics.json
 jq '.entries[] | select(.disposition == "excluded")' public/.markata/diagnostics.json
 ```
@@ -37,9 +38,16 @@ separate diagnostics command or generated public HTML page.
 
 ## Stable fields and reason codes
 
-The top-level `schema`, `schema_version`, `generator`, `built_at`, `summary`,
-and `entries` fields are stable parts of the versioned format. Consumers must
-check both `schema` and `schema_version` before interpreting the document.
+The top-level `schema`, `schema_version`, `generator`, `built_at`, `executor`,
+`summary`, and `entries` fields are stable parts of the versioned format.
+Consumers must check both `schema` and `schema_version` before interpreting the
+document.
+
+`executor` records the build engine that produced the artifact. Normal builds
+report `legacy`; builds explicitly using the feature-flagged DAG executor report
+`dag`. The same identity is included in `markata-go build --benchmark-json`
+output, which makes local benchmark reports and Builder Admin release artifacts
+unambiguous without parsing human-readable logs.
 
 `summary` contains counts for discovered files, candidates, loaded sources,
 valid frontmatter, posts, eligible posts, rendered posts, emitted outputs,
@@ -62,6 +70,9 @@ code. The current codes cover:
 - feed windowing: `feed.offset` and `feed.limit`.
 
 The artifact uses schema `markata.content-diagnostics` and schema version `1`.
+Older version-1 artifacts created before executor reporting may omit the
+`executor` field; readers should treat that as unknown rather than infer it from
+other fields.
 
 ## Privacy and publication behavior
 
