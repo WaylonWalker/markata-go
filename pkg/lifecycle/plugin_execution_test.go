@@ -7,15 +7,20 @@ import (
 )
 
 type executionTestPlugin struct {
-	name      string
-	priority  int
-	transform func(*Manager) error
-	load      func(*Manager) error
+	name           string
+	priority       int
+	transform      func(*Manager) error
+	load           func(*Manager) error
+	criticalStages map[Stage]bool
 }
 
 func (p *executionTestPlugin) Name() string { return p.name }
 
 func (p *executionTestPlugin) Priority(Stage) int { return p.priority }
+
+func (p *executionTestPlugin) CriticalStageErrors(stage Stage) bool {
+	return p.criticalStages[stage]
+}
 
 func (p *executionTestPlugin) Transform(m *Manager) error {
 	if p.transform == nil {
@@ -104,6 +109,31 @@ func TestExecutePluginHookReturnsCriticalError(t *testing.T) {
 	}
 	if len(manager.Warnings()) != 0 {
 		t.Fatalf("critical error was also recorded as warning: %+v", manager.Warnings())
+	}
+}
+
+func TestExecutePluginHookHonorsPluginCriticalStageErrors(t *testing.T) {
+	manager := NewManager()
+	pluginErr := errors.New("publication failed")
+	plugin := &executionTestPlugin{
+		name:           "publisher",
+		transform:      func(*Manager) error { return pluginErr },
+		criticalStages: map[Stage]bool{StageTransform: true},
+	}
+
+	err := ExecutePluginHook(manager, plugin, StageTransform)
+	if err == nil {
+		t.Fatal("ExecutePluginHook() = nil, want plugin-declared critical error")
+	}
+	var hookErr *HookError
+	if !errors.As(err, &hookErr) {
+		t.Fatalf("error = %T %v, want *HookError", err, err)
+	}
+	if !hookErr.Critical || hookErr.Plugin != "publisher" || hookErr.Stage != StageTransform || !errors.Is(err, pluginErr) {
+		t.Fatalf("hook error = %+v, want plugin-declared critical transform error", hookErr)
+	}
+	if len(manager.Warnings()) != 0 {
+		t.Fatalf("plugin-declared critical error was also recorded as warning: %+v", manager.Warnings())
 	}
 }
 
