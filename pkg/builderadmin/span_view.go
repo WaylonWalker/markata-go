@@ -67,14 +67,29 @@ func criticalSpanChain(spans []buildstats.SpanTiming, byID map[string]buildstats
 	if len(spans) == 0 {
 		return critical
 	}
-	terminal := spans[0]
-	terminalEnd := terminal.StartOffset + terminal.Duration
-	for _, span := range spans[1:] {
+	parents := make(map[string]bool, len(spans))
+	for _, span := range spans {
+		if span.ParentID != "" {
+			parents[span.ParentID] = true
+		}
+	}
+
+	var terminal buildstats.SpanTiming
+	var terminalEnd time.Duration
+	foundLeaf := false
+	for _, span := range spans {
+		if span.ID == "" || parents[span.ID] {
+			continue
+		}
 		end := span.StartOffset + span.Duration
-		if end > terminalEnd || (end == terminalEnd && span.Duration > terminal.Duration) {
+		if !foundLeaf || end > terminalEnd || (end == terminalEnd && span.Duration > terminal.Duration) {
 			terminal = span
 			terminalEnd = end
+			foundLeaf = true
 		}
+	}
+	if !foundLeaf {
+		return critical
 	}
 	for terminal.ID != "" && !critical[terminal.ID] {
 		critical[terminal.ID] = true
