@@ -208,10 +208,42 @@
       postsByDate.set(post.date, existing);
     }
 
-    if (years.size === 0) return false;
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) return false;
 
-    calendar.replaceChildren();
-    for (const year of Array.from(years).sort((a, b) => b - a)) {
+    const yearNav = element('nav', 'calendar-year-nav calendar-view-switch');
+    yearNav.setAttribute('aria-label', 'Calendar year');
+    const olderButton = element('button', 'calendar-year-step calendar-year-older');
+    olderButton.type = 'button';
+    const yearSelect = document.createElement('select');
+    yearSelect.className = 'calendar-year-select';
+    yearSelect.setAttribute('aria-label', 'Calendar year');
+    const newerButton = element('button', 'calendar-year-step calendar-year-newer');
+    newerButton.type = 'button';
+
+    for (const year of sortedYears) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.append(option);
+    }
+    yearNav.append(olderButton, yearSelect, newerButton);
+
+    const syncYearControls = (year) => {
+      const index = sortedYears.indexOf(year);
+      const olderYear = index >= 0 ? sortedYears[index + 1] : undefined;
+      const newerYear = index > 0 ? sortedYears[index - 1] : undefined;
+
+      yearSelect.value = String(year);
+      olderButton.disabled = olderYear === undefined;
+      newerButton.disabled = newerYear === undefined;
+      olderButton.textContent = olderYear === undefined ? '← Older' : `← ${olderYear}`;
+      newerButton.textContent = newerYear === undefined ? 'Newer →' : `${newerYear} →`;
+    };
+
+    const renderYear = (year, persistURL = true) => {
+      if (!years.has(year)) year = sortedYears[0];
+
       const yearSection = element('section', 'calendar-year');
       const yearHeading = element('h2', '', String(year));
       yearHeading.id = `calendar-year-${year}`;
@@ -223,8 +255,28 @@
         months.append(renderMonth(year, month, postsByDate, previewData));
       }
       yearSection.append(months);
+
+      calendar.replaceChildren();
+      if (sortedYears.length > 1) calendar.append(yearNav);
       calendar.append(yearSection);
-    }
+      syncYearControls(year);
+      if (persistURL) updateURLYear(year);
+    };
+
+    olderButton.addEventListener('click', () => {
+      const currentIndex = sortedYears.indexOf(Number(yearSelect.value));
+      const olderYear = sortedYears[currentIndex + 1];
+      if (olderYear !== undefined) renderYear(olderYear);
+    });
+    newerButton.addEventListener('click', () => {
+      const currentIndex = sortedYears.indexOf(Number(yearSelect.value));
+      const newerYear = sortedYears[currentIndex - 1];
+      if (newerYear !== undefined) renderYear(newerYear);
+    });
+    yearSelect.addEventListener('change', () => renderYear(Number(yearSelect.value)));
+
+    const initialYear = calendarYearFromURL(sortedYears) || sortedYears[0];
+    renderYear(initialYear, false);
 
     const ensurePreview = (details) => {
       if (details.querySelector('.calendar-day-preview')) return;
@@ -294,11 +346,32 @@
     }
   }
 
+  function calendarYearFromURL(years) {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('year');
+      if (!raw) return null;
+      const year = Number(raw);
+      return years.includes(year) ? year : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   function updateURLMode(mode) {
     try {
       const url = new URL(window.location.href);
       if (mode === 'calendar') url.searchParams.set('view', 'calendar');
       else if (url.searchParams.get('view') === 'calendar') url.searchParams.delete('view');
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch (error) {
+      // URL state is progressive enhancement only.
+    }
+  }
+
+  function updateURLYear(year) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('year', String(year));
       window.history.replaceState(window.history.state, '', url.toString());
     } catch (error) {
       // URL state is progressive enhancement only.
@@ -336,13 +409,21 @@
       });
     }
 
-    if (!renderCalendar(root, calendar, datedPosts)) return;
+    if (datedPosts.length === 0) return;
+
+    let calendarRendered = false;
+    const ensureCalendar = () => {
+      if (calendarRendered) return true;
+      calendarRendered = renderCalendar(root, calendar, datedPosts);
+      return calendarRendered;
+    };
 
     const primaryNodes = primaryNodesFor(root, sourceList);
     const sourceIsPrimary = primaryNodes.includes(sourceList);
     const buttons = Array.from(switcher.querySelectorAll('[data-calendar-mode]'));
     const setMode = (mode, persistURL = true) => {
       const calendarMode = mode === 'calendar';
+      if (calendarMode && !ensureCalendar()) return;
       calendar.hidden = !calendarMode;
       for (const node of primaryNodes) node.hidden = calendarMode;
       if (!sourceIsPrimary) sourceList.hidden = true;
