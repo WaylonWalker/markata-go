@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -38,8 +39,8 @@ func validateFeedViewsWithPositions(field string, views []string, tracker *Posit
 		return
 	}
 	for _, err := range validateFeedViews(field, views) {
-		validationErr, ok := err.(ValidationError)
-		if !ok {
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
 			continue
 		}
 		configErrors.Add(NewConfigErrorWithFix(
