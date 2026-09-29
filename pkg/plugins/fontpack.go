@@ -379,8 +379,8 @@ func fontpackCacheKey(rendered string, names []string, catalog *fontpacks.Catalo
 // glyph coverage can safely reuse the previously resolved bundled font assets.
 func fontpackCoverageSignature(rendered string) string {
 	visible := fontpacks.VisibleText(rendered)
-	seen := make(map[rune]struct{}, len(visible))
-	runes := make([]rune, 0, len(visible))
+	seen := make(map[rune]struct{}, 256)
+	runes := make([]rune, 0, 256)
 	for _, r := range visible {
 		if r == utf8.RuneError {
 			continue
