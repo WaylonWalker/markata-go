@@ -15,7 +15,9 @@ const (
 	ResourcePlugin   ResourceKind = "plugin"
 )
 
-// AccessMode describes how a task uses a declared resource.
+// AccessMode describes how a task uses a declared resource. A write claim is
+// treated as ownership for mutation and therefore also covers any reads the
+// task performs while updating that resource.
 type AccessMode string
 
 const (
@@ -48,8 +50,18 @@ func (claim ResourceClaim) String() string {
 }
 
 func validResourceClaim(claim ResourceClaim) bool {
-	if claim.Resource.Kind == "" || claim.Resource.Key == "" {
+	if !validResourceKind(claim.Resource.Kind) || claim.Resource.Key == "" {
 		return false
 	}
 	return claim.Access == AccessRead || claim.Access == AccessWrite
+}
+
+func validResourceKind(kind ResourceKind) bool {
+	switch kind {
+	case ResourceSite, ResourceFiles, ResourcePost, ResourceFeed, ResourceCache,
+		ResourceOutput, ResourceTemplate, ResourceExternal, ResourcePlugin:
+		return true
+	default:
+		return false
+	}
 }
