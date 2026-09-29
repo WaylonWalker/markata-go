@@ -30,15 +30,15 @@ func StringAttribute(key, value string) Attribute {
 // SpanTiming is one completed operation in a build trace. StartOffset is
 // relative to the beginning of the build profile so traces remain portable.
 type SpanTiming struct {
-	ID         string            `json:"id"`
-	ParentID   string            `json:"parent_id,omitempty"`
-	Name       string            `json:"name"`
-	Stage      string            `json:"stage,omitempty"`
-	Plugin     string            `json:"plugin,omitempty"`
+	ID          string            `json:"id"`
+	ParentID    string            `json:"parent_id,omitempty"`
+	Name        string            `json:"name"`
+	Stage       string            `json:"stage,omitempty"`
+	Plugin      string            `json:"plugin,omitempty"`
 	StartOffset time.Duration     `json:"start_offset"`
-	Duration   time.Duration     `json:"duration"`
-	Status     string            `json:"status"`
-	Attributes map[string]string `json:"attributes,omitempty"`
+	Duration    time.Duration     `json:"duration"`
+	Status      string            `json:"status"`
+	Attributes  map[string]string `json:"attributes,omitempty"`
 }
 
 // Span represents one in-flight build operation.
