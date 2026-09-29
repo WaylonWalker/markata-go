@@ -20,6 +20,11 @@ const (
 
 	// DefaultArtifactPath is relative to a build's output directory.
 	DefaultArtifactPath = ".markata/diagnostics.json"
+
+	// ArtifactExecutorLegacy identifies the normal lifecycle build path.
+	ArtifactExecutorLegacy = "legacy"
+	// ArtifactExecutorDAG identifies the feature-flagged task-graph build path.
+	ArtifactExecutorDAG = "dag"
 )
 
 // Artifact describes the content state observed during one successful build.
@@ -32,6 +37,7 @@ type Artifact struct {
 	Generator     ArtifactGenerator    `json:"generator"`
 	Source        *ArtifactSource      `json:"source,omitempty"`
 	BuiltAt       time.Time            `json:"built_at"`
+	Executor      string               `json:"executor,omitempty"`
 	Summary       ContentSummary       `json:"summary"`
 	Entries       []ContentDisposition `json:"entries"`
 }
@@ -56,6 +62,7 @@ type ArtifactBuildInfo struct {
 	MarkataCommit  string
 	SourceCommit   string
 	BuiltAt        time.Time
+	Executor       string
 }
 
 // NewArtifact creates a versioned artifact from a deterministic ledger
@@ -82,9 +89,10 @@ func NewArtifact(snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) Artifac
 			Version: version,
 			Commit:  reliableCommit(info.MarkataCommit),
 		},
-		BuiltAt: builtAt,
-		Summary: snapshot.Summary,
-		Entries: cloneArtifactEntries(snapshot.Entries),
+		BuiltAt:  builtAt,
+		Executor: strings.TrimSpace(info.Executor),
+		Summary:  snapshot.Summary,
+		Entries:  cloneArtifactEntries(snapshot.Entries),
 	}
 	if commit := reliableCommit(info.SourceCommit); commit != "" {
 		artifact.Source = &ArtifactSource{Commit: commit}
@@ -131,6 +139,9 @@ func validateArtifact(artifact Artifact) error {
 	}
 	if artifact.BuiltAt.IsZero() {
 		return fmt.Errorf("diagnostics artifact built_at is required")
+	}
+	if artifact.Executor != "" && artifact.Executor != ArtifactExecutorLegacy && artifact.Executor != ArtifactExecutorDAG {
+		return fmt.Errorf("diagnostics artifact executor must be %q or %q", ArtifactExecutorLegacy, ArtifactExecutorDAG)
 	}
 	if artifact.Source != nil && artifact.Source.Commit == "" {
 		return fmt.Errorf("diagnostics artifact source.commit must not be empty")
