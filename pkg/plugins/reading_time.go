@@ -38,10 +38,13 @@ func (p *ReadingTimePlugin) Configure(m *lifecycle.Manager) error {
 	return nil
 }
 
-// Transform calculates word count and reading time for each post.
+// Transform calculates word count and reading time for each eligible post.
+// The legacy lifecycle keeps its existing concurrent slice processing; the
+// post-local operation is separated so the DAG can schedule explicit item
+// tasks without duplicating reading-time semantics.
 func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.FilterPosts(func(post *models.Post) bool {
-		return !post.Skip && post.Content != ""
+		return readingTimePostEligible(post)
 	})
 
 	if lifecycle.IsServeIncremental(m) {
@@ -56,14 +59,26 @@ func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
 		}
 	}
 
-	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		metrics := calculateReadingTimeMetrics(post.Content, p.wordsPerMinute, false)
-		post.Set("word_count", metrics.WordCount)
-		post.Set("reading_time", metrics.ReadingTime)
-		post.Set("reading_time_text", metrics.ReadingTimeText)
+	return m.ProcessPostsSliceConcurrently(posts, p.TransformPost)
+}
 
+// TransformPost calculates and stores reading-time fields for one post. It is
+// deliberately post-local: callers own selection/order while this method owns
+// only the supplied post's reading-time fields.
+func (p *ReadingTimePlugin) TransformPost(post *models.Post) error {
+	if !readingTimePostEligible(post) {
 		return nil
-	})
+	}
+
+	metrics := calculateReadingTimeMetrics(post.Content, p.wordsPerMinute, false)
+	post.Set("word_count", metrics.WordCount)
+	post.Set("reading_time", metrics.ReadingTime)
+	post.Set("reading_time_text", metrics.ReadingTimeText)
+	return nil
+}
+
+func readingTimePostEligible(post *models.Post) bool {
+	return post != nil && !post.Skip && post.Content != ""
 }
 
 // countWords counts the number of words in markdown content.
