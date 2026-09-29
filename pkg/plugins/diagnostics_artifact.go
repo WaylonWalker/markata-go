@@ -67,6 +67,7 @@ func (p *DiagnosticsArtifactPlugin) Cleanup(m *lifecycle.Manager) error {
 		MarkataCommit:  artifactConfigString(config, "markata_commit"),
 		SourceCommit:   diagnosticsArtifactSourceCommit(config.ContentDir),
 		BuiltAt:        time.Now().UTC(),
+		Executor:       string(m.BuildExecutor()),
 	})
 	if err != nil {
 		return &diagnosticsArtifactError{err: fmt.Errorf("marshal diagnostics artifact: %w", err)}
@@ -216,7 +217,6 @@ func replaceDiagnosticsArtifact(source, destination string) error {
 			if restoreErr := os.Rename(backupName, destination); restoreErr != nil {
 				return fmt.Errorf("install diagnostics artifact: %w; restore previous artifact: %w", err, restoreErr)
 			}
-		}
 		return err
 	}
 	if hadDestination {
