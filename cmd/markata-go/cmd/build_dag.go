@@ -8,6 +8,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/builddag"
 	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 var dagLifecycleStages = []lifecycle.Stage{
@@ -35,31 +36,17 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 	}()
 
 	builder := builddag.NewBuilder()
-	var previous *builddag.ArtifactID
+	var requires []builddag.ArtifactID
 	for _, lifecycleStage := range dagLifecycleStages {
 		stage := lifecycleStage
 		provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(stage)}
-		requires := []builddag.ArtifactID(nil)
-		if previous != nil {
-			requires = []builddag.ArtifactID{*previous}
+
+		if stage == lifecycle.StageTransform || stage == lifecycle.StageRender {
+			addDAGLegacyPluginStage(builder, m, stage, requires, provided, observe)
+		} else {
+			addDAGLifecycleStage(builder, m, stage, requires, provided, observe)
 		}
-		builder.AddTask(builddag.TaskSpec{
-			ID:        builddag.TaskID("lifecycle." + string(stage)),
-			Group:     string(stage),
-			Requires:  requires,
-			Provides:  []builddag.ArtifactID{provided},
-			Scope:     builddag.ScopeSite,
-			Version:   "lifecycle-v1",
-			Exclusive: true,
-			Func: func(ctx context.Context) error {
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-				return runDAGLifecycleStage(m, stage, observe)
-			},
-		})
-		current := provided
-		previous = &current
+		requires = []builddag.ArtifactID{provided}
 	}
 
 	graph, err := builder.Compile()
@@ -90,6 +77,135 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		result.Warnings = append(result.Warnings, warning.Error())
 	}
 	return result, nil
+}
+
+func addDAGLifecycleStage(
+	builder *builddag.Builder,
+	m *lifecycle.Manager,
+	stage lifecycle.Stage,
+	requires []builddag.ArtifactID,
+	provided builddag.ArtifactID,
+	observe func(lifecycle.Stage, bool, error),
+) {
+	builder.AddTask(builddag.TaskSpec{
+		ID:        builddag.TaskID("lifecycle." + string(stage)),
+		Group:     string(stage),
+		Requires:  append([]builddag.ArtifactID(nil), requires...),
+		Provides:  []builddag.ArtifactID{provided},
+		Scope:     builddag.ScopeSite,
+		Version:   "lifecycle-v1",
+		Exclusive: true,
+		Func: func(ctx context.Context) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			return runDAGLifecycleStage(m, stage, observe)
+		},
+	})
+}
+
+// addDAGLegacyPluginStage expands one lifecycle stage into explicit plugin
+// tasks while preserving the lifecycle's serial compatibility semantics. The
+// boundary tasks keep stage-level timing and Serve observer behavior identical
+// to the coarse executor.
+func addDAGLegacyPluginStage(
+	builder *builddag.Builder,
+	m *lifecycle.Manager,
+	stage lifecycle.Stage,
+	requires []builddag.ArtifactID,
+	provided builddag.ArtifactID,
+	observe func(lifecycle.Stage, bool, error),
+) {
+	startedArtifact := builddag.ArtifactID{Kind: "lifecycle-stage-start", Key: string(stage)}
+	var stageStart time.Time
+	var skipStage bool
+
+	builder.AddTask(builddag.TaskSpec{
+		ID:        builddag.TaskID("lifecycle." + string(stage) + ".start"),
+		Group:     string(stage),
+		Requires:  append([]builddag.ArtifactID(nil), requires...),
+		Provides:  []builddag.ArtifactID{startedArtifact},
+		Scope:     builddag.ScopeSite,
+		Version:   "legacy-plugin-stage-v1",
+		Exclusive: true,
+		Func: func(ctx context.Context) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			stageStart = time.Now()
+			if observe != nil {
+				observe(stage, true, nil)
+			}
+			buildstats.SetActiveStage(string(stage))
+			verbosef("  [%s] running as serial plugin DAG...", stage)
+
+			// Manager.RunTo clears template caches before every requested stage,
+			// including an already-completed stage. Preserve that boundary while
+			// executing the stage hooks explicitly.
+			templates.ClearAllCaches()
+			skipStage = m.HasRun(stage)
+			return nil
+		},
+	})
+
+	lastRequires := []builddag.ArtifactID{startedArtifact}
+	pluginTasks := builddag.LegacyTasks(m, stage, lastRequires)
+	for i := range pluginTasks {
+		task := pluginTasks[i]
+		original := task.Func
+		task.Func = func(ctx context.Context) error {
+			if skipStage {
+				return nil
+			}
+			if err := original(ctx); err != nil {
+				finishDAGPluginStageError(stage, err, observe)
+				return err
+			}
+			return nil
+		}
+		builder.AddTask(task)
+		lastRequires = append([]builddag.ArtifactID(nil), task.Provides...)
+	}
+
+	builder.AddTask(builddag.TaskSpec{
+		ID:        builddag.TaskID("lifecycle." + string(stage) + ".complete"),
+		Group:     string(stage),
+		Requires:  lastRequires,
+		Provides:  []builddag.ArtifactID{provided},
+		Scope:     builddag.ScopeSite,
+		Version:   "legacy-plugin-stage-v1",
+		Exclusive: true,
+		Func: func(ctx context.Context) error {
+			if err := ctx.Err(); err != nil {
+				finishDAGPluginStageError(stage, err, observe)
+				return err
+			}
+			if !skipStage {
+				if err := m.MarkStageComplete(stage); err != nil {
+					finishDAGPluginStageError(stage, err, observe)
+					return err
+				}
+			}
+
+			buildstats.SetActiveStage("")
+			if observe != nil {
+				observe(stage, false, nil)
+			}
+			stageElapsed := time.Since(stageStart)
+			buildstats.RecordStage(string(stage), stageElapsed)
+			if verbose {
+				verbosef("  [%s] done in %s", stage, stageElapsed.Truncate(100*time.Microsecond))
+			}
+			return nil
+		},
+	})
+}
+
+func finishDAGPluginStageError(stage lifecycle.Stage, err error, observe func(lifecycle.Stage, bool, error)) {
+	buildstats.SetActiveStage("")
+	if observe != nil {
+		observe(stage, false, err)
+	}
 }
 
 func runDAGLifecycleStage(m *lifecycle.Manager, stage lifecycle.Stage, observe func(lifecycle.Stage, bool, error)) error {
