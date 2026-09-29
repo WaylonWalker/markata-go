@@ -17,12 +17,22 @@ func TestResolveOTLPConfig(t *testing.T) {
 			protocol: defaultOTLPProtocol,
 		},
 		{
-			name: "generic endpoint appends traces path",
+			name: "generic HTTP endpoint appends traces path",
 			env: map[string]string{
 				otelExporterOTLPEndpoint: "http://tempo:4318/collector/",
 			},
 			endpoint: "http://tempo:4318/collector/v1/traces",
 			protocol: defaultOTLPProtocol,
+			enabled:  true,
+		},
+		{
+			name: "generic gRPC endpoint stays unmodified",
+			env: map[string]string{
+				otelExporterOTLPEndpoint: "http://tempo:4317/collector",
+				otelExporterOTLPProtocol: "grpc",
+			},
+			endpoint: "http://tempo:4317/collector",
+			protocol: "grpc",
 			enabled:  true,
 		},
 		{
