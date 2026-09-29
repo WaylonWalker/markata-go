@@ -86,7 +86,7 @@ func ExecutePluginHook(m *Manager, plugin Plugin, stage Stage) error {
 	buildstats.SetActivePlugin("")
 
 	if err != nil {
-		critical := isCriticalStage(stage) || isCriticalError(err)
+		critical := isCriticalStage(stage) || isCriticalError(err) || pluginTreatsStageErrorsAsCritical(plugin, stage)
 		hookErr := &HookError{
 			Stage:    stage,
 			Plugin:   plugin.Name(),
