@@ -51,6 +51,34 @@
   background: color-mix(in srgb, var(--calendar-active) 12%, transparent);
 }
 
+.calendar-year-nav {
+  align-items: center;
+  justify-self: center;
+  margin-inline: auto;
+}
+
+.calendar-year-nav select {
+  appearance: none;
+  border: 0;
+  border-inline: 1px solid var(--calendar-border);
+  border-radius: 0;
+  padding: 0.4rem 1.6rem 0.4rem 0.8rem;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  background: transparent;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 0.8rem) 52%, calc(100% - 0.55rem) 52%;
+  background-size: 0.28rem 0.28rem, 0.28rem 0.28rem;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.calendar-year-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .calendar-feed-years {
   display: grid;
   gap: clamp(2rem, 5vw, 4rem);
