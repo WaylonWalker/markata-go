@@ -23,3 +23,12 @@ func TestSelectedBuildExecutorDiagnostic(t *testing.T) {
 		t.Fatalf("env DAG diagnostic = (%q, %v), want (%q, true)", got, experimental, dagExecutorDiagnostic)
 	}
 }
+
+func TestExecutorDiagnosticLabels(t *testing.T) {
+	if got, experimental := executorDiagnostic(false); got != legacyExecutorDiagnostic || experimental {
+		t.Fatalf("legacy executorDiagnostic = (%q, %v), want (%q, false)", got, experimental, legacyExecutorDiagnostic)
+	}
+	if got, experimental := executorDiagnostic(true); got != dagExecutorDiagnostic || !experimental {
+		t.Fatalf("DAG executorDiagnostic = (%q, %v), want (%q, true)", got, experimental, dagExecutorDiagnostic)
+	}
+}
