@@ -28,7 +28,8 @@ func (c OTLPConfig) Enabled() bool {
 
 // ResolveOTLPConfig applies the standard OTEL environment-variable precedence
 // for trace exporters. The signal-specific traces endpoint is used as-is. A
-// generic OTLP endpoint receives the standard /v1/traces suffix.
+// generic OTLP endpoint receives the standard /v1/traces suffix for OTLP/HTTP;
+// OTLP/gRPC uses the generic endpoint as the gRPC target without a signal path.
 func ResolveOTLPConfig(getenv func(string) string) (OTLPConfig, error) {
 	if getenv == nil {
 		return OTLPConfig{}, nil
@@ -58,7 +59,16 @@ func ResolveOTLPConfig(getenv func(string) string) (OTLPConfig, error) {
 	if genericEndpoint == "" {
 		return OTLPConfig{Protocol: protocol}, nil
 	}
-	endpoint, err := appendOTLPTracePath(genericEndpoint)
+
+	var (
+		endpoint string
+		err      error
+	)
+	if protocol == "grpc" {
+		endpoint, err = validateOTLPEndpoint(genericEndpoint)
+	} else {
+		endpoint, err = appendOTLPTracePath(genericEndpoint)
+	}
 	if err != nil {
 		return OTLPConfig{}, fmt.Errorf("%s: %w", otelExporterOTLPEndpoint, err)
 	}
