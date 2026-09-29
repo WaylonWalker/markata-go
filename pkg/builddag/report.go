@@ -36,6 +36,7 @@ type GraphReport struct {
 	TaskCount         int          `json:"task_count"`
 	ReportedTaskCount int          `json:"reported_task_count"`
 	Truncated         bool         `json:"truncated"`
+	ValuesTruncated   bool         `json:"values_truncated"`
 	Order             []TaskID     `json:"order"`
 	Tasks             []TaskReport `json:"tasks"`
 }
@@ -44,16 +45,17 @@ type GraphReport struct {
 // claims are emitted explicitly so compatibility tasks are never mistaken for
 // tasks with proven ownership.
 type TaskReport struct {
-	ID             TaskID          `json:"id"`
-	Group          string          `json:"group,omitempty"`
-	Scope          Scope           `json:"scope,omitempty"`
-	Version        string          `json:"task_version,omitempty"`
-	Requires       []ArtifactID    `json:"requires"`
-	Provides       []ArtifactID    `json:"provides"`
-	Resources      []ResourceClaim `json:"resources"`
-	Exclusive      bool            `json:"exclusive"`
-	ParallelSafe   bool            `json:"parallel_safe"`
-	ItemsTruncated bool            `json:"items_truncated"`
+	ID              TaskID          `json:"id"`
+	Group           string          `json:"group,omitempty"`
+	Scope           Scope           `json:"scope,omitempty"`
+	Version         string          `json:"task_version,omitempty"`
+	Requires        []ArtifactID    `json:"requires"`
+	Provides        []ArtifactID    `json:"provides"`
+	Resources       []ResourceClaim `json:"resources"`
+	Exclusive       bool            `json:"exclusive"`
+	ParallelSafe    bool            `json:"parallel_safe"`
+	ItemsTruncated  bool            `json:"items_truncated"`
+	ValuesTruncated bool            `json:"values_truncated"`
 }
 
 // Report returns a bounded deterministic representation of the compiled
@@ -91,9 +93,10 @@ func (g *Graph) Report(options ReportOptions) (GraphReport, error) {
 		if !ok {
 			return GraphReport{}, fmt.Errorf("builddag: task %q missing from compiled graph", id)
 		}
-		reported, itemsTruncated := reportTask(task, options)
-		report.Order = append(report.Order, TaskID(boundReportValue(string(id), options.MaxValueBytes)))
-		reported.ItemsTruncated = itemsTruncated
+		reported := reportTask(task, options)
+		orderID, orderTruncated := boundReportValue(string(id), options.MaxValueBytes)
+		report.Order = append(report.Order, TaskID(orderID))
+		report.ValuesTruncated = report.ValuesTruncated || orderTruncated || reported.ValuesTruncated
 		report.Tasks = append(report.Tasks, reported)
 	}
 	return report, nil
@@ -121,64 +124,73 @@ func normalizeReportOptions(options ReportOptions) ReportOptions {
 	return options
 }
 
-func reportTask(task TaskSpec, options ReportOptions) (TaskReport, bool) {
-	requires, requiresTruncated := reportArtifacts(task.Requires, options)
-	provides, providesTruncated := reportArtifacts(task.Provides, options)
-	resources, resourcesTruncated := reportResources(task.Resources, options)
+func reportTask(task TaskSpec, options ReportOptions) TaskReport {
+	requires, requiresTruncated, requiresValuesTruncated := reportArtifacts(task.Requires, options)
+	provides, providesTruncated, providesValuesTruncated := reportArtifacts(task.Provides, options)
+	resources, resourcesTruncated, resourceValuesTruncated := reportResources(task.Resources, options)
+	id, idTruncated := boundReportValue(string(task.ID), options.MaxValueBytes)
+	group, groupTruncated := boundReportValue(task.Group, options.MaxValueBytes)
+	scope, scopeTruncated := boundReportValue(string(task.Scope), options.MaxValueBytes)
+	version, versionTruncated := boundReportValue(task.Version, options.MaxValueBytes)
 
 	return TaskReport{
-		ID:           TaskID(boundReportValue(string(task.ID), options.MaxValueBytes)),
-		Group:        boundReportValue(task.Group, options.MaxValueBytes),
-		Scope:        Scope(boundReportValue(string(task.Scope), options.MaxValueBytes)),
-		Version:      boundReportValue(task.Version, options.MaxValueBytes),
-		Requires:     requires,
-		Provides:     provides,
-		Resources:    resources,
-		Exclusive:    task.Exclusive,
-		ParallelSafe: task.ParallelSafe,
-	}, requiresTruncated || providesTruncated || resourcesTruncated
+		ID:              TaskID(id),
+		Group:           group,
+		Scope:           Scope(scope),
+		Version:         version,
+		Requires:        requires,
+		Provides:        provides,
+		Resources:       resources,
+		Exclusive:       task.Exclusive,
+		ParallelSafe:    task.ParallelSafe,
+		ItemsTruncated:  requiresTruncated || providesTruncated || resourcesTruncated,
+		ValuesTruncated: idTruncated || groupTruncated || scopeTruncated || versionTruncated || requiresValuesTruncated || providesValuesTruncated || resourceValuesTruncated,
+	}
 }
 
-func reportArtifacts(artifacts []ArtifactID, options ReportOptions) ([]ArtifactID, bool) {
+func reportArtifacts(artifacts []ArtifactID, options ReportOptions) ([]ArtifactID, bool, bool) {
 	items := append([]ArtifactID(nil), artifacts...)
 	sort.Slice(items, func(i, j int) bool { return items[i].String() < items[j].String() })
-	truncated := len(items) > options.MaxItemsPerTask
-	if truncated {
+	itemsTruncated := len(items) > options.MaxItemsPerTask
+	if itemsTruncated {
 		items = items[:options.MaxItemsPerTask]
 	}
 	result := make([]ArtifactID, len(items))
+	valuesTruncated := false
 	for index, item := range items {
-		result[index] = ArtifactID{
-			Kind: boundReportValue(item.Kind, options.MaxValueBytes),
-			Key:  boundReportValue(item.Key, options.MaxValueBytes),
-		}
+		kind, kindTruncated := boundReportValue(item.Kind, options.MaxValueBytes)
+		key, keyTruncated := boundReportValue(item.Key, options.MaxValueBytes)
+		result[index] = ArtifactID{Kind: kind, Key: key}
+		valuesTruncated = valuesTruncated || kindTruncated || keyTruncated
 	}
-	return result, truncated
+	return result, itemsTruncated, valuesTruncated
 }
 
-func reportResources(resources []ResourceClaim, options ReportOptions) ([]ResourceClaim, bool) {
+func reportResources(resources []ResourceClaim, options ReportOptions) ([]ResourceClaim, bool, bool) {
 	items := append([]ResourceClaim(nil), resources...)
 	sort.Slice(items, func(i, j int) bool { return items[i].String() < items[j].String() })
-	truncated := len(items) > options.MaxItemsPerTask
-	if truncated {
+	itemsTruncated := len(items) > options.MaxItemsPerTask
+	if itemsTruncated {
 		items = items[:options.MaxItemsPerTask]
 	}
 	result := make([]ResourceClaim, len(items))
+	valuesTruncated := false
 	for index, item := range items {
+		kind, kindTruncated := boundReportValue(string(item.Resource.Kind), options.MaxValueBytes)
+		key, keyTruncated := boundReportValue(item.Resource.Key, options.MaxValueBytes)
+		access, accessTruncated := boundReportValue(string(item.Access), options.MaxValueBytes)
 		result[index] = ResourceClaim{
-			Resource: ResourceID{
-				Kind: ResourceKind(boundReportValue(string(item.Resource.Kind), options.MaxValueBytes)),
-				Key:  boundReportValue(item.Resource.Key, options.MaxValueBytes),
-			},
-			Access: AccessMode(boundReportValue(string(item.Access), options.MaxValueBytes)),
+			Resource: ResourceID{Kind: ResourceKind(kind), Key: key},
+			Access:   AccessMode(access),
 		}
+		valuesTruncated = valuesTruncated || kindTruncated || keyTruncated || accessTruncated
 	}
-	return result, truncated
+	return result, itemsTruncated, valuesTruncated
 }
 
-func boundReportValue(value string, maxBytes int) string {
+func boundReportValue(value string, maxBytes int) (string, bool) {
 	if maxBytes <= 0 || len(value) <= maxBytes {
-		return value
+		return value, false
 	}
 
 	suffix := "..."
@@ -191,5 +203,5 @@ func boundReportValue(value string, maxBytes int) string {
 	for limit > 0 && !utf8.ValidString(value[:limit]) {
 		limit--
 	}
-	return value[:limit] + suffix
+	return value[:limit] + suffix, true
 }
