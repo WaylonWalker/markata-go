@@ -41,7 +41,7 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		stage := lifecycleStage
 		provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(stage)}
 
-		if stage == lifecycle.StageTransform || stage == lifecycle.StageRender {
+		if dagUsesPluginTasks(stage) {
 			addDAGLegacyPluginStage(builder, m, stage, requires, provided, observe)
 		} else {
 			addDAGLifecycleStage(builder, m, stage, requires, provided, observe)
@@ -77,6 +77,18 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		result.Warnings = append(result.Warnings, warning.Error())
 	}
 	return result, nil
+}
+
+func dagUsesPluginTasks(stage lifecycle.Stage) bool {
+	switch stage {
+	case lifecycle.StageTransform, lifecycle.StageRender, lifecycle.StageCollect:
+		return true
+	case lifecycle.StageConfigure, lifecycle.StageValidate, lifecycle.StageGlob,
+		lifecycle.StageLoad, lifecycle.StageWrite, lifecycle.StageCleanup:
+		return false
+	default:
+		return false
+	}
 }
 
 func addDAGLifecycleStage(
@@ -195,6 +207,7 @@ func addDAGLegacyPluginStage(
 			buildstats.RecordStage(string(stage), stageElapsed)
 			if verbose {
 				verbosef("  [%s] done in %s", stage, stageElapsed.Truncate(100*time.Microsecond))
+				verboseDAGStageDetails(m, stage)
 			}
 			return nil
 		},
@@ -229,16 +242,20 @@ func runDAGLifecycleStage(m *lifecycle.Manager, stage lifecycle.Stage, observe f
 	buildstats.RecordStage(string(stage), stageElapsed)
 	if verbose {
 		verbosef("  [%s] done in %s", stage, stageElapsed.Truncate(100*time.Microsecond))
-		switch stage {
-		case lifecycle.StageGlob:
-			verbosef("  [%s] discovered %d files", stage, len(m.Files()))
-		case lifecycle.StageLoad:
-			verbosef("  [%s] loaded %d posts", stage, len(m.Posts()))
-		case lifecycle.StageCollect:
-			verbosef("  [%s] collected %d feeds", stage, len(m.Feeds()))
-		case lifecycle.StageConfigure, lifecycle.StageValidate, lifecycle.StageTransform,
-			lifecycle.StageRender, lifecycle.StageWrite, lifecycle.StageCleanup:
-		}
+		verboseDAGStageDetails(m, stage)
 	}
 	return nil
+}
+
+func verboseDAGStageDetails(m *lifecycle.Manager, stage lifecycle.Stage) {
+	switch stage {
+	case lifecycle.StageGlob:
+		verbosef("  [%s] discovered %d files", stage, len(m.Files()))
+	case lifecycle.StageLoad:
+		verbosef("  [%s] loaded %d posts", stage, len(m.Posts()))
+	case lifecycle.StageCollect:
+		verbosef("  [%s] collected %d feeds", stage, len(m.Feeds()))
+	case lifecycle.StageConfigure, lifecycle.StageValidate, lifecycle.StageTransform,
+		lifecycle.StageRender, lifecycle.StageWrite, lifecycle.StageCleanup:
+	}
 }
