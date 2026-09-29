@@ -217,6 +217,7 @@ func replaceDiagnosticsArtifact(source, destination string) error {
 			if restoreErr := os.Rename(backupName, destination); restoreErr != nil {
 				return fmt.Errorf("install diagnostics artifact: %w; restore previous artifact: %w", err, restoreErr)
 			}
+		}
 		return err
 	}
 	if hadDestination {
