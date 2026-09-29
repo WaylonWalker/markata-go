@@ -37,6 +37,7 @@ func TestGraphCompileRejectsInvalidResourceClaim(t *testing.T) {
 	tests := []ResourceClaim{
 		{Resource: ResourceID{Kind: ResourcePost, Key: ""}, Access: AccessRead},
 		{Resource: ResourceID{Kind: "", Key: "post-a"}, Access: AccessRead},
+		{Resource: ResourceID{Kind: "posts", Key: "post-a"}, Access: AccessRead},
 		{Resource: ResourceID{Kind: ResourcePost, Key: "post-a"}, Access: "execute"},
 	}
 
