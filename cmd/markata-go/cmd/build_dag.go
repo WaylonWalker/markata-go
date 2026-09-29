@@ -24,8 +24,10 @@ var dagLifecycleStages = []lifecycle.Stage{
 }
 
 // runDAGBuildObserved is the feature-flagged DAG equivalent of
-// runBuildObserved. The observer contract is kept identical so serve can opt
-// into this executor without losing stage visibility.
+// runBuildObserved. Each lifecycle stage is compiled only after the preceding
+// stage has executed, so future item-level graphs can materialize from the
+// actual runtime post/feed/output state without mutating a running graph. The
+// observer contract remains identical so serve keeps stage visibility.
 func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
 	if err := m.SetBuildExecutor(lifecycle.BuildExecutorDAG); err != nil {
 		return nil, fmt.Errorf("select DAG build executor: %w", err)
@@ -39,10 +41,22 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		}
 	}()
 
-	builder := builddag.NewBuilder()
-	var requires []builddag.ArtifactID
+	executor, err := builddag.NewExecutor(1)
+	if err != nil {
+		return nil, err
+	}
+
+	segments := make([]builddag.SegmentDigest, 0, len(dagLifecycleStages))
+	var previous *builddag.ArtifactID
+	totalTasks := 0
 	for _, lifecycleStage := range dagLifecycleStages {
 		stage := lifecycleStage
+		builder := builddag.NewBuilder()
+		var requires []builddag.ArtifactID
+		if previous != nil {
+			builder.AddExternal(*previous)
+			requires = []builddag.ArtifactID{*previous}
+		}
 		provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(stage)}
 
 		if stage == lifecycle.StageLoad || stage == lifecycle.StageTransform || stage == lifecycle.StageRender || stage == lifecycle.StageCollect || stage == lifecycle.StageWrite || stage == lifecycle.StageCleanup {
@@ -50,26 +64,34 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 		} else {
 			addDAGLifecycleStage(builder, m, stage, requires, provided, observe)
 		}
-		requires = []builddag.ArtifactID{provided}
+
+		graph, compileErr := builder.Compile()
+		if compileErr != nil {
+			return nil, fmt.Errorf("compile %s DAG segment: %w", stage, compileErr)
+		}
+		digest, digestErr := graph.Digest()
+		if digestErr != nil {
+			return nil, fmt.Errorf("digest %s DAG segment: %w", stage, digestErr)
+		}
+		execution, executeErr := executor.Execute(context.Background(), graph)
+		if executeErr != nil {
+			return nil, executeErr
+		}
+		segments = append(segments, builddag.SegmentDigest{
+			Name:      string(stage),
+			Digest:    digest,
+			TaskCount: execution.TaskCount,
+		})
+		totalTasks += execution.TaskCount
+		current := provided
+		previous = &current
 	}
 
-	graph, err := builder.Compile()
+	planDigest, err := builddag.CompositeDigest(segments)
 	if err != nil {
-		return nil, fmt.Errorf("compile lifecycle DAG: %w", err)
+		return nil, fmt.Errorf("digest staged lifecycle DAG: %w", err)
 	}
-	digest, err := graph.Digest()
-	if err != nil {
-		return nil, fmt.Errorf("digest lifecycle DAG: %w", err)
-	}
-	executor, err := builddag.NewExecutor(1)
-	if err != nil {
-		return nil, err
-	}
-	execution, err := executor.Execute(context.Background(), graph)
-	if err != nil {
-		return nil, err
-	}
-	verbosef("  [dag] serial executor completed %d tasks (graph=%s)", execution.TaskCount, digest)
+	verbosef("  [dag] serial executor completed %d tasks across %d stage graphs (plan=%s)", totalTasks, len(segments), planDigest)
 
 	result = &BuildResult{
 		PostsProcessed: len(m.Posts()),
