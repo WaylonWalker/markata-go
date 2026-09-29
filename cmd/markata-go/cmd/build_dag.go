@@ -27,6 +27,10 @@ var dagLifecycleStages = []lifecycle.Stage{
 // runBuildObserved. The observer contract is kept identical so serve can opt
 // into this executor without losing stage visibility.
 func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
+	if err := m.SetBuildExecutor(lifecycle.BuildExecutorDAG); err != nil {
+		return nil, fmt.Errorf("select DAG build executor: %w", err)
+	}
+
 	profile := buildstats.Start()
 	defer func() {
 		summary := profile.Stop()
