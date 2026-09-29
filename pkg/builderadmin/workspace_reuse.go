@@ -4,11 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
-
-const workspaceBaseReleaseMarker = ".markata-builder-base-release"
 
 func workspaceReuseMarkerPath(workDir string) string {
 	return workDir + ".base-release"
@@ -88,9 +85,3 @@ func removeWorkspaceReuseMarker(path string) error {
 	}
 	return nil
 }
-
-// Keep the marker next to, rather than inside, the generated site tree. A
-// retained workspace may be copied verbatim during promotion; internal control
-// metadata must never become part of a published release.
-var _ = filepath.Clean
-var _ = workspaceBaseReleaseMarker
