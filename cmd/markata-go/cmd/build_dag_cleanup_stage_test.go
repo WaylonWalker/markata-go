@@ -28,8 +28,8 @@ func (p *dagCleanupStageTestPlugin) Cleanup(*lifecycle.Manager) error {
 
 type dagCleanupCriticalError struct{ err error }
 
-func (e dagCleanupCriticalError) Error() string { return e.err.Error() }
-func (e dagCleanupCriticalError) Unwrap() error { return e.err }
+func (e dagCleanupCriticalError) Error() string  { return e.err.Error() }
+func (e dagCleanupCriticalError) Unwrap() error  { return e.err }
 func (dagCleanupCriticalError) IsCritical() bool { return true }
 
 func TestDAGCleanupPluginStagePreservesOrderAndObserver(t *testing.T) {
