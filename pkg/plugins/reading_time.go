@@ -54,9 +54,7 @@ func (p *ReadingTimePlugin) PostsForTransform(m *lifecycle.Manager) []*models.Po
 		return nil
 	}
 
-	posts := m.FilterPosts(func(post *models.Post) bool {
-		return readingTimePostEligible(post)
-	})
+	posts := m.FilterPosts(readingTimePostEligible)
 	if !lifecycle.IsServeIncremental(m) {
 		return posts
 	}
