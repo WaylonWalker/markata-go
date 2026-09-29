@@ -2,8 +2,9 @@ project_identifier: example
 project_name: example
 environment: prod
 
-imagePullSecrets:
-  - name: global-regcred
+# Public Markata images do not require registry credentials. Add secrets here
+# only when your environment mirrors or overrides them with a private registry.
+imagePullSecrets: []
 
 serviceAccount:
   create: true
@@ -265,7 +266,8 @@ aws:
 storage:
   source:
     mode: pvc
-    storageClassName: longhorn
+    # Empty uses the cluster's default StorageClass.
+    storageClassName: ""
     size: 10Gi
     accessModes:
       - ReadWriteMany
@@ -275,7 +277,8 @@ storage:
       type: Directory
   site:
     mode: pvc
-    storageClassName: longhorn
+    # Empty uses the cluster's default StorageClass.
+    storageClassName: ""
     size: 10Gi
     # Set only when binding a retained, pre-existing PV with copied site data.
     volumeName: ""
@@ -286,7 +289,8 @@ storage:
       path: ""
       type: DirectoryOrCreate
   search:
-    storageClassName: longhorn
+    # Empty uses the cluster's default StorageClass.
+    storageClassName: ""
     size: 5Gi
     accessModes:
       - ReadWriteOnce
@@ -294,7 +298,8 @@ storage:
   cache:
     enabled: false
     mode: pvc
-    storageClassName: longhorn
+    # Empty uses the cluster's default StorageClass.
+    storageClassName: ""
     size: 10Gi
     accessModes:
       - ReadWriteOnce

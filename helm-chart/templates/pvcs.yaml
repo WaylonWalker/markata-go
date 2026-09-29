@@ -9,7 +9,9 @@ metadata:
 spec:
   accessModes:
     {{- toYaml .Values.storage.source.accessModes | nindent 4 }}
-  storageClassName: {{ .Values.storage.source.storageClassName | quote }}
+  {{- with .Values.storage.source.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
   resources:
     requests:
       storage: {{ .Values.storage.source.size | quote }}
@@ -27,7 +29,9 @@ metadata:
 spec:
   accessModes:
     {{- toYaml .Values.storage.site.accessModes | nindent 4 }}
-  storageClassName: {{ .Values.storage.site.storageClassName | quote }}
+  {{- with .Values.storage.site.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
   {{- with .Values.storage.site.volumeName }}
   volumeName: {{ . | quote }}
   {{- end }}
@@ -46,7 +50,9 @@ metadata:
 spec:
   accessModes:
     {{- toYaml .Values.storage.search.accessModes | nindent 4 }}
-  storageClassName: {{ .Values.storage.search.storageClassName | quote }}
+  {{- with .Values.storage.search.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
   resources:
     requests:
       storage: {{ .Values.storage.search.size | quote }}
@@ -63,7 +69,9 @@ metadata:
 spec:
   accessModes:
     {{- toYaml .Values.storage.cache.accessModes | nindent 4 }}
-  storageClassName: {{ .Values.storage.cache.storageClassName | quote }}
+  {{- with .Values.storage.cache.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
   resources:
     requests:
       storage: {{ .Values.storage.cache.size | quote }}
