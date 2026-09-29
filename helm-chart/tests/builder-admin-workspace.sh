@@ -32,6 +32,15 @@ fi
 if grep -q 'name: workspace' "$tmp_dir/default.yaml"; then
   fail "disabled workspace emitted a workspace mount or volume"
 fi
+if grep -q -- '--dag' "$tmp_dir/default.yaml"; then
+  fail "default builder admin unexpectedly enabled --dag"
+fi
+
+helm template workspace-test "$chart" "${common[@]}" \
+  --set builderAdmin.dag=true \
+  >"$tmp_dir/dag.yaml"
+
+grep -q -- '--dag' "$tmp_dir/dag.yaml" || fail "builderAdmin.dag=true omitted --dag"
 
 helm template workspace-test "$chart" "${common[@]}" \
   --set builderAdmin.workspace.enabled=true \
@@ -69,5 +78,5 @@ if helm template workspace-test "$chart" "${common[@]}" \
   fail "hostPath workspace without a path rendered successfully"
 fi
 
-printf 'Builder Admin workspace Helm tests passed.\n'
+printf 'Builder Admin workspace and DAG Helm tests passed.\n'
 bash "$repo_root/helm-chart/tests/portable-defaults.sh"

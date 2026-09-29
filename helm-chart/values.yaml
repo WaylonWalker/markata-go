@@ -93,6 +93,9 @@ builderAdmin:
   # Queued builder-admin builds default to full builds so blogroll, mentions, and other
   # user-facing outputs stay live unless an environment explicitly opts into faster previews.
   fast: false
+  # Experimental: route queued builds through the serial DAG executor. Keep false
+  # until Build Lab and production canaries have established output equivalence.
+  dag: false
   mermaidMode: client
   releases:
     keep: 25
