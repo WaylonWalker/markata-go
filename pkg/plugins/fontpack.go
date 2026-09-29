@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
@@ -20,7 +21,7 @@ import (
 const (
 	fontpackCacheFile        = ".markata-fontpack-cache"
 	fontpackPreloadCacheFile = ".markata-fontpack-preloads.json"
-	fontpackCacheVersion     = "3"
+	fontpackCacheVersion     = "4"
 )
 
 const fontpackRoleHeading = "heading"
@@ -153,7 +154,8 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 			}
 		}
 	}
-	cacheKey := fontpackCacheKey(rendered.String(), names, p.source.Catalog)
+	renderedHTML := rendered.String()
+	cacheKey := fontpackCacheKey(renderedHTML, names, p.source.Catalog)
 	build := &fontpackBuild{cacheKey: cacheKey}
 	output := m.Config().OutputDir
 	if p.source.Builtin && fontpackOutputCached(output, cacheKey) {
@@ -163,7 +165,7 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 		}
 	}
 	if !build.cacheReady {
-		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
+		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, renderedHTML, fontpackResolveOptions(p.source))
 		if err != nil {
 			return nil, err
 		}
@@ -367,7 +369,30 @@ func fontpackCacheKey(rendered string, names []string, catalog *fontpacks.Catalo
 	if err != nil {
 		return ""
 	}
-	return buildcache.ContentHash(fontpackCacheVersion + "\x00" + string(catalogData) + "\x00" + rendered + "\x00" + strings.Join(names, "\x00"))
+	coverage := fontpackCoverageSignature(rendered)
+	return buildcache.ContentHash(fontpackCacheVersion + "\x00" + string(catalogData) + "\x00" + coverage + "\x00" + strings.Join(names, "\x00"))
+}
+
+// fontpackCoverageSignature canonicalizes the only rendered-content input that
+// font tier selection actually uses: the set of visible runes. RequiredTiers
+// ignores rune order and duplicates, so ordinary edits that reuse the same
+// glyph coverage can safely reuse the previously resolved bundled font assets.
+func fontpackCoverageSignature(rendered string) string {
+	visible := fontpacks.VisibleText(rendered)
+	seen := make(map[rune]struct{}, 256)
+	runes := make([]rune, 0, 256)
+	for _, r := range visible {
+		if r == utf8.RuneError {
+			continue
+		}
+		if _, ok := seen[r]; ok {
+			continue
+		}
+		seen[r] = struct{}{}
+		runes = append(runes, r)
+	}
+	slices.Sort(runes)
+	return string(runes)
 }
 
 func fontpackOutputCached(output, key string) bool {

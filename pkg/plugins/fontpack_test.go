@@ -54,16 +54,20 @@ func TestMarkPostFontpackKeepsHashedStylesheet(t *testing.T) {
 	}
 }
 
-func TestFontpackCacheKeyChangesWithRenderedContent(t *testing.T) {
+func TestFontpackCacheKeyTracksVisibleGlyphCoverage(t *testing.T) {
 	names := []string{"system", "serif"}
 	catalog, err := fontpacks.BuiltinSource()
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := fontpackCacheKey("<p>one</p>", names, catalog.Catalog)
-	second := fontpackCacheKey("<p>two</p>", names, catalog.Catalog)
-	if first == second {
-		t.Fatal("fontpack cache key did not change with rendered content")
+	first := fontpackCacheKey(`<p>tone</p><script>Ж</script>`, names, catalog.Catalog)
+	sameCoverage := fontpackCacheKey(`<strong>note</strong><style>Ж</style>`, names, catalog.Catalog)
+	if first != sameCoverage {
+		t.Fatal("fontpack cache key changed even though the visible rune set was unchanged")
+	}
+	newCoverage := fontpackCacheKey(`<p>note é</p>`, names, catalog.Catalog)
+	if first == newCoverage {
+		t.Fatal("fontpack cache key did not change when a new visible rune was introduced")
 	}
 }
 
