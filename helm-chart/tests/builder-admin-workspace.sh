@@ -70,3 +70,4 @@ if helm template workspace-test "$chart" "${common[@]}" \
 fi
 
 printf 'Builder Admin workspace Helm tests passed.\n'
+bash "$repo_root/helm-chart/tests/portable-defaults.sh"
