@@ -165,7 +165,7 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 		}
 	}
 	if !build.cacheReady {
-		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, renderedHTML, fontpackResolveOptions(p.source))
+		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, fontpackResolutionInput(renderedHTML), fontpackResolveOptions(p.source))
 		if err != nil {
 			return nil, err
 		}
