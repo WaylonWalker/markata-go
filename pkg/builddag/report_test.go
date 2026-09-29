@@ -94,6 +94,9 @@ func TestGraphReportBoundsTasksAndTaskItems(t *testing.T) {
 	if !report.Tasks[0].ItemsTruncated || len(report.Tasks[0].Provides) != 2 || len(report.Tasks[0].Resources) != 2 {
 		t.Fatalf("task items not bounded: %+v", report.Tasks[0])
 	}
+	if report.ValuesTruncated || report.Tasks[0].ValuesTruncated {
+		t.Fatalf("short values unexpectedly marked truncated: %+v", report)
+	}
 }
 
 func TestGraphReportBoundsValuesWithoutInvalidUTF8(t *testing.T) {
@@ -101,6 +104,10 @@ func TestGraphReportBoundsValuesWithoutInvalidUTF8(t *testing.T) {
 	builder.AddTask(TaskSpec{
 		ID:    TaskID("render-😀-very-long"),
 		Group: "render-😀-very-long",
+		Resources: []ResourceClaim{{
+			Resource: ResourceID{Kind: ResourcePost, Key: "post-😀-very-long"},
+			Access:   AccessWrite,
+		}},
 	})
 	graph, err := builder.Compile()
 	if err != nil {
@@ -111,11 +118,14 @@ func TestGraphReportBoundsValuesWithoutInvalidUTF8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !utf8.ValidString(string(report.Tasks[0].ID)) || !utf8.ValidString(report.Tasks[0].Group) {
+	if !report.ValuesTruncated || !report.Tasks[0].ValuesTruncated {
+		t.Fatalf("value truncation was not reported: %+v", report)
+	}
+	if !utf8.ValidString(string(report.Tasks[0].ID)) || !utf8.ValidString(report.Tasks[0].Group) || !utf8.ValidString(report.Tasks[0].Resources[0].Resource.Key) {
 		t.Fatalf("bounded report contains invalid UTF-8: %+v", report.Tasks[0])
 	}
-	if len(report.Tasks[0].Group) > 12 {
-		t.Fatalf("bounded value is too large: %q", report.Tasks[0].Group)
+	if len(report.Tasks[0].Group) > 12 || len(report.Tasks[0].Resources[0].Resource.Key) > 12 {
+		t.Fatalf("bounded value is too large: %+v", report.Tasks[0])
 	}
 
 	data, err := json.Marshal(report)
