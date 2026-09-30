@@ -65,6 +65,10 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - The image-library cache reuses local media content fingerprints when each file's path, size, and modification time are unchanged. On filesystems that expose change time, it also detects same-size replacements that preserve mtime; output directories are excluded from source-media hashing, and the canonical image-library hash uses verified content fingerprints rather than mtime. Avoid clearing `.markata/` when measuring this warm-build path.
 - If `/tags` or `/garden` writes are hot, prefer cached per-post semantic hashes so the listing hashes don't need to re-derive the same per-post summaries every build.
 - Prefer targeted fixes over broad cache-busting changes.
+- HTML cache restoration avoids a second page-sized byte-to-string copy in
+  both executors. This reduces warm-build allocation, not cache invalidation
+  or work selection. Keep existing caches when measuring it; formats and keys
+  are unchanged, and unreadable cache files still cause re-rendering.
 - Full builds keep the complete content diagnostics artifact; serialization
   streams entries rather than buffering the whole JSON document. Do not disable
   diagnostics to make a benchmark look faster. Sidebar link projections are

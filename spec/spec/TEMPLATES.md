@@ -25,6 +25,32 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 
 ---
 
+## Cached HTML Restoration
+
+Warm builds MAY restore rendered article HTML and complete page HTML from the
+build cache in either the DAG or legacy pipeline. Restoration MUST be
+byte-identical to the cached content, including empty content, NUL bytes and
+invalid UTF-8; it MUST NOT normalize, decode, truncate or otherwise transform
+the HTML. Existing cache keys, versions, paths and freshness checks (including
+the article content hash) MUST remain unchanged.
+
+The HTML disk reader MUST avoid an additional body-sized temporary byte buffer
+followed by a whole-body byte-to-string copy. Returned strings MUST own immutable
+storage and remain unchanged after subsequent reads or reuse of transfer
+buffers. Reusable transfer buffers MUST have bounded individual capacity and
+MUST NOT back returned strings.
+
+File metadata is only an allocation hint: preallocation MUST be bounded and
+safe for the platform's integer size, including suspiciously large, unknown or
+nonregular file sizes. This MUST NOT impose a content-size limit. Reads MUST
+continue to EOF even if the file grows or shrinks relative to its reported size.
+Open, stat, read and close failures MUST be reported by the internal reader
+without returning partial HTML. Missing or unreadable disk cache entries MUST
+remain cache misses so the caller can re-render, never publish a partial page.
+Existing in-memory hits MUST remain usable without accessing the disk.
+
+---
+
 ## Template Location
 
 Templates are loaded from (in order):

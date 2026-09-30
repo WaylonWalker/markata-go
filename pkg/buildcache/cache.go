@@ -1837,12 +1837,11 @@ func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
 	}
 
 	// Fallback to disk read
-	data, err := os.ReadFile(cached.ArticleHTMLPath)
+	html, err := readCacheTextFile(cached.ArticleHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
 	// Store in memory for future calls
 	c.articleHTMLMemory.Store(cached.ArticleHTMLPath, html)
 	return html
@@ -2005,13 +2004,12 @@ func (c *Cache) GetCachedFullHTML(sourcePath string) string {
 		}
 	}
 
-	// Fallback to disk read (shouldn't happen in normal hot builds)
-	data, err := os.ReadFile(cached.FullHTMLPath)
+	// Fallback to disk read
+	html, err := readCacheTextFile(cached.FullHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
 	// Store in memory for future calls
 	c.fullHTMLMemory.Store(cached.FullHTMLPath, html)
 	return html
