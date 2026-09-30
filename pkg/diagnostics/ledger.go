@@ -86,8 +86,9 @@ type ContentSummary struct {
 // ContentLedgerSnapshot is the immutable, deterministic view of a build's
 // content state. Entries are sorted by source path.
 type ContentLedgerSnapshot struct {
-	Summary ContentSummary       `json:"summary"`
-	Entries []ContentDisposition `json:"entries"`
+	Summary       ContentSummary       `json:"summary"`
+	TemplateCache *TemplateCacheStats  `json:"template_cache,omitempty"`
+	Entries       []ContentDisposition `json:"entries"`
 }
 
 type contentLedgerEntry struct {
@@ -99,8 +100,9 @@ type contentLedgerEntry struct {
 // ContentLedger is the canonical, concurrency-safe content state ledger for a
 // build. Plugins record observations through this type; consumers use Snapshot.
 type ContentLedger struct {
-	mu      sync.RWMutex
-	entries map[string]*contentLedgerEntry
+	mu            sync.RWMutex
+	entries       map[string]*contentLedgerEntry
+	templateCache *TemplateCacheStats
 }
 
 // NewContentLedger creates an empty content ledger.
@@ -128,6 +130,7 @@ func (l *ContentLedger) Discover(paths []string) {
 
 	l.mu.Lock()
 	l.entries = entries
+	l.templateCache = nil
 	l.mu.Unlock()
 }
 
@@ -158,6 +161,7 @@ func (l *ContentLedger) Reset() {
 	}
 	l.mu.Lock()
 	l.entries = make(map[string]*contentLedgerEntry)
+	l.templateCache = nil
 	l.mu.Unlock()
 }
 
@@ -320,6 +324,7 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	}
 
 	l.mu.RLock()
+	templateCache := cloneTemplateCacheStats(l.templateCache)
 	entries := make([]ContentDisposition, 0, len(l.entries))
 	for _, entry := range l.entries {
 		entries = append(entries, copyContentDisposition(entry))
@@ -331,7 +336,8 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	})
 
 	snapshot := ContentLedgerSnapshot{
-		Entries: entries,
+		TemplateCache: templateCache,
+		Entries:       entries,
 	}
 	for index := range snapshot.Entries {
 		disposition := &snapshot.Entries[index]

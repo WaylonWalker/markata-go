@@ -13,6 +13,8 @@ const (
 // ReasonForRebuild reports the cache-local reason sourcePath needs rebuilding.
 // It intentionally covers only state owned by buildcache. Higher-level callers
 // can layer dependency, feed-membership, and rendered-context reasons on top.
+// It shares one locked metadata lookup with boolean and batch checks. An empty
+// cached input hash is a partial entry compared normally, not a corruption claim.
 func (c *Cache) ReasonForRebuild(sourcePath, inputHash, template string) RebuildReason {
 	if c == nil {
 		return RebuildReasonMissingEntry
@@ -21,15 +23,5 @@ func (c *Cache) ReasonForRebuild(sourcePath, inputHash, template string) Rebuild
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	cached, ok := c.Posts[sourcePath]
-	if !ok || cached == nil {
-		return RebuildReasonMissingEntry
-	}
-	if cached.InputHash != inputHash {
-		return RebuildReasonInputChanged
-	}
-	if cached.Template != template {
-		return RebuildReasonTemplateChanged
-	}
-	return RebuildReasonNone
+	return c.rebuildReasonLocked(sourcePath, inputHash, template)
 }

@@ -41,6 +41,7 @@ type Artifact struct {
 	BuiltAt       time.Time            `json:"built_at"`
 	Executor      string               `json:"executor,omitempty"`
 	Summary       ContentSummary       `json:"summary"`
+	TemplateCache *TemplateCacheStats  `json:"template_cache,omitempty"`
 	Entries       []ContentDisposition `json:"entries"`
 }
 
@@ -91,10 +92,11 @@ func NewArtifact(snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) Artifac
 			Version: version,
 			Commit:  reliableCommit(info.MarkataCommit),
 		},
-		BuiltAt:  builtAt,
-		Executor: strings.TrimSpace(info.Executor),
-		Summary:  snapshot.Summary,
-		Entries:  cloneArtifactEntries(snapshot.Entries),
+		BuiltAt:       builtAt,
+		Executor:      strings.TrimSpace(info.Executor),
+		Summary:       snapshot.Summary,
+		TemplateCache: cloneTemplateCacheStats(snapshot.TemplateCache),
+		Entries:       cloneArtifactEntries(snapshot.Entries),
 	}
 	if commit := reliableCommit(info.SourceCommit); commit != "" {
 		artifact.Source = &ArtifactSource{Commit: commit}
@@ -116,7 +118,7 @@ func MarshalArtifact(snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) ([]
 // copies are limited to one entry; the ordering index scales with entry count.
 // Use a buffered writer when publishing to a file, and flush it before syncing.
 func WriteArtifact(writer io.Writer, snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) error {
-	header := NewArtifact(ContentLedgerSnapshot{Summary: snapshot.Summary}, info)
+	header := NewArtifact(ContentLedgerSnapshot{Summary: snapshot.Summary, TemplateCache: snapshot.TemplateCache}, info)
 	if err := validateArtifact(header); err != nil {
 		return err
 	}
