@@ -62,6 +62,11 @@ of constructing full-artifact serializer buffers, reducing temporary memory
 without dropping observations or changing the indented JSON format. The
 immutable ledger snapshot and final file still contain the complete diagnostics;
 there is no additional configuration to enable this behavior.
+Snapshot construction copies feed reasons into one owned arena per entry, with
+each feed's slice capacity clamped even after deduplication. Appending or mutating
+one feed cannot change sibling feeds, the ledger, or another snapshot. Every
+snapshot remains a fresh copy; counts, ordering and empty-value semantics are
+unchanged. Fewer small allocations do not imply a reduction in whole-build RSS.
 
 Reason codes are stable identifiers. Messages can change without changing a
 code. The current codes cover:
@@ -167,6 +172,30 @@ Load may still conservatively dirty feeds, tag indexes, or garden metadata;
 this fix does not clear those signals or address deletion drift (#1465).
 
 ## Privacy and publication behavior
+
+Streaming reuses owned sanitation scratch sized by the largest entry. Within
+one publication it also reuses standard-encoded feed fragments, capped at 1024
+fragments and 1 MiB of combined keys and JSON bytes. Overlarge or high-cardinality
+values are still encoded completely, without retention. Nothing is cached across
+builds; the snapshot and final file still grow with all recorded observations.
+The schema, ordering, escaping and indented bytes are unchanged.
+Publication uses a fixed 64 KiB file buffer, checked on flush before sync, close
+and replacement. Large individual writes can bypass buffering, so raw-write
+counts must be measured rather than inferred from artifact size divided by the
+buffer size. These improvements concern temporary serialization storage, not
+whole-build RSS: live templates and rendered HTML still retain their own memory.
+
+The `diagnostics_artifact` cleanup debug record separates `snapshot`,
+`source_metadata`, `serialization_buffering_exclusive`, `file_write`,
+`flush_exclusive`, `sync`, `close`, and `replace`. `file_write_bytes` and
+`file_write_calls` count actual underlying file writes, not buffered calls.
+Serialization/buffering and flush **exclusive** durations exclude those file
+writes. Their separately labeled **inclusive** wall totals overlap file-write
+time: do not add them to the exclusive components. Source metadata includes the
+optional Git lookup; missing Git metadata is still harmless. These elapsed
+measurements contain no paths or messages and are not tracing spans or fields in
+the artifact. Directory/temp setup and temp removal are outside these phases;
+`published=0` means replacement did not complete.
 
 The artifact contains sanitized ledger data only. It does not contain raw
 configuration, environment values, secrets, absolute paths, raw logs,

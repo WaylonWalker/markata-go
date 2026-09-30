@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -343,12 +344,15 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 		disposition := &snapshot.Entries[index]
 		disposition.Reasons = sortedUnique(disposition.Reasons)
 		disposition.Diagnostics = sortedIssues(disposition.Diagnostics)
-		sort.Slice(disposition.Feeds, func(i, j int) bool {
-			return disposition.Feeds[i].Feed < disposition.Feeds[j].Feed
+		slices.SortFunc(disposition.Feeds, func(a, b ContentFeedDisposition) int {
+			return strings.Compare(a.Feed, b.Feed)
 		})
 		for feedIndex := range disposition.Feeds {
 			feed := &disposition.Feeds[feedIndex]
 			feed.Reasons = sortedUnique(feed.Reasons)
+			// Deduplication can shorten the owned segment. Clamp again so
+			// appends cannot reuse spare arena capacity.
+			feed.Reasons = feed.Reasons[:len(feed.Reasons):len(feed.Reasons)]
 		}
 
 		snapshot.Summary.Discovered++
@@ -507,11 +511,23 @@ func copyContentDisposition(entry *contentLedgerEntry) ContentDisposition {
 	clone.Diagnostics = append([]Issue{}, entry.Diagnostics...)
 	clone.Feeds = nil
 	if len(entry.feeds) > 0 {
-		clone.Feeds = make([]ContentFeedDisposition, 0, len(entry.feeds))
+		clone.Feeds = make([]ContentFeedDisposition, len(entry.feeds))
+		index, reasonCount := 0, 0
 		for _, feed := range entry.feeds {
-			feedClone := *feed
-			feedClone.Reasons = append([]string{}, feed.Reasons...)
-			clone.Feeds = append(clone.Feeds, feedClone)
+			clone.Feeds[index] = *feed
+			reasonCount += len(feed.Reasons)
+			index++
+		}
+		// Own one flat arena per entry while still isolating every feed.
+		// Copy all live slices before Snapshot sorts or deduplicates them.
+		reasons := make([]string, reasonCount)
+		offset := 0
+		for index := range clone.Feeds {
+			feed := &clone.Feeds[index]
+			end := offset + len(feed.Reasons)
+			copy(reasons[offset:end], feed.Reasons)
+			feed.Reasons = reasons[offset:end:end]
+			offset = end
 		}
 	}
 	return clone
