@@ -933,11 +933,25 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 //	changedPosts := m.FilterPosts(func(p *models.Post) bool { return needsRebuild(p) })
 //	return m.ProcessPostsSliceConcurrently(changedPosts, processFunc)
 func (m *Manager) ProcessPostsSliceConcurrently(posts []*models.Post, fn func(*models.Post) error) error {
+	return m.ProcessPostsSliceConcurrentlyWithLimit(posts, m.Concurrency(), fn)
+}
+
+// ProcessPostsSliceConcurrentlyWithLimit uses the slice worker pool with a
+// per-call upper bound on workers, without changing manager concurrency.
+// A limit below one is treated as one. Processing and error ordering otherwise
+// match ProcessPostsSliceConcurrently.
+func (m *Manager) ProcessPostsSliceConcurrentlyWithLimit(posts []*models.Post, limit int, fn func(*models.Post) error) error {
 	if len(posts) == 0 {
 		return nil
 	}
 
 	numWorkers := m.Concurrency()
+	if limit < 1 {
+		limit = 1
+	}
+	if numWorkers > limit {
+		numWorkers = limit
+	}
 	if numWorkers > len(posts) {
 		numWorkers = len(posts)
 	}

@@ -36,6 +36,11 @@ const (
 
 	// defaultTemplate is the default template name for posts.
 	defaultTemplate = "post.html"
+
+	// fullHTMLRestoreConcurrency bounds simultaneous full-page cache reads.
+	// Manager concurrency may further reduce the number of workers.
+	// Keep parallel disk reads bounded independently of rendering workers.
+	fullHTMLRestoreConcurrency = 4
 )
 
 // TemplatesPlugin wraps rendered markdown content in HTML templates.
@@ -415,18 +420,16 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// receive the same HTML that a cold build would have rendered. If the full
 	// page cache is unavailable (for example, from an older cache format), render
 	// the post instead of treating it as successfully restored.
-	t2 := time.Now()
-	for _, post := range cacheablePosts {
-		cachedHTML := cache.GetCachedFullHTML(post.Path)
-		if cachedHTML == "" {
-			stats.MissReasons.FullHTMLUnavailable++
-			postsNeedingRender = append(postsNeedingRender, post)
-			continue
-		}
-		post.HTML = cachedHTML
-		stats.Restored++
+	restoreStart := time.Now()
+	restored, unavailable, err := restoreCachedFullHTML(m, cacheablePosts, cache.GetCachedFullHTML, fullHTMLRestoreConcurrency)
+	if err != nil {
+		return fmt.Errorf("restore full-page cache: %w", err)
 	}
-	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
+	stats.Restored = restored
+	stats.MissReasons.FullHTMLUnavailable = len(unavailable)
+	postsNeedingRender = append(postsNeedingRender, unavailable...)
+	restoreEnd := time.Now()
+	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", restoreEnd.Sub(restoreStart), len(postsNeedingRender))
 	stats.RenderRequired = len(postsNeedingRender)
 
 	// A missing article cache does not authorize rendering an unrelated page
@@ -446,8 +449,9 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 	// Phase 2: Process only posts that need rendering concurrently
 	// The worker pool processes every selected post even after an error.
+	renderStart := time.Now()
 	var renderFailed atomic.Int64
-	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
+	err = m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
 		html, err := p.renderPost(post, config, m, privatePaths)
 		if err != nil {
@@ -461,7 +465,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	})
 	t3 := time.Now()
-	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
+	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(renderStart))
 	stats.RenderFailed = int(renderFailed.Load())
 	stats.RenderSucceeded = len(postsNeedingRender) - stats.RenderFailed
 	ledger.SetTemplateCache(&stats)

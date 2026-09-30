@@ -50,6 +50,8 @@ Open, stat, read and close failures MUST be reported by the internal reader
 without returning partial HTML. Missing or unreadable disk cache entries MUST
 remain cache misses so the caller can re-render, never publish a partial page.
 Existing in-memory hits MUST remain usable without accessing the disk.
+Concurrent full-page reads sharing a cache path MUST return the same published
+backing string rather than retaining one body allocation per worker.
 
 Template cache diagnostics MUST observe the existing first-failing gates,
 without changing selection, freshness, rendering, restoration, or best-effort
@@ -57,6 +59,23 @@ storage behavior. The bounded `template_cache` aggregate and reconciliation
 rules are specified in [Content Diagnostics](CONTENT_DIAGNOSTICS.md).
 An empty full-page getter result remains a render fallback, including an empty
 cached page; skipped posts are not classified, while empty article bodies are.
+
+Full-page restoration MUST remain eager: every usable cache hit MUST populate
+public `Post.HTML` before any cache-miss template executes, including templates
+that inspect peer posts through Core. Restoration MAY use a bounded worker pool,
+limited by manager concurrency and a restoration-specific cap of four without
+changing manager concurrency. Concurrent workers MUST join before HTML assignment,
+counter aggregation, canonical serve filtering, rendering, or publication.
+Unavailable full pages MUST append after classification misses in their original
+cacheable input order; only nonempty successful results may replace `Post.HTML`.
+Existing eligibility, encryption invalidation, and missing-cache fallback rules
+MUST remain unchanged. Complete pages remain available to hooks, publication,
+Fontpack, and Tailwind; this optimization does not remove their live-memory floor.
+
+Template phase logs MUST measure classification, full-page restoration, and
+fresh rendering separately, including invocations requiring no fresh rendering.
+Restore time MUST NOT be attributed to the rendering phase. Aggregate diagnostic
+counts and their JSON schema remain unchanged.
 
 ### Canonical semantic hash handoff
 

@@ -67,6 +67,15 @@ includes published pages with frontmatter but no Markdown body, so removing
 the output directory does not require deleting `.markata/` before a normal or
 `--fast` build recreates the page.
 
+Full-page restoration is eager and bounded by build concurrency; it finishes
+before any fresh template can inspect cache-hit peers through Core. Do not
+clear `Post.HTML`, defer hydration, or evict cache-map ownership as a supposed
+memory fix: hooks, Fontpack, Tailwind, and publishing still need complete pages,
+and cache/post strings share storage. Compare the separate template phase logs
+(`Phase 1a classify`, `Phase 1b batch restore`, `Phase 2 render`) even for
+zero-render builds. Restore latency is Phase 1b work, not fresh rendering or a
+count of actual disk reads; the aggregate diagnostics schema is unchanged.
+
 For `markata-go build --fast`, file discovery still rescans the content tree on each run. Added,
 removed, and moved files should be detected without clearing `.markata/`. Only `serve --fast`
 reuses in-memory and on-disk state for incremental rebuilds between change events.

@@ -101,6 +101,14 @@ hits, and `render_required` includes misses later deferred by incremental serve.
 `serve_deferred` counts pages excluded by the canonical incremental selection.
 A best-effort cache write failure does not turn a successful render into failure.
 
+Bounded parallel restoration does not change these counts or the artifact
+schema. All reads finish before fresh templates run; restored peer pages remain
+visible through Core. Unavailable pages retain their deterministic input order
+after classification misses, and an existing in-memory full-page hit remains
+usable even if its disk file is gone. Template phase logs measure classification,
+restoration, and fresh rendering separately, including zero-render builds;
+aggregate counts alone are not disk-read measurements.
+
 `miss_reasons` reports only the **first failing gate**, in this order:
 `affected_path`, `cache_unavailable`, `input_hash_missing`, `entry_missing`,
 `input_hash_mismatch`, `template_mismatch`, `dependency_changed`, `slug_changed`,
