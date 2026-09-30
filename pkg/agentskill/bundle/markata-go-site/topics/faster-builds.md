@@ -69,6 +69,13 @@ So `--fast` is good for content, template, and most styling iteration, but it is
   both executors. This reduces warm-build allocation, not cache invalidation
   or work selection. Keep existing caches when measuring it; formats and keys
   are unchanged, and unreadable cache files still cause re-rendering.
+- Cached Markdown already includes heading-highlight wrappers; restore it
+  unchanged rather than decorating it again. The single-pass correction
+  refreshes affected derived pages/feeds using per-post render revisions,
+  without a global cache reset or external downloads. A revision is certified
+  only after successful fresh full-page caching. Prime warm samples after
+  this refresh, and compare the first build after adding content with its
+  next warm build.
 - Full builds keep the complete content diagnostics artifact; serialization
   streams entries rather than buffering the whole JSON document. Do not disable
   diagnostics to make a benchmark look faster. Sidebar link projections are

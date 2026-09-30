@@ -144,7 +144,7 @@ func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format str
 	// projection explicit so a preset resolved from frontmatter cannot fall
 	// through to a generic post layout.
 	if format == formatHTML && isCanonicalRenderingFixture(post) {
-		return "post.html"
+		return defaultTemplate
 	}
 
 	// 1. Check per-format override in frontmatter
@@ -362,6 +362,15 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		cache.SetNavPreviewHash(buildcache.ContentHash(string(encoded)))
 	}
 	changedSlugs := getChangedSlugsMap(cache)
+	affected := lifecycle.GetServeAffectedPaths(m)
+	var canonicalPaths map[string]bool
+	if value, ok := m.Cache().Get(canonicalArticlePathsKey); ok {
+		var valid bool
+		canonicalPaths, valid = value.(map[string]bool)
+		if !valid {
+			return fmt.Errorf("canonical article paths have invalid type %T", value)
+		}
+	}
 
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
@@ -382,7 +391,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
-		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
+		if !affected[post.Path] && canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
 			cacheablePosts = append(cacheablePosts, post)
 		} else {
 			postsNeedingRender = append(postsNeedingRender, post)
@@ -407,6 +416,19 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	}
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
+	// A missing article cache does not authorize rendering an unrelated page
+	// outside the incremental selection. Full-page hits above remain usable,
+	// but fresh pages require an article handled by Markdown in this pass.
+	if lifecycle.IsServeIncremental(m) && canonicalPaths != nil {
+		filtered := postsNeedingRender[:0]
+		for _, post := range postsNeedingRender {
+			if canonicalPaths[post.Path] {
+				filtered = append(filtered, post)
+			}
+		}
+		postsNeedingRender = filtered
+	}
+
 	// Phase 2: Process only posts that need rendering concurrently
 	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
@@ -416,22 +438,28 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 		post.HTML = html
 
-		// Cache the full HTML for future incremental builds
-		if cache != nil && post.InputHash != "" {
-			//nolint:errcheck // caching is best-effort, failures are non-fatal
-			cache.CacheFullHTML(post.Path, html)
-			cache.SetLocalPreviewHash(post.Path, localPreviewHash(post, p.localPreviews, p.siteURL))
-			// Store feed membership hash for future builds
-			if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
-				cache.SetFeedMembershipHash(post.Path, membershipHash)
-			}
-		}
+		p.cacheRenderedPage(post, cache, feedMembershipHashes, canonicalPaths)
 
 		return nil
 	})
 	t3 := time.Now()
 	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
 	return err
+}
+
+func (p *TemplatesPlugin) cacheRenderedPage(post *models.Post, cache *buildcache.Cache, feedMembershipHashes map[string]string, canonicalPaths map[string]bool) {
+	if cache == nil || post.InputHash == "" {
+		return
+	}
+	cacheErr := cache.CacheFullHTML(post.Path, post.HTML)
+	cache.SetLocalPreviewHash(post.Path, localPreviewHash(post, p.localPreviews, p.siteURL))
+	if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
+		cache.SetFeedMembershipHash(post.Path, membershipHash)
+	}
+	if cacheErr == nil && post.Path != "" && !isSourceEncryptedPost(post) &&
+		(canonicalPaths == nil || canonicalPaths[post.Path]) {
+		cache.SetHeadingHighlightRevision(post.Path, headingHighlightRevision)
+	}
 }
 
 // canUseCachedHTML checks if a post can use cached HTML without doing any disk I/O.
@@ -550,7 +578,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 
 	// Check if template exists, fall back to post.html if not
 	if !p.engine.TemplateExists(templateName) {
-		templateName = "post.html"
+		templateName = defaultTemplate
 		if !p.engine.TemplateExists(templateName) {
 			return post.ArticleHTML, nil
 		}

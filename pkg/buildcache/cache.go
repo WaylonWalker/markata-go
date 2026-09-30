@@ -200,6 +200,9 @@ type PostCache struct {
 	// FullHTMLPath is the path to the cached full page HTML file
 	FullHTMLPath string `json:"full_html_path,omitempty"`
 
+	// HeadingHighlightRevision records the last successfully cached page revision.
+	HeadingHighlightRevision int `json:"heading_highlight_revision,omitempty"`
+
 	// ModTime is the file modification time (Unix nanoseconds)
 	ModTime int64 `json:"mod_time,omitempty"`
 
@@ -1326,6 +1329,27 @@ func (c *Cache) GetFeedMembershipHash(sourcePath string) string {
 		return cached.FeedMembershipHash
 	}
 	return ""
+}
+
+// GetHeadingHighlightRevision returns zero when no live post entry exists.
+func (c *Cache) GetHeadingHighlightRevision(sourcePath string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if cached := c.Posts[sourcePath]; cached != nil {
+		return cached.HeadingHighlightRevision
+	}
+	return 0
+}
+
+// SetHeadingHighlightRevision updates only existing live metadata, not stale
+// ownership entries retained during invalidation.
+func (c *Cache) SetHeadingHighlightRevision(sourcePath string, revision int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached := c.Posts[sourcePath]; cached != nil && cached.HeadingHighlightRevision != revision {
+		cached.HeadingHighlightRevision = revision
+		c.dirty = true
+	}
 }
 
 // SetLocalPreviewHash stores the preview fingerprint for a rendered page.

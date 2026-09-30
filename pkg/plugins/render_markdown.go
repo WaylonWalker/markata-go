@@ -62,6 +62,14 @@ type RenderMarkdownPlugin struct {
 // render markdown on-demand when ArticleHTML has not yet been populated.
 const CacheKeyMarkdownRenderer = "markdown.renderer"
 
+// headingHighlightRevision migrates only pages whose canonical articles contain
+// marked H1/H2 headings. Certification belongs to the final page cache writer.
+const headingHighlightRevision = 1
+
+// canonicalArticlePathsKey tracks which articles were actually restored or
+// rendered this pass, so an omitted incremental post cannot be certified.
+const canonicalArticlePathsKey = "markdown.canonical_article_paths"
+
 // MarkdownRenderFunc is the signature of the on-demand markdown renderer
 // stored under CacheKeyMarkdownRenderer.
 type MarkdownRenderFunc func(content string) (string, error)
@@ -474,38 +482,55 @@ func (p *RenderMarkdownPlugin) resolveExtensionConfig(extra map[string]interface
 func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 	// Get build cache for HTML caching
 	p.cache = GetBuildCache(m)
+	canonicalPaths := make(map[string]bool)
+	m.Cache().Set(canonicalArticlePathsKey, canonicalPaths)
 
 	// Phase 1: Pre-filter posts and restore cached HTML
 	// This avoids worker pool overhead for the ~98% of posts that are cached
-	postsNeedingRender := m.FilterPosts(func(post *models.Post) bool {
+	postsNeedingRender := make([]*models.Post, 0, len(m.Posts()))
+	var migrationPosts []*models.Post
+	for _, post := range m.Posts() {
 		// Skip posts marked as skip
 		if post.Skip {
-			return false
+			continue
 		}
 
 		// Skip posts with no content
 		if post.Content == "" {
 			post.ArticleHTML = ""
+			canonicalPaths[post.Path] = true
 			if post.HTML != "" {
 				m.ContentLedger().MarkRendered(post.Path)
 			}
-			return false
+			continue
 		}
 
 		// Try to get cached HTML if content hasn't changed
 		if p.cache != nil && !isSourceEncryptedPost(post) {
 			contentHash := buildcache.ContentHash(post.Content)
 			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
-				post.ArticleHTML = wrapHeadingMarkHighlights(cachedHTML)
+				post.ArticleHTML = cachedHTML
+				canonicalPaths[post.Path] = true
 				// Detect CSS requirements from cached HTML
 				p.detectCSSRequirements(post)
 				m.ContentLedger().MarkRendered(post.Path)
-				return false // Already handled, no concurrent processing needed
+				if p.needsHeadingHighlightMigration(post) {
+					migrationPosts = append(migrationPosts, post)
+				}
+				continue // Already handled, no concurrent processing needed
 			}
 		}
 
-		return true // Needs rendering
-	})
+		migrationNeeded, err := p.classifyIncrementalHeadingMigration(m, post)
+		if err != nil {
+			return err
+		}
+		if migrationNeeded {
+			migrationPosts = append(migrationPosts, post)
+		}
+		postsNeedingRender = append(postsNeedingRender, post)
+	}
+	p.markHeadingHighlightMigration(m, migrationPosts)
 
 	if lifecycle.IsServeIncremental(m) {
 		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
@@ -520,7 +545,9 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 	}
 
 	// Phase 2: Process only posts that need rendering concurrently
-	return m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
+	// Each worker owns its post; map mutation and dependency expansion happen
+	// only after the workers finish.
+	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		if err := p.renderPost(post); err != nil {
 			m.ContentLedger().RecordError(post.Path, diagnostics.ReasonContentRenderError, "Markdown rendering failed")
 			return err
@@ -530,6 +557,64 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	migrationPosts = migrationPosts[:0]
+	for _, post := range postsNeedingRender {
+		canonicalPaths[post.Path] = true
+		if p.needsHeadingHighlightMigration(post) {
+			migrationPosts = append(migrationPosts, post)
+		}
+	}
+	p.markHeadingHighlightMigration(m, migrationPosts)
+	return nil
+}
+
+// classifyIncrementalHeadingMigration probes eligible legacy cache misses
+// without caching unrelated omitted articles or probing encrypted sources.
+func (p *RenderMarkdownPlugin) classifyIncrementalHeadingMigration(m *lifecycle.Manager, post *models.Post) (bool, error) {
+	if !lifecycle.IsServeIncremental(m) || !p.headingHighlightMigrationEligible(post) {
+		return false, nil
+	}
+	article, err := p.renderArticleHTML(post.Content)
+	if err != nil {
+		m.ContentLedger().RecordError(post.Path, diagnostics.ReasonContentRenderError, "Markdown migration classification failed")
+		return false, err
+	}
+	return hasHeadingMarkHighlights(article), nil
+}
+
+func (p *RenderMarkdownPlugin) headingHighlightMigrationEligible(post *models.Post) bool {
+	return p.cache != nil && !post.Skip && post.Path != "" && !isSourceEncryptedPost(post) &&
+		p.cache.GetHeadingHighlightRevision(post.Path) < headingHighlightRevision
+}
+
+func (p *RenderMarkdownPlugin) needsHeadingHighlightMigration(post *models.Post) bool {
+	return p.headingHighlightMigrationEligible(post) && hasHeadingMarkHighlights(post.ArticleHTML)
+}
+
+func (p *RenderMarkdownPlugin) markHeadingHighlightMigration(m *lifecycle.Manager, posts []*models.Post) {
+	if len(posts) == 0 {
+		return
+	}
+	affected := lifecycle.GetServeAffectedPaths(m)
+	if affected == nil {
+		affected = make(map[string]bool)
+	}
+	for _, post := range posts {
+		affected[post.Path] = true
+		for _, identity := range postDependencyIdentities(post) {
+			p.cache.MarkSlugChanged(identity)
+		}
+		p.cache.MarkFeedSlugChanged(post.Slug)
+	}
+	changed := p.cache.GetChangedSlugs()
+	for _, path := range p.cache.GetAffectedPosts(changed) {
+		affected[path] = true
+	}
+	p.cache.MarkAffectedDependents(changed)
+	lifecycle.SetServeAffectedPaths(m, affected)
 }
 
 // renderPost renders a single post's markdown content to HTML.
@@ -548,13 +633,10 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	}
 
 	// Render the markdown
-	renderedHTML, err := p.doRender(post.Content)
+	renderedHTML, err := p.renderArticleHTML(post.Content)
 	if err != nil {
 		return err
 	}
-	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
-	renderedHTML = mergeBlockquoteAttributions(renderedHTML)
-	renderedHTML = wrapHeadingMarkHighlights(renderedHTML)
 	post.ArticleHTML = renderedHTML
 
 	// Cache the result for future incremental builds
@@ -567,6 +649,19 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	// Detect CSS requirements from rendered HTML
 	p.detectCSSRequirements(post)
 	return nil
+}
+
+// renderArticleHTML produces the canonical article-cache boundary without
+// mutating a post or cache. Migration probes and fresh renders use the same
+// Markdown conversion and post-processing pipeline.
+func (p *RenderMarkdownPlugin) renderArticleHTML(content string) (string, error) {
+	renderedHTML, err := p.doRender(content)
+	if err != nil {
+		return "", err
+	}
+	renderedHTML = mergeFigureBlockquoteCaptions(renderedHTML)
+	renderedHTML = mergeBlockquoteAttributions(renderedHTML)
+	return wrapHeadingMarkHighlights(renderedHTML), nil
 }
 
 // doRender performs the actual markdown to HTML conversion.

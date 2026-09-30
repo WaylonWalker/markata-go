@@ -31,8 +31,10 @@ Warm builds MAY restore rendered article HTML and complete page HTML from the
 build cache in either the DAG or legacy pipeline. Restoration MUST be
 byte-identical to the cached content, including empty content, NUL bytes and
 invalid UTF-8; it MUST NOT normalize, decode, truncate or otherwise transform
-the HTML. Existing cache keys, versions, paths and freshness checks (including
-the article content hash) MUST remain unchanged.
+the HTML. Byte-preserving disk restoration MUST NOT itself change cache keys,
+versions, paths or freshness checks (including the article content hash).
+Rendering behavior revisions MAY invalidate derived caches through the build
+identity so obsolete article, page and feed output is recomputed consistently.
 
 The HTML disk reader MUST avoid an additional body-sized temporary byte buffer
 followed by a whole-body byte-to-string copy. Returned strings MUST own immutable
