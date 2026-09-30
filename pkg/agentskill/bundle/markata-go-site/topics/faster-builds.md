@@ -17,6 +17,14 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `markata-go buildlab run --fixture <path>` to check clean, incremental, and deterministic build behavior
 - read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
 
+Benchmark JSON retains every content entry and feed disposition/reason, along
+with summaries, timings, warnings, and blogroll status. Its content serialization
+is streamed with reusable per-entry buffers and buffered writes, not a slimmed
+report. Large reports still require proportional disk space; temporary content
+encoding memory scales with the largest entry, while non-content timing metadata
+is encoded together. Use either a file path or `--benchmark-json=-` for the same
+complete, two-space-indented JSON payload.
+
 ## What `--fast` Skips
 
 Fast mode is for local iteration. It keeps the normal content pipeline but skips expensive non-essential work.

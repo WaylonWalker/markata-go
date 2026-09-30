@@ -212,6 +212,23 @@ The existing `--benchmark-json` machine-readable build output includes the
 sanitized content snapshot. No separate diagnostics command or public HTML page
 is added.
 
+### Benchmark JSON serialization
+
+Benchmark JSON MUST retain the complete raw build-result snapshot, including all
+entries, feed dispositions and reasons, summaries, timings, warnings, and
+blogroll status. Serialization MUST NOT sort, sanitize, or mutate its input.
+The wire format MUST remain byte-for-byte compatible with the legacy indented
+JSON encoder: executor normalization and validation, field order, two-space
+indentation, HTML and string escaping, nil versus empty entry arrays, and the
+final newline are preserved.
+
+Content entries MUST be streamed with reusable encoding and indentation buffers
+whose retained capacity scales with the largest single entry, not the complete
+entry array. Non-content metadata may be encoded together. Actual writes MUST
+be buffered to avoid tiny per-entry file writes. Encoding, writing, short writes,
+flushing, and file closing failures MUST be returned; a close failure MUST NOT
+replace an earlier serialization or flush failure.
+
 ## Production Diagnostics Artifact
 
 The normal full build MUST write the diagnostics artifact to:
