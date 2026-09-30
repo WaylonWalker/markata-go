@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,9 @@ func TestReadCacheTextFileErrors(t *testing.T) {
 		}
 	}
 	t.Run("permission denied", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows file modes do not deny read access")
+		}
 		if os.Geteuid() == 0 {
 			t.Skip("root can read permission-denied fixtures")
 		}
@@ -252,7 +256,7 @@ func TestHTMLDiskCacheRestoration(t *testing.T) {
 func TestHTMLDiskCacheMiss(t *testing.T) {
 	dir := t.TempDir()
 	paths := []string{"", filepath.Join(dir, "missing.html"), dir}
-	if os.Geteuid() != 0 {
+	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
 		path := filepath.Join(dir, "unreadable.html")
 		if err := os.WriteFile(path, []byte("must not restore"), 0o000); err != nil {
 			t.Fatal(err)
