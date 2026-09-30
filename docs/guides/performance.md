@@ -142,6 +142,17 @@ The JSON output includes:
 - plugin timing entries used for hotspot ranking
 - request timing entries used for the slowest-request list
 - build counts and warnings
+- the complete content summary and per-source entries, including every feed
+  disposition and selection reason
+
+Reports stream content entries with reusable per-entry buffers and buffered
+writes, reducing serialization memory on large sites without omitting details.
+The two-space-indented JSON format and trailing newline are unchanged. The
+report itself can still be large: its size grows with content and feed
+observations, while temporary content-encoding buffers grow with the largest
+single entry rather than the complete report. Non-content timing metadata is
+still encoded together. File and stdout modes retain the same complete payload;
+write, flush, and file-close failures are reported as errors.
 
 ### Per-Stage Detail
 
