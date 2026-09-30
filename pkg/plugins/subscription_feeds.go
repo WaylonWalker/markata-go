@@ -81,16 +81,12 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Check if built-in feeds already exist.
 	rootFeedIndex := -1
 	hasArchiveFeed := false
-	hasPinsFeed := false
 	for i := range feedConfigs {
 		if feedConfigs[i].Slug == "" {
 			rootFeedIndex = i
 		}
 		if feedConfigs[i].Slug == defaultArchivePrefix {
 			hasArchiveFeed = true
-		}
-		if feedConfigs[i].Slug == pinsFeedSlug {
-			hasPinsFeed = true
 		}
 	}
 
@@ -152,7 +148,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Create a visual pins feed unless the site configured one explicitly or an
 	// authored publishable post already owns /pins/. Link frontmatter remains
 	// render-neutral outside this feed.
-	if !hasPinsFeed && !postOwnsFeedSlug(m.Posts(), pinsFeedSlug) {
+	if shouldAddImplicitPinsFeed(feedConfigs, m.Posts()) {
 		pinsFeed := models.FeedConfig{
 			Slug:        pinsFeedSlug,
 			Title:       "Pins",
@@ -204,6 +200,15 @@ func hasConfiguredRootFeed(config *lifecycle.Config) bool {
 		}
 	}
 	return false
+}
+
+func shouldAddImplicitPinsFeed(feedConfigs []models.FeedConfig, posts []*models.Post) bool {
+	for i := range feedConfigs {
+		if feedConfigs[i].Slug == pinsFeedSlug {
+			return false
+		}
+	}
+	return !postOwnsFeedSlug(posts, pinsFeedSlug)
 }
 
 func postOwnsFeedSlug(posts []*models.Post, slug string) bool {
