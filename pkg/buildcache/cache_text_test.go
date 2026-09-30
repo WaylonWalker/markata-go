@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unsafe"
 )
 
 func TestReadCacheTextFile(t *testing.T) {
@@ -141,6 +142,40 @@ func TestConcurrentHTMLDiskRestoration(t *testing.T) {
 			if text != contents[worker] {
 				t.Errorf("worker %d retained result %d changed after concurrent reads", worker, read)
 			}
+		}
+	}
+}
+
+func TestConcurrentFullHTMLSharedBacking(t *testing.T) {
+	const workers = 16
+	path := filepath.Join(t.TempDir(), "shared.html")
+	content := strings.Repeat("shared full page\x00\xff", 200000)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cache := New("")
+	for i := range workers {
+		cache.Posts[strconv.Itoa(i)] = &PostCache{FullHTMLPath: path}
+	}
+	results := make([]string, workers)
+	start := make(chan struct{})
+	var done sync.WaitGroup
+	for i := range workers {
+		done.Add(1)
+		go func() {
+			defer done.Done()
+			<-start
+			results[i] = cache.GetCachedFullHTML(strconv.Itoa(i))
+		}()
+	}
+	close(start)
+	done.Wait()
+	for i, html := range results {
+		if html != content {
+			t.Fatalf("worker %d restored different bytes", i)
+		}
+		if unsafe.StringData(html) != unsafe.StringData(results[0]) {
+			t.Fatalf("worker %d retained a duplicate backing allocation for the shared cache path", i)
 		}
 	}
 }

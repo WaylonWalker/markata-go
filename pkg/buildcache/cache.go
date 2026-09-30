@@ -2055,8 +2055,12 @@ func (c *Cache) GetCachedFullHTML(sourcePath string) string {
 		return ""
 	}
 
-	// Store in memory for future calls
-	c.fullHTMLMemory.Store(htmlPath, html)
+	// Concurrent restorations of a shared path must retain one backing string.
+	if value, loaded := c.fullHTMLMemory.LoadOrStore(htmlPath, html); loaded {
+		if cachedHTML, ok := value.(string); ok {
+			return cachedHTML
+		}
+	}
 	return html
 }
 
