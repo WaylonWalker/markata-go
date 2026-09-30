@@ -480,11 +480,6 @@ func filterEncryptedPostsForServe(m *lifecycle.Manager, posts []*models.Post) []
 	return filtered
 }
 
-func (p *EncryptionPlugin) encryptPostWithCache(post *models.Post, cache *buildcache.Cache) error {
-	_, err := p.encryptPostWithCacheResult(post, cache)
-	return err
-}
-
 // encryptPostWithCacheResult reports a real wrapper generation, independently
 // of best-effort cache storage. Nonempty hits do not invalidate full pages.
 func (p *EncryptionPlugin) encryptPostWithCacheResult(post *models.Post, cache *buildcache.Cache) (bool, error) {

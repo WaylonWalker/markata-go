@@ -8,6 +8,8 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+const rootSubscriptionFeedType = "root"
+
 // SubscriptionFeedsPlugin creates built-in subscription feeds at root and /archive.
 // The root feed also renders the default homepage, while /archive retains the
 // configured archive page and both locations expose RSS and Atom feeds.
@@ -105,8 +107,8 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	if rootFeedIndex < 0 {
 		rootFeed := models.FeedConfig{
 			Slug:        "",
-			Title:       getSubscriptionFeedTitle(config, "root"),
-			Description: getSubscriptionFeedDescription(config, "root"),
+			Title:       getSubscriptionFeedTitle(config, rootSubscriptionFeedType),
+			Description: getSubscriptionFeedDescription(config, rootSubscriptionFeedType),
 			Filter:      "published == true",
 			Sort:        "date",
 			Reverse:     true,
@@ -183,7 +185,7 @@ func getSubscriptionFeedTitle(config *lifecycle.Config, feedType string) string 
 	}
 
 	switch feedType {
-	case "root":
+	case rootSubscriptionFeedType:
 		return siteTitle + " Feed"
 	case defaultArchivePrefix:
 		return siteTitle + " Archive Feed"
@@ -206,7 +208,7 @@ func getSubscriptionFeedDescription(config *lifecycle.Config, feedType string) s
 	}
 
 	switch feedType {
-	case "root":
+	case rootSubscriptionFeedType:
 		return "All published posts"
 	case defaultArchivePrefix:
 		return "Archive of all published posts"
