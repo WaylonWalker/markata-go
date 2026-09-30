@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -43,6 +44,8 @@ type TemplatesPlugin struct {
 	config        *lifecycle.Config
 	localPreviews map[string]string
 	siteURL       string
+	sidebarPostMu sync.RWMutex
+	sidebarPosts  map[sidebarPostKey]sidebarPostJSON
 }
 
 // NewTemplatesPlugin creates a new templates plugin.
@@ -329,6 +332,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
 	}
+	p.resetSidebarPosts()
 
 	// Get config for template context
 	config := m.Config()
@@ -1049,6 +1053,13 @@ type sidebarPostJSON struct {
 	Active bool   `json:"active,omitempty"`
 }
 
+type sidebarPostKey struct {
+	slug     string
+	title    string
+	href     string
+	feedSlug string
+}
+
 // sidebarFeedsDataJSON is the top-level JSON structure embedded in the page.
 type sidebarFeedsDataJSON struct {
 	Feeds             []sidebarFeedJSON `json:"feeds"`
@@ -1163,15 +1174,15 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	}
 
 	for _, fp := range windowedPosts {
-		feed.Posts = append(feed.Posts, postToSidebarJSON(fp, fp.Slug == currentPost.Slug, fc.Slug))
+		feed.Posts = append(feed.Posts, p.postToSidebarJSON(fp, fp.Slug == currentPost.Slug, fc.Slug))
 	}
 
 	if prev != nil {
-		pj := postToSidebarJSON(prev, false, fc.Slug)
+		pj := p.postToSidebarJSON(prev, false, fc.Slug)
 		feed.Prev = &pj
 	}
 	if next != nil {
-		nj := postToSidebarJSON(next, false, fc.Slug)
+		nj := p.postToSidebarJSON(next, false, fc.Slug)
 		feed.Next = &nj
 	}
 
@@ -1249,16 +1260,48 @@ func appendFeedParamToHref(href, feedSlug string) string {
 
 // postToSidebarJSON converts a Post to a sidebarPostJSON.
 func postToSidebarJSON(fp *models.Post, active bool, feedSlug string) sidebarPostJSON {
-	title := fp.Slug
-	if fp.PlainTitle() != "" {
-		title = fp.PlainTitle()
+	return sidebarPostFromKey(sidebarKey(fp, feedSlug), active)
+}
+
+func sidebarKey(fp *models.Post, feedSlug string) sidebarPostKey {
+	title := fp.PlainTitle()
+	if title == "" {
+		title = fp.Slug
 	}
+	return sidebarPostKey{slug: fp.Slug, title: title, href: fp.Href, feedSlug: feedSlug}
+}
+
+func sidebarPostFromKey(key sidebarPostKey, active bool) sidebarPostJSON {
 	return sidebarPostJSON{
-		Slug:   fp.Slug,
-		Title:  title,
-		Href:   appendFeedParamToHref(fp.Href, feedSlug),
+		Slug:   key.slug,
+		Title:  key.title,
+		Href:   appendFeedParamToHref(key.href, key.feedSlug),
 		Active: active,
 	}
+}
+
+func (p *TemplatesPlugin) postToSidebarJSON(fp *models.Post, active bool, feedSlug string) sidebarPostJSON {
+	key := sidebarKey(fp, feedSlug)
+	p.sidebarPostMu.RLock()
+	projection, ok := p.sidebarPosts[key]
+	p.sidebarPostMu.RUnlock()
+	if !ok {
+		projection = sidebarPostFromKey(key, false)
+		p.sidebarPostMu.Lock()
+		if p.sidebarPosts == nil {
+			p.sidebarPosts = make(map[sidebarPostKey]sidebarPostJSON)
+		}
+		p.sidebarPosts[key] = projection
+		p.sidebarPostMu.Unlock()
+	}
+	projection.Active = active
+	return projection
+}
+
+func (p *TemplatesPlugin) resetSidebarPosts() {
+	p.sidebarPostMu.Lock()
+	p.sidebarPosts = nil
+	p.sidebarPostMu.Unlock()
 }
 
 // collectTagFeeds finds all tag-based feeds from the sidebar config that

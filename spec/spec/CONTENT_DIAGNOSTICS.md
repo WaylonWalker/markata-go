@@ -99,6 +99,16 @@ Entries, feed dispositions, reasons, and diagnostics MUST be sorted before a
 snapshot is exposed. Concurrent plugin execution MUST NOT change snapshot
 ordering or duplicate a diagnostic.
 
+### Snapshot memory and concurrency
+
+Snapshots MUST own their flat entry, diagnostic, feed-disposition, and reason
+slices independently of the ledger and of other snapshots. Later ledger updates
+or caller mutation of a snapshot MUST NOT change another snapshot or the ledger.
+Copying observations MUST occur under the ledger's read lock; sorting and
+deriving dispositions and summary counts SHOULD occur after releasing that lock.
+Snapshot construction SHOULD copy feed values directly into flat slices, without
+cloning internal feed maps or diagnostic deduplication indexes.
+
 ## Reason Codes
 
 Reason codes are stable identifiers. Human-readable messages may change without
@@ -249,6 +259,30 @@ reasons, feed names, and diagnostics retain the deterministic ordering defined
 above. Consumers MUST dispatch on `schema` and `schema_version`; future
 versions MUST NOT be interpreted as version 1.
 
+### Complete, bounded serialization
+
+Artifact publication MUST preserve every recorded feed disposition, including
+nonincluded feeds and their reasons. Performance improvements MUST NOT change
+schema, completeness, indentation, escaping, redaction, or empty `entries: []`
+representation, and MUST NOT add a trailing newline or a configuration switch.
+For identical build metadata (including a fixed `built_at`), streaming output
+MUST be byte-for-byte equivalent to `MarshalArtifact`.
+
+The streaming writer MUST leave the caller's snapshot unchanged, even when
+reason slices share backing storage. Entries MUST be sorted by normalized path;
+normalized-path collisions and duplicate feed names MUST preserve their original
+relative order. Normalization and diagnostic sanitation MUST use the same rules
+as the existing artifact API.
+
+Publication SHOULD serialize one sanitized entry at a time, bounding temporary
+JSON buffers by the largest entry rather than the entire artifact. An ordering
+index proportional to the number of entries is permitted. The immutable
+snapshot and the complete output file still scale with all recorded observations;
+this contract does not truncate diagnostics or bound total artifact size.
+`MarshalArtifact` MUST remain available with its existing interface and behavior.
+Streaming MUST propagate serialization and writer failures, including short
+writes reported without an error.
+
 ### Privacy and failure behavior
 
 The artifact MUST contain only the sanitized ledger fields. It MUST NOT contain
@@ -261,6 +295,9 @@ text MUST NOT be copied into the artifact.
 The artifact is written after all normal write and cleanup hooks complete. The
 writer MUST use a temporary file in the artifact directory and replace the
 destination only after the complete JSON document has been written. A failed
+serialization, write, or buffered flush MUST NOT replace an existing artifact.
+Buffered output MUST be flushed before syncing and closing the temporary file,
+and replacement MUST occur only after those operations succeed. A failed
 build MUST leave an existing artifact unchanged; a first failed build MUST NOT
 leave a partial artifact. A run that completes all stages with non-critical
 lifecycle warnings may publish the artifact; an artifact write failure is a

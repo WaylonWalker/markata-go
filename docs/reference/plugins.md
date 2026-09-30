@@ -4206,6 +4206,13 @@ routines, and tools for building software applications...
 5. Respects `max_links_per_term` to avoid over-linking
 6. Exports `glossary.json` to the output directory
 
+Longer terms are matched first. Equal-length terms and aliases are matched in
+lexical order (after case normalization), so aliases sharing a link limit select
+the same occurrence on every build. Updating from the older unordered behavior
+refreshes glossary results once; it does not require deleting your caches.
+Nested protected content, such as a link inside a code block, is preserved
+without leaking internal placeholder markers into pages or feeds.
+
 **HTML output:**
 ```html
 <!-- Before -->

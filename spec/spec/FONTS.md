@@ -24,6 +24,55 @@ Built-in packs cache the hash and per-pack preload URLs alongside the font
 output, keyed by the rendered content and catalog; a missing or invalid
 cache entry triggers ordinary resolution instead of serving stale hints.
 
+## Resolution cost and cache identity
+
+A build MUST compute a canonical set of distinct visible runes once and reuse
+it for the coverage signature and all requested packs. The extraction MUST
+ignore script/style contents, decode HTML entities, ignore replacement runes,
+and preserve the existing whitespace and concatenated-article parsing semantics.
+It SHOULD accept a reader so article HTML need not be copied into a site-sized
+intermediate string. Reader errors MUST be surfaced.
+
+Tier selection MUST preserve existing source-aware fallback and missing-tier
+errors. Once a source requires `full`, further coverage checks for that source
+MUST stop because full supersedes smaller tiers. Subset profiles SHOULD be
+compiled once per resolution, and source manifests and validated asset metadata
+SHOULD be reused within that resolution, not across mutable custom-catalog builds.
+Multi-pack resolution MUST not repeat visible-text extraction or discard
+redundantly generated per-pack CSS.
+
+Built-in cache identity MUST include the default resolved pack separately from
+the sorted, deduplicated set of effective resolved packs, picker enablement,
+visible coverage, the catalog, and a digest of embedded catalog/lock/manifest
+metadata. Pack declaration order and equivalent aliases MUST not cause misses;
+default/picker changes and bundled-manifest revisions MUST invalidate old output.
+Cache schema changes MUST invalidate older cache records.
+
+The intact-output fast path MUST continue to require the stylesheet, managed
+font files, and valid preload metadata. Missing output MUST be regenerated with
+the same accelerated resolution; a cache hit MUST NOT bypass custom-catalog
+checksum or role-capability validation. No change to typography, picker choices,
+preload selection, font binaries, or CSS is implied by these optimizations.
+
+## Page annotation and warm builds
+
+The fontpack writer MUST ensure that a complete HTML document has exactly one
+`data-fontpack` attribute on its opening HTML element, using the resolved
+per-page pack. It MUST preserve unrelated attributes, quoted values, and
+whitespace. Attribute and tag names are case-insensitive; fontpack values are
+case-sensitive. Attribute values MUST be HTML-escaped when written.
+
+If the opening HTML element already selects the resolved pack, annotation MUST
+reuse the existing document unchanged. Finding and checking that element MUST
+NOT lowercase, copy, or otherwise process the entire page body. A page without
+an HTML element remains unchanged by root-element annotation. Malformed
+unfinished tags MUST NOT be partially rewritten.
+
+The font stylesheet remains shared. Annotation MUST NOT add an unversioned
+stylesheet when the page already references the hashed stylesheet. These
+shortcuts do not bypass catalog, visible-glyph coverage, preload, or missing
+output-file validation.
+
 Custom catalogs may be selected with `fontpacks_file`. Relative paths in a
 custom catalog resolve relative to the catalog file. Markata records generated
 font filenames in `output/assets/fonts/.markata-fonts.json` and removes only

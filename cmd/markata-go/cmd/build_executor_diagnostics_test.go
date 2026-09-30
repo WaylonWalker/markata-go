@@ -22,9 +22,9 @@ func TestBenchmarkJSONIncludesExecutor(t *testing.T) {
 		{name: "dag", dag: true, want: lifecycle.BuildExecutorDAG},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			buildDAG = test.dag
+			buildDAG = !test.dag
 			var output bytes.Buffer
-			if err := writeBenchmarkJSON(&output, &BuildResult{}); err != nil {
+			if err := writeBenchmarkJSON(&output, &BuildResult{Executor: test.want}); err != nil {
 				t.Fatalf("writeBenchmarkJSON() = %v", err)
 			}
 			var decoded struct {
@@ -40,6 +40,13 @@ func TestBenchmarkJSONIncludesExecutor(t *testing.T) {
 	}
 }
 
+func TestBenchmarkJSONRejectsInvalidExecutor(t *testing.T) {
+	var output bytes.Buffer
+	if err := writeBenchmarkJSON(&output, &BuildResult{Executor: "invalid"}); err == nil {
+		t.Fatal("invalid executor was serialized as a successful benchmark")
+	}
+}
+
 func TestRunDAGBuildRecordsExecutorOnManager(t *testing.T) {
 	manager := lifecycle.NewManager()
 	if _, err := runDAGBuildObserved(manager, nil); err != nil {
@@ -47,5 +54,23 @@ func TestRunDAGBuildRecordsExecutorOnManager(t *testing.T) {
 	}
 	if got := manager.BuildExecutor(); got != lifecycle.BuildExecutorDAG {
 		t.Fatalf("BuildExecutor() = %q, want %q", got, lifecycle.BuildExecutorDAG)
+	}
+}
+
+func TestLegacyBuildResetsDAGManagerIdentity(t *testing.T) {
+	previous, previousCommand := buildDAG, currentCmd
+	buildDAG, currentCmd = false, nil
+	t.Cleanup(func() { buildDAG, currentCmd = previous, previousCommand })
+	t.Setenv(dagBuildEnv, "false")
+	manager := lifecycle.NewManager()
+	if _, err := runDAGBuildObserved(manager, nil); err != nil {
+		t.Fatal(err)
+	}
+	result, err := runBuildObserved(manager, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Executor != lifecycle.BuildExecutorLegacy || manager.BuildExecutor() != lifecycle.BuildExecutorLegacy {
+		t.Fatalf("legacy build retained DAG identity: result=%q manager=%q", result.Executor, manager.BuildExecutor())
 	}
 }

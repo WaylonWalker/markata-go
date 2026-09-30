@@ -320,9 +320,9 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	}
 
 	l.mu.RLock()
-	entries := make([]*contentLedgerEntry, 0, len(l.entries))
+	entries := make([]ContentDisposition, 0, len(l.entries))
 	for _, entry := range l.entries {
-		entries = append(entries, cloneContentLedgerEntry(entry))
+		entries = append(entries, copyContentDisposition(entry))
 	}
 	l.mu.RUnlock()
 
@@ -331,25 +331,28 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	})
 
 	snapshot := ContentLedgerSnapshot{
-		Entries: make([]ContentDisposition, 0, len(entries)),
+		Entries: entries,
 	}
-	for _, entry := range entries {
-		disposition := entry.ContentDisposition
-		disposition.Reasons = sortedUnique(append([]string{}, disposition.Reasons...))
+	for index := range snapshot.Entries {
+		disposition := &snapshot.Entries[index]
+		disposition.Reasons = sortedUnique(disposition.Reasons)
 		disposition.Diagnostics = sortedIssues(disposition.Diagnostics)
-		disposition.Feeds = sortedFeeds(entry.feeds)
+		sort.Slice(disposition.Feeds, func(i, j int) bool {
+			return disposition.Feeds[i].Feed < disposition.Feeds[j].Feed
+		})
+		for feedIndex := range disposition.Feeds {
+			feed := &disposition.Feeds[feedIndex]
+			feed.Reasons = sortedUnique(feed.Reasons)
+		}
 
 		snapshot.Summary.Discovered++
 		if !disposition.Candidate {
 			disposition.Disposition = DispositionNotCandidate
-			snapshot.Entries = append(snapshot.Entries, disposition)
 			continue
 		}
 
-		updateContentSummary(&snapshot.Summary, disposition)
-		finalizeContentDisposition(&snapshot.Summary, &disposition)
-
-		snapshot.Entries = append(snapshot.Entries, disposition)
+		updateContentSummary(&snapshot.Summary, *disposition)
+		finalizeContentDisposition(&snapshot.Summary, disposition)
 	}
 
 	return snapshot
@@ -490,21 +493,20 @@ func (l *ContentLedger) entryLocked(path string) *contentLedgerEntry {
 	return entry
 }
 
-func cloneContentLedgerEntry(entry *contentLedgerEntry) *contentLedgerEntry {
-	clone := &contentLedgerEntry{
-		ContentDisposition: entry.ContentDisposition,
-		feeds:              make(map[string]*ContentFeedDisposition, len(entry.feeds)),
-		issueKeys:          make(map[string]struct{}, len(entry.issueKeys)),
-	}
+// copyContentDisposition is called under the ledger read lock. Only the flat
+// public values are needed by a snapshot, not the ledger's mutable indexes.
+func copyContentDisposition(entry *contentLedgerEntry) ContentDisposition {
+	clone := entry.ContentDisposition
 	clone.Reasons = append([]string{}, entry.Reasons...)
 	clone.Diagnostics = append([]Issue{}, entry.Diagnostics...)
-	for name, feed := range entry.feeds {
-		feedClone := *feed
-		feedClone.Reasons = append([]string{}, feed.Reasons...)
-		clone.feeds[name] = &feedClone
-	}
-	for key := range entry.issueKeys {
-		clone.issueKeys[key] = struct{}{}
+	clone.Feeds = nil
+	if len(entry.feeds) > 0 {
+		clone.Feeds = make([]ContentFeedDisposition, 0, len(entry.feeds))
+		for _, feed := range entry.feeds {
+			feedClone := *feed
+			feedClone.Reasons = append([]string{}, feed.Reasons...)
+			clone.Feeds = append(clone.Feeds, feedClone)
+		}
 	}
 	return clone
 }
@@ -614,24 +616,6 @@ func sortedIssues(issues []Issue) []Issue {
 		return left.Message < right.Message
 	})
 	return issues
-}
-
-func sortedFeeds(feeds map[string]*ContentFeedDisposition) []ContentFeedDisposition {
-	if len(feeds) == 0 {
-		return nil
-	}
-	names := make([]string, 0, len(feeds))
-	for name := range feeds {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	result := make([]ContentFeedDisposition, 0, len(names))
-	for _, name := range names {
-		feed := *feeds[name]
-		feed.Reasons = sortedUnique(append([]string{}, feed.Reasons...))
-		result = append(result, feed)
-	}
-	return result
 }
 
 func hasTerminalExclusion(reasons []string) bool {

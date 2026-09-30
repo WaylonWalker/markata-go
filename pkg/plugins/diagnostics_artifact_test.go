@@ -1,10 +1,14 @@
 package plugins
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -190,6 +194,152 @@ func TestWriteDiagnosticsArtifact_RemovesTemporaryFileAfterReplacementFailure(t 
 	}
 	if len(matches) != 0 {
 		t.Fatalf("temporary artifacts remain after failed replacement: %v", matches)
+	}
+}
+
+func TestWriteDiagnosticsArtifactWith_PreservesPreviousOnFailure(t *testing.T) {
+	sentinel := errors.New("injected writer failure")
+	snapshot := diagnostics.ContentLedgerSnapshot{
+		Entries: []diagnostics.ContentDisposition{{Path: "post.md"}},
+	}
+	for _, test := range []struct {
+		name  string
+		write func(io.Writer) error
+		want  error
+	}{
+		{
+			name: "serialization",
+			write: func(writer io.Writer) error {
+				return diagnostics.WriteArtifact(writer, snapshot, diagnostics.ArtifactBuildInfo{
+					BuiltAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC),
+				})
+			},
+		},
+		{
+			name: "partial serialization",
+			write: func(writer io.Writer) error {
+				if _, err := io.WriteString(writer, "partial JSON"); err != nil {
+					return err
+				}
+				return sentinel
+			},
+			want: sentinel,
+		},
+		{
+			name: "stream writer error",
+			write: func(writer io.Writer) error {
+				return diagnostics.WriteArtifact(&diagnosticsArtifactFailWriter{writer: writer, err: sentinel},
+					snapshot, diagnostics.ArtifactBuildInfo{BuiltAt: time.Unix(1, 0)})
+			},
+			want: sentinel,
+		},
+		{
+			name: "stream short write",
+			write: func(writer io.Writer) error {
+				return diagnostics.WriteArtifact(&diagnosticsArtifactFailWriter{writer: writer},
+					snapshot, diagnostics.ArtifactBuildInfo{BuiltAt: time.Unix(1, 0)})
+			},
+			want: io.ErrShortWrite,
+		},
+		{
+			name: "buffered flush failure",
+			write: func(writer io.Writer) error {
+				// Inject a failing sink beneath the buffer: serialization succeeds
+				// and only the atomic helper's final flush reports the failure.
+				buffered, ok := writer.(*bufio.Writer)
+				if !ok {
+					return errors.New("atomic artifact writer must provide a buffered writer")
+				}
+				buffered.Reset(&diagnosticsArtifactFailWriter{err: sentinel, failAt: 1})
+				_, err := buffered.WriteString("buffered JSON")
+				return err
+			},
+			want: sentinel,
+		},
+	} {
+		for _, existing := range []bool{false, true} {
+			t.Run(test.name+fmtArtifactExisting(existing), func(t *testing.T) {
+				destination := filepath.Join(t.TempDir(), diagnostics.DefaultArtifactPath)
+				if existing {
+					if err := writeDiagnosticsArtifact(destination, []byte("previous artifact")); err != nil {
+						t.Fatal(err)
+					}
+				}
+				err := writeDiagnosticsArtifactWith(destination, test.write)
+				if err == nil || (test.want != nil && !errors.Is(err, test.want)) {
+					t.Fatalf("error = %v, want failure %v", err, test.want)
+				}
+				data, readErr := os.ReadFile(destination)
+				if existing {
+					if readErr != nil || string(data) != "previous artifact" {
+						t.Fatalf("previous artifact changed: %q, %v", data, readErr)
+					}
+				} else if !os.IsNotExist(readErr) {
+					t.Fatalf("failed publication created destination: %v", readErr)
+				}
+				matches, err := filepath.Glob(filepath.Join(filepath.Dir(destination), ".diagnostics-*.tmp"))
+				if err != nil || len(matches) != 0 {
+					t.Fatalf("temporary artifacts remain: %v, %v", matches, err)
+				}
+			})
+		}
+	}
+}
+
+func fmtArtifactExisting(existing bool) string {
+	if existing {
+		return "/existing"
+	}
+	return "/first"
+}
+
+// Accept the header through the real temporary writer, then fail an entry write.
+type diagnosticsArtifactFailWriter struct {
+	writer io.Writer
+	err    error
+	calls  int
+	failAt int
+}
+
+func (w *diagnosticsArtifactFailWriter) Write(data []byte) (int, error) {
+	w.calls++
+	failAt := w.failAt
+	if failAt == 0 {
+		failAt = 2
+	}
+	if w.calls == failAt {
+		if w.err != nil {
+			return 0, w.err
+		}
+		return len(data) - 1, nil
+	}
+	return w.writer.Write(data)
+}
+
+func TestWriteDiagnosticsArtifactWith_StreamingByteParity(t *testing.T) {
+	snapshot := diagnostics.ContentLedgerSnapshot{
+		Entries: []diagnostics.ContentDisposition{
+			{Path: "z.md", Feeds: []diagnostics.ContentFeedDisposition{
+				{Feed: "z", Included: false, Reasons: []string{diagnostics.ReasonContentFiltered}},
+				{Feed: "a", Included: true},
+			}},
+			{Path: "./a.md"},
+		},
+	}
+	info := diagnostics.ArtifactBuildInfo{BuiltAt: time.Unix(1, 0), Executor: diagnostics.ArtifactExecutorLegacy}
+	want, err := diagnostics.MarshalArtifact(snapshot, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(t.TempDir(), diagnostics.DefaultArtifactPath)
+	if err := writeDiagnosticsArtifactWith(destination, func(writer io.Writer) error {
+		return diagnostics.WriteArtifact(writer, snapshot, info)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(destination)
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("published bytes differ: error = %v\ngot:\n%s\nwant:\n%s", err, got, want)
 	}
 }
 

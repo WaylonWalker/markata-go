@@ -47,6 +47,15 @@ These fields SHOULD be supported:
 | `author` | string? | null | Legacy single-author field |
 | `author_objects` | Author[] | [] | Computed: resolved Author structs (not serialized, see [AUTHORS.md](AUTHORS.md)) |
 
+### Wikilink alias representations
+
+Post indexes MUST register `aliases` from both typed string slices and generic
+decoded lists. Cache restoration and fresh frontmatter loading may produce
+different slice representations, but MUST NOT change case-insensitive or
+slugified alias lookup. Initial index construction and explicit refresh MUST
+share alias registration behavior. Existing duplicate-alias and slug precedence
+rules remain unchanged.
+
 ### Title representations
 
 An authored `title` remains available as the source value. After the

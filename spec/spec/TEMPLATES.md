@@ -661,6 +661,16 @@ Small reusable template fragments:
 </article>
 ```
 
+## Build-Local Sidebar Projections
+
+Sidebar post projections MAY be shared across page renders within one build.
+Their identity MUST include the post slug, effective plain title, original href,
+and selected feed slug. The active-post flag MUST be applied to a value copy for
+each page, never stored as shared page-specific state. A changed identity MUST
+produce a fresh projection, and a new template-render stage MUST reset the cache.
+Feed selection, windowing, ordering, URL encoding, and JSON output MUST remain
+unchanged.
+
 ## Footer License Display
 
 When `config.license` contains a string key the default footer appends the license attribution to the copyright line (next to the copyright symbol). Custom footers should honor the same guard to avoid losing attribution:
