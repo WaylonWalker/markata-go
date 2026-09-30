@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -62,19 +63,19 @@ func (p *DiagnosticsArtifactPlugin) Cleanup(m *lifecycle.Manager) error {
 		outputDir = diagnosticsArtifactDefaultOutputDir
 	}
 
-	data, err := diagnostics.MarshalArtifact(m.ContentDiagnostics(), diagnostics.ArtifactBuildInfo{
+	snapshot := m.ContentDiagnostics()
+	info := diagnostics.ArtifactBuildInfo{
 		MarkataVersion: artifactConfigString(config, "markata_version"),
 		MarkataCommit:  artifactConfigString(config, "markata_commit"),
 		SourceCommit:   diagnosticsArtifactSourceCommit(config.ContentDir),
 		BuiltAt:        time.Now().UTC(),
 		Executor:       string(m.BuildExecutor()),
-	})
-	if err != nil {
-		return &diagnosticsArtifactError{err: fmt.Errorf("marshal diagnostics artifact: %w", err)}
 	}
 
 	destination := filepath.Join(outputDir, diagnostics.DefaultArtifactPath)
-	if err := writeDiagnosticsArtifact(destination, data); err != nil {
+	if err := writeDiagnosticsArtifactWith(destination, func(writer io.Writer) error {
+		return diagnostics.WriteArtifact(writer, snapshot, info)
+	}); err != nil {
 		return &diagnosticsArtifactError{err: err}
 	}
 	return nil
@@ -138,6 +139,22 @@ func diagnosticsArtifactSourceCommit(contentDir string) string {
 }
 
 func writeDiagnosticsArtifact(destination string, data []byte) error {
+	return writeDiagnosticsArtifactWith(destination, func(writer io.Writer) error {
+		written, err := writer.Write(data)
+		if err != nil {
+			return err
+		}
+		if written != len(data) {
+			return io.ErrShortWrite
+		}
+		return nil
+	})
+}
+
+// writeDiagnosticsArtifactWith publishes only after serialization, buffered
+// writes, sync, and close succeed. Both byte and streaming callers share the
+// same failure-safe temporary-file and replacement path.
+func writeDiagnosticsArtifactWith(destination string, write func(io.Writer) error) error {
 	directory := filepath.Dir(destination)
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return fmt.Errorf("create diagnostics artifact directory: %w", err)
@@ -154,14 +171,14 @@ func writeDiagnosticsArtifact(destination string, data []byte) error {
 		_ = temporary.Close()
 		return fmt.Errorf("set diagnostics artifact permissions: %w", err)
 	}
-	written, err := temporary.Write(data)
-	if err != nil {
+	buffered := bufio.NewWriter(temporary)
+	if err := write(buffered); err != nil {
 		_ = temporary.Close()
 		return fmt.Errorf("write temporary diagnostics artifact: %w", err)
 	}
-	if written != len(data) {
+	if err := buffered.Flush(); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("write temporary diagnostics artifact: %w", io.ErrShortWrite)
+		return fmt.Errorf("flush temporary diagnostics artifact: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
 		_ = temporary.Close()

@@ -152,3 +152,32 @@ The first fan-out PRs should stay **serial** even after the graph contains item-
 4. Move `render_markdown` to serial per-post tasks and verify Build Lab equivalence.
 5. Add immutable publish planning, then split `publish_html` and `publish_feeds` into serial per-output tasks.
 6. Only after the graph and diagnostics prove disjoint ownership should any task become `ParallelSafe=true` or the executor accept `MaxParallel > 1`.
+
+## Compiled graph core contract
+
+The [core specification](../../spec/spec/BUILD_DAG.md) defines the snapshot and
+diagnostic guarantees supporting this inventory (#1451, #1454):
+
+- `Compile` snapshots artifact/resource slices and external inputs.
+  After compilation, callers may reuse or mutate declaration arrays without
+  changing the compiled graph. `Graph.Task` returns independent metadata slices,
+  retaining the distinction between nil and empty slices. Task functions still
+  own the mutable state captured by their closures; snapshotting declarations
+  does not make plugin state immutable or parallel-safe.
+- Artifact identity and canonical ordering use `(Kind, Key)`, not `String()`.
+  For example, `post` / `rendered:example` and `post:rendered` / `example` are
+  distinct artifacts even though their display strings match. Resource reports
+  sort by `(Resource.Kind, Resource.Key, Access)`. Keep keys opaque; do not parse
+  display strings to recover ownership.
+- The compiler chooses the lexicographically smallest currently ready task,
+  using reverse adjacency and a min-heap rather than rescanning every task.
+  Fan-out/fan-in does not change this serial order or stable cycle diagnostics.
+- Empty ownership remains valid for conservative compatibility tasks. Reports
+  explicitly show empty claims as `[]`; serialization omits empty optional
+  fields. Scope is descriptive and does not infer dependencies or claims.
+- Structural digests identify declarations only. They do not prove that content
+  or external state is unchanged and must not be used to skip execution.
+
+These guarantees harden graph inspection and compilation, not concurrency:
+`MaxParallel` remains one, existing scheduling defaults remain unchanged, and
+task failures and cancellation continue to surface as errors.

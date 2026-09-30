@@ -74,6 +74,24 @@ Markata tracks emitted files in `output/assets/fonts/.markata-fonts.json`.
 Switching packs removes obsolete Markata-generated files while preserving
 unrelated user-managed files in the same directory.
 
+On warm builds, pages that already select the resolved pack keep their existing
+HTML rather than copying the page body just to reapply the root attribute.
+Changing the site or per-page pack still updates `data-fontpack`; custom
+attributes and quoted values on the HTML element are preserved. Font catalog,
+glyph coverage, preloads, and missing output files are still checked normally.
+
+Cold resolution streams article HTML through one shared visible-character
+analysis. Repeated characters and repeated pack selections do not repeat that
+work, and a family's coverage checks stop once its full tier is required.
+This does not change font choices or run a subsetter during your build.
+
+Built-in output caching tracks visible coverage, the default pack, effective
+pack choices, picker settings, and bundled catalog/manifest revisions.
+Reordering equivalent selections or using equivalent aliases does not invalidate
+the cache. Missing generated stylesheets or fonts are regenerated through the
+same accelerated resolver; custom catalogs still validate their asset checksums.
+A new cache schema or bundled metadata revision causes one fresh resolution.
+
 Coverage is selected per font family. A family gets `latin-ext` only when its
 manifest provides that tier; otherwise Markata falls back to that family's
 `full` tier, so expressive faces without extended subsets still render all

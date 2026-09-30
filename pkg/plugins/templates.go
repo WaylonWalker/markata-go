@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -43,6 +44,8 @@ type TemplatesPlugin struct {
 	config        *lifecycle.Config
 	localPreviews map[string]string
 	siteURL       string
+	sidebarPostMu sync.RWMutex
+	sidebarPosts  map[sidebarPostKey]sidebarPostJSON
 }
 
 // NewTemplatesPlugin creates a new templates plugin.
@@ -141,7 +144,7 @@ func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format str
 	// projection explicit so a preset resolved from frontmatter cannot fall
 	// through to a generic post layout.
 	if format == formatHTML && isCanonicalRenderingFixture(post) {
-		return "post.html"
+		return defaultTemplate
 	}
 
 	// 1. Check per-format override in frontmatter
@@ -329,6 +332,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
 	}
+	p.resetSidebarPosts()
 
 	// Get config for template context
 	config := m.Config()
@@ -358,6 +362,15 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		cache.SetNavPreviewHash(buildcache.ContentHash(string(encoded)))
 	}
 	changedSlugs := getChangedSlugsMap(cache)
+	affected := lifecycle.GetServeAffectedPaths(m)
+	var canonicalPaths map[string]bool
+	if value, ok := m.Cache().Get(canonicalArticlePathsKey); ok {
+		var valid bool
+		canonicalPaths, valid = value.(map[string]bool)
+		if !valid {
+			return fmt.Errorf("canonical article paths have invalid type %T", value)
+		}
+	}
 
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
@@ -378,7 +391,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
-		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
+		if !affected[post.Path] && canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
 			cacheablePosts = append(cacheablePosts, post)
 		} else {
 			postsNeedingRender = append(postsNeedingRender, post)
@@ -403,6 +416,19 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	}
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
+	// A missing article cache does not authorize rendering an unrelated page
+	// outside the incremental selection. Full-page hits above remain usable,
+	// but fresh pages require an article handled by Markdown in this pass.
+	if lifecycle.IsServeIncremental(m) && canonicalPaths != nil {
+		filtered := postsNeedingRender[:0]
+		for _, post := range postsNeedingRender {
+			if canonicalPaths[post.Path] {
+				filtered = append(filtered, post)
+			}
+		}
+		postsNeedingRender = filtered
+	}
+
 	// Phase 2: Process only posts that need rendering concurrently
 	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
@@ -412,22 +438,28 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 		post.HTML = html
 
-		// Cache the full HTML for future incremental builds
-		if cache != nil && post.InputHash != "" {
-			//nolint:errcheck // caching is best-effort, failures are non-fatal
-			cache.CacheFullHTML(post.Path, html)
-			cache.SetLocalPreviewHash(post.Path, localPreviewHash(post, p.localPreviews, p.siteURL))
-			// Store feed membership hash for future builds
-			if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
-				cache.SetFeedMembershipHash(post.Path, membershipHash)
-			}
-		}
+		p.cacheRenderedPage(post, cache, feedMembershipHashes, canonicalPaths)
 
 		return nil
 	})
 	t3 := time.Now()
 	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
 	return err
+}
+
+func (p *TemplatesPlugin) cacheRenderedPage(post *models.Post, cache *buildcache.Cache, feedMembershipHashes map[string]string, canonicalPaths map[string]bool) {
+	if cache == nil || post.InputHash == "" {
+		return
+	}
+	cacheErr := cache.CacheFullHTML(post.Path, post.HTML)
+	cache.SetLocalPreviewHash(post.Path, localPreviewHash(post, p.localPreviews, p.siteURL))
+	if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
+		cache.SetFeedMembershipHash(post.Path, membershipHash)
+	}
+	if cacheErr == nil && post.Path != "" && !isSourceEncryptedPost(post) &&
+		(canonicalPaths == nil || canonicalPaths[post.Path]) {
+		cache.SetHeadingHighlightRevision(post.Path, headingHighlightRevision)
+	}
 }
 
 // canUseCachedHTML checks if a post can use cached HTML without doing any disk I/O.
@@ -546,7 +578,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 
 	// Check if template exists, fall back to post.html if not
 	if !p.engine.TemplateExists(templateName) {
-		templateName = "post.html"
+		templateName = defaultTemplate
 		if !p.engine.TemplateExists(templateName) {
 			return post.ArticleHTML, nil
 		}
@@ -1049,6 +1081,13 @@ type sidebarPostJSON struct {
 	Active bool   `json:"active,omitempty"`
 }
 
+type sidebarPostKey struct {
+	slug     string
+	title    string
+	href     string
+	feedSlug string
+}
+
 // sidebarFeedsDataJSON is the top-level JSON structure embedded in the page.
 type sidebarFeedsDataJSON struct {
 	Feeds             []sidebarFeedJSON `json:"feeds"`
@@ -1163,15 +1202,15 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	}
 
 	for _, fp := range windowedPosts {
-		feed.Posts = append(feed.Posts, postToSidebarJSON(fp, fp.Slug == currentPost.Slug, fc.Slug))
+		feed.Posts = append(feed.Posts, p.postToSidebarJSON(fp, fp.Slug == currentPost.Slug, fc.Slug))
 	}
 
 	if prev != nil {
-		pj := postToSidebarJSON(prev, false, fc.Slug)
+		pj := p.postToSidebarJSON(prev, false, fc.Slug)
 		feed.Prev = &pj
 	}
 	if next != nil {
-		nj := postToSidebarJSON(next, false, fc.Slug)
+		nj := p.postToSidebarJSON(next, false, fc.Slug)
 		feed.Next = &nj
 	}
 
@@ -1249,16 +1288,48 @@ func appendFeedParamToHref(href, feedSlug string) string {
 
 // postToSidebarJSON converts a Post to a sidebarPostJSON.
 func postToSidebarJSON(fp *models.Post, active bool, feedSlug string) sidebarPostJSON {
-	title := fp.Slug
-	if fp.PlainTitle() != "" {
-		title = fp.PlainTitle()
+	return sidebarPostFromKey(sidebarKey(fp, feedSlug), active)
+}
+
+func sidebarKey(fp *models.Post, feedSlug string) sidebarPostKey {
+	title := fp.PlainTitle()
+	if title == "" {
+		title = fp.Slug
 	}
+	return sidebarPostKey{slug: fp.Slug, title: title, href: fp.Href, feedSlug: feedSlug}
+}
+
+func sidebarPostFromKey(key sidebarPostKey, active bool) sidebarPostJSON {
 	return sidebarPostJSON{
-		Slug:   fp.Slug,
-		Title:  title,
-		Href:   appendFeedParamToHref(fp.Href, feedSlug),
+		Slug:   key.slug,
+		Title:  key.title,
+		Href:   appendFeedParamToHref(key.href, key.feedSlug),
 		Active: active,
 	}
+}
+
+func (p *TemplatesPlugin) postToSidebarJSON(fp *models.Post, active bool, feedSlug string) sidebarPostJSON {
+	key := sidebarKey(fp, feedSlug)
+	p.sidebarPostMu.RLock()
+	projection, ok := p.sidebarPosts[key]
+	p.sidebarPostMu.RUnlock()
+	if !ok {
+		projection = sidebarPostFromKey(key, false)
+		p.sidebarPostMu.Lock()
+		if p.sidebarPosts == nil {
+			p.sidebarPosts = make(map[sidebarPostKey]sidebarPostJSON)
+		}
+		p.sidebarPosts[key] = projection
+		p.sidebarPostMu.Unlock()
+	}
+	projection.Active = active
+	return projection
+}
+
+func (p *TemplatesPlugin) resetSidebarPosts() {
+	p.sidebarPostMu.Lock()
+	p.sidebarPosts = nil
+	p.sidebarPostMu.Unlock()
 }
 
 // collectTagFeeds finds all tag-based feeds from the sidebar config that

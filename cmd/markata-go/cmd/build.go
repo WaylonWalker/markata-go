@@ -97,7 +97,10 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
 }
 
-func runBuildCommand(_ *cobra.Command, args []string) error {
+func runBuildCommand(cmd *cobra.Command, args []string) error {
+	if err := validateDAGEnvironment(cmd); err != nil {
+		return err
+	}
 	startTime := time.Now()
 
 	verbosef("Starting build...")
@@ -303,6 +306,9 @@ func printBuildResult(result *BuildResult) {
 	printBuildBenchmarkSummary(result.Benchmark)
 
 	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
+	if result.Executor == lifecycle.BuildExecutorDAG {
+		outlnf("  %s %s", buildLabel("Executor:"), "serial DAG (experimental)")
+	}
 }
 
 func printContentSummary(snapshot diagnostics.ContentLedgerSnapshot) {
@@ -484,6 +490,7 @@ func stageThemeColor(stage string) string {
 }
 
 type benchmarkJSONOutput struct {
+	Executor       lifecycle.BuildExecutor           `json:"-"`
 	PostsProcessed int                               `json:"posts_processed"`
 	FeedsGenerated int                               `json:"feeds_generated"`
 	Duration       float64                           `json:"duration_seconds"`
@@ -509,6 +516,7 @@ func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(benchmarkJSONOutput{
+		Executor:       result.Executor,
 		PostsProcessed: result.PostsProcessed,
 		FeedsGenerated: result.FeedsGenerated,
 		Duration:       result.Duration,

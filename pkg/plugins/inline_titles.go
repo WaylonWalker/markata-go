@@ -86,7 +86,40 @@ var (
 	openingMarkTagPattern = regexp.MustCompile(`(?i)<mark(\s[^>]*)?>`)
 	closingMarkTagPattern = regexp.MustCompile(`(?i)</mark\s*>`)
 	headingBlockPattern   = regexp.MustCompile(`(?is)<h([12])([^>]*)>(.*?)</h[12]>`)
+	headingCommentPattern = regexp.MustCompile(`(?s)<!--.*?-->`)
 )
+
+// hasHeadingMarkHighlights classifies canonical article HTML, not title HTML
+// or later derivatives. The fast gate avoids scanning ordinary articles.
+func hasHeadingMarkHighlights(value string) bool {
+	if !hasMarkTagPrefix(value) {
+		return false
+	}
+	if strings.Contains(value, "<!--") {
+		value = headingCommentPattern.ReplaceAllString(value, "")
+	}
+	for _, parts := range headingBlockPattern.FindAllStringSubmatch(value, -1) {
+		if openingMarkTagPattern.MatchString(parts[3]) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasMarkTagPrefix checks ASCII HTML tag names without copying the article or
+// allocating regexp execution state (including under the race detector).
+func hasMarkTagPrefix(value string) bool {
+	for {
+		start := strings.IndexByte(value, '<')
+		if start < 0 || len(value)-start < len("<mark") {
+			return false
+		}
+		if strings.EqualFold(value[start:start+len("<mark")], "<mark") {
+			return true
+		}
+		value = value[start+1:]
+	}
+}
 
 // wrapHeadingHighlights adds a semantic hook around marks used in title HTML.
 // The mark remains the no-JavaScript fallback; the heading-highlights script

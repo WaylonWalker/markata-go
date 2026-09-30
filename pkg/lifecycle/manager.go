@@ -171,29 +171,39 @@ func (idx *PostIndex) Refresh(m *Manager) {
 			newIdx.ByPath[post.Path] = post
 		}
 
-		// Register aliases
-		if post.Extra != nil {
-			if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
-				for _, alias := range aliases {
-					if aliasStr, ok := alias.(string); ok {
-						normalizedAlias := strings.ToLower(aliasStr)
-						if _, exists := newIdx.BySlug[normalizedAlias]; !exists {
-							newIdx.BySlug[normalizedAlias] = post
-						}
-						slugifiedAlias := models.Slugify(aliasStr)
-						if _, exists := newIdx.BySlugified[slugifiedAlias]; !exists {
-							newIdx.BySlugified[slugifiedAlias] = post
-						}
-					}
-				}
-			}
-		}
+		newIdx.registerAliases(post)
 	}
 
 	idx.BySlug = newIdx.BySlug
 	idx.BySlugified = newIdx.BySlugified
 	idx.ByHref = newIdx.ByHref
 	idx.ByPath = newIdx.ByPath
+}
+
+func (idx *PostIndex) registerAliases(post *models.Post) {
+	switch aliases := post.Extra["aliases"].(type) {
+	case []string:
+		for _, alias := range aliases {
+			idx.registerAlias(alias, post)
+		}
+	case []interface{}:
+		for _, alias := range aliases {
+			if name, ok := alias.(string); ok {
+				idx.registerAlias(name, post)
+			}
+		}
+	}
+}
+
+func (idx *PostIndex) registerAlias(alias string, post *models.Post) {
+	normalized := strings.ToLower(alias)
+	if _, exists := idx.BySlug[normalized]; !exists {
+		idx.BySlug[normalized] = post
+	}
+	slugified := models.Slugify(alias)
+	if _, exists := idx.BySlugified[slugified]; !exists {
+		idx.BySlugified[slugified] = post
+	}
 }
 
 // LookupBySlug finds a post by slug, trying exact match first then slugified.
@@ -406,21 +416,7 @@ func (m *Manager) buildPostIndex() *PostIndex {
 			idx.ByPath[post.Path] = post
 		}
 
-		// Register aliases
-		if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
-			for _, alias := range aliases {
-				if aliasStr, ok := alias.(string); ok {
-					normalizedAlias := strings.ToLower(aliasStr)
-					if _, exists := idx.BySlug[normalizedAlias]; !exists {
-						idx.BySlug[normalizedAlias] = post
-					}
-					slugifiedAlias := models.Slugify(aliasStr)
-					if _, exists := idx.BySlugified[slugifiedAlias]; !exists {
-						idx.BySlugified[slugifiedAlias] = post
-					}
-				}
-			}
-		}
+		idx.registerAliases(post)
 	}
 
 	return idx

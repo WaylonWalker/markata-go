@@ -25,6 +25,34 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 
 ---
 
+## Cached HTML Restoration
+
+Warm builds MAY restore rendered article HTML and complete page HTML from the
+build cache in either the DAG or legacy pipeline. Restoration MUST be
+byte-identical to the cached content, including empty content, NUL bytes and
+invalid UTF-8; it MUST NOT normalize, decode, truncate or otherwise transform
+the HTML. Byte-preserving disk restoration MUST NOT itself change cache keys,
+versions, paths or freshness checks (including the article content hash).
+Rendering behavior revisions MAY invalidate derived caches through the build
+identity so obsolete article, page and feed output is recomputed consistently.
+
+The HTML disk reader MUST avoid an additional body-sized temporary byte buffer
+followed by a whole-body byte-to-string copy. Returned strings MUST own immutable
+storage and remain unchanged after subsequent reads or reuse of transfer
+buffers. Reusable transfer buffers MUST have bounded individual capacity and
+MUST NOT back returned strings.
+
+File metadata is only an allocation hint: preallocation MUST be bounded and
+safe for the platform's integer size, including suspiciously large, unknown or
+nonregular file sizes. This MUST NOT impose a content-size limit. Reads MUST
+continue to EOF even if the file grows or shrinks relative to its reported size.
+Open, stat, read and close failures MUST be reported by the internal reader
+without returning partial HTML. Missing or unreadable disk cache entries MUST
+remain cache misses so the caller can re-render, never publish a partial page.
+Existing in-memory hits MUST remain usable without accessing the disk.
+
+---
+
 ## Template Location
 
 Templates are loaded from (in order):
@@ -660,6 +688,16 @@ Small reusable template fragments:
     </footer>
 </article>
 ```
+
+## Build-Local Sidebar Projections
+
+Sidebar post projections MAY be shared across page renders within one build.
+Their identity MUST include the post slug, effective plain title, original href,
+and selected feed slug. The active-post flag MUST be applied to a value copy for
+each page, never stored as shared page-specific state. A changed identity MUST
+produce a fresh projection, and a new template-render stage MUST reset the cache.
+Feed selection, windowing, ordering, URL encoding, and JSON output MUST remain
+unchanged.
 
 ## Footer License Display
 

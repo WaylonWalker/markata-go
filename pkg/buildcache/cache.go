@@ -200,6 +200,9 @@ type PostCache struct {
 	// FullHTMLPath is the path to the cached full page HTML file
 	FullHTMLPath string `json:"full_html_path,omitempty"`
 
+	// HeadingHighlightRevision records the last successfully cached page revision.
+	HeadingHighlightRevision int `json:"heading_highlight_revision,omitempty"`
+
 	// ModTime is the file modification time (Unix nanoseconds)
 	ModTime int64 `json:"mod_time,omitempty"`
 
@@ -1328,6 +1331,27 @@ func (c *Cache) GetFeedMembershipHash(sourcePath string) string {
 	return ""
 }
 
+// GetHeadingHighlightRevision returns zero when no live post entry exists.
+func (c *Cache) GetHeadingHighlightRevision(sourcePath string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if cached := c.Posts[sourcePath]; cached != nil {
+		return cached.HeadingHighlightRevision
+	}
+	return 0
+}
+
+// SetHeadingHighlightRevision updates only existing live metadata, not stale
+// ownership entries retained during invalidation.
+func (c *Cache) SetHeadingHighlightRevision(sourcePath string, revision int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached := c.Posts[sourcePath]; cached != nil && cached.HeadingHighlightRevision != revision {
+		cached.HeadingHighlightRevision = revision
+		c.dirty = true
+	}
+}
+
 // SetLocalPreviewHash stores the preview fingerprint for a rendered page.
 func (c *Cache) SetLocalPreviewHash(sourcePath, hash string) {
 	c.mu.Lock()
@@ -1837,12 +1861,11 @@ func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
 	}
 
 	// Fallback to disk read
-	data, err := os.ReadFile(cached.ArticleHTMLPath)
+	html, err := readCacheTextFile(cached.ArticleHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
 	// Store in memory for future calls
 	c.articleHTMLMemory.Store(cached.ArticleHTMLPath, html)
 	return html
@@ -2005,13 +2028,12 @@ func (c *Cache) GetCachedFullHTML(sourcePath string) string {
 		}
 	}
 
-	// Fallback to disk read (shouldn't happen in normal hot builds)
-	data, err := os.ReadFile(cached.FullHTMLPath)
+	// Fallback to disk read
+	html, err := readCacheTextFile(cached.FullHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
 	// Store in memory for future calls
 	c.fullHTMLMemory.Store(cached.FullHTMLPath, html)
 	return html

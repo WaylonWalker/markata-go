@@ -89,7 +89,7 @@ func (g *Graph) Report(options ReportOptions) (GraphReport, error) {
 	}
 
 	for _, id := range order[:limit] {
-		task, ok := g.Task(id)
+		task, ok := g.tasks[id]
 		if !ok {
 			return GraphReport{}, fmt.Errorf("builddag: task %q missing from compiled graph", id)
 		}
@@ -150,7 +150,7 @@ func reportTask(task TaskSpec, options ReportOptions) TaskReport {
 
 func reportArtifacts(artifacts []ArtifactID, options ReportOptions) ([]ArtifactID, bool, bool) {
 	items := append([]ArtifactID(nil), artifacts...)
-	sort.Slice(items, func(i, j int) bool { return items[i].String() < items[j].String() })
+	sort.Slice(items, func(i, j int) bool { return artifactLess(items[i], items[j]) })
 	itemsTruncated := len(items) > options.MaxItemsPerTask
 	if itemsTruncated {
 		items = items[:options.MaxItemsPerTask]
@@ -168,7 +168,7 @@ func reportArtifacts(artifacts []ArtifactID, options ReportOptions) ([]ArtifactI
 
 func reportResources(resources []ResourceClaim, options ReportOptions) ([]ResourceClaim, bool, bool) {
 	items := append([]ResourceClaim(nil), resources...)
-	sort.Slice(items, func(i, j int) bool { return items[i].String() < items[j].String() })
+	sort.Slice(items, func(i, j int) bool { return resourceClaimLess(items[i], items[j]) })
 	itemsTruncated := len(items) > options.MaxItemsPerTask
 	if itemsTruncated {
 		items = items[:options.MaxItemsPerTask]

@@ -381,6 +381,7 @@ markata-go build [flags]
 | `--clean` | | Remove output directory before building | `false` |
 | `--dry-run` | | Show what would be built without writing files | `false` |
 | `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
+| `--dag` | | Use the experimental serial DAG executor | `false` |
 | `--benchmark-json` | | Write benchmark details as JSON; use `-` for stdout | `""` |
 | `--benchmark-detailed` | | Print per-stage benchmark resource summaries | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
@@ -400,6 +401,9 @@ markata-go build --dry-run
 
 # Fast dev build
 markata-go build --fast
+
+# Experimental serial task graph
+markata-go build --dag
 
 # Build with verbose output
 markata-go build -v
@@ -586,13 +590,22 @@ Successful builds also print a compact benchmark summary with:
 
 For deeper analysis:
 
-- `markata-go build --benchmark-json benchmark.json` writes machine-readable benchmark data to a file
-- `markata-go build --benchmark-json -` writes only the benchmark JSON to stdout
+- `markata-go build --benchmark-json=benchmark.json` writes machine-readable benchmark data to a file
+- `markata-go build --benchmark-json=-` writes only the benchmark JSON to stdout
 - `markata-go build -v --benchmark-detailed` adds per-stage resource summaries to the build footer
 
 When requests are present, the footer prints the 10 slowest network waits with stage, plugin, method, sanitized URL, duration, and either HTTP status or the request error.
 
 The resource profile is approximate. It is intended for local hotspot hunting, not precise system profiling.
+
+The experimental `--dag` flag is available on `build`, `serve`, and
+`builder-admin`. It retains serial plugin ordering and is not a parallel-build
+switch. `MARKATA_GO_DAG=true` also opts in; an explicit `--dag=false` overrides
+the environment, including queued Builder Admin child builds. Invalid
+environment boolean values report an error unless an explicit flag overrides
+them. `build --dry-run` still uses the legacy partial lifecycle and does not
+claim a DAG build ran. Benchmark JSON records the executor that actually ran.
+See [[dag-builds|Experimental DAG builds]] for comparison guidance.
 
 ---
 

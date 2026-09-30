@@ -12,7 +12,7 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `markata-go reader update --concurrency <n>` when reader refresh latency is dominated by many remote feeds
 - use `-m fast.toml` or `--merge-config fast.toml` when you want a slimmer dev config without editing the main site config
 - compare warm builds, not just cold builds
-- use `markata-go build --benchmark-json benchmark.json` for structured timing
+- use `markata-go build --benchmark-json=benchmark.json` for structured timing
 - use `markata-go build -v --benchmark-detailed` when you need stage detail
 - use `markata-go buildlab run --fixture <path>` to check clean, incremental, and deterministic build behavior
 - read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
@@ -65,6 +65,42 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 - The image-library cache reuses local media content fingerprints when each file's path, size, and modification time are unchanged. On filesystems that expose change time, it also detects same-size replacements that preserve mtime; output directories are excluded from source-media hashing, and the canonical image-library hash uses verified content fingerprints rather than mtime. Avoid clearing `.markata/` when measuring this warm-build path.
 - If `/tags` or `/garden` writes are hot, prefer cached per-post semantic hashes so the listing hashes don't need to re-derive the same per-post summaries every build.
 - Prefer targeted fixes over broad cache-busting changes.
+- HTML cache restoration avoids a second page-sized byte-to-string copy in
+  both executors. This reduces warm-build allocation, not cache invalidation
+  or work selection. Keep existing caches when measuring it; formats and keys
+  are unchanged, and unreadable cache files still cause re-rendering.
+- Cached Markdown already includes heading-highlight wrappers; restore it
+  unchanged rather than decorating it again. The single-pass correction
+  refreshes affected derived pages/feeds using per-post render revisions,
+  without a global cache reset or external downloads. A revision is certified
+  only after successful fresh full-page caching. Prime warm samples after
+  this refresh, and compare the first build after adding content with its
+  next warm build.
+- Full builds keep the complete content diagnostics artifact; serialization
+  streams entries rather than buffering the whole JSON document. Do not disable
+  diagnostics to make a benchmark look faster. Sidebar link projections are
+  reused only within a build, with current-page highlights kept separate.
+- Glossary matching uses longest-first keys with lexical ties, so equal-length
+  aliases sharing a link limit do not randomly change cold-build output.
+  Nested protected links/code are restored outermost first without internal
+  marker leakage. Pre-fix results refresh once through the cache identity.
+- The experimental `--dag` executor is serial and does not automatically skip
+  more work or add parallelism. Compare it with explicit `--dag=false` on the
+  same site/config/cache inputs, alternating at least three warm samples.
+  The verbose plan digest is structural, not a content-cache fingerprint.
+- On real-site benchmarks, keep encryption settings identical, disable
+  publication/index-ingestion side effects, and keep unencrypted measurements
+  in isolated local copies. Network-backed embeds and favicons need a shared
+  external-cache snapshot before byte-level executor comparisons are meaningful.
+- Warm fontpack annotation should not recopy page bodies whose root element
+  already selects the resolved pack. If fontpack remains a hotspot, distinguish
+  catalog/coverage resolution from HTML annotation before changing typography.
+- Cold fontpack resolution shares one visible-rune analysis across packs and
+  stops checking a family's coverage when full is required. It selects prebuilt
+  font tiers rather than running a subsetter. Built-in cache identity includes
+  canonical pack choices, default/picker settings, coverage, and bundled metadata;
+  a new cache schema causes one fresh resolution. Missing generated font files
+  are regenerated without disabling the picker or weakening custom validation.
 - For sites that use `[markata-go.mermaid] mode = "chromium"` or `"cli"`, unchanged
   diagrams should reuse cached SVG output on warm builds; if Mermaid remains a hotspot,
   compare the diagram source and rendering inputs before recommending client mode.

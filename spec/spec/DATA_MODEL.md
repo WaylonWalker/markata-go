@@ -47,6 +47,15 @@ These fields SHOULD be supported:
 | `author` | string? | null | Legacy single-author field |
 | `author_objects` | Author[] | [] | Computed: resolved Author structs (not serialized, see [AUTHORS.md](AUTHORS.md)) |
 
+### Wikilink alias representations
+
+Post indexes MUST register `aliases` from both typed string slices and generic
+decoded lists. Cache restoration and fresh frontmatter loading may produce
+different slice representations, but MUST NOT change case-insensitive or
+slugified alias lookup. Initial index construction and explicit refresh MUST
+share alias registration behavior. Existing duplicate-alias and slug precedence
+rules remain unchanged.
+
 ### Title representations
 
 An authored `title` remains available as the source value. After the
@@ -84,6 +93,21 @@ no-JavaScript fallback. The default theme MAY enhance this wrapper after
 layout by measuring its line fragments and drawing a contour that rounds only
 the exterior corners. The enhancement MUST recalculate after viewport,
 content, font, and theme changes.
+
+For article H1/H2 highlights, the wrapper MUST be added once during fresh
+Markdown rendering, before storing the rendered article cache. Cache hits MUST
+restore that stage's result unchanged, without applying the decoration again.
+Adding an unrelated post or changing which pages require template rendering
+MUST NOT introduce nested wrappers or change unchanged articles in feeds.
+Older derived page/feed caches for affected articles MUST be refreshed through
+a per-post rendered-output revision. Migration MUST mark affected source paths
+(including an empty-slug root page) and their dependent output dirty, without
+invalidating unrelated posts or feeds. A post MUST NOT be certified migrated
+until fresh full-page rendering has been successfully cached; cached-page
+restoration and failed rendering/cache writes MUST NOT certify it. Revision
+metadata MUST be saved after any shared-navigation cache invalidation.
+Subsequent builds MUST retain normal cache reuse; canonical article caches
+and external download caches MUST NOT require clearing.
 
 ### Field Behaviors
 

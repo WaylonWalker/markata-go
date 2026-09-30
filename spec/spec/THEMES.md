@@ -528,6 +528,10 @@ Themes provide the base visual identity. For additional customization, see [HEAD
 
 Theme variables are applied at build time to the generated `variables.css` and override palette-generated values. This means overrides work consistently even when a palette is enabled.
 
+Generated theme-variable declarations MUST use lexicographic property-name
+ordering. The same configuration MUST produce identical CSS bytes and asset
+hashes across repeated generation, regardless of map iteration order.
+
 ---
 
 ## Theme Structure

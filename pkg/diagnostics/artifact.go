@@ -1,8 +1,10 @@
 package diagnostics
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -109,6 +111,86 @@ func MarshalArtifact(snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) ([]
 	return json.MarshalIndent(artifact, "", "  ")
 }
 
+// WriteArtifact streams the same indented JSON as MarshalArtifact, without a
+// trailing newline or modifying snapshot. Temporary JSON buffers and sanitized
+// copies are limited to one entry; the ordering index scales with entry count.
+// Use a buffered writer when publishing to a file, and flush it before syncing.
+func WriteArtifact(writer io.Writer, snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) error {
+	header := NewArtifact(ContentLedgerSnapshot{Summary: snapshot.Summary}, info)
+	if err := validateArtifact(header); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(header, "", "  ")
+	if err != nil {
+		return err
+	}
+	if len(snapshot.Entries) == 0 {
+		return writeArtifactBytes(writer, data)
+	}
+
+	// Entries is the final field of Artifact. Verify the generated suffix rather
+	// than silently corrupting output if that layout changes in the future.
+	const emptyEntriesSuffix = "  \"entries\": []\n}"
+	if !bytes.HasSuffix(data, []byte(emptyEntriesSuffix)) {
+		return fmt.Errorf("diagnostics artifact header must end with empty entries")
+	}
+	if err := writeArtifactBytes(writer, data[:len(data)-len("]\n}")]); err != nil {
+		return err
+	}
+
+	type entryIndex struct {
+		path  string
+		index int
+	}
+	order := make([]entryIndex, len(snapshot.Entries))
+	for index, entry := range snapshot.Entries {
+		order[index] = entryIndex{path: normalizeContentPath(entry.Path), index: index}
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		return order[i].path < order[j].path
+	})
+	// Reuse both buffers across entries. Encoder supplies the same escaping as
+	// Marshal, while Indent supplies exactly MarshalIndent's layout. Neither
+	// buffer grows with the total number of entries.
+	var compact, indented bytes.Buffer
+	encoder := json.NewEncoder(&compact)
+	for index, item := range order {
+		entry := cloneArtifactEntry(snapshot.Entries[item.index])
+		compact.Reset()
+		if err := encoder.Encode(entry); err != nil {
+			return err
+		}
+		indented.Reset()
+		// Encode appends a newline; MarshalArtifact does not.
+		encoded := bytes.TrimSuffix(compact.Bytes(), []byte("\n"))
+		if err := json.Indent(&indented, encoded, "    ", "  "); err != nil {
+			return err
+		}
+		separator := "\n    "
+		if index > 0 {
+			separator = ",\n    "
+		}
+		if err := writeArtifactBytes(writer, []byte(separator)); err != nil {
+			return err
+		}
+		if err := writeArtifactBytes(writer, indented.Bytes()); err != nil {
+			return err
+		}
+	}
+	return writeArtifactBytes(writer, []byte("\n  ]\n}"))
+}
+
+func writeArtifactBytes(writer io.Writer, data []byte) error {
+	written, err := writer.Write(data)
+	if err != nil {
+		return err
+	}
+	if written != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
+}
+
 // ParseArtifact decodes and validates a diagnostics artifact.
 func ParseArtifact(data []byte) (Artifact, error) {
 	var artifact Artifact
@@ -168,30 +250,32 @@ func cloneArtifactEntries(entries []ContentDisposition) []ContentDisposition {
 	}
 	result := make([]ContentDisposition, len(entries))
 	for index, entry := range entries {
-		result[index] = entry
-		result[index].Path = normalizeContentPath(entry.Path)
-		result[index].Reasons = append([]string(nil), entry.Reasons...)
-		result[index].Diagnostics = append([]Issue(nil), entry.Diagnostics...)
-		result[index].Feeds = append([]ContentFeedDisposition(nil), entry.Feeds...)
-		result[index].Reasons = sortedUnique(result[index].Reasons)
-		for diagnosticIndex := range result[index].Diagnostics {
-			result[index].Diagnostics[diagnosticIndex] = sanitizeArtifactIssue(result[index].Diagnostics[diagnosticIndex])
-		}
-		result[index].Diagnostics = sortedIssues(result[index].Diagnostics)
-		for feedIndex := range result[index].Feeds {
-			result[index].Feeds[feedIndex].Reasons = append([]string(nil), result[index].Feeds[feedIndex].Reasons...)
-			result[index].Feeds[feedIndex].Reasons = sortedUnique(result[index].Feeds[feedIndex].Reasons)
-		}
+		result[index] = cloneArtifactEntry(entry)
 	}
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Path < result[j].Path
 	})
-	for index := range result {
-		sort.SliceStable(result[index].Feeds, func(i, j int) bool {
-			return result[index].Feeds[i].Feed < result[index].Feeds[j].Feed
-		})
-	}
 	return result
+}
+
+// cloneArtifactEntry owns every mutable slice before normalizing or sorting it.
+// Both artifact encoders use this helper so sanitation cannot drift.
+func cloneArtifactEntry(entry ContentDisposition) ContentDisposition {
+	entry.Path = normalizeContentPath(entry.Path)
+	entry.Reasons = sortedUnique(append([]string(nil), entry.Reasons...))
+	entry.Diagnostics = append([]Issue(nil), entry.Diagnostics...)
+	for index := range entry.Diagnostics {
+		entry.Diagnostics[index] = sanitizeArtifactIssue(entry.Diagnostics[index])
+	}
+	entry.Diagnostics = sortedIssues(entry.Diagnostics)
+	entry.Feeds = append([]ContentFeedDisposition(nil), entry.Feeds...)
+	for index := range entry.Feeds {
+		entry.Feeds[index].Reasons = sortedUnique(append([]string(nil), entry.Feeds[index].Reasons...))
+	}
+	sort.SliceStable(entry.Feeds, func(i, j int) bool {
+		return entry.Feeds[i].Feed < entry.Feeds[j].Feed
+	})
+	return entry
 }
 
 func sanitizeArtifactIssue(issue Issue) Issue {

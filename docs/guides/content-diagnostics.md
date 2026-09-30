@@ -55,6 +55,14 @@ excluded candidates, warnings, and errors. Each entry includes a relative
 source `path`, lifecycle state booleans, a final `disposition`, sorted `reasons`,
 diagnostics, and feed-level dispositions.
 
+Feed dispositions are complete: feeds that did not include a source remain in
+the artifact with their exclusion reasons. On large sites this can make the
+JSON file substantial. Full builds stream one sanitized entry at a time instead
+of constructing full-artifact serializer buffers, reducing temporary memory
+without dropping observations or changing the indented JSON format. The
+immutable ledger snapshot and final file still contain the complete diagnostics;
+there is no additional configuration to enable this behavior.
+
 Reason codes are stable identifiers. Messages can change without changing a
 code. The current codes cover:
 
@@ -83,7 +91,9 @@ encryption key names.
 
 The file is published only after the normal full lifecycle completes. A failed
 build leaves an existing artifact unchanged and does not leave a partial new
-file. `markata-go build --dry-run`,
+file. Streaming output is flushed, synced, and closed in a temporary sibling
+file before replacing the artifact; serialization or write failures leave the
+previous artifact intact and fail the build. `markata-go build --dry-run`,
 `markata-go build --fast`, partial lifecycle calls, and fast or incremental
 development server requests do not publish a new artifact. A normal `serve`
 build may publish one when its full build completes successfully.

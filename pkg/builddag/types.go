@@ -16,6 +16,15 @@ func (id ArtifactID) String() string {
 	return id.Kind + ":" + id.Key
 }
 
+// artifactLess compares identity fields, not the potentially ambiguous display
+// string (kind and key may themselves contain colons).
+func artifactLess(a, b ArtifactID) bool {
+	if a.Kind != b.Kind {
+		return a.Kind < b.Kind
+	}
+	return a.Key < b.Key
+}
+
 // Scope describes the ownership boundary of a task.
 type Scope string
 
