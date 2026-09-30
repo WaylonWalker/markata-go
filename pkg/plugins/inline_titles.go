@@ -32,6 +32,7 @@ func (p *InlineTitlesPlugin) Priority(stage lifecycle.Stage) int {
 // Transform populates TitleHTML and TitleText without changing Title, which
 // remains the authored/source title for compatibility.
 func (p *InlineTitlesPlugin) Transform(m *lifecycle.Manager) error {
+	baseline := takeSemanticHashBaseline(m)
 	value, ok := m.Cache().Get(CacheKeyInlineRenderer)
 	if !ok {
 		renderer := NewRenderMarkdownPlugin()
@@ -62,12 +63,19 @@ func (p *InlineTitlesPlugin) Transform(m *lifecycle.Manager) error {
 		}
 		if cache := GetBuildCache(m); cache != nil {
 			cache.SetPostSlug(post.Path, post.Slug)
+			current := semanticHashes{
+				feed:   computePostFeedItemHash(post),
+				tag:    computePostTagIndexHash(post),
+				garden: computePostGardenHash(post),
+			}
 			feedChanged, tagChanged, gardenChanged := cache.UpdatePostSemanticHashes(
-				post.Path,
-				computePostFeedItemHash(post),
-				computePostTagIndexHash(post),
-				computePostGardenHash(post),
+				post.Path, current.feed, current.tag, current.garden,
 			)
+			if previous := baseline[post.Path]; previous != nil {
+				feedChanged = previous.feed != current.feed
+				tagChanged = previous.tag != current.tag
+				gardenChanged = previous.garden != current.garden
+			}
 			if feedChanged {
 				cache.MarkFeedSlugChanged(post.Slug)
 			}

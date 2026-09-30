@@ -13,6 +13,17 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `-m fast.toml` or `--merge-config fast.toml` when you want a slimmer dev config without editing the main site config
 - compare warm builds, not just cold builds
 - use `markata-go build --benchmark-json=benchmark.json` for structured timing
+- inspect `.content.template_cache` in benchmark JSON or `.template_cache` in
+  `<output_dir>/.markata/diagnostics.json` to explain template work. This optional
+  version-1 field contains bounded aggregate counts, not paths, template names,
+  hashes, or per-page labels. The first failing gate masks later reasons;
+  `nav_preview_reset` is contextual, not a per-page cause. Reconcile
+  `classified = restored + render_required` and
+  `render_required = render_succeeded + render_failed + serve_deferred`.
+  Compare equivalent warm samples with caches intact and account for host noise;
+  recurring misses are not automatically bugs or corruption. This partial
+  #1339 phase observes template cache decisions, not publish I/O, and preserves
+  HTML and invalidation behavior.
 - use `markata-go build -v --benchmark-detailed` when you need stage detail
 - use `markata-go buildlab run --fixture <path>` to check clean, incremental, and deterministic build behavior
 - read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
@@ -164,6 +175,39 @@ Use merge configs for scope changes. Use `--fast` for expensive output-step skip
 5. if the build is still CPU-heavy after network issues are understood, switch to `--cpuprofile`
 
 ## Common Culprits
+
+Source-encrypted posts intentionally reparse without decrypted parsed/article
+caches. An inferred title should compare canonical hashes to the prior build,
+not Load's intermediate untitled values; the handoff is transient and hash-only.
+Do not enable plaintext caching to remove template misses. Conservative Load
+feed/tag/garden signals still remain.
+
+Distinguish new entries from existing pages with missing derived semantic
+metadata after a cold navigation reset. The latter use the original comparison
+while repairing canonical hashes; missing metadata alone must not add unrelated
+slug misses. Preserve cold -> edit scope assertions instead of adding warm
+priming to hide the issue.
+
+Password or key-name rotation, public hint changes, source-path/accessibility
+changes, wrapper/browser-crypto revisions, and encrypted-cache loss can
+legitimately regenerate wrappers. Those pages and their dependent closure must
+be rendered **and published**, including empty-slug roots; diagnostics use
+`affected_path`. Valid hits should stabilize byte-for-byte on the next warm
+build. Random source-envelope ciphertext alone is not a canonical wrapper
+change. Do not treat missing-cache/key errors as hits or clear unrelated
+producer invalidations. Deletion drift (#1465) is a separate issue.
+
+Wrapper regeneration clears the old full-page reference before cache writes.
+A failed full-page write must leave that reference unavailable across metadata
+save/reload; an unchanged wrapper hit then re-renders with
+`full_html_unavailable`. Verify recovery with persisted cache and missing output,
+not just fresh `ArticleHTML`; never accept republished old-key ciphertext.
+
+For key-rotation acceptance, establish at least two consecutive warm page
+restorations with unchanged config/template/nav/static-asset identities before
+rotating. Decrypt actual disk-published HTML with the current key, including
+reverse rotation and subsequent steady warm builds. Global cold-to-warm resets
+must not serve as accidental publication invalidation.
 
 - remote metadata or embed fetching
 - blogroll and reader feed refreshes during normal builds when cache-only mode is not configured

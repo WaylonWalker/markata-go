@@ -82,6 +82,82 @@ Older version-1 artifacts created before executor reporting may omit the
 `executor` field; readers should treat that as unknown rather than infer it from
 other fields.
 
+## Template cache decisions
+
+Completed template rendering adds an optional `template_cache` object to the
+version-1 artifact, and to `content` in benchmark JSON:
+
+```bash
+jq '.template_cache' public/.markata/diagnostics.json
+jq '.content.template_cache' benchmark.json
+```
+
+Older version-1 artifacts without this object remain valid. It is independent
+of the profiler and contains bounded counts, not per-page cache diagnostics.
+`classified` counts non-skipped posts (including empty bodies); `skipped` is
+separate. `cacheable` counts metadata hits, `restored` counts usable full-page
+hits, and `render_required` includes misses later deferred by incremental serve.
+`render_succeeded` and `render_failed` count selected render results;
+`serve_deferred` counts pages excluded by the canonical incremental selection.
+A best-effort cache write failure does not turn a successful render into failure.
+
+`miss_reasons` reports only the **first failing gate**, in this order:
+`affected_path`, `cache_unavailable`, `input_hash_missing`, `entry_missing`,
+`input_hash_mismatch`, `template_mismatch`, `dependency_changed`, `slug_changed`,
+`feed_membership_changed`, `local_preview_changed`. A metadata hit can instead
+fall back to rendering with `full_html_unavailable` when the full-page getter
+returns empty. Empty cached input hashes are partial entries compared normally,
+not evidence of corruption. Empty or unavailable full HTML is not a corruption
+claim either.
+
+Earlier reasons mask later ones; the histogram does not enumerate every
+possible reason. `nav_preview_reset` reports whether shared navigation metadata
+reset the page cache in this invocation, not proof that each miss was caused
+by navigation. Repeated invocations replace the observations rather than
+accumulating them.
+
+To reconcile counts:
+
+```text
+classified - cacheable = sum(first ten reasons)
+cacheable = restored + full_html_unavailable
+render_required = sum(all eleven reasons)
+classified = restored + render_required
+render_required = render_succeeded + render_failed + serve_deferred
+```
+
+Expect cold-build misses and some recurring misses. Persistent misses are not
+automatically bugs: compare equivalent warm builds and their aggregate reasons
+before investigating invalidation. Timing varies with host activity and I/O.
+These counts contain no paths, template names, hashes, secrets, or per-page
+labels, and add no telemetry I/O. This is the template-cache portion of #1339;
+publish-I/O diagnostics are not implemented by this phase.
+
+## Unchanged private posts and encryption changes
+
+Source-encrypted posts are parsed on every build to avoid caching decrypted
+Markdown or article HTML. Their inferred titles are compared using canonical
+post-transform hashes from the previous build, not the temporary untitled
+values produced during Load. Losing a plain post's parsed cache follows the
+same rule. The handoff is transient and hash-only; diagnostics gain no titles,
+decrypted bodies, passwords, or per-private-post debug paths.
+
+Changing a password, key name, hint, or encrypted-wrapper format, or losing the
+encrypted wrapper cache, legitimately regenerates a wrapper. Encryption marks
+the source path and dependent pages for fresh templates and publication,
+including an empty-slug homepage. These misses use `affected_path`, not a new
+diagnostic reason. An unchanged valid wrapper hit does not add affected paths.
+An existing page can have missing semantic metadata immediately after a cold
+navigation reset. Those missing hashes are treated as an unavailable baseline,
+not evidence that the post is new. A subsequent edit therefore keeps unrelated
+pages cacheable while repairing canonical hashes, without requiring an extra
+warm-up build.
+Regeneration also clears the old full-page cache reference. If fresh page-cache
+storage fails, the next persisted reload re-renders using the current wrapper
+and reports `full_html_unavailable`; it cannot restore the old-password page.
+Load may still conservatively dirty feeds, tag indexes, or garden metadata;
+this fix does not clear those signals or address deletion drift (#1465).
+
 ## Privacy and publication behavior
 
 The artifact contains sanitized ledger data only. It does not contain raw

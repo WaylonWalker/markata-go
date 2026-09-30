@@ -68,6 +68,86 @@ plugin-local counters.
 
 ## Per-File Entry
 
+### Bounded template-cache observations
+
+Canonical title hashing MUST compare freshly parsed posts against prior-build
+semantic hashes, not Load's intermediate pre-auto-title values. This prevents
+unchanged source-encrypted posts (which deliberately bypass parsed caches)
+from generating false InlineTitles slug changes. Load's conservative dirty
+signals remain intact. Encryption-owned wrapper regeneration marks the source
+path and dependent closure; template diagnostics report those misses using the
+existing `affected_path` reason. The eleven reasons and artifact schema remain
+unchanged; no plaintext, passwords, or private debug paths are added.
+
+An existing processed post with incomplete prior semantic metadata MUST use
+the unavailable-baseline fallback, not new-post comparison. A cold navigation
+reset may leave valid page/input metadata but no semantic hashes. A subsequent
+linked-target edit MUST retain unrelated cache hits without warm priming or an
+extra `slug_changed` miss merely because those hashes were absent.
+
+If encrypted wrapper regeneration is followed by a failed full-page cache
+write, the invalidated full-page reference MUST remain unavailable after
+metadata save/reload. A subsequent unchanged wrapper hit MUST use the existing
+`full_html_unavailable` reason and render the current ciphertext, without adding
+encryption affected-path marks merely for being private.
+
+Snapshots and version-1 artifacts MAY contain `template_cache` before the final
+`entries` field. Older version-1 documents without it remain valid. Benchmark
+JSON exposes the same value at `.content.template_cache`; the artifact exposes
+it at `.template_cache`. This phase observes template cache decisions only; it
+does not implement publish-I/O diagnostics or change cache invalidation or HTML.
+
+The optional object contains scalar integer counts `classified`, `skipped`,
+`cacheable`, `restored`, `render_required`, `render_succeeded`, `render_failed`,
+and `serve_deferred`, a boolean `nav_preview_reset`, and a fixed `miss_reasons`
+object. Its eleven integer fields report only the first failing gate:
+
+1. `affected_path`: the existing outer affected-path gate (also on full builds);
+2. `cache_unavailable`: no build cache;
+3. `input_hash_missing`: the current post has no input hash;
+4. `entry_missing`: metadata has no entry;
+5. `input_hash_mismatch`: metadata input differs (including a partial cached
+   entry with an empty input hash);
+6. `template_mismatch`: metadata template differs;
+7. `dependency_changed`: a post dependency is in the changed-slug set;
+8. `slug_changed`: the post's own slug is in that set;
+9. `feed_membership_changed`: a nonempty current membership hash differs;
+10. `local_preview_changed`: the existing outer local-preview gate; and
+11. `full_html_unavailable`: a phase-1a hit whose phase-1b full-page getter
+    returns empty. This is not a corruption claim.
+
+Skipped posts are neither classified nor misses. Empty bodies are classified.
+Reasons MUST preserve this short-circuit precedence without reevaluating masked
+gates. `nav_preview_reset` records the existing shared-navigation reset result,
+not proof that any particular miss was caused by navigation.
+
+For the posts observed by one template invocation, counts MUST reconcile:
+
+```text
+post count = skipped + classified
+classified - cacheable = sum(first ten miss_reasons)
+cacheable = restored + full_html_unavailable
+render_required = sum(all eleven miss_reasons)
+classified = restored + render_required
+render_required = render_succeeded + render_failed + serve_deferred
+```
+
+Incremental canonical filtering records a deferred render without a second
+miss; noncanonical full-page hits are still restored. Successful rendering
+remains successful if best-effort cache storage fails. Heading revision and
+encryption certification rules remain unchanged.
+
+The manager-owned ledger MUST copy stats on setting and snapshotting under its
+lock. Reset and Discover clear them. Each template invocation clears previous
+stats before setup checks and publishes one replacement aggregate after worker
+join, including render failures. Setup failure leaves the field absent.
+Advancing one build through multiple `RunTo` calls MUST NOT clear observations.
+There is no active-profiler or global-manager dependency.
+
+Stats MUST remain bounded: no per-page telemetry records, source paths, template
+names, hashes, secret payload labels, disposition reasons, or telemetry I/O.
+Persistent misses are observations, not automatically bugs.
+
 Each entry records these booleans:
 
 - `candidate`

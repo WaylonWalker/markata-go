@@ -14,6 +14,25 @@ tags:
 
 markata-go includes a comprehensive benchmarking suite for measuring and optimizing build performance. This guide covers how to run benchmarks locally, interpret results, and use profiling tools to identify bottlenecks.
 
+### Explain template work before optimizing it
+
+Inspect `jq '.content.template_cache' benchmark.json`, or
+`jq '.template_cache' public/.markata/diagnostics.json` after a successful build.
+The optional, additive version-1 field counts classification, full-page
+restoration, render success/failure, and incremental serve deferral. Its bounded
+histogram records the first failing cache gate only; earlier gates mask later
+ones. `nav_preview_reset` is context, not proof of why individual pages missed.
+No paths, template names, hashes, or per-page telemetry are recorded.
+
+Compare equivalent warm builds without clearing their caches, and alternate
+samples to account for shared-host noise. A persistent miss count is not
+automatically a bug or evidence of corruption. Reconcile `classified =
+restored + render_required` and `render_required = render_succeeded +
+render_failed + serve_deferred` before attributing time to cache selection.
+See [Content Diagnostics](content-diagnostics.md#template-cache-decisions) for
+the complete precedence and reconciliation rules. This phase measures template
+cache decisions only, not publish I/O, and does not change rendered HTML.
+
 ## Quick Start
 
 Run the end-to-end build benchmark:
@@ -416,6 +435,32 @@ go test -bench=BenchmarkBuild_EndToEnd -run='^$' \
   -cpuprofile=cpu.prof \
   ./benchmarks/...
 ```
+
+### Source-encrypted warm builds
+
+Source-encrypted Markdown deliberately bypasses parsed-post and plaintext
+article caches. Reparsing alone should not force fresh page templates: the
+canonical title/feed/tag/garden hashes are compared against the previous build
+through a build-local, hash-only handoff. No decrypted snapshot is retained by
+that handoff, and no cache schema migration is required.
+
+For already processed posts, incomplete semantic hashes (for example after a
+cold navigation reset) mean the previous canonical baseline is unavailable.
+The build retains the original comparison for that pass and repairs the hashes,
+rather than marking every reparsed page changed. New entries still compare
+against an explicitly empty/partial baseline. Cold-to-edit cache scope does not
+require warm priming.
+
+Encrypted wrappers are reused only when article HTML, key name, resolved
+password, hint, source path, and wrapper/browser-crypto revision all match.
+Real wrapper regeneration invalidates the page and dependent closure before
+templates and publication; subsequent equivalent warm builds stabilize.
+It also clears the old full-page reference before cache writes. After a failed
+fresh full-page cache write, a persisted reload reports `full_html_unavailable`
+and re-renders with the current wrapper rather than restoring old ciphertext.
+Randomized source ciphertext for the same plaintext/key contract is not itself
+a wrapper miss. Older wrapper identities miss once. Conservative Load dirty
+signals for feeds, tags, and garden output remain unchanged.
 
 ## See Also
 

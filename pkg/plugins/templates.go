@@ -8,9 +8,11 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -329,6 +331,8 @@ func ensureFeedConfigsCached(config *lifecycle.Config, m *lifecycle.Manager) {
 // Phase 1b: Restore cached full-page HTML for unchanged posts.
 // Phase 2: Concurrent rendering only for posts that need it
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
+	ledger := m.ContentLedger()
+	ledger.SetTemplateCache(nil)
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
 	}
@@ -354,12 +358,13 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 	// Get build cache to check if posts need rebuilding
 	cache := GetBuildCache(m)
+	var stats diagnostics.TemplateCacheStats
 	if cache != nil {
 		encoded, err := json.Marshal(navPreviews)
 		if err != nil {
 			return fmt.Errorf("encode navigation previews: %w", err)
 		}
-		cache.SetNavPreviewHash(buildcache.ContentHash(string(encoded)))
+		stats.NavPreviewReset = cache.SetNavPreviewHash(buildcache.ContentHash(string(encoded)))
 	}
 	changedSlugs := getChangedSlugsMap(cache)
 	affected := lifecycle.GetServeAffectedPaths(m)
@@ -387,13 +392,18 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		// Skip posts marked to skip. Posts with an empty body still get a page
 		// (title, metadata, feed membership) so feed links never dangle.
 		if post.Skip {
+			stats.Skipped++
 			continue
 		}
 
 		// Check if we can use cached HTML (no disk I/O -- just map lookups)
-		if !affected[post.Path] && canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) && cache.GetLocalPreviewHash(post.Path) == localPreviewHash(post, p.localPreviews, p.siteURL) {
+		stats.Classified++
+		reason := p.templateCacheReason(post, cache, changedSlugs, feedMembershipHashes, affected)
+		if reason == templateCacheHit {
+			stats.Cacheable++
 			cacheablePosts = append(cacheablePosts, post)
 		} else {
+			recordTemplateCacheMiss(&stats.MissReasons, reason)
 			postsNeedingRender = append(postsNeedingRender, post)
 		}
 	}
@@ -409,12 +419,15 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	for _, post := range cacheablePosts {
 		cachedHTML := cache.GetCachedFullHTML(post.Path)
 		if cachedHTML == "" {
+			stats.MissReasons.FullHTMLUnavailable++
 			postsNeedingRender = append(postsNeedingRender, post)
 			continue
 		}
 		post.HTML = cachedHTML
+		stats.Restored++
 	}
 	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
+	stats.RenderRequired = len(postsNeedingRender)
 
 	// A missing article cache does not authorize rendering an unrelated page
 	// outside the incremental selection. Full-page hits above remain usable,
@@ -424,16 +437,21 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		for _, post := range postsNeedingRender {
 			if canonicalPaths[post.Path] {
 				filtered = append(filtered, post)
+			} else {
+				stats.ServeDeferred++
 			}
 		}
 		postsNeedingRender = filtered
 	}
 
 	// Phase 2: Process only posts that need rendering concurrently
+	// The worker pool processes every selected post even after an error.
+	var renderFailed atomic.Int64
 	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
 		html, err := p.renderPost(post, config, m, privatePaths)
 		if err != nil {
+			renderFailed.Add(1)
 			return err
 		}
 		post.HTML = html
@@ -444,6 +462,9 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	})
 	t3 := time.Now()
 	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
+	stats.RenderFailed = int(renderFailed.Load())
+	stats.RenderSucceeded = len(postsNeedingRender) - stats.RenderFailed
+	ledger.SetTemplateCache(&stats)
 	return err
 }
 
@@ -465,25 +486,70 @@ func (p *TemplatesPlugin) cacheRenderedPage(post *models.Post, cache *buildcache
 // canUseCachedHTML checks if a post can use cached HTML without doing any disk I/O.
 // This is the "decision" phase that determines cache eligibility.
 func canUseCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, feedMembershipHashes map[string]string) bool {
-	if cache == nil || post.InputHash == "" {
-		return false
+	return cachedHTMLReason(post, cache, changedSlugs, feedMembershipHashes) == templateCacheHit
+}
+
+// templateCacheReason preserves the outer affected/local-preview gates. Neither
+// it nor cachedHTMLReason evaluates gates masked by an earlier miss.
+func (p *TemplatesPlugin) templateCacheReason(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, feedMembershipHashes map[string]string, affected map[string]bool) templateCacheReason {
+	if affected[post.Path] {
+		return templateCacheAffectedPath
+	}
+	if reason := cachedHTMLReason(post, cache, changedSlugs, feedMembershipHashes); reason != templateCacheHit {
+		return reason
+	}
+	if cache.GetLocalPreviewHash(post.Path) != localPreviewHash(post, p.localPreviews, p.siteURL) {
+		return templateCacheLocalPreviewChanged
+	}
+	return templateCacheHit
+}
+
+type templateCacheReason uint8
+
+const (
+	templateCacheHit templateCacheReason = iota
+	templateCacheAffectedPath
+	templateCacheUnavailable
+	templateCacheInputHashMissing
+	templateCacheEntryMissing
+	templateCacheInputHashMismatch
+	templateCacheTemplateMismatch
+	templateCacheDependencyChanged
+	templateCacheSlugChanged
+	templateCacheFeedMembershipChanged
+	templateCacheLocalPreviewChanged
+)
+
+func cachedHTMLReason(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, feedMembershipHashes map[string]string) templateCacheReason {
+	if cache == nil {
+		return templateCacheUnavailable
+	}
+	if post.InputHash == "" {
+		return templateCacheInputHashMissing
 	}
 
 	// Check if post itself changed
-	if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
-		return false
+	switch cache.ReasonForRebuild(post.Path, post.InputHash, post.Template) {
+	case buildcache.RebuildReasonMissingEntry:
+		return templateCacheEntryMissing
+	case buildcache.RebuildReasonInputChanged:
+		return templateCacheInputHashMismatch
+	case buildcache.RebuildReasonTemplateChanged:
+		return templateCacheTemplateMismatch
+	case buildcache.RebuildReasonNone:
+		// Continue with the existing post-local gates.
 	}
 
 	// Check if any dependency changed
 	if len(changedSlugs) > 0 {
 		for _, dep := range post.Dependencies {
 			if changedSlugs[dep] {
-				return false
+				return templateCacheDependencyChanged
 			}
 		}
 		// Check if this post's slug is in changedSlugs
 		if changedSlugs[post.Slug] {
-			return false
+			return templateCacheSlugChanged
 		}
 	}
 
@@ -491,11 +557,38 @@ func canUseCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs m
 	if currentHash := lookupFeedMembershipHash(post, feedMembershipHashes); currentHash != "" {
 		cachedHash := cache.GetFeedMembershipHash(post.Path)
 		if cachedHash != currentHash {
-			return false
+			return templateCacheFeedMembershipChanged
 		}
 	}
 
-	return true
+	return templateCacheHit
+}
+
+func recordTemplateCacheMiss(reasons *diagnostics.TemplateCacheMissReasons, reason templateCacheReason) {
+	switch reason {
+	case templateCacheAffectedPath:
+		reasons.AffectedPath++
+	case templateCacheUnavailable:
+		reasons.CacheUnavailable++
+	case templateCacheInputHashMissing:
+		reasons.InputHashMissing++
+	case templateCacheEntryMissing:
+		reasons.EntryMissing++
+	case templateCacheInputHashMismatch:
+		reasons.InputHashMismatch++
+	case templateCacheTemplateMismatch:
+		reasons.TemplateMismatch++
+	case templateCacheDependencyChanged:
+		reasons.DependencyChanged++
+	case templateCacheSlugChanged:
+		reasons.SlugChanged++
+	case templateCacheFeedMembershipChanged:
+		reasons.FeedMembershipChanged++
+	case templateCacheLocalPreviewChanged:
+		reasons.LocalPreviewChanged++
+	case templateCacheHit:
+		// Hits have no miss reason.
+	}
 }
 
 // getChangedSlugsMap returns a map of slugs that changed in this build.

@@ -51,6 +51,50 @@ without returning partial HTML. Missing or unreadable disk cache entries MUST
 remain cache misses so the caller can re-render, never publish a partial page.
 Existing in-memory hits MUST remain usable without accessing the disk.
 
+Template cache diagnostics MUST observe the existing first-failing gates,
+without changing selection, freshness, rendering, restoration, or best-effort
+storage behavior. The bounded `template_cache` aggregate and reconciliation
+rules are specified in [Content Diagnostics](CONTENT_DIAGNOSTICS.md).
+An empty full-page getter result remains a render fallback, including an empty
+cached page; skipped posts are not classified, while empty article bodies are.
+
+### Canonical semantic hash handoff
+
+For every freshly parsed post, Load MUST capture the previous feed, tag, and
+garden hashes before updating cache metadata. The build-local handoff MUST
+contain only source paths and these three hashes, be concurrency-safe, capture
+each path only once, and bind to the actual build-cache instance. An explicitly
+captured empty triplet represents a new post, not an absent handoff.
+
+An existing entry with a recorded input identity but incomplete semantic hashes
+does not provide a canonical baseline. This can occur when the cold navigation
+reset drops derived metadata before pages are rendered and published again.
+Load MUST capture that unavailability once per path, rather than interpreting
+missing hashes as a new post or recapturing its later intermediate hashes.
+InlineTitles MUST retain the original Update-return comparison for such paths.
+Fresh entries without a prior input identity still have a valid empty/partial
+triplet. The handoff may encode unavailability without retaining another hash,
+post snapshot, or private value.
+
+Every Load invocation MUST reset the handoff, including early-return paths.
+InlineTitles MUST persist the current canonical hashes after auto-title
+inference, comparing against the captured prior-build hashes for its own
+feed/slug invalidation when available. Otherwise it MUST retain the existing
+Update-return comparisons. The handoff MUST be consumed and discarded after
+InlineTitles completes, including errors; repeated execution and other managers
+or cache instances MUST NOT reuse it.
+
+Load-only and nonstandard pipelines retain Load's existing updates and
+conservative feed/tag/garden dirty signals. This handoff MUST NOT clear changes
+from other producers, or permit decrypted parsed-post/article caching.
+Encryption MUST independently invalidate pages when their encrypted wrapper is
+regenerated (see [Encryption](ENCRYPTION.md)).
+
+Regenerated encrypted wrappers MUST invalidate the previous full-page cache
+reference before fresh page storage. If best-effort full-page storage fails,
+the reference MUST remain unavailable across cache save/reload, so the next
+unchanged wrapper hit re-renders rather than restores stale ciphertext.
+
 ---
 
 ## Template Location
