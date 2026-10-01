@@ -1230,6 +1230,19 @@ subscription_feeds_disabled = true
 
 Or define your own feeds with `slug = ""` or `slug = "archive"` to override the defaults.
 
+### Pins Feed (slug="pins")
+
+When subscription feeds are enabled, the plugin MUST also provide an implicit
+HTML-only `/pins/` feed using `pins.html`, the filter `published == true and link`,
+and descending date order. A configured archive MUST remain unchanged alongside
+the implicit root and Pins feeds.
+
+A configured `pins` feed MUST remain authoritative. A published, non-draft,
+non-skipped authored post owning the `pins` slug MUST prevent implicit Pins feed
+injection. Generic `link` frontmatter MUST remain render-neutral outside Pins.
+
+See the [Pins guide](../../docs/guides/pins.md) for usage.
+
 ---
 
 ## Configuration Inheritance
