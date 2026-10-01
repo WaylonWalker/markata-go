@@ -15,6 +15,14 @@ reverse = true
 
 ## Common Patterns
 
+### Saved Links (Pins)
+
+For a link board, use the built-in `/pins/` feed: published posts with non-empty
+`link` frontmatter appear newest first. A configured `pins` feed takes precedence;
+a publishable authored `pins` post keeps the route. Generic `link` frontmatter
+remains render-neutral outside Pins. Disabling subscription feeds also disables
+implicit Pins injection.
+
 ### Home Feed
 
 ```toml
