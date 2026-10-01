@@ -163,3 +163,7 @@ an independent builder-admin deployment, source checkout, release root, ingress 
 secret. The webhook endpoint is `/webhook`; configure its secret through
 `MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET` or a Kubernetes Secret, never commit it to the site
 repository. See the Builder Admin deployment guide for Git-provider and Helm setup.
+
+## Builder workspace performance
+
+When builder-admin preparation dominates warm builds, inspect the workspace mount and prepare/promote timings. A retained node-local workspace skips reseeding only when its successful-release marker matches current. Failed builds and rollbacks reseed safely. Keep published releases on durable storage; a fast workspace does not remove the cross-filesystem promotion copy. Use a persistent hostPath workspace to retain warm output across pod replacement, and verify the physical disk behind its path.

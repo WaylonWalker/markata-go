@@ -372,3 +372,7 @@ without the operator ForwardAuth middleware. Its HMAC secret MUST be supplied fr
 Secret rather than a command-line argument.
 
 The default rendered-release retention MUST keep at least 25 releases, including the current live release, so operators have more than ten rollback targets by default.
+
+## Retained build workspace reuse
+
+A workspace retained after cross-filesystem promotion MUST be marked with the exact successfully promoted release ID. The marker MUST live beside the workspace, outside generated output. Preparation MAY reuse the retained workspace only when its marker matches the current live release, and MUST consume the marker before mutation. Missing or mismatched proof, a failed or interrupted build, and rollback MUST force a fresh seed from current. Same-filesystem promotion consumes the workspace by rename and MUST clear stale proof. A marker write failure after successful publication MUST be logged without changing the successful build result. Warm preparation MUST log when it reuses output instead of copying current.
