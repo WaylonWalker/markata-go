@@ -139,10 +139,15 @@ func validateMinifyCacheLocation(base, dir, output string) error {
 	// would be created private and must not contain the published output.
 	for path := base; ; path = filepath.Dir(path) {
 		_, err := os.Lstat(path)
-		if err == nil || errors.Is(err, syscall.ENOTDIR) {
+		if err == nil {
 			return nil
 		}
 		if !os.IsNotExist(err) {
+			// On Windows ENOTDIR aliases ERROR_PATH_NOT_FOUND, so missing
+			// ancestors must reach overlap validation before this fallback.
+			if errors.Is(err, syscall.ENOTDIR) {
+				return nil
+			}
 			return fmt.Errorf("inspect cache ancestor: %w", err)
 		}
 		resolved, err := resolveMinifyPath(path)

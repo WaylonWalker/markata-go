@@ -1572,6 +1572,10 @@ Both `css_minify` and `js_minify` use shared helper functions in `minify_helpers
   that creation or permission changes could affect BEFORE performing those
   operations. Private cache parents must not contain published output either.
   Unsafe storage is warned about and disabled without changing output permissions.
+  Missing ancestors MUST undergo overlap validation before treating `ENOTDIR`
+  as a non-directory fallback: on Windows, `ENOTDIR` also represents a missing
+  path. Preserve the fallback for genuine non-directory ancestors and report
+  other inspection failures explicitly.
 - Private directories use mode `0700`; records and content-addressed blobs use
   `0600`. Per-asset records live in `records/<relativepathhash>.json` and blobs
   in `blobs/<sha256>`. Only discovered output assets authorize target writes.

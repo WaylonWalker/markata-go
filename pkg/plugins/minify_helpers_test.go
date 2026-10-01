@@ -37,6 +37,26 @@ func readMinifyFixture(t *testing.T, path string) []byte {
 	return data
 }
 
+// statMinifyFixture captures identity from an open handle: os.Stat on Windows
+// defers loading file IDs until SameFile, which may reopen an already replaced
+// path. Close the handle before returning so it cannot block replacement.
+func statMinifyFixture(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, statErr := file.Stat()
+	closeErr := file.Close()
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
+	if closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	return info
+}
+
 func newMinifyFixture(t *testing.T, kind string) (*lifecycle.Config, *minifyCache, string) {
 	t.Helper()
 	site := t.TempDir()
@@ -112,14 +132,7 @@ func TestMinifyCache_ExactReuse(t *testing.T) {
 				t.Fatal("cold output differs from uncached transform")
 			}
 			recordPath := filepath.Join(cache.dir, minifyRecordPath(filepath.Base(path)))
-			targetBefore, err := os.Stat(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			recordBefore, err := os.Stat(recordPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			recordBefore := statMinifyFixture(t, recordPath)
 			// Reopen to prove reuse survives process/plugin lifetimes.
 			cache.close()
 			reopened, err := newMinifyCache(config, kind)
@@ -129,22 +142,20 @@ func TestMinifyCache_ExactReuse(t *testing.T) {
 			defer reopened.close()
 			for i := 0; i < 3; i++ {
 				writeMinifyFixture(t, path, raw)
+				targetBefore := statMinifyFixture(t, path)
 				requireMinifyStatus(t, path, recipe, reopened, counted, "restored")
+				targetAfter := statMinifyFixture(t, path)
+				if os.SameFile(targetBefore, targetAfter) {
+					t.Fatal("exact-input restore failed to replace target")
+				}
 				if !bytes.Equal(readMinifyFixture(t, path), expected) {
 					t.Fatal("raw recopy did not restore exact bytes")
 				}
 			}
-			targetAfter, err := os.Stat(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			recordAfter, err := os.Stat(recordPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if os.SameFile(targetBefore, targetAfter) || !os.SameFile(recordBefore, recordAfter) ||
+			recordAfter := statMinifyFixture(t, recordPath)
+			if !os.SameFile(recordBefore, recordAfter) ||
 				!recordBefore.ModTime().Equal(recordAfter.ModTime()) {
-				t.Fatal("exact-input restore failed to replace target or rewrote the record")
+				t.Fatal("exact-input restore rewrote the record")
 			}
 			if calls != 1 {
 				t.Fatalf("minifier calls = %d, want 1 (zero for repeated raw copies)", calls)
@@ -814,6 +825,29 @@ func TestMinifyCache_BaseAncestorCreationGuard(t *testing.T) {
 			t.Fatal("validation created a private ancestor of published output")
 		}
 	})
+	t.Run("missing-private-parent", func(t *testing.T) {
+		config := lifecycle.NewConfig()
+		config.ContentDir = t.TempDir()
+		config.OutputDir = filepath.Join(config.ContentDir, "published")
+		parent := filepath.Join(config.ContentDir, "missing", "private")
+		config.Extra["cache_dir"] = filepath.Join(parent, "cache")
+		cache, err := newMinifyCache(config, cssMinifyPluginName)
+		if cache != nil {
+			defer cache.close()
+		}
+		if err != nil {
+			t.Fatalf("missing ancestors outside published output should be safe: %v", err)
+		}
+		if cache == nil {
+			t.Fatal("safe missing cache ancestors disabled caching")
+		}
+		if _, err := os.Stat(filepath.Join(cache.dir, "records")); err != nil {
+			t.Fatalf("safe private storage was not created: %v", err)
+		}
+		if _, err := os.Lstat(config.OutputDir); !os.IsNotExist(err) {
+			t.Fatal("cache setup created published output")
+		}
+	})
 	t.Run("existing-shared-parent", func(t *testing.T) {
 		config := lifecycle.NewConfig()
 		config.ContentDir = t.TempDir()
@@ -880,20 +914,14 @@ func TestMinifyCache_IdenticalFreshTransformPublication(t *testing.T) {
 						t.Fatalf("fixture does not reproduce a byte-identical fresh transformation: %q -> %q", raw, result)
 					}
 					writeMinifyFixture(t, path, raw)
-					before, err := os.Stat(path)
-					if err != nil {
-						t.Fatal(err)
-					}
+					before := statMinifyFixture(t, path)
 					release := filepath.Join(config.ContentDir, "old-release")
 					if err := os.Link(path, release); err != nil {
 						t.Skipf("hardlinks unavailable: %v", err)
 					}
 					recipe := minifyRecipe(kind, nil)
 					requireMinifyStatus(t, path, recipe, cache, transform, "transformed")
-					after, err := os.Stat(path)
-					if err != nil {
-						t.Fatal(err)
-					}
+					after := statMinifyFixture(t, path)
 					if kind == "js_minify" && empty {
 						if !os.SameFile(before, after) || before.Mode() != after.Mode() {
 							t.Fatal("empty JavaScript no-write exception changed")
@@ -906,20 +934,14 @@ func TestMinifyCache_IdenticalFreshTransformPublication(t *testing.T) {
 							t.Errorf("fresh target mode = %o, want 644", after.Mode().Perm())
 						}
 					}
-					oldRelease, err := os.Stat(release)
-					if err != nil {
-						t.Fatal(err)
-					}
+					oldRelease := statMinifyFixture(t, release)
 					if !os.SameFile(before, oldRelease) || before.Mode() != oldRelease.Mode() ||
 						!bytes.Equal(readMinifyFixture(t, release), raw) {
 						t.Fatal("atomic publication changed old hard-linked release")
 					}
 					if enabled {
 						requireMinifyStatus(t, path, recipe, cache, transform, "restored")
-						warm, err := os.Stat(path)
-						if err != nil {
-							t.Fatal(err)
-						}
+						warm := statMinifyFixture(t, path)
 						if after.Mode() != warm.Mode() ||
 							(os.SameFile(after, warm) != (kind == "js_minify" && empty)) {
 							t.Fatal("exact-input restore did not follow atomic publication/empty-JS rules")
@@ -1096,8 +1118,13 @@ func TestMinifyCache_StaticAssetsFinalCycle(t *testing.T) {
 			t.Fatal(err)
 		}
 		for asset, expected := range map[string][]byte{"deep/site.css": cssExpected, "root.js": jsExpected} {
+			asset = filepath.FromSlash(asset)
+			hash, ok := manager.AssetHashes()[asset]
+			if !ok || hash == "" {
+				t.Fatalf("cycle %d asset %s has no hash", cycle, asset)
+			}
 			ext := filepath.Ext(asset)
-			alias := strings.TrimSuffix(asset, ext) + "." + manager.AssetHashes()[asset] + ext
+			alias := strings.TrimSuffix(asset, ext) + "." + hash + ext
 			for _, relative := range []string{asset, alias} {
 				if !bytes.Equal(readMinifyFixture(t, filepath.Join(config.OutputDir, relative)), expected) {
 					t.Fatalf("cycle %d asset %s differs from uncached bytes", cycle, relative)

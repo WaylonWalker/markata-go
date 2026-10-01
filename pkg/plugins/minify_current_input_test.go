@@ -171,10 +171,7 @@ func TestMinifyCache_ExactInputRestoresAtomically(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeMinifyFixture(t, path, result)
-			before, err := os.Stat(path)
-			if err != nil {
-				t.Fatal(err)
-			}
+			before := statMinifyFixture(t, path)
 			release := filepath.Join(config.ContentDir, "release")
 			if err := os.Link(path, release); err != nil {
 				t.Skipf("hardlinks unavailable: %v", err)
@@ -184,14 +181,8 @@ func TestMinifyCache_ExactInputRestoresAtomically(t *testing.T) {
 				return nil, nil
 			}
 			requireMinifyStatus(t, path, recipe, cache, noTransform, "restored")
-			after, err := os.Stat(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			old, err := os.Stat(release)
-			if err != nil {
-				t.Fatal(err)
-			}
+			after := statMinifyFixture(t, path)
+			old := statMinifyFixture(t, release)
 			if os.SameFile(before, after) || after.Mode().Perm() != 0o644 ||
 				!os.SameFile(before, old) || old.Mode().Perm() != 0o600 {
 				t.Fatal("exact-input restore was not hard-link-safe atomic replacement")
@@ -200,8 +191,8 @@ func TestMinifyCache_ExactInputRestoresAtomically(t *testing.T) {
 				t.Fatal("normalization changed output or release bytes")
 			}
 			requireMinifyStatus(t, path, recipe, cache, noTransform, "restored")
-			warm, err := os.Stat(path)
-			if err != nil || os.SameFile(after, warm) || warm.Mode().Perm() != 0o644 {
+			warm := statMinifyFixture(t, path)
+			if os.SameFile(after, warm) || warm.Mode().Perm() != 0o644 {
 				t.Fatal("exact-input hit did not atomically republish normally permissioned target")
 			}
 		})
