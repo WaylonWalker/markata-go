@@ -392,3 +392,7 @@ With a separate node-local workspace, successful cross-filesystem promotion reta
 ### Background release cleanup
 
 Builder Admin first removes obsolete releases from the published release list with an atomic rename, then deletes their files in the background. Large cleanup jobs do not hold the lock needed for promotion or rollback. Internal `.pruning-` directories are not rollback targets; interrupted cleanup is retried on the next prune run. Published build success is separate from cleanup errors, which appear in service logs.
+
+### Successful build but nginx returns 403
+
+If nginx reports `current/index.html is forbidden (13: Permission denied)`, inspect the completed release root permissions. Builder-admin publishes release roots as `0755` so nginx can traverse them. Older cross-filesystem publication could retain a private `0700` staging directory, and subsequent seeded builds could inherit it. Upgrade the engine and correct affected retained release roots to `0755`; child file permissions do not need a recursive change for this defect.
