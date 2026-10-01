@@ -148,3 +148,102 @@
   .pin-card:hover .pin-image, .pin-card:focus-within .pin-image,
   .pin-card:hover .pin-source-mark, .pin-card:focus-within .pin-source-mark { transform: none; filter: none; box-shadow: none; }
 }
+
+/* Keep unloaded preview placeholders out of the masonry columns. */
+.pin-image-link[hidden] { display: none; }
+/* Let cover art determine card height rather than cropping tall images. */
+.feed--pins .pin-image { height: auto; max-height: none; object-fit: contain; }
+
+/* Pins uses the viewport rather than the article reading width. */
+.page-wrapper.page-wrapper--feed-only:has(.feed--pins) {
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  padding: 1rem clamp(1rem, 2vw, 2rem) 0;
+}
+.page-wrapper.page-wrapper--feed-only:has(.feed--pins) > .main-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.main-content > .feed.h-feed.feed--pins {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+.feed--pins .pins-header {
+  padding: 1.5rem clamp(.75rem, 1.5vw, 1.5rem) 1.4rem;
+}
+.feed--pins .pins-heading-row h1 { font-size: clamp(2.7rem, 5vw, 4.5rem); }
+.feed--pins .pins-rule { margin-top: 1.5rem; }
+.feed--pins .pins-board { columns: auto 225px; column-gap: 1rem; }
+.feed--pins .pin-card { position: relative; overflow: hidden; }
+.feed--pins .pin-image-link { overflow: hidden; border-radius: .55rem .55rem 0 0; }
+.feed--pins .pin-card-content { padding: .85rem; }
+.feed--pins .pin-title { font-size: 1.1rem; }
+.feed--pins .pin-source { font-weight: 500; }
+.feed--pins .pin-image { transition: transform 240ms ease, filter 240ms ease; }
+.feed--pins .pin-card:hover .pin-image,
+.feed--pins .pin-card:focus-within .pin-image { transform: scale(1.025); filter: brightness(.85); }
+.feed--pins .pin-card:hover,
+.feed--pins .pin-card:focus-within { transform: none; }
+
+.pin-commentary[hidden] { display: none; }
+.pin-commentary { position: relative; margin-top: .75rem; }
+.pin-commentary summary { cursor: pointer; list-style: none; }
+.pin-commentary summary::-webkit-details-marker { display: none; }
+.pin-commentary summary:focus-visible { outline-offset: 4px; }
+.pin-commentary-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: .35rem;
+  color: var(--color-primary);
+  font: 600 .65rem/1.4 var(--font-mono, monospace);
+  letter-spacing: .03em;
+}
+.pin-commentary-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.pin-commentary-full {
+  white-space: pre-line;
+  color: var(--color-text);
+  font-size: .9rem;
+  line-height: 1.6;
+}
+.pin-commentary[open] .pin-commentary-label span { transform: rotate(45deg); }
+/* Full commentary stays in document flow and opens intentionally. */
+.pin-commentary[open] .pin-commentary-preview { display: none; }
+.pin-commentary[open] .pin-commentary-full {
+  margin-top: .5rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .feed--pins .pins-board { columns: 2; column-gap: .65rem; }
+  .feed--pins .pin-card-content { padding: .7rem; }
+  .feed--pins .pin-title { font-size: 1rem; }
+}
+@media (max-width: 350px) { .feed--pins .pins-board { columns: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .feed--pins .pin-image { transition: none; }
+  .feed--pins .pin-card:hover, .feed--pins .pin-card:focus-within,
+  .feed--pins .pin-card:hover .pin-image, .feed--pins .pin-card:focus-within .pin-image { transform: none; }
+}
+
+/* Card metadata shares the card surface rather than the site's footer panel. */
+.feed--pins .pin-footer {
+  width: auto;
+  max-width: none;
+  margin: .85rem 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

@@ -31,7 +31,7 @@
       </div>
       <div class="pins-count"><strong>{{ feed_stats_total_posts }}</strong><span>collected links</span></div>
     </div>
-    <div class="pins-rule"><span>Worth keeping</span><span>{% if feed_stats_latest_post %}Last filed {{ feed_stats_latest_post }}{% else %}Collected as we go{% endif %}</span></div>
+    <div class="pins-rule"><span>Saved links</span><span>{% if feed_stats_latest_post %}Last filed {{ feed_stats_latest_post }}{% else %}Collected as we go{% endif %}</span></div>
   </header>
 
   {% if config.author %}
@@ -46,10 +46,11 @@
   {% endif %}
   <div class="pins-board" id="posts-list" aria-label="Saved links">
     {% for post in pin_posts %}
-    <article class="pin-card h-entry{% if post.image %} pin-card--illustrated{% endif %}">
-      {% if post.image %}
+    {% with post|pin_preview as preview %}
+    <article class="pin-card h-entry{% if preview.image %} pin-card--illustrated{% endif %}">
+      {% if preview.image %}
       <a class="pin-image-link" href="{{ post.href }}" tabindex="-1" aria-hidden="true">
-        <img class="pin-image u-photo" src="{{ post.image | with_size:'720' }}" alt="" loading="lazy" decoding="async">
+        <img class="pin-image u-photo" src="{{ preview.image | with_size:'720' }}" alt="" loading="lazy" decoding="async">
       </a>
       {% endif %}
       <div class="pin-card-content">
@@ -62,7 +63,15 @@
           {% if post.date %}<time class="pin-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
         </div>
         <h2 class="pin-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
-        {% if post.description %}<p class="pin-summary p-summary">{{ post.description }}</p>{% endif %}
+        {% if preview.commentary %}
+        <details class="pin-commentary">
+          <summary>
+            <span class="pin-commentary-label">Note <span aria-hidden="true">+</span></span>
+            <span class="pin-commentary-preview p-summary">{{ preview.commentary }}</span>
+          </summary>
+          <div class="pin-commentary-full">{{ preview.commentary }}</div>
+        </details>
+        {% endif %}
         {% if post.tags %}
         <footer class="pin-footer">
           <div class="pin-tags">
@@ -75,6 +84,7 @@
         {% endif %}
       </div>
     </article>
+    {% endwith %}
     {% endfor %}
   </div>
 

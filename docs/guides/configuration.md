@@ -1994,6 +1994,10 @@ See the [[search|Search Guide]] for detailed usage and customization.
 
 ### Feed Defaults (`[markata-go.feed_defaults]`)
 
+The implicit [Pins feed](./pins.md) uses 100 items per page and manual pagination.
+To change those values, define a feed with `slug = "pins"`; its configuration
+takes precedence over the built-in Pins definition.
+
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `items_per_page` | int | `10` | Default items per page |
