@@ -159,3 +159,48 @@ func TestPrepareBuildUsesConfiguredWorkDir(t *testing.T) {
 		t.Fatalf("legacy workspace should not be created when WorkDir is configured: %v", err)
 	}
 }
+
+func TestPublishWorkspace_PrivateRootReadableByStaticServer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX directory permissions")
+	}
+	for _, mode := range []string{"rename", "fallback", "stage"} {
+		t.Run(mode, func(t *testing.T) {
+			root := t.TempDir()
+			workspace := filepath.Join(root, "workspace")
+			writeWorkspaceFixture(t, workspace)
+			if err := os.Chmod(workspace, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			releases := filepath.Join(root, "releases")
+			var final string
+			var err error
+			switch mode {
+			case "rename":
+				final, err = promoteWorkspaceRelease(workspace, releases, "published")
+			case "fallback":
+				final, err = promoteWorkspaceReleaseWithRename(workspace, releases, "published", func(string, string) error { return errors.New("cross-device rename") })
+			case "stage":
+				final, err = stageWorkspaceRelease(workspace, releases, "published")
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			info, err := os.Stat(final)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := info.Mode().Perm(); got != 0o755 {
+				t.Fatalf("release root mode = %o, want 755", got)
+			}
+			child, err := os.Stat(filepath.Join(final, "post", "index.html"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := child.Mode().Perm(); got != 0o640 {
+				t.Fatalf("child permissions changed: %o", got)
+			}
+			assertWorkspaceRelease(t, final)
+		})
+	}
+}
