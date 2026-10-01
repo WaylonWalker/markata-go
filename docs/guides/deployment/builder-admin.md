@@ -388,3 +388,7 @@ Use them to keep reader/blogroll data or other remote caches fresh without slowi
 ### Retaining a warm workspace
 
 With a separate node-local workspace, successful cross-filesystem promotion retains the completed output for the next build. Builder Admin reuses it only when it matches the current release, avoiding another full copy during preparation. Logs report `reusing build work from current release`. Failed or interrupted builds and rollbacks trigger a fresh seed. Keep the workspace on persistent node-local storage to retain it across pod restarts; an `emptyDir` survives container restarts but is lost with the pod. Published releases remain on the configured site volume, and promotion still stages a complete copy before switching `current`.
+
+### Background release cleanup
+
+Builder Admin first removes obsolete releases from the published release list with an atomic rename, then deletes their files in the background. Large cleanup jobs do not hold the lock needed for promotion or rollback. Internal `.pruning-` directories are not rollback targets; interrupted cleanup is retried on the next prune run. Published build success is separate from cleanup errors, which appear in service logs.
