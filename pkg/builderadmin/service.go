@@ -1165,6 +1165,9 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	record.ReleaseID = releaseID
 	record.ReleasePath = releasePath
 	record.BecameLive = true
+	if err := markReusableWorkspace(buildWork, releaseID); err != nil {
+		_, _ = fmt.Fprintln(logFile, "workspace reuse unavailable:", err)
+	}
 
 	record.Status = "success"
 	record.FinishedAt = time.Now().UTC()
@@ -1306,6 +1309,17 @@ func (s *Service) prepareBuild(log io.Writer) error {
 		}
 	}
 	buildWork := s.cfg.WorkDir
+	reusable, err := claimReusableWorkspace(buildWork, s.currentReleaseID())
+	if err != nil {
+		return err
+	}
+	if reusable {
+		_, _ = fmt.Fprintln(log, "reusing build work from current release")
+		return nil
+	}
+	if err := invalidateReusableWorkspace(buildWork); err != nil {
+		return err
+	}
 	if err := os.RemoveAll(buildWork); err != nil {
 		return err
 	}
