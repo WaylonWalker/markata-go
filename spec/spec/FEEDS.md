@@ -1289,6 +1289,8 @@ This pagination bounds active calendar rendering cost. The full-history source
 payload remains available for the no-JavaScript fallback and year navigation;
 this change does not promise smaller HTML transfers.
 
+Calendar month panels and year selector options use theme surface/text colors. Dedicated calendar feeds may use the page wrapper width; containers at least 73.25rem wide show four month columns in three rows. Smaller containers retain responsive readable columns.
+
 ## Configuration Inheritance
 
 Feed configuration follows a **defaults → override** pattern. Global defaults apply to all feeds, and individual feeds can override any setting.

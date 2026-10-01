@@ -1582,6 +1582,8 @@ the years available in Calendar.
 For a calendar-first feed, set `templates.html = "calendar-feed.html"` on the
 feed. The same annual navigation applies, using `?year=2024` on its URL.
 
+Calendar panels and the year selector follow the active theme surface and text colors. On wide calendar pages, twelve months form four columns and three rows; smaller containers keep fewer, readable columns.
+
 ## See Also
 
 - [Configuration Guide](/docs/guides/configuration/) - Full configuration reference

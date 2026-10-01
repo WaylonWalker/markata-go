@@ -1,3 +1,6 @@
+.page-wrapper:has(> .main-content > .feed.h-feed.calendar-feed):not(:has(.feed-sidebar, .content-sidebar, .doc-sidebar)) > .main-content {
+  max-width: 100%;
+}
 /* Calendar pages have room for readable months, independent of article width. */
 .main-content > .feed.h-feed.calendar-feed {
   width: 100%;
@@ -30,7 +33,7 @@
   margin-block: 0.75rem 0;
   border: 1px solid var(--calendar-border);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, currentColor 4%, transparent);
+  background: var(--color-surface, var(--color-background));
 }
 
 .calendar-view-switch[hidden] {
@@ -95,14 +98,25 @@
   padding: 0.4rem 1.6rem 0.4rem 0.8rem;
   font: inherit;
   font-weight: 700;
-  color: inherit;
-  background: transparent;
+  color: var(--color-text);
+  background-color: var(--color-surface, var(--color-background));
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
   background-position: calc(100% - 0.8rem) 52%, calc(100% - 0.55rem) 52%;
   background-size: 0.28rem 0.28rem, 0.28rem 0.28rem;
   background-repeat: no-repeat;
   cursor: pointer;
 }
+
+.calendar-year-nav select option {
+  color: var(--color-text);
+  background-color: var(--color-surface, var(--color-background));
+}
+.calendar-year-nav select:focus-visible {
+  outline: 2px solid var(--calendar-active);
+  outline-offset: 2px;
+}
+html.dark .calendar-year-nav select { color-scheme: dark; }
+html.light .calendar-year-nav select { color-scheme: light; }
 
 .calendar-year-nav button:disabled {
   opacity: 0.4;
@@ -112,6 +126,7 @@
 .calendar-feed-years {
   display: grid;
   gap: clamp(2rem, 5vw, 4rem);
+  container-type: inline-size;
 }
 
 .calendar-year {
@@ -130,6 +145,10 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
   gap: clamp(1rem, 2vw, 1.75rem);
   align-items: start;
+}
+
+@container (min-width: 73.25rem) {
+  .calendar-months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 .calendar-year-header {
@@ -152,7 +171,7 @@
   padding: .9rem;
   border: 1px solid var(--calendar-border);
   border-radius: .75rem;
-  background: color-mix(in srgb, var(--color-background, transparent) 92%, var(--calendar-active) 8%);
+  background: var(--color-surface, var(--color-background));
 }
 
 .calendar-month h3 {

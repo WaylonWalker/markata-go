@@ -222,3 +222,5 @@ A value of `0` or an omitted value means no cap. When capped, markata-go renders
 - if the task is “make post sidebars shorter” or “speed up huge series sidebars”, check `components.feed_sidebar.max_posts`
 - if the task is “change archive card layout”, change the feed template or card partial before changing content
 - if the task is “show publishing cadence/history as a calendar”, first use the feed's built-in Calendar view (`?view=calendar` for a deep link); do not create a duplicate calendar feed unless the site intentionally needs a separate custom route
+
+Wide dedicated calendar pages show four theme-surface month panels per row (three rows per year); smaller containers reduce columns to keep days readable. The year selector follows theme text and surface colors.
