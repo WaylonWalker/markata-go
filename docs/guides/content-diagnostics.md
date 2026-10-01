@@ -173,6 +173,27 @@ this fix does not clear those signals or address deletion drift (#1465).
 
 ## Privacy and publication behavior
 
+Feed collection retains every considered source occurrence and exclusion,
+including feeds whose publishing work is skipped. Ordered per-feed recording is
+atomic with respect to ledger snapshots: the last observation controls inclusion,
+while reasons are unioned and excluded observations also contribute entry reasons.
+Duplicate raw paths and normalized aliases are not discarded during selection.
+Collection scratch is invocation-local, and later builds refresh flags and
+membership. The bounded `auto_feeds` / `collect` debug record separates generation,
+filtering/sorting, selection recording, and pagination/preparation durations and
+counts without paths, feed names, or new artifact fields.
+
+New batch feed relationships use owned slabs capped at 10 dispositions or 32
+initial-reason string slots, with smaller tails bounded by remaining observations.
+Raw lists above 32 strings use ordinary standalone append/deduplication, not
+reservation by raw length or a counting pass. Retained storage grows with unique
+nonempty values. Reasons are copied and deduplicated in occurrence order; slab
+segments are disjoint and capacity-clamped, so later updates cannot append into a
+neighbor. Published storage is never cleared or reused. Only missing candidate
+relationships allocate slabs. Existing updates and ordinary single-record
+producers do not use this allocator; there is no registry or cross-build pool.
+Snapshots remain independently owned even after ledger reset or rediscovery.
+
 Streaming reuses owned sanitation scratch sized by the largest entry. Within
 one publication it also reuses standard-encoded feed fragments, capped at 1024
 fragments and 1 MiB of combined keys and JSON bytes. Overlarge or high-cardinality

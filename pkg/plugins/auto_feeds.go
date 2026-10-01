@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -61,6 +62,7 @@ type AutoArchiveConfig struct {
 
 // Default slug prefix constants for auto-generated feeds.
 const (
+	autoFeedsPluginName     = "auto_feeds"
 	defaultTagsPrefix       = "tags"
 	defaultCategoriesPrefix = "categories"
 	defaultArchivePrefix    = "archive"
@@ -88,7 +90,7 @@ func NewAutoFeedsPlugin() *AutoFeedsPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *AutoFeedsPlugin) Name() string {
-	return "auto_feeds"
+	return autoFeedsPluginName
 }
 
 // Priority returns the plugin's priority for a given stage.
@@ -303,9 +305,17 @@ func (p *AutoFeedsPlugin) registerMonthlyArchivePosts(m *lifecycle.Manager, year
 
 // Collect generates automatic feeds for tags, categories, and date archives.
 func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
+	var generation, filtering, recording, preparation time.Duration
+	var feedCount, matchedCount, selectedCount, observationCount int
+	defer func() {
+		logging.Component(p.Name()).Phase("collect").Level("debug").Printf(
+			"generation_ns=%d filtering_sorting_ns=%d selection_recording_ns=%d pagination_preparation_ns=%d feeds=%d matched=%d selected=%d observations=%d",
+			generation.Nanoseconds(), filtering.Nanoseconds(), recording.Nanoseconds(), preparation.Nanoseconds(),
+			feedCount, matchedCount, selectedCount, observationCount)
+	}()
+	start := time.Now()
 	posts := m.Posts()
 	config := m.Config()
-	filterCache := newFeedFilterCache(posts)
 
 	autoConfig := getAutoFeedsConfig(config)
 
@@ -330,12 +340,17 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
 		autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
 	}
+	generation = time.Since(start)
+	feedCount = len(autoFeedConfigs)
 
 	// If no auto-feeds were generated, nothing to do
 	if len(autoFeedConfigs) == 0 {
 		return nil
 	}
 
+	start = time.Now()
+	filterCache := newFeedFilterCache(posts)
+	selection := newFeedSelectionRecorder(m.ContentLedger(), posts)
 	// Process auto-generated feeds
 	feedDefaults := getFeedDefaults(config)
 
@@ -349,28 +364,42 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			allFeedConfigs = append(allFeedConfigs, fcs...)
 		}
 	}
+	preparation += time.Since(start)
 
 	for i := range autoFeedConfigs {
+		start = time.Now()
 		fc := &autoFeedConfigs[i]
 
 		// Apply defaults
 		fc.ApplyDefaults(feedDefaults)
+		preparation += time.Since(start)
+		start = time.Now()
 
 		// Filter posts for this feed
 		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludesPrivate())
 		if err != nil {
+			filtering += time.Since(start)
 			return fmt.Errorf("auto feed %q: %w", fc.Slug, err)
 		}
 		filteredPosts = cloneFeedPosts(filteredPosts)
 
 		// Sort posts by date, newest first
 		sortPosts(filteredPosts, "date", true)
+		filtering += time.Since(start)
+		start = time.Now()
 		matchedPosts := filteredPosts
 		filteredPosts = applyFeedLimitOffset(filteredPosts, fc)
 
 		// Store posts in feed config
 		fc.Posts = filteredPosts
-		recordFeedSelectionForPosts(m, fc.Slug, posts, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
+		preparation += time.Since(start)
+		start = time.Now()
+		selection.record(fc.Slug, selection.sources, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
+		recording += time.Since(start)
+		matchedCount += len(matchedPosts)
+		selectedCount += len(filteredPosts)
+		observationCount += len(selection.sources)
+		start = time.Now()
 
 		// Get base URL for pagination
 		baseURL := "/" + fc.Slug
@@ -390,12 +419,15 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 		feeds = append(feeds, feed)
 		allFeedConfigs = append(allFeedConfigs, *fc)
+		preparation += time.Since(start)
 	}
 
+	start = time.Now()
 	m.SetFeeds(feeds)
 
 	// Update cache with all feed configs (original + auto-generated)
 	m.Cache().Set("feed_configs", allFeedConfigs)
+	preparation += time.Since(start)
 
 	return nil
 }
@@ -573,7 +605,7 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 		return defaultConfig
 	}
 
-	if autoFeeds, ok := config.Extra["auto_feeds"]; ok {
+	if autoFeeds, ok := config.Extra[autoFeedsPluginName]; ok {
 		if ac, ok := autoFeeds.(AutoFeedsConfig); ok {
 			return ac
 		}
