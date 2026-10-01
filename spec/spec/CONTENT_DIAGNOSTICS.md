@@ -197,6 +197,19 @@ nil semantics, ordering and summary counts MUST remain unchanged. Arenas MUST be
 newly owned on each snapshot; no snapshot reuse or immutable-cache contract is
 introduced. This reduces snapshot allocation, not the live HTML/template RSS.
 
+A snapshot MAY reuse sorted feed **key** orders within that call for dense
+layouts (at least 32 feeds). Such scratch MUST be bounded to four layouts and
+2048 total names, with at most 1024 names per layout. Before ordered copying,
+every cached key MUST exist, its value's `Feed` MUST equal that key, and map
+counts MUST match. Same-length different key sets and key/label mismatches MUST
+use the original raw copy and typed feed sort. Sparse entries MUST NOT scan a
+global feed-name set. Scratch MUST NOT survive the snapshot or share returned
+public arrays; raw-copy helper semantics and version-1 artifact bytes remain
+unchanged.
+New layout admission MUST be capped at eight layouts per call; thereafter
+unknown layouts use raw copy and typed sort even if existing cached orders hit.
+This avoids repeated key-array allocation and sorting on churning layouts.
+
 ## Ordered Feed Observation Batches
 
 `ContentFeedObservation` contains a raw `Path`, `Included`, and `Reasons`.
@@ -228,6 +241,21 @@ existing updates. No global/cross-build pool, dense matrix, caller storage, or
 feed registry is introduced. Single recording MUST retain its ordinary individual
 allocation path. Live slabs belong to the recorded ledger values, not reusable
 scratch; snapshots MUST still own independent copies after Reset or Discover.
+
+Large batches MAY canonicalize and share owned **initial** reason lists locally
+after at least 32 new candidate relationships. Canonicalization MUST preserve
+first-occurrence ordering of unique nonempty strings. Interning MUST be bounded
+to 32 lists of at most four unique strings each; raw lists longer than 32 strings
+MUST bypass it. Small batches, existing relationships, and oversized or
+uncacheable lists retain the ordinary slab/append path. Shared lists MUST have
+capacity equal to length so later additions detach, and MUST never be mutated.
+Caller slices MUST NOT be retained. Each excluded observation still contributes
+entry reasons, including aliases later marked included. Only list storage may
+remain reachable through ledger values; the interner itself MUST be batch-local,
+with no global pool, persisted cache, or changes to single-record allocation.
+Admission SHOULD require an observed consecutive repeat; after eight
+unsuccessful bounded probes, a batch MUST fall back without allocating an
+interner. Unique streams therefore retain no canonical-list table.
 
 Automatic-feed collection MAY emit bounded debug phase records for generation,
 filtering/sorting, selection recording, and pagination/preparation. Records MUST

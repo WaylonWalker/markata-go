@@ -132,6 +132,12 @@ So `--fast` is good for content, template, and most styling iteration, but it is
   remains individual. There is no cross-build pool or feed registry. Measure
   full-site timings separately rather than equating allocation reduction with
   faster builds.
+  Large batches can share immutable owned initial reason lists after 32 new
+  relationships and a consecutive repeat: at most 32 lists of four unique
+  reasons, with admission disabled after eight unsuccessful probes. Unique,
+  small, oversized and existing-update workloads retain the ordinary fallback;
+  capacity clamps force later additions to detach. Measure recording CPU as
+  well as allocation bytes rather than assuming custom-reason workloads improve.
 - The second warm build is the best steady-state comparison point.
 - Avoid deleting caches unless you specifically need a cold-build measurement.
 - If output is network-bound, inspect plugins that fetch remote content.
@@ -171,6 +177,12 @@ So `--fast` is good for content, template, and most styling iteration, but it is
   capacity-clamped slices, including after deduplication. This reduces small
   allocations, not snapshot freshness or ownership; do not introduce snapshot
   reuse or an immutable-cache contract as a follow-on shortcut.
+  Dense snapshots can reuse sorted feed key orders within that call only:
+  four layouts, 2048 names total, and 32–1024 feeds per layout. Every key and
+  feed label must match before reuse. Same-length different sets and label
+  mismatches fall back to raw copying and typed sorting; sparse entries never
+  scan a global registry. Admission stops after eight layouts per call to bound
+  churn. Public arrays remain independent and v1 bytes exact.
   Sidebar link projections are
   reused only within a build, with current-page highlights kept separate.
 - Glossary matching uses longest-first keys with lexical ties, so equal-length

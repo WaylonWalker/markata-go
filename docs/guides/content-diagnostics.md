@@ -194,6 +194,20 @@ relationships allocate slabs. Existing updates and ordinary single-record
 producers do not use this allocator; there is no registry or cross-build pool.
 Snapshots remain independently owned even after ledger reset or rediscovery.
 
+Large batches can share immutable, owned initial reason lists after 32 new
+relationships and an observed repeat. Each batch retains at most 32 lists of
+four unique nonempty reasons; eight unsuccessful probes disable sharing.
+Small, unique, oversized, and existing-update paths keep the ordinary allocation
+behavior. Shared lists preserve occurrence order and have no spare capacity, so
+later additions detach rather than change another source's reasons.
+
+Within one snapshot, dense entries (32–1024 feeds) can reuse sorted key orders:
+at most four layouts and 2048 names. Every key and feed label is checked before
+reuse; different same-size sets or key/label mismatches fall back safely.
+Admission stops after eight layouts per call to bound replacement work.
+This scratch never survives the call, and all returned arrays remain independent.
+Neither optimization changes version-1 JSON bytes or drops observations.
+
 Streaming reuses owned sanitation scratch sized by the largest entry. Within
 one publication it also reuses standard-encoded feed fragments, capped at 1024
 fragments and 1 MiB of combined keys and JSON bytes. Overlarge or high-cardinality

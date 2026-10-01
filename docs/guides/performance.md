@@ -247,6 +247,14 @@ later appends cannot touch neighbors. This reduces per-relation heap allocations
 without changing sparse maps or introducing a registry or cross-build pool.
 Allocation results alone do not demonstrate faster full builds.
 
+For repeated initial reasons, large batches admit a call-local immutable-list
+table only after 32 new relationships and a consecutive repeat. It holds at
+most 32 lists of four unique reasons each; eight unsuccessful probes disable
+admission. Unique, small, oversized, and existing-update workloads retain the
+slab/append fallback. Capacity-clamped shared initial lists detach on updates.
+Measure both recording time and bytes: savings on repeated exclusions do not
+imply that every custom-reason workload is faster.
+
 ### Diagnostics Publication
 
 Full-build diagnostics publication has a separate bounded `diagnostics_artifact`
@@ -273,6 +281,14 @@ Snapshot copying also replaces per-feed reason allocations with one owned arena
 per entry. Feed slices remain isolated and capacity-clamped after deduplication,
 and feed sorting uses a typed comparator. This lowers allocation count and
 snapshot work without reusing snapshots or changing ownership, counts or output.
+Dense feed layouts also reuse sorted key orders only during one snapshot, capped
+at four layouts, 2048 names total, and 32–1024 feeds per layout. Reuse verifies
+every key and corresponding feed label, not just counts or hashes. Sparse entries
+copy their own maps without scanning a global feed set; mismatches use the
+ordinary typed sort. Returned reasons and feed arrays are still independently
+owned. At most eight layouts are admitted per call, limiting replacement work on
+churning layouts. Compare dense, mixed, sparse, and different-key-set benchmarks separately;
+bounded scratch and faster repeated sorting are not a whole-build RSS claim.
 
 ### JSON Benchmarks
 

@@ -331,15 +331,26 @@ const (
 	// the profiled Go 1.26 amd64 runtime (480 and 512 bytes respectively).
 	contentFeedObjectSlabSlots = 10
 	contentFeedReasonSlabSlots = 32
+	contentFeedInternMin       = 32
+	contentFeedInternLists     = 32
+	contentFeedInternReasons   = 4
+	contentFeedInternProbes    = 8
 )
 
 // Only the current slab's unused suffix is needed. Map-held pointers keep prior
 // slabs alive. Never append to objects: published element addresses must remain
 // stable. This allocator is local to one locked batch, not a reusable pool.
 type contentFeedBatchArena struct {
-	remaining int
-	objects   []ContentFeedDisposition
-	reasons   []string
+	remaining  int
+	objects    []ContentFeedDisposition
+	reasons    []string
+	created    int
+	intern     map[[contentFeedInternReasons]string][]string
+	lastKey    [contentFeedInternReasons]string
+	lastList   []string
+	probes     int
+	singleton  string
+	singleList []string
 }
 
 func (a *contentFeedBatchArena) newDisposition(feed string, reasons []string) *ContentFeedDisposition {
@@ -349,8 +360,80 @@ func (a *contentFeedBatchArena) newDisposition(feed string, reasons []string) *C
 	disposition := &a.objects[0]
 	a.objects = a.objects[1:]
 	disposition.Feed = feed
-	disposition.Reasons = a.initialReasonStorage(reasons)
+	a.created++
+	if owned := a.internInitialReasons(reasons); owned != nil {
+		disposition.Reasons = owned
+	} else {
+		disposition.Reasons = a.initialReasonStorage(reasons)
+	}
 	return disposition
+}
+
+// Only immutable initial lists are shared. The full slice expression ensures
+// every subsequent addition detaches; recording never overwrites list elements.
+func (a *contentFeedBatchArena) internInitialReasons(reasons []string) []string {
+	if a.created < contentFeedInternMin || a.probes == contentFeedInternProbes || len(reasons) == 0 || len(reasons) > contentFeedReasonSlabSlots {
+		return nil
+	}
+	if len(reasons) == 1 && a.singleList != nil && reasons[0] == a.singleton {
+		return a.singleList
+	}
+	key, count, bounded := initialContentFeedReasonKey(reasons)
+	if !bounded {
+		if a.intern == nil {
+			a.probes++
+		}
+		return nil
+	}
+	if count == 0 {
+		return nil
+	}
+	// Admit only after a consecutive repeat. Unique/sparse reason streams
+	// allocate no table or canonical lists merely to discover they do not recur.
+	if a.intern == nil && key != a.lastKey {
+		a.lastKey = key
+		a.probes++
+		return nil
+	}
+	// Uniform singleton observations are common; avoid even a map lookup.
+	if a.lastList != nil && key == a.lastKey {
+		return a.lastList
+	}
+	if owned := a.intern[key]; owned != nil {
+		a.lastKey, a.lastList = key, owned
+		if count == 1 {
+			a.singleton, a.singleList = key[0], owned
+		}
+		return owned
+	}
+	if len(a.intern) == contentFeedInternLists {
+		return nil
+	}
+	if a.intern == nil {
+		a.intern = make(map[[contentFeedInternReasons]string][]string)
+	}
+	owned := append([]string(nil), key[:count]...)
+	owned = owned[:count:count]
+	a.intern[key] = owned
+	a.lastKey, a.lastList = key, owned
+	if count == 1 {
+		a.singleton, a.singleList = key[0], owned
+	}
+	return owned
+}
+
+func initialContentFeedReasonKey(reasons []string) (key [contentFeedInternReasons]string, count int, bounded bool) {
+	for _, reason := range reasons {
+		if reason == "" || slices.Contains(key[:count], reason) {
+			continue
+		}
+		if count == len(key) {
+			return key, count, false
+		}
+		key[count] = reason
+		count++
+	}
+	return key, count, true
 }
 
 // Reserve the unique nonempty count only for bounded raw input. Oversized input
@@ -393,17 +476,21 @@ func (l *ContentLedger) recordFeedLocked(path, feed string, included bool, reaso
 		entry.feeds = make(map[string]*ContentFeedDisposition)
 	}
 	feedDisposition := entry.feeds[feed]
+	initialCanonical := false
 	if feedDisposition == nil {
 		if arena == nil {
 			feedDisposition = &ContentFeedDisposition{Feed: feed}
 		} else {
 			feedDisposition = arena.newDisposition(feed, reasons)
+			initialCanonical = len(feedDisposition.Reasons) > 0
 		}
 		entry.feeds[feed] = feedDisposition
 	}
 	feedDisposition.Included = included
 	for _, reason := range reasons {
-		addFeedReason(feedDisposition, reason)
+		if !initialCanonical {
+			addFeedReason(feedDisposition, reason)
+		}
 		if reason != "" && !included {
 			addReasonLocked(entry, reason)
 		}
@@ -420,14 +507,25 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	l.mu.RLock()
 	templateCache := cloneTemplateCacheStats(l.templateCache)
 	entries := make([]ContentDisposition, 0, len(l.entries))
+	var orders contentFeedSnapshotOrders
+	var sortedFeeds []bool
 	for _, entry := range l.entries {
-		entries = append(entries, copyContentDisposition(entry))
+		var clone ContentDisposition
+		var sorted bool
+		if len(entry.feeds) >= contentFeedOrderMin && len(entry.feeds) <= contentFeedOrderMax {
+			clone, sorted = orders.copy(entry)
+		} else {
+			clone = copyContentDisposition(entry)
+		}
+		if sorted && sortedFeeds == nil {
+			sortedFeeds = make([]bool, len(l.entries))
+		}
+		if sortedFeeds != nil {
+			sortedFeeds[len(entries)] = sorted
+		}
+		entries = append(entries, clone)
 	}
 	l.mu.RUnlock()
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Path < entries[j].Path
-	})
 
 	snapshot := ContentLedgerSnapshot{
 		TemplateCache: templateCache,
@@ -436,10 +534,13 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	for index := range snapshot.Entries {
 		disposition := &snapshot.Entries[index]
 		disposition.Reasons = sortedUnique(disposition.Reasons)
+		disposition.Reasons = disposition.Reasons[:len(disposition.Reasons):len(disposition.Reasons)]
 		disposition.Diagnostics = sortedIssues(disposition.Diagnostics)
-		slices.SortFunc(disposition.Feeds, func(a, b ContentFeedDisposition) int {
-			return strings.Compare(a.Feed, b.Feed)
-		})
+		if index >= len(sortedFeeds) || !sortedFeeds[index] {
+			slices.SortFunc(disposition.Feeds, func(a, b ContentFeedDisposition) int {
+				return strings.Compare(a.Feed, b.Feed)
+			})
+		}
 		for feedIndex := range disposition.Feeds {
 			feed := &disposition.Feeds[feedIndex]
 			feed.Reasons = sortedUnique(feed.Reasons)
@@ -456,8 +557,12 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 
 		updateContentSummary(&snapshot.Summary, *disposition)
 		finalizeContentDisposition(&snapshot.Summary, disposition)
+		disposition.Reasons = disposition.Reasons[:len(disposition.Reasons):len(disposition.Reasons)]
 	}
 
+	sort.Slice(snapshot.Entries, func(i, j int) bool {
+		return snapshot.Entries[i].Path < snapshot.Entries[j].Path
+	})
 	return snapshot
 }
 
@@ -599,17 +704,105 @@ func (l *ContentLedger) entryLocked(path string) *contentLedgerEntry {
 // copyContentDisposition is called under the ledger read lock. Only the flat
 // public values are needed by a snapshot, not the ledger's mutable indexes.
 func copyContentDisposition(entry *contentLedgerEntry) ContentDisposition {
+	return copyContentDispositionOrdered(entry, nil)
+}
+
+const (
+	contentFeedOrderMin        = 32
+	contentFeedOrderMax        = 1024
+	contentFeedOrderNames      = 2048
+	contentFeedOrderSlots      = 4
+	contentFeedOrderAdmissions = 8
+)
+
+// Call-local key orders, not a feed registry. A miss examines only this entry.
+// Replacement is bounded and allows mixed dense layouts to adapt.
+type contentFeedSnapshotOrders struct {
+	layouts  [contentFeedOrderSlots][]string
+	names    int
+	next     int
+	admitted int
+}
+
+func (c *contentFeedSnapshotOrders) copy(entry *contentLedgerEntry) (ContentDisposition, bool) {
+	count := len(entry.feeds)
+	if count < contentFeedOrderMin || count > contentFeedOrderMax {
+		return copyContentDisposition(entry), false
+	}
+	for _, keys := range c.layouts {
+		if len(keys) != count {
+			continue
+		}
+		match := true
+		for _, key := range keys {
+			feed, exists := entry.feeds[key]
+			if !exists || feed.Feed != key {
+				match = false
+				break
+			}
+		}
+		if match {
+			return copyContentDispositionOrdered(entry, keys), true
+		}
+	}
+	// Churning layouts must not allocate/sort a key array for every entry.
+	// Existing orders can still hit, but replacement work has a call-wide cap.
+	if c.admitted == contentFeedOrderAdmissions {
+		return copyContentDisposition(entry), false
+	}
+	// Labels that disagree with map keys require the original typed sort.
+	for key, feed := range entry.feeds {
+		if feed.Feed != key {
+			return copyContentDisposition(entry), false
+		}
+	}
+	c.admitted++
+	// Evict before allocating so retained scratch always respects the budget.
+	for c.names+count > contentFeedOrderNames || c.layouts[c.next] != nil {
+		c.names -= len(c.layouts[c.next])
+		c.layouts[c.next] = nil
+		if c.names+count <= contentFeedOrderNames {
+			break
+		}
+		c.next = (c.next + 1) % len(c.layouts)
+	}
+	keys := make([]string, 0, count)
+	for key := range entry.feeds {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	c.layouts[c.next] = keys
+	c.names += count
+	c.next = (c.next + 1) % len(c.layouts)
+	// Only a previously verified cached layout skips the original raw copy
+	// and typed sort. This first occurrence seeds reuse for subsequent entries.
+	return copyContentDisposition(entry), false
+}
+
+// A nonnil order was verified under the same read lock and is sorted by label.
+// The raw helper passes nil and preserves map-copy ordering and empty semantics.
+func copyContentDispositionOrdered(entry *contentLedgerEntry, order []string) ContentDisposition {
 	clone := entry.ContentDisposition
 	clone.Reasons = append([]string{}, entry.Reasons...)
+	clone.Reasons = clone.Reasons[:len(clone.Reasons):len(clone.Reasons)]
 	clone.Diagnostics = append([]Issue{}, entry.Diagnostics...)
 	clone.Feeds = nil
 	if len(entry.feeds) > 0 {
 		clone.Feeds = make([]ContentFeedDisposition, len(entry.feeds))
 		index, reasonCount := 0, 0
-		for _, feed := range entry.feeds {
-			clone.Feeds[index] = *feed
-			reasonCount += len(feed.Reasons)
-			index++
+		if order != nil {
+			for _, key := range order {
+				feed := entry.feeds[key]
+				clone.Feeds[index] = *feed
+				reasonCount += len(feed.Reasons)
+				index++
+			}
+		} else {
+			for _, feed := range entry.feeds {
+				clone.Feeds[index] = *feed
+				reasonCount += len(feed.Reasons)
+				index++
+			}
 		}
 		// Own one flat arena per entry while still isolating every feed.
 		// Copy all live slices before Snapshot sorts or deduplicates them.

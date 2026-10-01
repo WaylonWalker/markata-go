@@ -28,11 +28,15 @@ func benchmarkCompleteLedger(posts, feeds int) *ContentLedger {
 }
 
 func BenchmarkContentLedgerSnapshot_CompleteFeeds(b *testing.B) {
-	ledger := benchmarkCompleteLedger(512, 418)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for b.Loop() {
-		_ = ledger.Snapshot()
+	for _, posts := range []int{512, 3911} {
+		b.Run(fmt.Sprintf("%dx418", posts), func(b *testing.B) {
+			ledger := benchmarkCompleteLedger(posts, 418)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				_ = ledger.Snapshot()
+			}
+		})
 	}
 }
 
