@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -242,6 +243,19 @@ func TestWriteDiagnosticsArtifactWith_PreservesPreviousOnFailure(t *testing.T) {
 			want: io.ErrShortWrite,
 		},
 		{
+			name: "buffered flush short write",
+			write: func(writer io.Writer) error {
+				buffered, ok := writer.(*bufio.Writer)
+				if !ok {
+					return errors.New("atomic artifact writer must provide a buffered writer")
+				}
+				buffered.Reset(&diagnosticsArtifactFailWriter{failAt: 1})
+				_, err := buffered.WriteString("buffered JSON")
+				return err
+			},
+			want: io.ErrShortWrite,
+		},
+		{
 			name: "buffered flush failure",
 			write: func(writer io.Writer) error {
 				// Inject a failing sink beneath the buffer: serialization succeeds
@@ -340,6 +354,111 @@ func TestWriteDiagnosticsArtifactWith_StreamingByteParity(t *testing.T) {
 	got, err := os.ReadFile(destination)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("published bytes differ: error = %v\ngot:\n%s\nwant:\n%s", err, got, want)
+	}
+}
+
+func TestWriteDiagnosticsArtifactMeasured_Phases(t *testing.T) {
+	for _, size := range []int{128, 32 * 1024, 128 * 1024} {
+		t.Run(fmtArtifactSize(size), func(t *testing.T) {
+			data := bytes.Repeat([]byte("x"), size)
+			destination := filepath.Join(t.TempDir(), diagnostics.DefaultArtifactPath)
+			var phases diagnosticsArtifactPhases
+			err := writeDiagnosticsArtifactMeasured(destination, func(writer io.Writer) error {
+				buffered, ok := writer.(*bufio.Writer)
+				if !ok || buffered.Size() != diagnosticsArtifactBufferSize {
+					t.Fatal("publication must use the fixed bounded buffer")
+				}
+				_, err := writer.Write(data)
+				return err
+			}, &phases)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if phases.published != 1 || phases.fileWriteBytes != int64(size) || phases.fileWriteCalls < 1 {
+				t.Fatalf("publication counts = %#v", phases)
+			}
+			if phases.serialization < 0 || phases.flush < 0 ||
+				phases.serializationWall+phases.flushWall != phases.serialization+phases.flush+phases.fileWrite {
+				t.Fatalf("file writes counted twice or omitted: %#v", phases)
+			}
+			// Fast operations can complete within a single clock tick on Windows.
+			if phases.fileWrite < 0 || phases.sync < 0 || phases.close < 0 || phases.replace < 0 {
+				t.Fatalf("negative operation duration: %#v", phases)
+			}
+			if size < diagnosticsArtifactBufferSize && phases.serialization != phases.serializationWall {
+				t.Fatal("small buffered write counted as underlying file write")
+			}
+			if size > diagnosticsArtifactBufferSize && phases.fileWrite > 0 && phases.serialization == phases.serializationWall {
+				t.Fatal("large direct file write not separated from serialization")
+			}
+			got, err := os.ReadFile(destination)
+			if err != nil || !bytes.Equal(got, data) {
+				t.Fatal("measured publication changed bytes")
+			}
+			info, err := os.Stat(destination)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Windows only represents the owner write bit in Chmod permissions.
+			if runtime.GOOS == "windows" {
+				if info.Mode().Perm()&0o200 == 0 {
+					t.Fatal("measured publication is not writable")
+				}
+			} else if info.Mode().Perm() != 0o644 {
+				t.Fatal("measured publication changed permissions")
+			}
+		})
+	}
+}
+
+func fmtArtifactSize(size int) string {
+	if size < diagnosticsArtifactBufferSize {
+		return "buffered"
+	}
+	return "direct"
+}
+
+type diagnosticsArtifactPartialSink struct {
+	err error
+}
+
+func (w diagnosticsArtifactPartialSink) Write(data []byte) (int, error) {
+	return len(data) / 2, w.err
+}
+
+func TestDiagnosticsArtifactMeasuredWriter_PartialWrites(t *testing.T) {
+	sentinel := errors.New("underlying write failed")
+	for _, failure := range []error{nil, sentinel} {
+		var phases diagnosticsArtifactPhases
+		writer := diagnosticsArtifactMeasuredWriter{
+			writer: diagnosticsArtifactPartialSink{err: failure}, phases: &phases,
+		}
+		written, err := writer.Write([]byte("123456"))
+		want := failure
+		if want == nil {
+			want = io.ErrShortWrite
+		}
+		if written != 3 || !errors.Is(err, want) || phases.fileWriteCalls != 1 ||
+			phases.fileWriteBytes != 3 || phases.fileWrite < 0 {
+			t.Fatalf("partial write: %d, %v, %#v", written, err, phases)
+		}
+	}
+}
+
+func TestWriteDiagnosticsArtifactMeasured_FailurePhases(t *testing.T) {
+	destination := filepath.Join(t.TempDir(), diagnostics.DefaultArtifactPath)
+	sentinel := errors.New("serialization failed")
+	var phases diagnosticsArtifactPhases
+	err := writeDiagnosticsArtifactMeasured(destination, func(writer io.Writer) error {
+		if _, err := writer.Write(bytes.Repeat([]byte("x"), 2*diagnosticsArtifactBufferSize)); err != nil {
+			return err
+		}
+		return sentinel
+	}, &phases)
+	if !errors.Is(err, sentinel) || phases.published != 0 || phases.close < 0 ||
+		phases.sync != 0 || phases.replace != 0 || phases.flushWall != 0 ||
+		phases.fileWriteBytes != 2*diagnosticsArtifactBufferSize {
+		t.Fatalf("failure phases = %#v, error %v", phases, err)
 	}
 }
 

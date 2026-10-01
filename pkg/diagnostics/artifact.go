@@ -2,9 +2,12 @@ package diagnostics
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -115,7 +118,8 @@ func MarshalArtifact(snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) ([]
 
 // WriteArtifact streams the same indented JSON as MarshalArtifact, without a
 // trailing newline or modifying snapshot. Temporary JSON buffers and sanitized
-// copies are limited to one entry; the ordering index scales with entry count.
+// copies are limited to one entry, plus a capped per-call feed fragment cache;
+// the ordering index scales with entry count.
 // Use a buffered writer when publishing to a file, and flush it before syncing.
 func WriteArtifact(writer io.Writer, snapshot ContentLedgerSnapshot, info ArtifactBuildInfo) error {
 	header := NewArtifact(ContentLedgerSnapshot{Summary: snapshot.Summary, TemplateCache: snapshot.TemplateCache}, info)
@@ -156,8 +160,15 @@ func WriteArtifact(writer io.Writer, snapshot ContentLedgerSnapshot, info Artifa
 	// buffer grows with the total number of entries.
 	var compact, indented bytes.Buffer
 	encoder := json.NewEncoder(&compact)
+	var scratch artifactEntryScratch
+	var fragments artifactFeedFragments
+	fragmentLayout := artifactFeedLayoutSupported(reflect.TypeFor[ContentDisposition]())
 	for index, item := range order {
-		entry := cloneArtifactEntry(snapshot.Entries[item.index])
+		entry := scratch.clone(snapshot.Entries[item.index])
+		feeds := entry.Feeds
+		if fragmentLayout {
+			entry.Feeds = nil
+		}
 		compact.Reset()
 		if err := encoder.Encode(entry); err != nil {
 			return err
@@ -167,6 +178,26 @@ func WriteArtifact(writer io.Writer, snapshot ContentLedgerSnapshot, info Artifa
 		encoded := bytes.TrimSuffix(compact.Bytes(), []byte("\n"))
 		if err := json.Indent(&indented, encoded, "    ", "  "); err != nil {
 			return err
+		}
+		if fragmentLayout && len(feeds) > 0 {
+			const entryEnd = "\n    }"
+			if !bytes.HasSuffix(indented.Bytes(), []byte(entryEnd)) {
+				return fmt.Errorf("diagnostics artifact entry must end with object close")
+			}
+			indented.Truncate(indented.Len() - len(entryEnd))
+			indented.WriteString(",\n      \"feeds\": [")
+			for feedIndex, feed := range feeds {
+				if feedIndex > 0 {
+					indented.WriteByte(',')
+				}
+				indented.WriteString("\n        ")
+				fragment, err := fragments.encode(feed)
+				if err != nil {
+					return err
+				}
+				indented.Write(fragment)
+			}
+			indented.WriteString("\n      ]\n    }")
 		}
 		separator := "\n    "
 		if index > 0 {
@@ -260,24 +291,132 @@ func cloneArtifactEntries(entries []ContentDisposition) []ContentDisposition {
 	return result
 }
 
-// cloneArtifactEntry owns every mutable slice before normalizing or sorting it.
-// Both artifact encoders use this helper so sanitation cannot drift.
+// cloneArtifactEntry returns owned mutable storage, never shared with scratch
+// from another entry. Both encoders use artifactEntryScratch's sanitation.
 func cloneArtifactEntry(entry ContentDisposition) ContentDisposition {
+	var scratch artifactEntryScratch
+	return scratch.clone(entry)
+}
+
+type artifactEntryScratch struct {
+	reasons     []string
+	diagnostics []Issue
+	feeds       []ContentFeedDisposition
+	feedReasons []string
+}
+
+func (s *artifactEntryScratch) clone(entry ContentDisposition) ContentDisposition {
+	// Clear old references even when the next entry shrinks. Never append to or
+	// sort caller storage, including shared backing slices between feeds.
+	clear(s.reasons)
+	clear(s.diagnostics)
+	clear(s.feeds)
+	clear(s.feedReasons)
 	entry.Path = normalizeContentPath(entry.Path)
-	entry.Reasons = sortedUnique(append([]string(nil), entry.Reasons...))
-	entry.Diagnostics = append([]Issue(nil), entry.Diagnostics...)
+	s.reasons = append(s.reasons[:0], entry.Reasons...)
+	entry.Reasons = sortedUnique(s.reasons)
+	s.diagnostics = append(s.diagnostics[:0], entry.Diagnostics...)
+	entry.Diagnostics = s.diagnostics
 	for index := range entry.Diagnostics {
 		entry.Diagnostics[index] = sanitizeArtifactIssue(entry.Diagnostics[index])
 	}
 	entry.Diagnostics = sortedIssues(entry.Diagnostics)
-	entry.Feeds = append([]ContentFeedDisposition(nil), entry.Feeds...)
-	for index := range entry.Feeds {
-		entry.Feeds[index].Reasons = sortedUnique(append([]string(nil), entry.Feeds[index].Reasons...))
+	s.feeds = append(s.feeds[:0], entry.Feeds...)
+	reasonCount := 0
+	for _, feed := range entry.Feeds {
+		reasonCount += len(feed.Reasons)
 	}
-	sort.SliceStable(entry.Feeds, func(i, j int) bool {
-		return entry.Feeds[i].Feed < entry.Feeds[j].Feed
+	s.feedReasons = slices.Grow(s.feedReasons[:0], reasonCount)
+	entry.Feeds = s.feeds
+	for index := range entry.Feeds {
+		start := len(s.feedReasons)
+		s.feedReasons = append(s.feedReasons, entry.Feeds[index].Reasons...)
+		entry.Feeds[index].Reasons = sortedUnique(s.feedReasons[start:len(s.feedReasons):len(s.feedReasons)])
+	}
+	slices.SortStableFunc(entry.Feeds, func(a, b ContentFeedDisposition) int {
+		return strings.Compare(a.Feed, b.Feed)
 	})
 	return entry
+}
+
+// Feeds must be the last, omittable field for assembly to match MarshalIndent.
+// A future custom marshaler or layout change uses whole-entry encoding instead.
+func artifactFeedLayoutSupported(t reflect.Type) bool {
+	// Explicit v1 layout: embedding, duplicate tags or added/reordered fields
+	// require review rather than silently changing the assembly assumptions.
+	tags := [...]string{
+		"path", "candidate", "loaded", "frontmatter_present", "frontmatter_valid",
+		"post_created", "eligible", "rendered", "emitted", "excluded", "disposition",
+		"reasons,omitempty", "diagnostics,omitempty", "feeds,omitempty",
+	}
+	if t.Kind() != reflect.Struct || t.NumField() != len(tags) {
+		return false
+	}
+	marshaler := reflect.TypeFor[json.Marshaler]()
+	if t.Implements(marshaler) || reflect.PointerTo(t).Implements(marshaler) {
+		return false
+	}
+	for i, tag := range tags {
+		field := t.Field(i)
+		if field.Anonymous || field.PkgPath != "" || field.Tag.Get("json") != tag {
+			return false
+		}
+	}
+	field := t.Field(t.NumField() - 1)
+	return field.Name == "Feeds" && field.Tag.Get("json") == "feeds,omitempty" &&
+		field.Type == reflect.TypeFor[[]ContentFeedDisposition]()
+}
+
+const (
+	artifactFeedCacheEntries = 1024
+	artifactFeedCacheBytes   = 1 << 20
+)
+
+type artifactFeedFragments struct {
+	cache    map[string][]byte
+	retained int // key plus fragment bytes; map overhead is bounded by entry cap
+	key      []byte
+	compact  bytes.Buffer
+	indented bytes.Buffer
+}
+
+func (c *artifactFeedFragments) encode(feed ContentFeedDisposition) ([]byte, error) {
+	// Length-prefixed raw bytes avoid delimiter ambiguity and hashing collisions.
+	// nil and empty reasons are identical on the wire (omitempty).
+	c.key = binary.AppendUvarint(c.key[:0], uint64(len(feed.Feed)))
+	c.key = append(c.key, feed.Feed...)
+	if feed.Included {
+		c.key = append(c.key, 1)
+	} else {
+		c.key = append(c.key, 0)
+	}
+	c.key = binary.AppendUvarint(c.key, uint64(len(feed.Reasons)))
+	for _, reason := range feed.Reasons {
+		c.key = binary.AppendUvarint(c.key, uint64(len(reason)))
+		c.key = append(c.key, reason...)
+	}
+	if fragment, ok := c.cache[string(c.key)]; ok {
+		return fragment, nil
+	}
+	c.compact.Reset()
+	if err := json.NewEncoder(&c.compact).Encode(feed); err != nil {
+		return nil, err
+	}
+	c.indented.Reset()
+	if err := json.Indent(&c.indented, bytes.TrimSuffix(c.compact.Bytes(), []byte("\n")), "        ", "  "); err != nil {
+		return nil, err
+	}
+	fragment := c.indented.Bytes()
+	size := len(c.key) + len(fragment)
+	if len(c.cache) < artifactFeedCacheEntries && size <= artifactFeedCacheBytes-c.retained {
+		if c.cache == nil {
+			c.cache = make(map[string][]byte)
+		}
+		fragment = bytes.Clone(fragment)
+		c.cache[string(c.key)] = fragment
+		c.retained += size
+	}
+	return fragment, nil
 }
 
 func sanitizeArtifactIssue(issue Issue) Issue {

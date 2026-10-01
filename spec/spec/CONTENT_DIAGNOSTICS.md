@@ -188,6 +188,14 @@ Copying observations MUST occur under the ledger's read lock; sorting and
 deriving dispositions and summary counts SHOULD occur after releasing that lock.
 Snapshot construction SHOULD copy feed values directly into flat slices, without
 cloning internal feed maps or diagnostic deduplication indexes.
+Feed reasons SHOULD be copied into one owned contiguous arena per entry rather
+than allocated separately for every feed. Each feed's reason slice MUST have a
+disjoint capacity-clamped segment, including after sorting and deduplication:
+appending or mutating one feed MUST NOT alter siblings, the ledger, or another
+snapshot, even when live input reason slices overlap. Empty-feed and empty-reason
+nil semantics, ordering and summary counts MUST remain unchanged. Arenas MUST be
+newly owned on each snapshot; no snapshot reuse or immutable-cache contract is
+introduced. This reduces snapshot allocation, not the live HTML/template RSS.
 
 ## Reason Codes
 
@@ -379,6 +387,39 @@ this contract does not truncate diagnostics or bound total artifact size.
 `MarshalArtifact` MUST remain available with its existing interface and behavior.
 Streaming MUST propagate serialization and writer failures, including short
 writes reported without an error.
+
+Per-call sanitized scratch MAY be reused, but MUST own all mutable slices,
+including overlapping caller feed/reason storage, and grow only with the largest
+entry. `NewArtifact` MUST still return independently owned mutable entries.
+Serialized feed fragments MAY be reused within one write call only. Such a cache
+MUST retain at most 1024 entries and 1 MiB of combined key and fragment bytes;
+overlarge values and values arriving after either cap MUST bypass retention.
+Keys MUST be unambiguous for arbitrary strings (including nulls, separators,
+Unicode and escapes), with exact equality rather than hash-only identity.
+JSON escaping MUST use the standard encoder. Fragment assembly MUST guard the
+required struct layout and fall back to whole-entry encoding if it changes.
+Neither scratch nor fragment caches may persist across calls or builds.
+
+File publication SHOULD use a fixed 64 KiB output buffer, independent of
+artifact size, to reduce underlying write calls. The buffer MUST still be
+checked on flush before sync, close and replacement. It does not change the
+complete artifact or benchmark content (including template-cache observations).
+Serializer allocation improvements do not imply lower whole-build RSS: live
+templates and rendered HTML remain outside this temporary-storage bound.
+
+### Publication phase observations
+
+Publication MAY emit one bounded structured debug record with numeric counts
+and durations only, without source paths, feed names, or diagnostic messages.
+Snapshot and optional source-revision lookup durations MUST include the actual
+operations. Serialization/buffering and flush durations MUST exclude time spent
+inside underlying file `Write` calls; file-write duration, returned bytes and
+call count MUST observe those actual calls, including partial/error returns.
+Sync, close and replacement durations MUST cover their actual operations.
+The serialization and flush wall totals MAY also be reported, but MUST be
+explicitly labeled inclusive (overlapping file-write time), never added to the
+exclusive phase totals. These are elapsed measurements, not tracing spans.
+No timing fields are added to the version-1 artifact or its own snapshot.
 
 ### Privacy and failure behavior
 

@@ -155,6 +155,33 @@ markata-go build --benchmark-json benchmark.json
 
 5. If the build is still mostly CPU after network fixes, capture `--cpuprofile` and inspect the hottest functions with `go tool pprof`.
 
+### Diagnostics Publication
+
+Full-build diagnostics publication has a separate bounded `diagnostics_artifact`
+cleanup debug record: snapshot, optional source metadata, serialization/buffering,
+actual file-write time/bytes/calls, flush, sync, close and replacement. Use
+`serialization_buffering_exclusive` and `flush_exclusive` with `file_write`
+to avoid counting file I/O twice; the corresponding `*_inclusive` wall totals
+overlap it. Directory/temp setup and removal are not included. No publication
+timings are inserted into the diagnostics v1 document.
+
+The diagnostics artifact writer reuses owned per-entry scratch and already
+encoded/indented feed fragments within a single call (at most 1024 retained
+fragments and 1 MiB including keys). Values outside these caps bypass retention,
+not output. This reduces repeated sanitation allocations and JSON indentation
+when posts share feed dispositions; it does not remove observations, persist a
+cache, or alter output bytes. Snapshot and artifact size still scale with the
+complete ledger. Compare equivalent warm builds and fixed-metadata serializer
+benchmarks rather than disabling diagnostics to improve a timing.
+Publication uses a fixed 64 KiB buffer. Large entry writes can bypass it, so use
+the measured raw-write counts rather than estimating calls from artifact size.
+Reduced serializer allocation does not establish a whole-build RSS reduction;
+live templates and rendered HTML may still dominate memory.
+Snapshot copying also replaces per-feed reason allocations with one owned arena
+per entry. Feed slices remain isolated and capacity-clamped after deduplication,
+and feed sorting uses a typed comparator. This lowers allocation count and
+snapshot work without reusing snapshots or changing ownership, counts or output.
+
 ### JSON Benchmarks
 
 Use machine-readable output when you want to compare builds over time or ingest

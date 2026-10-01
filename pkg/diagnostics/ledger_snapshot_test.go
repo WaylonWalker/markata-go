@@ -66,6 +66,129 @@ func ledgerSnapshotCopyForTest(snapshot ContentLedgerSnapshot) ContentLedgerSnap
 	return result
 }
 
+func TestContentLedger_SnapshotFeedReasonArenaOwnership(t *testing.T) {
+	for _, duplicate := range []bool{false, true} {
+		name := "unique"
+		if duplicate {
+			name = "deduplicated"
+		}
+		t.Run(name, func(t *testing.T) {
+			live := []string{"z", "c", "b", "a", "tail"}
+			if duplicate {
+				live[1] = "b"
+			}
+			original := append([]string(nil), live...)
+			ledger := NewContentLedger()
+			ledger.Discover([]string{"a.md", "b.md", "empty.md"})
+			for _, path := range []string{"a.md", "b.md", "empty.md"} {
+				ledger.MarkPost(path, true)
+				ledger.MarkEmitted(path)
+			}
+			// Deliberately overlapping live input, including across entries and
+			// between entry and feed reasons. Copying must precede all sorting.
+			ledger.mu.Lock()
+			entry := ledger.entries["a.md"]
+			entry.Reasons = live[:3]
+			entry.feeds = map[string]*ContentFeedDisposition{
+				"a":     {Feed: "a", Reasons: live[:4]},
+				"b":     {Feed: "b", Included: true, Reasons: live[1:]},
+				"empty": {Feed: "empty", Reasons: []string{}},
+				"nil":   {Feed: "nil"},
+			}
+			ledger.entries["b.md"].feeds["other"] = &ContentFeedDisposition{Feed: "other", Reasons: live[1:]}
+			raw := copyContentDisposition(entry)
+			ledger.mu.Unlock()
+			for _, feed := range raw.Feeds {
+				if feed.Reasons == nil || cap(feed.Reasons) != len(feed.Reasons) {
+					t.Fatal("raw copy changed empty semantics or failed to clamp capacity")
+				}
+			}
+			first := ledger.Snapshot()
+			second := ledger.Snapshot()
+			expected := ledgerSnapshotCopyForTest(second)
+			if !reflect.DeepEqual(first, second) || !reflect.DeepEqual(live, original) {
+				t.Fatal("snapshot sorting changed overlapping live reasons")
+			}
+			if first.Entries[2].Feeds != nil || second.Summary.Discovered != 3 || second.Summary.Emitted != 3 {
+				t.Fatal("empty feeds or counts changed")
+			}
+			for _, feed := range first.Entries[0].Feeds {
+				if cap(feed.Reasons) != len(feed.Reasons) {
+					t.Fatal("deduplication left spare arena capacity")
+				}
+				if (feed.Feed == "empty" || feed.Feed == "nil") && feed.Reasons != nil {
+					t.Fatal("snapshot empty reasons must remain nil")
+				}
+			}
+			for index := range first.Entries[0].Feeds {
+				before := ledgerSnapshotCopyForTest(first)
+				feed := &first.Entries[0].Feeds[index]
+				feed.Reasons = append(feed.Reasons, "appended", "again")
+				feed.Reasons[0] = "mutated"
+				for sibling := range first.Entries[0].Feeds {
+					if sibling != index && !reflect.DeepEqual(first.Entries[0].Feeds[sibling], before.Entries[0].Feeds[sibling]) {
+						t.Fatal("append or mutation corrupted a sibling feed")
+					}
+				}
+				if !reflect.DeepEqual(first.Entries[1:], before.Entries[1:]) ||
+					!reflect.DeepEqual(second, expected) || !reflect.DeepEqual(ledger.Snapshot(), expected) ||
+					!reflect.DeepEqual(live, original) {
+					t.Fatal("append or mutation changed another entry, snapshot or ledger")
+				}
+			}
+			// The raw copy also owns its segments before normalization.
+			for index := range raw.Feeds {
+				raw.Feeds[index].Reasons = append(raw.Feeds[index].Reasons, "raw append")
+				raw.Feeds[index].Reasons[0] = "raw mutation"
+			}
+			if !reflect.DeepEqual(live, original) || !reflect.DeepEqual(ledger.Snapshot(), expected) {
+				t.Fatal("raw copy changed live input")
+			}
+			live[0] = "later live mutation"
+			if !reflect.DeepEqual(second, expected) {
+				t.Fatal("later live mutation changed an independently owned snapshot")
+			}
+		})
+	}
+}
+
+func TestContentLedger_SnapshotEmptyFeedReasonArena(t *testing.T) {
+	for _, feeds := range []map[string]*ContentFeedDisposition{
+		nil,
+		{},
+		{"nil": {Feed: "nil"}},
+		{"empty": {Feed: "empty", Reasons: []string{}}},
+		{"nil": {Feed: "nil"}, "empty": {Feed: "empty", Reasons: []string{}}},
+	} {
+		ledger := NewContentLedger()
+		ledger.Discover([]string{"post.md"})
+		ledger.mu.Lock()
+		entry := ledger.entries["post.md"]
+		entry.feeds = feeds
+		raw := copyContentDisposition(entry)
+		ledger.mu.Unlock()
+		for _, feed := range raw.Feeds {
+			if feed.Reasons == nil || len(feed.Reasons) != 0 || cap(feed.Reasons) != 0 {
+				t.Fatal("raw empty reasons must remain nonnil and capacity-clamped")
+			}
+		}
+		snapshot := ledger.Snapshot()
+		got := snapshot.Entries[0].Feeds
+		if len(got) != len(feeds) || (len(feeds) == 0 && (got != nil || raw.Feeds != nil)) {
+			t.Fatal("empty feed nil semantics changed")
+		}
+		for _, feed := range got {
+			if feed.Reasons != nil {
+				t.Fatal("snapshot empty reasons must remain nil")
+			}
+		}
+		if snapshot.Summary.Discovered != 1 || snapshot.Summary.Candidates != 1 ||
+			snapshot.Summary.Excluded != 1 || snapshot.Entries[0].Disposition != DispositionExcluded {
+			t.Fatal("empty feeds changed derived counts or disposition")
+		}
+	}
+}
+
 func TestContentLedger_SnapshotConcurrentUpdates(t *testing.T) {
 	ledger := NewContentLedger()
 	ledger.Discover([]string{"post.md"})

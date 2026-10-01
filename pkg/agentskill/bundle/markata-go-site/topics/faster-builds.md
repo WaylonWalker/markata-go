@@ -106,7 +106,24 @@ So `--fast` is good for content, template, and most styling iteration, but it is
   next warm build.
 - Full builds keep the complete content diagnostics artifact; serialization
   streams entries rather than buffering the whole JSON document. Do not disable
-  diagnostics to make a benchmark look faster. Sidebar link projections are
+  diagnostics to make a benchmark look faster. Owned scratch grows with the
+  largest entry, and repeated encoded feed fragments are reused only within
+  publication, capped at 1024 entries and 1 MiB including keys; bypassing this
+  retention never drops feed observations. Inspect the `diagnostics_artifact`
+  cleanup debug record for snapshot, optional source metadata, serialization,
+  actual file writes, flush, sync, close and replacement. Add only exclusive
+  serialization/flush durations to file-write time; separately labeled inclusive
+  wall totals overlap file writes. Directory/temp setup and removal are outside
+  these phases; these are elapsed timings, not tracing spans or artifact fields.
+  Publication uses a fixed 64 KiB buffer; large writes may bypass it, so measure
+  raw calls instead of dividing artifact size by buffer size. Do not translate
+  lower temporary serializer allocation into a whole-build RSS claim: live
+  templates and rendered HTML can still dominate memory.
+  Snapshot copies use one owned feed-reason arena per entry with isolated,
+  capacity-clamped slices, including after deduplication. This reduces small
+  allocations, not snapshot freshness or ownership; do not introduce snapshot
+  reuse or an immutable-cache contract as a follow-on shortcut.
+  Sidebar link projections are
   reused only within a build, with current-page highlights kept separate.
 - Glossary matching uses longest-first keys with lexical ties, so equal-length
   aliases sharing a link limit do not randomly change cold-build output.
