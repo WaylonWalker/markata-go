@@ -155,6 +155,33 @@ markata-go build --benchmark-json benchmark.json
 
 5. If the build is still mostly CPU after network fixes, capture `--cpuprofile` and inspect the hottest functions with `go tool pprof`.
 
+### Automatic-Feed Collection
+
+Automatic-feed collection emits one bounded `auto_feeds` / `collect` debug
+record. `generation_ns`, `filtering_sorting_ns`, `selection_recording_ns`, and
+`pagination_preparation_ns` are exclusive elapsed phase sums in nanoseconds.
+`feeds`, `matched`, `selected`, and `observations` are numeric counts (post
+counts include occurrences across feeds). There are no per-feed names, filters,
+or paths in this record, and these timings are not diagnostics v1 fields.
+Use the selection phase when profiling complete diagnostics recording: every
+considered occurrence is recorded, including exclusions. Configured and automatic
+feeds reuse transient source flags, observation rows, membership maps, and a
+reason arena only within one synchronous Collect invocation, and write one
+atomic ledger batch per feed. This does not cache selection across builds, change
+filters or publication, reduce artifact completeness, or establish an RSS win.
+
+For new batch relationships, ledger-owned object and initial-reason slabs hold
+at most 10 dispositions or 32 string slots each, with smaller observation-bounded
+tails. Raw reason lists over 32 strings use ordinary standalone append/deduplication
+without a counting pass or allocation by raw length; duplicate/empty-heavy input
+retains storage only for unique nonempty values.
+Allocation is lazy; existing relationships allocate no slabs, and single-record
+producers keep their individual allocation path. Published object addresses stay
+stable, and copied, ordered-deduplicated reason segments are capacity-clamped so
+later appends cannot touch neighbors. This reduces per-relation heap allocations
+without changing sparse maps or introducing a registry or cross-build pool.
+Allocation results alone do not demonstrate faster full builds.
+
 ### Diagnostics Publication
 
 Full-build diagnostics publication has a separate bounded `diagnostics_artifact`

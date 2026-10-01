@@ -84,6 +84,23 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 
 ## Guidance
 
+- When automatic feeds are hot, inspect the bounded `auto_feeds` / `collect`
+  debug record: `generation_ns`, `filtering_sorting_ns`,
+  `selection_recording_ns`, and `pagination_preparation_ns` are exclusive elapsed
+  phase sums. Counts include considered occurrences across feeds, not unique
+  posts. Complete exclusion recording can dominate filtering; do not drop
+  diagnostics or retain membership/flags across builds to improve timings.
+  Per-Collect scratch and atomic per-feed ledger batches preserve the complete
+  report. Lower temporary allocation is not evidence of a whole-site RSS win.
+  New ledger relationships use lazy owned slabs capped at 10 objects or 32
+  initial-reason strings, with observation-bounded tails. Raw reason lists over
+  32 strings use ordinary standalone append/deduplication, without counting or
+  allocating by raw length; duplicate/empty-heavy input retains only unique
+  nonempty values. Published storage is never cleared or reused.
+  Existing updates allocate no slabs; single recording
+  remains individual. There is no cross-build pool or feed registry. Measure
+  full-site timings separately rather than equating allocation reduction with
+  faster builds.
 - The second warm build is the best steady-state comparison point.
 - Avoid deleting caches unless you specifically need a cold-build measurement.
 - If output is network-bound, inspect plugins that fetch remote content.

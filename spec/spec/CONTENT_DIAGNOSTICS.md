@@ -197,6 +197,44 @@ nil semantics, ordering and summary counts MUST remain unchanged. Arenas MUST be
 newly owned on each snapshot; no snapshot reuse or immutable-cache contract is
 introduced. This reduces snapshot allocation, not the live HTML/template RSS.
 
+## Ordered Feed Observation Batches
+
+`ContentFeedObservation` contains a raw `Path`, `Included`, and `Reasons`.
+`RecordFeedBatch(feed, observations)` MUST have the same result as ordered
+`RecordFeed` calls, including normalization, unknown noncandidate discovery,
+empty feed names, last-observation inclusion, and union/deduplication of reasons.
+Entry reasons MUST include reasons from EACH excluded observation, even if a
+later observation includes the source. Nil ledgers and empty batches are no-ops.
+The ledger MUST own all retained slices, with no callbacks under its lock.
+Each batch MUST be atomic relative to snapshots, discovery, resets, and writes.
+Feed storage MUST remain sparse; recording MUST NOT allocate a sources-by-feeds
+matrix. Reset and Discover MUST discard any recording-only feed identity state.
+
+New batch relationships MAY use batch-local owned slabs instead of individual
+heap objects. Object slabs MUST have stable backing arrays (never appended after
+publishing pointers), at most 10 dispositions, and a tail bounded by the remaining
+observation count. Initial reason slabs MUST have at most 32 string slots and
+tails bounded by remaining observations and the current unique reason count.
+Raw reason input longer than 32 strings MUST bypass slab reservation and use the
+ordinary standalone append/deduplication path, without counting or allocating by
+raw input length. Retained reason storage grows with unique nonempty values, not
+duplicate or empty input. Reasons MUST be copied and deduplicated in original
+order. Slab segments MUST be capacity-clamped; later appends MUST NOT alter
+neighbors. Published object arrays and reason segments MUST never be reused or
+cleared. Only the current batch owns allocator headers; none survive in the ledger
+after recording, Reset, or Discover.
+Slabs MUST be allocated lazily only for missing candidate relationships, never for
+existing updates. No global/cross-build pool, dense matrix, caller storage, or
+feed registry is introduced. Single recording MUST retain its ordinary individual
+allocation path. Live slabs belong to the recorded ledger values, not reusable
+scratch; snapshots MUST still own independent copies after Reset or Discover.
+
+Automatic-feed collection MAY emit bounded debug phase records for generation,
+filtering/sorting, selection recording, and pagination/preparation. Records MUST
+contain only fixed phase names, numeric counts, and durations, never source paths,
+feed names, filters, or content. Phase durations MUST cover actual work without
+double-counting nested totals. These records do not add fields to schema v1.
+
 ## Reason Codes
 
 Reason codes are stable identifiers. Human-readable messages may change without
