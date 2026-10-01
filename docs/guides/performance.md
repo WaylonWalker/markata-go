@@ -54,6 +54,71 @@ just perf
 
 This runs the benchmark 5 times and outputs results to `bench.txt`.
 
+## Persistent CSS and JavaScript Minification
+
+Normal builds reuse minified results for exact current inputs and matching
+options, including static assets copied into output again as raw bytes.
+No extra setting is required:
+
+```bash
+markata-go build
+markata-go build
+```
+
+The per-plugin log separates work into `transformed` (engine calls), `restored`
+(verified exact-input result reuse), `excluded`, and `failed`. Restored assets
+receive verified result bytes without invoking the minifier, but still publish
+by atomic replacement with mode `0644`, just like fresh transformations. This
+also applies when result bytes already match, without changing hardlinked
+releases. Empty JavaScript retains its existing no-write exception.
+Contents, not file size or mtime, determine reuse. There is no general
+processed-output shortcut: CSS important comments matching preservation
+patterns can make repeated minification non-idempotent, so retained output may
+need another engine call. Static-asset hashed aliases still
+receive the final canonical
+minified bytes during Cleanup.
+
+Private result blobs and per-asset exact-input records live under
+`<content_dir>/.markata/asset-minify/v1/`, independently of the build-cache enabled
+setting. A nonempty `[markata-go] cache_dir` override is used as supplied (a
+relative path is relative to the build's working directory), like the build
+cache. Sites and output roots are isolated even when they share cache storage.
+Keep this directory outside published output; unsafe locations, including
+symlink relationships, produce a warning and disable reuse. Do not deploy the
+private cache: historical snapshots from earlier implementations may contain
+comments removed from public assets. New transforms do not write source snapshots.
+The derived storage paths and private parent directories must not overlap
+published output either; unsafe configuration is rejected before directory
+creation or permission changes, then minification proceeds uncached.
+
+Changing CSS `preserve_comments`, the minifier/parser versions, or the maintained
+transform revision invalidates affected recipes. Changed recipes always minify
+the current stage-input bytes, even when they equal an earlier minified result.
+Only exact input plus the same recipe can restore a verified result; matching a
+historical output or retry digest never authorizes reuse. The recorded source
+hash means exact transform input, not original author source. Historical
+snapshots are never read or substituted for current input.
+To preserve a previously stripped comment, regenerate the asset from
+authoritative source before building; changing options alone cannot recover it
+from retained minified output. Missing or corrupt cached results needed for
+exact-input reuse are warned about and repaired from current bytes.
+Minification errors remain warnings rather than failing the whole build. Cache
+write errors also warn; if obsolete provenance cannot safely be invalidated,
+that target is left unchanged rather than risking restoration of an older input.
+
+`--fast`, disabled plugins, exclusions, `.min.js`, and `_pagefind` retain their
+existing selection behavior. They do not change transform recipes. Legacy
+`.markata-{js,css}_minify-cache` sidecars are ignored and left untouched, not
+promoted into trusted provenance. After upgrading, perform one rebuild that
+regenerates raw source assets, especially assets not normally recopied. Clearing
+only the new cache cannot recover original source from an already-minified file.
+
+For measurements, keep caches intact, prime the new records, then compare
+equivalent alternating warm builds. Repeated raw copies should avoid engine
+work after priming, but do not expect zero transformations for retained
+non-idempotent output, or no target writes on hits. Restored counts measure
+avoided engine work, not by themselves an end-to-end speedup.
+
 ## Running Benchmarks Locally
 
 ### Prerequisites

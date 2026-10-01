@@ -2917,6 +2917,22 @@ Files with `.min.js` extension are automatically skipped (already minified).
 
 Both plugins run at the very end of the Write stage (`PriorityLast`), after all CSS/JS-generating plugins have finished.
 
+Both plugins memoize exact current-input minification results in the private
+`<content_dir>/.markata/asset-minify/v1/` cache. A nonempty top-level
+`[markata-go] cache_dir` override is used as supplied, independently of whether
+the build cache is enabled. Keep the cache outside published output; unsafe
+locations warn and disable reuse. CSS `preserve_comments` changes invalidate
+the transform recipe; changed recipes always minify current stage-input bytes.
+Comments already removed require regeneration from authoritative source, not
+recovery from a historical cache snapshot.
+Reuse requires the exact transform input and matching recipe, never a prior
+output or retry digest. Hits still publish atomically with normal `0644`
+permissions (except empty JavaScript); repeated retained CSS output may need
+fresh transformations because comment handling can be non-idempotent.
+Fast mode, exclusions, disabled plugins, and `_pagefind` remain skipped.
+See [Persistent CSS and JavaScript Minification](performance.md#persistent-css-and-javascript-minification)
+for recovery, upgrade, privacy, and measurement guidance.
+
 ---
 
 ## Validation
