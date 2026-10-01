@@ -53,8 +53,9 @@ func TestAutoFeedsCollectionPhaseRecord(t *testing.T) {
 	}
 	for _, field := range fields[1:5] {
 		value, err := strconv.ParseInt(field, 10, 64)
-		if err != nil || value <= 0 {
-			t.Fatalf("phase did not cover work: %q", field)
+		// Short phases can finish within one clock tick, especially on Windows.
+		if err != nil || value < 0 {
+			t.Fatalf("phase duration must be a non-negative integer: %q", field)
 		}
 	}
 	if fields[5] != "2" || fields[8] != "6" {
