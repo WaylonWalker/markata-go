@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -395,7 +396,15 @@ func TestWriteDiagnosticsArtifactMeasured_Phases(t *testing.T) {
 				t.Fatal("measured publication changed bytes")
 			}
 			info, err := os.Stat(destination)
-			if err != nil || info.Mode().Perm() != 0o644 {
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Windows only represents the owner write bit in Chmod permissions.
+			if runtime.GOOS == "windows" {
+				if info.Mode().Perm()&0o200 == 0 {
+					t.Fatal("measured publication is not writable")
+				}
+			} else if info.Mode().Perm() != 0o644 {
 				t.Fatal("measured publication changed permissions")
 			}
 		})
