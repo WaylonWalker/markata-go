@@ -1,3 +1,13 @@
+/* Calendar pages have room for readable months, independent of article width. */
+.main-content > .feed.h-feed.calendar-feed {
+  width: 100%;
+  max-width: 100%;
+  --feed-content-width: 100%;
+}
+.feed.h-feed.calendar-feed > .feed-header {
+  width: 100%;
+  max-width: none;
+}
 .calendar-feed {
   --calendar-border: color-mix(in srgb, currentColor 18%, transparent);
   --calendar-muted: color-mix(in srgb, currentColor 62%, transparent);
@@ -72,8 +82,9 @@
 
 .calendar-year-nav {
   align-items: center;
-  justify-self: center;
-  margin-inline: auto;
+  justify-self: start;
+  margin-inline: 0;
+  margin-block: 0;
 }
 
 .calendar-year-nav select {
@@ -108,25 +119,45 @@
   gap: 1rem;
 }
 
-.calendar-year > h2 {
+.calendar-year-header h2 {
   margin: 0;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font: 600 clamp(2.5rem, 5vw, 4rem)/1 var(--font-heading, serif);
+  letter-spacing: -.04em;
 }
 
 .calendar-months {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: clamp(1rem, 2vw, 1.75rem);
   align-items: start;
 }
 
+.calendar-year-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  padding-block: .75rem 1rem;
+  border-block-end: 1px solid var(--calendar-border);
+}
+.calendar-year-stats {
+  margin: 0;
+  color: var(--calendar-muted);
+  font-size: .85rem;
+  font-variant-numeric: tabular-nums;
+}
 .calendar-month {
   min-width: 0;
+  padding: .9rem;
+  border: 1px solid var(--calendar-border);
+  border-radius: .75rem;
+  background: color-mix(in srgb, var(--color-background, transparent) 92%, var(--calendar-active) 8%);
 }
 
 .calendar-month h3 {
   margin: 0 0 0.55rem;
-  font-size: 0.95rem;
+  font: 600 1.2rem/1.3 var(--font-heading, serif);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -151,13 +182,14 @@
 }
 
 .calendar-days {
-  gap: 0.18rem;
+  gap: .25rem;
 }
 
 .calendar-day,
 .calendar-day-empty {
   position: relative;
   min-width: 0;
+  min-height: 2.5rem;
   aspect-ratio: 1;
 }
 
@@ -171,10 +203,10 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  min-height: 2rem;
+  min-height: 2.5rem;
   border-radius: 0.45rem;
   font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
+  font-size: .9rem;
 }
 
 .calendar-day-quiet {
@@ -365,30 +397,6 @@
 
 .calendar-feed [hidden] {
   display: none !important;
-}
-
-@media (min-width: 30rem) {
-  .calendar-months {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 48rem) {
-  .calendar-months {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 72rem) {
-  .calendar-months {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 96rem) {
-  .calendar-months {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 36rem) {

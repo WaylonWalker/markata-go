@@ -63,7 +63,7 @@ For a feed at `/blog/`, Calendar is available from the feed's view controls and 
 /blog/?view=calendar
 ```
 
-The calendar reads the complete `feed.posts` collection, so ordinary primary-view pagination does not truncate its history. The post sidebar also exposes a calendar link for the currently selected feed.
+The calendar reads the complete `feed.posts` collection, so ordinary primary-view pagination does not truncate its history. It renders one populated year at a time, defaults to the newest year, and supports `?view=calendar&year=2024` links. Older/newer controls and the year selector preserve URL state and browser history. Month widths adapt to the actual container. The full-history source still exists; annual paging bounds active grid DOM rather than transfer size. The post sidebar also exposes a calendar link for the currently selected feed.
 
 The dedicated `calendar-feed.html` template still exists for intentional calendar-first customization, not as the normal enablement path.
 

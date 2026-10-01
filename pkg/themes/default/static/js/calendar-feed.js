@@ -248,7 +248,12 @@
       const yearHeading = element('h2', '', String(year));
       yearHeading.id = `calendar-year-${year}`;
       yearSection.setAttribute('aria-labelledby', yearHeading.id);
-      yearSection.append(yearHeading);
+      const yearHeader = element('header', 'calendar-year-header');
+      yearHeader.append(yearHeading);
+      const yearPosts = datedPosts.filter(post => post.date.startsWith(`${year}-`));
+      const activeDays = new Set(yearPosts.map(post => post.date)).size;
+      yearHeader.append(element('p', 'calendar-year-stats', `${yearPosts.length} posts · ${activeDays} publishing days`));
+      yearSection.append(yearHeader);
 
       const months = element('div', 'calendar-months');
       for (let month = 0; month < 12; month += 1) {
@@ -277,6 +282,9 @@
 
     const initialYear = calendarYearFromURL(sortedYears) || sortedYears[0];
     renderYear(initialYear, false);
+    window.addEventListener('popstate', () => {
+      renderYear(calendarYearFromURL(sortedYears) || sortedYears[0], false);
+    });
 
     const ensurePreview = (details) => {
       if (details.querySelector('.calendar-day-preview')) return;
@@ -338,18 +346,19 @@
     return true;
   }
 
-  function calendarModeFromURL() {
+  function calendarModeFromURL(defaultMode = 'list') {
     try {
-      return new URLSearchParams(window.location.search).get('view') === 'calendar';
+      const mode = new URLSearchParams(window.location.search).get('view');
+      return mode === 'calendar' || mode === 'list' ? mode : defaultMode;
     } catch (error) {
-      return false;
+      return defaultMode;
     }
   }
 
   function calendarYearFromURL(years) {
     try {
       const raw = new URLSearchParams(window.location.search).get('year');
-      if (!raw) return null;
+      if (!/^\d{4}$/.test(raw || '')) return null;
       const year = Number(raw);
       return years.includes(year) ? year : null;
     } catch (error) {
@@ -357,12 +366,13 @@
     }
   }
 
-  function updateURLMode(mode) {
+  function updateURLMode(mode, defaultMode = 'list') {
     try {
       const url = new URL(window.location.href);
       if (mode === 'calendar') url.searchParams.set('view', 'calendar');
-      else if (url.searchParams.get('view') === 'calendar') url.searchParams.delete('view');
-      window.history.replaceState(window.history.state, '', url.toString());
+      else if (defaultMode === 'calendar') url.searchParams.set('view', 'list');
+      else if (['calendar', 'list'].includes(url.searchParams.get('view'))) url.searchParams.delete('view');
+      if (url.toString() !== window.location.href) window.history.pushState(window.history.state, '', url.toString());
     } catch (error) {
       // URL state is progressive enhancement only.
     }
@@ -372,7 +382,7 @@
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('year', String(year));
-      window.history.replaceState(window.history.state, '', url.toString());
+      if (url.toString() !== window.location.href) window.history.pushState(window.history.state, '', url.toString());
     } catch (error) {
       // URL state is progressive enhancement only.
     }
@@ -418,6 +428,7 @@
       return calendarRendered;
     };
 
+    const defaultMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
     const primaryNodes = primaryNodesFor(root, sourceList);
     const sourceIsPrimary = primaryNodes.includes(sourceList);
     const buttons = Array.from(switcher.querySelectorAll('[data-calendar-mode]'));
@@ -432,16 +443,19 @@
         button.setAttribute('aria-pressed', button.getAttribute('data-calendar-mode') === mode ? 'true' : 'false');
       }
 
-      if (persistURL && root.hasAttribute('data-calendar-url-state')) updateURLMode(mode);
+      if (persistURL && root.hasAttribute('data-calendar-url-state')) updateURLMode(mode, defaultMode);
     };
 
     for (const button of buttons) button.addEventListener('click', () => setMode(button.getAttribute('data-calendar-mode')));
 
-    let initialMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
-    if (root.hasAttribute('data-calendar-url-state') && calendarModeFromURL()) initialMode = 'calendar';
+    const initialMode = root.hasAttribute('data-calendar-url-state') ? calendarModeFromURL(defaultMode) : defaultMode;
 
     switcher.hidden = false;
     setMode(initialMode, false);
+    window.addEventListener('popstate', () => {
+      const mode = calendarModeFromURL(defaultMode);
+      setMode(mode, false);
+    });
   }
 
   for (const root of document.querySelectorAll('[data-calendar-feed]')) initialize(root);

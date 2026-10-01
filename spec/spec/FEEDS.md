@@ -1264,6 +1264,31 @@ See the [Pins guide](../../docs/guides/pins.md) for usage.
 
 ---
 
+## Calendar Year Pagination
+
+Built-in feed Calendar views and `calendar-feed.html` MUST construct only one
+populated year at a time, with at most twelve month grids. The default year MUST
+be the newest year with dated posts; undated posts remain in the list fallback.
+Inactive years MUST NOT have calendar day DOM. Primary/list feed views MUST defer
+calendar construction until Calendar is opened.
+
+Older/newer buttons and a native year selector MUST skip empty years, disable
+unavailable directions, and support keyboard input. A valid `year=YYYY` query
+parameter MUST restore the selected year. Missing or invalid years MUST fall
+back to the newest populated year. Year changes MUST preserve other query
+parameters and browser Back/Forward MUST restore the selected year and view.
+
+Month sizing MUST respond to the actual available calendar width rather than
+viewport breakpoints that squeeze six months into an article-width column.
+Each month SHOULD have at least 17rem of width when space allows, with a single
+column on narrow screens and readable day targets. An annual header MUST identify
+the selected year and its post count. Existing day hover/focus/click previews
+and the full-history list fallback MUST remain available.
+
+This pagination bounds active calendar rendering cost. The full-history source
+payload remains available for the no-JavaScript fallback and year navigation;
+this change does not promise smaller HTML transfers.
+
 ## Configuration Inheritance
 
 Feed configuration follows a **defaults → override** pattern. Global defaults apply to all feeds, and individual feeds can override any setting.
