@@ -84,6 +84,37 @@ So `--fast` is good for content, template, and most styling iteration, but it is
 
 ## Guidance
 
+- Normal JS/CSS minification persists exact results under
+  `<content_dir>/.markata/asset-minify/v1/`, or the nonempty top-level `cache_dir`
+  override used as supplied. It is independent of build-cache enablement and
+  must stay outside published output, including derived storage paths, private
+  parent directories, and symlink relationships. Unsafe locations are rejected
+  before directory creation or permission changes. Never
+  deploy this private cache: historical snapshots may contain stripped comments,
+  though new transforms write only results and exact-input records.
+  `transformed/restored/excluded/failed` log counts distinguish real
+  engine work from verified exact-input restores. Only exact current-input
+  digest plus matching recipe authorizes reuse; the source hash means transform
+  input, not original author source. Hits publish atomically with mode `0644`,
+  even for identical bytes, never chmod on a shared release inode; empty JS
+  retains its no-write exception. Raw static recopies should avoid engine work
+  after priming. Do not demand zero transforms for retained output or no-write
+  hits: important CSS comments can make transformations non-idempotent.
+  Same-size/mtime edits still miss when their contents differ from recorded input.
+  CSS comment-option or engine/wrapper changes always transform current
+  stage-input bytes. Never select older snapshots using processed-output or
+  retry hashes, or use a prior output digest for same-recipe reuse.
+  To preserve a
+  stripped comment, regenerate from authoritative source; retained output or
+  snapshots cannot establish that source's current intent. Missing/corrupt
+  results needed for exact-input reuse warn and repair from current bytes.
+  Persistence plus invalidation failure leaves
+  that target unchanged under the warning-only policy. Keep fast/disabled,
+  exclusions, `.min.js`, and `_pagefind` behavior intact. Legacy output sidecars
+  remain untouched and untrusted: do one source-regenerating rebuild after
+  upgrading, including assets not normally recopied. Do not recommend clearing
+  caches alone to recover original source. Prime records before alternating
+  equivalent warm timings; avoided engine calls alone do not prove a wall-time gain.
 - When automatic feeds are hot, inspect the bounded `auto_feeds` / `collect`
   debug record: `generation_ns`, `filtering_sorting_ns`,
   `selection_recording_ns`, and `pagination_preparation_ns` are exclusive elapsed

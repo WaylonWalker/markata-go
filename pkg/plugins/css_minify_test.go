@@ -137,7 +137,8 @@ body {
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled": true,
@@ -209,7 +210,8 @@ func TestCSSMinifyPlugin_Write_Disabled(t *testing.T) {
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled": false,
@@ -264,7 +266,8 @@ body {
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled": true,
@@ -334,7 +337,8 @@ body {
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled":           true,
@@ -505,7 +509,8 @@ a:hover {
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled": true,
@@ -561,7 +566,8 @@ body { margin: 0; }
 	p := NewCSSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"css_minify": map[string]interface{}{
 				"enabled": true,
