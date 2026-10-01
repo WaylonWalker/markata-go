@@ -1007,6 +1007,10 @@ typographer = false  # Keep straight quotes
 
 ---
 
+## Legacy homepage format outputs
+
+An empty-slug homepage MUST publish Markdown and text as root files (`index.md` and `index.txt`). When incremental output contains a legacy directory at one of these paths, the publisher MUST replace it only if it contains exactly one regular `index.html` file matching the generated redirect to `/.md` or `/.txt`. Unexpected files, directories, or symlinks MUST be preserved and the write MUST fail. Migration MUST affect staging output only, preserving previous releases.
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification
