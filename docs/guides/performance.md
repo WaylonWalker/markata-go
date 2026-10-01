@@ -14,6 +14,36 @@ tags:
 
 markata-go includes a comprehensive benchmarking suite for measuring and optimizing build performance. This guide covers how to run benchmarks locally, interpret results, and use profiling tools to identify bottlenecks.
 
+### Explain template work before optimizing it
+
+Inspect `jq '.content.template_cache' benchmark.json`, or
+`jq '.template_cache' public/.markata/diagnostics.json` after a successful build.
+The optional, additive version-1 field counts classification, full-page
+restoration, render success/failure, and incremental serve deferral. Its bounded
+histogram records the first failing cache gate only; earlier gates mask later
+ones. `nav_preview_reset` is context, not proof of why individual pages missed.
+No paths, template names, hashes, or per-page telemetry are recorded.
+
+Compare equivalent warm builds without clearing their caches, and alternate
+samples to account for shared-host noise. A persistent miss count is not
+automatically a bug or evidence of corruption. Reconcile `classified =
+restored + render_required` and `render_required = render_succeeded +
+render_failed + serve_deferred` before attributing time to cache selection.
+See [Content Diagnostics](content-diagnostics.md#template-cache-decisions) for
+the complete precedence and reconciliation rules. This phase measures template
+cache decisions only, not publish I/O, and does not change rendered HTML.
+
+Warm template builds still restore every usable full page into public
+`Post.HTML` before rendering any misses, so custom templates can inspect
+cache-hit peers and a deleted output tree can be repaired. Restoration uses
+up to four workers, never exceeding the configured build concurrency, without
+changing rendering concurrency or introducing another configuration flag.
+The template phase logs separate `Phase 1a classify`, `Phase 1b batch restore`,
+and `Phase 2 render`; restore time belongs to Phase 1b even when no pages need
+fresh rendering. Compare both restore latency and total template time.
+This is a latency optimization, not removal of the live full-page memory floor:
+hooks, Fontpack, Tailwind, and publication still receive complete pages.
+
 ## Quick Start
 
 Run the end-to-end build benchmark:
@@ -125,6 +155,33 @@ markata-go build --benchmark-json benchmark.json
 
 5. If the build is still mostly CPU after network fixes, capture `--cpuprofile` and inspect the hottest functions with `go tool pprof`.
 
+### Diagnostics Publication
+
+Full-build diagnostics publication has a separate bounded `diagnostics_artifact`
+cleanup debug record: snapshot, optional source metadata, serialization/buffering,
+actual file-write time/bytes/calls, flush, sync, close and replacement. Use
+`serialization_buffering_exclusive` and `flush_exclusive` with `file_write`
+to avoid counting file I/O twice; the corresponding `*_inclusive` wall totals
+overlap it. Directory/temp setup and removal are not included. No publication
+timings are inserted into the diagnostics v1 document.
+
+The diagnostics artifact writer reuses owned per-entry scratch and already
+encoded/indented feed fragments within a single call (at most 1024 retained
+fragments and 1 MiB including keys). Values outside these caps bypass retention,
+not output. This reduces repeated sanitation allocations and JSON indentation
+when posts share feed dispositions; it does not remove observations, persist a
+cache, or alter output bytes. Snapshot and artifact size still scale with the
+complete ledger. Compare equivalent warm builds and fixed-metadata serializer
+benchmarks rather than disabling diagnostics to improve a timing.
+Publication uses a fixed 64 KiB buffer. Large entry writes can bypass it, so use
+the measured raw-write counts rather than estimating calls from artifact size.
+Reduced serializer allocation does not establish a whole-build RSS reduction;
+live templates and rendered HTML may still dominate memory.
+Snapshot copying also replaces per-feed reason allocations with one owned arena
+per entry. Feed slices remain isolated and capacity-clamped after deduplication,
+and feed sorting uses a typed comparator. This lowers allocation count and
+snapshot work without reusing snapshots or changing ownership, counts or output.
+
 ### JSON Benchmarks
 
 Use machine-readable output when you want to compare builds over time or ingest
@@ -142,6 +199,17 @@ The JSON output includes:
 - plugin timing entries used for hotspot ranking
 - request timing entries used for the slowest-request list
 - build counts and warnings
+- the complete content summary and per-source entries, including every feed
+  disposition and selection reason
+
+Reports stream content entries with reusable per-entry buffers and buffered
+writes, reducing serialization memory on large sites without omitting details.
+The two-space-indented JSON format and trailing newline are unchanged. The
+report itself can still be large: its size grows with content and feed
+observations, while temporary content-encoding buffers grow with the largest
+single entry rather than the complete report. Non-content timing metadata is
+still encoded together. File and stdout modes retain the same complete payload;
+write, flush, and file-close failures are reported as errors.
 
 ### Per-Stage Detail
 
@@ -405,6 +473,32 @@ go test -bench=BenchmarkBuild_EndToEnd -run='^$' \
   -cpuprofile=cpu.prof \
   ./benchmarks/...
 ```
+
+### Source-encrypted warm builds
+
+Source-encrypted Markdown deliberately bypasses parsed-post and plaintext
+article caches. Reparsing alone should not force fresh page templates: the
+canonical title/feed/tag/garden hashes are compared against the previous build
+through a build-local, hash-only handoff. No decrypted snapshot is retained by
+that handoff, and no cache schema migration is required.
+
+For already processed posts, incomplete semantic hashes (for example after a
+cold navigation reset) mean the previous canonical baseline is unavailable.
+The build retains the original comparison for that pass and repairs the hashes,
+rather than marking every reparsed page changed. New entries still compare
+against an explicitly empty/partial baseline. Cold-to-edit cache scope does not
+require warm priming.
+
+Encrypted wrappers are reused only when article HTML, key name, resolved
+password, hint, source path, and wrapper/browser-crypto revision all match.
+Real wrapper regeneration invalidates the page and dependent closure before
+templates and publication; subsequent equivalent warm builds stabilize.
+It also clears the old full-page reference before cache writes. After a failed
+fresh full-page cache write, a persisted reload reports `full_html_unavailable`
+and re-renders with the current wrapper rather than restoring old ciphertext.
+Randomized source ciphertext for the same plaintext/key contract is not itself
+a wrapper miss. Older wrapper identities miss once. Conservative Load dirty
+signals for feeds, tags, and garden output remain unchanged.
 
 ## See Also
 

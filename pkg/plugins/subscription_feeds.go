@@ -8,7 +8,12 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// SubscriptionFeedsPlugin creates built-in subscription feeds at root and /archive.
+const (
+	rootSubscriptionFeedType = "root"
+	pinsFeedSlug             = "pins"
+)
+
+// SubscriptionFeedsPlugin creates built-in subscription feeds at root, /archive, and /pins.
 // The root feed also renders the default homepage, while /archive retains the
 // configured archive page and both locations expose RSS and Atom feeds.
 //
@@ -41,7 +46,7 @@ func (p *SubscriptionFeedsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Collect injects built-in subscription feeds into the feed configs.
 // The implicit root feed generates an HTML homepage as well as RSS and Atom.
-// Explicit root or archive feed configuration remains authoritative.
+// Explicit root, archive, or pins feed configuration remains authoritative.
 func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
 	syndication := getSyndicationConfig(config)
@@ -73,7 +78,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Check if root subscription feed already exists.
+	// Check if built-in feeds already exist.
 	rootFeedIndex := -1
 	hasArchiveFeed := false
 	for i := range feedConfigs {
@@ -105,8 +110,8 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	if rootFeedIndex < 0 {
 		rootFeed := models.FeedConfig{
 			Slug:        "",
-			Title:       getSubscriptionFeedTitle(config, "root"),
-			Description: getSubscriptionFeedDescription(config, "root"),
+			Title:       getSubscriptionFeedTitle(config, rootSubscriptionFeedType),
+			Description: getSubscriptionFeedDescription(config, rootSubscriptionFeedType),
 			Filter:      "published == true",
 			Sort:        "date",
 			Reverse:     true,
@@ -138,6 +143,32 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			},
 		}
 		feedConfigs = append(feedConfigs, archiveFeed)
+	}
+
+	// Create a visual pins feed unless the site configured one explicitly or an
+	// authored publishable post already owns /pins/. Link frontmatter remains
+	// render-neutral outside this feed.
+	if shouldAddImplicitPinsFeed(feedConfigs, m.Posts()) {
+		pinsFeed := models.FeedConfig{
+			Slug:           pinsFeedSlug,
+			ItemsPerPage:   100,
+			PaginationType: models.PaginationManual,
+			Title:          "Pins",
+			Description:    "A field notebook of saved links",
+			Filter:         "published == true and link",
+			Sort:           "date",
+			Reverse:        true,
+			Templates: models.FeedTemplates{
+				HTML: "pins.html",
+			},
+			Formats: models.FeedFormats{
+				HTML: true,
+				RSS:  false,
+				Atom: false,
+				JSON: false,
+			},
+		}
+		feedConfigs = append(feedConfigs, pinsFeed)
 	}
 
 	// FeedsPlugin reads the resolved config during collection. Keep it in sync
@@ -173,6 +204,31 @@ func hasConfiguredRootFeed(config *lifecycle.Config) bool {
 	return false
 }
 
+func shouldAddImplicitPinsFeed(feedConfigs []models.FeedConfig, posts []*models.Post) bool {
+	for i := range feedConfigs {
+		if feedConfigs[i].Slug == pinsFeedSlug {
+			return false
+		}
+	}
+	return !postOwnsFeedSlug(posts, pinsFeedSlug)
+}
+
+func postOwnsFeedSlug(posts []*models.Post, slug string) bool {
+	slug = strings.Trim(strings.TrimSpace(slug), "/")
+	if slug == "" {
+		return false
+	}
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft || !post.Published {
+			continue
+		}
+		if strings.Trim(strings.TrimSpace(post.Slug), "/") == slug {
+			return true
+		}
+	}
+	return false
+}
+
 // getSubscriptionFeedTitle returns the title for a subscription feed.
 func getSubscriptionFeedTitle(config *lifecycle.Config, feedType string) string {
 	siteTitle := "Site"
@@ -183,7 +239,7 @@ func getSubscriptionFeedTitle(config *lifecycle.Config, feedType string) string 
 	}
 
 	switch feedType {
-	case "root":
+	case rootSubscriptionFeedType:
 		return siteTitle + " Feed"
 	case defaultArchivePrefix:
 		return siteTitle + " Archive Feed"
@@ -206,7 +262,7 @@ func getSubscriptionFeedDescription(config *lifecycle.Config, feedType string) s
 	}
 
 	switch feedType {
-	case "root":
+	case rootSubscriptionFeedType:
 		return "All published posts"
 	case defaultArchivePrefix:
 		return "Archive of all published posts"

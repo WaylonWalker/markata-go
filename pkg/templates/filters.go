@@ -141,6 +141,7 @@ func registerFilters() {
 		pongo2.ReplaceFilter("striptags", filterStripTags)
 		pongo2.RegisterFilter("plaintext", filterPlaintext)
 		pongo2.RegisterFilter("summary", filterSummary)
+		pongo2.RegisterFilter("pin_preview", filterPinPreview)
 		pongo2.RegisterFilter("linebreaks", filterLinebreaks)
 		pongo2.RegisterFilter("linebreaksbr", filterLinebreaksBR)
 

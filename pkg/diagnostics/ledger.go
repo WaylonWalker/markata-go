@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -86,8 +87,9 @@ type ContentSummary struct {
 // ContentLedgerSnapshot is the immutable, deterministic view of a build's
 // content state. Entries are sorted by source path.
 type ContentLedgerSnapshot struct {
-	Summary ContentSummary       `json:"summary"`
-	Entries []ContentDisposition `json:"entries"`
+	Summary       ContentSummary       `json:"summary"`
+	TemplateCache *TemplateCacheStats  `json:"template_cache,omitempty"`
+	Entries       []ContentDisposition `json:"entries"`
 }
 
 type contentLedgerEntry struct {
@@ -99,8 +101,9 @@ type contentLedgerEntry struct {
 // ContentLedger is the canonical, concurrency-safe content state ledger for a
 // build. Plugins record observations through this type; consumers use Snapshot.
 type ContentLedger struct {
-	mu      sync.RWMutex
-	entries map[string]*contentLedgerEntry
+	mu            sync.RWMutex
+	entries       map[string]*contentLedgerEntry
+	templateCache *TemplateCacheStats
 }
 
 // NewContentLedger creates an empty content ledger.
@@ -128,6 +131,7 @@ func (l *ContentLedger) Discover(paths []string) {
 
 	l.mu.Lock()
 	l.entries = entries
+	l.templateCache = nil
 	l.mu.Unlock()
 }
 
@@ -158,6 +162,7 @@ func (l *ContentLedger) Reset() {
 	}
 	l.mu.Lock()
 	l.entries = make(map[string]*contentLedgerEntry)
+	l.templateCache = nil
 	l.mu.Unlock()
 }
 
@@ -320,9 +325,10 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	}
 
 	l.mu.RLock()
-	entries := make([]*contentLedgerEntry, 0, len(l.entries))
+	templateCache := cloneTemplateCacheStats(l.templateCache)
+	entries := make([]ContentDisposition, 0, len(l.entries))
 	for _, entry := range l.entries {
-		entries = append(entries, cloneContentLedgerEntry(entry))
+		entries = append(entries, copyContentDisposition(entry))
 	}
 	l.mu.RUnlock()
 
@@ -331,25 +337,32 @@ func (l *ContentLedger) Snapshot() ContentLedgerSnapshot {
 	})
 
 	snapshot := ContentLedgerSnapshot{
-		Entries: make([]ContentDisposition, 0, len(entries)),
+		TemplateCache: templateCache,
+		Entries:       entries,
 	}
-	for _, entry := range entries {
-		disposition := entry.ContentDisposition
-		disposition.Reasons = sortedUnique(append([]string{}, disposition.Reasons...))
+	for index := range snapshot.Entries {
+		disposition := &snapshot.Entries[index]
+		disposition.Reasons = sortedUnique(disposition.Reasons)
 		disposition.Diagnostics = sortedIssues(disposition.Diagnostics)
-		disposition.Feeds = sortedFeeds(entry.feeds)
+		slices.SortFunc(disposition.Feeds, func(a, b ContentFeedDisposition) int {
+			return strings.Compare(a.Feed, b.Feed)
+		})
+		for feedIndex := range disposition.Feeds {
+			feed := &disposition.Feeds[feedIndex]
+			feed.Reasons = sortedUnique(feed.Reasons)
+			// Deduplication can shorten the owned segment. Clamp again so
+			// appends cannot reuse spare arena capacity.
+			feed.Reasons = feed.Reasons[:len(feed.Reasons):len(feed.Reasons)]
+		}
 
 		snapshot.Summary.Discovered++
 		if !disposition.Candidate {
 			disposition.Disposition = DispositionNotCandidate
-			snapshot.Entries = append(snapshot.Entries, disposition)
 			continue
 		}
 
-		updateContentSummary(&snapshot.Summary, disposition)
-		finalizeContentDisposition(&snapshot.Summary, &disposition)
-
-		snapshot.Entries = append(snapshot.Entries, disposition)
+		updateContentSummary(&snapshot.Summary, *disposition)
+		finalizeContentDisposition(&snapshot.Summary, disposition)
 	}
 
 	return snapshot
@@ -490,21 +503,32 @@ func (l *ContentLedger) entryLocked(path string) *contentLedgerEntry {
 	return entry
 }
 
-func cloneContentLedgerEntry(entry *contentLedgerEntry) *contentLedgerEntry {
-	clone := &contentLedgerEntry{
-		ContentDisposition: entry.ContentDisposition,
-		feeds:              make(map[string]*ContentFeedDisposition, len(entry.feeds)),
-		issueKeys:          make(map[string]struct{}, len(entry.issueKeys)),
-	}
+// copyContentDisposition is called under the ledger read lock. Only the flat
+// public values are needed by a snapshot, not the ledger's mutable indexes.
+func copyContentDisposition(entry *contentLedgerEntry) ContentDisposition {
+	clone := entry.ContentDisposition
 	clone.Reasons = append([]string{}, entry.Reasons...)
 	clone.Diagnostics = append([]Issue{}, entry.Diagnostics...)
-	for name, feed := range entry.feeds {
-		feedClone := *feed
-		feedClone.Reasons = append([]string{}, feed.Reasons...)
-		clone.feeds[name] = &feedClone
-	}
-	for key := range entry.issueKeys {
-		clone.issueKeys[key] = struct{}{}
+	clone.Feeds = nil
+	if len(entry.feeds) > 0 {
+		clone.Feeds = make([]ContentFeedDisposition, len(entry.feeds))
+		index, reasonCount := 0, 0
+		for _, feed := range entry.feeds {
+			clone.Feeds[index] = *feed
+			reasonCount += len(feed.Reasons)
+			index++
+		}
+		// Own one flat arena per entry while still isolating every feed.
+		// Copy all live slices before Snapshot sorts or deduplicates them.
+		reasons := make([]string, reasonCount)
+		offset := 0
+		for index := range clone.Feeds {
+			feed := &clone.Feeds[index]
+			end := offset + len(feed.Reasons)
+			copy(reasons[offset:end], feed.Reasons)
+			feed.Reasons = reasons[offset:end:end]
+			offset = end
+		}
 	}
 	return clone
 }
@@ -614,24 +638,6 @@ func sortedIssues(issues []Issue) []Issue {
 		return left.Message < right.Message
 	})
 	return issues
-}
-
-func sortedFeeds(feeds map[string]*ContentFeedDisposition) []ContentFeedDisposition {
-	if len(feeds) == 0 {
-		return nil
-	}
-	names := make([]string, 0, len(feeds))
-	for name := range feeds {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	result := make([]ContentFeedDisposition, 0, len(names))
-	for _, name := range names {
-		feed := *feeds[name]
-		feed.Reasons = sortedUnique(append([]string{}, feed.Reasons...))
-		result = append(result, feed)
-	}
-	return result
 }
 
 func hasTerminalExclusion(reasons []string) bool {
