@@ -610,6 +610,14 @@ Usage:
 {{ post.content | reading_time(250) }}
 ```
 
+### The `pin_preview` Filter
+
+The built-in `pin_preview` filter accepts a post map and returns `image` and
+`commentary` strings derived from that post's fields and rendered HTML. It MUST
+perform no network requests and MUST NOT mutate post data. Pins templates MUST
+escape the returned strings normally. Selection and note extraction semantics
+are specified in [Pins feeds](./FEEDS.md#pins-feed-slugpins).
+
 ### The `summary` Filter
 
 The `summary` filter produces a short, single-line excerpt from rendered HTML

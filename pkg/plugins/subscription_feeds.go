@@ -150,12 +150,14 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// render-neutral outside this feed.
 	if shouldAddImplicitPinsFeed(feedConfigs, m.Posts()) {
 		pinsFeed := models.FeedConfig{
-			Slug:        pinsFeedSlug,
-			Title:       "Pins",
-			Description: "A field notebook of saved links",
-			Filter:      "published == true and link",
-			Sort:        "date",
-			Reverse:     true,
+			Slug:           pinsFeedSlug,
+			ItemsPerPage:   100,
+			PaginationType: models.PaginationManual,
+			Title:          "Pins",
+			Description:    "A field notebook of saved links",
+			Filter:         "published == true and link",
+			Sort:           "date",
+			Reverse:        true,
 			Templates: models.FeedTemplates{
 				HTML: "pins.html",
 			},

@@ -308,6 +308,7 @@ Use `human_date` for visible HTML dates so cards, post bylines, archive views, a
 | `escape` | `{{ text\|escape }}` | HTML escape (default behavior) |
 | `plaintext` | `{{ html\|plaintext }}` | Convert HTML to clean plain text (entities decoded, tags stripped, links as footnotes) |
 | `summary` | `{{ post.content\|summary:300 }}` | One-line, HTML-escaped excerpt for cards: drops code blocks, tables, figures and scripts, strips tags, collapses whitespace, truncates with `…` (default 300 chars). Safe to embed in Markdown via `render_feed` because it never contains blank lines or raw HTML |
+| `pin_preview` | `{% with post\|pin_preview as preview %}{{ preview.image }} / {{ preview.commentary }}{% endwith %}` | Cover image and authored commentary from existing post fields and rendered embeds. Makes no metadata requests; see [Pins](./pins.md) for selection rules. |
 | `linebreaks` | `{{ text\|linebreaks }}` | Convert newlines to `<p>` and `<br>` |
 | `linebreaksbr` | `{{ text\|linebreaksbr }}` | Convert newlines to `<br>` |
 

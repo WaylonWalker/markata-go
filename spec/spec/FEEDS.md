@@ -1234,12 +1234,31 @@ Or define your own feeds with `slug = ""` or `slug = "archive"` to override the 
 
 When subscription feeds are enabled, the plugin MUST also provide an implicit
 HTML-only `/pins/` feed using `pins.html`, the filter `published == true and link`,
-and descending date order. A configured archive MUST remain unchanged alongside
+and descending date order, with 100 posts per page and manual pagination.
+A configured archive MUST remain unchanged alongside
 the implicit root and Pins feeds.
 
 A configured `pins` feed MUST remain authoritative. A published, non-draft,
 non-skipped authored post owning the `pins` slug MUST prevent implicit Pins feed
 injection. Generic `link` frontmatter MUST remain render-neutral outside Pins.
+
+The default Pins layout MUST use the available viewport width rather than the
+article reading width, with responsive masonry columns and an inset header.
+Card footers MUST share the card surface. Hover effects MUST stay within cards
+and MUST NOT reveal floating commentary or move cards.
+
+The `pin_preview` template filter MUST return `image` and `commentary` strings.
+It MUST prefer non-empty `image`, `cover`, `cover_image`, then `og_image` fields.
+Otherwise it MUST reuse images in already-rendered embed previews, valid
+YouTube embed thumbnails, or ordinary post images. It MUST make no network
+requests. Explicit cover fields MUST remain authoritative.
+
+Commentary MUST come from authored paragraphs and list items, excluding embed
+metadata, code, media, and standalone source URLs. If no authored commentary
+exists, a non-URL description MAY provide the note. Notes MUST render as escaped
+text, with a short preview and native inline details expansion on click, tap,
+or keyboard activation. Long words and notes MUST remain contained by the card.
+Cover art and commentary MUST work without JavaScript.
 
 See the [Pins guide](../../docs/guides/pins.md) for usage.
 
