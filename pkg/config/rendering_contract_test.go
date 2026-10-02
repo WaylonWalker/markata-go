@@ -52,7 +52,14 @@ func TestLoadRenderingContract_FontpackWarnings(t *testing.T) {
 					if cfg.Theme.Fontpack != tt.fontpack {
 						t.Errorf("fontpack = %q, want %q", cfg.Theme.Fontpack, tt.fontpack)
 					}
-					warnings, _ := cfg.Extra["theme_migration_warnings"].([]string)
+					var warnings []string
+					if warningValue, exists := cfg.Extra["theme_migration_warnings"]; exists {
+						var ok bool
+						warnings, ok = warningValue.([]string)
+						if !ok {
+							t.Fatalf("warnings type = %T, want []string", warningValue)
+						}
+					}
 					if !reflect.DeepEqual(warnings, tt.warnings) {
 						t.Errorf("warnings = %v, want %v", warnings, tt.warnings)
 					}
