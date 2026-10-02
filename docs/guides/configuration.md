@@ -594,6 +594,10 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; under `markata-go serve` its **Bake** button writes the current choices into your config (see [Themes Guide](/docs/guides/themes/)) |
 | `switcher.mode_toggle` | bool | `true` | Show the light/dark toggle next to the picker |
 
+The default font pack is `brush`. Built-in defaults do not cause migration warnings.
+If your configuration supplies different values for `fontpack` and `theme.fontpack`, the nested value wins.
+The loader reports that conflict once. Remove the legacy top-level `fontpack` to resolve the warning.
+
 ```toml
 [markata-go.theme]
 name = "default"

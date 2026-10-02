@@ -501,6 +501,14 @@ The default browser reading view MUST:
 - use responsive layout, visible keyboard focus, and reduced-motion-aware
   animation while inheriting the site theme through the marker region above.
 
+### Theme Migration Warnings
+
+Canonical nested theme values take precedence over legacy flat values.
+The loader MUST report each conflict between explicitly supplied values once.
+Built-in defaults MUST NOT cause migration warnings.
+This rule applies to file loading, includes, overrides, preview overlays, string loading, and configuration-free loading.
+Default merging MUST preserve the resolved theme values.
+
 ### Themed 404 Page
 
 The generated `404.html` MUST use the site's post page shell and active theme,

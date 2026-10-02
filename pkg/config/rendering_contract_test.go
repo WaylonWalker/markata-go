@@ -3,8 +3,77 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+func TestLoadRenderingContract_FontpackWarnings(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     string
+		fontpack string
+		warnings []string
+	}{
+		{name: "defaults", data: "[markata-go]\n", fontpack: "brush"},
+		{name: "canonical", data: "[markata-go.theme]\nfontpack = \"typewriter\"\n", fontpack: "typewriter"},
+		{name: "legacy", data: "[markata-go]\nfontpack = \"typewriter\"\n", fontpack: "typewriter"},
+		{
+			name: "matching", fontpack: "typewriter",
+			data: "[markata-go]\nfontpack = \"typewriter\"\n[markata-go.theme]\nfontpack = \"typewriter\"\n",
+		},
+		{
+			name: "conflicting", fontpack: "typewriter",
+			data:     "[markata-go]\nfontpack = \"system\"\n[markata-go.theme]\nfontpack = \"typewriter\"\n",
+			warnings: []string{"fontpack conflicts with theme.fontpack; canonical value wins"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "markata-go.toml")
+			if err := os.WriteFile(path, []byte(tt.data), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			loaders := map[string]func() (*models.Config, error){
+				"file": func() (*models.Config, error) { return loadResolvedConfig(path) },
+				"merge": func() (*models.Config, error) {
+					return LoadWithMergeOptions(LoadOptions{DisableDotEnv: true, DisableEnvOverrides: true}, path)
+				},
+				"string": func() (*models.Config, error) { return LoadFromString(tt.data, FormatTOML) },
+				"single": func() (*models.Config, error) { return LoadSingleConfig(path) },
+			}
+			for name, load := range loaders {
+				t.Run(name, func(t *testing.T) {
+					cfg, err := load()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if cfg.Theme.Fontpack != tt.fontpack {
+						t.Errorf("fontpack = %q, want %q", cfg.Theme.Fontpack, tt.fontpack)
+					}
+					warnings, _ := cfg.Extra["theme_migration_warnings"].([]string)
+					if !reflect.DeepEqual(warnings, tt.warnings) {
+						t.Errorf("warnings = %v, want %v", warnings, tt.warnings)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestLoadRenderingContract_DefaultsWithoutWarnings(t *testing.T) {
+	cfg, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Theme.Fontpack != "brush" {
+		t.Errorf("fontpack = %q, want brush", cfg.Theme.Fontpack)
+	}
+	if warnings, ok := cfg.Extra["theme_migration_warnings"]; ok {
+		t.Errorf("unexpected default migration warnings: %v", warnings)
+	}
+}
 
 func TestLoadRenderingContract_LegacyMigratesWithCanonicalPrecedence(t *testing.T) {
 	dir := t.TempDir()
