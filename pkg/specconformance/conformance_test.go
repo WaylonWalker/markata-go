@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -109,7 +110,7 @@ func checkRepoPath(t *testing.T, path string) {
 	}
 	candidate := filepath.Clean(filepath.Join(root, filepath.FromSlash(path)))
 	rel, err := filepath.Rel(root, candidate)
-	if err != nil || rel == ".." || filepath.IsAbs(rel) || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+	if err != nil || rel == ".." || filepath.IsAbs(rel) || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		t.Errorf("path %q escapes repository root", path)
 		return
 	}
