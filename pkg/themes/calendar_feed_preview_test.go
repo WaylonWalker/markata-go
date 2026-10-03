@@ -33,3 +33,33 @@ func TestCalendarFeedPreview_IsLazyAndUsesDropperThumbs(t *testing.T) {
 		}
 	}
 }
+
+func TestCalendarFeedPagesOneYearAtATimeAndDefersRendering(t *testing.T) {
+	content, err := ReadStatic("js/calendar-feed.js")
+	if err != nil {
+		t.Fatalf("ReadStatic(calendar-feed.js) error = %v", err)
+	}
+
+	js := strings.ReplaceAll(string(content), "\r\n", "\n")
+	for _, needle := range []string{
+		"const sortedYears = Array.from(years).sort((a, b) => b - a);",
+		"const initialYear = calendarYearFromURL(sortedYears) || sortedYears[0];",
+		"const renderYear = (year, persistURL = true) => {",
+		"calendar.replaceChildren();",
+		"if (sortedYears.length > 1) calendar.append(yearNav);",
+		"for (let month = 0; month < 12; month += 1)",
+		"function calendarYearFromURL(years)",
+		"url.searchParams.set('year', String(year));",
+		"let calendarRendered = false;",
+		"const ensureCalendar = () => {",
+		"if (calendarMode && !ensureCalendar()) return;",
+	} {
+		if !strings.Contains(js, needle) {
+			t.Fatalf("calendar-feed.js missing year paging behavior %q", needle)
+		}
+	}
+
+	if strings.Contains(js, "for (const year of Array.from(years).sort((a, b) => b - a))") {
+		t.Fatalf("calendar-feed.js still eagerly renders every archive year")
+	}
+}
