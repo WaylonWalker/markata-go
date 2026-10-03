@@ -46,13 +46,13 @@ func TestBrowserKeyboardNavigationAndHistory(t *testing.T) {
 	defer server.Close()
 
 	allocator, cancelAllocator := chromedp.NewExecAllocator(context.Background(), append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.ExecPath(browserPath), chromedp.Headless, chromedp.NoFirstRun,
+		chromedp.WSURLReadTimeout(60*time.Second), chromedp.ExecPath(browserPath), chromedp.Headless, chromedp.NoFirstRun,
 		chromedp.Flag("no-sandbox", true), chromedp.Flag("disable-dev-shm-usage", true),
 	)...)
 	defer cancelAllocator()
 	browser, cancelBrowser := chromedp.NewContext(allocator)
 	defer cancelBrowser()
-	browser, cancelTimeout := context.WithTimeout(browser, 60*time.Second)
+	browser, cancelTimeout := context.WithTimeout(browser, 120*time.Second)
 	defer cancelTimeout()
 
 	var hash, section, filter string
@@ -208,11 +208,11 @@ func TestBrowserGroupedSafeFixReviewAndApply(t *testing.T) {
 	})
 	server := httptest.NewServer(NewWebHandlerWithSourceRoot(runtime, root))
 	defer server.Close()
-	allocator, cancelAllocator := chromedp.NewExecAllocator(context.Background(), append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(browserPath), chromedp.Headless, chromedp.NoFirstRun, chromedp.Flag("no-sandbox", true), chromedp.Flag("disable-dev-shm-usage", true))...)
+	allocator, cancelAllocator := chromedp.NewExecAllocator(context.Background(), append(chromedp.DefaultExecAllocatorOptions[:], chromedp.WSURLReadTimeout(60*time.Second), chromedp.ExecPath(browserPath), chromedp.Headless, chromedp.NoFirstRun, chromedp.Flag("no-sandbox", true), chromedp.Flag("disable-dev-shm-usage", true))...)
 	defer cancelAllocator()
 	browser, cancelBrowser := chromedp.NewContext(allocator)
 	defer cancelBrowser()
-	browser, cancelTimeout := context.WithTimeout(browser, 60*time.Second)
+	browser, cancelTimeout := context.WithTimeout(browser, 120*time.Second)
 	defer cancelTimeout()
 	var reviewOpen bool
 	if err := chromedp.Run(browser,

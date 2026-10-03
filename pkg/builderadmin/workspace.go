@@ -39,6 +39,10 @@ func promoteWorkspaceReleaseWithRename(workspace, releasesDir, releaseID string,
 		return "", fmt.Errorf("stat release destination: %w", err)
 	}
 
+	if err := os.Chmod(workspace, 0o755); err != nil {
+		return "", fmt.Errorf("set published workspace permissions: %w", err)
+	}
+
 	renameErr := rename(workspace, finalPath)
 	if renameErr == nil {
 		return finalPath, nil
@@ -93,6 +97,9 @@ func stageWorkspaceRelease(workspace, releasesDir, releaseID string) (string, er
 
 	if err := copyWorkspaceTree(workspace, stagingPath); err != nil {
 		return "", fmt.Errorf("stage build workspace: %w", err)
+	}
+	if err := os.Chmod(stagingPath, 0o755); err != nil {
+		return "", fmt.Errorf("set staged release permissions: %w", err)
 	}
 	if err := os.Rename(stagingPath, finalPath); err != nil {
 		return "", fmt.Errorf("commit staged release: %w", err)

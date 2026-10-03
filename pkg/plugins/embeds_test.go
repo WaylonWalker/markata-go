@@ -1,16 +1,223 @@
 package plugins
 
 import (
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
+
+func TestBuildInternalEmbedCard_Characterization(t *testing.T) {
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	longDescription := "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+	tests := []struct {
+		name        string
+		post        *models.Post
+		displayText string
+		want        string
+	}{
+		{name: "basic", post: &models.Post{Slug: "target", Href: "/target/", Title: strptr("Target"), Description: strptr("A description"), Date: &date}, want: `<div class="embed-card">
+  <a href="/target/" class="embed-card-link">
+    <div class="embed-card-content">
+      <div class="embed-card-title">Target</div>
+      <div class="embed-card-description">A description</div>
+      <div class="embed-card-meta">Jan 15, 2024</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "fallbacks and escaping", post: &models.Post{Slug: `slug<&`, Title: strptr(`title & <tag>`), Href: `/href?x=<&`}, displayText: `display & <tag>`, want: `<div class="embed-card">
+  <a href="/href?x=&lt;&amp;" class="embed-card-link">
+    <div class="embed-card-content">
+      <div class="embed-card-title">display &amp; &lt;tag&gt;</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "description truncation", post: &models.Post{Slug: "long", Href: "/long/", Title: strptr("Long"), Description: &longDescription}, want: "<div class=\"embed-card\">\n  <a href=\"/long/\" class=\"embed-card-link\">\n    <div class=\"embed-card-content\">\n      <div class=\"embed-card-title\">Long</div>\n      <div class=\"embed-card-description\">" + longDescription[:197] + "...</div>\n    </div>\n  </a>\n</div>\n"},
+		{name: "photo", post: &models.Post{Slug: "photo", Href: "/photo/", Template: "photo", Title: strptr("Photo"), Description: strptr("Caption"), Extra: map[string]interface{}{"image": "/photo.png"}}, want: `<figure class="embed-figure">
+  <a href="/photo/" class="u-url">
+    <img src="/photo.png?w=1200" alt="Photo" width="1200" loading="lazy">
+  </a>
+  <figcaption>Caption</figcaption>
+</figure>
+`},
+		{name: "video with poster", post: &models.Post{Slug: "video", Href: "/video/", Title: strptr("Video"), Extra: map[string]interface{}{"video": "/video.mp4", "poster": "/poster.png"}}, want: `<div class="embed-card">
+  <a href="/video/" class="embed-card-link">
+    <div class="embed-card-image">
+      <video class="embed-card-video" autoplay muted loop playsinline poster="/poster.png?h=150&amp;w=200">
+        <source src="/video.mp4?h=150&amp;w=200" type="video/mp4">
+      </video>
+    </div>
+    <div class="embed-card-content">
+      <div class="embed-card-title">Video</div>
+    </div>
+  </a>
+</div>
+`},
+		{name: "image card", post: &models.Post{Slug: "image", Href: "/image/", Title: strptr("Image"), Extra: map[string]interface{}{"image": "/image.png"}}, want: `<figure class="embed-figure">
+  <a href="/image/" class="u-url">
+    <img src="/image.png?w=1200" alt="Image" width="1200" loading="lazy">
+  </a>
+  <figcaption>Image</figcaption>
+</figure>
+`},
+	}
+
+	p := NewEmbedsPlugin()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.buildInternalEmbedCard(tt.post, tt.displayText)
+			if got != tt.want {
+				t.Errorf("output mismatch:\n got:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func strptr(s string) *string { return &s }
+
+// buildInternalEmbedCardReference is the pre-refactor implementation retained
+// in tests as an independent oracle for the differential corpus below.
+func buildInternalEmbedCardReference(p *EmbedsPlugin, post *models.Post, displayText string) string {
+	var sb strings.Builder
+	href := post.Href
+	if href == "" {
+		href = "/" + post.Slug + "/"
+	}
+	title := displayText
+	if title == "" {
+		if post.PlainTitle() != "" {
+			title = post.PlainTitle()
+		} else {
+			title = post.Slug
+		}
+	}
+	description := ""
+	if post.Description != nil {
+		description = *post.Description
+		if len(description) > 200 {
+			description = description[:197] + "..."
+		}
+	}
+	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
+	isVideo := templates.IsVideoURL(mediaURL)
+	templateName := strings.ToLower(post.Template)
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == embedOptionShot || templateName == embedOptionShots || templateName == embedOptionImage || templateName == templateTypeGallery
+	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
+	mediaSource, posterURL := "", ""
+	if mediaURL != "" {
+		if isPhotoCard {
+			mediaSource = templates.WithSize(mediaURL, 1200, 0)
+		} else {
+			mediaSource = templates.WithSize(mediaURL, 200, 150)
+		}
+		if isVideo {
+			posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
+			if posterURL != "" {
+				if isPhotoCard {
+					posterURL = templates.WithSize(posterURL, 1200, 0)
+				} else {
+					posterURL = templates.WithSize(posterURL, 200, 150)
+				}
+			}
+		}
+	}
+	if isPhotoCard && mediaSource != "" {
+		caption := description
+		if caption == "" {
+			caption = title
+		}
+		sb.WriteString(`<figure class="embed-figure">`)
+		sb.WriteString("\n")
+		sb.WriteString(`  <a href="`)
+		sb.WriteString(html.EscapeString(href))
+		sb.WriteString(`" class="u-url">`)
+		sb.WriteString("\n")
+		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{Indent: "    ", Source: mediaSource, URL: mediaURL, Poster: posterURL, Alt: title, Width: "1200", Video: isVideo, VideoPreload: "metadata"})
+		sb.WriteString("  </a>\n  <figcaption>")
+		sb.WriteString(html.EscapeString(caption))
+		sb.WriteString("</figcaption>\n</figure>\n")
+		return sb.String()
+	}
+	sb.WriteString(`<div class="`)
+	sb.WriteString(html.EscapeString(p.config.InternalCardClass))
+	sb.WriteString(`">` + "\n  <a href=\"")
+	sb.WriteString(html.EscapeString(href))
+	sb.WriteString(`" class="embed-card-link">` + "\n")
+	if mediaSource != "" {
+		if isPhotoCard {
+			sb.WriteString("    <figure class=\"embed-card-image\">\n")
+		} else {
+			sb.WriteString("    <div class=\"embed-card-image\">\n")
+		}
+		writeInternalEmbedMedia(&sb, internalEmbedMediaOptions{Indent: "      ", Source: mediaSource, URL: mediaURL, Poster: posterURL, Alt: title, Width: "200", Height: "150", Video: isVideo, VideoClass: "embed-card-video"})
+		if isPhotoCard {
+			caption := description
+			if caption == "" {
+				caption = title
+			}
+			sb.WriteString("      <figcaption>")
+			sb.WriteString(html.EscapeString(caption))
+			sb.WriteString("</figcaption>\n    </figure>\n")
+		} else {
+			sb.WriteString("    </div>\n")
+		}
+	}
+	sb.WriteString("    <div class=\"embed-card-content\">\n      <div class=\"embed-card-title\">")
+	sb.WriteString(html.EscapeString(title))
+	sb.WriteString("</div>\n")
+	if description != "" {
+		sb.WriteString("      <div class=\"embed-card-description\">")
+		sb.WriteString(html.EscapeString(description))
+		sb.WriteString("</div>\n")
+	}
+	if post.Date != nil {
+		sb.WriteString("      <div class=\"embed-card-meta\">")
+		sb.WriteString(templates.FormatHumanDate(*post.Date))
+		sb.WriteString("</div>\n")
+	}
+	sb.WriteString("    </div>\n  </a>\n</div>\n")
+	return sb.String()
+}
+
+func TestBuildInternalEmbedCard_DifferentialCorpus(t *testing.T) {
+	boundary := strings.Repeat("x", 200)
+	cases := []struct {
+		name, display string
+		post          *models.Post
+	}{
+		{"href fallback", "", &models.Post{Slug: "fallback", Title: strptr("Fallback")}},
+		{"slug title fallback", "", &models.Post{Slug: "slug-title"}},
+		{"description exactly 200", "", &models.Post{Slug: "exact", Description: &boundary}},
+		{"description 201", "", &models.Post{Slug: "over", Description: strptr(boundary + "z")}},
+		{"cover precedence", "", &models.Post{Slug: "cover", Extra: map[string]interface{}{"image": "/image.png", "cover_image": "/cover.png", "og_image": "/og.png", "video": "/video.mp4"}}},
+		{"og image", "", &models.Post{Slug: "og", Extra: map[string]interface{}{"og_image": "/og.png"}}},
+		{"video no poster", "", &models.Post{Slug: "video", Extra: map[string]interface{}{"video": "/clip.mp4"}}},
+		{"photo alias case", "", &models.Post{Slug: "shot", Template: "SHOTS", Extra: map[string]interface{}{"image": "/shot.jpg"}}},
+		{"photo template without media", "", &models.Post{Slug: "empty-photo", Template: "photo", Title: strptr("Empty Photo")}},
+		{"no media", "", &models.Post{Slug: "none", Title: strptr("No Media")}},
+	}
+	p := NewEmbedsPlugin()
+	p.config.InternalCardClass = `custom & card`
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := p.buildInternalEmbedCard(tc.post, tc.display)
+			want := buildInternalEmbedCardReference(p, tc.post, tc.display)
+			if got != want {
+				t.Fatalf("refactor changed output:\n got:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
 
 func TestEmbedsPlugin_Name(t *testing.T) {
 	p := NewEmbedsPlugin()

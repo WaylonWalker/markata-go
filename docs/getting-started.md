@@ -21,7 +21,7 @@ markata-go is distributed as a single binary with no dependencies. Choose the in
 
 ```bash
 # One-liner install script (Linux/macOS)
-curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/WaylonWalker/markata-go/main/install.sh | bash
 
 # Using jpillora/installer (Linux/macOS)
 curl -sL https://i.jpillora.com/WaylonWalker/markata-go | bash
@@ -35,7 +35,7 @@ mise use -g github:WaylonWalker/markata-go
 
 ### Go Install
 
-If you have Go 1.22+ installed:
+If you already have Go installed:
 
 ```bash
 go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
@@ -80,28 +80,28 @@ Open http://localhost:8000 to see your site.
 
 ## Project Structure
 
-A typical markata-go project looks like this:
+The quick-start commands above create a project along these lines:
 
 ```
 my-site/
-├── markata-go.toml      # Configuration file
-├── posts/               # Your markdown content
-│   └── hello-world.md
-├── pages/               # Static pages (about, contact, etc.)
-├── templates/           # Custom templates (optional)
-├── static/              # Static assets (images, CSS, JS)
-└── public/              # Generated output (created on build)
+├── markata-go.toml              # Configuration file
+├── pages/
+│   └── post/
+│       └── hello-world.md       # Your first post
+├── templates/                   # Custom templates (optional)
+├── static/                      # Static assets (images, CSS, JS)
+└── output/                      # Generated output (created on build)
 ```
 
 ### Directory Overview
 
 | Directory | Purpose |
 |-----------|---------|
-| `posts/` | Blog posts and articles with dates |
-| `pages/` | Static pages without dates |
+| `pages/` | Markdown content; the default `post` template writes to `pages/post/` |
+| `posts/` | Also included by the default content globs if you prefer a posts directory |
 | `templates/` | Custom HTML templates (overrides theme defaults) |
 | `static/` | Static assets copied directly to output |
-| `public/` | Generated site (default output directory) |
+| `output/` | Generated site (default output directory) |
 
 ## Configuration
 
@@ -116,13 +116,13 @@ url = "https://example.com"
 author = "Your Name"
 
 # Build settings
-output_dir = "public"
+output_dir = "output"
 templates_dir = "templates"
 assets_dir = "static"
 
 # Content discovery
 [markata-go.glob]
-patterns = ["posts/**/*.md", "pages/*.md"]
+patterns = ["posts/**/*.md", "pages/**/*.md"]
 use_gitignore = true
 
 # Markdown extensions
@@ -130,7 +130,7 @@ use_gitignore = true
 extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
 ```
 
-The interactive `markata-go init` wizard now asks for a license and writes `license = "cc-by-4.0"` by default. Pick any of the supported keys (all-rights-reserved, `cc-by-*`, or `mit`) or enter `false` to opt out of the attribution and suppress the build warning that `markata-go serve` would otherwise show.
+The interactive `markata-go init` wizard asks for a license and writes `license = "cc-by-4.0"` by default. Pick any of the supported keys (all-rights-reserved, `cc-by-*`, or `mit`) or enter `false` to opt out of the attribution and suppress the build warning that `markata-go serve` would otherwise show.
 
 ### Key Configuration Options
 
@@ -280,11 +280,11 @@ The server:
 ### Server Options
 
 ```bash
-markata-go serve              # Default: localhost:8000
-markata-go serve -p 3000      # Custom port
+markata-go serve                 # Default: localhost:8000
+markata-go serve -p 3000         # Custom port
 markata-go serve --host 0.0.0.0  # Bind to all interfaces
-markata-go serve --no-watch   # Disable file watching
-markata-go serve -v           # Verbose logging
+markata-go serve --no-watch      # Disable file watching
+markata-go serve -v              # Verbose logging
 ```
 
 ## Building for Production
@@ -295,13 +295,13 @@ Build your site for deployment:
 markata-go build
 ```
 
-This generates static files in the `output_dir` (default: `public/`).
+This generates static files in the `output_dir` (default: `output/`).
 
 ### Build Options
 
 ```bash
 markata-go build              # Standard build
-markata-go build --clean      # Clean output directory first
+markata-go build --clean      # Clean output directory and build cache first
 markata-go build --dry-run    # Preview what would be built
 markata-go build -o dist      # Custom output directory
 markata-go build -v           # Verbose output
@@ -310,7 +310,7 @@ markata-go build -v           # Verbose output
 ### Output Structure
 
 ```
-public/
+output/
 ├── index.html           # Home page (from feed)
 ├── my-first-post/
 │   └── index.html       # Post page
@@ -472,7 +472,7 @@ templates/
 
 ## Deployment
 
-The `public/` directory contains static files ready for any hosting platform.
+The `output/` directory contains static files ready for any hosting platform unless you configure a different `output_dir`.
 
 ### Popular Hosting Options
 
@@ -481,14 +481,14 @@ The `public/` directory contains static files ready for any hosting platform.
 # netlify.toml
 [build]
   command = "markata-go build"
-  publish = "public"
+  publish = "output"
 ```
 
 **Vercel:**
 ```json
 {
   "buildCommand": "markata-go build",
-  "outputDirectory": "public"
+  "outputDirectory": "output"
 }
 ```
 
@@ -498,16 +498,16 @@ The `public/` directory contains static files ready for any hosting platform.
 - name: Build
   run: markata-go build
 - name: Deploy
-  uses: peaceiris/actions-gh-pages@v3
+  uses: peaceiris/actions-gh-pages@v4
   with:
-    publish_dir: ./public
+    publish_dir: ./output
 ```
 
 **Manual:**
 ```bash
 # Build and upload
 markata-go build
-rsync -avz public/ user@server:/var/www/html/
+rsync -avz output/ user@server:/var/www/html/
 ```
 
 ## Next Steps

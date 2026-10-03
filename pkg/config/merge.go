@@ -8,8 +8,6 @@ import (
 // The override values take precedence over base values.
 // For nested objects, a deep merge is performed.
 // Arrays replace by default (use *_append fields for appending).
-//
-//nolint:gocyclo // config merging is a flat field-by-field override map
 func MergeConfigs(base, override *models.Config) *models.Config {
 	if base == nil {
 		return override
@@ -20,7 +18,15 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 
 	result := &models.Config{}
 	*result = *base
+	mergeDirectConfigFields(result, override)
+	mergeNestedConfigFields(result, base, override)
+	return result
+}
 
+// mergeDirectConfigFields applies the scalar and collection fields whose
+// presence can be determined from the Config value itself. Nested config
+// sections have their own merge rules and are handled separately below.
+func mergeDirectConfigFields(result, override *models.Config) {
 	// String fields - override if non-empty
 	if override.OutputDir != "" {
 		result.OutputDir = override.OutputDir
@@ -77,7 +83,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	if override.Concurrency != 0 {
 		result.Concurrency = override.Concurrency
 	}
+}
 
+func mergeNestedConfigFields(result, base, override *models.Config) {
 	// Nested structs - deep merge
 	result.GlobConfig = mergeGlobConfig(base.GlobConfig, override.GlobConfig)
 	result.MarkdownConfig = mergeMarkdownConfig(base.MarkdownConfig, override.MarkdownConfig)
@@ -148,8 +156,6 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
-
-	return result
 }
 
 func mergeImagesConfig(base, override models.ImagesConfig) models.ImagesConfig {
@@ -553,6 +559,9 @@ func mergeFeedDefaults(base, override models.FeedDefaults) models.FeedDefaults {
 	}
 	if override.OrphanThreshold != 0 {
 		result.OrphanThreshold = override.OrphanThreshold
+	}
+	if override.Views != nil {
+		result.Views = append([]string{}, override.Views...)
 	}
 
 	result.Formats = mergeFeedFormats(base.Formats, override.Formats)

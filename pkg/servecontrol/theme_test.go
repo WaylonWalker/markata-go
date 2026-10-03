@@ -64,6 +64,11 @@ func TestBrowserTokenStylesheet_UsesModeFallbackAndRejectsCSSInjection(t *testin
 	if !strings.Contains(css, "--markata-focus:#123456") || !strings.Contains(css, "focus-visible") {
 		t.Fatalf("stylesheet omitted shared focus role: %s", css)
 	}
+	if !strings.Contains(css, "scrollbar-color:var(--markata-border) transparent") ||
+		!strings.Contains(css, "::-webkit-scrollbar-thumb") ||
+		!strings.Contains(css, "background:var(--markata-text-secondary)") {
+		t.Fatalf("stylesheet omitted themed scrollbar rules: %s", css)
+	}
 	if strings.Contains(css, "display:none") {
 		t.Fatalf("untrusted CSS value escaped into stylesheet: %s", css)
 	}

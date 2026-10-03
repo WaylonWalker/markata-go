@@ -1,14 +1,16 @@
 # Icon Shortcodes Specification
 
-The icons plugin expands local SVG icon packs into inline HTML during the Transform stage.
+The icons plugin expands local SVG icon packs into inline HTML during the Transform stage and provides a zero-config Lucide fallback.
 
 ## Goals
 
 - Support Zensical-compatible icon shortcodes in Markdown.
-- Keep builds deterministic and usable offline when icon assets are present locally.
+- Make `:lucide-…:` shortcodes useful on a fresh install without manual asset setup.
+- Keep builds deterministic by pinning automatically vendored Lucide.
+- Keep ordinary builds network-free unless a missing Lucide shortcode is actually encountered.
+- Prefer project-local SVG assets over automatically vendored assets.
 - Avoid changing emoji shortcodes such as `:smile:` when no matching icon asset exists.
-- Never expand icon syntax inside inline code or fenced code blocks.
-- Provide a local asset contract that automatic vendoring can build on separately.
+- Never expand or vendor icon syntax inside inline code or fenced code blocks.
 
 ## Asset Layout
 
@@ -27,7 +29,7 @@ static/.icons/
 
 produces the logical icon name `lucide/smile`.
 
-When the same logical icon exists in more than one configured path, the first configured path wins.
+When the same logical icon exists in more than one configured path, the first configured path wins. Local icons MUST win before the automatic Lucide fallback is considered.
 
 ## Markdown Syntax
 
@@ -52,6 +54,7 @@ Unknown shortcodes are preserved verbatim. This lets Goldmark's emoji extension 
 ```toml
 [icons]
 enabled = true
+auto_vendor = true
 paths = [".icons", "static/.icons"]
 packs = ["lucide", "simple-icons"]
 ```
@@ -61,11 +64,14 @@ Fields:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `enabled` | bool | `true` | Enable icon shortcode expansion. |
+| `auto_vendor` | bool | `true` | Allow the built-in pinned Lucide fallback when a local Lucide icon is missing. |
 | `path` | string | — | Convenience form for a single icon root. |
 | `paths` | list[string] | `[".icons", "static/.icons"]` | Ordered local SVG roots. |
 | `packs` | list[string] | all packs | Optional allowlist of first path components. |
 
 `paths` takes precedence over `path` when both are set.
+
+If `packs` is configured and does not include `lucide`, the automatic Lucide fallback MUST NOT run. `auto_vendor = false` disables only the zero-config Lucide fallback; explicitly configured `[icons.vendor]` packs remain independent.
 
 ## Rendering
 
@@ -83,7 +89,7 @@ Icon shortcodes are decorative by default and are hidden from assistive technolo
 
 ## Code Protection
 
-The plugin must not transform shortcodes inside code:
+The plugin must not transform or vendor shortcodes inside code:
 
 ````markdown
 Visible :lucide-smile:
@@ -95,11 +101,11 @@ Visible :lucide-smile:
 ```
 ````
 
-Only the first shortcode is expanded.
+Only the first shortcode is eligible for expansion and automatic vendoring.
 
 ## SVG Safety
 
-Local SVGs are author-controlled inputs, but the plugin rejects assets containing active-content primitives that would be unsafe to inline:
+Local and vendored SVGs are rejected when they contain active-content primitives that would be unsafe to inline:
 
 - `<script>`
 - `<foreignObject>`
@@ -112,6 +118,22 @@ Rejected assets behave like missing icons and leave the shortcode unchanged.
 
 The plugin runs at `PriorityLast` in the Transform stage. This lets source transforms such as Jinja run first while still expanding icons before Markdown rendering.
 
-## Automatic Pack Vendoring
+Local icon roots are indexed during Configure. If Transform encounters an unresolved Lucide shortcode and `auto_vendor` is enabled, the plugin MUST:
 
-Downloading icon packs is intentionally separate from shortcode rendering. Issue #898 may populate `.icons/` or `static/.icons/` from configured upstream packs; the rendering contract in this specification does not require network access.
+1. synchronize the fallback so concurrent post transforms do not download the same pack repeatedly;
+2. vendor the pinned default `lucide-static` pack using the existing icon-vendor implementation;
+3. materialize its SVGs and license under an icon root scanned by the renderer;
+4. re-index the icon roots; and
+5. retry the shortcode lookup.
+
+The automatic fallback MUST be attempted at most once per plugin instance/build.
+
+## Default Lucide Vendoring
+
+The built-in fallback uses a markata-go-pinned `lucide-static` version. It MUST NOT follow an upstream `latest` tag. The current pin is `1.48.0`.
+
+The fallback reuses the same archive cache, SVG safety validation, materialization, and license preservation implemented by `IconVendorPlugin` rather than maintaining a separate downloader.
+
+If the default pack cannot be materialized—for example, a first-use build is offline with no cached/materialized pack—the site build MUST continue and the unresolved shortcode MUST remain literal. This best-effort behavior applies only to the automatic fallback; explicitly configured `[icons.vendor]` packs retain their strict error behavior.
+
+Builds with no unresolved Lucide shortcodes MUST NOT trigger the automatic vendor path or network access.

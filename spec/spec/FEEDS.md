@@ -1230,7 +1230,66 @@ subscription_feeds_disabled = true
 
 Or define your own feeds with `slug = ""` or `slug = "archive"` to override the defaults.
 
+### Pins Feed (slug="pins")
+
+When subscription feeds are enabled, the plugin MUST also provide an implicit
+HTML-only `/pins/` feed using `pins.html`, the filter `published == true and link`,
+and descending date order, with 100 posts per page and manual pagination.
+A configured archive MUST remain unchanged alongside
+the implicit root and Pins feeds.
+
+A configured `pins` feed MUST remain authoritative. A published, non-draft,
+non-skipped authored post owning the `pins` slug MUST prevent implicit Pins feed
+injection. Generic `link` frontmatter MUST remain render-neutral outside Pins.
+
+The default Pins layout MUST use the available viewport width rather than the
+article reading width, with responsive masonry columns and an inset header.
+Card footers MUST share the card surface. Hover effects MUST stay within cards
+and MUST NOT reveal floating commentary or move cards.
+
+The `pin_preview` template filter MUST return `image` and `commentary` strings.
+It MUST prefer non-empty `image`, `cover`, `cover_image`, then `og_image` fields.
+Otherwise it MUST reuse images in already-rendered embed previews, valid
+YouTube embed thumbnails, or ordinary post images. It MUST make no network
+requests. Explicit cover fields MUST remain authoritative.
+
+Commentary MUST come from authored paragraphs and list items, excluding embed
+metadata, code, media, and standalone source URLs. If no authored commentary
+exists, a non-URL description MAY provide the note. Notes MUST render as escaped
+text, with a short preview and native inline details expansion on click, tap,
+or keyboard activation. Long words and notes MUST remain contained by the card.
+Cover art and commentary MUST work without JavaScript.
+
+See the [Pins guide](../../docs/guides/pins.md) for usage.
+
 ---
+
+## Calendar Year Pagination
+
+Built-in feed Calendar views and `calendar-feed.html` MUST construct only one
+populated year at a time, with at most twelve month grids. The default year MUST
+be the newest year with dated posts; undated posts remain in the list fallback.
+Inactive years MUST NOT have calendar day DOM. Primary/list feed views MUST defer
+calendar construction until Calendar is opened.
+
+Older/newer buttons and a native year selector MUST skip empty years, disable
+unavailable directions, and support keyboard input. A valid `year=YYYY` query
+parameter MUST restore the selected year. Missing or invalid years MUST fall
+back to the newest populated year. Year changes MUST preserve other query
+parameters and browser Back/Forward MUST restore the selected year and view.
+
+Month sizing MUST respond to the actual available calendar width rather than
+viewport breakpoints that squeeze six months into an article-width column.
+Each month SHOULD have at least 17rem of width when space allows, with a single
+column on narrow screens and readable day targets. An annual header MUST identify
+the selected year and its post count. Existing day hover/focus/click previews
+and the full-history list fallback MUST remain available.
+
+This pagination bounds active calendar rendering cost. The full-history source
+payload remains available for the no-JavaScript fallback and year navigation;
+this change does not promise smaller HTML transfers.
+
+Calendar month panels and year selector options use theme surface/text colors. Dedicated calendar feeds may use the page wrapper width; containers at least 73.25rem wide show four month columns in three rows. Smaller containers retain responsive readable columns.
 
 ## Configuration Inheritance
 
@@ -1603,6 +1662,20 @@ public/
 - [CONFIG.md](./CONFIG.md) - Feed configuration details
 - [TEMPLATES.md](./TEMPLATES.md) - Template system
 - [DATA_MODEL.md](./DATA_MODEL.md) - Post model
+
+## Collection Observation Freshness
+
+Configured and automatic feeds MUST record every considered source occurrence,
+including exclusions, even when publishing is skipped. A synchronous Collect
+invocation MAY prepare raw paths and eligibility flags once for its stable source
+sequence. It MUST NOT deduplicate occurrences by pointer or raw/normalized path.
+Preset series lists MUST be prepared separately. Each invocation MUST refresh
+flags and membership; prepared observations MUST NOT survive Collect or be
+cached across stages/builds. Source flags remain stable during this synchronous
+hook; collection does not invoke cross-feed callbacks that mutate them.
+Selection MUST retain raw-path membership, the first matched index, per-feed
+privacy, eligibility reason ordering, fallback reasons, and offset-before-limit
+precedence. Window reasons MUST NOT mutate shared eligibility storage.
 
 ## TUI Feed Inventory
 

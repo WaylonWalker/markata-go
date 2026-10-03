@@ -114,12 +114,23 @@ aliases:
 4. Replace with linked version: `<a href="/glossary/api/" class="glossary-term" title="...">API</a>`
 5. At write stage: optionally export `glossary.json` with all terms
 
+Matching keys MUST be ordered by descending length, then lexically for equal
+lengths, after case normalization. When aliases share a link limit, this order
+MUST choose the same occurrence on cold and cached builds regardless of map
+iteration order. The matching-order revision MUST participate in the glossary
+cache identity so pre-revision results are not restored.
+
 **Protected Content:**
 
 The plugin protects the following HTML elements from term linking:
 - `<a>` tags (prevents double-linking)
 - `<code>` tags (preserves code samples)
 - `<pre>` tags (preserves preformatted content)
+
+Nested protected elements MUST be restored outermost first. Internal protection
+markers MUST NOT survive restoration, including anchors nested inside code or
+preformatted blocks. Protection-order revisions MUST invalidate older cached
+glossary results.
 
 **Output Files:**
 

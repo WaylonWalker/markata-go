@@ -128,6 +128,14 @@ type CriticalError interface {
 	IsCritical() bool
 }
 
+// CriticalStageErrorsPlugin lets a plugin declare that errors from one of its
+// normally non-critical lifecycle stages make the build output unsafe to use.
+// This keeps optional late-stage plugins non-critical while allowing publication
+// plugins to prevent a partial release from being reported as successful.
+type CriticalStageErrorsPlugin interface {
+	CriticalStageErrors(Stage) bool
+}
+
 // isCriticalError checks if an error implements CriticalError and returns true.
 func isCriticalError(err error) bool {
 	var ce CriticalError
@@ -135,6 +143,11 @@ func isCriticalError(err error) bool {
 		return ce.IsCritical()
 	}
 	return false
+}
+
+func pluginTreatsStageErrorsAsCritical(plugin Plugin, stage Stage) bool {
+	criticalPlugin, ok := plugin.(CriticalStageErrorsPlugin)
+	return ok && criticalPlugin.CriticalStageErrors(stage)
 }
 
 // executeHooks runs all plugins that implement the given stage interface.
@@ -162,8 +175,9 @@ func executeHooks[T Plugin](
 		buildstats.SetActivePlugin(p.Name())
 		if err := execute(typed); err != nil {
 			buildstats.SetActivePlugin("")
-			// Check if the error itself is marked as critical
-			errIsCritical := critical || isCriticalError(err)
+			// Check the stage default, the error itself, and any plugin-specific
+			// safety contract for normally non-critical late stages.
+			errIsCritical := critical || isCriticalError(err) || pluginTreatsStageErrorsAsCritical(p, stage)
 			hookErrors.Add(stage, p.Name(), err, errIsCritical)
 			if errIsCritical {
 				// Stop on first critical error
