@@ -12,12 +12,20 @@ bun install --frozen-lockfile
 bun run build
 ```
 
-The build writes split browser assets under `../pierre-diffs/`. Profiling showed that a single minified bundle is about 10.75 MB because Shiki's complete language/theme graph is bundled. Code splitting reduces the initial `pierre-review.js` entry to about 491 KB, but the full lazy asset graph is still about 10.78 MB.
+The build writes the embedded assets to `pkg/servecontrol/pierre-diffs/`.
+It includes the entry point, Markdown grammar, Pierre light and dark themes,
+Shiki runtime, and their static imports. The resulting set is about 1.2 MB
+across eight JavaScript files, plus license notices. A full Shiki bundle would add roughly 10 MB of unused
+languages and themes.
 
-Markata's fix surface edits Markdown source, so the integration should commit and embed only the reproducible dependency closure needed by the entry point, Markdown highlighting, and the Pierre light/dark themes. It must not ship every Shiki grammar merely because the upstream package can resolve them. Release builds should not require Bun, npm access, or runtime internet access.
+Markata's fix surface edits Markdown source, so the build script selects only
+that dependency closure. Commit the generated files when changing the adapter
+or dependency. Release builds do not require Bun, npm access, or runtime
+internet access.
 
 `pierre-review.js` deliberately accepts only the `path`, `before`, and `after` values returned by the existing fix-preview API. Pierre Diffs is a presentation layer; it does not select edits, authorize writes, or bypass Markata's preview/apply safety checks.
 
-## Integration target
-
-The fix review dialog should create one host per previewed file and call `renderPierreDiff` with that file's frozen before/after snapshot. Cleanup runs when the dialog closes or is re-rendered. The existing grouped apply request remains unchanged.
+The fix review dialog creates one host per previewed file and calls
+`renderPierreDiff` with that file's frozen before/after snapshot. Cleanup runs
+when the dialog closes or is re-rendered. The grouped apply request is
+unchanged.

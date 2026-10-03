@@ -15,6 +15,7 @@ const mounted = new WeakMap();
  */
 export function renderPierreDiff(host, { path, before, after, diffStyle = 'split' }) {
   cleanupPierreDiff(host);
+  host.textContent = '';
 
   const name = path || 'source.md';
   const fileDiff = parseDiffFromFile(

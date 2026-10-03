@@ -215,17 +215,23 @@ func TestBrowserGroupedSafeFixReviewAndApply(t *testing.T) {
 	browser, cancelTimeout := context.WithTimeout(browser, 120*time.Second)
 	defer cancelTimeout()
 	var reviewOpen bool
+	var richDiffRendered bool
 	if err := chromedp.Run(browser,
 		chromedp.Navigate(server.URL+"/_markata/#/diagnostics"),
 		chromedp.WaitVisible(`#fix-tools [data-fix-group="all"]`),
 		chromedp.Click(`#fix-tools [data-fix-group="all"]`),
 		chromedp.WaitVisible(`#fix-review[open]`),
+		chromedp.WaitVisible(`#fix-approve:not([disabled])`),
 		chromedp.Evaluate(`document.querySelector('#fix-review-body').textContent.includes('2 edits across 2 files')`, &reviewOpen),
+		chromedp.Poll(`[...document.querySelectorAll('.diff-host')].length === 2 && [...document.querySelectorAll('.diff-host')].every(host => host.shadowRoot?.querySelector('[data-diffs-header]') && host.shadowRoot.textContent.includes('https://example.com'))`, &richDiffRendered, chromedp.WithPollingTimeout(10*time.Second)),
 	); err != nil {
 		t.Fatal(err)
 	}
 	if !reviewOpen {
 		t.Fatal("grouped preview did not show both edits")
+	}
+	if !richDiffRendered {
+		t.Fatal("Pierre did not render both frozen source diffs")
 	}
 	if err := chromedp.Run(browser, chromedp.Click(`#fix-approve`)); err != nil {
 		t.Fatal(err)
