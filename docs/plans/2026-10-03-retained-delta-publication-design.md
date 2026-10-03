@@ -29,3 +29,13 @@ Production validation measures complete jobs and verifies old-release bytes.
 
 Reflinks alone cannot serve the production ext4 volume. A manifest cache remains
 a later optimization after direct comparison provides deployment measurements.
+
+## Production follow-up
+
+The first production publication linked 34,030 files and copied 14, but required
+273 seconds. A concurrent storage probe linked 500 files in 0.04 seconds, while
+reading their paired contents took 2.83 seconds for 5.3 MB. These observations
+identify serial storage latency as a remaining cost. A bounded pool overlaps
+up to eight independent file operations. Workers own buffers and counters.
+Publication waits for every worker before applying directory metadata or
+exposing the release. Exact comparisons and file synchronization remain intact.

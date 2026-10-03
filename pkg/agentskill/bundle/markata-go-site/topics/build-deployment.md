@@ -183,3 +183,6 @@ Warm logs report `reusing build work from current release`. Publication logs sho
 linked files, copied files, copied bytes, and compared bytes. Failed builds and
 rollbacks force independent reseeding. Compare complete build timings, including
 preparation and publication. Direct comparison still reads unchanged output.
+
+Publication uses up to eight concurrent file operations to overlap storage
+latency. It still compares exact bytes and synchronizes independent copies.

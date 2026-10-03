@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func writeDeltaFile(t *testing.T, root, name, content string) {
@@ -159,7 +161,7 @@ func TestIncrementalPublication_FailedStageLeavesReleasesIntact(t *testing.T) {
 	}
 	_, _, err := stageIncrementalWorkspaceWithLink(work, releases, "failed", "first", func(*os.Root, string, string) error {
 		if err := os.Remove(filepath.Join(work, "index.html")); err != nil {
-			t.Fatal(err)
+			return err
 		}
 		return errors.New("link failed")
 	})
@@ -226,5 +228,54 @@ func TestIncrementalPublication_RejectsOverlappingTrees(t *testing.T) {
 		if _, _, err := stageIncrementalWorkspace(pair[0], pair[1], "next", ""); err == nil {
 			t.Fatal("accepted overlapping workspace and releases")
 		}
+	}
+}
+
+func TestIncrementalPublication_BoundedConcurrencyAndAtomicVisibility(t *testing.T) {
+	root := t.TempDir()
+	work, releases := filepath.Join(root, "work"), filepath.Join(root, "releases")
+	for i := range workspacePublicationWorkers * 3 {
+		writeDeltaFile(t, work, fmt.Sprintf("dir/file-%d", i), "same")
+	}
+	if _, _, err := stageIncrementalWorkspace(work, releases, "first", ""); err != nil {
+		t.Fatal(err)
+	}
+	entered := make(chan struct{}, workspacePublicationWorkers*3)
+	resume := make(chan struct{})
+	var active, maximum atomic.Int32
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := stageIncrementalWorkspaceWithLink(work, releases, "next", "first", func(root *os.Root, old, next string) error {
+			n := active.Add(1)
+			defer active.Add(-1)
+			for previous := maximum.Load(); n > previous; previous = maximum.Load() {
+				if maximum.CompareAndSwap(previous, n) {
+					break
+				}
+			}
+			entered <- struct{}{}
+			<-resume
+			return root.Link(old, next)
+		})
+		done <- err
+	}()
+	t.Cleanup(func() {
+		close(resume)
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	})
+	for range workspacePublicationWorkers {
+		select {
+		case <-entered:
+		case <-time.After(5 * time.Second):
+			t.Fatal("publication did not overlap file operations")
+		}
+	}
+	if _, err := os.Stat(filepath.Join(releases, "next")); !os.IsNotExist(err) {
+		t.Fatal("incomplete release became visible")
+	}
+	if maximum.Load() != workspacePublicationWorkers {
+		t.Fatalf("concurrency = %d", maximum.Load())
 	}
 }
