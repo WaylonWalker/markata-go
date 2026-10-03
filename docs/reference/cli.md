@@ -70,7 +70,7 @@ These flags are available for all commands:
 | `--config` | `-c` | Path to configuration file | Auto-discovered |
 | `--site-dir` | | Site directory for all site operations | `MARKATA_GO_SITE_DIR` or current directory |
 | `--merge-config` | `-m` | Additional config file(s) to merge (can be used multiple times) | None |
-| `--output` | `-o` | Output directory (overrides config) | `public` |
+| `--output` | `-o` | Output directory (overrides config) | From config (`output` built-in default) |
 | `--quiet` | `-q` | Suppress non-essential progress and status output | `false` |
 | `--verbose` | `-v` | Enable verbose output | `false` |
 | `--color` | | Force ANSI color output | `false` |
@@ -83,11 +83,15 @@ These flags are available for all commands:
 When `--config` is not specified, markata-go searches for configuration files in the following order:
 
 1. `markata-go.toml`
-2. `markata-go.yaml` / `markata-go.yml`
-3. `markata-go.json`
-4. `.markata-go.toml`
-5. `.markata-go.yaml` / `.markata-go.yml`
-6. `.markata-go.json`
+2. `markata-go.yaml`
+3. `markata-go.yml`
+4. `markata-go.json`
+5. `~/.config/markata-go/config.toml`
+
+If none is found, commands that load the full site configuration continue with
+built-in defaults plus `MARKATA_GO_*` environment overrides. Commands that edit
+or read a value directly from a config file, such as `config get` and
+`config set`, require a config file.
 
 See [[configuration-guide|Configuration]] for details on configuration options.
 
@@ -378,7 +382,8 @@ markata-go build [flags]
 
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
-| `--clean` | | Remove output directory before building | `false` |
+| `--clean` | | Remove output directory and build cache before building | `false` |
+| `--clean-all` | | Also remove external plugin caches before building | `false` |
 | `--dry-run` | | Show what would be built without writing files | `false` |
 | `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
 | `--dag` | | Use the experimental serial DAG executor | `false` |
@@ -393,8 +398,11 @@ markata-go build [flags]
 # Standard build
 markata-go build
 
-# Clean build (removes output directory first)
+# Clean build (removes output directory and build cache)
 markata-go build --clean
+
+# Also clear external plugin caches
+markata-go build --clean-all
 
 # Preview what would be built
 markata-go build --dry-run
@@ -449,10 +457,10 @@ summary counts, per-source dispositions, stable reason codes, and feed-level
 selection details. Inspect it with a JSON tool such as:
 
 ```bash
-jq . public/.markata/diagnostics.json
+jq . output/.markata/diagnostics.json
 ```
 
-Use the configured output directory instead of `public` when it differs. The
+Use the configured output directory instead of `output` when it differs. The
 artifact is not written by `build --dry-run`, `build --fast`, fast or incremental
 `serve`, or an incomplete or failed build. A normal `serve` build can write the
 artifact after a successful full lifecycle. See [[content-diagnostics|Content Diagnostics]]
@@ -1227,10 +1235,10 @@ markata-go new [title] [flags]
 | `note` (`ping`, `thought`, `status`, `tweet`) | `pages/note/` | Short note and micro-post content |
 | `photo` (`shot`, `shots`, `image`, `gallery`) | `pages/photo/` | Image-focused posts |
 | `video` (`clip`, `cast`, `stream`) | `pages/video/` | Video posts |
-| `link` (`bookmark`, `stars`) | `pages/link/` | Link and bookmark posts |
+| `link` (`bookmark`, `til`, `stars`) | `pages/link/` | Link and bookmark posts |
 | `quote` (`quotation`) | `pages/quote/` | Quote posts with attribution |
 | `guide` (`series`, `step`, `chapter`) | `pages/guide/` | Guides and multi-part content |
-| `inline` (`gratitude`, `micro`, `til`) | `pages/inline/` | Inline feed-first content |
+| `inline` (`gratitude`, `micro`) | `pages/inline/` | Inline feed-first content |
 | `contact` (`character`, `person`) | `pages/contact/` | Profile/contact pages |
 | `author` | `pages/author/` | Author profile pages |
 
@@ -1575,14 +1583,16 @@ markata-go config get <key>
 ```bash
 # Get top-level value
 markata-go config get output_dir
-# Output: public
+# Output: output
 
-# Get nested value
+# Get nested value (list values print one item per line)
 markata-go config get glob.patterns
-# Output: ["posts/**/*.md", "pages/*.md"]
+# Output:
+# pages/**/*.md
+# posts/**/*.md
 
 # Get deeply nested value
-markata-go config get feeds.defaults.items_per_page
+markata-go config get feed_defaults.items_per_page
 # Output: 10
 
 # Get from specific config file
@@ -1592,7 +1602,7 @@ markata-go config get url -c production.toml
 
 Notes:
 
-- Values are read directly from the config file.
+- Values are read directly from the config file; `config get` does not synthesize absent defaults.
 - TOML/YAML are parsed with tree-sitter in CGO-enabled builds to preserve formatting.
 - CGO-disabled builds parse TOML/YAML via full decode.
 - JSON values may be re-emitted for structured output.
@@ -1615,7 +1625,7 @@ markata-go config set url "https://example.com"
 markata-go config set concurrency 4
 
 # Set an array value (JSON syntax)
-markata-go config set glob.patterns '["posts/**/*.md", "pages/*.md"]'
+markata-go config set glob.patterns '["pages/**/*.md", "posts/**/*.md"]'
 ```
 
 Notes:
@@ -1642,7 +1652,7 @@ markata-go config validate [flags]
 **Examples:**
 
 ```bash
-# Validate default config
+# Validate auto-discovered config, or built-in defaults if no config exists
 markata-go config validate
 
 # Validate specific config file
@@ -1656,11 +1666,10 @@ markata-go config validate -m fast.toml
 **Output:**
 
 ```
-Validating configuration...
-OK: Configuration is valid
+Configuration is valid: markata-go.toml
 
 # Or with errors:
-ERROR: Invalid configuration
+Errors:
   - output_dir: directory does not exist
   - glob.patterns: at least one pattern required
   - feeds[0].filter: invalid filter expression
@@ -1967,7 +1976,7 @@ markata-go uses these common exit code patterns:
 # Build and check for success
 if markata-go build --clean; then
     echo "Build successful!"
-    rsync -av public/ user@server:/var/www/
+    rsync -av output/ user@server:/var/www/
 else
     echo "Build failed with exit code $?"
     exit 1
@@ -2019,7 +2028,7 @@ markata-go config validate
 MARKATA_GO_URL="${DEPLOY_URL}" markata-go build --clean
 
 # Deploy (example)
-aws s3 sync public/ s3://my-bucket/ --delete
+aws s3 sync output/ s3://my-bucket/ --delete
 ```
 
 See [[deployment-guide|Deployment]] for detailed deployment guides.
