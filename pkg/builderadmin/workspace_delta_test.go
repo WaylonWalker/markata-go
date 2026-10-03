@@ -100,7 +100,7 @@ func TestIncrementalPublication_PermissionsAndExistingDestination(t *testing.T) 
 	if _, _, err := stageIncrementalWorkspace(work, releases, "first", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(filepath.Join(work, "index.html"), 0o640); err != nil {
+	if err := os.Chmod(filepath.Join(work, "index.html"), 0o660); err != nil {
 		t.Fatal(err)
 	}
 	next, stats, err := stageIncrementalWorkspace(work, releases, "next", "first")
@@ -112,7 +112,7 @@ func TestIncrementalPublication_PermissionsAndExistingDestination(t *testing.T) 
 	}
 	info, _ := os.Stat(next)
 	child, _ := os.Stat(filepath.Join(next, "index.html"))
-	if info.Mode().Perm() != 0o755 || child.Mode().Perm() != 0o640 {
+	if info.Mode().Perm() != 0o755 || child.Mode().Perm() != 0o660 {
 		t.Fatal("published permissions changed")
 	}
 	if _, _, err := stageIncrementalWorkspace(work, releases, "next", "first"); err == nil {

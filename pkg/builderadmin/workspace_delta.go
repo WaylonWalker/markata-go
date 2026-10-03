@@ -72,6 +72,9 @@ func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baseli
 	if err != nil {
 		return "", stats, fmt.Errorf("stage incremental workspace: %w", err)
 	}
+	if err := publisher.finishDirectories(); err != nil {
+		return "", stats, err
+	}
 	if err := os.Chmod(staging, 0o755); err != nil {
 		return "", stats, err
 	}
@@ -88,6 +91,7 @@ type workspaceDeltaPublisher struct {
 	link                           func(*os.Root, string, string) error
 	sourceBuffer, baselineBuffer   []byte
 	stats                          workspacePublicationStats
+	directories                    []workspaceDirectory
 }
 
 func (p *workspaceDeltaPublisher) copyEntry(path string, entry fs.DirEntry, walkErr error) error {
@@ -112,7 +116,11 @@ func (p *workspaceDeltaPublisher) copyEntry(path string, entry fs.DirEntry, walk
 		return os.Symlink(destination, target)
 	}
 	if entry.IsDir() {
-		return os.Mkdir(target, info.Mode().Perm())
+		if err := os.Mkdir(target, 0o700); err != nil {
+			return err
+		}
+		p.directories = append(p.directories, workspaceDirectory{path: target, info: info})
+		return nil
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("unsupported workspace entry %s (%s)", path, info.Mode())
@@ -194,4 +202,22 @@ func pathsOverlap(first, second string) bool {
 
 func plainReleaseID(id string) bool {
 	return id != "" && filepath.IsLocal(id) && filepath.Base(id) == id && id[0] != '.'
+}
+
+type workspaceDirectory struct {
+	path string
+	info fs.FileInfo
+}
+
+func (p *workspaceDeltaPublisher) finishDirectories() error {
+	for i := len(p.directories) - 1; i >= 0; i-- {
+		directory := p.directories[i]
+		if err := os.Chmod(directory.path, directory.info.Mode().Perm()); err != nil {
+			return err
+		}
+		if err := os.Chtimes(directory.path, directory.info.ModTime(), directory.info.ModTime()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
