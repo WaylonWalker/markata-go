@@ -177,3 +177,56 @@ func TestPostIndex_NilReceiverLookup(t *testing.T) {
 		t.Fatalf("nil PostIndex LookupBySlug() = %v, want nil", got)
 	}
 }
+
+func TestPostIndex_AliasSliceRepresentations(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		aliases interface{}
+	}{
+		{name: "typed", aliases: []string{"Old Name"}},
+		{name: "decoded", aliases: []interface{}{"Old Name"}},
+		{name: "decoded mixed", aliases: []interface{}{42, "Old Name", nil}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			post := &models.Post{Slug: "owner", Extra: map[string]interface{}{"aliases": test.aliases}}
+			m := NewManager()
+			m.SetPosts([]*models.Post{post})
+			idx := m.PostIndex()
+			for _, refresh := range []bool{false, true} {
+				if refresh {
+					idx.Refresh(m)
+				}
+				for _, alias := range []string{"OLD NAME", "old-name"} {
+					if got := idx.LookupBySlug(alias); got != post {
+						t.Fatalf("LookupBySlug(%q), refresh=%v: got %v, want owner", alias, refresh, got)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestPostIndex_RefreshAcrossAliasRepresentationChanges(t *testing.T) {
+	post := &models.Post{Slug: "owner", Extra: map[string]interface{}{"aliases": []string{"First Name"}}}
+	m := NewManager()
+	m.SetPosts([]*models.Post{post})
+	idx := m.PostIndex()
+	for _, test := range []struct {
+		aliases interface{}
+		name    string
+	}{
+		{aliases: []interface{}{"Second Name"}, name: "second-name"},
+		{aliases: []string{"Third Name"}, name: "third-name"},
+	} {
+		post.Extra["aliases"] = test.aliases
+		idx.Refresh(m)
+		for _, old := range []string{"first-name", "second-name"} {
+			if old != test.name && idx.LookupBySlug(old) != nil {
+				t.Fatalf("stale alias %q survived refresh", old)
+			}
+		}
+		if got := idx.LookupBySlug(test.name); got != post {
+			t.Fatalf("representation change lost %q: %v", test.name, got)
+		}
+	}
+}

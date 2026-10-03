@@ -228,3 +228,27 @@ func TestRandomPostPlugin_DoesNotClobberPostRoute(t *testing.T) {
 		t.Fatal("expected Write() to error due to post route collision")
 	}
 }
+
+func TestRandomPostPlugin_HomepageDoesNotCollideOnWarmBuild(t *testing.T) {
+	p := NewRandomPostPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: t.TempDir(),
+		Extra: map[string]interface{}{
+			"random_post": map[string]any{"enabled": true, "emit_posts_json": true},
+		},
+	})
+	m.SetPosts([]*models.Post{
+		{Slug: "", Href: "/", Published: true},
+		{Slug: "a", Href: "/a/", Published: true},
+	})
+
+	if err := p.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+	for build := 1; build <= 2; build++ {
+		if err := p.Write(m); err != nil {
+			t.Fatalf("Write() on build %d error = %v", build, err)
+		}
+	}
+}

@@ -39,6 +39,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 	}
 	filterCache := newFeedFilterCache(posts)
+	selection := newFeedSelectionRecorder(m.ContentLedger(), posts)
 
 	// Get feed configs from manager's extra config
 	feedConfigs := getFeedConfigs(config)
@@ -52,7 +53,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		// window matches the same effective feed configuration used below.
 		fc.ApplyDefaults(feedDefaults)
 		if useIncremental && !hasFeedLimitOffset(fc) && p.shouldSkipFeedCollect(fc, m) {
-			recordFeedSelection(m, fc.Slug, fc.Posts, fc.Filter, fc.IncludesPrivate())
+			selection.record(fc.Slug, selection.sources, fc.Posts, fc.Posts, fc.Filter, fc.IncludesPrivate(), 0, 0)
 			continue
 		}
 
@@ -100,16 +101,16 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			}
 		}
 
-		consideredPosts := posts
+		consideredSources := selection.sources
 		if usePresetPosts {
-			consideredPosts = fc.Posts
+			consideredSources = prepareFeedSources(fc.Posts)
 		}
 		matchedPosts := filteredPosts
 
 		// Store posts in feed config
 		filteredPosts = applyFeedLimitOffset(filteredPosts, fc)
 		fc.Posts = filteredPosts
-		recordFeedSelectionForPosts(m, fc.Slug, consideredPosts, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
+		selection.record(fc.Slug, consideredSources, matchedPosts, filteredPosts, fc.Filter, fc.IncludesPrivate(), fc.Offset, fc.Limit)
 
 		// Get base URL for pagination
 		baseURL := "/" + fc.Slug
@@ -163,60 +164,133 @@ func recordFeedSelectionForPosts(
 	if m == nil || m.ContentLedger() == nil {
 		return
 	}
+	recorder := newFeedSelectionRecorder(m.ContentLedger(), considered)
+	recorder.record(feedName, recorder.sources, matched, selected, filterExpr, includePrivate, offset, limit)
+}
 
-	matchedPaths := make(map[string]int, len(matched))
+// Prepared per occurrence, not per pointer or path. These flags are valid only
+// during the synchronous Collect hook; every invocation refreshes them.
+type feedSelectionSource struct {
+	path  string
+	flags uint8
+}
+
+const (
+	feedUnpublished uint8 = 1 << iota
+	feedSkipped
+	feedDraft
+	feedPrivate
+)
+
+func prepareFeedSources(posts []*models.Post) []feedSelectionSource {
+	sources := make([]feedSelectionSource, 0, len(posts))
+	for _, post := range posts {
+		if post == nil || post.Path == "" {
+			continue
+		}
+		var flags uint8
+		if !post.Published {
+			flags |= feedUnpublished
+		}
+		if post.Skip {
+			flags |= feedSkipped
+		}
+		if post.Draft {
+			flags |= feedDraft
+		}
+		if post.Private {
+			flags |= feedPrivate
+		}
+		sources = append(sources, feedSelectionSource{path: post.Path, flags: flags})
+	}
+	return sources
+}
+
+type feedSelectionRecorder struct {
+	ledger        *diagnostics.ContentLedger
+	sources       []feedSelectionSource
+	matchedPaths  map[string]int
+	selectedPaths map[string]struct{}
+	observations  []diagnostics.ContentFeedObservation
+	reasons       []string
+}
+
+func newFeedSelectionRecorder(ledger *diagnostics.ContentLedger, posts []*models.Post) *feedSelectionRecorder {
+	return &feedSelectionRecorder{
+		ledger: ledger, sources: prepareFeedSources(posts),
+		matchedPaths: make(map[string]int), selectedPaths: make(map[string]struct{}),
+	}
+}
+
+func (r *feedSelectionRecorder) record(feedName string, sources []feedSelectionSource, matched, selected []*models.Post, filterExpr string, includePrivate bool, offset, limit int) {
+	if r.ledger == nil {
+		return
+	}
+	clear(r.matchedPaths)
+	clear(r.selectedPaths)
 	for index, post := range matched {
 		if post == nil || post.Path == "" {
 			continue
 		}
-		if _, exists := matchedPaths[post.Path]; !exists {
-			matchedPaths[post.Path] = index
+		if _, exists := r.matchedPaths[post.Path]; !exists {
+			r.matchedPaths[post.Path] = index
 		}
 	}
 
-	selectedPaths := make(map[string]struct{}, len(selected))
 	for _, post := range selected {
 		if post != nil && post.Path != "" {
-			selectedPaths[post.Path] = struct{}{}
+			r.selectedPaths[post.Path] = struct{}{}
 		}
 	}
 
-	for _, post := range considered {
-		if post == nil || post.Path == "" {
-			continue
+	// At most four eligibility reasons and one window/fallback reason per
+	// occurrence. Pre-sizing keeps each row in the same reusable arena.
+	if cap(r.reasons) < 5*len(sources) {
+		r.reasons = make([]string, 0, 5*len(sources))
+	}
+	clear(r.observations)
+	if cap(r.observations) < len(sources) {
+		r.observations = make([]diagnostics.ContentFeedObservation, 0, len(sources))
+	}
+	r.observations = r.observations[:0]
+	r.reasons = r.reasons[:0]
+	for _, source := range sources {
+		start := len(r.reasons)
+		flags := source.flags
+		if includePrivate {
+			flags &^= feedPrivate
 		}
-		recordFeedSelectionForPost(m.ContentLedger(), post, feedName, matchedPaths, len(matched), selectedPaths, filterExpr, includePrivate, offset, limit)
+		if flags != 0 {
+			for i, reason := range [...]string{
+				diagnostics.ReasonContentPublishedFalse, diagnostics.ReasonContentSkip,
+				diagnostics.ReasonContentDraft, diagnostics.ReasonContentPrivate,
+			} {
+				if flags&(1<<i) != 0 {
+					r.reasons = append(r.reasons, reason)
+				}
+			}
+		}
+		index, matchedInFeed := r.matchedPaths[source.path]
+		included := false
+		if matchedInFeed {
+			_, included = r.selectedPaths[source.path]
+		}
+		reasons := r.reasons[start:]
+		switch {
+		case !matchedInFeed:
+			reasons = feedUnmatchedReasons(reasons, filterExpr)
+			included = false
+		case !included:
+			reasons = feedWindowExcludedReasons(reasons, index, len(matched), offset, limit)
+		default:
+			included = len(reasons) == 0
+		}
+		r.reasons = r.reasons[:start+len(reasons)]
+		r.observations = append(r.observations, diagnostics.ContentFeedObservation{
+			Path: source.path, Included: included, Reasons: reasons[:len(reasons):len(reasons)],
+		})
 	}
-}
-
-func recordFeedSelectionForPost(
-	ledger *diagnostics.ContentLedger,
-	post *models.Post,
-	feedName string,
-	matchedPaths map[string]int,
-	matchedCount int,
-	selectedPaths map[string]struct{},
-	filterExpr string,
-	includePrivate bool,
-	offset, limit int,
-) {
-	reasons := feedEligibilityReasons(post, includePrivate)
-	matchedIndex, matchedInFeed := matchedPaths[post.Path]
-	_, included := selectedPaths[post.Path]
-
-	if !matchedInFeed {
-		reasons = feedUnmatchedReasons(reasons, filterExpr)
-		ledger.RecordFeed(post.Path, feedName, false, reasons...)
-		return
-	}
-
-	if !included {
-		reasons = feedWindowExcludedReasons(reasons, matchedIndex, matchedCount, offset, limit)
-		ledger.RecordFeed(post.Path, feedName, false, reasons...)
-		return
-	}
-
-	ledger.RecordFeed(post.Path, feedName, len(reasons) == 0, reasons...)
+	r.ledger.RecordFeedBatch(feedName, r.observations)
 }
 
 func feedUnmatchedReasons(reasons []string, filterExpr string) []string {

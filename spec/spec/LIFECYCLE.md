@@ -1128,6 +1128,30 @@ inputs change. A changed content file MAY use the dependency graph to limit
 post rendering, but feed, search, and asset outputs MUST be refreshed when
 their inputs changed.
 
+## Nested build spans
+
+`pkg/buildstats.StartSpan(ctx, name, attributes...)` MUST return a context carrying
+its span ID and a completion handle. Children MUST retain a parent ID only when
+that context belongs to the same active profile. Without an active profile, the
+API MUST return the original context and a safe no-op handle; nil contexts use
+`context.Background()`.
+
+Completed spans MUST appear in `Summary.Spans` and benchmark JSON at
+`benchmark.Spans`, ordered by start offset, then ID. Each span MUST contain an ID,
+name, relative start offset, non-negative duration, and `ok` or `error` status.
+Stage and plugin attribution MUST capture the active values at start. `End` and
+`EndError` MUST record at most one completion, including concurrent calls.
+`EndError` MUST discard error text. Callers MUST finish spans before stopping the
+profile; unfinished spans are omitted.
+
+Names MUST default to `unnamed` when blank and be limited to 128 bytes.
+Attributes MUST contain at most 16 entries with trimmed keys and values, limited
+to 64 and 256 bytes respectively. Blank keys and keys containing authorization,
+cookie, password, passwd, secret, token, or credential (case-insensitive) MUST be
+dropped. Callers MUST supply safe values: this key filter does not redact URLs,
+paths, or credentials embedded in other attributes. This foundation does not
+require operation instrumentation or critical-path computation.
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification

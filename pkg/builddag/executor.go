@@ -47,7 +47,7 @@ func (e *Executor) Execute(ctx context.Context, graph *Graph) (ExecutionResult, 
 		if err := ctx.Err(); err != nil {
 			return ExecutionResult{}, err
 		}
-		task, ok := graph.Task(id)
+		task, ok := graph.tasks[id]
 		if !ok {
 			return ExecutionResult{}, fmt.Errorf("builddag: task %q missing from compiled graph", id)
 		}

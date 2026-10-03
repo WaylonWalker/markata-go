@@ -1,19 +1,8 @@
 name: Build Lab characterization
 
 on:
-  pull_request:
-    branches:
-      - main
-      - master
-    paths:
-      - "cmd/markata-go/**"
-      - "internal/**"
-      - "pkg/**"
-      - "templates/**"
-      - "tests/**"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/**"
+  # Main pushes and daily CI already include this observation in the CLI suite.
+  # Keep a focused manual entrypoint without duplicating daily or PR runs.
   workflow_dispatch:
 
 permissions:
@@ -44,4 +33,4 @@ jobs:
         run: go mod download
 
       - name: Run observational Build Lab characterization
-        run: go test -v -race -timeout=30m -coverprofile=coverage.out -covermode=atomic ./cmd/markata-go/cmd -run '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$'
+        run: go test -v -race -timeout=30m ./cmd/markata-go/cmd -run '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$'

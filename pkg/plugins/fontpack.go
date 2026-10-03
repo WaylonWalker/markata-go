@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -20,7 +20,7 @@ import (
 const (
 	fontpackCacheFile        = ".markata-fontpack-cache"
 	fontpackPreloadCacheFile = ".markata-fontpack-preloads.json"
-	fontpackCacheVersion     = "3"
+	fontpackCacheVersion     = "5"
 )
 
 const fontpackRoleHeading = "heading"
@@ -110,12 +110,19 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 	if p.prepared != nil {
 		return p.prepared, nil
 	}
-	rendered := strings.Builder{}
-	names := []string{p.name}
+	if p.source == nil || p.source.Catalog == nil {
+		return nil, fmt.Errorf("fontpack catalog has not been configured")
+	}
+	defaultName, _, err := p.source.Catalog.ResolvePack(p.name)
+	if err != nil {
+		return nil, err
+	}
+	posts := m.Posts()
+	readers := make([]io.Reader, 0, len(posts)*2)
+	names := []string{defaultName}
 	pageNames := make(map[string]string)
-	for _, post := range m.Posts() {
-		rendered.WriteString(post.ArticleHTML)
-		rendered.WriteByte('\n')
+	for _, post := range posts {
+		readers = append(readers, strings.NewReader(post.ArticleHTML), strings.NewReader("\n"))
 		name := p.name
 		if value, ok := post.Extra["fontpack"].(string); ok && value != "" {
 			if value == "brush-poster" {
@@ -123,24 +130,18 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 			}
 			name = value
 		}
-		if p.source != nil {
-			resolvedName, _, err := p.source.Catalog.ResolvePack(name)
-			if err != nil {
-				return nil, fmt.Errorf("post %q fontpack %q: %w", post.Path, name, err)
-			}
-			pageNames[post.Path] = resolvedName
-			if post.Extra == nil {
-				post.Extra = make(map[string]interface{})
-			}
-			post.Extra["_resolved_fontpack"] = resolvedName
-			if !slices.Contains(names, name) {
-				names = append(names, name)
-			}
+		resolvedName, _, err := p.source.Catalog.ResolvePack(name)
+		if err != nil {
+			return nil, fmt.Errorf("post %q fontpack %q: %w", post.Path, name, err)
 		}
-	}
-	defaultName, _, err := p.source.Catalog.ResolvePack(p.name)
-	if err != nil {
-		return nil, err
+		pageNames[post.Path] = resolvedName
+		if post.Extra == nil {
+			post.Extra = make(map[string]interface{})
+		}
+		post.Extra["_resolved_fontpack"] = resolvedName
+		if !slices.Contains(names, resolvedName) {
+			names = append(names, resolvedName)
+		}
 	}
 	pickerEnabled := themeSwitcherEnabled(m.Config().Extra)
 	if pickerEnabled {
@@ -153,7 +154,14 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 			}
 		}
 	}
-	cacheKey := fontpackCacheKey(rendered.String(), names, p.source.Catalog)
+	coverage, err := fontpacks.CollectCoverage(io.MultiReader(readers...))
+	if err != nil {
+		return nil, fmt.Errorf("collect fontpack visible coverage: %w", err)
+	}
+	cacheKey, err := fontpackCacheKey(coverage.Signature(), defaultName, names, pickerEnabled, p.source)
+	if err != nil {
+		return nil, err
+	}
 	build := &fontpackBuild{cacheKey: cacheKey}
 	output := m.Config().OutputDir
 	if p.source.Builtin && fontpackOutputCached(output, cacheKey) {
@@ -163,7 +171,7 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 		}
 	}
 	if !build.cacheReady {
-		resolved, err := p.source.Catalog.ResolveManyFSWithOptions(names, p.source.FS, p.source.Root, rendered.String(), fontpackResolveOptions(p.source))
+		resolved, err := p.source.Catalog.ResolveManyFSWithCoverage(names, p.source.FS, p.source.Root, coverage, fontpackResolveOptions(p.source))
 		if err != nil {
 			return nil, err
 		}
@@ -362,14 +370,6 @@ func fontpackRoleFamily(catalog *fontpacks.Catalog, pack fontpacks.FontPack, rol
 	return ""
 }
 
-func fontpackCacheKey(rendered string, names []string, catalog *fontpacks.Catalog) string {
-	catalogData, err := json.Marshal(catalog)
-	if err != nil {
-		return ""
-	}
-	return buildcache.ContentHash(fontpackCacheVersion + "\x00" + string(catalogData) + "\x00" + rendered + "\x00" + strings.Join(names, "\x00"))
-}
-
 func fontpackOutputCached(output, key string) bool {
 	data, err := os.ReadFile(filepath.Join(output, fontpackCacheFile))
 	if err != nil || strings.TrimSpace(string(data)) != key {
@@ -396,48 +396,6 @@ func fontpackResolveOptions(source *fontpacks.CatalogSource) fontpacks.ResolveOp
 	// built. Re-hashing every WOFF2 file on every site build dominates warm
 	// builds, while custom catalogs must retain runtime checksum validation.
 	return fontpacks.ResolveOptions{ValidateChecksums: !source.Builtin}
-}
-
-func markPostFontpack(content, name string) string {
-	if content == "" {
-		return content
-	}
-	content = markHTMLFontpack(content, name)
-	if !strings.Contains(content, `href="/css/fonts.css"`) && !strings.Contains(content, `href="/css/fonts.`) {
-		content = strings.Replace(content, "</head>", `  <link rel="stylesheet" href="/css/fonts.css">`+"\n</head>", 1)
-	}
-	return content
-}
-
-func markHTMLFontpack(content, name string) string {
-	quoted := `data-fontpack="` + name + `"`
-	if strings.Contains(strings.ToLower(content), "<html") {
-		for _, tag := range []string{"<html>", "<html ", "<HTML>", "<HTML "} {
-			start := strings.Index(content, tag)
-			if start < 0 {
-				continue
-			}
-			end := strings.Index(content[start:], ">")
-			if end < 0 {
-				return content
-			}
-			end += start
-			open := content[start : end+1]
-			if strings.Contains(strings.ToLower(open), "data-fontpack=") {
-				parts := strings.Fields(open[:len(open)-1])
-				for i, part := range parts {
-					if strings.HasPrefix(strings.ToLower(part), "data-fontpack=") {
-						parts[i] = quoted
-					}
-				}
-				open = strings.Join(parts, " ") + ">"
-			} else {
-				open = strings.TrimSuffix(open, ">") + " " + quoted + ">"
-			}
-			return content[:start] + open + content[end+1:]
-		}
-	}
-	return content
 }
 
 var _ lifecycle.ConfigurePlugin = (*FontpackPlugin)(nil)

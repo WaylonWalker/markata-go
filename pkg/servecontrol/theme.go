@@ -112,7 +112,12 @@ func BrowserTokenStylesheet(theme map[string]string) string {
 		css.WriteByte(':')
 		css.WriteString(color)
 	}
-	css.WriteString("} :where(button,input,a,summary,[tabindex]):focus-visible{outline:2px solid var(--markata-focus);outline-offset:3px}")
+	css.WriteString("} *{scrollbar-color:var(--markata-border) transparent;scrollbar-width:thin}")
+	css.WriteString(" *::-webkit-scrollbar{width:10px;height:10px}")
+	css.WriteString(" *::-webkit-scrollbar-track{background:transparent}")
+	css.WriteString(" *::-webkit-scrollbar-thumb{background:var(--markata-border);border:2px solid transparent;border-radius:999px;background-clip:padding-box}")
+	css.WriteString(" *::-webkit-scrollbar-thumb:hover{background:var(--markata-text-secondary);background-clip:padding-box}")
+	css.WriteString(" :where(button,input,a,summary,[tabindex]):focus-visible{outline:2px solid var(--markata-focus);outline-offset:3px}")
 	return css.String()
 }
 

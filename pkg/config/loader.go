@@ -119,7 +119,7 @@ func LoadWithDefaults() (*models.Config, error) {
 		return nil, fmt.Errorf("failed to encode default config: %w", err)
 	}
 	mergedRaw := mergeRawMaps(nil, defaultRaw, emptyRaw)
-	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	normalizeRenderingTheme(mergedRaw)
 	config, err := configFromRawWrapper(mergedRaw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode default config: %w", err)
@@ -221,7 +221,7 @@ func LoadWithMergeOptions(options LoadOptions, basePath string, overridePaths ..
 	}
 
 	mergedRaw = mergeRawMaps(nil, defaultRaw, mergedRaw)
-	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	normalizeRenderingTheme(mergedRaw)
 
 	baseConfig, err := configFromRawWrapper(mergedRaw)
 	if err != nil {
@@ -311,7 +311,7 @@ func LoadFromString(data string, format Format) (*models.Config, error) {
 	}
 
 	mergedRaw := mergeRawMaps(nil, defaultRaw, resolvedRaw)
-	warnings = append(warnings, normalizeRenderingTheme(mergedRaw)...)
+	normalizeRenderingTheme(mergedRaw)
 	config, err := configFromRawWrapper(mergedRaw)
 	if err != nil {
 		return nil, err

@@ -133,10 +133,15 @@ func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T
 	}
 
 	feedConfigs := getFeedConfigs(m.Config())
-	if len(feedConfigs) != 2 {
-		t.Fatalf("feed configs = %#v, want configured archive and implicit root", feedConfigs)
+	if len(feedConfigs) != 3 {
+		t.Fatalf("feed configs = %#v, want configured archive, implicit root, and implicit pins", feedConfigs)
 	}
+	seen := make(map[string]bool, len(feedConfigs))
 	for _, fc := range feedConfigs {
+		if seen[fc.Slug] {
+			t.Errorf("duplicate feed %q", fc.Slug)
+		}
+		seen[fc.Slug] = true
 		switch fc.Slug {
 		case "":
 			if !fc.Formats.HTML {
@@ -145,6 +150,10 @@ func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T
 		case "archive":
 			if fc.Title != archive.Title || !fc.Formats.HTML {
 				t.Errorf("archive = %#v, want configured archive %#v", fc, archive)
+			}
+		case "pins":
+			if fc.Filter != "published == true and link" || !fc.Formats.HTML || fc.Templates.HTML != "pins.html" {
+				t.Errorf("pins = %#v, want implicit HTML link board", fc)
 			}
 		default:
 			t.Errorf("unexpected feed %q", fc.Slug)

@@ -31,7 +31,7 @@ func loadResolvedConfig(configPath string) (*models.Config, error) {
 	}
 
 	rawWrapper = mergeRawMaps(nil, defaultRaw, rawWrapper)
-	warnings = append(warnings, normalizeRenderingTheme(rawWrapper)...)
+	normalizeRenderingTheme(rawWrapper)
 
 	config, err := configFromRawWrapper(rawWrapper)
 	if err != nil {
@@ -44,6 +44,8 @@ func loadResolvedConfig(configPath string) (*models.Config, error) {
 	return config, nil
 }
 
+// normalizeRenderingTheme returns conflicts in the supplied values. Collect
+// warnings before merging defaults; later passes include generated values.
 func normalizeRenderingTheme(wrapper map[string]any) []string {
 	markata, ok := wrapper["markata-go"].(map[string]any)
 	if !ok {

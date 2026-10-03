@@ -57,6 +57,7 @@ A comprehensive, extendable static site generator written in Go.
 
 - [[cli-reference|CLI Reference]] - All commands and flags
 - [[advanced-usage|Advanced Usage]] - Power user features
+- [[maintainer-ci|Maintainer CI]] - Product repository validation and publishing policy
 
 ---
 

@@ -1,25 +1,13 @@
 # CI workflow for markata-go
-# Runs on every push and pull request
+# Runs on main/master pushes and pull requests, daily, and on demand
 
 name: CI
 
 on:
   push:
-    branches:
-      - main
-      - master
-    paths-ignore:
-      - "*.md"
-      - "docs/**"
-      - ".gitignore"
+    branches: [main, master]
   pull_request:
-    branches:
-      - main
-      - master
-    paths-ignore:
-      - "*.md"
-      - "docs/**"
-      - ".gitignore"
+    branches: [main, master]
   workflow_dispatch:
   schedule:
     - cron: "23 8 * * *"
@@ -36,44 +24,87 @@ env:
   LINT_GO_VERSION: "1.26"
 
 jobs:
+  changes:
+    name: Specialized check inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      fonts: ${{ steps.filter.outputs.fonts }}
+      rendering: ${{ steps.filter.outputs.rendering }}
+      helm: ${{ steps.filter.outputs.helm }}
+      goreleaser: ${{ steps.filter.outputs.goreleaser }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Detect changed inputs
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@v3
+        with:
+          # PRs use the changed-files API (also for forks). Pushes compare
+          # against the previous commit, not main against itself.
+          base: ${{ github.event_name == 'push' && github.event.before || github.event.repository.default_branch }}
+          ref: ${{ github.event_name == 'push' && github.sha || '' }}
+          filters: |
+            fonts:
+              - '.github/workflows/**'
+              - 'scripts/generate_font_manifests.py'
+              - 'internal/fontcatalog/**'
+              - 'vendor/google-fonts/**'
+            rendering:
+              - '.github/workflows/**'
+              - 'scripts/rendering-contract/**'
+              - 'spec/rendering-contract/**'
+              - 'pkg/renderingcontract/**'
+              - 'pkg/palettes/**'
+              - 'palettes/**'
+              - 'go.mod'
+              - 'go.sum'
+            helm:
+              - '.github/workflows/**'
+              - 'helm-chart/**'
+            goreleaser:
+              - '.github/workflows/**'
+              - '.goreleaser.yml'
+              - 'go.mod'
+              - 'go.sum'
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.LINT_GO_VERSION }}
           cache: true
-
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-
       - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+        uses: golangci/golangci-lint-action@v6.5.2
+        with:
+          version: v1.64.8
+          install-mode: goinstall
+          args: --timeout=5m
 
   manifest-completeness:
     name: Font Manifest Completeness
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.fonts == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Check bundled manifests
         run: ./scripts/generate_font_manifests.py --completeness
 
   manifest-generation:
     name: Font Manifest Determinism
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.fonts == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Fetch pinned Google Fonts sources
         env:
           GOOGLE_FONTS: vendor/google-fonts
@@ -92,12 +123,12 @@ jobs:
 
   rendering-contract:
     name: Rendering Contract
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.rendering == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -106,12 +137,12 @@ jobs:
 
   helm-chart:
     name: Helm Chart
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       - name: Lint Helm chart
         run: helm lint helm-chart
       - name: Test nginx CORS behavior
@@ -126,26 +157,19 @@ jobs:
         os: [macos-latest, windows-latest]
         go: ["1.26"]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
           cache: true
-
       - name: Download dependencies
         run: go mod download
-
       - name: Run tests (windows short)
         if: (github.event_name == 'pull_request' || github.event_name == 'push') && matrix.os == 'windows-latest'
         run: go test -v -short ./...
-
       - name: Run tests (macOS short)
         if: (github.event_name == 'pull_request' || github.event_name == 'push') && matrix.os == 'macos-latest'
         run: go test -v -short ./...
-
       - name: Run tests (non-linux full)
         if: github.event_name != 'pull_request' && github.event_name != 'push'
         run: go test -v ./...
@@ -153,54 +177,37 @@ jobs:
   test-linux-core:
     name: Linux tests (core)
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
       - name: Download dependencies
         run: go mod download
-
-      - name: Download the CLI built from this checkout
-        uses: actions/download-artifact@v7
-        with:
-          name: markata-go-linux-amd64
-          path: ${{ runner.temp }}
-
-      - name: Configure the checked-out CLI binary
+      - name: Build test CLI
         run: |
-          binary="$RUNNER_TEMP/markata-go"
-          chmod +x "$binary"
-          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+          start=$SECONDS
+          go build -ldflags="-s -w" -o "$RUNNER_TEMP/markata-go" ./cmd/markata-go
+          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$RUNNER_TEMP/markata-go" >> "$GITHUB_ENV"
           printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
+          echo "CLI build: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
       - name: Run core tests (race + coverage)
         run: |
+          start=$SECONDS
           go list ./... > "$RUNNER_TEMP/all-packages.txt"
           mapfile -t all_packages < "$RUNNER_TEMP/all-packages.txt"
           packages=()
           for package in "${all_packages[@]}"; do
             case "$package" in
-              github.com/WaylonWalker/markata-go/cmd/markata-go/cmd|github.com/WaylonWalker/markata-go/pkg/search|github.com/WaylonWalker/markata-go/pkg/searchapi|github.com/WaylonWalker/markata-go/tests)
-                continue
-                ;;
+              github.com/WaylonWalker/markata-go/cmd/markata-go/cmd|github.com/WaylonWalker/markata-go/pkg/search|github.com/WaylonWalker/markata-go/pkg/searchapi|github.com/WaylonWalker/markata-go/tests) continue ;;
             esac
             packages+=("$package")
           done
-          if [[ ${#packages[@]} -eq 0 ]]; then
-            echo "No core Go test packages were selected" >&2
-            exit 1
-          fi
+          [[ ${#packages[@]} -gt 0 ]] || { echo "No core Go test packages were selected" >&2; exit 1; }
           go test -v -race -timeout=30m -coverprofile=coverage-core.out -covermode=atomic "${packages[@]}"
-
-      - name: Upload core coverage
-        uses: codecov/codecov-action@v7
+          echo "Core race + coverage: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
+      - uses: codecov/codecov-action@v7
         with:
           files: ./coverage-core.out
           fail_ci_if_error: false
@@ -208,43 +215,38 @@ jobs:
   test-linux-cli:
     name: Linux tests (CLI and search)
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
       - name: Download dependencies
         run: go mod download
-
-      - name: Download the CLI built from this checkout
-        uses: actions/download-artifact@v7
-        with:
-          name: markata-go-linux-amd64
-          path: ${{ runner.temp }}
-
-      - name: Configure the checked-out CLI binary
+      - name: Build test CLI
         run: |
-          binary="$RUNNER_TEMP/markata-go"
-          chmod +x "$binary"
-          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+          start=$SECONDS
+          go build -ldflags="-s -w" -o "$RUNNER_TEMP/markata-go" ./cmd/markata-go
+          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$RUNNER_TEMP/markata-go" >> "$GITHUB_ENV"
           printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
+          echo "CLI build: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify binary
+        run: |
+          "$MARKATA_GO_TEST_BINARY" version
+          "$MARKATA_GO_TEST_BINARY" --help
       - name: Run CLI and search tests (race + coverage, excluding observational Build Lab)
         if: github.event_name == 'pull_request'
-        run: go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic -skip '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$' ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
-
+        run: |
+          start=$SECONDS
+          go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic -skip '^TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct$' ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
+          echo "CLI/search race + coverage: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
       - name: Run CLI and search tests (race + coverage)
         if: github.event_name != 'pull_request'
-        run: go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
-
-      - name: Upload CLI and search coverage
-        uses: codecov/codecov-action@v7
+        run: |
+          start=$SECONDS
+          go test -v -race -timeout=30m -coverprofile=coverage-cli.out -covermode=atomic ./cmd/markata-go/cmd ./pkg/search ./pkg/searchapi
+          echo "CLI/search race + coverage: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
+      - uses: codecov/codecov-action@v7
         with:
           files: ./coverage-cli.out
           fail_ci_if_error: false
@@ -252,38 +254,27 @@ jobs:
   test-linux-site:
     name: Linux tests (site integration)
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
       - name: Download dependencies
         run: go mod download
-
-      - name: Download the CLI built from this checkout
-        uses: actions/download-artifact@v7
-        with:
-          name: markata-go-linux-amd64
-          path: ${{ runner.temp }}
-
-      - name: Configure the checked-out CLI binary
+      - name: Build test CLI
         run: |
-          binary="$RUNNER_TEMP/markata-go"
-          chmod +x "$binary"
-          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+          start=$SECONDS
+          go build -ldflags="-s -w" -o "$RUNNER_TEMP/markata-go" ./cmd/markata-go
+          printf 'MARKATA_GO_TEST_BINARY=%s\n' "$RUNNER_TEMP/markata-go" >> "$GITHUB_ENV"
           printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
+          echo "CLI build: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
       - name: Run site integration tests (race + coverage)
-        run: go test -v -race -timeout=30m -coverprofile=coverage-site.out -covermode=atomic ./tests
-
-      - name: Upload site integration coverage
-        uses: codecov/codecov-action@v7
+        run: |
+          start=$SECONDS
+          go test -v -race -timeout=30m -coverprofile=coverage-site.out -covermode=atomic ./tests
+          echo "Site integration race + coverage: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
+      - uses: codecov/codecov-action@v7
         with:
           files: ./coverage-site.out
           fail_ci_if_error: false
@@ -292,10 +283,7 @@ jobs:
     name: Test (ubuntu-latest, 1.26)
     runs-on: ubuntu-latest
     if: always()
-    needs:
-      - test-linux-core
-      - test-linux-cli
-      - test-linux-site
+    needs: [test-linux-core, test-linux-cli, test-linux-site]
     steps:
       - name: Check Linux test shards
         env:
@@ -309,51 +297,19 @@ jobs:
           fi
           echo "All Linux race and coverage test shards passed"
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
-      - name: Build binary
-        run: |
-          go build -v -ldflags="-s -w" -o markata-go ./cmd/markata-go
-
-      - name: Verify binary
-        run: |
-          ./markata-go version
-          ./markata-go --help
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: markata-go-linux-amd64
-          path: markata-go
-          retention-days: 7
-
-  # Snapshot build to verify goreleaser config
   goreleaser-check:
     name: GoReleaser Check
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.goreleaser == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
       - name: Check GoReleaser config
         uses: goreleaser/goreleaser-action@v7
         with:

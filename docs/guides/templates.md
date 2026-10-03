@@ -16,6 +16,7 @@ markata-go uses [pongo2](https://github.com/flosch/pongo2), a Django/Jinja2-like
 ## Table of Contents
 
 - [Overview](#overview)
+- [Cached HTML on Warm Builds](#cached-html-on-warm-builds)
 - [Template Location](#template-location)
 - [Template Syntax](#template-syntax)
 - [Available Variables](#available-variables)
@@ -39,6 +40,21 @@ Templates wrap your rendered Markdown content in HTML layouts. The template syst
 - **Filters** - Transform data for display
 - **Custom templates per post** - Override templates in frontmatter
 - **Presentation templates** - Turn markdown into reveal.js slide decks
+
+---
+
+## Cached HTML on Warm Builds
+
+Both DAG and legacy warm builds can reuse cached article and full-page HTML.
+Restored HTML preserves the exact cached bytes, without changing your template
+output. Disk restoration reads directly into string-owned storage, avoiding
+an extra full-page byte buffer and string copy. A small reusable transfer buffer
+does not retain or modify the returned HTML.
+
+No configuration changes or cache reset are needed: cache paths, keys and
+freshness checks are unchanged. Missing or unreadable disk entries fall back to
+rendering rather than returning partial HTML. Once HTML is loaded in memory,
+later reads in the same build can reuse it without accessing the disk.
 
 ---
 
@@ -292,6 +308,7 @@ Use `human_date` for visible HTML dates so cards, post bylines, archive views, a
 | `escape` | `{{ text\|escape }}` | HTML escape (default behavior) |
 | `plaintext` | `{{ html\|plaintext }}` | Convert HTML to clean plain text (entities decoded, tags stripped, links as footnotes) |
 | `summary` | `{{ post.content\|summary:300 }}` | One-line, HTML-escaped excerpt for cards: drops code blocks, tables, figures and scripts, strips tags, collapses whitespace, truncates with `…` (default 300 chars). Safe to embed in Markdown via `render_feed` because it never contains blank lines or raw HTML |
+| `pin_preview` | `{% with post\|pin_preview as preview %}{{ preview.image }} / {{ preview.commentary }}{% endwith %}` | Cover image and authored commentary from existing post fields and rendered embeds. Makes no metadata requests; see [Pins](./pins.md) for selection rules. |
 | `linebreaks` | `{{ text\|linebreaks }}` | Convert newlines to `<p>` and `<br>` |
 | `linebreaksbr` | `{{ text\|linebreaksbr }}` | Convert newlines to `<br>` |
 
