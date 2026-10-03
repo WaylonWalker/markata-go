@@ -130,6 +130,46 @@ func TestBenchmarkJSONStreamLegacyBytes(t *testing.T) {
 	})
 }
 
+func TestBenchmarkSummaryJSONOmitsContentEntries(t *testing.T) {
+	result := benchmarkStreamFixture(3, 4)
+	result.Executor = lifecycle.BuildExecutorDAG
+	result.Content.TemplateCache = &diagnostics.TemplateCacheStats{Classified: 3, Restored: 2, RenderRequired: 1}
+
+	var output bytes.Buffer
+	if err := writeBenchmarkSummaryJSON(&output, result); err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(output.Bytes(), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	var content map[string]json.RawMessage
+	if err := json.Unmarshal(decoded["content"], &content); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := content["entries"]; exists {
+		t.Fatal("compact benchmark contains content entries")
+	}
+	if _, exists := content["summary"]; !exists {
+		t.Fatal("compact benchmark omitted content summary")
+	}
+	if _, exists := content["template_cache"]; !exists {
+		t.Fatal("compact benchmark omitted template cache statistics")
+	}
+	if string(decoded["executor"]) != `"dag"` {
+		t.Fatalf("executor = %s, want dag", decoded["executor"])
+	}
+	if bytes.Contains(output.Bytes(), []byte("../posts")) {
+		t.Fatal("compact benchmark serialized entry data")
+	}
+}
+
+func TestBenchmarkSummaryJSONRejectsInvalidExecutor(t *testing.T) {
+	if err := writeBenchmarkSummaryJSON(io.Discard, &BuildResult{Executor: "invalid"}); err == nil {
+		t.Fatal("invalid executor was serialized as a successful compact benchmark")
+	}
+}
+
 type benchmarkFailureWriter struct {
 	err      error
 	short    bool

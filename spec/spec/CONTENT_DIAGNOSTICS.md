@@ -338,6 +338,14 @@ The existing `--benchmark-json` machine-readable build output includes the
 sanitized content snapshot. No separate diagnostics command or public HTML page
 is added.
 
+`--benchmark-summary-json` MUST write the same build identity, workload counts,
+warnings, timing profile, blogroll status, content summary, and template-cache
+aggregate while omitting `content.entries`. It MUST accept a file path or `-`
+for stdout. The compact report is intended for timing comparisons where the
+per-source, per-feed diagnostic matrix would add disproportionate disk use.
+When either JSON flag uses stdout, the command MUST suppress the human build
+footer. Supplying both JSON flags MUST fail before the build starts.
+
 ### Benchmark JSON serialization
 
 Benchmark JSON MUST retain the complete raw build-result snapshot, including all

@@ -383,6 +383,7 @@ markata-go build [flags]
 | `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
 | `--dag` | | Use the experimental serial DAG executor | `false` |
 | `--benchmark-json` | | Write benchmark details as JSON; use `-` for stdout | `""` |
+| `--benchmark-summary-json` | | Write compact benchmark JSON without content entries; use `-` for stdout | `""` |
 | `--benchmark-detailed` | | Print per-stage benchmark resource summaries | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--output` | `-o` | Override output directory | from config |
@@ -592,6 +593,7 @@ For deeper analysis:
 
 - `markata-go build --benchmark-json=benchmark.json` writes machine-readable benchmark data to a file
 - `markata-go build --benchmark-json=-` writes only the benchmark JSON to stdout
+- `markata-go build --benchmark-summary-json=/tmp/benchmark.json` writes timing and aggregate content statistics without the large per-content entry matrix
 - `markata-go build -v --benchmark-detailed` adds per-stage resource summaries to the build footer
 
 When requests are present, the footer prints the 10 slowest network waits with stage, plugin, method, sanitized URL, duration, and either HTTP status or the request error.
