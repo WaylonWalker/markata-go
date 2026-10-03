@@ -24,10 +24,10 @@ var dagLifecycleStages = []lifecycle.Stage{
 }
 
 // runDAGBuildObserved is the feature-flagged DAG equivalent of
-// runBuildObserved. Each lifecycle stage is compiled only after the preceding
-// stage has executed, so future item-level graphs can materialize from the
-// actual runtime post/feed/output state without mutating a running graph. The
-// observer contract remains identical so serve keeps stage visibility.
+// runBuildObserved. Lifecycle stages are compiled after preceding state has
+// materialized, and scheduler-owned plugin stages compile each plugin graph at
+// that plugin's execution barrier. The observer contract remains identical so
+// serve keeps lifecycle-stage visibility.
 func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
 	if err := m.SetBuildExecutor(lifecycle.BuildExecutorDAG); err != nil {
 		return nil, fmt.Errorf("select DAG build executor: %w", err)
@@ -51,38 +51,39 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 	totalTasks := 0
 	for _, lifecycleStage := range dagLifecycleStages {
 		stage := lifecycleStage
-		builder := builddag.NewBuilder()
 		var requires []builddag.ArtifactID
 		if previous != nil {
-			builder.AddExternal(*previous)
 			requires = []builddag.ArtifactID{*previous}
 		}
 		provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(stage)}
 
-		if stage == lifecycle.StageLoad || stage == lifecycle.StageTransform || stage == lifecycle.StageRender || stage == lifecycle.StageCollect || stage == lifecycle.StageWrite || stage == lifecycle.StageCleanup {
-			addDAGLegacyPluginStage(builder, m, stage, requires, provided, observe)
+		if isDAGPluginStage(stage) {
+			stageSegments, stageTaskCount, stageErr := executeDAGPluginStageSegments(
+				executor,
+				m,
+				stage,
+				requires,
+				provided,
+				observe,
+				defaultDAGPluginExpander,
+			)
+			if stageErr != nil {
+				return nil, stageErr
+			}
+			segments = append(segments, stageSegments...)
+			totalTasks += stageTaskCount
 		} else {
+			builder := builddag.NewBuilder()
+			addDAGExternalInputs(builder, requires)
 			addDAGLifecycleStage(builder, m, stage, requires, provided, observe)
+			segment, taskCount, stageErr := compileExecuteDAGSegment(executor, builder, string(stage))
+			if stageErr != nil {
+				return nil, stageErr
+			}
+			segments = append(segments, segment)
+			totalTasks += taskCount
 		}
 
-		graph, compileErr := builder.Compile()
-		if compileErr != nil {
-			return nil, fmt.Errorf("compile %s DAG segment: %w", stage, compileErr)
-		}
-		digest, digestErr := graph.Digest()
-		if digestErr != nil {
-			return nil, fmt.Errorf("digest %s DAG segment: %w", stage, digestErr)
-		}
-		execution, executeErr := executor.Execute(context.Background(), graph)
-		if executeErr != nil {
-			return nil, executeErr
-		}
-		segments = append(segments, builddag.SegmentDigest{
-			Name:      string(stage),
-			Digest:    digest,
-			TaskCount: execution.TaskCount,
-		})
-		totalTasks += execution.TaskCount
 		current := provided
 		previous = &current
 	}
@@ -91,7 +92,7 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 	if err != nil {
 		return nil, fmt.Errorf("digest staged lifecycle DAG: %w", err)
 	}
-	verbosef("  [dag] serial executor completed %d tasks across %d stage graphs (plan=%s)", totalTasks, len(segments), planDigest)
+	verbosef("  [dag] serial executor completed %d tasks across %d graph segments (plan=%s)", totalTasks, len(segments), planDigest)
 
 	result = &BuildResult{
 		Executor:       m.BuildExecutor(),
@@ -132,14 +133,14 @@ func addDAGLifecycleStage(
 }
 
 // addDAGLegacyPluginStage expands one lifecycle stage into explicit plugin
-// tasks while preserving the lifecycle's serial compatibility semantics. The
-// boundary tasks keep stage-level timing and Serve observer behavior identical
-// to the coarse executor.
+// tasks while preserving the lifecycle's serial compatibility semantics. It is
+// retained as the focused single-graph test helper; production DAG builds use
+// executeDAGPluginStageSegments so each plugin graph materializes at its true
+// execution barrier.
 func addDAGLegacyPluginStage(
 	builder *builddag.Builder,
 	m *lifecycle.Manager,
 	stage lifecycle.Stage,
-	requires []builddag.ArtifactID,
 	provided builddag.ArtifactID,
 	observe func(lifecycle.Stage, bool, error),
 ) {
@@ -150,7 +151,6 @@ func addDAGLegacyPluginStage(
 	builder.AddTask(builddag.TaskSpec{
 		ID:        builddag.TaskID("lifecycle." + string(stage) + ".start"),
 		Group:     string(stage),
-		Requires:  append([]builddag.ArtifactID(nil), requires...),
 		Provides:  []builddag.ArtifactID{startedArtifact},
 		Scope:     builddag.ScopeSite,
 		Version:   "legacy-plugin-stage-v1",

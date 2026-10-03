@@ -49,7 +49,7 @@ func TestDAGLoadStagePreservesPluginOrderAndObserver(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageLoad)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageLoad, nil, provided, observe)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageLoad, provided, observe)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)
