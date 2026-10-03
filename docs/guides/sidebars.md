@@ -15,6 +15,11 @@ tags:
 
 markata-go provides a powerful sidebar system that adapts to your site structure. You can have different sidebars for different sections, auto-generate navigation from feeds, or combine multiple feeds into a unified sidebar.
 
+Large sites reuse sidebar link projections within each build, avoiding repeated
+URL processing for the same post and feed. This requires no configuration:
+titles, links, feed selection, and the current-page highlight remain page-correct,
+and the temporary cache is reset for the next template-render stage.
+
 ## Quick Start
 
 The simplest way to add a sidebar is to define navigation items directly:

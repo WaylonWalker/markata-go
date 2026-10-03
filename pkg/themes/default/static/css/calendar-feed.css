@@ -11,12 +11,16 @@
 
 .calendar-view-switch {
   display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
+  align-self: flex-start;
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.125rem;
+  padding: 0.2rem;
   margin-block: 0.75rem 0;
   border: 1px solid var(--calendar-border);
-  border-radius: 999px;
-  background: var(--calendar-soft);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, currentColor 4%, transparent);
 }
 
 .calendar-view-switch[hidden] {
@@ -28,10 +32,15 @@
   appearance: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  min-height: 2.25rem;
   border: 0;
-  border-radius: 999px;
-  padding: 0.4rem 0.8rem;
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.85rem;
   font: inherit;
+  line-height: 1.1;
+  white-space: nowrap;
   color: inherit;
   background: transparent;
   text-decoration: none;
@@ -42,13 +51,23 @@
 }
 
 .calendar-view-switch button[aria-pressed="true"] {
-  color: var(--color-background, Canvas);
-  background: var(--calendar-active);
+  font-weight: 650;
+  color: inherit;
+  background: color-mix(in srgb, var(--calendar-active) 18%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--calendar-active) 34%, transparent),
+    0 1px 2px color-mix(in srgb, currentColor 9%, transparent);
 }
 
-.calendar-view-switch a:hover,
+.calendar-view-switch button:not([aria-pressed="true"]):hover,
+.calendar-view-switch a:hover {
+  background: var(--calendar-soft);
+}
+
+.calendar-view-switch button:focus-visible,
 .calendar-view-switch a:focus-visible {
-  background: color-mix(in srgb, var(--calendar-active) 12%, transparent);
+  outline: 2px solid var(--calendar-active);
+  outline-offset: 2px;
 }
 
 .calendar-feed-years {
@@ -68,8 +87,8 @@
 
 .calendar-months {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
   align-items: start;
 }
 
@@ -320,11 +339,31 @@
   display: none !important;
 }
 
-@media (max-width: 36rem) {
+@media (min-width: 30rem) {
   .calendar-months {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+@media (min-width: 48rem) {
+  .calendar-months {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .calendar-months {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 96rem) {
+  .calendar-months {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 36rem) {
   .calendar-feed-list li {
     grid-template-columns: 1fr;
     gap: 0.15rem;

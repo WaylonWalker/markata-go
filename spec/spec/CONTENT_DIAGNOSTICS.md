@@ -68,6 +68,86 @@ plugin-local counters.
 
 ## Per-File Entry
 
+### Bounded template-cache observations
+
+Canonical title hashing MUST compare freshly parsed posts against prior-build
+semantic hashes, not Load's intermediate pre-auto-title values. This prevents
+unchanged source-encrypted posts (which deliberately bypass parsed caches)
+from generating false InlineTitles slug changes. Load's conservative dirty
+signals remain intact. Encryption-owned wrapper regeneration marks the source
+path and dependent closure; template diagnostics report those misses using the
+existing `affected_path` reason. The eleven reasons and artifact schema remain
+unchanged; no plaintext, passwords, or private debug paths are added.
+
+An existing processed post with incomplete prior semantic metadata MUST use
+the unavailable-baseline fallback, not new-post comparison. A cold navigation
+reset may leave valid page/input metadata but no semantic hashes. A subsequent
+linked-target edit MUST retain unrelated cache hits without warm priming or an
+extra `slug_changed` miss merely because those hashes were absent.
+
+If encrypted wrapper regeneration is followed by a failed full-page cache
+write, the invalidated full-page reference MUST remain unavailable after
+metadata save/reload. A subsequent unchanged wrapper hit MUST use the existing
+`full_html_unavailable` reason and render the current ciphertext, without adding
+encryption affected-path marks merely for being private.
+
+Snapshots and version-1 artifacts MAY contain `template_cache` before the final
+`entries` field. Older version-1 documents without it remain valid. Benchmark
+JSON exposes the same value at `.content.template_cache`; the artifact exposes
+it at `.template_cache`. This phase observes template cache decisions only; it
+does not implement publish-I/O diagnostics or change cache invalidation or HTML.
+
+The optional object contains scalar integer counts `classified`, `skipped`,
+`cacheable`, `restored`, `render_required`, `render_succeeded`, `render_failed`,
+and `serve_deferred`, a boolean `nav_preview_reset`, and a fixed `miss_reasons`
+object. Its eleven integer fields report only the first failing gate:
+
+1. `affected_path`: the existing outer affected-path gate (also on full builds);
+2. `cache_unavailable`: no build cache;
+3. `input_hash_missing`: the current post has no input hash;
+4. `entry_missing`: metadata has no entry;
+5. `input_hash_mismatch`: metadata input differs (including a partial cached
+   entry with an empty input hash);
+6. `template_mismatch`: metadata template differs;
+7. `dependency_changed`: a post dependency is in the changed-slug set;
+8. `slug_changed`: the post's own slug is in that set;
+9. `feed_membership_changed`: a nonempty current membership hash differs;
+10. `local_preview_changed`: the existing outer local-preview gate; and
+11. `full_html_unavailable`: a phase-1a hit whose phase-1b full-page getter
+    returns empty. This is not a corruption claim.
+
+Skipped posts are neither classified nor misses. Empty bodies are classified.
+Reasons MUST preserve this short-circuit precedence without reevaluating masked
+gates. `nav_preview_reset` records the existing shared-navigation reset result,
+not proof that any particular miss was caused by navigation.
+
+For the posts observed by one template invocation, counts MUST reconcile:
+
+```text
+post count = skipped + classified
+classified - cacheable = sum(first ten miss_reasons)
+cacheable = restored + full_html_unavailable
+render_required = sum(all eleven miss_reasons)
+classified = restored + render_required
+render_required = render_succeeded + render_failed + serve_deferred
+```
+
+Incremental canonical filtering records a deferred render without a second
+miss; noncanonical full-page hits are still restored. Successful rendering
+remains successful if best-effort cache storage fails. Heading revision and
+encryption certification rules remain unchanged.
+
+The manager-owned ledger MUST copy stats on setting and snapshotting under its
+lock. Reset and Discover clear them. Each template invocation clears previous
+stats before setup checks and publishes one replacement aggregate after worker
+join, including render failures. Setup failure leaves the field absent.
+Advancing one build through multiple `RunTo` calls MUST NOT clear observations.
+There is no active-profiler or global-manager dependency.
+
+Stats MUST remain bounded: no per-page telemetry records, source paths, template
+names, hashes, secret payload labels, disposition reasons, or telemetry I/O.
+Persistent misses are observations, not automatically bugs.
+
 Each entry records these booleans:
 
 - `candidate`
@@ -98,6 +178,62 @@ Disposition rules are deterministic:
 Entries, feed dispositions, reasons, and diagnostics MUST be sorted before a
 snapshot is exposed. Concurrent plugin execution MUST NOT change snapshot
 ordering or duplicate a diagnostic.
+
+### Snapshot memory and concurrency
+
+Snapshots MUST own their flat entry, diagnostic, feed-disposition, and reason
+slices independently of the ledger and of other snapshots. Later ledger updates
+or caller mutation of a snapshot MUST NOT change another snapshot or the ledger.
+Copying observations MUST occur under the ledger's read lock; sorting and
+deriving dispositions and summary counts SHOULD occur after releasing that lock.
+Snapshot construction SHOULD copy feed values directly into flat slices, without
+cloning internal feed maps or diagnostic deduplication indexes.
+Feed reasons SHOULD be copied into one owned contiguous arena per entry rather
+than allocated separately for every feed. Each feed's reason slice MUST have a
+disjoint capacity-clamped segment, including after sorting and deduplication:
+appending or mutating one feed MUST NOT alter siblings, the ledger, or another
+snapshot, even when live input reason slices overlap. Empty-feed and empty-reason
+nil semantics, ordering and summary counts MUST remain unchanged. Arenas MUST be
+newly owned on each snapshot; no snapshot reuse or immutable-cache contract is
+introduced. This reduces snapshot allocation, not the live HTML/template RSS.
+
+## Ordered Feed Observation Batches
+
+`ContentFeedObservation` contains a raw `Path`, `Included`, and `Reasons`.
+`RecordFeedBatch(feed, observations)` MUST have the same result as ordered
+`RecordFeed` calls, including normalization, unknown noncandidate discovery,
+empty feed names, last-observation inclusion, and union/deduplication of reasons.
+Entry reasons MUST include reasons from EACH excluded observation, even if a
+later observation includes the source. Nil ledgers and empty batches are no-ops.
+The ledger MUST own all retained slices, with no callbacks under its lock.
+Each batch MUST be atomic relative to snapshots, discovery, resets, and writes.
+Feed storage MUST remain sparse; recording MUST NOT allocate a sources-by-feeds
+matrix. Reset and Discover MUST discard any recording-only feed identity state.
+
+New batch relationships MAY use batch-local owned slabs instead of individual
+heap objects. Object slabs MUST have stable backing arrays (never appended after
+publishing pointers), at most 10 dispositions, and a tail bounded by the remaining
+observation count. Initial reason slabs MUST have at most 32 string slots and
+tails bounded by remaining observations and the current unique reason count.
+Raw reason input longer than 32 strings MUST bypass slab reservation and use the
+ordinary standalone append/deduplication path, without counting or allocating by
+raw input length. Retained reason storage grows with unique nonempty values, not
+duplicate or empty input. Reasons MUST be copied and deduplicated in original
+order. Slab segments MUST be capacity-clamped; later appends MUST NOT alter
+neighbors. Published object arrays and reason segments MUST never be reused or
+cleared. Only the current batch owns allocator headers; none survive in the ledger
+after recording, Reset, or Discover.
+Slabs MUST be allocated lazily only for missing candidate relationships, never for
+existing updates. No global/cross-build pool, dense matrix, caller storage, or
+feed registry is introduced. Single recording MUST retain its ordinary individual
+allocation path. Live slabs belong to the recorded ledger values, not reusable
+scratch; snapshots MUST still own independent copies after Reset or Discover.
+
+Automatic-feed collection MAY emit bounded debug phase records for generation,
+filtering/sorting, selection recording, and pagination/preparation. Records MUST
+contain only fixed phase names, numeric counts, and durations, never source paths,
+feed names, filters, or content. Phase durations MUST cover actual work without
+double-counting nested totals. These records do not add fields to schema v1.
 
 ## Reason Codes
 
@@ -202,6 +338,23 @@ The existing `--benchmark-json` machine-readable build output includes the
 sanitized content snapshot. No separate diagnostics command or public HTML page
 is added.
 
+### Benchmark JSON serialization
+
+Benchmark JSON MUST retain the complete raw build-result snapshot, including all
+entries, feed dispositions and reasons, summaries, timings, warnings, and
+blogroll status. Serialization MUST NOT sort, sanitize, or mutate its input.
+The wire format MUST remain byte-for-byte compatible with the legacy indented
+JSON encoder: executor normalization and validation, field order, two-space
+indentation, HTML and string escaping, nil versus empty entry arrays, and the
+final newline are preserved.
+
+Content entries MUST be streamed with reusable encoding and indentation buffers
+whose retained capacity scales with the largest single entry, not the complete
+entry array. Non-content metadata may be encoded together. Actual writes MUST
+be buffered to avoid tiny per-entry file writes. Encoding, writing, short writes,
+flushing, and file closing failures MUST be returned; a close failure MUST NOT
+replace an earlier serialization or flush failure.
+
 ## Production Diagnostics Artifact
 
 The normal full build MUST write the diagnostics artifact to:
@@ -249,6 +402,63 @@ reasons, feed names, and diagnostics retain the deterministic ordering defined
 above. Consumers MUST dispatch on `schema` and `schema_version`; future
 versions MUST NOT be interpreted as version 1.
 
+### Complete, bounded serialization
+
+Artifact publication MUST preserve every recorded feed disposition, including
+nonincluded feeds and their reasons. Performance improvements MUST NOT change
+schema, completeness, indentation, escaping, redaction, or empty `entries: []`
+representation, and MUST NOT add a trailing newline or a configuration switch.
+For identical build metadata (including a fixed `built_at`), streaming output
+MUST be byte-for-byte equivalent to `MarshalArtifact`.
+
+The streaming writer MUST leave the caller's snapshot unchanged, even when
+reason slices share backing storage. Entries MUST be sorted by normalized path;
+normalized-path collisions and duplicate feed names MUST preserve their original
+relative order. Normalization and diagnostic sanitation MUST use the same rules
+as the existing artifact API.
+
+Publication SHOULD serialize one sanitized entry at a time, bounding temporary
+JSON buffers by the largest entry rather than the entire artifact. An ordering
+index proportional to the number of entries is permitted. The immutable
+snapshot and the complete output file still scale with all recorded observations;
+this contract does not truncate diagnostics or bound total artifact size.
+`MarshalArtifact` MUST remain available with its existing interface and behavior.
+Streaming MUST propagate serialization and writer failures, including short
+writes reported without an error.
+
+Per-call sanitized scratch MAY be reused, but MUST own all mutable slices,
+including overlapping caller feed/reason storage, and grow only with the largest
+entry. `NewArtifact` MUST still return independently owned mutable entries.
+Serialized feed fragments MAY be reused within one write call only. Such a cache
+MUST retain at most 1024 entries and 1 MiB of combined key and fragment bytes;
+overlarge values and values arriving after either cap MUST bypass retention.
+Keys MUST be unambiguous for arbitrary strings (including nulls, separators,
+Unicode and escapes), with exact equality rather than hash-only identity.
+JSON escaping MUST use the standard encoder. Fragment assembly MUST guard the
+required struct layout and fall back to whole-entry encoding if it changes.
+Neither scratch nor fragment caches may persist across calls or builds.
+
+File publication SHOULD use a fixed 64 KiB output buffer, independent of
+artifact size, to reduce underlying write calls. The buffer MUST still be
+checked on flush before sync, close and replacement. It does not change the
+complete artifact or benchmark content (including template-cache observations).
+Serializer allocation improvements do not imply lower whole-build RSS: live
+templates and rendered HTML remain outside this temporary-storage bound.
+
+### Publication phase observations
+
+Publication MAY emit one bounded structured debug record with numeric counts
+and durations only, without source paths, feed names, or diagnostic messages.
+Snapshot and optional source-revision lookup durations MUST include the actual
+operations. Serialization/buffering and flush durations MUST exclude time spent
+inside underlying file `Write` calls; file-write duration, returned bytes and
+call count MUST observe those actual calls, including partial/error returns.
+Sync, close and replacement durations MUST cover their actual operations.
+The serialization and flush wall totals MAY also be reported, but MUST be
+explicitly labeled inclusive (overlapping file-write time), never added to the
+exclusive phase totals. These are elapsed measurements, not tracing spans.
+No timing fields are added to the version-1 artifact or its own snapshot.
+
 ### Privacy and failure behavior
 
 The artifact MUST contain only the sanitized ledger fields. It MUST NOT contain
@@ -261,6 +471,9 @@ text MUST NOT be copied into the artifact.
 The artifact is written after all normal write and cleanup hooks complete. The
 writer MUST use a temporary file in the artifact directory and replace the
 destination only after the complete JSON document has been written. A failed
+serialization, write, or buffered flush MUST NOT replace an existing artifact.
+Buffered output MUST be flushed before syncing and closing the temporary file,
+and replacement MUST occur only after those operations succeed. A failed
 build MUST leave an existing artifact unchanged; a first failed build MUST NOT
 leave a partial artifact. A run that completes all stages with non-critical
 lifecycle warnings may publish the artifact; an artifact write failure is a

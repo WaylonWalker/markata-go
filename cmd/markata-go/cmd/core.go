@@ -398,6 +398,7 @@ func applyFastMode(m *lifecycle.Manager) {
 
 // BuildResult holds the result of a build operation.
 type BuildResult struct {
+	Executor       lifecycle.BuildExecutor
 	PostsProcessed int
 	FeedsGenerated int
 	FilesWritten   int
@@ -430,6 +431,13 @@ func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
 // runBuildObserved reports lifecycle stage transitions to serve clients. The
 // ordinary build command passes no observer and keeps its existing behavior.
 func runBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, error)) (result *BuildResult, err error) {
+	if dagBuildEnabled() {
+		return runDAGBuildObserved(m, observe)
+	}
+	if err := m.SetBuildExecutor(lifecycle.BuildExecutorLegacy); err != nil {
+		return nil, fmt.Errorf("select legacy build executor: %w", err)
+	}
+
 	profile := buildstats.Start()
 	defer func() {
 		summary := profile.Stop()
@@ -489,6 +497,7 @@ func runBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, bool, 
 
 	// Collect results
 	result = &BuildResult{
+		Executor:       m.BuildExecutor(),
 		PostsProcessed: len(m.Posts()),
 		FeedsGenerated: len(m.Feeds()),
 		Content:        m.ContentDiagnostics(),

@@ -97,6 +97,11 @@ Profiling:
 	RunE: runRootCommand,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
+		if cmd.Flags().Lookup("dag") != nil {
+			if err := validateDAGEnvironment(cmd); err != nil {
+				return err
+			}
+		}
 		// Build Lab resolves and binds every child to its copied workspace. Do
 		// not let the caller's site-directory selection change the parent
 		// process's fixture resolution or child command setup.

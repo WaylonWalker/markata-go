@@ -12,11 +12,14 @@ tags:
 
 # Vendoring Icon Packs
 
-The icon shortcode feature works entirely from local SVG files. If you do not want to copy those files into your site by hand, markata-go can optionally download a pinned icon-pack archive during the build and populate `static/.icons/` for you.
+markata-go has two related icon-vendoring paths:
 
-Vendoring is disabled by default. Enabling icon shortcodes alone does **not** add network access to your build. Even after vendoring is enabled, each downloaded pack must be explicitly listed with a pinned version.
+1. **Lucide is automatic on first use.** A shortcode such as `:lucide-smile:` can be used with no configuration. If no local Lucide asset exists, markata-go vendors its pinned default `lucide-static` pack, then resolves the shortcode from the resulting local SVG tree.
+2. **Explicit vendoring remains available** for custom Lucide pins, additional packs, custom archive sources, or builds that want missing packs to be a hard error.
 
-## Example: Lucide from npm
+Ordinary builds that never reference a missing Lucide icon do not download the default pack.
+
+## Explicit Lucide pin from npm
 
 ```toml
 [icons.vendor]
@@ -24,7 +27,7 @@ enabled = true
 
 [[icons.vendor.packs]]
 name = "lucide"
-version = "0.468.0"
+version = "1.48.0"
 source = "npm"
 package = "lucide-static"
 icons_path = "icons"
@@ -43,11 +46,26 @@ You can then use the local icons normally:
 
 The first form follows Zensical's hyphenated shortcode spelling. The slash form is a markata-go alias for the same local asset.
 
+Explicit vendoring runs during Configure, so it downloads/materializes configured packs whether or not a particular icon appears in the current content. The zero-config Lucide fallback is different: it waits until a missing Lucide shortcode is encountered.
+
+## Disable the automatic Lucide fallback
+
+If you want icon rendering to remain strictly local unless `[icons.vendor]` is explicitly configured:
+
+```toml
+[icons]
+auto_vendor = false
+```
+
+This does not disable explicitly configured `[icons.vendor]` packs.
+
 ## Pin versions
 
-Every vendored pack requires an explicit version. This keeps the cache key and generated icon tree deterministic rather than silently following `latest`.
+Every explicitly vendored pack requires a version. This keeps the cache key and generated icon tree deterministic rather than silently following `latest`.
 
-When you want to upgrade a pack, change its configured version and rebuild. markata-go replaces that pack's materialized icon directory so icons removed upstream do not remain as stale files.
+The built-in Lucide fallback is also pinned by markata-go. When markata-go updates that pin, already cached/materialized packs continue to follow the normal vendor fingerprint and replacement behavior.
+
+When you explicitly upgrade a pack, change its configured version and rebuild. markata-go replaces that pack's materialized icon directory so icons removed upstream do not remain as stale files.
 
 ## Custom cache and target
 
@@ -58,12 +76,12 @@ cache_dir = ".cache/markata-icons"
 target = "static/.icons"
 ```
 
-Defaults are:
+Defaults for explicit vendoring are:
 
 - cache: `.markata/cache/icon-packs`
 - target: `static/.icons`
 
-The default target is already one of the directories scanned by the icon shortcode plugin.
+The zero-config Lucide fallback reuses those same vendor/cache mechanics and selects an icon root that the shortcode renderer already scans.
 
 ## Pack-specific archive layout
 
@@ -101,7 +119,7 @@ Direct sources use the same archive cache and extraction safety checks as other 
 
 ## Offline builds
 
-The vendor plugin reuses markata-go's asset cache. After a successful online build, deleting `static/.icons/` and rebuilding can recreate the files from the cache without downloading the archive again.
+The vendor plugin reuses markata-go's asset cache. After a successful online build, deleting a materialized icon directory and rebuilding can recreate it from the cache without downloading the archive again.
 
 To prohibit runtime network access entirely:
 
@@ -109,11 +127,13 @@ To prohibit runtime network access entirely:
 MARKATA_GO_OFFLINE=1 markata-go build
 ```
 
-In offline mode, a pack works when its archive is already cached or its previously materialized icon directory is still present. If neither is available, the build fails instead of making a network request.
+For **explicit** `[icons.vendor]` packs, offline mode requires the archive cache or an existing materialized pack; otherwise the build fails.
+
+For the **automatic Lucide fallback**, a cache miss does not fail the site build. The unresolved shortcode remains literal. This lets normal offline builds keep working even when a previously unused Lucide icon appears.
 
 ## Licenses
 
-Each configured pack must provide the file named by `license_path`. markata-go copies it to:
+Each vendored pack must provide the file named by `license_path`. markata-go copies it to:
 
 ```text
 static/.icons/licenses/<pack-name>.txt
@@ -137,7 +157,7 @@ enabled = true
 
 [[icons.vendor.packs]]
 name = "lucide"
-version = "0.468.0"
+version = "1.48.0"
 source = "npm"
 package = "lucide-static"
 
@@ -150,4 +170,4 @@ icons_path = "svg"
 license_path = "LICENSE.txt"
 ```
 
-Because vendoring only populates local files, the shortcode renderer remains deterministic and does not perform browser-time requests to an icon service or CDN.
+Because vendoring only populates local files, rendered pages do not perform browser-time requests to an icon service or CDN.
