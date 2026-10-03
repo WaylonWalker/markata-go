@@ -96,7 +96,6 @@ func TestResolveOTLPConfigRejectsInvalidValues(t *testing.T) {
 		{otelExporterOTLPEndpoint: "file:///tmp/collector"},
 		{otelExporterOTLPTracesEndpoint: "http://tempo:4318/v1/traces", otelExporterOTLPTracesProtocol: "udp"},
 	} {
-		env := env
 		if _, err := ResolveOTLPConfig(func(key string) string { return env[key] }); err == nil {
 			t.Fatalf("ResolveOTLPConfig(%v) unexpectedly succeeded", env)
 		}
