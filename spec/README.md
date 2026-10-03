@@ -1,3 +1,12 @@
+---
+title: "Static Site Generator Specification"
+description: "Specification index for markata-go behavior and maintainer contracts."
+date: 2026-10-01
+published: true
+tags:
+  - specification
+---
+
 # Static Site Generator Specification
 
 The [galleries specification](spec/GALLERIES.md) defines built-in gallery pages, photo-grid feeds, and initial post title sizing.
@@ -35,9 +44,11 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
+| `REDIRECTS.md` | `docs/guides/nginx-redirects.md`, `docs/reference/redirects.md` |
 | `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
 | `SPEC.md` (CLI) | `docs/reference/cli.md` |
 | `CONTAINERS.md` | `docs/guides/deployment/docker.md` |
+| `CI.md` | `docs/guides/maintainer-ci.md` |
 
 **Documentation lives in `docs/` and is built as part of the site itself.**
 
@@ -53,17 +64,20 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [SERVE_CONTROL_CENTER.md](./spec/SERVE_CONTROL_CENTER.md) | Shared local serve session runtime, resources, and terminal/web clients |
 | [LSP.md](./spec/LSP.md) | Language Server Protocol integration and setup guidance |
 | [CONTAINERS.md](./spec/CONTAINERS.md) | Container images and runtime environments |
+| [CI.md](./spec/CI.md) | Product repository validation, container publishing, and benchmark policy |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
 | [AGENTS.md](./spec/AGENTS.md) | Agent skill packaging, install targets, and CLI |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
+| [BUILD_DAG.md](./spec/BUILD_DAG.md) | Immutable graph declarations, canonical diagnostics, deterministic serial ordering |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
+| [REDIRECTS.md](./spec/REDIRECTS.md) | Native nginx redirects and portable HTML fallbacks |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
 | [CONTENT_INDEX.md](./spec/CONTENT_INDEX.md) | Versioned derived metadata artifact and parser contract |
 | [IMAGE_INDEX.md](./spec/IMAGE_INDEX.md) | Canonical image inventory, JSON artifact, and authoring page |
-| [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
+| [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions, wikilinks |
 | [CONTENT_DIAGNOSTICS.md](./spec/CONTENT_DIAGNOSTICS.md) | Deterministic content dispositions and frontmatter diagnostics |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |
 | [OPTIONAL_PLUGINS.md](./spec/OPTIONAL_PLUGINS.md) | Optional enhancement plugins |

@@ -91,40 +91,61 @@ func (s Scenario) Validate() error {
 // validateOperation checks the shape of an operation before a fixture is
 // copied or mutated. It intentionally does not check whether a path exists:
 // that is a property of the fixture state at the point the operation runs.
-//
-//nolint:gocyclo // Each operation type has a small, explicit payload contract.
 func validateOperation(operation Operation) error {
 	switch operation.Type {
 	case OpBuild, OpCleanCache, opLegacyClearCache, OpClearOutput:
-		if operation.Path != "" || operation.Dest != "" || operation.Content != "" || operation.Old != "" || operation.New != "" || operation.Key != "" || operation.Value != "" {
-			return errors.New("operation does not accept payload fields")
-		}
+		return validateMarkerOperation(operation)
 	case OpWriteFile:
-		if operation.Path == "" {
-			return errors.New("path is required")
-		}
+		return validatePathOperation(operation)
 	case OpReplaceExact:
-		if operation.Path == "" {
-			return errors.New("path is required")
-		}
-		if operation.Old == "" {
-			return errors.New("old text is required")
-		}
+		return validateReplaceOperation(operation)
 	case OpDelete, OpTouch:
-		if operation.Path == "" {
-			return errors.New("path is required")
-		}
+		return validatePathOperation(operation)
 	case OpRename, OpCopy:
-		if operation.Path == "" || operation.Dest == "" {
-			return errors.New("path and dest are required")
-		}
+		return validateTransferOperation(operation)
 	case OpSetConfig:
-		if operation.Path == "" {
-			return errors.New("path is required")
-		}
-		if operation.Key == "" || strings.ContainsAny(operation.Key, "\r\n= \t") {
-			return errors.New("key is required and must be a single config key")
-		}
+		return validateConfigOperation(operation)
+	}
+	return nil
+}
+
+func validateMarkerOperation(operation Operation) error {
+	if operation.Path != "" || operation.Dest != "" || operation.Content != "" || operation.Old != "" || operation.New != "" || operation.Key != "" || operation.Value != "" {
+		return errors.New("operation does not accept payload fields")
+	}
+	return nil
+}
+
+func validatePathOperation(operation Operation) error {
+	if operation.Path == "" {
+		return errors.New("path is required")
+	}
+	return nil
+}
+
+func validateReplaceOperation(operation Operation) error {
+	if err := validatePathOperation(operation); err != nil {
+		return err
+	}
+	if operation.Old == "" {
+		return errors.New("old text is required")
+	}
+	return nil
+}
+
+func validateTransferOperation(operation Operation) error {
+	if operation.Path == "" || operation.Dest == "" {
+		return errors.New("path and dest are required")
+	}
+	return nil
+}
+
+func validateConfigOperation(operation Operation) error {
+	if err := validatePathOperation(operation); err != nil {
+		return err
+	}
+	if operation.Key == "" || strings.ContainsAny(operation.Key, "\r\n= \t") {
+		return errors.New("key is required and must be a single config key")
 	}
 	return nil
 }

@@ -16,6 +16,7 @@ func TestDefaultFeedExposesCalendarPeerViewWithFullHistory(t *testing.T) {
 
 	newTitle := "Newest post"
 	oldTitle := "Older post outside page one"
+	oldDescription := "A compact summary for the calendar hover preview."
 	newDate := time.Date(2026, time.September, 28, 12, 0, 0, 0, time.UTC)
 	oldDate := time.Date(2024, time.February, 29, 12, 0, 0, 0, time.UTC)
 	feed := &models.FeedConfig{
@@ -27,7 +28,15 @@ func TestDefaultFeedExposesCalendarPeerViewWithFullHistory(t *testing.T) {
 		},
 		Posts: []*models.Post{
 			{Slug: "new", Href: "/new/", Title: &newTitle, Date: &newDate, Published: true},
-			{Slug: "old", Href: "/old/", Title: &oldTitle, Date: &oldDate, Published: true},
+			{
+				Slug:        "old",
+				Href:        "/old/",
+				Title:       &oldTitle,
+				Description: &oldDescription,
+				Date:        &oldDate,
+				Published:   true,
+				Extra:       map[string]interface{}{"image": "/images/old.webp"},
+			},
 		},
 	}
 	page := &models.FeedPage{
@@ -54,6 +63,9 @@ func TestDefaultFeedExposesCalendarPeerViewWithFullHistory(t *testing.T) {
 		`data-calendar-mode="list"`,
 		`data-calendar-mode="calendar"`,
 		`data-date="2024-02-29"`,
+		`data-description="A compact summary for the calendar hover preview."`,
+		`data-image=`,
+		`/images/old.webp`,
 		"css/calendar-feed",
 		"js/calendar-feed",
 	} {

@@ -10,18 +10,22 @@ The configuration system is designed to be:
 
 ### File Locations
 
-The system searches for configuration files in this order (first found wins):
+Unless `--config` names an explicit file, markata-go searches for configuration
+files in this order (first found wins):
 
 ```
-1. CLI-specified:        --config path/to/config.toml
-2. Current directory:    ./[name].toml (or .yaml, .yml, .json, .jsonc)
-3. Current directory:    ./[name]/config.toml
-4. pyproject.toml:       ./pyproject.toml (under [tool.name] section)
-5. package.json:         ./package.json (under "name" key)
-6. User config dir:      ~/.config/[name]/config.toml
-7. User home:            ~/.[name].toml
-8. User home dotdir:     ~/.[name]/config.toml
+1. Current directory:    ./markata-go.toml
+2. Current directory:    ./markata-go.yaml
+3. Current directory:    ./markata-go.yml
+4. Current directory:    ./markata-go.json
+5. User config dir:      ~/.config/markata-go/config.toml
 ```
+
+Commands that load a full site configuration MUST use built-in defaults plus
+`MARKATA_GO_*` environment overrides when no file is found. Commands that read
+or edit a value directly in a file, such as `config get` and `config set`, MUST
+require a file. An explicit `--config` path MUST be used as given; a missing
+explicit file MUST NOT silently fall back to defaults.
 
 ### Supported Formats
 
@@ -30,7 +34,6 @@ The system searches for configuration files in this order (first found wins):
 | `.toml` | TOML | Recommended, best for nested config |
 | `.yaml`, `.yml` | YAML | Good for complex structures |
 | `.json` | JSON | Strict, good for programmatic generation |
-| `.jsonc` | JSON with comments | JSON + `//` and `/* */` comments |
 
 ## Config Composition
 

@@ -171,60 +171,17 @@ func (p BakePlan) Write() error {
 
 // PlanBake computes and verifies the edit BakeSettings would make to the
 // config file at path without writing it.
-//
-//nolint:gocyclo // Planning verifies paths, formats, and unchanged keys before writing.
 func PlanBake(path string, settings []BakeSetting) (BakePlan, error) {
 	plan := BakePlan{Path: path, mode: 0o644}
-	if len(settings) == 0 {
-		return plan, errors.New("no settings to bake")
+	tables, err := groupBakeSettings(settings)
+	if err != nil {
+		return plan, err
 	}
-	type tableValues struct {
-		table  []string
-		values []BakeValue
-	}
-	var tables []*tableValues
-	for _, s := range settings {
-		if len(s.Path) == 0 {
-			return plan, errors.New("empty config key")
-		}
-		for _, part := range s.Path {
-			if !bakeKeyPattern.MatchString(part) {
-				return plan, fmt.Errorf("invalid config key %q", strings.Join(s.Path, "."))
-			}
-		}
-		if err := checkBakeValue(s.Value); err != nil {
-			return plan, fmt.Errorf("%s: %w", strings.Join(s.Path, "."), err)
-		}
-		table, leaf := s.Path[:len(s.Path)-1], s.Path[len(s.Path)-1]
-		var tv *tableValues
-		for _, existing := range tables {
-			if slices.Equal(existing.table, table) {
-				tv = existing
-				break
-			}
-		}
-		if tv == nil {
-			tv = &tableValues{table: table}
-			tables = append(tables, tv)
-		}
-		tv.values = append(tv.values, BakeValue{Key: leaf, Value: s.Value})
-	}
-
 	format := detectConfigFormat(path)
-	data, err := os.ReadFile(path)
-	switch {
-	case err == nil:
-		plan.Exists = true
-		plan.Before = data
-		if info, statErr := os.Stat(path); statErr == nil {
-			plan.mode = info.Mode().Perm()
-		}
-	case errors.Is(err, os.ErrNotExist):
-		data = nil
-	default:
-		return plan, fmt.Errorf("read config file: %w", err)
+	data, err := readBakeSource(&plan, path)
+	if err != nil {
+		return plan, err
 	}
-
 	before := map[string]any{}
 	if len(bytes.TrimSpace(data)) > 0 {
 		before, err = loadRawConfigData(data, format)
@@ -233,21 +190,9 @@ func PlanBake(path string, settings []BakeSetting) (BakePlan, error) {
 		}
 	}
 
-	updated := data
-	for _, tv := range tables {
-		switch format {
-		case FormatTOML:
-			updated, err = bakeTOML(updated, tv.table, tv.values)
-		case FormatYAML:
-			updated, err = bakeYAML(updated, tv.table, tv.values)
-		case FormatJSON:
-			updated, err = bakeJSON(updated, tv.table, tv.values)
-		default:
-			err = fmt.Errorf("unsupported config format: %s", format)
-		}
-		if err != nil {
-			return plan, fmt.Errorf("bake %s: %w", path, err)
-		}
+	updated, err := applyBakeTables(data, format, tables)
+	if err != nil {
+		return plan, fmt.Errorf("bake %s: %w", path, err)
 	}
 
 	if err := verifyBake(before, updated, format, settings); err != nil {
@@ -255,6 +200,83 @@ func PlanBake(path string, settings []BakeSetting) (BakePlan, error) {
 	}
 	plan.After = updated
 	return plan, nil
+}
+
+type bakeTableValues struct {
+	table  []string
+	values []BakeValue
+}
+
+func groupBakeSettings(settings []BakeSetting) ([]*bakeTableValues, error) {
+	if len(settings) == 0 {
+		return nil, errors.New("no settings to bake")
+	}
+	var tables []*bakeTableValues
+	for _, s := range settings {
+		if len(s.Path) == 0 {
+			return nil, errors.New("empty config key")
+		}
+		for _, part := range s.Path {
+			if !bakeKeyPattern.MatchString(part) {
+				return nil, fmt.Errorf("invalid config key %q", strings.Join(s.Path, "."))
+			}
+		}
+		if err := checkBakeValue(s.Value); err != nil {
+			return nil, fmt.Errorf("%s: %w", strings.Join(s.Path, "."), err)
+		}
+		table, leaf := s.Path[:len(s.Path)-1], s.Path[len(s.Path)-1]
+		var tableValues *bakeTableValues
+		for _, existing := range tables {
+			if slices.Equal(existing.table, table) {
+				tableValues = existing
+				break
+			}
+		}
+		if tableValues == nil {
+			tableValues = &bakeTableValues{table: table}
+			tables = append(tables, tableValues)
+		}
+		tableValues.values = append(tableValues.values, BakeValue{Key: leaf, Value: s.Value})
+	}
+	return tables, nil
+}
+
+func readBakeSource(plan *BakePlan, path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		plan.Exists = true
+		plan.Before = data
+		if info, statErr := os.Stat(path); statErr == nil {
+			plan.mode = info.Mode().Perm()
+		}
+		return data, nil
+	case errors.Is(err, os.ErrNotExist):
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+}
+
+func applyBakeTables(data []byte, format Format, tables []*bakeTableValues) ([]byte, error) {
+	updated := data
+	for _, table := range tables {
+		var err error
+		switch format {
+		case FormatTOML:
+			updated, err = bakeTOML(updated, table.table, table.values)
+		case FormatYAML:
+			updated, err = bakeYAML(updated, table.table, table.values)
+		case FormatJSON:
+			updated, err = bakeJSON(updated, table.table, table.values)
+		default:
+			err = fmt.Errorf("unsupported config format: %s", format)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return updated, nil
 }
 
 func checkBakeValue(value any) error {

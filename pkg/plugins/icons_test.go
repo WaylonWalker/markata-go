@@ -117,6 +117,62 @@ func TestIconsPluginRejectsActiveSVGContent(t *testing.T) {
 	}
 }
 
+func TestIconsPluginDefaultLucideFallbackUsesVendoredTarget(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("MARKATA_GO_OFFLINE", "1")
+	iconPath := filepath.Join("static", ".icons", "lucide", "smile.svg")
+	if err := os.MkdirAll(filepath.Dir(iconPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(iconPath, []byte(testIconSVG), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	plugin := NewIconsPlugin()
+	got := plugin.processContent(":lucide-smile: :lucide/smile:")
+	if count := strings.Count(got, `data-icon="lucide/smile"`); count != 2 {
+		t.Fatalf("expected zero-config Lucide fallback to resolve both aliases, got %d in %q", count, got)
+	}
+	if !plugin.vendorAttempted {
+		t.Fatal("expected missing Lucide lookup to invoke the default vendor path")
+	}
+}
+
+func TestIconsPluginAutoVendorCanBeDisabled(t *testing.T) {
+	plugin := NewIconsPlugin()
+	plugin.autoVendor = false
+	if got := plugin.processContent(":lucide-smile:"); got != ":lucide-smile:" {
+		t.Fatalf("disabled auto vendor changed shortcode: %q", got)
+	}
+	if plugin.vendorAttempted {
+		t.Fatal("disabled auto vendor should not attempt vendoring")
+	}
+}
+
+func TestIconsPluginDoesNotVendorCodeExamples(t *testing.T) {
+	plugin := NewIconsPlugin()
+	content := "`inline :lucide-smile:`\n\n```md\n:lucide-smile:\n```\n"
+	if got := plugin.processContent(content); got != content {
+		t.Fatalf("code examples changed: %q", got)
+	}
+	if plugin.vendorAttempted {
+		t.Fatal("code examples should not trigger default vendoring")
+	}
+}
+
+func TestDefaultLucideVendorPackIsPinned(t *testing.T) {
+	pack := defaultLucideVendorPack()
+	if pack.name != "lucide" || pack.packageName != "lucide-static" || pack.version != defaultLucideVendorVersion {
+		t.Fatalf("unexpected default Lucide pack: %+v", pack)
+	}
+	if err := pack.validate(); err != nil {
+		t.Fatalf("default Lucide pack is invalid: %v", err)
+	}
+	if !strings.Contains(pack.archiveURL(), "lucide-static-"+defaultLucideVendorVersion+".tgz") {
+		t.Fatalf("default Lucide archive is not pinned: %q", pack.archiveURL())
+	}
+}
+
 func TestMarkdownFenceMarker(t *testing.T) {
 	tests := []struct {
 		line string

@@ -12,12 +12,20 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildlab"
 )
 
-func TestBuildLabCLI_DoesNotExposeSchedulerFlags(t *testing.T) {
+func TestBuildLabCLI_OnlyExposesReviewedDAGOptIn(t *testing.T) {
 	if buildLabRunCmd.Flags().Lookup("candidate-dag") != nil || buildLabRunCmd.Flags().Lookup("candidate-dag-random-ready") != nil {
 		t.Fatal("Build Lab exposes scheduler-specific flags")
 	}
-	if buildCmd.Flags().Lookup("dag") != nil || buildCmd.Flags().Lookup("dag-seed") != nil || buildCmd.Flags().Lookup("dag-random-ready") != nil {
-		t.Fatal("ordinary build exposes scheduler-specific flags")
+
+	dagFlag := buildCmd.Flags().Lookup("dag")
+	if dagFlag == nil {
+		t.Fatal("ordinary build does not expose the reviewed --dag opt-in")
+	}
+	if dagFlag.DefValue != envValueDisabled {
+		t.Fatalf("build --dag default = %q, want false", dagFlag.DefValue)
+	}
+	if buildCmd.Flags().Lookup("dag-seed") != nil || buildCmd.Flags().Lookup("dag-random-ready") != nil {
+		t.Fatal("ordinary build exposes legacy scheduler tuning flags")
 	}
 }
 

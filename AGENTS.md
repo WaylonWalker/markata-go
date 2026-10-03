@@ -239,6 +239,26 @@ go test -race ./...                     # Race detection
 go test -coverprofile=coverage.out ./...  # Coverage
 ```
 
+### Cross-platform tests
+
+When changing timing, filesystem, or process tests, check the Windows contract
+before pushing:
+
+- Validate measured work with operation counts and outputs; durations may be
+  zero within one clock tick. Assert non-negative durations, not positive ones.
+- Use `filepath` for filesystem paths and native-path map keys; convert to
+  slash-separated paths only at URL or explicitly normalized key boundaries.
+- Capture file identity with an opened file's `Stat`, then close the handle
+  before replacement. Windows `os.Stat` may defer identity lookup until
+  `os.SameFile`, after the original path has changed.
+- Check missing-path errors before `syscall.ENOTDIR` special cases: Windows
+  aliases `ENOTDIR` to `ERROR_PATH_NOT_FOUND`.
+- Test portable permission behavior on Windows and exact POSIX modes on Unix.
+  Gate only inherently Unix-specific assertions; retain byte, publication,
+  containment, and hard-link safety checks on every supported platform.
+- Run affected tests locally, then verify the PR's actual Windows check.
+  Cross-compilation verifies compilation, not filesystem or runtime behavior.
+
 ### Running a Single Test
 
 ```bash

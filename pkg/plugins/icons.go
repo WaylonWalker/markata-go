@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -32,21 +33,28 @@ type iconAsset struct {
 //
 // Icons are loaded from .icons and static/.icons by default. Given an asset at
 // static/.icons/lucide/smile.svg, both :lucide-smile: (Zensical's canonical
-// Markdown spelling) and :lucide/smile: resolve to the same inline SVG.
+// Markdown spelling) and :lucide/smile: resolve to the same inline SVG. When
+// Lucide is referenced without a local asset, the pinned default pack is
+// vendored on demand and then indexed through the same local path.
 type IconsPlugin struct {
-	enabled bool
-	paths   []string
-	packs   map[string]struct{}
-	icons   map[string]iconAsset
+	enabled         bool
+	autoVendor      bool
+	paths           []string
+	packs           map[string]struct{}
+	icons           map[string]iconAsset
+	iconMu          sync.Mutex
+	vendorAttempted bool
 }
 
-// NewIconsPlugin creates an icon shortcode plugin with local asset defaults.
+// NewIconsPlugin creates an icon shortcode plugin with local asset defaults and
+// zero-config Lucide vendoring enabled.
 func NewIconsPlugin() *IconsPlugin {
 	return &IconsPlugin{
-		enabled: true,
-		paths:   []string{".icons", "static/.icons"},
-		packs:   make(map[string]struct{}),
-		icons:   make(map[string]iconAsset),
+		enabled:    true,
+		autoVendor: true,
+		paths:      []string{".icons", "static/.icons"},
+		packs:      make(map[string]struct{}),
+		icons:      make(map[string]iconAsset),
 	}
 }
 
@@ -65,9 +73,11 @@ func (p *IconsPlugin) Priority(stage lifecycle.Stage) int {
 // Configure loads icon settings and indexes local SVG packs.
 func (p *IconsPlugin) Configure(m *lifecycle.Manager) error {
 	p.enabled = true
+	p.autoVendor = true
 	p.paths = []string{".icons", "static/.icons"}
 	p.packs = make(map[string]struct{})
 	p.icons = make(map[string]iconAsset)
+	p.vendorAttempted = false
 
 	if m != nil && m.Config() != nil && m.Config().Extra != nil {
 		p.applyConfig(m.Config().Extra[iconPluginName])
@@ -85,6 +95,9 @@ func (p *IconsPlugin) applyConfig(raw interface{}) {
 	}
 	if enabled, ok := cfg["enabled"].(bool); ok {
 		p.enabled = enabled
+	}
+	if autoVendor, ok := cfg["auto_vendor"].(bool); ok {
+		p.autoVendor = autoVendor
 	}
 	if path, ok := cfg["path"].(string); ok && strings.TrimSpace(path) != "" {
 		p.paths = []string{strings.TrimSpace(path)}
@@ -245,7 +258,7 @@ func prepareIconSVG(raw string) (string, bool) {
 
 // Transform expands icon shortcodes in Markdown source.
 func (p *IconsPlugin) Transform(m *lifecycle.Manager) error {
-	if !p.enabled || len(p.icons) == 0 {
+	if !p.enabled {
 		return nil
 	}
 	posts := m.FilterPosts(func(post *models.Post) bool {
@@ -269,7 +282,7 @@ func (p *IconsPlugin) Transform(m *lifecycle.Manager) error {
 }
 
 func (p *IconsPlugin) processContent(content string) string {
-	if content == "" || len(p.icons) == 0 {
+	if content == "" {
 		return content
 	}
 
@@ -362,7 +375,7 @@ func (p *IconsPlugin) replaceShortcodes(text string) string {
 		if len(match) != 2 {
 			return shortcode
 		}
-		asset, ok := p.icons[match[1]]
+		asset, ok := p.lookupIcon(match[1])
 		if !ok {
 			return shortcode
 		}

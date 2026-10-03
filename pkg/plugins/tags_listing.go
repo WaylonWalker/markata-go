@@ -151,7 +151,7 @@ func (p *TagsListingPlugin) collectTags(posts []*models.Post, tagsConfig *models
 	// Filter out private tags and build TagInfo list
 	slugPrefix := tagsConfig.SlugPrefix
 	if slugPrefix == "" {
-		slugPrefix = "tags"
+		slugPrefix = defaultTagsPrefix
 	}
 
 	tagInfos := make([]TagInfo, 0, len(tagCounts))
@@ -225,7 +225,7 @@ func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig,
 func (p *TagsListingPlugin) renderTagsPage(config *lifecycle.Config, tagsConfig *models.TagsConfig, tagInfos []TagInfo) error {
 	slugPrefix := tagsConfig.SlugPrefix
 	if slugPrefix == "" {
-		slugPrefix = "tags"
+		slugPrefix = defaultTagsPrefix
 	}
 
 	// Create output directory

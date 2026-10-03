@@ -1,365 +1,165 @@
-# Static Redirects Specification
+# Redirects Specification
 
-Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages from a simple configuration file, compatible with static hosting platforms.
+Redirects support URL migrations and content reorganization from one `_redirects` source file. A normal build produces nginx-native rules and, by default, portable HTML fallback pages.
 
-## Overview
+## Goals
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        REDIRECTS WORKFLOW                            │
-├─────────────────────────────────────────────────────────────────────┤
-│  1. READ                                                             │
-│     - Load _redirects file from configured location                  │
-│     - Parse redirect rules (source → destination)                    │
-│                                                                      │
-│  2. FILTER                                                           │
-│     - Skip comments (lines starting with #)                          │
-│     - Skip wildcard patterns (contain *)                             │
-│     - Skip malformed entries                                         │
-│                                                                      │
-│  3. GENERATE                                                         │
-│     - For each redirect, create index.html at source path            │
-│     - Use meta refresh + canonical link for redirect                 │
-│     - Apply template with styling from config                        │
-│                                                                      │
-│  4. CACHE                                                            │
-│     - Hash redirects file content                                    │
-│     - Skip regeneration if unchanged                                 │
-└─────────────────────────────────────────────────────────────────────┘
-```
+The redirects plugin MUST:
 
----
+- read one configured redirects source file
+- use one accepted rule set for nginx and HTML output
+- emit an nginx include suitable for direct server-side redirects
+- preserve HTML redirect pages by default for static-host compatibility
+- avoid leaving stale nginx rules active when redirect input is cleared or removed
+- never silently overwrite a user-managed nginx redirect file
 
 ## Configuration
 
-### Basic Configuration
-
 ```toml
 [markata-go.redirects]
 redirects_file = "static/_redirects"
+redirect_template = "templates/redirect.html" # optional
+html_fallback = true                            # default
 ```
 
-### Full Configuration
+`html_fallback = false` disables creation of per-path HTML redirect pages. It does not disable nginx output.
 
-```toml
-[markata-go.redirects]
-# Path to redirects file (relative to project root)
-redirects_file = "static/_redirects"
+## Redirects file format
 
-# Custom template for redirect pages (optional)
-# If not specified, uses built-in default template
-redirect_template = "templates/redirect.html"
-```
-
----
-
-## Redirects File Format
-
-The redirects file uses a simple space-separated format, compatible with Cloudflare Pages and Netlify.
-
-### Basic Syntax
+The source format is whitespace-separated and compatible with the simple subset commonly used by Netlify and Cloudflare Pages:
 
 ```text
-# Comments start with #
-/old-path    /new-path
-/legacy-url  /current-url
+# comments are ignored
+/old-path /new-path
+/go/docs https://docs.example.com/start
 ```
 
-### Rules
+A supported rule MUST have:
 
-| Rule | Description |
-|------|-------------|
-| Comments | Lines starting with `#` are ignored |
-| Format | `<source> <destination>` separated by whitespace |
-| Paths | Must start with `/` |
-| Wildcards | Patterns containing `*` are skipped (not supported for static generation) |
+- a source beginning with `/`
+- a destination beginning with `/`, `http://`, or `https://`
+- no wildcard `*`
 
-### Example Redirects File
+Blank lines, comments, malformed entries, wildcard entries, and unsupported destinations are ignored. Extra provider-specific fields are currently ignored.
+
+## Nginx output
+
+When the redirects source file exists, a normal build MUST write:
 
 ```text
-# Blog reorganization (2024)
-/blog/old-post    /posts/new-post
-/articles         /blog
-
-# Legacy URLs
-/about-me         /about
-/contact-us       /contact
-
-# Renamed sections
-/tutorials/python-basics    /learn/python/getting-started
-/tutorials/rust-intro       /learn/rust/introduction
-
-# These are skipped (wildcards not supported):
-# /old-blog/*    /blog/*
-# /api/*         /v2/api/*
+<output_dir>/redirects.conf
 ```
 
----
+Each supported redirect becomes an exact-match location using HTTP `301`:
 
-## Redirect Model
+```nginx
+location = "/old-path" {
+    return 301 "/new-path";
+}
 
-### Redirect Object
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `original` | string | Source path (the old URL) |
-| `new` | string | Destination path (the new URL) |
-
----
-
-## Generated Output
-
-### Output Structure
-
-For each redirect rule, an `index.html` file is created:
-
-```
-output/
-├── old-path/
-│   └── index.html          # Redirects to /new-path
-├── legacy-url/
-│   └── index.html          # Redirects to /current-url
-└── about-me/
-    └── index.html          # Redirects to /about
+location = "/go/docs" {
+    return 301 "https://docs.example.com/start";
+}
 ```
 
-### Default Template
+Requirements:
 
-The default redirect template provides:
+- generated rules MUST use exact-match `location =` blocks
+- generated rules MUST use HTTP `301`
+- source and destination strings MUST be quoted and escaped for nginx syntax
+- literal `$` characters MUST NOT become nginx variable interpolation
+- the generated file MUST be valid for inclusion inside an nginx `server` block
+- generated files MUST carry a recognizable ownership header
+- an existing but empty redirects source MUST produce a valid header-only `redirects.conf`, clearing any previously generated native rules
+- if the redirects source is removed, a normal build MUST remove a stale `redirects.conf` only when the file is recognizable as markata-go generated output
+- a user-authored `redirects.conf` MUST NOT be deleted merely because the redirects source is absent
+- if `_redirects` exists and `<output_dir>/redirects.conf` already exists without the markata-go ownership header, the build MUST fail rather than overwrite that file
 
-1. **Instant redirect** via `<meta http-equiv="Refresh">`
-2. **SEO-friendly** canonical link to new URL
-3. **Fallback content** for users/bots that don't follow redirects
-4. **Styled page** using site configuration colors
+## HTML fallback
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta http-equiv="Refresh" content="0; url='{{ new }}'" />
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="canonical" href="{{ new }}" />
-  <meta name="description" content="{{ original }} has been moved to {{ new }}." />
-  <title>{{ original }} has been moved to {{ new }}</title>
-  <style>
-    html {
-      font-family: system-ui, sans-serif;
-      background: {{ config.style.color_bg | default('#1f2022') }};
-      color: {{ config.style.color_text | default('#eefbfe') }};
+HTML fallback pages remain enabled by default.
+
+For a rule:
+
+```text
+/old-path /new-path
+```
+
+the fallback is written to:
+
+```text
+<output_dir>/old-path/index.html
+```
+
+The default page MUST provide:
+
+- an immediate meta refresh
+- a canonical link to the destination
+- a visible fallback link
+- a human-readable moved-page message
+
+When `redirect_template` is configured, the custom template is used. If it cannot be read or parsed, the implementation MAY warn and fall back to the built-in template.
+
+On a normal build, a supported source rule MUST recreate its HTML fallback if
+that generated page is missing from the output directory.
+
+When `html_fallback = false`, new fallback pages MUST NOT be generated. Because fallback pages share normal site paths and the plugin does not maintain a safe ownership manifest for arbitrary custom templates, changing or removing redirect rules MAY leave old HTML fallback files in an incremental output directory. Users who need those files removed SHOULD run a clean build.
+
+## Fast builds
+
+Fast builds MUST skip redirect generation. Production or deployment validation that depends on `redirects.conf` MUST use a normal build.
+
+## Nginx deployment
+
+The generated file may be included from a server block:
+
+```nginx
+server {
+    root /usr/share/nginx/html;
+    include /usr/share/nginx/html/redirects.conf;
+
+    location / {
+        try_files $uri $uri/ /index.html =404;
     }
-    body {
-      margin: 5rem auto;
-      max-width: {{ config.style.body_width | default('800px') }};
-    }
-    a {
-      color: {{ config.style.color_link | default('#fb30c4') }};
-      text-decoration-color: {{ config.style.color_accent | default('#e1bd00c9') }};
-    }
-  </style>
-</head>
-<body>
-  <h1>Page Moved</h1>
-  <p>
-    <code>{{ original }}</code> has moved to
-    <a href="{{ new }}">{{ new }}</a>
-  </p>
-</body>
-</html>
+}
 ```
 
-### Template Context
+Nginx reads included configuration as part of loading its configuration. Replacing a release directory or changing a `current` symlink does not by itself apply changed redirect rules to an already-running nginx process. Deployments that rebuild redirects in place MUST reload or restart nginx after the active redirect configuration changes.
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `original` | string | Original/source path |
-| `new` | string | New/destination path |
-| `config` | Config | Site configuration (for styling) |
+`redirects.conf` is a generated-output path when `_redirects` is present. Sites that intentionally manage their own nginx include at that path MUST rename or remove it before enabling generated nginx redirects; the plugin MUST fail rather than silently clobber it.
 
----
+## Processing and conflicts
 
-## Behavior
+The redirects plugin runs late in the write stage. For HTML fallbacks, it creates the source directory and writes `index.html`. A source that resolves to an existing file path is skipped rather than replacing that file.
 
-### Processing Rules
-
-1. **Skip comments**: Lines starting with `#` are ignored
-2. **Skip wildcards**: Patterns containing `*` are not processed (static sites can't handle dynamic wildcards)
-3. **Skip malformed**: Lines with fewer than 2 parts are skipped
-4. **Trim paths**: Leading/trailing whitespace is removed from paths
-
-### Caching
-
-The plugin caches based on the content of the redirects file:
-
-```python
-key = hash("redirects", raw_redirects_content)
-if cache.get(key) == "done":
-    return  # Skip regeneration
-```
-
-This ensures redirects are only regenerated when the `_redirects` file changes.
-
-### Directory Creation
-
-For each redirect, the plugin:
-
-1. Creates the parent directory structure
-2. Writes `index.html` inside the source path directory
-
-Example: `/old/nested/path` → creates `output/old/nested/path/index.html`
-
----
-
-## Hook Specification
-
-### Stage
-
-`save`
-
-### Hook Signature
-
-```python
-@hook_impl
-def save(core):
-    config = core.config.redirects
-    redirects_file = Path(config.redirects_file)
-
-    if not redirects_file.exists():
-        return
-
-    raw_redirects = redirects_file.read_text().split("\n")
-
-    # Cache check
-    key = core.make_hash("redirects", raw_redirects)
-    if core.cache.get(key) == "done":
-        return
-
-    # Parse redirects
-    redirects = []
-    for line in raw_redirects:
-        line = line.strip()
-        if not line or line.startswith("#") or "*" in line:
-            continue
-        parts = line.split()
-        if len(parts) >= 2:
-            redirects.append(Redirect(original=parts[0], new=parts[1]))
-
-    # Load template
-    if config.redirect_template:
-        template = load_template(config.redirect_template)
-    else:
-        template = load_default_redirect_template()
-
-    # Generate redirect pages
-    for redirect in redirects:
-        output_path = core.config.output_dir / redirect.original.strip("/") / "index.html"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(template.render(
-            original=redirect.original,
-            new=redirect.new,
-            config=core.config
-        ))
-
-    core.cache.set(key, "done")
-```
-
----
-
-## Configuration Model
-
-```python
-class RedirectsConfig(pydantic.BaseModel):
-    redirects_file: Path = Path("static/_redirects")
-    redirect_template: Optional[Path] = None
-
-class Config(pydantic.BaseModel):
-    redirects: RedirectsConfig = RedirectsConfig()
-```
-
----
-
-## Platform Compatibility
-
-### Supported Platforms
-
-| Platform | Native Support | Static Fallback |
-|----------|---------------|-----------------|
-| Cloudflare Pages | Yes (`_redirects` file) | Yes (HTML redirects) |
-| Netlify | Yes (`_redirects` file) | Yes (HTML redirects) |
-| Vercel | Yes (`vercel.json`) | Yes (HTML redirects) |
-| GitHub Pages | No | Yes (HTML redirects) |
-| S3/Static hosting | No | Yes (HTML redirects) |
-
-### Why HTML Redirects?
-
-While platforms like Cloudflare and Netlify support `_redirects` files natively, generating HTML redirect pages provides:
-
-1. **Universal compatibility**: Works on any static host
-2. **SEO preservation**: Canonical links maintain search rankings
-3. **User experience**: Provides fallback content if redirect fails
-4. **Debugging**: Easy to inspect and verify redirect targets
-
----
+Nginx output is generated from the full accepted rule set even when an individual HTML fallback cannot be written, so operators SHOULD treat build warnings about fallback conflicts as deployment diagnostics.
 
 ## Limitations
 
-| Limitation | Reason |
-|------------|--------|
-| No wildcard support | Static HTML can't handle dynamic patterns |
-| No status codes | HTML meta refresh is always a 302-equivalent |
-| No query parameters | Query strings are not preserved in meta refresh |
-| No conditional redirects | Static files can't evaluate conditions |
+This feature does not currently provide:
 
-For advanced redirect needs (wildcards, status codes, conditions), use your hosting platform's native redirect features alongside this plugin.
+- wildcard redirects
+- conditional redirects
+- per-rule status codes
+- query-string matching semantics
 
----
+Extra `_redirects` fields such as `302` are ignored and generated nginx redirects use `301`. Deployments that need richer semantics should use provider-native routing or hand-written nginx configuration.
 
-## Examples
+## Error handling
 
-### Basic Blog Migration
+| Condition | Behavior |
+|---|---|
+| Missing redirects source | Remove only stale markata-go-generated `redirects.conf`; otherwise no-op |
+| Empty redirects source | Write a header-only `redirects.conf` |
+| Existing user-managed `redirects.conf` while `_redirects` exists | Fail rather than overwrite it |
+| Malformed or unsupported rule | Skip the rule |
+| Nginx output write failure | Fail the redirects write stage |
+| HTML fallback write failure | Warn and continue with other fallbacks |
+| Custom HTML template read/parse failure | Warn and use the built-in template |
 
-```text
-# _redirects
-/blog/2023/post-one    /posts/post-one
-/blog/2023/post-two    /posts/post-two
-/blog/2024/new-post    /posts/new-post
-```
+## See also
 
-### Section Reorganization
-
-```text
-# _redirects
-/tutorials    /learn
-/guides       /learn
-/howto        /learn
-/docs/api     /reference/api
-/docs/cli     /reference/cli
-```
-
-### Shortened URLs
-
-```text
-# _redirects
-/go/github     https://github.com/myorg/myproject
-/go/discord    https://discord.gg/invite-code
-/go/docs       /documentation
-```
-
----
-
-## Error Handling
-
-| Error | Behavior |
-|-------|----------|
-| Missing redirects file | Skip silently (no redirects generated) |
-| Malformed line | Skip line, continue processing |
-| Write error | Log error, continue with other redirects |
-| Template error | Use default template, log warning |
-
----
-
-## See Also
-
-- [SPEC.md](./SPEC.md) - Core specification
-- [CONFIG.md](./CONFIG.md) - Configuration system
-- [LIFECYCLE.md](./LIFECYCLE.md) - Build lifecycle (save stage)
+- [CONFIG.md](./CONFIG.md) - configuration system
+- [LIFECYCLE.md](./LIFECYCLE.md) - build lifecycle
+- [DEFAULT_PLUGINS.md](./DEFAULT_PLUGINS.md) - built-in plugin set
+- `docs/guides/nginx-redirects.md` - user-facing nginx setup

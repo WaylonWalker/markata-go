@@ -276,6 +276,7 @@ func (p *GlossaryPlugin) computeTermsHash() string {
 
 	// allTerms is already sorted by term name from buildGlossary
 	var b strings.Builder
+	b.WriteString("glossary-deterministic-protection-v2\x00")
 	for _, term := range p.allTerms {
 		b.WriteString(term.Term)
 		b.WriteByte('\x00')
@@ -564,6 +565,9 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 		termList = append(termList, term)
 	}
 	sort.Slice(termList, func(i, j int) bool {
+		if len(termList[i]) == len(termList[j]) {
+			return termList[i] < termList[j]
+		}
 		return len(termList[i]) > len(termList[j])
 	})
 
@@ -600,8 +604,11 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 	}
 
 	// Restore protected segments
-	for key, original := range protectedSegments {
-		htmlContent = strings.Replace(htmlContent, key, original, 1)
+	// Later protected segments can contain earlier placeholders, so restore
+	// outer segments before their contents.
+	for i := protectedIdx - 1; i >= 0; i-- {
+		key := fmt.Sprintf(placeholder, i)
+		htmlContent = strings.Replace(htmlContent, key, protectedSegments[key], 1)
 	}
 
 	return htmlContent

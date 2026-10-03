@@ -55,6 +55,7 @@ type Summary struct {
 	Hotspots  []Hotspot
 	Requests  []RequestTiming
 	Stages    []StageTiming
+	Spans     []SpanTiming
 }
 
 type runtimeSample struct {
@@ -78,8 +79,10 @@ type Profile struct {
 	current    string
 	plugin     string
 	requests   []RequestTiming
+	spans      []SpanTiming
 
 	networkOps atomic.Int64
+	spanSeq    atomic.Uint64
 	stopOnce   sync.Once
 	stopCh     chan struct{}
 	stoppedCh  chan struct{}
@@ -149,12 +152,21 @@ func (p *Profile) Stop() Summary {
 		return requests[i].Duration > requests[j].Duration
 	})
 
+	spans := append([]SpanTiming(nil), p.spans...)
+	sort.SliceStable(spans, func(i, j int) bool {
+		if spans[i].StartOffset == spans[j].StartOffset {
+			return spans[i].ID < spans[j].ID
+		}
+		return spans[i].StartOffset < spans[j].StartOffset
+	})
+
 	return Summary{
 		Total:     time.Since(p.start),
 		Resources: p.resources,
 		Hotspots:  hotspots,
 		Requests:  requests,
 		Stages:    stages,
+		Spans:     spans,
 	}
 }
 

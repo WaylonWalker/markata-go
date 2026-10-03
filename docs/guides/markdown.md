@@ -116,6 +116,13 @@ their rich semantics, while browser titles, feeds, search, and social metadata
 use the readable plain-text title. This behavior is intended to match
 [Plaindown](https://git.waylonwalker.com/waylon/md.waylonwalker.com).
 
+Highlighted headings keep the same markup on cold and warm builds, including
+after adding an unrelated post. Cached Markdown output is reused without
+adding another highlight wrapper. Upgrading from the duplicate-wrapper bug
+refreshes affected pages and their dependent output automatically, without
+forcing unrelated posts to rebuild. Later builds reuse the refreshed pages.
+You do not need to delete caches or refetch external assets.
+
 ### Paragraphs
 
 Paragraphs are separated by blank lines:

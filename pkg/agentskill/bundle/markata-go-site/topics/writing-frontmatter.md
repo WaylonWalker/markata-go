@@ -83,6 +83,8 @@ The `aliases` field (a string list) registers alternate names for a post. These 
 - **Mentions**: blogroll sources use aliases for `@mention` resolution
 
 All four keys (`aliases`, `alias`, `handles`, `handle`) are merged and deduplicated.
+Alias resolution must remain identical across cold, cached, and edited builds;
+do not remove aliases or clear caches to work around missing wikilinks.
 
 ## Media Fields
 

@@ -112,8 +112,10 @@ func ValidateConfig(config *models.Config) []error {
 	}
 
 	// Validate feed configurations
-	// Apply feed defaults before validation so we can check effective values
+	// Validate raw view declarations before applying defaults so an explicit
+	// empty list remains distinguishable from an omitted list.
 	for i := range config.Feeds {
+		errs = append(errs, validateFeedViews(fmt.Sprintf("feeds[%d].views", i), config.Feeds[i].Views)...)
 		feedWithDefaults := config.Feeds[i]
 		feedWithDefaults.ApplyDefaults(config.FeedDefaults)
 		feedErrs := validateFeedConfig(i, &feedWithDefaults)
@@ -121,6 +123,7 @@ func ValidateConfig(config *models.Config) []error {
 	}
 
 	// Validate feed defaults
+	errs = append(errs, validateFeedViews("feed_defaults.views", config.FeedDefaults.Views)...)
 	if config.FeedDefaults.ItemsPerPage < 0 {
 		errs = append(errs, ValidationError{
 			Field:   "feed_defaults.items_per_page",
@@ -328,12 +331,14 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 
 	// Validate feed configurations
 	for i := range config.Feeds {
+		validateFeedViewsWithPositions(fmt.Sprintf("feeds[%d].views", i), config.Feeds[i].Views, tracker, configErrors)
 		feedWithDefaults := config.Feeds[i]
 		feedWithDefaults.ApplyDefaults(config.FeedDefaults)
 		validateFeedConfigWithPositions(i, &feedWithDefaults, tracker, configErrors)
 	}
 
 	// Validate feed defaults
+	validateFeedViewsWithPositions("feed_defaults.views", config.FeedDefaults.Views, tracker, configErrors)
 	if config.FeedDefaults.ItemsPerPage < 0 {
 		configErrors.Add(NewConfigErrorWithFix(
 			tracker,

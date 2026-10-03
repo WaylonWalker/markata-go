@@ -29,6 +29,11 @@
     'feed-sparklines': '.feed-sparkline-wrap, .feed-header-sparkline'
   };
 
+  var navHoverSuppressed = false;
+  var navHoverReleaseArmed = false;
+  var NAV_HOVER_ATTRIBUTE = 'data-nav-hover-suppressed';
+  var NAV_HOVER_STYLE_ID = 'markata-nav-hover-reset-style';
+
   /**
    * Check if a stylesheet containing the given base name is already loaded.
    */
@@ -137,13 +142,99 @@
     });
   }
 
+  function ensureNavHoverResetStyle() {
+    if (document.getElementById(NAV_HOVER_STYLE_ID)) return;
+
+    var style = document.createElement('style');
+    style.id = NAV_HOVER_STYLE_ID;
+    style.textContent = [
+      'html[' + NAV_HOVER_ATTRIBUTE + '] .nav-entry--preview:hover:not(:focus-within) .nav-preview {',
+      '  opacity: 0 !important;',
+      '  visibility: hidden !important;',
+      '  pointer-events: none !important;',
+      '  transform: translateY(-0.35rem) !important;',
+      '}',
+      'html[' + NAV_HOVER_ATTRIBUTE + '] .nav-entry--preview:hover:not(:focus-within) > .nav-link::after {',
+      '  opacity: 0.4 !important;',
+      '  transform: scaleX(0.35) !important;',
+      '}',
+      'html[' + NAV_HOVER_ATTRIBUTE + '] .nav-entry--preview:hover:not(:focus-within) {',
+      '  z-index: auto !important;',
+      '}'
+    ].join('\n');
+    style.setAttribute('data-markata-persist', 'true');
+    document.head.appendChild(style);
+  }
+
+  function applyNavHoverSuppression() {
+    ensureNavHoverResetStyle();
+    document.documentElement.setAttribute(NAV_HOVER_ATTRIBUTE, 'true');
+  }
+
+  function clearNavHoverSuppression() {
+    navHoverSuppressed = false;
+    navHoverReleaseArmed = false;
+    document.documentElement.removeAttribute(NAV_HOVER_ATTRIBUTE);
+  }
+
+  function suppressNavHoverUntilPointerMoves() {
+    navHoverSuppressed = true;
+    navHoverReleaseArmed = false;
+    applyNavHoverSuppression();
+  }
+
+  function shouldResetNavHover(event, link) {
+    if (!document.startViewTransition) return false;
+    if (window.VIEW_TRANSITIONS_CONFIG && window.VIEW_TRANSITIONS_CONFIG.enabled === false) return false;
+    if (!link || event.defaultPrevented || event.button !== 0) return false;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+    if (link.target && link.target !== '_self') return false;
+    if (link.hasAttribute('download')) return false;
+
+    var target;
+    try {
+      target = new URL(link.href, window.location.href);
+    } catch (_) {
+      return false;
+    }
+
+    if (target.origin !== window.location.origin) return false;
+    return target.pathname !== window.location.pathname || target.search !== window.location.search;
+  }
+
+  // A SPA navigation swaps in a new nav underneath an unmoved pointer. Without
+  // an explicit reset, the new element immediately matches :hover and makes a
+  // preview look like it survived the page transition. Keep pointer-only hover
+  // suppressed through the swap and only release it on pointer movement after
+  // the transition is complete; :focus-within still works throughout.
+  document.addEventListener('click', function(event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+
+    var link = target.closest('.nav-entry--preview a[href]');
+    if (!shouldResetNavHover(event, link)) return;
+
+    suppressNavHoverUntilPointerMoves();
+  }, true);
+
+  window.addEventListener('pointermove', function() {
+    if (!navHoverSuppressed || !navHoverReleaseArmed) return;
+    clearNavHoverSuppression();
+  }, true);
+
   // Run after view transitions complete
   document.addEventListener('DOMContentLoaded', function() {
     loadConditionalCSS();
     refreshNavbarSearchLayout();
+    ensureNavHoverResetStyle();
   });
   window.addEventListener('view-transition-complete', function() {
     loadConditionalCSS();
     refreshNavbarSearchLayout();
+    ensureNavHoverResetStyle();
+    if (navHoverSuppressed) {
+      applyNavHoverSuppression();
+      navHoverReleaseArmed = true;
+    }
   });
 })();

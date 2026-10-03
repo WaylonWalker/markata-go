@@ -439,6 +439,41 @@ Privacy marking happens at the very start of the Transform stage -- before any o
 
 The encrypted article HTML is the **only** representation of your private content in the built site.
 
+### Warm builds and key rotation
+
+Encrypted wrappers are cached using the rendered article, key name, resolved
+password, public hint, source path (used by accessibility controls), and a
+maintained wrapper/browser-crypto revision. Wrapper or browser crypto format
+changes bump that revision; old entries miss once without a build-cache schema
+migration. A fresh randomized source envelope does not force new browser
+ciphertext when plaintext and the key contract are unchanged.
+
+When a wrapper really regenerates—including password/key-name rotation, hint
+changes, or encrypted-cache file loss—the page and its dependent pages are
+rendered and published again, even if the decrypted input hash is unchanged.
+This includes private homepages with an explicitly empty slug. Regeneration
+clears the previous full-page cache reference before fresh cache writes. If a
+best-effort full-page write fails, saving cache metadata preserves that cleared
+reference: the next build re-renders instead of restoring old-password HTML,
+even when its encrypted wrapper is a valid hit or its output file is missing.
+The old page-cache file may remain orphaned but is no longer usable through
+that post's cache reference.
+
+Valid warm hits keep the identical encrypted wrapper and full page and still
+scrub private metadata. Wrapper hits and encryption errors do not clear a valid
+full-page reference. Best-effort wrapper-cache write failure still invalidates
+the old full page; this is not a general transactional cache-recovery guarantee.
+
+When checking a key rotation, first confirm at least two equivalent warm builds
+with the old key. Cold-to-warm asset or configuration resets can otherwise mask
+stale-page behavior. Verify decryption of the actual published HTML file using
+the new key, rather than checking only an in-memory wrapper.
+
+Source-encrypted posts still never cache decrypted parsed posts or plaintext
+articles. Inferred titles use a transient hash-only prior-build baseline for
+canonical comparison; that baseline stores no plaintext or password. Load's
+conservative feed/tag/garden dirty signals are preserved.
+
 ### Feed pages and private tags
 
 `private_tags` marks matching posts as private and encrypted. Auto-generated feeds
