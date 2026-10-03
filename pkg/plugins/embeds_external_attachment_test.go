@@ -13,26 +13,11 @@ func TestProcessAttachmentEmbedsLeavesExternalURLsForExternalParser(t *testing.T
 		name  string
 		input string
 	}{
-		{
-			name:  "http html path",
-			input: `![[http://example.com/article.html]]`,
-		},
-		{
-			name:  "https html path",
-			input: `![[https://halfwit.github.io/2017/05/08/keyboardblog.html]]`,
-		},
-		{
-			name:  "query ending in dotted host",
-			input: `![[https://ted-merz.com/2022/09/14/20-percent-time/?utm_source=chatgpt.com]]`,
-		},
-		{
-			name:  "display title",
-			input: `![[https://cleberg.net/blog/internet.html|Internet notes]]`,
-		},
-		{
-			name:  "fragment",
-			input: `![[https://example.com/article.html#section]]`,
-		},
+		{name: "http html path", input: `![[http://example.com/article.html]]`},
+		{name: "https html path", input: `![[https://halfwit.github.io/2017/05/08/keyboardblog.html]]`},
+		{name: "query ending in dotted host", input: `![[https://ted-merz.com/2022/09/14/20-percent-time/?utm_source=chatgpt.com]]`},
+		{name: "display title", input: `![[https://cleberg.net/blog/internet.html|Internet notes]]`},
+		{name: "fragment", input: `![[https://example.com/article.html#section]]`},
 	}
 
 	for _, tt := range tests {
@@ -59,16 +44,8 @@ func TestProcessAttachmentEmbedsStillConvertsLocalAttachments(t *testing.T) {
 		in   string
 		want string
 	}{
-		{
-			name: "image",
-			in:   `![[photo.jpg]]`,
-			want: `![photo.jpg](/static/photo.jpg)`,
-		},
-		{
-			name: "nested pdf with title",
-			in:   `![[docs/manual.pdf|Manual]]`,
-			want: `![Manual](/static/docs/manual.pdf)`,
-		},
+		{name: "image", in: `![[photo.jpg]]`, want: `![photo.jpg](/static/photo.jpg)`},
+		{name: "nested pdf with title", in: `![[docs/manual.pdf|Manual]]`, want: `![Manual](/static/docs/manual.pdf)`},
 	}
 
 	for _, tt := range tests {
