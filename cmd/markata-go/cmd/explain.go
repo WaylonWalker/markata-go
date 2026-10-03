@@ -590,7 +590,7 @@ Configuration system for markata-go sites.
 
 ## Config File Locations
 
-Unless `--config` is provided, markata-go searches for config files in this order:
+Unless --config is provided, markata-go searches for config files in this order:
 1. markata-go.toml
 2. markata-go.yaml
 3. markata-go.yml
@@ -598,8 +598,8 @@ Unless `--config` is provided, markata-go searches for config files in this orde
 5. ~/.config/markata-go/config.toml
 
 If none is found, commands that load the full site configuration use built-in
-defaults plus MARKATA_GO_* environment overrides. Commands that edit a config
-file, such as ` + "`config get`" + ` and ` + "`config set`" + `, require a file.
+defaults plus MARKATA_GO_* environment overrides. Commands that read or edit a
+config file directly, such as config get and config set, require a file.
 
 ## Basic Configuration
 
@@ -692,7 +692,7 @@ Override config with MARKATA_GO_ prefix:
 1. **Config not found**
    - Check the local names above and the global fallback
    - Use -c to specify a custom path
-   - Run ` + "`markata-go config init`" + ` to create a local file before using config get/set
+   - Run markata-go config init to create a local file before using config get/set
 
 2. **Invalid TOML syntax**
    - Use online TOML validator
