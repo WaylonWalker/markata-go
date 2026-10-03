@@ -30,7 +30,7 @@ type requirement struct {
 	Notes          string   `yaml:"notes"`
 }
 
-var requirementIDPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-[0-9]{3}$`)
+var requirementIDPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-\d{3}$`)
 
 func TestConformanceManifest(t *testing.T) {
 	data, err := os.ReadFile(requirementsPath)
@@ -51,7 +51,6 @@ func TestConformanceManifest(t *testing.T) {
 
 	seen := make(map[string]struct{}, len(m.Requirements))
 	for i, req := range m.Requirements {
-		req := req
 		t.Run(req.ID, func(t *testing.T) {
 			if !requirementIDPattern.MatchString(req.ID) {
 				t.Errorf("requirement %d has invalid id %q; want DOMAIN-NNN", i, req.ID)
@@ -104,7 +103,7 @@ func checkEnum(t *testing.T, field, value string, allowed ...string) {
 
 func checkRepoPath(t *testing.T, path string) {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join(filepath.Dir(requirementsPath), "../.."))
+	root, err := filepath.Abs(filepath.Join(filepath.Dir(requirementsPath), "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repository root: %v", err)
 	}
