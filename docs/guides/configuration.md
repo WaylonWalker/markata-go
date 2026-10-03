@@ -1998,6 +1998,14 @@ See the [[search|Search Guide]] for detailed usage and customization.
 
 ### Feed Defaults (`[markata-go.feed_defaults]`)
 
+Set `views = ["default", "simple", "calendar"]` to choose the available HTML
+presentations. All three are enabled by default. Per-feed `views` replaces this
+list; omitted values inherit it. Every explicit list must include `default`,
+and an empty list or unknown name is invalid. Disabling `simple` suppresses its
+HTML output even when `formats.simple_html` is true; disabling `calendar` removes
+its controls and assets. Syndication formats are independent.
+See [Feed Views](./feed-views.md) for examples.
+
 The implicit [Pins feed](./pins.md) uses 100 items per page and manual pagination.
 To change those values, define a feed with `slug = "pins"`; its configuration
 takes precedence over the built-in Pins definition.

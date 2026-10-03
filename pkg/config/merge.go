@@ -561,7 +561,7 @@ func mergeFeedDefaults(base, override models.FeedDefaults) models.FeedDefaults {
 		result.OrphanThreshold = override.OrphanThreshold
 	}
 	if override.Views != nil {
-		result.Views = append([]string(nil), override.Views...)
+		result.Views = append([]string{}, override.Views...)
 	}
 
 	result.Formats = mergeFeedFormats(base.Formats, override.Formats)

@@ -20,3 +20,7 @@ affected feeds.
 Explicit view lists MUST contain `default`. Unknown view identifiers MUST fail validation with
 the supported identifiers in the diagnostic. Omitted lists inherit; explicitly empty lists are
 invalid rather than meaning "inherit".
+
+Config layering MUST preserve an explicit empty view list so validation can
+reject it; merging MUST NOT turn that list into omitted/inherited views.
+Disabling Simple MUST remove stale generated `simple/` output on rebuild.

@@ -1,3 +1,13 @@
+---
+title: "Feed Views"
+description: "Choose default, simple, and calendar presentations globally or per feed"
+date: 2026-10-02
+published: true
+tags:
+  - documentation
+  - feeds
+---
+
 # Feed views
 
 Built-in feeds expose three presentation views by default: `default`, `simple`, and `calendar`.
@@ -24,3 +34,10 @@ explicit list must include `default`. Disabling `simple` also stops Markata from
 feed's `/simple/` HTML output even when `formats.simple_html` is enabled. Disabling `calendar`
 removes Calendar controls and avoids loading its CSS, JavaScript, and hidden calendar source data.
 Output-format settings for RSS, Atom, JSON, Markdown, text, and sitemaps are independent of views.
+
+An empty list is invalid. Config overlays replace the view list rather than
+adding to it. Keep `default` in every explicit list. Rebuilding after disabling
+Simple removes its stale generated `/simple/` pages.
+
+See [feed configuration](./configuration.md) and [the feed guide](./feeds.md)
+for pagination and output-format options.

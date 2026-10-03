@@ -49,3 +49,13 @@ func TestValidateFeedViews(t *testing.T) {
 		t.Fatalf("unexpected validation: %s", joined)
 	}
 }
+
+func TestMergeFeedDefaultsPreservesExplicitEmptyViews(t *testing.T) {
+	got := mergeFeedDefaults(models.NewFeedDefaults(), models.FeedDefaults{Views: []string{}})
+	if got.Views == nil {
+		t.Fatal("explicit empty views became inherited views")
+	}
+	if len(validateFeedViews("feed_defaults.views", got.Views)) == 0 {
+		t.Fatal("merged empty view list escaped validation")
+	}
+}
