@@ -21,7 +21,7 @@ import (
 //
 // Example output (HTML):
 //
-//	<video autoplay loop muted playsinline controls class="md-video">
+//	<video autoplay loop muted playsinline controls class="md-video" style="margin-inline:auto">
 //	  <source src="video.mp4" type="video/mp4">
 //	  Your browser does not support the video tag.
 //	</video>
@@ -233,6 +233,11 @@ func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string
 	if p.config.VideoClass != "" {
 		attrs = append(attrs, `class="`+p.config.VideoClass+`"`)
 	}
+
+	// Markdown images are centered when they are standalone block media. Preserve
+	// that layout when md_video replaces the image with a video, including when a
+	// Dropper query parameter gives the video a narrower intrinsic width.
+	attrs = append(attrs, `style="margin-inline:auto"`)
 
 	if poster := templates.PosterURLFromMap(templates.GetPostMap(post), src); poster != "" {
 		poster = templates.WithSize(poster, 1200, 675)
