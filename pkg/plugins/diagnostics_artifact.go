@@ -1,7 +1,9 @@
 package plugins
 
 import (
+	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,12 +13,15 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/sourcegit"
 )
 
 const diagnosticsArtifactSourceTimeout = 2 * time.Second
 
 const diagnosticsArtifactDefaultOutputDir = "output"
+
+const diagnosticsArtifactBufferSize = 64 << 10
 
 // DiagnosticsArtifactPlugin persists the manager-owned content diagnostics
 // snapshot after a complete successful lifecycle run.
@@ -62,19 +67,32 @@ func (p *DiagnosticsArtifactPlugin) Cleanup(m *lifecycle.Manager) error {
 		outputDir = diagnosticsArtifactDefaultOutputDir
 	}
 
-	data, err := diagnostics.MarshalArtifact(m.ContentDiagnostics(), diagnostics.ArtifactBuildInfo{
+	var phases diagnosticsArtifactPhases
+	defer func() {
+		logging.Component("diagnostics_artifact").Phase("cleanup").Level("debug").Printf(
+			"publication snapshot=%s source_metadata=%s serialization_buffering_exclusive=%s file_write=%s file_write_bytes=%d file_write_calls=%d flush_exclusive=%s sync=%s close=%s replace=%s serialization_buffering_inclusive=%s flush_inclusive=%s published=%d",
+			phases.snapshot, phases.sourceMetadata, phases.serialization, phases.fileWrite,
+			phases.fileWriteBytes, phases.fileWriteCalls, phases.flush, phases.sync,
+			phases.close, phases.replace, phases.serializationWall, phases.flushWall, phases.published)
+	}()
+	start := time.Now()
+	snapshot := m.ContentDiagnostics()
+	phases.snapshot = time.Since(start)
+	start = time.Now()
+	sourceCommit := diagnosticsArtifactSourceCommit(config.ContentDir)
+	phases.sourceMetadata = time.Since(start)
+	info := diagnostics.ArtifactBuildInfo{
 		MarkataVersion: artifactConfigString(config, "markata_version"),
 		MarkataCommit:  artifactConfigString(config, "markata_commit"),
-		SourceCommit:   diagnosticsArtifactSourceCommit(config.ContentDir),
+		SourceCommit:   sourceCommit,
 		BuiltAt:        time.Now().UTC(),
 		Executor:       string(m.BuildExecutor()),
-	})
-	if err != nil {
-		return &diagnosticsArtifactError{err: fmt.Errorf("marshal diagnostics artifact: %w", err)}
 	}
 
 	destination := filepath.Join(outputDir, diagnostics.DefaultArtifactPath)
-	if err := writeDiagnosticsArtifact(destination, data); err != nil {
+	if err := writeDiagnosticsArtifactMeasured(destination, func(writer io.Writer) error {
+		return diagnostics.WriteArtifact(writer, snapshot, info)
+	}, &phases); err != nil {
 		return &diagnosticsArtifactError{err: err}
 	}
 	return nil
@@ -138,6 +156,61 @@ func diagnosticsArtifactSourceCommit(contentDir string) string {
 }
 
 func writeDiagnosticsArtifact(destination string, data []byte) error {
+	return writeDiagnosticsArtifactWith(destination, func(writer io.Writer) error {
+		written, err := writer.Write(data)
+		if err != nil {
+			return err
+		}
+		if written != len(data) {
+			return io.ErrShortWrite
+		}
+		return nil
+	})
+}
+
+// writeDiagnosticsArtifactWith publishes only after serialization, buffered
+// writes, sync, and close succeed. Both byte and streaming callers share the
+// same failure-safe temporary-file and replacement path.
+func writeDiagnosticsArtifactWith(destination string, write func(io.Writer) error) error {
+	return writeDiagnosticsArtifactMeasured(destination, write, &diagnosticsArtifactPhases{})
+}
+
+// Wall totals overlap fileWrite. serialization and flush are exclusive of
+// actual underlying Write calls; adding those exclusive components does not
+// count I/O twice. Directory/temp setup and deferred removal are not phases.
+type diagnosticsArtifactPhases struct {
+	snapshot, sourceMetadata         time.Duration
+	serialization, serializationWall time.Duration
+	fileWrite, flush, flushWall      time.Duration
+	sync, close, replace             time.Duration
+	fileWriteBytes, fileWriteCalls   int64
+	published                        int
+}
+
+type diagnosticsArtifactMeasuredWriter struct {
+	writer io.Writer
+	phases *diagnosticsArtifactPhases
+}
+
+func (w diagnosticsArtifactMeasuredWriter) Write(data []byte) (int, error) {
+	start := time.Now()
+	written, err := w.writer.Write(data)
+	w.phases.fileWrite += time.Since(start)
+	w.phases.fileWriteBytes += int64(written)
+	w.phases.fileWriteCalls++
+	if err == nil && written != len(data) {
+		err = io.ErrShortWrite
+	}
+	return written, err
+}
+
+func writeDiagnosticsArtifactMeasured(destination string, write func(io.Writer) error, phases *diagnosticsArtifactPhases) error {
+	return writeDiagnosticsArtifactBuffered(destination, write, phases, diagnosticsArtifactBufferSize)
+}
+
+// Buffer size is internal to publication, not a site configuration option.
+// Keeping the implementation shared allows focused buffer-size measurements.
+func writeDiagnosticsArtifactBuffered(destination string, write func(io.Writer) error, phases *diagnosticsArtifactPhases, bufferSize int) error {
 	directory := filepath.Dir(destination)
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return fmt.Errorf("create diagnostics artifact directory: %w", err)
@@ -149,31 +222,56 @@ func writeDiagnosticsArtifact(destination string, data []byte) error {
 	}
 	temporaryName := temporary.Name()
 	defer os.Remove(temporaryName)
+	closeTemporary := func() error {
+		start := time.Now()
+		err := temporary.Close()
+		phases.close += time.Since(start)
+		return err
+	}
+	closeAfterFailure := func(original error) error {
+		if closeErr := closeTemporary(); closeErr != nil {
+			return errors.Join(original, fmt.Errorf("close temporary diagnostics artifact after failure: %w", closeErr))
+		}
+		return original
+	}
 
 	if err := temporary.Chmod(0o644); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("set diagnostics artifact permissions: %w", err)
+		return closeAfterFailure(fmt.Errorf("set diagnostics artifact permissions: %w", err))
 	}
-	written, err := temporary.Write(data)
+	start := time.Now()
+	writeBefore := phases.fileWrite
+	buffered := bufio.NewWriterSize(diagnosticsArtifactMeasuredWriter{writer: temporary, phases: phases}, bufferSize)
+	err = write(buffered)
+	phases.serializationWall = time.Since(start)
+	phases.serialization = phases.serializationWall - (phases.fileWrite - writeBefore)
 	if err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("write temporary diagnostics artifact: %w", err)
+		return closeAfterFailure(fmt.Errorf("write temporary diagnostics artifact: %w", err))
 	}
-	if written != len(data) {
-		_ = temporary.Close()
-		return fmt.Errorf("write temporary diagnostics artifact: %w", io.ErrShortWrite)
+	start = time.Now()
+	writeBefore = phases.fileWrite
+	err = buffered.Flush()
+	phases.flushWall = time.Since(start)
+	phases.flush = phases.flushWall - (phases.fileWrite - writeBefore)
+	if err != nil {
+		return closeAfterFailure(fmt.Errorf("flush temporary diagnostics artifact: %w", err))
 	}
-	if err := temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("sync temporary diagnostics artifact: %w", err)
+	start = time.Now()
+	err = temporary.Sync()
+	phases.sync = time.Since(start)
+	if err != nil {
+		return closeAfterFailure(fmt.Errorf("sync temporary diagnostics artifact: %w", err))
 	}
-	if err := temporary.Close(); err != nil {
+	if err := closeTemporary(); err != nil {
 		return fmt.Errorf("close temporary diagnostics artifact: %w", err)
 	}
 
-	if err := replaceDiagnosticsArtifact(temporaryName, destination); err != nil {
+	start = time.Now()
+	err = replaceDiagnosticsArtifact(temporaryName, destination)
+	phases.replace = time.Since(start)
+	if err != nil {
 		return fmt.Errorf("replace diagnostics artifact: %w", err)
 	}
+	phases.published = 1
 	return nil
 }
 

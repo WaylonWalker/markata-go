@@ -17,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
@@ -46,6 +45,8 @@ type CatalogSource struct {
 	LockFS  fs.FS
 	Lock    string
 	Builtin bool
+	// ContentDigest identifies immutable bundled catalog/lock/manifest metadata.
+	ContentDigest string
 }
 
 type CatalogPaths struct {
@@ -247,70 +248,14 @@ func (c *Catalog) ResolvePack(name string) (string, FontPack, error) {
 
 // RequiredTiers returns stable tiers needed by the pack and final rendered text.
 func (c *Catalog) RequiredTiers(pack FontPack, renderedHTML string) map[string]map[string]bool {
-	result := map[string]map[string]bool{}
-	for _, r := range pack.Roles {
-		if r.Source != "" {
-			if result[r.Source] == nil {
-				result[r.Source] = map[string]bool{}
-			}
-			result[r.Source][r.Tier] = true
-		}
-	}
-	compiledProfiles := compileSubsetProfiles(c.SubsetProfiles)
-	text := VisibleText(renderedHTML)
-	for source, tiers := range result {
-		for _, r := range text {
-			if r == utf8.RuneError {
-				continue
-			}
-			if compiledProfileContains(compiledProfiles["latin-ext"], r) {
-				tiers["latin-ext"] = true
-				continue
-			}
-			if !inAnyCompiledProfile(compiledProfiles, tiers, r) {
-				tiers["full"] = true
-			}
-		}
-		// Full coverage supersedes every smaller tier for that family. Keeping
-		// both would let the unrestricted full face win for ordinary glyphs and
-		// would waste bytes without improving coverage.
-		if tiers["full"] {
-			result[source] = map[string]bool{"full": true}
-		}
-	}
-	return result
+	return requiredTiers(pack, coverageFromString(renderedHTML), compileSubsetProfiles(c.SubsetProfiles), nil)
 }
 
 // RequiredTiersForManifest makes optional coverage decisions against the
 // tiers that a particular family actually ships. A family without latin-ext
 // must use full coverage rather than failing the entire pack resolution.
 func (c *Catalog) RequiredTiersForManifest(pack FontPack, renderedHTML string, manifests map[string]Manifest) map[string]map[string]bool {
-	requested := c.RequiredTiers(pack, renderedHTML)
-	result := make(map[string]map[string]bool, len(requested))
-	for source, tiers := range requested {
-		manifest := manifests[source]
-		available := make(map[string]bool, len(manifest.Tiers))
-		for tier := range manifest.Tiers {
-			available[tier] = true
-		}
-		selected := make(map[string]bool)
-		for tier := range tiers {
-			if available[tier] {
-				selected[tier] = true
-				continue
-			}
-			if available["full"] {
-				selected["full"] = true
-				continue
-			}
-			selected[tier] = true // retain the useful missing-tier diagnostic
-		}
-		if selected["full"] {
-			selected = map[string]bool{"full": true}
-		}
-		result[source] = selected
-	}
-	return result
+	return requiredTiers(pack, coverageFromString(renderedHTML), compileSubsetProfiles(c.SubsetProfiles), manifests)
 }
 
 type unicodeInterval struct {

@@ -70,9 +70,11 @@
         </div>
         {% endif %}
 
+        {% if sidebar_feeds_json or sidebar_calendar_enabled %}
         <div class="feed-nav-links feed-nav-links--calendar">
             <a id="feed-nav-calendar-link" href="{% if sidebar_feed.slug %}/{{ sidebar_feed.slug }}/{% else %}/{% endif %}?view=calendar" class="feed-nav-format-link" data-feed-format="calendar">calendar</a>
         </div>
+        {% endif %}
 
         <div class="feed-nav-hotkeys">
             {% if sidebar_prev or sidebar_next %}
@@ -132,10 +134,15 @@
     (() => {
         const calendarLink = document.getElementById('feed-nav-calendar-link');
         const picker = document.getElementById('feed-nav-select');
-        if (!calendarLink || !picker) return;
+        const dataNode = document.getElementById('feed-sidebar-data');
+        if (!calendarLink || !picker || !dataNode) return;
+        let feedData = [];
+        try { feedData = JSON.parse(dataNode.textContent || '{}').feeds || []; } catch (_) {}
 
         const updateCalendarLink = () => {
             const slug = picker.value || '';
+            const selectedFeed = feedData.find((entry) => (entry.slug || '') === slug);
+            calendarLink.hidden = Boolean(selectedFeed && selectedFeed.calendar === false);
             calendarLink.href = (slug ? `/${slug}/` : '/') + '?view=calendar';
         };
 

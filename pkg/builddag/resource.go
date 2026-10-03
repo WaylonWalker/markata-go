@@ -49,6 +49,16 @@ func (claim ResourceClaim) String() string {
 	return string(claim.Access) + ":" + claim.Resource.String()
 }
 
+func resourceClaimLess(a, b ResourceClaim) bool {
+	if a.Resource.Kind != b.Resource.Kind {
+		return a.Resource.Kind < b.Resource.Kind
+	}
+	if a.Resource.Key != b.Resource.Key {
+		return a.Resource.Key < b.Resource.Key
+	}
+	return a.Access < b.Access
+}
+
 func validResourceClaim(claim ResourceClaim) bool {
 	if !validResourceKind(claim.Resource.Kind) || claim.Resource.Key == "" {
 		return false

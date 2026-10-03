@@ -208,7 +208,8 @@ that the catalog does not provide.
 
 Canonical nested values take precedence over legacy flat values. The loader can
 accept legacy values as migration inputs, but canonical serialization emits
-only nested values. If both forms conflict, read the migration warning and
+only nested values. Migration warnings report explicit conflicts once, not differences from built-in defaults.
+If both forms conflict, read the migration warning and
 replace the legacy value.
 
 The legacy `texture_scope = "headings"` setting needs special care. It means

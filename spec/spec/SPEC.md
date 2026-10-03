@@ -495,6 +495,18 @@ Flags:
   --future              Include future-dated posts
 ```
 
+For markata-go, `build --dag` opts into the experimental serial DAG executor.
+The normal lifecycle executor remains the default. `serve --dag` and
+`builder-admin --dag` select the same experimental executor for their builds.
+`MARKATA_GO_DAG=true` is an equivalent environment opt-in, but an explicitly
+supplied `--dag=false` MUST override it for that command and its child builds.
+Invalid environment boolean values MUST produce a clear command error.
+
+`build --dry-run` continues to use the legacy partial lifecycle through Collect,
+regardless of the DAG opt-in. It MUST NOT announce that a DAG build executed.
+Executor metadata and human-readable labels MUST describe the engine that
+actually ran, not merely the presence of a flag.
+
 ### `serve`
 
 Start development server with live reload.

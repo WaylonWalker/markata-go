@@ -2,6 +2,8 @@ package plugins
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +15,53 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/renderingrecipe"
 	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
+
+func TestAestheticCSSPlugin_VariablesAreCanonical(t *testing.T) {
+	m := lifecycle.NewManager()
+	config := lifecycle.NewConfig()
+	config.OutputDir = t.TempDir()
+	theme := models.NewThemeConfig()
+	theme.Aesthetic = "precision"
+	theme.Variables = map[string]string{
+		"--text-base":     "1.2rem",
+		"--content-width": "clamp(56ch, 60vw, 72ch)",
+		"--invalid;name":  "ignored",
+	}
+	config.Extra = map[string]interface{}{
+		"theme":         theme,
+		"models_config": &models.Config{Theme: theme},
+	}
+	m.SetConfig(config)
+	plugin := NewAestheticCSSPlugin()
+	var previous []byte
+	for i := 0; i < 20; i++ {
+		if err := plugin.Configure(m); err != nil {
+			t.Fatal(err)
+		}
+		if err := plugin.Write(m); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(config.OutputDir, "css", "aesthetic.css"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i > 0 && !bytes.Equal(previous, got) {
+			t.Fatal("identical variables produced different CSS")
+		}
+		wantHash := fmt.Sprintf("%x", sha256.Sum256(got))[:8]
+		if hash := m.GetAssetHash("css/aesthetic.css"); hash != wantHash {
+			t.Fatalf("configured hash %q does not match generated CSS %q", hash, wantHash)
+		}
+		css := string(got)
+		if strings.Index(css, "--content-width: clamp") > strings.Index(css, "--text-base: 1.2rem") {
+			t.Fatal("theme variables are not sorted by property name")
+		}
+		if strings.Contains(css, "--invalid;name") {
+			t.Fatal("invalid CSS variable name was emitted")
+		}
+		previous = got
+	}
+}
 
 func TestAestheticCSSPlugin_BundlesConsumptionRules(t *testing.T) {
 	m := lifecycle.NewManager()

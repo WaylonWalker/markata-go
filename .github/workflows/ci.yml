@@ -1,15 +1,13 @@
 # CI workflow for markata-go
-# Runs on every push and pull request
+# Runs on main/master pushes and pull requests, daily, and on demand
 
 name: CI
 
 on:
   push:
     branches: [main, master]
-    paths-ignore: ["*.md", "docs/**", ".gitignore"]
   pull_request:
     branches: [main, master]
-    paths-ignore: ["*.md", "docs/**", ".gitignore"]
   workflow_dispatch:
   schedule:
     - cron: "23 8 * * *"
@@ -26,6 +24,52 @@ env:
   LINT_GO_VERSION: "1.26"
 
 jobs:
+  changes:
+    name: Specialized check inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      fonts: ${{ steps.filter.outputs.fonts }}
+      rendering: ${{ steps.filter.outputs.rendering }}
+      helm: ${{ steps.filter.outputs.helm }}
+      goreleaser: ${{ steps.filter.outputs.goreleaser }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Detect changed inputs
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@v3
+        with:
+          # PRs use the changed-files API (also for forks). Pushes compare
+          # against the previous commit, not main against itself.
+          base: ${{ github.event_name == 'push' && github.event.before || github.event.repository.default_branch }}
+          ref: ${{ github.event_name == 'push' && github.sha || '' }}
+          filters: |
+            fonts:
+              - '.github/workflows/**'
+              - 'scripts/generate_font_manifests.py'
+              - 'internal/fontcatalog/**'
+              - 'vendor/google-fonts/**'
+            rendering:
+              - '.github/workflows/**'
+              - 'scripts/rendering-contract/**'
+              - 'spec/rendering-contract/**'
+              - 'pkg/renderingcontract/**'
+              - 'pkg/palettes/**'
+              - 'palettes/**'
+              - 'go.mod'
+              - 'go.sum'
+            helm:
+              - '.github/workflows/**'
+              - 'helm-chart/**'
+            goreleaser:
+              - '.github/workflows/**'
+              - '.goreleaser.yml'
+              - 'go.mod'
+              - 'go.sum'
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -44,6 +88,8 @@ jobs:
 
   manifest-completeness:
     name: Font Manifest Completeness
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.fonts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -53,6 +99,8 @@ jobs:
 
   manifest-generation:
     name: Font Manifest Determinism
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.fonts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -75,6 +123,8 @@ jobs:
 
   rendering-contract:
     name: Rendering Contract
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.rendering == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -87,6 +137,8 @@ jobs:
 
   helm-chart:
     name: Helm Chart
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -178,6 +230,10 @@ jobs:
           printf 'MARKATA_GO_TEST_BINARY=%s\n' "$RUNNER_TEMP/markata-go" >> "$GITHUB_ENV"
           printf 'MARKATA_GO_TEST_BINARY_REVISION=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "CLI build: $((SECONDS-start))s" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify binary
+        run: |
+          "$MARKATA_GO_TEST_BINARY" version
+          "$MARKATA_GO_TEST_BINARY" --help
       - name: Run CLI and search tests (race + coverage, excluding observational Build Lab)
         if: github.event_name == 'pull_request'
         run: |
@@ -241,24 +297,10 @@ jobs:
           fi
           echo "All Linux race and coverage test shards passed"
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-      - name: Build binary
-        run: go build -v -ldflags="-s -w" -o markata-go ./cmd/markata-go
-      - name: Verify binary
-        run: |
-          ./markata-go version
-          ./markata-go --help
-
   goreleaser-check:
     name: GoReleaser Check
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.goreleaser == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

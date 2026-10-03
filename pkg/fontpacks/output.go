@@ -54,13 +54,21 @@ func (c *Catalog) ResolveManyFS(names []string, assetFS fs.FS, assetRoot, render
 
 // ResolveManyFSWithOptions resolves packs with explicit asset validation.
 func (c *Catalog) ResolveManyFSWithOptions(names []string, assetFS fs.FS, assetRoot, renderedHTML string, options ResolveOptions) (*Resolved, error) {
+	return c.ResolveManyFSWithCoverage(names, assetFS, assetRoot, coverageFromString(renderedHTML), options)
+}
+
+// ResolveManyFSWithCoverage resolves packs using previously collected immutable
+// coverage. Manifests and validated asset metadata are shared only within this
+// call, so mutable custom sources are always revalidated on subsequent calls.
+func (c *Catalog) ResolveManyFSWithCoverage(names []string, assetFS fs.FS, assetRoot string, coverage Coverage, options ResolveOptions) (*Resolved, error) {
 	if len(names) == 0 {
 		names = []string{"system"}
 	}
 	result := &Resolved{Packs: map[string]FontPack{}}
+	resolver := newCoverageResolver(c, assetFS, assetRoot, coverage, options.ValidateChecksums)
 	seen := map[string]bool{}
 	for _, name := range names {
-		resolved, err := c.resolveFS(name, assetFS, assetRoot, renderedHTML, options.ValidateChecksums)
+		resolved, err := resolver.resolve(name)
 		if err != nil {
 			return nil, err
 		}
@@ -93,20 +101,47 @@ func (c *Catalog) Resolve(name, catalogRoot, outputDir, renderedHTML string) (*R
 // ResolveFS resolves manifests and assets from an fs.FS. The filesystem is
 // rooted at the catalog's asset directory, so all catalog paths are portable.
 func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string) (*Resolved, error) {
-	return c.resolveFS(name, assetFS, assetRoot, renderedHTML, true)
+	resolver := newCoverageResolver(c, assetFS, assetRoot, coverageFromString(renderedHTML), true)
+	resolved, err := resolver.resolve(name)
+	if err != nil {
+		return nil, err
+	}
+	resolved.CSS = c.css(resolved.Pack, resolved.Assets)
+	return resolved, nil
 }
 
-func (c *Catalog) resolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML string, validateChecksums bool) (*Resolved, error) {
+type coverageResolver struct {
+	catalog           *Catalog
+	assetFS           fs.FS
+	assetRoot         string
+	coverage          Coverage
+	profiles          map[string]compiledSubsetProfile
+	validateChecksums bool
+	manifests         map[string]Manifest
+	assets            map[string]Asset
+}
+
+func newCoverageResolver(c *Catalog, assetFS fs.FS, root string, coverage Coverage, validateChecksums bool) *coverageResolver {
+	return &coverageResolver{
+		catalog: c, assetFS: assetFS, assetRoot: root, coverage: coverage,
+		profiles: compileSubsetProfiles(c.SubsetProfiles), validateChecksums: validateChecksums,
+		manifests: map[string]Manifest{}, assets: map[string]Asset{},
+	}
+}
+
+func (resolver *coverageResolver) resolve(name string) (*Resolved, error) {
+	c := resolver.catalog
 	resolvedName, pack, err := c.ResolvePack(name)
 	if err != nil {
 		return nil, err
 	}
 	r := &Resolved{Name: resolvedName, Pack: pack}
-	requested := c.RequiredTiers(pack, renderedHTML)
-	manifests := make(map[string]Manifest, len(requested))
-	for source := range requested {
-		manifestPath := filepath.ToSlash(filepath.Join(assetRoot, source, "manifest.yaml"))
-		data, err := fs.ReadFile(assetFS, manifestPath)
+	for source := range baseTiers(pack) {
+		if _, ok := resolver.manifests[source]; ok {
+			continue
+		}
+		manifestPath := filepath.ToSlash(filepath.Join(resolver.assetRoot, source, "manifest.yaml"))
+		data, err := fs.ReadFile(resolver.assetFS, manifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("font source %q requires %s: %w", source, manifestPath, err)
 		}
@@ -114,40 +149,46 @@ func (c *Catalog) resolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 		if err := yamlUnmarshal(data, &manifest); err != nil {
 			return nil, fmt.Errorf("parse font manifest %q: %w", source, err)
 		}
-		manifests[source] = manifest
+		resolver.manifests[source] = manifest
 	}
-	if err := ValidateRoleCapabilities(c, map[string]FontPack{resolvedName: pack}, manifests); err != nil {
+	if err := ValidateRoleCapabilities(c, map[string]FontPack{resolvedName: pack}, resolver.manifests); err != nil {
 		return nil, err
 	}
-	required := c.RequiredTiersForManifest(pack, renderedHTML, manifests)
+	required := requiredTiers(pack, resolver.coverage, resolver.profiles, resolver.manifests)
 	for _, source := range SortedKeys(required) {
-		manifest := manifests[source]
+		manifest := resolver.manifests[source]
 		for _, tier := range SortedKeys(required[source]) {
+			key := source + "\x00" + tier
+			if asset, ok := resolver.assets[key]; ok {
+				r.Assets = append(r.Assets, asset)
+				r.Bytes += asset.Bytes
+				continue
+			}
 			entry, ok := manifest.Tiers[tier]
 			if !ok {
 				return nil, fmt.Errorf("font source %q has no required tier %q", source, tier)
 			}
-			path := filepath.ToSlash(filepath.Join(assetRoot, source, entry.File))
-			info, err := fs.Stat(assetFS, path)
+			path := filepath.ToSlash(filepath.Join(resolver.assetRoot, source, entry.File))
+			info, err := fs.Stat(resolver.assetFS, path)
 			if err != nil {
 				return nil, fmt.Errorf("font tier %q for %s is missing: %w", tier, source, err)
 			}
 			if entry.Profile != "" && entry.Profile != tier {
 				return nil, fmt.Errorf("font tier %q for %s declares profile %q", tier, source, entry.Profile)
 			}
-			if validateChecksums && entry.SHA256 != "" {
-				hash, _, hashErr := AssetSHA256FS(assetFS, path)
+			if resolver.validateChecksums && entry.SHA256 != "" {
+				hash, _, hashErr := AssetSHA256FS(resolver.assetFS, path)
 				if hashErr != nil || entry.SHA256 != hash {
 					return nil, fmt.Errorf("font tier %q for %s has checksum %q, want %s", tier, source, hash, entry.SHA256)
 				}
 			}
 			face := manifest.Faces["normal"]
 			asset := Asset{Source: source, Tier: tier, File: entry.File, URL: "/assets/fonts/" + filepath.ToSlash(entry.File), Bytes: info.Size(), SHA256: entry.SHA256, UnicodeRange: entry.UnicodeRange, Style: face.Style, Weight: face.Weight}
+			resolver.assets[key] = asset
 			r.Assets = append(r.Assets, asset)
 			r.Bytes += info.Size()
 		}
 	}
-	r.CSS = c.css(pack, r.Assets)
 	return r, nil
 }
 

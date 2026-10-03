@@ -837,6 +837,9 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 	// directory that would not collide with that file.
 	if slug == "" {
 		contentPath := filepath.Join(outputDir, "index."+ext)
+		if err := removeLegacyRootFormatRedirect(contentPath, ext); err != nil {
+			return err
+		}
 		//nolint:gosec // G306: Output files need 0644 for web serving
 		if err := os.WriteFile(contentPath, []byte(content), 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", contentPath, err)
@@ -851,6 +854,56 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 
 	// Regular files get content at /slug.<ext> (e.g., /test.txt)
 	return p.writeRegularFormatOutput(slug, ext, content, outputDir, skipSlugRedirect)
+}
+
+// removeLegacyRootFormatRedirect migrates only the exact redirect directory
+// emitted by older homepage publishers. Other directory contents are preserved.
+func removeLegacyRootFormatRedirect(path, ext string) error {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspect root format output %s: %w", path, err)
+	}
+	if !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return fmt.Errorf("inspect root format directory %s: %w", path, err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "index.html" || !entries[0].Type().IsRegular() {
+		return nil
+	}
+	redirectPath := filepath.Join(path, "index.html")
+	content, err := os.ReadFile(redirectPath)
+	if err != nil {
+		return fmt.Errorf("read legacy root redirect %s: %w", redirectPath, err)
+	}
+	target := "/." + ext
+	expected := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, target, target, target, target)
+	if string(content) != expected {
+		return nil
+	}
+	if err := os.Remove(redirectPath); err != nil {
+		return fmt.Errorf("remove legacy root redirect %s: %w", redirectPath, err)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("remove legacy root format directory %s: %w", path, err)
+	}
+	return nil
 }
 
 // writeSpecialFileOutput writes output for special files like robots.txt, llms.txt, etc.

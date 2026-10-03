@@ -716,6 +716,15 @@ sitemap = true
 
 markata-go can automatically create feeds for each unique tag in your posts.
 
+Automatic and configured feeds refresh selection diagnostics on every Collect,
+including exclusions and feeds whose output publishing is skipped. Selection
+scratch is reused only within that invocation, not cached between builds.
+Privacy choices, preset series order, duplicate source occurrences, and
+offset/limit exclusion reasons remain unchanged. For timing, inspect the bounded
+`auto_feeds` collection debug record described in the [performance guide](performance.md);
+it separates generation, filtering/sorting, diagnostic selection recording, and
+pagination/preparation without logging post paths or feed names.
+
 ### Enable Auto Tags
 
 ```toml
@@ -1557,6 +1566,32 @@ Now that you understand feeds, here are recommended next steps:
 - [Deployment Guide](/docs/guides/deployment/) - Deploy to production with CI/CD
 
 ---
+
+## Calendar View
+
+Open Calendar from a built-in feed's view controls to browse publishing activity
+one year at a time. The newest year with posts appears first. Use the older/newer
+buttons or year selector to jump between populated years; empty years are skipped.
+Browser Back and Forward restore your selection.
+
+```text
+/blog/?view=calendar&year=2024
+```
+
+Months use the available calendar width, with larger day targets and fewer
+columns in narrow containers. The selected year shows its post count and number
+of publishing days. Day previews still open on hover, focus, or activation.
+
+Calendar grids are built only when Calendar is opened, and only twelve months
+are built at once. The full-history source list remains in the HTML for fallback
+and navigation. Annual pagination reduces active rendering work; it does not
+split the transferred HTML by year. Ordinary feed pagination does not truncate
+the years available in Calendar.
+
+For a calendar-first feed, set `templates.html = "calendar-feed.html"` on the
+feed. The same annual navigation applies, using `?year=2024` on its URL.
+
+Calendar panels and the year selector follow the active theme surface and text colors. On wide calendar pages, twelve months form four columns and three rows; smaller containers keep fewer, readable columns.
 
 ## See Also
 

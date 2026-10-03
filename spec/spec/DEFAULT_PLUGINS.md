@@ -1473,13 +1473,13 @@ preserve_comments = ["Copyright"] # Strings that mark comments to preserve
 
 **Behavior:**
 
-1. Skip if `enabled` is `false`
+1. Skip if `enabled` is `false` or fast mode is active
 2. Walk the output directory recursively to find all `.css` files
-3. For each file, check exclusion patterns (exact match and glob)
-4. Read file content, extract comments matching `preserve_comments` patterns
-5. Minify using `tdewolff/minify/v2/css`
-6. Prepend preserved comments, write back to same path
-7. Log statistics: files processed, skipped, total size reduction
+3. Skip `_pagefind`, symlinks, and exclusion patterns (exact match and glob)
+4. Read content once and apply the persistent reuse rules below
+5. On a transform, extract preserved comments and minify using `tdewolff/minify/v2/css`
+6. Prepend preserved comments to the engine result without changing comment semantics
+7. Persist the relation before atomic target replacement; log separate work counts and transformed size reduction
 
 **Hook behavior:**
 
@@ -1491,9 +1491,7 @@ css_files = find_files(output_dir, "*.css")
 for file in css_files:
     if is_excluded(file, config.exclude):
         skip
-    preserved = extract_comments(file, config.preserve_comments)
-    minified = tdewolff_minify(file, "text/css")
-    write(file, preserved + minified)
+    apply_cached_or_fresh_css_minification(file, recipe, cache)
 
 log_stats(total_original, total_minified)
 ```
@@ -1527,14 +1525,14 @@ exclude = ["pagefind-ui.js"]      # Files to skip (exact names or glob patterns)
 
 **Behavior:**
 
-1. Skip if `enabled` is `false`
+1. Skip if `enabled` is `false` or fast mode is active
 2. Walk the output directory recursively to find all `.js` files
 3. Skip `.min.js` files (already minified)
-4. For each file, check exclusion patterns (exact match and glob)
-5. Read file content
-6. Minify using `tdewolff/minify/v2/js`
-7. Write back to same path
-8. Log statistics: files processed, skipped, total size reduction
+4. Skip `_pagefind`, symlinks, and exclusion patterns (exact match and glob)
+5. Read content once and apply the persistent reuse rules below
+6. On a transform, minify using `tdewolff/minify/v2/js`
+7. Persist the relation before atomic target replacement
+8. Log separate work counts and transformed size reduction
 
 **Hook behavior:**
 
@@ -1546,8 +1544,7 @@ js_files = find_files(output_dir, "*.js", exclude="*.min.js")
 for file in js_files:
     if is_excluded(file, config.exclude):
         skip
-    minified = tdewolff_minify(file, "application/javascript")
-    write(file, minified)
+    apply_cached_or_fresh_js_minification(file, recipe, cache)
 
 log_stats(total_original, total_minified)
 ```
@@ -1561,8 +1558,74 @@ log_stats(total_original, total_minified)
 **Shared infrastructure:**
 
 Both `css_minify` and `js_minify` use shared helper functions in `minify_helpers.go`:
-- `runMinification(pluginName, files, isExcluded, minifyFunc)` - Processes files with logging
+- `runMinification` - Processes eligible assets with bounded concurrency and persistent result reuse
 - `isExcludedByPatterns(filename, excludeMap)` - Checks exact and glob exclusion patterns
+
+**Persistent asset minification (version 1):**
+
+- Cache independently of the build-cache enabled setting, under
+  `ContentDir/.markata/asset-minify/v1/<scopehash>/`. A nonempty `cache_dir`
+  override is used as supplied, matching build-cache configuration. The scope
+  includes the absolute normalized site root, configured output root, and kind.
+  Cache storage MUST remain outside published output, including symlink-resolved
+  relationships. Validate the derived storage directories and every ancestor
+  that creation or permission changes could affect BEFORE performing those
+  operations. Private cache parents must not contain published output either.
+  Unsafe storage is warned about and disabled without changing output permissions.
+  Missing ancestors MUST undergo overlap validation before treating `ENOTDIR`
+  as a non-directory fallback: on Windows, `ENOTDIR` also represents a missing
+  path. Preserve the fallback for genuine non-directory ancestors and report
+  other inspection failures explicitly.
+- Private directories use mode `0700`; records and content-addressed blobs use
+  `0600`. Per-asset records live in `records/<relativepathhash>.json` and blobs
+  in `blobs/<sha256>`. Only discovered output assets authorize target writes.
+  Validate schema, scope, relative identity, and all SHA-256 values before use.
+- The recipe includes kind, a maintained wrapper revision, minify and parse
+  dependency versions, and effective CSS comment-preservation options.
+  Dependency upgrades MUST update the maintained identities; transform changes
+  MUST bump the wrapper revision. Selection gates (fast, enabled, exclusions)
+  are not transform inputs.
+- Hash current eligible bytes once in the worker. Reuse ONLY when the digest
+  matches recorded `source_hash` (the exact transform input, not original author
+  source) AND the recipe matches. Restore the verified result atomically.
+  Matching a prior output is not sufficient: the CSS wrapper can be
+  non-idempotent for important comments matching preservation patterns.
+  Changed recipes ALWAYS transform current stage-input bytes, and diagnostics
+  must describe that action without claiming the digest proves source origin.
+  Output hashes and historical observed-input hashes MUST NOT select an older
+  source snapshot. Stripped comments require regeneration from authoritative
+  source, not recovery from this cache.
+- Every successful fresh transform atomically replaces the target with mode
+  `0644`, even when bytes are identical, preserving uncached publication behavior
+  and existing hardlinked releases. The existing empty-JavaScript exception
+  remains a no-write operation. Verified cache hits publish by the same atomic
+  replacement, even if result bytes already match. Never chmod an inode
+  potentially shared with an existing release.
+- Source hashes are optional: absent means unavailable, not empty. A missing or
+  corrupt result blob needed for exact-input reuse triggers a warned transform
+  of current bytes and repair. Historical source snapshots may remain stored,
+  but are never read or newly written. New records describe the exact
+  current input and its result, not a claim that this input is original source.
+- Persist the verified result blob and the per-asset transform relation
+  atomically BEFORE replacing the generated target atomically. Failed target
+  writes remain retryable using the current-byte check. Never truncate hardlinked
+  targets or blobs. On persistence failure, warn and durably invalidate any old
+  record before uncached target mutation. If persistence and invalidation both
+  fail, leave the target unchanged and report failure; many-to-one outputs must
+  never allow obsolete source provenance to be resurrected.
+- Historical records may contain an observed-input digest (`input_hash`).
+  Ignore old values; never produce new ones or use them to authorize reuse.
+  Failed target replacement is retryable only through the exact current-input
+  and same-recipe relation; a changed recipe transforms the current bytes.
+- Legacy bare hash maps are not promoted or trusted as source/recipe provenance.
+  Do not chase or delete legacy sidecars. A source-regenerating rebuild establishes
+  clean provenance for assets not normally recopied.
+- Retain warning-only transform failure policy. Report transformed (engine
+  calls), restored (exact-input result reuse), excluded, and failed counts
+  separately; no unchanged/no-write counter is promised. Raw recopies can avoid
+  engine work after priming, but retained non-idempotent output may transform
+  every time. StaticAssets Cleanup must
+  continue creating hashed aliases from the final minified canonical bytes.
 
 ---
 

@@ -95,6 +95,7 @@ func runDAGBuildObserved(m *lifecycle.Manager, observe func(lifecycle.Stage, boo
 	verbosef("  [dag] serial executor completed %d tasks across %d graph segments (plan=%s)", totalTasks, len(segments), planDigest)
 
 	result = &BuildResult{
+		Executor:       m.BuildExecutor(),
 		PostsProcessed: len(m.Posts()),
 		FeedsGenerated: len(m.Feeds()),
 		Content:        m.ContentDiagnostics(),

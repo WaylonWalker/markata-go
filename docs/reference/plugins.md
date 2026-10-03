@@ -4206,6 +4206,13 @@ routines, and tools for building software applications...
 5. Respects `max_links_per_term` to avoid over-linking
 6. Exports `glossary.json` to the output directory
 
+Longer terms are matched first. Equal-length terms and aliases are matched in
+lexical order (after case normalization), so aliases sharing a link limit select
+the same occurrence on every build. Updating from the older unordered behavior
+refreshes glossary results once; it does not require deleting your caches.
+Nested protected content, such as a link inside a code block, is preserved
+without leaking internal placeholder markers into pages or feeds.
+
 **HTML output:**
 ```html
 <!-- Before -->
@@ -4588,12 +4595,11 @@ preserve_comments = ["Copyright"]   # Strings that mark comments to preserve
 5. Minifies content using `tdewolff/minify/v2` CSS minifier
 6. Prepends preserved comments to minified output
 7. Writes minified content back to the same file
-8. Logs statistics: files processed, files skipped, total size reduction percentage
+8. Reuses verified exact-input persistent results and logs transformed/restored/excluded/failed counts and transformed size reduction
 
 **Example output:**
 ```
-[css_minify] Starting minification
-[css_minify] Completed: 8 files processed, 1 skipped
+[css_minify] Completed: 8 transformed, 0 restored, 1 excluded, 0 failed
 [css_minify] Size reduction: 45230 -> 28940 bytes (36.0% smaller)
 ```
 
@@ -4630,12 +4636,11 @@ exclude = ["pagefind-ui.js"]        # Files to skip (exact names or glob pattern
 4. Skips files matching exclusion patterns (exact match or glob)
 5. Minifies content using `tdewolff/minify/v2` JS minifier
 6. Writes minified content back to the same file
-7. Logs statistics: files processed, files skipped, total size reduction percentage
+7. Reuses verified exact-input persistent results and logs transformed/restored/excluded/failed counts and transformed size reduction
 
 **Example output:**
 ```
-[js_minify] Starting minification
-[js_minify] Completed: 12 files processed, 2 skipped
+[js_minify] Completed: 12 transformed, 0 restored, 2 excluded, 0 failed
 [js_minify] Size reduction: 145337 -> 72100 bytes (50.4% smaller)
 ```
 
@@ -4648,6 +4653,26 @@ exclude = ["pagefind-ui.js"]        # Files to skip (exact names or glob pattern
 
 **Related plugins:**
 - [[#css_minify|css_minify]] - Companion CSS minification plugin
+
+Both minifiers store private per-asset exact-input records and verified result blobs
+outside published output, under `<content_dir>/.markata/asset-minify/v1/` or the
+nonempty top-level `cache_dir` override. Only an exact current-input digest and
+matching recipe authorize result reuse; the source hash names exact transform
+input, not original author source. Hits atomically publish verified results with
+mode `0644` even when bytes already match, except empty JavaScript.
+There is no processed-output shortcut: important CSS comments can make the
+transform non-idempotent. Recopied exact inputs restore verified results without
+invoking the engine, but retained output may need fresh transformations.
+Recipe changes include CSS comment options and maintained engine/wrapper
+identities and always transform current stage-input bytes, never an older source
+snapshot selected by a processed-output or retry digest. Previously stripped
+comments need regeneration from authoritative source. Cache and transform
+failures are explicit warnings, not fatal build
+errors. Fast mode, disabled plugins, exclusions, and `_pagefind` retain their
+existing behavior. Legacy sidecars are not trusted or removed; perform a
+source-regenerating rebuild after upgrading. See the
+[performance guide](../guides/performance.md#persistent-css-and-javascript-minification)
+for privacy, recovery limits, and measurement details.
 
 ---
 

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -97,7 +99,10 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
 }
 
-func runBuildCommand(_ *cobra.Command, args []string) error {
+func runBuildCommand(cmd *cobra.Command, args []string) error {
+	if err := validateDAGEnvironment(cmd); err != nil {
+		return err
+	}
 	startTime := time.Now()
 
 	verbosef("Starting build...")
@@ -303,6 +308,9 @@ func printBuildResult(result *BuildResult) {
 	printBuildBenchmarkSummary(result.Benchmark)
 
 	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
+	if result.Executor == lifecycle.BuildExecutorDAG {
+		outlnf("  %s %s", buildLabel("Executor:"), "serial DAG (experimental)")
+	}
 }
 
 func printContentSummary(snapshot diagnostics.ContentLedgerSnapshot) {
@@ -484,6 +492,7 @@ func stageThemeColor(stage string) string {
 }
 
 type benchmarkJSONOutput struct {
+	Executor       lifecycle.BuildExecutor           `json:"-"`
 	PostsProcessed int                               `json:"posts_processed"`
 	FeedsGenerated int                               `json:"feeds_generated"`
 	Duration       float64                           `json:"duration_seconds"`
@@ -501,22 +510,103 @@ func writeBenchmarkJSONFile(path string, result *BuildResult) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	return writeBenchmarkJSON(file, result)
+	return writeBenchmarkJSONAndClose(file, result)
+}
+
+func writeBenchmarkJSONAndClose(w io.WriteCloser, result *BuildResult) (err error) {
+	defer func() {
+		if closeErr := w.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close benchmark JSON: %w", closeErr)
+		}
+	}()
+	return writeBenchmarkJSON(w, result)
 }
 
 func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(benchmarkJSONOutput{
+	// Encode metadata using the existing custom marshaler, retaining executor
+	// normalization/validation and field order without encoding the entry array.
+	content := result.Content
+	if content.Entries != nil {
+		content.Entries = content.Entries[:0]
+	}
+	header, err := json.MarshalIndent(benchmarkJSONOutput{
+		Executor:       result.Executor,
 		PostsProcessed: result.PostsProcessed,
 		FeedsGenerated: result.FeedsGenerated,
 		Duration:       result.Duration,
 		Warnings:       result.Warnings,
 		Benchmark:      result.Benchmark,
 		Blogroll:       result.BlogrollStatus,
-		Content:        result.Content,
-	})
+		Content:        content,
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode benchmark JSON header: %w", err)
+	}
+
+	writer := bufio.NewWriter(w)
+	if err := streamBenchmarkJSON(writer, header, result.Content.Entries); err != nil {
+		return err
+	}
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("flush benchmark JSON: %w", err)
+	}
+	return nil
+}
+
+func streamBenchmarkJSON(w io.Writer, header []byte, entries []diagnostics.ContentDisposition) error {
+	if len(entries) == 0 {
+		if err := writeBenchmarkJSONBytes(w, header); err != nil {
+			return err
+		}
+		return writeBenchmarkJSONBytes(w, []byte("\n"))
+	}
+
+	// Content and its entries are the final fields. Check the layout so a future
+	// field addition cannot silently corrupt the streamed document.
+	const suffix = "    \"entries\": []\n  }\n}"
+	if !bytes.HasSuffix(header, []byte(suffix)) {
+		return fmt.Errorf("benchmark JSON header must end with empty content entries")
+	}
+	if err := writeBenchmarkJSONBytes(w, header[:len(header)-len("]\n  }\n}")]); err != nil {
+		return err
+	}
+
+	// Match the artifact writer's reusable per-entry buffers and json.Indent
+	// layout, but preserve the raw snapshot's order and values without cloning.
+	var compact, indented bytes.Buffer
+	encoder := json.NewEncoder(&compact)
+	for index := range entries {
+		compact.Reset()
+		if err := encoder.Encode(&entries[index]); err != nil {
+			return fmt.Errorf("encode benchmark JSON entry %d: %w", index, err)
+		}
+		indented.Reset()
+		if err := json.Indent(&indented, bytes.TrimSuffix(compact.Bytes(), []byte("\n")), "      ", "  "); err != nil {
+			return fmt.Errorf("indent benchmark JSON entry %d: %w", index, err)
+		}
+		separator := "\n      "
+		if index > 0 {
+			separator = ",\n      "
+		}
+		if err := writeBenchmarkJSONBytes(w, []byte(separator)); err != nil {
+			return err
+		}
+		if err := writeBenchmarkJSONBytes(w, indented.Bytes()); err != nil {
+			return err
+		}
+	}
+	return writeBenchmarkJSONBytes(w, []byte("\n    ]\n  }\n}\n"))
+}
+
+func writeBenchmarkJSONBytes(w io.Writer, data []byte) error {
+	n, err := w.Write(data)
+	if err != nil {
+		return fmt.Errorf("write benchmark JSON: %w", err)
+	}
+	if n != len(data) {
+		return fmt.Errorf("write benchmark JSON: %w", io.ErrShortWrite)
+	}
+	return nil
 }
 
 // printBlogrollStatus prints the blogroll feature status.

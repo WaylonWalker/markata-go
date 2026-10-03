@@ -301,9 +301,43 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
-		return p.encryptPostWithCache(post, cache)
+	regenerated := make(chan *models.Post, len(postsToEncrypt))
+	err := m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
+		changed, err := p.encryptPostWithCacheResult(post, cache)
+		if changed {
+			regenerated <- post
+		}
+		return err
 	})
+	close(regenerated)
+
+	// Merge only after all workers finish: serve affected paths is an ordinary
+	// map. Keep successful siblings invalidated even if another worker failed.
+	affected := lifecycle.GetServeAffectedPaths(m)
+	wrapperChanged := false
+	for post := range regenerated {
+		wrapperChanged = true
+		if affected == nil {
+			affected = make(map[string]bool)
+		}
+		affected[post.Path] = true
+		if cache != nil {
+			for _, identity := range postDependencyIdentities(post) {
+				cache.MarkSlugChanged(identity)
+			}
+		}
+	}
+	if cache != nil && wrapperChanged {
+		changed := cache.GetChangedSlugs()
+		for _, path := range cache.GetAffectedPosts(changed) {
+			affected[path] = true
+		}
+		cache.MarkAffectedDependents(changed)
+	}
+	if wrapperChanged {
+		lifecycle.SetServeAffectedPaths(m, affected)
+	}
+	return err
 }
 
 func (p *EncryptionPlugin) validatePrivatePosts(posts []*models.Post) error {
@@ -446,16 +480,18 @@ func filterEncryptedPostsForServe(m *lifecycle.Manager, posts []*models.Post) []
 	return filtered
 }
 
-func (p *EncryptionPlugin) encryptPostWithCache(post *models.Post, cache *buildcache.Cache) error {
+// encryptPostWithCacheResult reports a real wrapper generation, independently
+// of best-effort cache storage. Nonempty hits do not invalidate full pages.
+func (p *EncryptionPlugin) encryptPostWithCacheResult(post *models.Post, cache *buildcache.Cache) (bool, error) {
 	keyName := post.SecretKey
 	if keyName == "" {
 		keyName = p.defaultKey
 	}
 	password, err := p.getKeyPassword(keyName)
 	if err != nil {
-		return err
+		return false, err
 	}
-	encryptedHash := computeEncryptedHash(post.ArticleHTML, keyName, password, p.decryptionHint)
+	encryptedHash := computeEncryptedHash(post.ArticleHTML, keyName, password, p.decryptionHint, post.Path)
 
 	if cache != nil {
 		if cached := cache.GetCachedEncryptedHTML(post.Path, encryptedHash); cached != "" {
@@ -469,22 +505,29 @@ func (p *EncryptionPlugin) encryptPostWithCache(post *models.Post, cache *buildc
 				post.Set("encryption_key_name", keyName)
 			}
 			templates.InvalidatePost(post)
-			return nil
+			return false, nil
 		}
 	}
 
 	err = p.encryptPost(post)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if cache != nil {
+		// A failed later full-page write must not leave old-password HTML
+		// available when the next build hits this newly generated wrapper.
+		cache.InvalidateFullHTML(post.Path)
 		//nolint:errcheck // best-effort caching
 		cache.CacheEncryptedHTML(post.Path, encryptedHash, post.ArticleHTML)
 	}
-	return nil
+	return true, nil
 }
 
-func computeEncryptedHash(articleHTML, keyName, password, hint string) string {
+// Bump whenever the wrapper markup or browser crypto format changes.
+// This is a derived identity revision, not a persisted cache schema version.
+const encryptedWrapperRevision = "encrypted-wrapper-v2"
+
+func computeEncryptedHash(articleHTML, keyName, password, hint, sourcePath string) string {
 	var b strings.Builder
 	b.WriteString(articleHTML)
 	b.WriteByte('\x00')
@@ -493,6 +536,10 @@ func computeEncryptedHash(articleHTML, keyName, password, hint string) string {
 	b.WriteString(password)
 	b.WriteByte('\x00')
 	b.WriteString(hint)
+	b.WriteByte('\x00')
+	b.WriteString(sourcePath)
+	b.WriteByte('\x00')
+	b.WriteString(encryptedWrapperRevision)
 	return buildcache.ContentHash(b.String())
 }
 

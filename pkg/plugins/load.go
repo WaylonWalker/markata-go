@@ -108,6 +108,7 @@ func (p *LoadPlugin) configureSourceEncryption(cfg *lifecycle.Config) {
 // Files are loaded in parallel using a worker pool for improved I/O performance.
 // Uses ModTime-based caching to skip re-parsing unchanged files.
 func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
+	resetSemanticHashBaseline(m)
 	files := m.Files()
 	config := m.Config()
 	baseDir := config.ContentDir
@@ -456,6 +457,10 @@ func (p *LoadPlugin) loadFile(m *lifecycle.Manager, file, baseDir string, cache 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", file, err)
 	}
+
+	// Capture before either parsed-cache storage or semantic updates can
+	// mutate the prior build's entry. Empty hashes are a valid new-post baseline.
+	captureSemanticHashBaseline(m, cache, file)
 
 	// Cache the parsed post. Source-encrypted files intentionally skip parsed
 	// post and article caches because those would contain decrypted content.
