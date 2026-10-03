@@ -618,3 +618,24 @@ keys are dropped, and error text is discarded, but values under other keys are
 not automatically redacted. Avoid query strings, sensitive paths, and secrets.
 See the [lifecycle specification](../../spec/spec/LIFECYCLE.md) for the API
 contract and limits.
+
+## OTLP configuration foundation
+
+The Go API `buildstats.ResolveOTLPConfig(os.Getenv)` resolves optional trace
+settings. For example, a generic endpoint `http://collector:4318` resolves to
+`http://collector:4318/v1/traces` with the default `http/protobuf` protocol.
+The resolver alone does not send traces, and setting these variables does not
+yet enable export from `markata-go build`.
+
+| Variable | Meaning |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Complete trace URL; takes precedence over the generic endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Generic URL; HTTP protocols append `/v1/traces`, while gRPC preserves the URL |
+| `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | Trace protocol; takes precedence over the generic protocol |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | Generic protocol; defaults to `http/protobuf` |
+
+Supported protocols are `grpc`, `http/protobuf`, and `http/json`. Endpoints must
+use HTTP or HTTPS and include a host. With no endpoint, the returned config is
+disabled. This foundation follows [OpenTelemetry endpoint conventions](https://opentelemetry.io/docs/specs/otel/protocol/exporter/);
+exporter integration, headers, sampling, and collector deployment remain
+follow-up work.
