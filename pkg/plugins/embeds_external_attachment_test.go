@@ -14,7 +14,11 @@ func TestProcessAttachmentEmbedsLeavesExternalURLsForExternalParser(t *testing.T
 		input string
 	}{
 		{
-			name:  "html path",
+			name:  "http html path",
+			input: `![[http://example.com/article.html]]`,
+		},
+		{
+			name:  "https html path",
 			input: `![[https://halfwit.github.io/2017/05/08/keyboardblog.html]]`,
 		},
 		{
