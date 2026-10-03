@@ -138,7 +138,7 @@ After running `go install` successfully.
 
 **Symptom:**
 ```
-go: github.com/example/markata-go@latest: module lookup disabled by GOPROXY=off
+go: github.com/WaylonWalker/markata-go@latest: module lookup disabled by GOPROXY=off
 ```
 Or timeout errors during installation.
 
@@ -164,7 +164,7 @@ Or timeout errors during installation.
 
 4. Retry installation:
    ```bash
-   go install github.com/example/markata-go/cmd/markata-go@latest
+   go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
    ```
 
 ---
@@ -173,13 +173,9 @@ Or timeout errors during installation.
 
 ### Config File Not Found
 
-**Symptom:**
-```
-Error: no configuration file found
-```
-Or markata-go uses unexpected default values.
+**Symptom:** markata-go uses default values when you expected it to load a site configuration.
 
-**Cause:** No configuration file exists in the expected locations, or it has the wrong name.
+**Cause:** No configuration file exists in the expected locations, or it has the wrong name. When no configuration file is found, markata-go continues with built-in defaults and environment-variable overrides.
 
 **Solution:**
 
@@ -198,11 +194,13 @@ Or markata-go uses unexpected default values.
    markata-go build --config path/to/my-config.toml
    ```
 
-**Supported config file names (in priority order):**
+**Supported local config file names (in priority order):**
 - `markata-go.toml` (recommended)
 - `markata-go.yaml`
 - `markata-go.yml`
 - `markata-go.json`
+
+If none of those exists, markata-go also checks `~/.config/markata-go/config.toml` before falling back to built-in defaults.
 
 See the [[configuration-guide|Configuration Guide]] for details on config file locations.
 
@@ -818,7 +816,7 @@ Error: template error: variable "post.title" not found
 3. **Verify the feed is being generated:**
    ```bash
    markata-go build -v
-   ls -la public/blog/rss.xml public/blog/atom.xml
+   ls -la output/blog/rss.xml output/blog/atom.xml
    ```
 
 See the [[feeds-guide|Feeds Guide]] for detailed feed configuration.
@@ -920,10 +918,10 @@ See the [[feeds-guide|Feeds Guide]] for detailed feed configuration.
 3. **Validate generated feeds:**
    ```bash
    # RSS
-   xmllint --noout public/blog/rss.xml
+   xmllint --noout output/blog/rss.xml
 
    # Atom  
-   xmllint --noout public/blog/atom.xml
+   xmllint --noout output/blog/atom.xml
    ```
 
 4. **Use online validators:**
@@ -1077,8 +1075,8 @@ Error: listen tcp :8000: bind: address already in use
 
 3. **Verify files exist in output:**
    ```bash
-   ls -la public/
-   ls -la public/my-post/index.html
+   ls -la output/
+   ls -la output/my-post/index.html
    ```
 
 4. **Check server is configured for clean URLs:**
@@ -1108,7 +1106,7 @@ Error: listen tcp :8000: bind: address already in use
    npm install -g linkinator
 
    # Check for broken links
-   linkinator public --recurse
+   linkinator output --recurse
    ```
 
 2. **Check wikilinks are correct:**
@@ -1164,9 +1162,9 @@ Error: listen tcp :8000: bind: address already in use
 
 3. **Check assets were copied to output:**
    ```bash
-   ls -la public/static/
+   ls -la output/static/
    # or
-   ls -la public/css/
+   ls -la output/css/
    ```
 
 4. **Use correct paths in templates:**
@@ -1260,11 +1258,7 @@ Error: listen tcp :8000: bind: address already in use
    disabled_hooks = []  # Make sure it's not listed here
    ```
 
-3. **Verify plugin name is correct:**
-   ```bash
-   # List available plugins
-   markata-go plugins list
-   ```
+3. **Verify the plugin name against the [[built-in-plugins|Plugin Reference]].**
 
 4. **For custom plugins, ensure they're registered properly:**
    - See the [[plugin-development|Plugin Development Guide]]
@@ -1313,7 +1307,7 @@ Error: plugin "my_plugin" failed: <specific error message>
 If you can't resolve your issue with this guide:
 
 1. **Check existing issues:**
-   - [GitHub Issues](https://github.com/example/markata-go/issues)
+   - [GitHub Issues](https://github.com/WaylonWalker/markata-go/issues)
 
 2. **Search the documentation:**
    - [[getting-started|Getting Started]]

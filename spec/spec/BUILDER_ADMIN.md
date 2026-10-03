@@ -384,3 +384,19 @@ Pruning MUST recheck the live release while holding the release lock, atomically
 ## Published release root permissions
 
 Completed release roots MUST use permission mode `0755` before publication so an unprivileged static server can traverse them. This applies to same-filesystem rename and cross-filesystem staged copy, including workspaces seeded from releases created with private root permissions. Staging directories MUST remain private while copying and become `0755` only after their copy completes. Child file permissions MUST remain unchanged. Permission failures MUST prevent publication and preserve current.
+
+## Span presentation foundation
+
+The span view model MUST sort completed spans by start offset, breaking ties by
+ID, and expose ID, parent ID, name, stage, plugin, status, attributes, depth,
+and start/duration in integer milliseconds. Negative times MUST display as
+zero. Attribute maps MUST be copied so presentation changes cannot mutate
+recorded input. Missing parents MUST produce root depth; cycles MUST terminate.
+
+The highlighted completion chain MUST select the latest-finishing leaf, prefer
+the longer leaf on equal end times, and mark its ancestors until the root, a
+missing parent, or a repeated ID. A graph with no leaves MUST have no highlighted
+chain. This heuristic MUST NOT be described as a dependency-aware critical path.
+
+The initial model is internal groundwork. It does not require benchmark artifact
+retention, API exposure, or an operator waterfall; those remain follow-up work.
