@@ -6,6 +6,11 @@
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dropperHosts = new Set([
+    'dropper.wayl.one',
+    'dropper.waylonwalker.com',
+    'dropper-dev.wayl.one'
+  ]);
 
   const pad2 = (value) => String(value).padStart(2, '0');
   const dateKey = (year, month, day) => `${year}-${pad2(month + 1)}-${pad2(day)}`;
@@ -37,20 +42,59 @@
     return node;
   }
 
+  function dropperThumbURL(raw) {
+    if (!raw) return '';
+    try {
+      const url = new URL(raw, window.location.href);
+      if (!dropperHosts.has(url.hostname.toLowerCase())) return '';
+
+      const slash = url.pathname.lastIndexOf('/');
+      const dot = url.pathname.lastIndexOf('.');
+      if (dot <= slash) return '';
+
+      const stem = url.pathname.slice(0, dot);
+      if (!stem.endsWith('_thumb')) {
+        url.pathname = `${stem}_thumb${url.pathname.slice(dot)}`;
+      }
+      for (const key of ['w', 'h', 'width', 'height']) url.searchParams.delete(key);
+      return url.toString();
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function previewImageCandidates(raw) {
+    const thumb = dropperThumbURL(raw);
+    if (thumb && thumb !== raw) return [thumb, raw];
+    return raw ? [thumb || raw] : [];
+  }
+
   function postPreview(post) {
     const item = element('li', 'calendar-preview-post');
     const link = element('a', 'calendar-preview-link');
     link.href = post.href;
 
-    if (post.image) {
+    const imageCandidates = previewImageCandidates(post.image);
+    if (imageCandidates.length > 0) {
       const image = document.createElement('img');
       image.className = 'calendar-preview-image';
-      image.src = post.image;
       image.alt = '';
-      image.loading = 'lazy';
       image.decoding = 'async';
       image.width = 72;
       image.height = 54;
+      if (imageCandidates.length > 1) {
+        image.addEventListener('error', () => {
+          if (image.dataset.fallbackUsed === 'true') {
+            image.hidden = true;
+            return;
+          }
+          image.dataset.fallbackUsed = 'true';
+          image.src = imageCandidates[1];
+        });
+      } else {
+        image.addEventListener('error', () => { image.hidden = true; });
+      }
+      image.src = imageCandidates[0];
       link.append(image);
     }
 
@@ -66,6 +110,7 @@
 
   function renderPreview(details, year, month, day, posts) {
     const preview = element('div', 'calendar-day-preview');
+    preview.style.insetBlockStart = 'calc(100% + 0.12rem)';
     const dateLabel = `${monthNames[month]} ${day}, ${year}`;
     const postWord = posts.length === 1 ? 'post' : 'posts';
     preview.append(element('div', 'calendar-preview-summary', `${dateLabel} · ${posts.length} ${postWord}`));
@@ -76,7 +121,7 @@
     details.append(preview);
   }
 
-  function renderMonth(year, month, postsByDate) {
+  function renderMonth(year, month, postsByDate, previewData) {
     const section = element('section', 'calendar-month');
     section.setAttribute('aria-labelledby', `calendar-${year}-${month + 1}`);
 
@@ -131,7 +176,7 @@
       }
 
       details.append(summary);
-      renderPreview(details, year, month, day, posts);
+      previewData.set(details, { year, month, day, posts });
       cell.append(details);
       grid.append(cell);
     }
@@ -151,6 +196,7 @@
   function renderCalendar(root, calendar, datedPosts) {
     const postsByDate = new Map();
     const years = new Set();
+    const previewData = new WeakMap();
 
     for (const post of datedPosts) {
       const parsed = parseDate(post.date);
@@ -173,14 +219,35 @@
       yearSection.append(yearHeading);
 
       const months = element('div', 'calendar-months');
-      for (let month = 0; month < 12; month += 1) months.append(renderMonth(year, month, postsByDate));
+      for (let month = 0; month < 12; month += 1) {
+        months.append(renderMonth(year, month, postsByDate, previewData));
+      }
       yearSection.append(months);
       calendar.append(yearSection);
     }
 
-    const openExclusive = (details) => {
+    const ensurePreview = (details) => {
+      if (details.querySelector('.calendar-day-preview')) return;
+      const data = previewData.get(details);
+      if (!data) return;
+      renderPreview(details, data.year, data.month, data.day, data.posts);
+    };
+
+    const openExclusive = (details, interaction = 'interactive') => {
+      ensurePreview(details);
       for (const candidate of root.querySelectorAll('.calendar-day details[open]')) {
-        if (candidate !== details) candidate.open = false;
+        if (candidate !== details) {
+          candidate.open = false;
+          delete candidate.dataset.calendarHoverPreview;
+        }
+      }
+      const preview = details.querySelector('.calendar-day-preview');
+      if (interaction === 'hover') {
+        details.dataset.calendarHoverPreview = 'true';
+        if (preview) preview.style.pointerEvents = 'none';
+      } else {
+        delete details.dataset.calendarHoverPreview;
+        if (preview) preview.style.pointerEvents = 'auto';
       }
       details.open = true;
     };
@@ -189,17 +256,28 @@
       if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
       const details = event.target.closest('.calendar-day details');
       if (!details || !calendar.contains(details)) return;
-      openExclusive(details);
+      openExclusive(details, 'hover');
     });
 
     calendar.addEventListener('focusin', (event) => {
       const details = event.target.closest('.calendar-day details');
-      if (details && calendar.contains(details)) openExclusive(details);
+      if (details && calendar.contains(details)) openExclusive(details, 'interactive');
+    });
+
+    calendar.addEventListener('click', (event) => {
+      const summary = event.target.closest('.calendar-day details > summary');
+      if (!summary || !calendar.contains(summary)) return;
+      const details = summary.parentElement;
+      if (details && details.dataset.calendarHoverPreview === 'true') {
+        event.preventDefault();
+        openExclusive(details, 'interactive');
+      }
     });
 
     calendar.addEventListener('toggle', (event) => {
       const opened = event.target;
       if (!(opened instanceof HTMLDetailsElement) || !opened.open) return;
+      ensurePreview(opened);
       for (const details of root.querySelectorAll('.calendar-day details[open]')) {
         if (details !== opened) details.open = false;
       }

@@ -243,7 +243,11 @@ func ensureRandomPostOutputAvailable(outputPath, endpointPath, indexPath string,
 		return fmt.Errorf("checking random_post output path %s: %w", outputPath, err)
 	}
 	for _, post := range posts {
-		if post == nil || strings.TrimSpace(post.Href) == "" || normalizeRandomPostPath(post.Href) != endpointPath {
+		if post == nil {
+			continue
+		}
+		postPath := strings.Trim(strings.TrimSpace(post.Href), "/")
+		if postPath == "" || normalizeRandomPostPath(postPath) != endpointPath {
 			continue
 		}
 		return fmt.Errorf("random_post output path already exists: %s", outputPath)

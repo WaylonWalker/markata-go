@@ -7,11 +7,10 @@ on:
   push:
     branches:
       - main
-      - "markata/**"
-      - "perf/**"
-      - "dev/**"
     tags:
       - "v*"
+  # Select a branch/tag in the Actions UI to explicitly publish preview images.
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -77,8 +76,6 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             # Tag with branch name
             type=ref,event=branch
-            # Tag with PR number
-            type=ref,event=pr
             # Tag with semver
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -178,8 +175,6 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             # Tag with branch name
             type=ref,event=branch
-            # Tag with PR number
-            type=ref,event=pr
             # Tag with semver
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

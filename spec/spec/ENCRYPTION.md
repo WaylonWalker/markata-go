@@ -156,6 +156,46 @@ the feed privacy projection removes that attribute. Feed entries can still be
 decrypted manually, but they do not disclose key names or support cross-entry
 unlocking and password storage.
 
+### Encrypted wrapper cache and page invalidation
+
+The encrypted-wrapper identity MUST include canonical article HTML, key name,
+resolved password, decryption hint, source path (for accessibility IDs), and an
+explicit maintained wrapper/browser-crypto format revision. Wrapper or browser
+crypto format changes MUST bump that revision. Older identities miss once
+without changing the persisted cache schema. Randomized source-envelope
+ciphertext MUST NOT invalidate a wrapper for unchanged plaintext and key
+contract.
+
+A nonempty valid wrapper cache hit MUST retain metadata scrubbing and template
+map invalidation without adding affected paths. Successful fresh encryption
+MUST mark the real source path (including an explicit empty-slug root),
+dependency identities, and the direct/transitive dependent closure before
+Templates and PublishHTML run. Existing affected paths MUST be preserved.
+Regeneration remains a page change even if best-effort wrapper storage fails;
+encryption errors MUST retain their existing failure behavior. Worker results
+MUST be merged after joining workers, including successful siblings when a
+worker fails, without concurrent ordinary-map mutation.
+
+Successful wrapper regeneration MUST clear the existing full-page cache
+reference before later page-cache writes, preserving all other post metadata.
+That removal MUST dirty and persist cache metadata even if best-effort wrapper
+or full-page storage fails. An old page file MAY remain orphaned, but neither
+memory nor disk getters may return it through the invalidated reference.
+An unchanged subsequent wrapper hit MUST re-render when full-page storage is
+unavailable; persistent reload and missing output MUST never republish the
+old-password page. Valid wrapper hits and encryption failures MUST NOT clear
+the full-page reference.
+
+Rotation regressions MUST verify ciphertext read from published disk output,
+not just in-memory article/page HTML. Before rotation they MUST establish at
+least two consecutive warm full-page restorations with unchanged config,
+template, navigation, and static-asset identities, so global cold-to-warm
+invalidation cannot mask a missing source-path publication signal.
+
+Private feed projection remains unchanged. Source-encrypted parsed-post and
+article caches remain excluded, and no decrypted bodies or passwords may be
+persisted by the semantic-hash handoff.
+
 ### Client initialization and focus
 
 The browser decryption initializer MUST be idempotent. It MUST initialize

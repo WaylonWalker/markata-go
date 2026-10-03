@@ -15,6 +15,20 @@ reverse = true
 
 ## Common Patterns
 
+### Saved Links (Pins)
+
+For a link board, use the built-in `/pins/` feed: published posts with non-empty
+`link` frontmatter appear newest first. A configured `pins` feed takes precedence;
+a publishable authored `pins` post keeps the route. Generic `link` frontmatter
+remains render-neutral outside Pins. Disabling subscription feeds also disables
+implicit Pins injection.
+
+The default Pins board uses the viewport width and 100 items per page. It reuses
+explicit cover fields or already-rendered embed media; plain `link` frontmatter
+does not fetch metadata. Authored notes expand inline with the native **Note**
+control. Cover art and commentary work without JavaScript. Prefer configuring
+the feed's pagination before creating site-specific template or CSS overrides.
+
 ### Home Feed
 
 ```toml

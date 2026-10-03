@@ -501,6 +501,14 @@ The default browser reading view MUST:
 - use responsive layout, visible keyboard focus, and reduced-motion-aware
   animation while inheriting the site theme through the marker region above.
 
+### Theme Migration Warnings
+
+Canonical nested theme values take precedence over legacy flat values.
+The loader MUST report each conflict between explicitly supplied values once.
+Built-in defaults MUST NOT cause migration warnings.
+This rule applies to file loading, includes, overrides, preview overlays, string loading, and configuration-free loading.
+Default merging MUST preserve the resolved theme values.
+
 ### Themed 404 Page
 
 The generated `404.html` MUST use the site's post page shell and active theme,
@@ -527,6 +535,10 @@ Themes provide the base visual identity. For additional customization, see [HEAD
 **Resolution order:** Theme defaults → Theme variables → Head/Style config → Post overrides
 
 Theme variables are applied at build time to the generated `variables.css` and override palette-generated values. This means overrides work consistently even when a palette is enabled.
+
+Generated theme-variable declarations MUST use lexicographic property-name
+ordering. The same configuration MUST produce identical CSS bytes and asset
+hashes across repeated generation, regardless of map iteration order.
 
 ---
 

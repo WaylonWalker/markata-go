@@ -716,6 +716,15 @@ sitemap = true
 
 markata-go can automatically create feeds for each unique tag in your posts.
 
+Automatic and configured feeds refresh selection diagnostics on every Collect,
+including exclusions and feeds whose output publishing is skipped. Selection
+scratch is reused only within that invocation, not cached between builds.
+Privacy choices, preset series order, duplicate source occurrences, and
+offset/limit exclusion reasons remain unchanged. For timing, inspect the bounded
+`auto_feeds` collection debug record described in the [performance guide](performance.md);
+it separates generation, filtering/sorting, diagnostic selection recording, and
+pagination/preparation without logging post paths or feed names.
+
 ### Enable Auto Tags
 
 ```toml

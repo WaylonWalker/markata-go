@@ -26,6 +26,11 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # Explicit bash enables pipefail so tee cannot hide benchmark failures.
+    shell: bash
+
 env:
   BENCHSTAT_VERSION: "v0.0.0-20260908200009-22c9c6c9d4da"
 
@@ -64,7 +69,7 @@ jobs:
           echo "Running benchmarks with $ITERATIONS iterations..."
 
           # Run benchmarks and capture output
-          go test -bench=BenchmarkBuild -run='^$' -benchmem -count=$ITERATIONS ./benchmarks/... | tee bench-current.txt
+          go test -bench='^BenchmarkBuild_(EndToEnd|Incremental)$' -run='^$' -benchmem -count=$ITERATIONS ./benchmarks/... | tee bench-current.txt
 
           # Create summary
           echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
@@ -170,15 +175,14 @@ jobs:
       - name: Install benchstat
         run: go install golang.org/x/perf/cmd/benchstat@${{ env.BENCHSTAT_VERSION }}
 
-      - name: Generate fixtures
-        run: |
-          cd current && go run benchmarks/generate_posts.go
-          cd ../compare && go run benchmarks/generate_posts.go || true
+      - name: Generate comparison fixture
+        working-directory: compare
+        run: go run benchmarks/generate_posts.go
 
       - name: Run benchmarks on comparison branch
         working-directory: compare
         run: |
-          go test -bench=BenchmarkBuild_EndToEnd -run='^$' -benchmem -count=5 ./benchmarks/... | tee ../bench-compare.txt || true
+          go test -bench=BenchmarkBuild_EndToEnd -run='^$' -benchmem -count=5 ./benchmarks/... | tee ../bench-compare.txt
 
       - name: Download current benchmark results
         uses: actions/download-artifact@v8

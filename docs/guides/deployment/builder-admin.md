@@ -93,7 +93,7 @@ guarantee, not a claim of full power-loss durability for every directory entry.
 Use `mode: hostPath` and set `workspace.hostPath.path` when you want a specific node-local disk
 instead of the pod's ephemeral storage. Keep `workDir` underneath `mountPath`; the CLI also rejects
 filesystem roots, the source tree, and the release root as explicit `--work-dir` values because the
-workspace is deleted and recreated before each build.
+workspace can be deleted and recreated when it needs a fresh seed.
 
 Keep `builderAdmin.fast` at `false` when queued builds publish the live site. In this repo,
 `--fast` is an authoring optimization, not a production-equivalent build mode: it skips
@@ -384,3 +384,15 @@ Examples:
 - a custom remote-asset fetch command
 
 Use them to keep reader/blogroll data or other remote caches fresh without slowing down every normal content build.
+
+### Retaining a warm workspace
+
+With a separate node-local workspace, successful cross-filesystem promotion retains the completed output for the next build. Builder Admin reuses it only when it matches the current release, avoiding another full copy during preparation. Logs report `reusing build work from current release`. Failed or interrupted builds and rollbacks trigger a fresh seed. Keep the workspace on persistent node-local storage to retain it across pod restarts; an `emptyDir` survives container restarts but is lost with the pod. Published releases remain on the configured site volume, and promotion still stages a complete copy before switching `current`.
+
+### Background release cleanup
+
+Builder Admin first removes obsolete releases from the published release list with an atomic rename, then deletes their files in the background. Large cleanup jobs do not hold the lock needed for promotion or rollback. Internal `.pruning-` directories are not rollback targets; interrupted cleanup is retried on the next prune run. Published build success is separate from cleanup errors, which appear in service logs.
+
+### Successful build but nginx returns 403
+
+If nginx reports `current/index.html is forbidden (13: Permission denied)`, inspect the completed release root permissions. Builder-admin publishes release roots as `0755` so nginx can traverse them. Older cross-filesystem publication could retain a private `0700` staging directory, and subsequent seeded builds could inherit it. Upgrade the engine and correct affected retained release roots to `0755`; child file permissions do not need a recursive change for this defect.

@@ -372,3 +372,31 @@ without the operator ForwardAuth middleware. Its HMAC secret MUST be supplied fr
 Secret rather than a command-line argument.
 
 The default rendered-release retention MUST keep at least 25 releases, including the current live release, so operators have more than ten rollback targets by default.
+
+## Retained build workspace reuse
+
+A workspace retained after cross-filesystem promotion MUST be marked with the exact successfully promoted release ID. The marker MUST live beside the workspace, outside generated output. Preparation MAY reuse the retained workspace only when its marker matches the current live release, and MUST consume the marker before mutation. Missing or mismatched proof, a failed or interrupted build, and rollback MUST force a fresh seed from current. Same-filesystem promotion consumes the workspace by rename and MUST clear stale proof. A marker write failure after successful publication MUST be logged without changing the successful build result. Warm preparation MUST log when it reuses output instead of copying current.
+
+## Prune and promotion concurrency
+
+Pruning MUST recheck the live release while holding the release lock, atomically rename an obsolete release to an internal `.pruning-` directory on the release filesystem, then release the lock before recursively deleting that directory. Promotion and rollback MUST NOT wait for recursive deletion. Release discovery and rollback MUST exclude internal dot-prefixed directories. Interrupted deletions MUST be retried by later prune runs. Prune failures MUST preserve current and remain observable without changing a successfully published build to failure.
+
+## Published release root permissions
+
+Completed release roots MUST use permission mode `0755` before publication so an unprivileged static server can traverse them. This applies to same-filesystem rename and cross-filesystem staged copy, including workspaces seeded from releases created with private root permissions. Staging directories MUST remain private while copying and become `0755` only after their copy completes. Child file permissions MUST remain unchanged. Permission failures MUST prevent publication and preserve current.
+
+## Span presentation foundation
+
+The span view model MUST sort completed spans by start offset, breaking ties by
+ID, and expose ID, parent ID, name, stage, plugin, status, attributes, depth,
+and start/duration in integer milliseconds. Negative times MUST display as
+zero. Attribute maps MUST be copied so presentation changes cannot mutate
+recorded input. Missing parents MUST produce root depth; cycles MUST terminate.
+
+The highlighted completion chain MUST select the latest-finishing leaf, prefer
+the longer leaf on equal end times, and mark its ancestors until the root, a
+missing parent, or a repeated ID. A graph with no leaves MUST have no highlighted
+chain. This heuristic MUST NOT be described as a dependency-aware critical path.
+
+The initial model is internal groundwork. It does not require benchmark artifact
+retention, API exposure, or an operator waterfall; those remain follow-up work.

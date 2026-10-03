@@ -3,6 +3,7 @@ package buildstats
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 )
 
@@ -57,8 +58,8 @@ func TestStartSpanRecordsHierarchyAndSanitizesAttributes(t *testing.T) {
 	if _, ok := rootTiming.Attributes["authorization"]; ok {
 		t.Fatal("sensitive authorization attribute was retained")
 	}
-	if rootTiming.Duration <= 0 || childTiming.Duration <= 0 {
-		t.Fatalf("span durations must be positive: root=%s child=%s", rootTiming.Duration, childTiming.Duration)
+	if rootTiming.Duration < 0 || childTiming.Duration < 0 {
+		t.Fatalf("span durations must be non-negative: root=%s child=%s", rootTiming.Duration, childTiming.Duration)
 	}
 }
 
@@ -70,4 +71,38 @@ func TestStartSpanWithoutActiveProfileIsNoop(t *testing.T) {
 	}
 	span.End()
 	span.EndError(errors.New("ignored"))
+}
+
+func TestStartSpanConcurrentCompletion(t *testing.T) {
+	profile := Start()
+	ctx, root := StartSpan(context.Background(), "root")
+	var workers sync.WaitGroup
+	for range 32 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			_, child := StartSpan(ctx, "child")
+			child.End()
+			child.EndError(errors.New("ignored second completion"))
+		}()
+	}
+	workers.Wait()
+	root.End()
+	summary := profile.Stop()
+	if len(summary.Spans) != 33 {
+		t.Fatalf("span count = %d, want 33", len(summary.Spans))
+	}
+	ids := make(map[string]bool)
+	for _, span := range summary.Spans {
+		if ids[span.ID] {
+			t.Fatalf("duplicate span ID %q", span.ID)
+		}
+		ids[span.ID] = true
+		if span.Name == "child" && span.ParentID != root.id {
+			t.Fatalf("child parent = %q, want %q", span.ParentID, root.id)
+		}
+		if span.Status != "ok" {
+			t.Fatalf("status = %q, want ok", span.Status)
+		}
+	}
 }

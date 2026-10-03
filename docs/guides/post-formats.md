@@ -554,6 +554,10 @@ Here's a complete workflow for generating social images:
    <meta property="og:image" content="{{ config.url }}{{ post.href }}og-image.png">
    ```
 
+### Upgrading homepage format outputs
+
+Homepage Markdown and text are served from `/index.md` and `/index.txt`. Older builds could create redirect directories at these paths. Incremental builds automatically replace those generated directories with files. If a conflicting directory contains other content, the build stops and preserves it; inspect the reported path before moving that content or rebuilding into an empty output directory.
+
 ## See Also
 
 - [Configuration Guide](./configuration.md) - Full configuration reference

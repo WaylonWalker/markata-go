@@ -4,6 +4,7 @@ package plugins
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,9 +24,11 @@ var jsBufPool = sync.Pool{
 	},
 }
 
+const jsMinifyPluginName = "js_minify"
+
 // JSMinifyPlugin minifies JavaScript files to reduce file sizes and improve
-// Lighthouse performance scores. It runs during the Cleanup stage (after all
-// HTML is written) at PriorityLast to ensure all JS files are in their final
+// Lighthouse performance scores. It runs during the Write stage at
+// PriorityLast to ensure all JS files are in their final
 // form before minification.
 //
 // The plugin:
@@ -52,7 +55,7 @@ func NewJSMinifyPlugin() *JSMinifyPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *JSMinifyPlugin) Name() string {
-	return "js_minify"
+	return jsMinifyPluginName
 }
 
 // Configure reads the JS minify configuration from the manager's config.
@@ -61,6 +64,7 @@ func (p *JSMinifyPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Set default config first
 	p.config = models.NewJSMinifyConfig()
+	p.exclude = make(map[string]bool)
 
 	if config.Extra == nil {
 		return nil
@@ -68,7 +72,7 @@ func (p *JSMinifyPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Try to get js_minify config from Extra
 	// It may be a models.JSMinifyConfig or a map[string]interface{} from TOML parsing
-	switch v := config.Extra["js_minify"].(type) {
+	switch v := config.Extra[jsMinifyPluginName].(type) {
 	case models.JSMinifyConfig:
 		p.config = v
 	case map[string]interface{}:
@@ -122,9 +126,12 @@ func (p *JSMinifyPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("finding JS files: %w", err)
 	}
 
-	runMinification("js_minify", jsFiles, p.isExcluded, func(path string) (int64, int64, error) {
-		return p.minifyFile(path)
-	}, m.Concurrency())
+	cache, cacheErr := newMinifyCache(m.Config(), p.Name())
+	if cacheErr != nil {
+		log.Printf("[%s] Warning: initializing asset cache: %v", p.Name(), cacheErr)
+	}
+	defer cache.close()
+	runMinification(p.Name(), jsFiles, p.isExcluded, p.minifyBytes, m.Concurrency(), cache, minifyRecipe(p.Name(), nil))
 
 	return nil
 }
@@ -139,7 +146,7 @@ func (p *JSMinifyPlugin) findJSFiles(dir string) ([]string, error) {
 		}
 
 		// Skip directories
-		if info.IsDir() {
+		if info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return nil
 		}
 
@@ -187,10 +194,23 @@ func (p *JSMinifyPlugin) minifyFile(filePath string) (original, minified int64, 
 	}
 
 	original = int64(len(content))
-
-	// Skip empty files
+	result, err := p.minifyBytes(content)
+	if err != nil {
+		return original, 0, err
+	}
 	if original == 0 {
 		return 0, 0, nil
+	}
+	if err := writeGeneratedFile(filePath, result); err != nil {
+		return original, 0, fmt.Errorf("writing minified file: %w", err)
+	}
+	return original, int64(len(result)), nil
+}
+
+func (p *JSMinifyPlugin) minifyBytes(content []byte) ([]byte, error) {
+	// Skip empty files
+	if len(content) == 0 {
+		return []byte{}, nil
 	}
 
 	// Minify the content using a pooled buffer
@@ -199,17 +219,10 @@ func (p *JSMinifyPlugin) minifyFile(filePath string) (original, minified int64, 
 	defer jsBufPool.Put(buf)
 
 	if err := p.minifier.Minify("application/javascript", buf, bytes.NewReader(content)); err != nil {
-		return original, 0, fmt.Errorf("minifying: %w", err)
+		return nil, fmt.Errorf("minifying: %w", err)
 	}
 
-	minified = int64(buf.Len())
-
-	// Replace the file atomically so hard-linked live releases are not mutated.
-	if err := writeGeneratedFile(filePath, buf.Bytes()); err != nil {
-		return original, 0, fmt.Errorf("writing minified file: %w", err)
-	}
-
-	return original, minified, nil
+	return bytes.Clone(buf.Bytes()), nil
 }
 
 // Priority returns the plugin priority for the write stage.

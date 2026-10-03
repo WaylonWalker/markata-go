@@ -25,6 +25,97 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 
 ---
 
+## Cached HTML Restoration
+
+Warm builds MAY restore rendered article HTML and complete page HTML from the
+build cache in either the DAG or legacy pipeline. Restoration MUST be
+byte-identical to the cached content, including empty content, NUL bytes and
+invalid UTF-8; it MUST NOT normalize, decode, truncate or otherwise transform
+the HTML. Byte-preserving disk restoration MUST NOT itself change cache keys,
+versions, paths or freshness checks (including the article content hash).
+Rendering behavior revisions MAY invalidate derived caches through the build
+identity so obsolete article, page and feed output is recomputed consistently.
+
+The HTML disk reader MUST avoid an additional body-sized temporary byte buffer
+followed by a whole-body byte-to-string copy. Returned strings MUST own immutable
+storage and remain unchanged after subsequent reads or reuse of transfer
+buffers. Reusable transfer buffers MUST have bounded individual capacity and
+MUST NOT back returned strings.
+
+File metadata is only an allocation hint: preallocation MUST be bounded and
+safe for the platform's integer size, including suspiciously large, unknown or
+nonregular file sizes. This MUST NOT impose a content-size limit. Reads MUST
+continue to EOF even if the file grows or shrinks relative to its reported size.
+Open, stat, read and close failures MUST be reported by the internal reader
+without returning partial HTML. Missing or unreadable disk cache entries MUST
+remain cache misses so the caller can re-render, never publish a partial page.
+Existing in-memory hits MUST remain usable without accessing the disk.
+Concurrent full-page reads sharing a cache path MUST return the same published
+backing string rather than retaining one body allocation per worker.
+
+Template cache diagnostics MUST observe the existing first-failing gates,
+without changing selection, freshness, rendering, restoration, or best-effort
+storage behavior. The bounded `template_cache` aggregate and reconciliation
+rules are specified in [Content Diagnostics](CONTENT_DIAGNOSTICS.md).
+An empty full-page getter result remains a render fallback, including an empty
+cached page; skipped posts are not classified, while empty article bodies are.
+
+Full-page restoration MUST remain eager: every usable cache hit MUST populate
+public `Post.HTML` before any cache-miss template executes, including templates
+that inspect peer posts through Core. Restoration MAY use a bounded worker pool,
+limited by manager concurrency and a restoration-specific cap of four without
+changing manager concurrency. Concurrent workers MUST join before HTML assignment,
+counter aggregation, canonical serve filtering, rendering, or publication.
+Unavailable full pages MUST append after classification misses in their original
+cacheable input order; only nonempty successful results may replace `Post.HTML`.
+Existing eligibility, encryption invalidation, and missing-cache fallback rules
+MUST remain unchanged. Complete pages remain available to hooks, publication,
+Fontpack, and Tailwind; this optimization does not remove their live-memory floor.
+
+Template phase logs MUST measure classification, full-page restoration, and
+fresh rendering separately, including invocations requiring no fresh rendering.
+Restore time MUST NOT be attributed to the rendering phase. Aggregate diagnostic
+counts and their JSON schema remain unchanged.
+
+### Canonical semantic hash handoff
+
+For every freshly parsed post, Load MUST capture the previous feed, tag, and
+garden hashes before updating cache metadata. The build-local handoff MUST
+contain only source paths and these three hashes, be concurrency-safe, capture
+each path only once, and bind to the actual build-cache instance. An explicitly
+captured empty triplet represents a new post, not an absent handoff.
+
+An existing entry with a recorded input identity but incomplete semantic hashes
+does not provide a canonical baseline. This can occur when the cold navigation
+reset drops derived metadata before pages are rendered and published again.
+Load MUST capture that unavailability once per path, rather than interpreting
+missing hashes as a new post or recapturing its later intermediate hashes.
+InlineTitles MUST retain the original Update-return comparison for such paths.
+Fresh entries without a prior input identity still have a valid empty/partial
+triplet. The handoff may encode unavailability without retaining another hash,
+post snapshot, or private value.
+
+Every Load invocation MUST reset the handoff, including early-return paths.
+InlineTitles MUST persist the current canonical hashes after auto-title
+inference, comparing against the captured prior-build hashes for its own
+feed/slug invalidation when available. Otherwise it MUST retain the existing
+Update-return comparisons. The handoff MUST be consumed and discarded after
+InlineTitles completes, including errors; repeated execution and other managers
+or cache instances MUST NOT reuse it.
+
+Load-only and nonstandard pipelines retain Load's existing updates and
+conservative feed/tag/garden dirty signals. This handoff MUST NOT clear changes
+from other producers, or permit decrypted parsed-post/article caching.
+Encryption MUST independently invalidate pages when their encrypted wrapper is
+regenerated (see [Encryption](ENCRYPTION.md)).
+
+Regenerated encrypted wrappers MUST invalidate the previous full-page cache
+reference before fresh page storage. If best-effort full-page storage fails,
+the reference MUST remain unavailable across cache save/reload, so the next
+unchanged wrapper hit re-renders rather than restores stale ciphertext.
+
+---
+
 ## Template Location
 
 Templates are loaded from (in order):
@@ -519,6 +610,14 @@ Usage:
 {{ post.content | reading_time(250) }}
 ```
 
+### The `pin_preview` Filter
+
+The built-in `pin_preview` filter accepts a post map and returns `image` and
+`commentary` strings derived from that post's fields and rendered HTML. It MUST
+perform no network requests and MUST NOT mutate post data. Pins templates MUST
+escape the returned strings normally. Selection and note extraction semantics
+are specified in [Pins feeds](./FEEDS.md#pins-feed-slugpins).
+
 ### The `summary` Filter
 
 The `summary` filter produces a short, single-line excerpt from rendered HTML
@@ -660,6 +759,16 @@ Small reusable template fragments:
     </footer>
 </article>
 ```
+
+## Build-Local Sidebar Projections
+
+Sidebar post projections MAY be shared across page renders within one build.
+Their identity MUST include the post slug, effective plain title, original href,
+and selected feed slug. The active-post flag MUST be applied to a value copy for
+each page, never stored as shared page-specific state. A changed identity MUST
+produce a fresh projection, and a new template-render stage MUST reset the cache.
+Feed selection, windowing, ordering, URL encoding, and JSON output MUST remain
+unchanged.
 
 ## Footer License Display
 
