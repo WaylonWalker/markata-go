@@ -19,13 +19,18 @@ func BuiltinSource() (*CatalogSource, error) {
 	if err != nil {
 		return nil, err
 	}
+	digest, err := fontcatalog.Fingerprint()
+	if err != nil {
+		return nil, fmt.Errorf("fingerprint embedded font catalog: %w", err)
+	}
 	return &CatalogSource{
-		Catalog: c,
-		FS:      fontcatalog.FS(),
-		Root:    ".",
-		LockFS:  fontcatalog.FS(),
-		Lock:    "markata-fonts.lock.yaml",
-		Builtin: true,
+		Catalog:       c,
+		FS:            fontcatalog.FS(),
+		Root:          ".",
+		LockFS:        fontcatalog.FS(),
+		Lock:          "markata-fonts.lock.yaml",
+		Builtin:       true,
+		ContentDigest: digest,
 	}, nil
 }
 

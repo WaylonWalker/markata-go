@@ -200,6 +200,9 @@ type PostCache struct {
 	// FullHTMLPath is the path to the cached full page HTML file
 	FullHTMLPath string `json:"full_html_path,omitempty"`
 
+	// HeadingHighlightRevision records the last successfully cached page revision.
+	HeadingHighlightRevision int `json:"heading_highlight_revision,omitempty"`
+
 	// ModTime is the file modification time (Unix nanoseconds)
 	ModTime int64 `json:"mod_time,omitempty"`
 
@@ -513,20 +516,26 @@ func (c *Cache) ShouldRebuild(sourcePath, inputHash, template string) bool {
 	return c.shouldRebuildLocked(sourcePath, inputHash, template)
 }
 
-// shouldRebuildLocked is the lock-free inner implementation of ShouldRebuild.
+// shouldRebuildLocked shares metadata gates with ReasonForRebuild and batch checks.
 // Caller must hold at least c.mu.RLock().
 func (c *Cache) shouldRebuildLocked(sourcePath, inputHash, template string) bool {
+	return c.rebuildReasonLocked(sourcePath, inputHash, template) != RebuildReasonNone
+}
+
+func (c *Cache) rebuildReasonLocked(sourcePath, inputHash, template string) RebuildReason {
 	cached, ok := c.Posts[sourcePath]
-	if !ok {
-		return true // Not in cache
+	if !ok || cached == nil {
+		return RebuildReasonMissingEntry
 	}
 
-	// Check if hash matches and template is the same
-	if cached.InputHash != inputHash || cached.Template != template {
-		return true // Changed
+	if cached.InputHash != inputHash {
+		return RebuildReasonInputChanged
+	}
+	if cached.Template != template {
+		return RebuildReasonTemplateChanged
 	}
 
-	return false
+	return RebuildReasonNone
 }
 
 // ShouldRebuildBatch checks multiple posts against the cache in a single lock acquisition.
@@ -704,15 +713,26 @@ func (c *Cache) UpdatePostSemanticHashes(sourcePath, feedHash, tagHash, gardenHa
 
 // GetPostSemanticHashes returns the cached feed/tag/garden hashes for a post.
 func (c *Cache) GetPostSemanticHashes(sourcePath string) (feedHash, tagHash, gardenHash string) {
+	feedHash, tagHash, gardenHash, _ = c.GetPostSemanticHashBaseline(sourcePath)
+	return feedHash, tagHash, gardenHash
+}
+
+// GetPostSemanticHashBaseline returns prior hashes and whether they can be
+// compared canonically. Empty/partial hashes are valid for new entries without
+// an input identity, but missing derived metadata on an established entry is
+// unknown, not a semantic change. All fields are read under the same lock.
+func (c *Cache) GetPostSemanticHashBaseline(sourcePath string) (feedHash, tagHash, gardenHash string, available bool) {
 	if sourcePath == "" {
-		return "", "", ""
+		return "", "", "", true
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if entry, ok := c.Posts[sourcePath]; ok {
-		return entry.FeedItemHash, entry.TagIndexHash, entry.GardenHash
+	if entry := c.Posts[sourcePath]; entry != nil {
+		available = entry.InputHash == "" ||
+			(entry.FeedItemHash != "" && entry.TagIndexHash != "" && entry.GardenHash != "")
+		return entry.FeedItemHash, entry.TagIndexHash, entry.GardenHash, available
 	}
-	return "", "", ""
+	return "", "", "", true
 }
 
 // TagsDirty reports whether any tag-relevant fields changed this build.
@@ -1328,6 +1348,27 @@ func (c *Cache) GetFeedMembershipHash(sourcePath string) string {
 	return ""
 }
 
+// GetHeadingHighlightRevision returns zero when no live post entry exists.
+func (c *Cache) GetHeadingHighlightRevision(sourcePath string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if cached := c.Posts[sourcePath]; cached != nil {
+		return cached.HeadingHighlightRevision
+	}
+	return 0
+}
+
+// SetHeadingHighlightRevision updates only existing live metadata, not stale
+// ownership entries retained during invalidation.
+func (c *Cache) SetHeadingHighlightRevision(sourcePath string, revision int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached := c.Posts[sourcePath]; cached != nil && cached.HeadingHighlightRevision != revision {
+		cached.HeadingHighlightRevision = revision
+		c.dirty = true
+	}
+}
+
 // SetLocalPreviewHash stores the preview fingerprint for a rendered page.
 func (c *Cache) SetLocalPreviewHash(sourcePath, hash string) {
 	c.mu.Lock()
@@ -1837,12 +1878,11 @@ func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
 	}
 
 	// Fallback to disk read
-	data, err := os.ReadFile(cached.ArticleHTMLPath)
+	html, err := readCacheTextFile(cached.ArticleHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
 	// Store in memory for future calls
 	c.articleHTMLMemory.Store(cached.ArticleHTMLPath, html)
 	return html
@@ -1992,29 +2032,47 @@ const FullHTMLCacheDir = "fullhtml-cache"
 func (c *Cache) GetCachedFullHTML(sourcePath string) string {
 	c.mu.RLock()
 	cached, ok := c.Posts[sourcePath]
+	var htmlPath string
+	if ok {
+		htmlPath = cached.FullHTMLPath
+	}
 	c.mu.RUnlock()
 
-	if !ok || cached.FullHTMLPath == "" {
+	if htmlPath == "" {
 		return ""
 	}
 
 	// Check in-memory cache first (populated by preloadCaches)
-	if val, ok := c.fullHTMLMemory.Load(cached.FullHTMLPath); ok {
+	if val, ok := c.fullHTMLMemory.Load(htmlPath); ok {
 		if html, ok := val.(string); ok {
 			return html
 		}
 	}
 
-	// Fallback to disk read (shouldn't happen in normal hot builds)
-	data, err := os.ReadFile(cached.FullHTMLPath)
+	// Fallback to disk read
+	html, err := readCacheTextFile(htmlPath)
 	if err != nil {
 		return ""
 	}
 
-	html := string(data)
-	// Store in memory for future calls
-	c.fullHTMLMemory.Store(cached.FullHTMLPath, html)
+	// Concurrent restorations of a shared path must retain one backing string.
+	if value, loaded := c.fullHTMLMemory.LoadOrStore(htmlPath, html); loaded {
+		if cachedHTML, ok := value.(string); ok {
+			return cachedHTML
+		}
+	}
 	return html
+}
+
+// InvalidateFullHTML clears a post's full-page cache reference and persists the
+// removal on Save. Other metadata and potentially shared cache files remain.
+func (c *Cache) InvalidateFullHTML(sourcePath string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached, ok := c.Posts[sourcePath]; ok && cached.FullHTMLPath != "" {
+		cached.FullHTMLPath = ""
+		c.dirty = true
+	}
 }
 
 // CacheFullHTML stores the full page HTML for a post.

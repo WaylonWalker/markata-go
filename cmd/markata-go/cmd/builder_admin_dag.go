@@ -13,10 +13,17 @@ func init() {
 	builderAdminCmd.Flags().BoolVar(&builderAdminDAG, "dag", false, "run queued builds with the experimental serial DAG executor")
 	legacyRun := builderAdminCmd.RunE
 	builderAdminCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if !builderAdminDAG {
+		if err := validateDAGEnvironment(cmd); err != nil {
+			return err
+		}
+		enabled, explicit := explicitDAGSelection(cmd)
+		if !explicit && !builderAdminDAG {
 			return legacyRun(cmd, args)
 		}
-		restore, err := enableBuilderAdminDAGEnvironment()
+		if !explicit {
+			enabled = builderAdminDAG
+		}
+		restore, err := setBuilderAdminDAGEnvironment(enabled)
 		if err != nil {
 			return err
 		}
@@ -30,8 +37,12 @@ func init() {
 // queued build subprocesses inherit os.Environ(), so each `markata-go build`
 // sees the same explicit opt-in without altering queue or release semantics.
 func enableBuilderAdminDAGEnvironment() (func(), error) {
+	return setBuilderAdminDAGEnvironment(true)
+}
+
+func setBuilderAdminDAGEnvironment(enabled bool) (func(), error) {
 	previous, existed := os.LookupEnv(dagBuildEnv)
-	if err := os.Setenv(dagBuildEnv, boolStrTrue); err != nil {
+	if err := os.Setenv(dagBuildEnv, fmt.Sprint(enabled)); err != nil {
 		return nil, fmt.Errorf("enable builder-admin DAG executor: %w", err)
 	}
 	return func() {

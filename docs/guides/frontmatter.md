@@ -672,6 +672,10 @@ With these aliases, any of the following wikilinks will resolve to this post:
 
 **Alias field synonyms:** The frontmatter loader also accepts `alias`, `handle`, and `handles` and normalizes them into `aliases`.
 
+Alias resolution is the same on cold, warm, and edited builds. Loading a post
+from cache does not change its alternative names or require clearing caches
+before a wikilink can resolve.
+
 ---
 
 ## Examples
