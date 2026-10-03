@@ -173,6 +173,9 @@ func copyWorkspaceFile(source, destination string, mode fs.FileMode, modTime tim
 	if _, err := io.Copy(output, input); err != nil {
 		return err
 	}
+	if err := output.Chmod(mode); err != nil {
+		return err
+	}
 	if err := output.Sync(); err != nil {
 		return err
 	}

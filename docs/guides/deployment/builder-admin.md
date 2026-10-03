@@ -78,17 +78,26 @@ builderAdmin:
     emptyDir: {}
 ```
 
-`emptyDir` is node-local and disappears with the pod, which is safe because it contains only the
-in-progress build. Retained releases and the `current` symlink remain under `release-dir` on the
+`emptyDir` is node-local and disappears with the pod. The next build safely seeds
+a new workspace from the current release. Retained releases and the `current` symlink remain under `release-dir` on the
 durable site volume.
 
-Promotion keeps the existing fast path when the workspace and release directory share a
-filesystem: Builder Admin renames the completed workspace directly into `releases/`. When a
-node-local workspace cannot be renamed across filesystems, Builder Admin copies the completed tree
-into a hidden staging directory under `releases/` and renames that staging directory into the
-final release path only after the copy succeeds. Incomplete copies therefore never appear as a
-retained release, and `current` changes only after promotion succeeds. This is an atomic visibility
-guarantee, not a claim of full power-loss durability for every directory entry.
+Builder Admin retains an independent mutable workspace after publication. It creates
+a hidden staged release and compares its files with the previous immutable release.
+Matching file contents and permissions reuse that release's inode through a hard
+link. Changed files use independent copies. Unsupported hard links fall back to
+copies. The workspace never shares writable file inodes with published releases.
+
+Publication renames the complete staging directory into its retained release path
+before switching `current`. Deleted workspace paths remain absent from the new
+release. A failed stage preserves the current site and historical releases. This
+guarantee covers atomic visibility, not full power-loss durability. Linked files
+retain the previous release's modification time.
+
+Logs report `linked_files`, `copied_files`, `copied_bytes`, and `compared_bytes`.
+Direct byte comparisons still read unchanged output. They avoid copying those
+bytes onto replicated storage. The first publication needs independent copies
+when no baseline exists, and requires space for both the workspace and release.
 
 Use `mode: hostPath` and set `workspace.hostPath.path` when you want a specific node-local disk
 instead of the pod's ephemeral storage. Keep `workDir` underneath `mountPath`; the CLI also rejects
@@ -387,7 +396,13 @@ Use them to keep reader/blogroll data or other remote caches fresh without slowi
 
 ### Retaining a warm workspace
 
-With a separate node-local workspace, successful cross-filesystem promotion retains the completed output for the next build. Builder Admin reuses it only when it matches the current release, avoiding another full copy during preparation. Logs report `reusing build work from current release`. Failed or interrupted builds and rollbacks trigger a fresh seed. Keep the workspace on persistent node-local storage to retain it across pod restarts; an `emptyDir` survives container restarts but is lost with the pod. Published releases remain on the configured site volume, and promotion still stages a complete copy before switching `current`.
+Successful publication retains the completed workspace on both same-filesystem and
+cross-filesystem layouts. Builder Admin reuses it only when its successful-release
+marker matches current. Logs report `reusing build work from current release`.
+Failed or interrupted builds and rollbacks trigger a fresh independent seed. A
+persistent workspace survives pod restarts. An `emptyDir` survives container
+restarts but disappears with the pod. Incremental publication still compares
+unchanged bytes, so storage and host load affect elapsed time.
 
 ### Background release cleanup
 
