@@ -119,7 +119,8 @@ greet("World");
 	p := NewJSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"js_minify": map[string]interface{}{
 				"enabled": true,
@@ -185,7 +186,8 @@ func TestJSMinifyPlugin_Write_Disabled(t *testing.T) {
 	p := NewJSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"js_minify": map[string]interface{}{
 				"enabled": false,
@@ -249,7 +251,8 @@ function test() {
 	p := NewJSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"js_minify": map[string]interface{}{
 				"enabled": true,
@@ -303,7 +306,8 @@ func TestJSMinifyPlugin_Write_SkipsMinJS(t *testing.T) {
 	p := NewJSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"js_minify": map[string]interface{}{
 				"enabled": true,
@@ -481,7 +485,8 @@ func TestJSMinifyPlugin_SizeReduction(t *testing.T) {
 	p := NewJSMinifyPlugin()
 	m := lifecycle.NewManager()
 	m.SetConfig(&lifecycle.Config{
-		OutputDir: tmpDir,
+		ContentDir: t.TempDir(),
+		OutputDir:  tmpDir,
 		Extra: map[string]interface{}{
 			"js_minify": map[string]interface{}{
 				"enabled": true,

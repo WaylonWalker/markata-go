@@ -594,6 +594,10 @@ When enabled, markata-go generates JSON-LD structured data for:
 | `switcher.enabled` | bool | `true` | Show the live theme picker so visitors can choose any palette, style, and font; under `markata-go serve` its **Bake** button writes the current choices into your config (see [Themes Guide](/docs/guides/themes/)) |
 | `switcher.mode_toggle` | bool | `true` | Show the light/dark toggle next to the picker |
 
+The default font pack is `brush`. Built-in defaults do not cause migration warnings.
+If your configuration supplies different values for `fontpack` and `theme.fontpack`, the nested value wins.
+The loader reports that conflict once. Remove the legacy top-level `fontpack` to resolve the warning.
+
 ```toml
 [markata-go.theme]
 name = "default"
@@ -1994,6 +1998,14 @@ See the [[search|Search Guide]] for detailed usage and customization.
 
 ### Feed Defaults (`[markata-go.feed_defaults]`)
 
+Set `views = ["default", "simple", "calendar"]` to choose the available HTML
+presentations. All three are enabled by default. Per-feed `views` replaces this
+list; omitted values inherit it. Every explicit list must include `default`,
+and an empty list or unknown name is invalid. Disabling `simple` suppresses its
+HTML output even when `formats.simple_html` is true; disabling `calendar` removes
+its controls and assets. Syndication formats are independent.
+See [Feed Views](./feed-views.md) for examples.
+
 The implicit [Pins feed](./pins.md) uses 100 items per page and manual pagination.
 To change those values, define a feed with `slug = "pins"`; its configuration
 takes precedence over the built-in Pins definition.
@@ -2916,6 +2928,22 @@ exclude = ["pagefind-ui.js"]        # Files to skip
 Files with `.min.js` extension are automatically skipped (already minified).
 
 Both plugins run at the very end of the Write stage (`PriorityLast`), after all CSS/JS-generating plugins have finished.
+
+Both plugins memoize exact current-input minification results in the private
+`<content_dir>/.markata/asset-minify/v1/` cache. A nonempty top-level
+`[markata-go] cache_dir` override is used as supplied, independently of whether
+the build cache is enabled. Keep the cache outside published output; unsafe
+locations warn and disable reuse. CSS `preserve_comments` changes invalidate
+the transform recipe; changed recipes always minify current stage-input bytes.
+Comments already removed require regeneration from authoritative source, not
+recovery from a historical cache snapshot.
+Reuse requires the exact transform input and matching recipe, never a prior
+output or retry digest. Hits still publish atomically with normal `0644`
+permissions (except empty JavaScript); repeated retained CSS output may need
+fresh transformations because comment handling can be non-idempotent.
+Fast mode, exclusions, disabled plugins, and `_pagefind` remain skipped.
+See [Persistent CSS and JavaScript Minification](performance.md#persistent-css-and-javascript-minification)
+for recovery, upgrade, privacy, and measurement guidance.
 
 ---
 

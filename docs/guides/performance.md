@@ -54,6 +54,71 @@ just perf
 
 This runs the benchmark 5 times and outputs results to `bench.txt`.
 
+## Persistent CSS and JavaScript Minification
+
+Normal builds reuse minified results for exact current inputs and matching
+options, including static assets copied into output again as raw bytes.
+No extra setting is required:
+
+```bash
+markata-go build
+markata-go build
+```
+
+The per-plugin log separates work into `transformed` (engine calls), `restored`
+(verified exact-input result reuse), `excluded`, and `failed`. Restored assets
+receive verified result bytes without invoking the minifier, but still publish
+by atomic replacement with mode `0644`, just like fresh transformations. This
+also applies when result bytes already match, without changing hardlinked
+releases. Empty JavaScript retains its existing no-write exception.
+Contents, not file size or mtime, determine reuse. There is no general
+processed-output shortcut: CSS important comments matching preservation
+patterns can make repeated minification non-idempotent, so retained output may
+need another engine call. Static-asset hashed aliases still
+receive the final canonical
+minified bytes during Cleanup.
+
+Private result blobs and per-asset exact-input records live under
+`<content_dir>/.markata/asset-minify/v1/`, independently of the build-cache enabled
+setting. A nonempty `[markata-go] cache_dir` override is used as supplied (a
+relative path is relative to the build's working directory), like the build
+cache. Sites and output roots are isolated even when they share cache storage.
+Keep this directory outside published output; unsafe locations, including
+symlink relationships, produce a warning and disable reuse. Do not deploy the
+private cache: historical snapshots from earlier implementations may contain
+comments removed from public assets. New transforms do not write source snapshots.
+The derived storage paths and private parent directories must not overlap
+published output either; unsafe configuration is rejected before directory
+creation or permission changes, then minification proceeds uncached.
+
+Changing CSS `preserve_comments`, the minifier/parser versions, or the maintained
+transform revision invalidates affected recipes. Changed recipes always minify
+the current stage-input bytes, even when they equal an earlier minified result.
+Only exact input plus the same recipe can restore a verified result; matching a
+historical output or retry digest never authorizes reuse. The recorded source
+hash means exact transform input, not original author source. Historical
+snapshots are never read or substituted for current input.
+To preserve a previously stripped comment, regenerate the asset from
+authoritative source before building; changing options alone cannot recover it
+from retained minified output. Missing or corrupt cached results needed for
+exact-input reuse are warned about and repaired from current bytes.
+Minification errors remain warnings rather than failing the whole build. Cache
+write errors also warn; if obsolete provenance cannot safely be invalidated,
+that target is left unchanged rather than risking restoration of an older input.
+
+`--fast`, disabled plugins, exclusions, `.min.js`, and `_pagefind` retain their
+existing selection behavior. They do not change transform recipes. Legacy
+`.markata-{js,css}_minify-cache` sidecars are ignored and left untouched, not
+promoted into trusted provenance. After upgrading, perform one rebuild that
+regenerates raw source assets, especially assets not normally recopied. Clearing
+only the new cache cannot recover original source from an already-minified file.
+
+For measurements, keep caches intact, prime the new records, then compare
+equivalent alternating warm builds. Repeated raw copies should avoid engine
+work after priming, but do not expect zero transformations for retained
+non-idempotent output, or no target writes on hits. Restored counts measure
+avoided engine work, not by themselves an end-to-end speedup.
+
 ## Running Benchmarks Locally
 
 ### Prerequisites
@@ -154,6 +219,33 @@ markata-go build --benchmark-json benchmark.json
 ```
 
 5. If the build is still mostly CPU after network fixes, capture `--cpuprofile` and inspect the hottest functions with `go tool pprof`.
+
+### Automatic-Feed Collection
+
+Automatic-feed collection emits one bounded `auto_feeds` / `collect` debug
+record. `generation_ns`, `filtering_sorting_ns`, `selection_recording_ns`, and
+`pagination_preparation_ns` are exclusive elapsed phase sums in nanoseconds.
+`feeds`, `matched`, `selected`, and `observations` are numeric counts (post
+counts include occurrences across feeds). There are no per-feed names, filters,
+or paths in this record, and these timings are not diagnostics v1 fields.
+Use the selection phase when profiling complete diagnostics recording: every
+considered occurrence is recorded, including exclusions. Configured and automatic
+feeds reuse transient source flags, observation rows, membership maps, and a
+reason arena only within one synchronous Collect invocation, and write one
+atomic ledger batch per feed. This does not cache selection across builds, change
+filters or publication, reduce artifact completeness, or establish an RSS win.
+
+For new batch relationships, ledger-owned object and initial-reason slabs hold
+at most 10 dispositions or 32 string slots each, with smaller observation-bounded
+tails. Raw reason lists over 32 strings use ordinary standalone append/deduplication
+without a counting pass or allocation by raw length; duplicate/empty-heavy input
+retains storage only for unique nonempty values.
+Allocation is lazy; existing relationships allocate no slabs, and single-record
+producers keep their individual allocation path. Published object addresses stay
+stable, and copied, ordered-deduplicated reason segments are capacity-clamped so
+later appends cannot touch neighbors. This reduces per-relation heap allocations
+without changing sparse maps or introducing a registry or cross-build pool.
+Allocation results alone do not demonstrate faster full builds.
 
 ### Diagnostics Publication
 
@@ -505,3 +597,45 @@ signals for feeds, tags, and garden output remain unchanged.
 - [Configuration Guide](/docs/guides/configuration/) - Concurrency settings
 - [Plugin Development](/docs/guides/plugin-development/) - Writing efficient plugins
 - [Go Profiling](https://go.dev/blog/pprof) - Official pprof documentation
+
+## Nested operation spans
+
+Save build measurements with `markata-go build --benchmark-json=benchmark.json`,
+then inspect completed spans with `jq '.benchmark.Spans' benchmark.json`.
+Durations and start offsets use nanoseconds; a zero duration is valid on clocks
+with coarse resolution. IDs and parent IDs describe nesting, and stage/plugin
+fields identify the active build work when the span started.
+
+Plugin authors can instrument an operation using `buildstats.StartSpan(ctx,
+"template.execute")` and finish the returned handle with `End()` or
+`EndError(err)` before the build profile stops. Pass the returned context to
+child operations to preserve nesting. With no active profile, these calls are
+safe no-ops. This release provides the recording API; builds without explicit
+span instrumentation may report an empty span list.
+
+Use fixed operation names and safe attributes. Credential-bearing attribute
+keys are dropped, and error text is discarded, but values under other keys are
+not automatically redacted. Avoid query strings, sensitive paths, and secrets.
+See the [lifecycle specification](../../spec/spec/LIFECYCLE.md) for the API
+contract and limits.
+
+## OTLP configuration foundation
+
+The Go API `buildstats.ResolveOTLPConfig(os.Getenv)` resolves optional trace
+settings. For example, a generic endpoint `http://collector:4318` resolves to
+`http://collector:4318/v1/traces` with the default `http/protobuf` protocol.
+The resolver alone does not send traces, and setting these variables does not
+yet enable export from `markata-go build`.
+
+| Variable | Meaning |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Complete trace URL; takes precedence over the generic endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Generic URL; HTTP protocols append `/v1/traces`, while gRPC preserves the URL |
+| `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | Trace protocol; takes precedence over the generic protocol |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | Generic protocol; defaults to `http/protobuf` |
+
+Supported protocols are `grpc`, `http/protobuf`, and `http/json`. Endpoints must
+use HTTP or HTTPS and include a host. With no endpoint, the returned config is
+disabled. This foundation follows [OpenTelemetry endpoint conventions](https://opentelemetry.io/docs/specs/otel/protocol/exporter/);
+exporter integration, headers, sampling, and collector deployment remain
+follow-up work.

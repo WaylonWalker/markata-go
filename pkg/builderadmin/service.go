@@ -1165,6 +1165,9 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 	record.ReleaseID = releaseID
 	record.ReleasePath = releasePath
 	record.BecameLive = true
+	if err := markReusableWorkspace(buildWork, releaseID); err != nil {
+		_, _ = fmt.Fprintln(logFile, "workspace reuse unavailable:", err)
+	}
 
 	record.Status = "success"
 	record.FinishedAt = time.Now().UTC()
@@ -1306,6 +1309,17 @@ func (s *Service) prepareBuild(log io.Writer) error {
 		}
 	}
 	buildWork := s.cfg.WorkDir
+	reusable, err := claimReusableWorkspace(buildWork, s.currentReleaseID())
+	if err != nil {
+		return err
+	}
+	if reusable {
+		_, _ = fmt.Fprintln(log, "reusing build work from current release")
+		return nil
+	}
+	if err := invalidateReusableWorkspace(buildWork); err != nil {
+		return err
+	}
 	if err := os.RemoveAll(buildWork); err != nil {
 		return err
 	}
@@ -1361,30 +1375,15 @@ func (s *Service) promoteBuild(buildWork string) (string, string, error) {
 }
 
 func (s *Service) switchCurrentRelease(releaseID string) error {
+	if strings.HasPrefix(releaseID, ".") {
+		return fmt.Errorf("internal release directories cannot be promoted: %s", releaseID)
+	}
 	currentNext := filepath.Join(s.cfg.SiteDir, "current.next")
 	_ = os.Remove(currentNext)
 	if err := os.Symlink(filepath.Join("releases", releaseID), currentNext); err != nil {
 		return err
 	}
 	return replaceCurrentRelease(currentNext, filepath.Join(s.cfg.SiteDir, "current"))
-}
-
-func (s *Service) pruneReleases() error {
-	releases := s.discoverReleases()
-	if len(releases) <= s.cfg.ReleasesKeep {
-		return nil
-	}
-	for _, release := range releases[s.cfg.ReleasesKeep:] {
-		s.releaseMu.Lock()
-		currentID := s.currentReleaseID()
-		if release.Current || release.ID == currentID {
-			s.releaseMu.Unlock()
-			continue
-		}
-		_ = os.RemoveAll(release.Path)
-		s.releaseMu.Unlock()
-	}
-	return nil
 }
 
 func (s *Service) schedulePrune(ctx context.Context, buildID string) {
@@ -1419,7 +1418,9 @@ func (s *Service) runScheduledPrunes(ctx context.Context, buildID string, done c
 			return
 		}
 		started := time.Now()
-		_ = s.pruneReleases()
+		if err := s.pruneReleases(); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "builder-admin: release pruning failed:", err)
+		}
 		pruneMS := time.Since(started).Milliseconds()
 		s.stateMu.Lock()
 		for i := range s.state.Builds {
@@ -2172,7 +2173,7 @@ func (s *Service) discoverReleases() []ReleaseView {
 	}
 	views := make([]ReleaseView, 0, len(entries))
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
 		info, err := entry.Info()

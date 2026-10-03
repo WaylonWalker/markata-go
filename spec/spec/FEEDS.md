@@ -1663,6 +1663,20 @@ public/
 - [TEMPLATES.md](./TEMPLATES.md) - Template system
 - [DATA_MODEL.md](./DATA_MODEL.md) - Post model
 
+## Collection Observation Freshness
+
+Configured and automatic feeds MUST record every considered source occurrence,
+including exclusions, even when publishing is skipped. A synchronous Collect
+invocation MAY prepare raw paths and eligibility flags once for its stable source
+sequence. It MUST NOT deduplicate occurrences by pointer or raw/normalized path.
+Preset series lists MUST be prepared separately. Each invocation MUST refresh
+flags and membership; prepared observations MUST NOT survive Collect or be
+cached across stages/builds. Source flags remain stable during this synchronous
+hook; collection does not invoke cross-feed callbacks that mutate them.
+Selection MUST retain raw-path membership, the first matched index, per-feed
+privacy, eligibility reason ordering, fallback reasons, and offset-before-limit
+precedence. Window reasons MUST NOT mutate shared eligibility storage.
+
 ## TUI Feed Inventory
 
 The terminal UI feed view is an inventory, not the public `/feeds/` listing. It

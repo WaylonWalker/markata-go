@@ -51,6 +51,14 @@ type ContentFeedDisposition struct {
 	Reasons  []string `json:"reasons,omitempty"`
 }
 
+// ContentFeedObservation is one ordered source selection observation.
+// RecordFeedBatch copies reasons; callers may reuse their storage on return.
+type ContentFeedObservation struct {
+	Path     string
+	Included bool
+	Reasons  []string
+}
+
 // ContentDisposition records the state of one discovered source file.
 type ContentDisposition struct {
 	Path               string                   `json:"path"`
@@ -296,6 +304,87 @@ func (l *ContentLedger) RecordFeed(path, feed string, included bool, reasons ...
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.recordFeedLocked(path, feed, included, reasons, nil)
+}
+
+// RecordFeedBatch records a feed's observations in slice order under one write
+// lock. It is atomic relative to Snapshot, Reset, Discover, and other writes.
+func (l *ContentLedger) RecordFeedBatch(feed string, observations []ContentFeedObservation) {
+	if l == nil || len(observations) == 0 {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var arena contentFeedBatchArena
+	for index, observation := range observations {
+		path := normalizeContentPath(observation.Path)
+		if path == "" {
+			continue
+		}
+		arena.remaining = len(observations) - index
+		l.recordFeedLocked(path, feed, observation.Included, observation.Reasons, &arena)
+	}
+}
+
+const (
+	// Small pointer-bearing slabs avoid heap-header size-class inflation on
+	// the profiled Go 1.26 amd64 runtime (480 and 512 bytes respectively).
+	contentFeedObjectSlabSlots = 10
+	contentFeedReasonSlabSlots = 32
+)
+
+// Only the current slab's unused suffix is needed. Map-held pointers keep prior
+// slabs alive. Never append to objects: published element addresses must remain
+// stable. This allocator is local to one locked batch, not a reusable pool.
+type contentFeedBatchArena struct {
+	remaining int
+	objects   []ContentFeedDisposition
+	reasons   []string
+}
+
+func (a *contentFeedBatchArena) newDisposition(feed string, reasons []string) *ContentFeedDisposition {
+	if len(a.objects) == 0 {
+		a.objects = make([]ContentFeedDisposition, min(contentFeedObjectSlabSlots, a.remaining))
+	}
+	disposition := &a.objects[0]
+	a.objects = a.objects[1:]
+	disposition.Feed = feed
+	disposition.Reasons = a.initialReasonStorage(reasons)
+	return disposition
+}
+
+// Reserve the unique nonempty count only for bounded raw input. Oversized input
+// uses the ordinary standalone append/deduplication path without a counting pass.
+// The ordinary addFeedReason loop below fills reserved segments in the same order.
+// Its capacity boundary isolates neighbors even while the segment is being filled.
+func (a *contentFeedBatchArena) initialReasonStorage(reasons []string) []string {
+	if len(reasons) > contentFeedReasonSlabSlots {
+		return nil
+	}
+	count := 0
+	for index, reason := range reasons {
+		if reason != "" && !slices.Contains(reasons[:index], reason) {
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+
+	if len(a.reasons) < count {
+		// Clamp before multiplying: bounded even for large observation
+		// counts, and exact-sized for a one-observation tail.
+		size := count * min(a.remaining, contentFeedReasonSlabSlots/count)
+		a.reasons = make([]string, size)
+	}
+	owned := a.reasons[:0:count]
+	a.reasons = a.reasons[count:]
+	return owned
+}
+
+// path is already normalized and the write lock is held.
+// A nil arena preserves the individual single-record allocation path.
+func (l *ContentLedger) recordFeedLocked(path, feed string, included bool, reasons []string, arena *contentFeedBatchArena) {
 	entry := l.entryLocked(path)
 	if !entry.Candidate {
 		return
@@ -303,9 +392,13 @@ func (l *ContentLedger) RecordFeed(path, feed string, included bool, reasons ...
 	if entry.feeds == nil {
 		entry.feeds = make(map[string]*ContentFeedDisposition)
 	}
-	feedDisposition, ok := entry.feeds[feed]
-	if !ok {
-		feedDisposition = &ContentFeedDisposition{Feed: feed}
+	feedDisposition := entry.feeds[feed]
+	if feedDisposition == nil {
+		if arena == nil {
+			feedDisposition = &ContentFeedDisposition{Feed: feed}
+		} else {
+			feedDisposition = arena.newDisposition(feed, reasons)
+		}
 		entry.feeds[feed] = feedDisposition
 	}
 	feedDisposition.Included = included

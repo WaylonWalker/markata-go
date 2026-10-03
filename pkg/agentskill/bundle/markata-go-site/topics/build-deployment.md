@@ -163,3 +163,11 @@ an independent builder-admin deployment, source checkout, release root, ingress 
 secret. The webhook endpoint is `/webhook`; configure its secret through
 `MARKATA_GO_BUILDER_ADMIN_WEBHOOK_SECRET` or a Kubernetes Secret, never commit it to the site
 repository. See the Builder Admin deployment guide for Git-provider and Helm setup.
+
+## Builder workspace performance
+
+When builder-admin preparation dominates warm builds, inspect the workspace mount and prepare/promote timings. A retained node-local workspace skips reseeding only when its successful-release marker matches current. Failed builds and rollbacks reseed safely. Keep published releases on durable storage; a fast workspace does not remove the cross-filesystem promotion copy. Use a persistent hostPath workspace to retain warm output across pod replacement, and verify the physical disk behind its path.
+
+When promotion latency overlaps release pruning, check the deployed engine version. Builder-admin detaches obsolete releases under the publication lock and deletes their trees afterward; internal `.pruning-` and `.staging-` directories are not rollback targets. Interrupted pruning is retried on the next cleanup.
+
+A successful build record alone does not prove the static server can read the release. Check readiness and public endpoints. For nginx `current/index.html` permission errors after staged publication, inspect the release root: builder-admin normalizes it to `0755`; older versions could retain `0700` from a temporary directory. Correct only affected root permissions and upgrade the engine.

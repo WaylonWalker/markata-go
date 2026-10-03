@@ -28,7 +28,7 @@ Build your site for production using the `build` command:
 # Standard production build
 markata-go build
 
-# Clean build (removes output directory first)
+# Clean build (removes output directory and build cache first)
 markata-go build --clean
 
 # Build with verbose output
@@ -43,10 +43,10 @@ markata-go build --dry-run
 
 ### Output Directory Structure
 
-After building, your output directory (default: `public/`) contains the complete static site:
+After building, your output directory (default: `output/`) contains the complete static site:
 
 ```
-public/
+output/
 ├── index.html              # Home page (from empty-slug feed)
 ├── blog/
 │   ├── index.html          # Blog feed page 1
@@ -72,16 +72,16 @@ public/
 
 ### Clean Builds
 
-For production deployments, always use clean builds to ensure no stale files remain:
+For production deployments, use clean builds when you want to ensure no stale output or build-cache entries remain:
 
 ```bash
 markata-go build --clean
 ```
 
-Or manually remove the output directory before building:
+To remove only the generated output manually before a normal build:
 
 ```bash
-rm -rf public && markata-go build
+rm -rf output && markata-go build
 ```
 
 ### Environment-Specific Builds
@@ -141,7 +141,7 @@ jobs:
           cache: true
 
       - name: Install markata-go
-        run: go install github.com/example/markata-go/cmd/markata-go@latest
+        run: go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 
       - name: Build site
         run: markata-go build --clean
@@ -151,7 +151,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./public
+          path: ./output
 
   deploy:
     environment:
@@ -201,7 +201,7 @@ For manual deployment without GitHub Actions:
 markata-go build --clean
 
 # Deploy using gh-pages branch
-cd public
+cd output
 git init
 git add -A
 git commit -m "Deploy"
@@ -213,7 +213,7 @@ Or use the `gh-pages` npm package:
 ```bash
 npm install -g gh-pages
 markata-go build --clean
-gh-pages -d public
+gh-pages -d output
 ```
 
 ---
@@ -228,8 +228,8 @@ Create `netlify.toml` in your repository root:
 
 ```toml
 [build]
-  command = "go install github.com/example/markata-go/cmd/markata-go@latest && markata-go build --clean"
-  publish = "public"
+  command = "go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && markata-go build --clean"
+  publish = "output"
 
 [build.environment]
   GO_VERSION = "1.22"
@@ -241,14 +241,14 @@ Create `netlify.toml` in your repository root:
 
 # Deploy previews
 [context.deploy-preview]
-  command = "go install github.com/example/markata-go/cmd/markata-go@latest && markata-go build"
+  command = "go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && markata-go build"
 
 [context.deploy-preview.environment]
   # URL is set automatically by Netlify
 
 # Branch deploys
 [context.branch-deploy]
-  command = "go install github.com/example/markata-go/cmd/markata-go@latest && markata-go build"
+  command = "go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && markata-go build"
 
 # Headers
 [[headers]]
@@ -292,8 +292,8 @@ Create `netlify.toml` in your repository root:
 Alternatively, configure through the Netlify dashboard:
 
 1. **Base directory**: (leave empty or set if site is in subdirectory)
-2. **Build command**: `go install github.com/example/markata-go/cmd/markata-go@latest && markata-go build --clean`
-3. **Publish directory**: `public`
+2. **Build command**: `go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && markata-go build --clean`
+3. **Publish directory**: `output`
 4. **Environment variables**:
    - `GO_VERSION`: `1.22`
    - `MARKATA_GO_URL`: `https://your-site.netlify.app`
@@ -314,10 +314,10 @@ netlify init
 
 # Deploy preview
 markata-go build --clean
-netlify deploy --dir=public
+netlify deploy --dir=output
 
 # Deploy to production
-netlify deploy --dir=public --prod
+netlify deploy --dir=output --prod
 ```
 
 ---
@@ -332,8 +332,8 @@ Create `vercel.json` in your repository root:
 
 ```json
 {
-  "buildCommand": "go install github.com/example/markata-go/cmd/markata-go@latest && markata-go build --clean",
-  "outputDirectory": "public",
+  "buildCommand": "go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && markata-go build --clean",
+  "outputDirectory": "output",
   "installCommand": "echo 'No npm dependencies'",
   "framework": null,
   "headers": [
@@ -396,10 +396,10 @@ vercel login
 
 # Deploy preview
 markata-go build --clean
-vercel --cwd public
+vercel --cwd output
 
 # Deploy to production
-vercel --cwd public --prod
+vercel --cwd output --prod
 ```
 
 ### Using vercel.json with Go
@@ -413,8 +413,8 @@ Since Vercel needs Go installed, use their Go runtime:
       "GO_VERSION": "1.22"
     }
   },
-  "buildCommand": "curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /usr/local -xzf - && export PATH=$PATH:/usr/local/go/bin && go install github.com/example/markata-go/cmd/markata-go@latest && ~/go/bin/markata-go build --clean",
-  "outputDirectory": "public"
+  "buildCommand": "curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /usr/local -xzf - && export PATH=$PATH:/usr/local/go/bin && go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && ~/go/bin/markata-go build --clean",
+  "outputDirectory": "output"
 }
 ```
 
@@ -431,9 +431,9 @@ Configure via the Cloudflare dashboard:
 1. **Framework preset**: None
 2. **Build command**:
    ```
-   curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -xzf - && ./go/bin/go install github.com/example/markata-go/cmd/markata-go@latest && ~/go/bin/markata-go build --clean
+   curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -xzf - && ./go/bin/go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest && ~/go/bin/markata-go build --clean
    ```
-3. **Build output directory**: `public`
+3. **Build output directory**: `output`
 4. **Root directory**: (leave empty)
 
 ### Environment Variables
@@ -485,7 +485,7 @@ wrangler login
 
 # Build and deploy
 markata-go build --clean
-wrangler pages deploy public --project-name=my-site
+wrangler pages deploy output --project-name=my-site
 ```
 
 ---
@@ -524,7 +524,7 @@ server {
     add_header Strict-Transport-Security "max-age=63072000" always;
 
     # Document root
-    root /var/www/example.com/public;
+    root /var/www/example.com/output;
     index index.html;
 
     # Security headers
@@ -602,7 +602,7 @@ Caddy provides automatic HTTPS and simpler configuration:
 
 ```caddyfile
 example.com {
-    root * /var/www/example.com/public
+    root * /var/www/example.com/output
     file_server
 
     # Compression
@@ -671,7 +671,7 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /build
 
 # Install markata-go
-RUN go install github.com/example/markata-go/cmd/markata-go@latest
+RUN go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 
 # Copy source
 COPY . .
@@ -689,7 +689,7 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built site
-COPY --from=builder /build/public /usr/share/nginx/html
+COPY --from=builder /build/output /usr/share/nginx/html
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -820,7 +820,7 @@ docker-compose up -d
 - name: Install markata-go
   run: |
     if [ ! -f ~/go/bin/markata-go ]; then
-      go install github.com/example/markata-go/cmd/markata-go@latest
+      go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
     fi
 ```
 
@@ -839,11 +839,11 @@ cache:
 build:
   image: golang:1.22
   script:
-    - go install github.com/example/markata-go/cmd/markata-go@latest
+    - go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
     - markata-go build --clean
   artifacts:
     paths:
-      - public/
+      - output/
 ```
 
 ### Environment-Specific Builds
@@ -872,7 +872,7 @@ jobs:
           cache: true
 
       - name: Install markata-go
-        run: go install github.com/example/markata-go/cmd/markata-go@latest
+        run: go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 
       - name: Build (Production)
         if: github.ref == 'refs/heads/main'
@@ -890,7 +890,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: site
-          path: public/
+          path: output/
 ```
 
 ### Preview Deployments
@@ -931,7 +931,7 @@ jobs:
 
       - name: Build
         run: |
-          go install github.com/example/markata-go/cmd/markata-go@latest
+          go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
           markata-go build --clean
         env:
           MARKATA_GO_URL: https://username.github.io/repo/pr-${{ github.event.number }}
@@ -940,7 +940,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          publish_dir: ./output
           destination_dir: pr-${{ github.event.number }}
 
       - name: Comment PR
@@ -966,19 +966,19 @@ Add validation steps before deployment:
 - name: Validate HTML
   run: |
     npm install -g html-validate
-    html-validate "public/**/*.html" || true
+    html-validate "output/**/*.html" || true
 
 - name: Check for broken links
   run: |
     npm install -g linkinator
-    linkinator public --recurse --skip "^(?!https?://example.com)" || true
+    linkinator output --recurse --skip "^(?!https?://example.com)" || true
 
 - name: Validate feeds
   run: |
     # Validate RSS
-    xmllint --noout public/blog/rss.xml
+    xmllint --noout output/blog/rss.xml
     # Validate Atom
-    xmllint --noout public/blog/atom.xml
+    xmllint --noout output/blog/atom.xml
 ```
 
 ### Complete CI/CD Workflow
@@ -1019,7 +1019,7 @@ jobs:
           cache: true
 
       - name: Install markata-go
-        run: go install github.com/example/markata-go/cmd/markata-go@latest
+        run: go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 
       - name: Validate config
         run: markata-go config validate
@@ -1032,7 +1032,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./public
+          path: ./output
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -1059,7 +1059,7 @@ Ensure Go is in your PATH and markata-go is installed:
 
 ```bash
 export PATH=$PATH:$(go env GOPATH)/bin
-go install github.com/example/markata-go/cmd/markata-go@latest
+go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 ```
 
 **Assets not loading**

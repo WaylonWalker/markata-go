@@ -45,6 +45,10 @@ func benchmarkStreamFixture(count, feeds int) *BuildResult {
 		BlogrollStatus: BlogrollStatus{Configured: true, Enabled: true, FeedsConfigured: 17, FeedsFetched: 13},
 		Benchmark: buildstats.Summary{
 			Total: 15 * time.Second, Resources: resources,
+			Spans: []buildstats.SpanTiming{{
+				ID: "span-000001", Name: tricky, Status: "ok",
+				StartOffset: 123, Duration: 456, Attributes: map[string]string{"operation": tricky},
+			}},
 			Hotspots: []buildstats.Hotspot{{Stage: "render", Plugin: tricky, Duration: 12345}},
 			Requests: []buildstats.RequestTiming{{
 				Stage: "collect", Plugin: "blogroll", Method: "GET", Host: "example.com",
