@@ -33,6 +33,13 @@ See [Content Diagnostics](content-diagnostics.md#template-cache-decisions) for
 the complete precedence and reconciliation rules. This phase measures template
 cache decisions only, not publish I/O, and does not change rendered HTML.
 
+Use `--benchmark-summary-json=/tmp/benchmark.json` for timing comparisons. The
+summary retains hotspots and aggregate cache statistics without the much larger
+per-source feed matrix. Keep benchmark artifacts outside the site source tree;
+Content Index fingerprints untracked source-tree files at both build boundaries.
+Run a clean build, one cache-priming warm build, and then repeated steady-state
+warm builds before comparing executors or code changes.
+
 Warm template builds still restore every usable full page into public
 `Post.HTML` before rendering any misses, so custom templates can inspect
 cache-hit peers and a deleted output tree can be repaired. Restoration uses
