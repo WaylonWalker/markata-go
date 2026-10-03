@@ -159,15 +159,33 @@ func runBuildCommand(cmd *cobra.Command, args []string) error {
 	duration := time.Since(startTime)
 	result.Duration = duration.Seconds()
 
-	if buildBenchmarkJSON == "-" {
+	if err := writeBuildReport(result); err != nil {
+		return err
+	}
+
+	// Print warnings
+	if len(result.Warnings) > 0 && verbose {
+		errln("\nWarnings:")
+		for _, w := range result.Warnings {
+			errlnf("  - %s", w)
+		}
+	}
+
+	return nil
+}
+
+// writeBuildReport writes the selected benchmark report or human-readable results.
+func writeBuildReport(result *BuildResult) error {
+	switch {
+	case buildBenchmarkJSON == "-":
 		if err := writeBenchmarkJSON(outWriter(), result); err != nil {
 			return fmt.Errorf("writing benchmark json: %w", err)
 		}
-	} else if buildBenchmarkSummaryJSON == "-" {
+	case buildBenchmarkSummaryJSON == "-":
 		if err := writeBenchmarkSummaryJSON(outWriter(), result); err != nil {
 			return fmt.Errorf("writing benchmark summary json: %w", err)
 		}
-	} else {
+	default:
 		// Print results
 		printBuildResult(result)
 	}
@@ -180,14 +198,6 @@ func runBuildCommand(cmd *cobra.Command, args []string) error {
 	if buildBenchmarkSummaryJSON != "" && buildBenchmarkSummaryJSON != "-" {
 		if err := writeBenchmarkSummaryJSONFile(buildBenchmarkSummaryJSON, result); err != nil {
 			return fmt.Errorf("writing benchmark summary json file: %w", err)
-		}
-	}
-
-	// Print warnings
-	if len(result.Warnings) > 0 && verbose {
-		errln("\nWarnings:")
-		for _, w := range result.Warnings {
-			errlnf("  - %s", w)
 		}
 	}
 
