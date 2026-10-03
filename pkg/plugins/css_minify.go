@@ -4,6 +4,7 @@ package plugins
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,8 @@ var cssBufPool = sync.Pool{
 		return new(bytes.Buffer)
 	},
 }
+
+const cssMinifyPluginName = "css_minify"
 
 // CSSMinifyPlugin minifies CSS files to reduce file sizes and improve
 // Lighthouse performance scores. It runs during the Write stage, after
@@ -53,7 +56,7 @@ func NewCSSMinifyPlugin() *CSSMinifyPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *CSSMinifyPlugin) Name() string {
-	return "css_minify"
+	return cssMinifyPluginName
 }
 
 // Configure reads the CSS minify configuration from the manager's config.
@@ -62,6 +65,7 @@ func (p *CSSMinifyPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Set default config first
 	p.config = models.NewCSSMinifyConfig()
+	p.exclude = make(map[string]bool)
 
 	if config.Extra == nil {
 		return nil
@@ -69,7 +73,7 @@ func (p *CSSMinifyPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Try to get css_minify config from Extra
 	// It may be a models.CSSMinifyConfig or a map[string]interface{} from TOML parsing
-	switch v := config.Extra["css_minify"].(type) {
+	switch v := config.Extra[cssMinifyPluginName].(type) {
 	case models.CSSMinifyConfig:
 		p.config = v
 	case map[string]interface{}:
@@ -133,9 +137,12 @@ func (p *CSSMinifyPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("finding CSS files: %w", err)
 	}
 
-	runMinification("css_minify", cssFiles, p.isExcluded, func(path string) (int64, int64, error) {
-		return p.minifyFile(path)
-	}, m.Concurrency())
+	cache, cacheErr := newMinifyCache(m.Config(), p.Name())
+	if cacheErr != nil {
+		log.Printf("[%s] Warning: initializing asset cache: %v", p.Name(), cacheErr)
+	}
+	defer cache.close()
+	runMinification(p.Name(), cssFiles, p.isExcluded, p.minifyBytes, m.Concurrency(), cache, minifyRecipe(p.Name(), p.config.PreserveComments))
 
 	return nil
 }
@@ -150,7 +157,7 @@ func (p *CSSMinifyPlugin) findCSSFiles(dir string) ([]string, error) {
 		}
 
 		// Skip directories
-		if info.IsDir() {
+		if info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return nil
 		}
 
@@ -186,7 +193,17 @@ func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64,
 	}
 
 	original = int64(len(content))
+	result, err := p.minifyBytes(content)
+	if err != nil {
+		return original, 0, err
+	}
+	if err := writeGeneratedFile(filePath, result); err != nil {
+		return original, 0, fmt.Errorf("writing minified file: %w", err)
+	}
+	return original, int64(len(result)), nil
+}
 
+func (p *CSSMinifyPlugin) minifyBytes(content []byte) ([]byte, error) {
 	// Preserve specified comments
 	preservedComments := p.extractPreservedComments(string(content))
 
@@ -196,7 +213,7 @@ func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64,
 	defer cssBufPool.Put(buf)
 
 	if err := p.minifier.Minify("text/css", buf, bytes.NewReader(content)); err != nil {
-		return original, 0, fmt.Errorf("minifying: %w", err)
+		return nil, fmt.Errorf("minifying: %w", err)
 	}
 
 	// Build result: prepend preserved comments + minified content
@@ -211,14 +228,7 @@ func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64,
 	}
 	result.Write(buf.Bytes())
 
-	minified = int64(result.Len())
-
-	// Replace the file atomically so hard-linked live releases are not mutated.
-	if err := writeGeneratedFile(filePath, result.Bytes()); err != nil {
-		return original, 0, fmt.Errorf("writing minified file: %w", err)
-	}
-
-	return original, minified, nil
+	return bytes.Clone(result.Bytes()), nil
 }
 
 // extractPreservedComments extracts comments that match the preserve patterns.

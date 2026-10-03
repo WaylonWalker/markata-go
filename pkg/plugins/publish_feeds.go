@@ -435,6 +435,9 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfigAndCache(fc *models.FeedCo
 	// Hash format flags
 	writeBoolField(fc.Formats.HTML)
 	writeBoolField(fc.Formats.SimpleHTML)
+	writeBoolField(fc.HasView(models.FeedViewDefault))
+	writeBoolField(fc.HasView(models.FeedViewSimple))
+	writeBoolField(fc.HasView(models.FeedViewCalendar))
 	writeBoolField(fc.Formats.RSS)
 	writeBoolField(fc.Formats.Atom)
 	writeBoolField(fc.Formats.JSON)
@@ -576,7 +579,7 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 	syndication := getSyndicationConfig(config)
 	paths := make([]string, 0, len(fc.Pages)*2+8)
 	htmlPages := fc.Pages
-	if fc.Formats.HTML || fc.Formats.SimpleHTML {
+	if fc.Formats.HTML || simpleHTMLViewEnabled(fc) {
 		htmlFeed := feedConfigWithRenderablePosts(fc)
 		ensureDefaultCollectionPage(htmlFeed)
 		htmlPages = htmlFeed.Pages
@@ -597,7 +600,7 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 		}
 	}
 
-	if fc.Formats.SimpleHTML && len(htmlPages) > 0 {
+	if simpleHTMLViewEnabled(fc) && len(htmlPages) > 0 {
 		add(filepath.Join(feedDir, "simple", "index.html"))
 		if lastPage := htmlPages[len(htmlPages)-1].Number; lastPage > 1 {
 			add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", lastPage), "index.html"))
@@ -677,7 +680,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	syndication := getSyndicationConfig(config)
 	pagePosts, outputPosts := splitFeedRenderablePosts(fc.Posts, fc.IncludesPrivate())
-	needsHTML := fc.Formats.HTML || fc.Formats.SimpleHTML
+	needsHTML := fc.Formats.HTML || simpleHTMLViewEnabled(fc)
 	needsOutputPosts := fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text || fc.Formats.Sitemap
 
 	var modelsConfig *models.Config
@@ -704,11 +707,16 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
 	}
+	if !simpleHTMLViewEnabled(fc) {
+		if err := os.RemoveAll(filepath.Join(feedDir, "simple")); err != nil {
+			return fmt.Errorf("removing disabled simple feed output: %w", err)
+		}
+	}
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
 		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(htmlFC, config, modelsConfig, feedDir, renderCtx) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(htmlFC, config, modelsConfig, feedDir, renderCtx) }},
+		{name: "SimpleHTML", enabled: simpleHTMLViewEnabled(fc), publish: func() error { return p.publishSimpleHTMLPages(htmlFC, config, modelsConfig, feedDir, renderCtx) }},
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(syndicationFC, config, feedDir, false) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(syndicationFC, config, feedDir, false) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(syndicationFC, config, feedDir, false) }, ext: "json", targetFile: "feed.json"},
@@ -781,7 +789,7 @@ func feedEmittedPaths(fc *models.FeedConfig, pagePosts, outputPosts []*models.Po
 		}
 	}
 
-	if fc.Formats.HTML || fc.Formats.SimpleHTML {
+	if fc.Formats.HTML || simpleHTMLViewEnabled(fc) {
 		addPosts(pagePosts)
 	}
 	if fc.Formats.RSS || fc.Formats.Atom || fc.Formats.JSON || fc.Formats.Markdown || fc.Formats.Text {

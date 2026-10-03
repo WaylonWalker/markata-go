@@ -107,6 +107,7 @@ func (p *ImageLibraryPlugin) Write(m *lifecycle.Manager) error {
 			return err
 		}
 	}
+	adoptPublishedImageLibraryOutputs(GetBuildCache(m), contentRoot, outputRoot)
 	if err := imageLibraryOutputConflict(m, contentRoot, outputRoot, pagePath, jsonPath, flatJSONPath, assetsDir, pathPrefix, config.ShouldExportJSON()); err != nil {
 		return err
 	}
@@ -120,6 +121,36 @@ func (p *ImageLibraryPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 	return p.writeImageLibrary(m, &config, contentDir, assetsDir, contentRoot, outputRoot, pathPrefix, pagePath, jsonPath, flatJSONPath)
+}
+
+// A staged clean build records ownership under its temporary output root.
+// After publication, transfer that ownership only when every recorded file
+// exists unchanged under the final output root.
+func adoptPublishedImageLibraryOutputs(cache *buildcache.Cache, contentRoot, outputRoot string) {
+	if cache == nil {
+		return
+	}
+	previousContentRoot, previousRoot, outputs := cache.GetImageLibraryOutputs()
+	if filepath.Clean(previousContentRoot) != filepath.Clean(contentRoot) ||
+		filepath.Clean(previousRoot) == filepath.Clean(outputRoot) ||
+		filepath.Dir(previousRoot) != filepath.Dir(outputRoot) ||
+		!strings.HasPrefix(filepath.Base(previousRoot), "."+filepath.Base(outputRoot)+".markata-build-") ||
+		len(outputs) == 0 {
+		return
+	}
+	hashes := make(map[string]string, len(outputs))
+	for relative, expected := range outputs {
+		path, err := imageLibraryOutputPath(outputRoot, relative)
+		if err != nil || !isRegularImageLibraryFile(path) {
+			return
+		}
+		actual, err := buildcache.HashFile(path)
+		if err != nil || actual != expected {
+			return
+		}
+		hashes[path] = expected
+	}
+	cache.SetImageLibraryOutputs(contentRoot, outputRoot, hashes)
 }
 
 func imageLibraryOutputConflict(m *lifecycle.Manager, contentRoot, outputRoot, pagePath, jsonPath, flatJSONPath, assetsDir, pathPrefix string, exportJSON bool) error {

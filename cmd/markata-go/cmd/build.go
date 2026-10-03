@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -38,6 +40,9 @@ var (
 
 	// buildBenchmarkJSON writes benchmark details as JSON. Use "-" for stdout.
 	buildBenchmarkJSON string
+
+	// buildBenchmarkSummaryJSON writes benchmark aggregates without content entries.
+	buildBenchmarkSummaryJSON string
 
 	// buildBenchmarkDetailed prints per-stage benchmark detail.
 	buildBenchmarkDetailed bool
@@ -94,10 +99,18 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildFast, "fast", false, "skip minification, CSS purging, tailwind rebuilds, and pagefind indexing for faster builds")
 	buildCmd.Flags().StringVar(&buildBenchmarkJSON, "benchmark-json", "", "write benchmark details as JSON (use '-' for stdout)")
 	buildCmd.Flags().Lookup("benchmark-json").NoOptDefVal = "-"
+	buildCmd.Flags().StringVar(&buildBenchmarkSummaryJSON, "benchmark-summary-json", "", "write compact benchmark JSON without content entries (use '-' for stdout)")
+	buildCmd.Flags().Lookup("benchmark-summary-json").NoOptDefVal = "-"
 	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
 }
 
-func runBuildCommand(_ *cobra.Command, args []string) error {
+func runBuildCommand(cmd *cobra.Command, args []string) error {
+	if err := validateDAGEnvironment(cmd); err != nil {
+		return err
+	}
+	if buildBenchmarkJSON != "" && buildBenchmarkSummaryJSON != "" {
+		return fmt.Errorf("--benchmark-json and --benchmark-summary-json cannot be used together")
+	}
 	startTime := time.Now()
 
 	verbosef("Starting build...")
@@ -146,11 +159,33 @@ func runBuildCommand(_ *cobra.Command, args []string) error {
 	duration := time.Since(startTime)
 	result.Duration = duration.Seconds()
 
-	if buildBenchmarkJSON == "-" {
+	if err := writeBuildReport(result); err != nil {
+		return err
+	}
+
+	// Print warnings
+	if len(result.Warnings) > 0 && verbose {
+		errln("\nWarnings:")
+		for _, w := range result.Warnings {
+			errlnf("  - %s", w)
+		}
+	}
+
+	return nil
+}
+
+// writeBuildReport writes the selected benchmark report or human-readable results.
+func writeBuildReport(result *BuildResult) error {
+	switch {
+	case buildBenchmarkJSON == "-":
 		if err := writeBenchmarkJSON(outWriter(), result); err != nil {
 			return fmt.Errorf("writing benchmark json: %w", err)
 		}
-	} else {
+	case buildBenchmarkSummaryJSON == "-":
+		if err := writeBenchmarkSummaryJSON(outWriter(), result); err != nil {
+			return fmt.Errorf("writing benchmark summary json: %w", err)
+		}
+	default:
 		// Print results
 		printBuildResult(result)
 	}
@@ -160,12 +195,9 @@ func runBuildCommand(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("writing benchmark json file: %w", err)
 		}
 	}
-
-	// Print warnings
-	if len(result.Warnings) > 0 && verbose {
-		errln("\nWarnings:")
-		for _, w := range result.Warnings {
-			errlnf("  - %s", w)
+	if buildBenchmarkSummaryJSON != "" && buildBenchmarkSummaryJSON != "-" {
+		if err := writeBenchmarkSummaryJSONFile(buildBenchmarkSummaryJSON, result); err != nil {
+			return fmt.Errorf("writing benchmark summary json file: %w", err)
 		}
 	}
 
@@ -303,6 +335,9 @@ func printBuildResult(result *BuildResult) {
 	printBuildBenchmarkSummary(result.Benchmark)
 
 	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
+	if result.Executor == lifecycle.BuildExecutorDAG {
+		outlnf("  %s %s", buildLabel("Executor:"), "serial DAG (experimental)")
+	}
 }
 
 func printContentSummary(snapshot diagnostics.ContentLedgerSnapshot) {
@@ -484,6 +519,7 @@ func stageThemeColor(stage string) string {
 }
 
 type benchmarkJSONOutput struct {
+	Executor       lifecycle.BuildExecutor           `json:"-"`
 	PostsProcessed int                               `json:"posts_processed"`
 	FeedsGenerated int                               `json:"feeds_generated"`
 	Duration       float64                           `json:"duration_seconds"`
@@ -491,6 +527,22 @@ type benchmarkJSONOutput struct {
 	Benchmark      buildstats.Summary                `json:"benchmark"`
 	Blogroll       BlogrollStatus                    `json:"blogroll"`
 	Content        diagnostics.ContentLedgerSnapshot `json:"content"`
+}
+
+type benchmarkSummaryContent struct {
+	Summary       diagnostics.ContentSummary      `json:"summary"`
+	TemplateCache *diagnostics.TemplateCacheStats `json:"template_cache,omitempty"`
+}
+
+type benchmarkSummaryJSONOutput struct {
+	Executor       lifecycle.BuildExecutor `json:"executor"`
+	PostsProcessed int                     `json:"posts_processed"`
+	FeedsGenerated int                     `json:"feeds_generated"`
+	Duration       float64                 `json:"duration_seconds"`
+	Warnings       []string                `json:"warnings,omitempty"`
+	Benchmark      buildstats.Summary      `json:"benchmark"`
+	Blogroll       BlogrollStatus          `json:"blogroll"`
+	Content        benchmarkSummaryContent `json:"content"`
 }
 
 func writeBenchmarkJSONFile(path string, result *BuildResult) error {
@@ -501,22 +553,148 @@ func writeBenchmarkJSONFile(path string, result *BuildResult) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	return writeBenchmarkJSON(file, result)
+	return writeBenchmarkJSONAndClose(file, result)
 }
 
-func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
+func writeBenchmarkSummaryJSONFile(path string, result *BuildResult) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return writeBenchmarkSummaryJSONAndClose(file, result)
+}
+
+func writeBenchmarkSummaryJSONAndClose(w io.WriteCloser, result *BuildResult) (err error) {
+	defer func() {
+		if closeErr := w.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close benchmark summary JSON: %w", closeErr)
+		}
+	}()
+	return writeBenchmarkSummaryJSON(w, result)
+}
+
+func writeBenchmarkSummaryJSON(w io.Writer, result *BuildResult) error {
+	executor := result.Executor
+	if executor == "" {
+		executor = lifecycle.BuildExecutorLegacy
+	}
+	if !executor.Valid() {
+		return fmt.Errorf("unsupported benchmark executor %q", executor)
+	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(benchmarkJSONOutput{
+	return encoder.Encode(benchmarkSummaryJSONOutput{
+		Executor:       executor,
 		PostsProcessed: result.PostsProcessed,
 		FeedsGenerated: result.FeedsGenerated,
 		Duration:       result.Duration,
 		Warnings:       result.Warnings,
 		Benchmark:      result.Benchmark,
 		Blogroll:       result.BlogrollStatus,
-		Content:        result.Content,
+		Content: benchmarkSummaryContent{
+			Summary:       result.Content.Summary,
+			TemplateCache: result.Content.TemplateCache,
+		},
 	})
+}
+
+func writeBenchmarkJSONAndClose(w io.WriteCloser, result *BuildResult) (err error) {
+	defer func() {
+		if closeErr := w.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close benchmark JSON: %w", closeErr)
+		}
+	}()
+	return writeBenchmarkJSON(w, result)
+}
+
+func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
+	// Encode metadata using the existing custom marshaler, retaining executor
+	// normalization/validation and field order without encoding the entry array.
+	content := result.Content
+	if content.Entries != nil {
+		content.Entries = content.Entries[:0]
+	}
+	header, err := json.MarshalIndent(benchmarkJSONOutput{
+		Executor:       result.Executor,
+		PostsProcessed: result.PostsProcessed,
+		FeedsGenerated: result.FeedsGenerated,
+		Duration:       result.Duration,
+		Warnings:       result.Warnings,
+		Benchmark:      result.Benchmark,
+		Blogroll:       result.BlogrollStatus,
+		Content:        content,
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode benchmark JSON header: %w", err)
+	}
+
+	writer := bufio.NewWriter(w)
+	if err := streamBenchmarkJSON(writer, header, result.Content.Entries); err != nil {
+		return err
+	}
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("flush benchmark JSON: %w", err)
+	}
+	return nil
+}
+
+func streamBenchmarkJSON(w io.Writer, header []byte, entries []diagnostics.ContentDisposition) error {
+	if len(entries) == 0 {
+		if err := writeBenchmarkJSONBytes(w, header); err != nil {
+			return err
+		}
+		return writeBenchmarkJSONBytes(w, []byte("\n"))
+	}
+
+	// Content and its entries are the final fields. Check the layout so a future
+	// field addition cannot silently corrupt the streamed document.
+	const suffix = "    \"entries\": []\n  }\n}"
+	if !bytes.HasSuffix(header, []byte(suffix)) {
+		return fmt.Errorf("benchmark JSON header must end with empty content entries")
+	}
+	if err := writeBenchmarkJSONBytes(w, header[:len(header)-len("]\n  }\n}")]); err != nil {
+		return err
+	}
+
+	// Match the artifact writer's reusable per-entry buffers and json.Indent
+	// layout, but preserve the raw snapshot's order and values without cloning.
+	var compact, indented bytes.Buffer
+	encoder := json.NewEncoder(&compact)
+	for index := range entries {
+		compact.Reset()
+		if err := encoder.Encode(&entries[index]); err != nil {
+			return fmt.Errorf("encode benchmark JSON entry %d: %w", index, err)
+		}
+		indented.Reset()
+		if err := json.Indent(&indented, bytes.TrimSuffix(compact.Bytes(), []byte("\n")), "      ", "  "); err != nil {
+			return fmt.Errorf("indent benchmark JSON entry %d: %w", index, err)
+		}
+		separator := "\n      "
+		if index > 0 {
+			separator = ",\n      "
+		}
+		if err := writeBenchmarkJSONBytes(w, []byte(separator)); err != nil {
+			return err
+		}
+		if err := writeBenchmarkJSONBytes(w, indented.Bytes()); err != nil {
+			return err
+		}
+	}
+	return writeBenchmarkJSONBytes(w, []byte("\n    ]\n  }\n}\n"))
+}
+
+func writeBenchmarkJSONBytes(w io.Writer, data []byte) error {
+	n, err := w.Write(data)
+	if err != nil {
+		return fmt.Errorf("write benchmark JSON: %w", err)
+	}
+	if n != len(data) {
+		return fmt.Errorf("write benchmark JSON: %w", io.ErrShortWrite)
+	}
+	return nil
 }
 
 // printBlogrollStatus prints the blogroll feature status.

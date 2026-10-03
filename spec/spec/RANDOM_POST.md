@@ -81,3 +81,7 @@ Ordering is stable (deterministic) to avoid unnecessary diffs.
 
 - If the plugin is disabled (default), it does nothing.
 - If output directories cannot be created or files cannot be written, the plugin returns an error.
+- A real post at the configured endpoint path is a route collision, including
+  when a previous build left a plugin-generated endpoint there. The homepage
+  route `/` is distinct from `/random/` and must not cause a collision.
+- A previous plugin-generated endpoint may be replaced on a warm build.

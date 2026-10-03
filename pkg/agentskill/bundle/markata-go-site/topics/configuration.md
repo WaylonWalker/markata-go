@@ -22,6 +22,11 @@ When `--config` is not passed, markata-go looks for config in this order:
 4. `markata-go.json`
 5. `~/.config/markata-go/config.toml` (user-level fallback)
 
+Without a config file, build and serve use built-in defaults plus
+`MARKATA_GO_*` overrides. `config get` and `config set` need an existing file;
+run `markata-go config init` to create a local one. The default output directory
+is `output/`.
+
 ## High-Value Commands
 
 - `markata-go config show`

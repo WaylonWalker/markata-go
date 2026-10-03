@@ -16,7 +16,9 @@ Use this topic for everyday site work and safe project inspection.
 - `markata-go reader update` (refresh external feed cache for `/reader/` without building)
 - `markata-go reader update --concurrency 12` (override reader refresh parallelism for one run)
 - `MARKATA_GO_BLOGROLL_REFRESH_ON_BUILD=false markata-go build` (keep blogroll pages but skip remote refresh during the build)
-- `markata-go build --benchmark-json benchmark.json`
+- `markata-go build --benchmark-json=benchmark.json`
+- `markata-go build --dag` (experimental serial task graph, not extra parallelism)
+- `markata-go build --dag=false` (override `MARKATA_GO_DAG=true` for one build)
 - `markata-go build -v --benchmark-detailed`
 - `markata-go buildlab run --fixture /path/to/site` (compare clean and incremental builds)
 - `markata-go serve` (dev server with live reload; its theme picker adds a **Bake** button that writes the chosen look into the config file holding `[markata-go.theme]`, and a gear button opens a settings sidebar that live-previews any setting in memory (Reset discards) and bakes it into the config file that owns it after showing a diff, and can reset a setting to its default by removing it from the file; neither exists in `build` output, and neither writes the global `~/.config/markata-go/config.toml`. Previews build into `.markata/serve-preview/`, so the main cache is untouched. What the served site shows may be an unbaked preview, so trust config files, not the browser, and re-read them before editing)
@@ -43,6 +45,13 @@ list. Press `r` in Jobs to rerun the selected completed job. These shortcuts
 pause while editing text. Preview suggested source fixes
 before applying them; the local source actions are not part of deployed
 Builder Admin.
+
+`serve` and `builder-admin` also accept `--dag`; an explicit `--dag=false`
+overrides the environment for their builds, including Builder Admin child
+processes. An invalid `MARKATA_GO_DAG` boolean reports an error unless an
+explicit flag overrides it. `build --dry-run` uses the legacy partial lifecycle,
+not the DAG scheduler. Trust the executor recorded in benchmark JSON and
+full-build diagnostics rather than inferring it from an environment variable.
 
 ### Config And Inspection
 

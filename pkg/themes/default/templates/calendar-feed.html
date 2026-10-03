@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed calendar-feed h-feed" data-calendar-feed data-calendar-default="calendar">
+<div class="feed calendar-feed h-feed" data-calendar-feed data-calendar-default="calendar" data-calendar-url-state>
   <header class="feed-header">
     <div class="feed-header-copy">
       <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
@@ -41,10 +41,13 @@
   <ul class="calendar-feed-list" data-calendar-list data-calendar-primary aria-label="Posts by date">
     {% for post in feed.posts %}
       {% if post.date %}
-      <li class="h-entry" data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}">
+      {% with post.image|default:post.cover|media_url:post.video as media_src %}
+      {% if media_src and media_src|is_video %}{% set preview_media = post|poster_url:media_src %}{% else %}{% set preview_media = media_src %}{% endif %}
+      <li class="h-entry" data-calendar-post data-date="{{ post.date | date_format:"2006-01-02" }}"{% if post.description %} data-description="{{ post.description }}"{% endif %}{% if preview_media %} data-image="{{ preview_media | with_size:'160' }}"{% endif %}>
         <time class="dt-published" datetime="{{ post.date | date_format:"2006-01-02" }}">{{ post.date | date_format:"January 2, 2006" }}</time>
         <a class="u-url p-name" href="{{ post.href }}">{% if post.title %}{{ post.title }}{% else %}{{ post.slug }}{% endif %}</a>
       </li>
+      {% endwith %}
       {% else %}
       <li class="h-entry">
         <span class="calendar-feed-undated">Undated</span>

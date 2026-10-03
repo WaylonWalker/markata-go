@@ -12,20 +12,20 @@ tags:
 
 Get a site running in under 5 minutes.
 
-## Prerequisites
-
-- **Go 1.22+** - [Install Go](https://go.dev/doc/install)
-
-Verify your installation:
-
-```bash
-go version
-```
-
 ## Install
 
+Install the latest release on Linux or macOS:
+
 ```bash
-go install github.com/example/markata-go/cmd/markata-go@latest
+curl -sSL https://raw.githubusercontent.com/WaylonWalker/markata-go/main/install.sh | bash
+```
+
+Other supported installation methods are covered in the [[installation|Installation Guide]].
+
+Verify the binary is available:
+
+```bash
+markata-go version
 ```
 
 ## Create Your Site
@@ -38,8 +38,8 @@ markata-go new "Hello World"
 ```
 
 This creates:
-- `markata.toml` - Site configuration
-- `pages/hello-world.md` - Your first post
+- `markata-go.toml` - Site configuration
+- `pages/post/hello-world.md` - Your first post
 
 ## Preview
 
@@ -55,7 +55,7 @@ Open [http://localhost:8000](http://localhost:8000) in your browser.
 markata-go build
 ```
 
-Output is written to `./output/`.
+Output is written to `./output/` by default.
 
 ## Next Steps
 
