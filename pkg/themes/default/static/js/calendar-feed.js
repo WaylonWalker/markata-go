@@ -208,23 +208,83 @@
       postsByDate.set(post.date, existing);
     }
 
-    if (years.size === 0) return false;
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) return false;
 
-    calendar.replaceChildren();
-    for (const year of Array.from(years).sort((a, b) => b - a)) {
+    const yearNav = element('nav', 'calendar-year-nav calendar-view-switch');
+    yearNav.setAttribute('aria-label', 'Calendar year');
+    const olderButton = element('button', 'calendar-year-step calendar-year-older');
+    olderButton.type = 'button';
+    const yearSelect = document.createElement('select');
+    yearSelect.className = 'calendar-year-select';
+    yearSelect.setAttribute('aria-label', 'Calendar year');
+    const newerButton = element('button', 'calendar-year-step calendar-year-newer');
+    newerButton.type = 'button';
+
+    for (const year of sortedYears) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.append(option);
+    }
+    yearNav.append(olderButton, yearSelect, newerButton);
+
+    const syncYearControls = (year) => {
+      const index = sortedYears.indexOf(year);
+      const olderYear = index >= 0 ? sortedYears[index + 1] : undefined;
+      const newerYear = index > 0 ? sortedYears[index - 1] : undefined;
+
+      yearSelect.value = String(year);
+      olderButton.disabled = olderYear === undefined;
+      newerButton.disabled = newerYear === undefined;
+      olderButton.textContent = olderYear === undefined ? '← Older' : `← ${olderYear}`;
+      newerButton.textContent = newerYear === undefined ? 'Newer →' : `${newerYear} →`;
+    };
+
+    const renderYear = (year, persistURL = true) => {
+      if (!years.has(year)) year = sortedYears[0];
+
       const yearSection = element('section', 'calendar-year');
       const yearHeading = element('h2', '', String(year));
       yearHeading.id = `calendar-year-${year}`;
       yearSection.setAttribute('aria-labelledby', yearHeading.id);
-      yearSection.append(yearHeading);
+      const yearHeader = element('header', 'calendar-year-header');
+      yearHeader.append(yearHeading);
+      const yearPosts = datedPosts.filter(post => post.date.startsWith(`${year}-`));
+      const activeDays = new Set(yearPosts.map(post => post.date)).size;
+      yearHeader.append(element('p', 'calendar-year-stats', `${yearPosts.length} posts · ${activeDays} publishing days`));
+      yearSection.append(yearHeader);
 
       const months = element('div', 'calendar-months');
       for (let month = 0; month < 12; month += 1) {
         months.append(renderMonth(year, month, postsByDate, previewData));
       }
       yearSection.append(months);
+
+      calendar.replaceChildren();
+      if (sortedYears.length > 1) calendar.append(yearNav);
       calendar.append(yearSection);
-    }
+      syncYearControls(year);
+      if (persistURL) updateURLYear(year);
+    };
+
+    olderButton.addEventListener('click', () => {
+      const currentIndex = sortedYears.indexOf(Number(yearSelect.value));
+      const olderYear = sortedYears[currentIndex + 1];
+      if (olderYear !== undefined) renderYear(olderYear);
+    });
+    newerButton.addEventListener('click', () => {
+      const currentIndex = sortedYears.indexOf(Number(yearSelect.value));
+      const newerYear = sortedYears[currentIndex - 1];
+      if (newerYear !== undefined) renderYear(newerYear);
+    });
+    yearSelect.addEventListener('change', () => renderYear(Number(yearSelect.value)));
+
+    const initialYear = calendarYearFromURL(sortedYears) || sortedYears[0];
+    renderYear(initialYear, false);
+    window.addEventListener('popstate', () => {
+      renderYear(calendarYearFromURL(sortedYears) || sortedYears[0], false);
+    });
 
     const ensurePreview = (details) => {
       if (details.querySelector('.calendar-day-preview')) return;
@@ -286,20 +346,43 @@
     return true;
   }
 
-  function calendarModeFromURL() {
+  function calendarModeFromURL(defaultMode = 'list') {
     try {
-      return new URLSearchParams(window.location.search).get('view') === 'calendar';
+      const mode = new URLSearchParams(window.location.search).get('view');
+      return mode === 'calendar' || mode === 'list' ? mode : defaultMode;
     } catch (error) {
-      return false;
+      return defaultMode;
     }
   }
 
-  function updateURLMode(mode) {
+  function calendarYearFromURL(years) {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('year');
+      if (!/^\d{4}$/.test(raw || '')) return null;
+      const year = Number(raw);
+      return years.includes(year) ? year : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function updateURLMode(mode, defaultMode = 'list') {
     try {
       const url = new URL(window.location.href);
       if (mode === 'calendar') url.searchParams.set('view', 'calendar');
-      else if (url.searchParams.get('view') === 'calendar') url.searchParams.delete('view');
-      window.history.replaceState(window.history.state, '', url.toString());
+      else if (defaultMode === 'calendar') url.searchParams.set('view', 'list');
+      else if (['calendar', 'list'].includes(url.searchParams.get('view'))) url.searchParams.delete('view');
+      if (url.toString() !== window.location.href) window.history.pushState(window.history.state, '', url.toString());
+    } catch (error) {
+      // URL state is progressive enhancement only.
+    }
+  }
+
+  function updateURLYear(year) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('year', String(year));
+      if (url.toString() !== window.location.href) window.history.pushState(window.history.state, '', url.toString());
     } catch (error) {
       // URL state is progressive enhancement only.
     }
@@ -336,13 +419,22 @@
       });
     }
 
-    if (!renderCalendar(root, calendar, datedPosts)) return;
+    if (datedPosts.length === 0) return;
 
+    let calendarRendered = false;
+    const ensureCalendar = () => {
+      if (calendarRendered) return true;
+      calendarRendered = renderCalendar(root, calendar, datedPosts);
+      return calendarRendered;
+    };
+
+    const defaultMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
     const primaryNodes = primaryNodesFor(root, sourceList);
     const sourceIsPrimary = primaryNodes.includes(sourceList);
     const buttons = Array.from(switcher.querySelectorAll('[data-calendar-mode]'));
     const setMode = (mode, persistURL = true) => {
       const calendarMode = mode === 'calendar';
+      if (calendarMode && !ensureCalendar()) return;
       calendar.hidden = !calendarMode;
       for (const node of primaryNodes) node.hidden = calendarMode;
       if (!sourceIsPrimary) sourceList.hidden = true;
@@ -351,16 +443,19 @@
         button.setAttribute('aria-pressed', button.getAttribute('data-calendar-mode') === mode ? 'true' : 'false');
       }
 
-      if (persistURL && root.hasAttribute('data-calendar-url-state')) updateURLMode(mode);
+      if (persistURL && root.hasAttribute('data-calendar-url-state')) updateURLMode(mode, defaultMode);
     };
 
     for (const button of buttons) button.addEventListener('click', () => setMode(button.getAttribute('data-calendar-mode')));
 
-    let initialMode = root.getAttribute('data-calendar-default') === 'calendar' ? 'calendar' : 'list';
-    if (root.hasAttribute('data-calendar-url-state') && calendarModeFromURL()) initialMode = 'calendar';
+    const initialMode = root.hasAttribute('data-calendar-url-state') ? calendarModeFromURL(defaultMode) : defaultMode;
 
     switcher.hidden = false;
     setMode(initialMode, false);
+    window.addEventListener('popstate', () => {
+      const mode = calendarModeFromURL(defaultMode);
+      setMode(mode, false);
+    });
   }
 
   for (const root of document.querySelectorAll('[data-calendar-feed]')) initialize(root);

@@ -43,6 +43,19 @@ Only this job gets `pull-requests: read`, alongside `contents: read`.
 If detection fails, do not interpret skipped specialized jobs as validation.
 When adding a generator dependency, update its filter in `ci.yml`.
 
+## Spec conformance manifest
+
+When adding a normative requirement, assign it a stable `DOMAIN-NNN` ID in
+`spec/conformance/requirements.yaml`. Record its specification file, scope,
+conformance status, and the implementation and test files that support it. Mark
+incomplete or intentionally different behavior as `partial` and explain it in
+`notes`.
+
+Run `go test ./pkg/specconformance` to check IDs, allowed values, referenced
+files, and the evidence required for `implemented` status. The normal CI test
+suite runs the same check. See [the conformance manifest guide](../../spec/conformance/README.md)
+for the field definitions and rollout plan.
+
 ## Build Lab observation
 
 The expensive `TestBuildLab_LinkedAndFixtureMutationsCharacterizeProduct` logs

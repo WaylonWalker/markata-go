@@ -57,7 +57,7 @@ func TestDAGCleanupPluginStagePreservesOrderAndObserver(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageCleanup)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, nil, provided, observe)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, provided, observe)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)
@@ -96,7 +96,7 @@ func TestDAGCleanupPluginStageContinuesAfterWarning(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageCleanup)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, nil, provided, nil)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, provided, nil)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)
@@ -147,7 +147,7 @@ func TestDAGCleanupPluginStageStopsOnCriticalError(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageCleanup)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, nil, provided, observe)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageCleanup, provided, observe)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)

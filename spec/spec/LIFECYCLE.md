@@ -1158,3 +1158,19 @@ require operation instrumentation or critical-path computation.
 - [CONFIG.md](./CONFIG.md) - Configuration system
 - [PLUGINS.md](./PLUGINS.md) - Plugin development guide
 - [DATA_MODEL.md](./DATA_MODEL.md) - Post and config models
+
+## Optional OTLP configuration foundation
+
+`ResolveOTLPConfig(getenv)` MUST resolve a trace-specific endpoint/protocol before
+the generic OTLP endpoint/protocol. Whitespace is trimmed; the default protocol
+is `http/protobuf`. Supported protocols are `grpc`, `http/protobuf`, and
+`http/json`. Endpoints MUST be HTTP(S) URLs with a host. A generic HTTP endpoint
+MUST receive a `/v1/traces` path suffix; generic gRPC and trace-specific endpoints
+MUST retain their paths. Query strings MUST survive HTTP path construction.
+Invalid endpoints MUST return errors without echoing the supplied URL.
+
+An absent endpoint MUST leave `Enabled()` false. A nil environment reader MUST
+return an empty disabled config. Unsupported protocols MUST return an error,
+even without an endpoint. Resolution MUST perform no network I/O. This API is
+configuration groundwork, not an exporter; it does not enable trace export in
+the build CLI.

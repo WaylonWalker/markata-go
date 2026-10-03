@@ -12,7 +12,8 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `markata-go reader update --concurrency <n>` when reader refresh latency is dominated by many remote feeds
 - use `-m fast.toml` or `--merge-config fast.toml` when you want a slimmer dev config without editing the main site config
 - compare warm builds, not just cold builds
-- use `markata-go build --benchmark-json=benchmark.json` for structured timing
+- use `markata-go build --benchmark-summary-json=/tmp/benchmark.json` for compact structured timing
+- keep benchmark reports outside the site source tree so Content Index does not fingerprint them as untracked source state
 - inspect `.content.template_cache` in benchmark JSON or `.template_cache` in
   `<output_dir>/.markata/diagnostics.json` to explain template work. This optional
   version-1 field contains bounded aggregate counts, not paths, template names,
@@ -35,6 +36,10 @@ report. Large reports still require proportional disk space; temporary content
 encoding memory scales with the largest entry, while non-content timing metadata
 is encoded together. Use either a file path or `--benchmark-json=-` for the same
 complete, two-space-indented JSON payload.
+
+Use `--benchmark-summary-json=<path>` when you only need timings, hotspots, and
+aggregate content/cache counts. Run one warm build to prime plugin caches, then
+use later warm builds for steady-state comparisons.
 
 ## What `--fast` Skips
 
