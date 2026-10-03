@@ -26,7 +26,7 @@ func stageIncrementalWorkspace(workspace, releasesDir, releaseID, baselineID str
 
 func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baselineID string, link func(*os.Root, string, string) error) (string, workspacePublicationStats, error) {
 	var stats workspacePublicationStats
-	if workspace == "" || releasesDir == "" || releaseID == "" || filepath.Base(releaseID) != releaseID || releaseID[0] == '.' {
+	if workspace == "" || releasesDir == "" || !plainReleaseID(releaseID) {
 		return "", stats, fmt.Errorf("workspace, releases directory, and plain release ID are required")
 	}
 	if pathsOverlap(workspace, releasesDir) {
@@ -52,7 +52,7 @@ func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baseli
 	} else if !os.IsNotExist(err) {
 		return "", stats, fmt.Errorf("stat release destination: %w", err)
 	}
-	if filepath.Base(baselineID) != baselineID || baselineID == "" || baselineID[0] == '.' {
+	if !plainReleaseID(baselineID) {
 		baselineID = ""
 	}
 	staging, err := os.MkdirTemp(releasesDir, ".staging-"+releaseID+"-")
@@ -190,4 +190,8 @@ func pathsOverlap(first, second string) bool {
 		}
 	}
 	return false
+}
+
+func plainReleaseID(id string) bool {
+	return id != "" && filepath.IsLocal(id) && filepath.Base(id) == id && id[0] != '.'
 }
