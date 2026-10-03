@@ -49,7 +49,7 @@ For most hosts, the safe build flow is:
 3. install or build `markata-go`
 4. run `markata-go config validate`
 5. run `markata-go build --clean`
-6. publish the build artifact from `public/` or the chosen output dir
+6. publish the build artifact from `output/` or the configured output dir
 
 A successful full build also includes `.markata/diagnostics.json`
 below the chosen output directory. Preserve this file when publishing a release
@@ -66,7 +66,7 @@ steps:
   - uses: actions/checkout@v4
   - uses: actions/setup-go@v5
     with:
-      go-version: '1.22'
+      go-version: '1.26'
   - run: go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
   - run: markata-go config validate
   - run: markata-go build --clean
@@ -88,30 +88,30 @@ steps:
 ### GitHub Pages
 
 - build in GitHub Actions
-- upload `public/` as the Pages artifact
+- upload `output/` (or the configured output dir) as the Pages artifact
 - set `MARKATA_GO_URL` to the final GitHub Pages or custom domain URL
 
 ### Netlify
 
 - build command usually installs markata-go then runs `markata-go build --clean`
-- publish directory is `public`
+- publish directory is `output/` unless `output_dir` is configured
 - set production and preview `MARKATA_GO_URL` separately if needed
 
 ### Vercel
 
 - use a custom build command because this is a static Go-built site, not a framework preset
-- set `outputDirectory` to `public`
+- set `outputDirectory` to `output` unless `output_dir` is configured
 - verify preview and production URLs separately
 
 ### Cloudflare Pages
 
 - framework preset is usually none
-- build output directory is `public`
+- build output directory is `output/` unless `output_dir` is configured
 - `_headers` and `_redirects` can live under `static/` so they copy into output
 
 ### Self-hosted
 
-- deploy the built `public/` directory behind nginx, Caddy, S3, or another static file server
+- deploy the built `output/` directory (or the configured output dir) behind nginx, Caddy, S3, or another static file server
 - ensure the server preserves nested `index.html` routing and static asset paths
 
 ## Guidance

@@ -60,7 +60,7 @@ func explainValidArgs(_ *cobra.Command, _ []string, _ string) ([]string, cobra.S
 		"agents\tAgent integrations and skills",
 		"plugins\tPlugin system",
 		"lifecycle\tBuild lifecycle stages",
-		"templates\tTemplate system",
+		topicTemplates + "\tTemplate system",
 		"feeds\tFeed generation",
 	}, cobra.ShellCompDirectiveNoFileComp
 }
@@ -148,7 +148,7 @@ live reload development server, and extensive customization options.
     ├── pages/               # Static pages
     ├── templates/           # Custom templates (optional)
     ├── static/              # Static assets
-    └── public/              # Generated output (default)
+    └── output/              # Generated output (default)
 
 ## Key Source Files
 
@@ -167,7 +167,7 @@ Primary config file: markata-go.toml (also supports YAML/JSON)
     [markata-go]
     title = "My Site"
     url = "https://example.com"
-    output_dir = "public"
+    output_dir = "output"
 
     [markata-go.glob]
     patterns = ["posts/**/*.md"]
@@ -203,7 +203,8 @@ Build the static site by processing all content through the plugin lifecycle.
 
 ## Flags
 
-    --clean       Remove output directory before building
+    --clean       Remove output directory and build cache before building
+    --clean-all   Also remove external plugin caches before building
     --dry-run     Show what would be built without writing files
     -v, --verbose Enable verbose logging
     -o, --output  Override output directory
@@ -214,8 +215,11 @@ Build the static site by processing all content through the plugin lifecycle.
     # Standard build
     markata-go build
 
-    # Clean build (removes output first)
+    # Clean build (removes output and build cache)
     markata-go build --clean
+
+    # Clean all local and external plugin caches
+    markata-go build --clean-all
 
     # Preview what would be built
     markata-go build --dry-run
@@ -247,7 +251,7 @@ Build the static site by processing all content through the plugin lifecycle.
 ## Related Configuration
 
     [markata-go]
-    output_dir = "public"         # Where to write output
+    output_dir = "output"         # Where to write output
 
     [markata-go.glob]
     patterns = ["posts/**/*.md"]  # Files to process
@@ -333,7 +337,7 @@ Start a development server with live reload support.
 ## Related Configuration
 
     [markata-go]
-    output_dir = "public"         # Directory to serve
+    output_dir = "output"         # Directory to serve
 
 ## Common Issues
 
@@ -437,7 +441,7 @@ Examples:
 ## Related Configuration
 
     [markata-go.glob]
-    patterns = ["posts/**/*.md"]  # Ensure new posts match patterns
+    patterns = ["pages/**/*.md", "posts/**/*.md"]  # Ensure new posts match patterns
 
     [content_templates.placement]
     post = "blog"     # Override default directory per template type
@@ -559,12 +563,12 @@ Initialize a new markata-go project with interactive setup.
     url = "https://example.com"
     author = "Your Name"
 
-    output_dir = "public"
+    output_dir = "output"
     templates_dir = "templates"
     assets_dir = "static"
 
     [markata-go.glob]
-    patterns = ["posts/**/*.md", "pages/*.md"]
+    patterns = ["posts/**/*.md", "pages/**/*.md"]
 
 ## Key Source Files
 
@@ -586,13 +590,16 @@ Configuration system for markata-go sites.
 
 ## Config File Locations
 
-markata-go searches for config files in this order:
+Unless --config is provided, markata-go searches for config files in this order:
 1. markata-go.toml
-2. markata-go.yaml / markata-go.yml
-3. markata-go.json
-4. .markata-go.toml (hidden)
-5. .markata-go.yaml / .markata-go.yml
-6. .markata-go.json
+2. markata-go.yaml
+3. markata-go.yml
+4. markata-go.json
+5. ~/.config/markata-go/config.toml
+
+If none is found, commands that load the full site configuration use built-in
+defaults plus MARKATA_GO_* environment overrides. Commands that read or edit a
+config file directly, such as config get and config set, require a file.
 
 ## Basic Configuration
 
@@ -601,14 +608,14 @@ markata-go searches for config files in this order:
     description = "A site built with markata-go"
     url = "https://example.com"
     author = "Your Name"
-    output_dir = "public"
+    output_dir = "output"
 
 ## Content Discovery
 
     [markata-go.glob]
     patterns = [
         "posts/**/*.md",
-        "pages/*.md"
+        "pages/**/*.md"
     ]
 
 ## Feed Configuration
@@ -683,9 +690,9 @@ Override config with MARKATA_GO_ prefix:
 ## Common Issues
 
 1. **Config not found**
-   - Ensure file is in current directory
-   - Check file extension (.toml, .yaml, .json)
-   - Use -c flag to specify path
+   - Check the local names above and the global fallback
+   - Use -c to specify a custom path
+   - Run markata-go config init to create a local file before using config get/set
 
 2. **Invalid TOML syntax**
    - Use online TOML validator
