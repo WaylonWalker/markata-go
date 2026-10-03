@@ -91,7 +91,7 @@ func TestProcessAttachmentEmbedsPreservesFencedCode(t *testing.T) {
 func TestEmbedsCacheVersionInvalidatesExternalAttachmentFix(t *testing.T) {
 	t.Parallel()
 
-	if embedsCacheVersion == "v3" {
-		t.Fatal("external attachment parsing fix must invalidate v3 transformed embed cache")
+	if embedsCacheVersion != "v4" {
+		t.Fatalf("embedsCacheVersion = %q, want v4 for the external attachment fix", embedsCacheVersion)
 	}
 }
