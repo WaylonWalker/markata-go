@@ -80,7 +80,7 @@ url = "https://example.com"
 author = "Your Name"
 
 # Build settings
-output_dir = "public"
+output_dir = "output"
 templates_dir = "templates"
 assets_dir = "static"
 
@@ -96,7 +96,7 @@ disabled_hooks = []
 
 # Content discovery
 [markata-go.glob]
-patterns = ["posts/**/*.md", "pages/*.md"]
+patterns = ["posts/**/*.md", "pages/**/*.md"]
 use_gitignore = true
 
 # Markdown extensions
@@ -250,7 +250,7 @@ Build the static site.
 
 ```bash
 markata-go build              # Standard build
-markata-go build --clean      # Clean output directory first
+markata-go build --clean      # Clean output directory and build cache first
 markata-go build --dry-run    # Show what would be built
 markata-go build -v           # Verbose output
 markata-go build -o dist      # Custom output directory
@@ -376,5 +376,3 @@ If you want to build your own static site generator, feel free to fork this proj
 MIT License - see [LICENSE](LICENSE) for details.
 
 Copyright (c) 2024 Waylon Walker
-test
-# trigger
