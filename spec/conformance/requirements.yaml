@@ -1,0 +1,75 @@
+version: 1
+requirements:
+  - id: CORE-001
+    level: MUST
+    scope: portable
+    summary: Lifecycle stages execute in deterministic order.
+    spec: spec/spec/SPEC.md
+    implementation:
+      - pkg/lifecycle/stages.go
+      - pkg/lifecycle/manager.go
+    tests:
+      - pkg/lifecycle/manager_test.go
+    status: implemented
+  - id: CORE-002
+    level: MUST
+    scope: portable
+    summary: Plugins may participate in lifecycle stages through explicit hook interfaces.
+    spec: spec/spec/SPEC.md
+    implementation:
+      - pkg/lifecycle/plugin.go
+      - pkg/lifecycle/hooks.go
+    tests:
+      - pkg/lifecycle/manager_test.go
+    status: implemented
+  - id: CORE-003
+    level: MUST
+    scope: portable
+    summary: Plugins within a stage have deterministic ordering.
+    spec: spec/spec/SPEC.md
+    implementation:
+      - pkg/lifecycle/plugin.go
+      - pkg/lifecycle/plugin_execution.go
+    tests:
+      - pkg/lifecycle/manager_test.go
+    status: implemented
+  - id: CORE-004
+    level: SHOULD
+    scope: portable
+    summary: Post processing supports bounded concurrency.
+    spec: spec/spec/SPEC.md
+    implementation:
+      - pkg/lifecycle/manager.go
+    tests:
+      - pkg/lifecycle/manager_test.go
+    status: implemented
+  - id: PLUGIN-001
+    level: MUST
+    scope: portable
+    summary: Built-in plugin names resolve to implementations.
+    spec: spec/spec/SPEC.md
+    implementation:
+      - pkg/plugins/registry.go
+    tests:
+      - pkg/plugins/plugins_test.go
+    status: implemented
+  - id: PLUGIN-002
+    level: MUST
+    scope: portable
+    summary: Project-local or module-path plugins can be loaded from site configuration.
+    spec: spec/spec/SPEC.md
+    implementation: []
+    tests: []
+    status: partial
+    notes: Go supports constructor registration in compiled code, but the current runtime does not provide the portable spec's drop-in local/module-path loading contract.
+  - id: PLUGIN-003
+    level: MUST
+    scope: portable
+    summary: Plugins can extend configuration and post data exposed to later stages.
+    spec: spec/spec/PLUGINS.md
+    implementation:
+      - pkg/models/config.go
+      - pkg/models/post.go
+    tests: []
+    status: partial
+    notes: markata-go exposes dynamic Extra fields rather than the runtime schema-composition API described by the portable spec.
