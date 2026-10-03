@@ -114,6 +114,7 @@ steps:
 
 - deploy the built `output/` directory (or the configured output dir) behind nginx, Caddy, S3, or another static file server
 - ensure the server preserves nested `index.html` routing and static asset paths
+- for nginx-native redirects, include the generated `redirects.conf` from the configured output directory and reload nginx when that file changes; see `docs/guides/nginx-redirects.md`
 
 ## Guidance
 

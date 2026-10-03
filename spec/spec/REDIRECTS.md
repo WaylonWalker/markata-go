@@ -100,6 +100,9 @@ The default page MUST provide:
 
 When `redirect_template` is configured, the custom template is used. If it cannot be read or parsed, the implementation MAY warn and fall back to the built-in template.
 
+On a normal build, a supported source rule MUST recreate its HTML fallback if
+that generated page is missing from the output directory.
+
 When `html_fallback = false`, new fallback pages MUST NOT be generated. Because fallback pages share normal site paths and the plugin does not maintain a safe ownership manifest for arbitrary custom templates, changing or removing redirect rules MAY leave old HTML fallback files in an incremental output directory. Users who need those files removed SHOULD run a clean build.
 
 ## Fast builds

@@ -431,8 +431,9 @@ func TestRedirectsPlugin_Priority(t *testing.T) {
 	}
 }
 
-// TestRedirectsPlugin_Write_Caching tests that caching prevents regeneration.
-func TestRedirectsPlugin_Write_Caching(t *testing.T) {
+// TestRedirectsPlugin_Write_RecreatesMissingFallback checks that a missing
+// generated page is restored while its source rule still exists.
+func TestRedirectsPlugin_Write_RecreatesMissingFallback(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
 	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
@@ -465,16 +466,17 @@ func TestRedirectsPlugin_Write_Caching(t *testing.T) {
 	}
 
 	// Delete the output file
-	os.Remove(outputPath)
+	if err := os.Remove(outputPath); err != nil {
+		t.Fatalf("remove generated page: %v", err)
+	}
 
-	// Second write (should be cached)
+	// The next write restores the generated page from the source rule.
 	if err := p.Write(m); err != nil {
 		t.Fatalf("Write() error on second call = %v", err)
 	}
 
-	// File should NOT be recreated due to caching
-	if _, err := os.Stat(outputPath); err == nil {
-		t.Errorf("file %s should not exist due to caching", outputPath)
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file %s was not restored: %v", outputPath, err)
 	}
 }
 
