@@ -1,10 +1,7 @@
 package builderadmin
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,10 +9,13 @@ import (
 )
 
 type workspacePublicationStats struct {
-	LinkedFiles   int64
-	CopiedFiles   int64
-	CopiedBytes   int64
-	ComparedBytes int64
+	LinkedFiles         int64
+	CopiedFiles         int64
+	CopiedBytes         int64
+	ComparedBytes       int64
+	CachedSourceHashes  int64
+	CachedReleaseHashes int64
+	ManifestSaved       bool
 }
 
 // stageIncrementalWorkspace retains an independent mutable workspace. Only
@@ -65,7 +65,7 @@ func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baseli
 			_ = os.RemoveAll(staging)
 		}
 	}()
-	publisher := workspaceDeltaPublisher{workspace: workspace, staging: staging, baselineID: baselineID, root: root, link: link}
+	publisher := workspaceDeltaPublisher{workspace: workspace, staging: staging, baselineID: baselineID, root: root, link: link, previous: loadPublicationManifest(workspace, baselineID), records: make(map[string]publicationRecord)}
 	err = publisher.copyTree()
 	stats = publisher.stats
 	stageName := filepath.Base(staging)
@@ -82,6 +82,7 @@ func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baseli
 		return "", stats, err
 	}
 	committed = true
+	stats.ManifestSaved = savePublicationManifest(workspace, releaseID, publisher.records)
 	return filepath.Join(releasesDir, releaseID), stats, nil
 }
 
@@ -92,6 +93,8 @@ type workspaceDeltaPublisher struct {
 	sourceBuffer, baselineBuffer   []byte
 	stats                          workspacePublicationStats
 	directories                    []workspaceDirectory
+	previous                       publicationManifest
+	records                        map[string]publicationRecord
 }
 
 func (p *workspaceDeltaPublisher) copyEntry(path string, entry fs.DirEntry, walkErr error) error {
@@ -125,61 +128,7 @@ func (p *workspaceDeltaPublisher) copyEntry(path string, entry fs.DirEntry, walk
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("unsupported workspace entry %s (%s)", path, info.Mode())
 	}
-	if p.baselineID != "" {
-		old := filepath.Join(p.baselineID, rel)
-		equal, compared, err := workspaceFileMatches(p.root, old, path, info, p.sourceBuffer, p.baselineBuffer)
-		p.stats.ComparedBytes += compared
-		if err != nil {
-			return err
-		}
-		if equal && p.link(p.root, old, next) == nil {
-			p.stats.LinkedFiles++
-			return nil
-		}
-	}
-	if err := copyWorkspaceFile(path, target, info.Mode().Perm(), info.ModTime()); err != nil {
-		return err
-	}
-	p.stats.CopiedFiles++
-	p.stats.CopiedBytes += info.Size()
-	return nil
-}
-
-func workspaceFileMatches(root *os.Root, baseline, source string, sourceInfo fs.FileInfo, sourceBuffer, baselineBuffer []byte) (bool, int64, error) {
-	// Lstat rejects leaf symlinks. Root.Open also confines parent symlinks to the
-	// release root. Missing or inaccessible baselines use independent copies.
-	info, err := root.Lstat(baseline)
-	if err != nil || !info.Mode().IsRegular() || info.Size() != sourceInfo.Size() || info.Mode().Perm() != sourceInfo.Mode().Perm() || os.SameFile(info, sourceInfo) {
-		return false, 0, nil
-	}
-	old, err := root.Open(baseline)
-	if err != nil {
-		return false, 0, nil
-	}
-	defer old.Close()
-	current, err := os.Open(source)
-	if err != nil {
-		return false, 0, err
-	}
-	defer current.Close()
-	var compared int64
-	for {
-		n, readErr := io.ReadFull(current, sourceBuffer)
-		m, oldErr := io.ReadFull(old, baselineBuffer)
-		compared += int64(n + m)
-		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
-			return false, compared, readErr
-		}
-		if oldErr != nil && oldErr != io.EOF && oldErr != io.ErrUnexpectedEOF {
-			return false, compared, oldErr
-		}
-		if n != m || !bytes.Equal(sourceBuffer[:n], baselineBuffer[:m]) {
-			return false, compared, nil
-		}
-		if readErr != nil || oldErr != nil {
-			return errors.Is(readErr, oldErr), compared, nil
-		}
-	}
+	return p.copyRegular(path, target, next, rel, info)
 }
 
 func pathsOverlap(first, second string) bool {
@@ -230,8 +179,9 @@ type workspaceCopyJob struct {
 }
 
 type workspaceCopyResult struct {
-	stats workspacePublicationStats
-	err   error
+	stats   workspacePublicationStats
+	records map[string]publicationRecord
+	err     error
 }
 
 func (p *workspaceDeltaPublisher) copyTree() error {
@@ -239,14 +189,14 @@ func (p *workspaceDeltaPublisher) copyTree() error {
 	results := make(chan workspaceCopyResult, workspacePublicationWorkers)
 	for range workspacePublicationWorkers {
 		go func() {
-			worker := workspaceDeltaPublisher{workspace: p.workspace, staging: p.staging, baselineID: p.baselineID, root: p.root, link: p.link, sourceBuffer: make([]byte, 64<<10), baselineBuffer: make([]byte, 64<<10)}
+			worker := workspaceDeltaPublisher{workspace: p.workspace, staging: p.staging, baselineID: p.baselineID, root: p.root, link: p.link, sourceBuffer: make([]byte, 64<<10), baselineBuffer: make([]byte, 64<<10), previous: p.previous, records: make(map[string]publicationRecord)}
 			var workerErr error
 			for job := range jobs {
 				if workerErr == nil {
 					workerErr = worker.copyEntry(job.path, job.entry, nil)
 				}
 			}
-			results <- workspaceCopyResult{stats: worker.stats, err: workerErr}
+			results <- workspaceCopyResult{stats: worker.stats, records: worker.records, err: workerErr}
 		}()
 	}
 	walkErr := filepath.WalkDir(p.workspace, func(path string, entry fs.DirEntry, err error) error {
@@ -266,6 +216,11 @@ func (p *workspaceDeltaPublisher) copyTree() error {
 		p.stats.CopiedFiles += result.stats.CopiedFiles
 		p.stats.CopiedBytes += result.stats.CopiedBytes
 		p.stats.ComparedBytes += result.stats.ComparedBytes
+		p.stats.CachedSourceHashes += result.stats.CachedSourceHashes
+		p.stats.CachedReleaseHashes += result.stats.CachedReleaseHashes
+		for path, record := range result.records {
+			p.records[path] = record
+		}
 		if walkErr == nil {
 			walkErr = result.err
 		}

@@ -1369,7 +1369,7 @@ func (s *Service) promoteBuildLogged(buildWork string, log io.Writer) (string, s
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
 	releasesDir := filepath.Join(s.cfg.SiteDir, "releases")
 	releasePath, stats, err := stageIncrementalWorkspace(buildWork, releasesDir, releaseID, s.currentReleaseID())
-	_, _ = fmt.Fprintf(log, "incremental publication: linked_files=%d copied_files=%d copied_bytes=%d compared_bytes=%d\n", stats.LinkedFiles, stats.CopiedFiles, stats.CopiedBytes, stats.ComparedBytes)
+	_, _ = fmt.Fprintf(log, "incremental publication: linked_files=%d copied_files=%d copied_bytes=%d compared_bytes=%d cached_source_hashes=%d cached_release_hashes=%d manifest_saved=%t\n", stats.LinkedFiles, stats.CopiedFiles, stats.CopiedBytes, stats.ComparedBytes, stats.CachedSourceHashes, stats.CachedReleaseHashes, stats.ManifestSaved)
 	if err != nil {
 		return "", "", err
 	}
