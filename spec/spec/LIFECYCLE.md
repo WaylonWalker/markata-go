@@ -1106,6 +1106,14 @@ change_detection = "hash"  # "hash", "mtime", or "both"
 [name] cache clear
 ```
 
+Clean builds MUST finish in a staging directory beside the configured output
+directory and publish the completed generation before reporting success. A
+failed clean build MUST leave the previously published output available.
+Generated-file ownership recorded in the build cache MUST remain valid after
+the staged directory is published at its configured output path. An
+incremental build following a clean build MUST be able to update those files
+without treating its own generated output as an unrelated user file.
+
 ---
 
 ## Production-Safe Incremental Mode

@@ -48,6 +48,39 @@ func TestParseImageLibraryConfig_DefaultsAndExplicitFalse(t *testing.T) {
 	}
 }
 
+func TestImageLibrary_AdoptsOnlyUnchangedPublishedStageOutputs(t *testing.T) {
+	for _, tc := range []struct {
+		name, stageName, contents string
+		wantAdopt                 bool
+	}{
+		{name: "published stage", stageName: ".output.markata-build-123", contents: "generated", wantAdopt: true},
+		{name: "modified output", stageName: ".output.markata-build-123", contents: "modified"},
+		{name: "unrelated root", stageName: "unrelated", contents: "generated"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			output := filepath.Join(root, "output")
+			stage := filepath.Join(root, tc.stageName)
+			path := filepath.Join(output, "images", "index.html")
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(tc.contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cache := buildcache.New(filepath.Join(root, "cache"))
+			cache.SetImageLibraryOutputs(root, stage, map[string]string{
+				filepath.Join(stage, "images", "index.html"): buildcache.ContentHash("generated"),
+			})
+			adoptPublishedImageLibraryOutputs(cache, root, output)
+			_, gotRoot, _ := cache.GetImageLibraryOutputs()
+			if got := gotRoot == output; got != tc.wantAdopt {
+				t.Fatalf("adopted = %v, want %v", got, tc.wantAdopt)
+			}
+		})
+	}
+}
+
 func TestImageLibraryPage_UsesCanonicalDropperDerivatives(t *testing.T) {
 	index := imageIndexForTest()
 	page := newImageLibraryPage(index)
