@@ -1,6 +1,7 @@
 package buildstats
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -87,7 +88,7 @@ func validateOTLPProtocol(protocol string) error {
 func validateOTLPEndpoint(endpoint string) (string, error) {
 	parsed, err := url.Parse(endpoint)
 	if err != nil {
-		return "", fmt.Errorf("invalid endpoint: %w", err)
+		return "", errors.New("invalid endpoint URL")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return "", fmt.Errorf("endpoint must use http or https")
@@ -101,7 +102,7 @@ func validateOTLPEndpoint(endpoint string) (string, error) {
 func appendOTLPTracePath(endpoint string) (string, error) {
 	parsed, err := url.Parse(endpoint)
 	if err != nil {
-		return "", fmt.Errorf("invalid endpoint: %w", err)
+		return "", errors.New("invalid endpoint URL")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return "", fmt.Errorf("endpoint must use http or https")

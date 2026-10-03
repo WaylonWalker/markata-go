@@ -1,6 +1,9 @@
 package buildstats
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestResolveOTLPConfig(t *testing.T) {
 	t.Parallel()
@@ -23,6 +26,16 @@ func TestResolveOTLPConfig(t *testing.T) {
 			},
 			endpoint: "http://tempo:4318/collector/v1/traces",
 			protocol: defaultOTLPProtocol,
+			enabled:  true,
+		},
+		{
+			name: "HTTP JSON endpoint preserves query",
+			env: map[string]string{
+				otelExporterOTLPEndpoint: "https://collector/base?tenant=example",
+				otelExporterOTLPProtocol: "http/json",
+			},
+			endpoint: "https://collector/base/v1/traces?tenant=example",
+			protocol: "http/json",
 			enabled:  true,
 		},
 		{
@@ -60,7 +73,6 @@ func TestResolveOTLPConfig(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			getenv := func(key string) string { return tt.env[key] }
@@ -79,6 +91,7 @@ func TestResolveOTLPConfigRejectsInvalidValues(t *testing.T) {
 	t.Parallel()
 
 	for _, env := range []map[string]string{
+		{otelExporterOTLPProtocol: "udp"},
 		{otelExporterOTLPTracesEndpoint: "tempo:4318"},
 		{otelExporterOTLPEndpoint: "file:///tmp/collector"},
 		{otelExporterOTLPTracesEndpoint: "http://tempo:4318/v1/traces", otelExporterOTLPTracesProtocol: "udp"},
@@ -87,5 +100,31 @@ func TestResolveOTLPConfigRejectsInvalidValues(t *testing.T) {
 		if _, err := ResolveOTLPConfig(func(key string) string { return env[key] }); err == nil {
 			t.Fatalf("ResolveOTLPConfig(%v) unexpectedly succeeded", env)
 		}
+	}
+}
+
+func TestResolveOTLPConfigDoesNotLeakMalformedEndpoint(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{otelExporterOTLPEndpoint, otelExporterOTLPTracesEndpoint} {
+		_, err := ResolveOTLPConfig(func(name string) string {
+			if name == key {
+				return "http://user:private-password@collector/%zz?token=private-token"
+			}
+			return ""
+		})
+		if err == nil {
+			t.Fatal("malformed endpoint accepted")
+		}
+		if strings.Contains(err.Error(), "private-") {
+			t.Fatalf("endpoint credentials leaked: %s", err)
+		}
+	}
+}
+
+func TestResolveOTLPConfigNilReader(t *testing.T) {
+	t.Parallel()
+	got, err := ResolveOTLPConfig(nil)
+	if err != nil || got.Enabled() || got != (OTLPConfig{}) {
+		t.Fatalf("nil reader = %#v, %v", got, err)
 	}
 }
