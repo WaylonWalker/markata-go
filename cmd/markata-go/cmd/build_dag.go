@@ -141,7 +141,6 @@ func addDAGLegacyPluginStage(
 	builder *builddag.Builder,
 	m *lifecycle.Manager,
 	stage lifecycle.Stage,
-	requires []builddag.ArtifactID,
 	provided builddag.ArtifactID,
 	observe func(lifecycle.Stage, bool, error),
 ) {
@@ -152,7 +151,6 @@ func addDAGLegacyPluginStage(
 	builder.AddTask(builddag.TaskSpec{
 		ID:        builddag.TaskID("lifecycle." + string(stage) + ".start"),
 		Group:     string(stage),
-		Requires:  append([]builddag.ArtifactID(nil), requires...),
 		Provides:  []builddag.ArtifactID{startedArtifact},
 		Scope:     builddag.ScopeSite,
 		Version:   "legacy-plugin-stage-v1",

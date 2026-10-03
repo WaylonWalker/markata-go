@@ -65,6 +65,18 @@ to one). It MUST check cancellation, artifact availability, and task functions,
 and return task errors with context. No concurrency or scheduler-default change
 is implied by graph hardening.
 
+For scheduler-owned Load, Transform, Render, Collect, Write, and Cleanup stages,
+the DAG build MUST snapshot the ordered runnable plugin list once at stage start.
+It MUST execute a stage-start graph, then compile and execute each plugin graph
+only after its predecessor finishes, then execute a stage-complete graph. Each
+plugin graph MUST declare the preceding completion artifact as an external
+input. A plugin registered during a stage MUST NOT join that stage's snapshot;
+one registered before a later stage starts MAY join the later snapshot. Plugin
+expansion MUST preserve the compatibility task's required and provided boundary
+artifacts. The stage observer, template-cache clearing, and stage timing MUST
+remain at lifecycle-stage boundaries. The legacy executor remains the default,
+and each compatibility plugin graph remains serial and exclusive.
+
 Regression coverage MUST mutate original and accessor backing arrays, mutate
 builder external inputs after compilation, and verify unchanged graph metadata,
 diagnostics, identity, and execution. Tests MUST cover ambiguous display strings,
