@@ -10,12 +10,13 @@ import (
 func TestBuildSpanViewOrdersDepthAndCriticalChain(t *testing.T) {
 	t.Parallel()
 
-	rows := buildSpanView([]buildstats.SpanTiming{
+	spans := []buildstats.SpanTiming{
 		{ID: "child-b", ParentID: "root", Name: "late child", StartOffset: 3 * time.Second, Duration: 8 * time.Second, Status: "ok"},
 		{ID: "root", Name: "root", StartOffset: 0, Duration: 12 * time.Second, Status: "ok"},
 		{ID: "child-a", ParentID: "root", Name: "early child", StartOffset: time.Second, Duration: 2 * time.Second, Status: "ok"},
 		{ID: "grandchild", ParentID: "child-b", Name: "latest leaf", StartOffset: 8 * time.Second, Duration: 2 * time.Second, Status: "ok", Attributes: map[string]string{"feed": "archive"}},
-	})
+	}
+	rows := buildSpanView(spans)
 	if len(rows) != 4 {
 		t.Fatalf("row count = %d, want 4", len(rows))
 	}
@@ -34,8 +35,8 @@ func TestBuildSpanViewOrdersDepthAndCriticalChain(t *testing.T) {
 		t.Fatalf("grandchild timing = start:%d duration:%d", rows[3].StartMS, rows[3].DurationMS)
 	}
 	rows[3].Attributes["feed"] = "changed"
-	if got := rows[3].Attributes["feed"]; got != "changed" {
-		t.Fatalf("attribute mutation failed: %q", got)
+	if got := spans[3].Attributes["feed"]; got != "archive" {
+		t.Fatalf("view mutation changed input attribute: %q", got)
 	}
 }
 
@@ -53,6 +54,19 @@ func TestBuildSpanViewHandlesMissingParentAndCycle(t *testing.T) {
 	for _, row := range rows {
 		if row.Depth < 0 || row.Depth > 2 {
 			t.Fatalf("unexpected depth for %s: %d", row.ID, row.Depth)
+		}
+	}
+}
+
+func TestBuildSpanViewCycleHasNoCompletionChain(t *testing.T) {
+	t.Parallel()
+	rows := buildSpanView([]buildstats.SpanTiming{
+		{ID: "a", ParentID: "b", Duration: time.Second},
+		{ID: "b", ParentID: "a", Duration: 2 * time.Second},
+	})
+	for _, row := range rows {
+		if row.Critical {
+			t.Fatalf("cycle row %q marked critical", row.ID)
 		}
 	}
 }
