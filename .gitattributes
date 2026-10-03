@@ -1,2 +1,5 @@
 # Font license checksums pin raw bytes. Do not convert line endings on checkout.
 internal/fontcatalog/*/*.txt -text
+
+# Bundled JavaScript contains raw whitespace inside template literals.
+pkg/servecontrol/pierre-diffs/*.js binary

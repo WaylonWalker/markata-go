@@ -93,7 +93,9 @@ show their category, safety class, source location, and before/after text.
 Use **Review all safe** to review every currently safe fix, a category button
 to review one group, or **Select** on individual problems followed by
 **Review selected**. The review dialog lists every proposed edit before you
-approve the batch.
+approve the batch. It shows a full-file diff for each source file using bundled
+assets, so review works without internet access. If rich rendering fails, the
+dialog shows a text diff of the same previewed edits.
 `SAFE` fixes are deterministic edits that can be selected together; `REVIEW`
 fixes need closer inspection; `MANUAL` diagnostics provide guidance without an
 automatic edit. Markata never applies a fix until you review a preview and

@@ -141,6 +141,14 @@ browser can compare the updated projection with the previewed Problems list.
 The apply response reports that the rebuild was queued, not that it completed.
 An apply request never silently selects or applies fixes.
 
+The review dialog MUST show a full-file before/after diff for each previewed
+file, using only the frozen content in the batch preview response. The renderer
+MUST load from assets bundled with Serve and work without network access.
+Renderer failures MUST leave a readable text diff so users can still review
+the exact previewed edits. Closing or replacing a review MUST release its
+rendered diff views. Diff rendering MUST NOT change the existing preview token,
+selection, digest check, or apply request.
+
 Log-derived warning/error inbox entries are deduplicated only when a structured
 diagnostic for the same job, severity, and normalized message exists. The
 original log remains visible, and a log-only warning/error remains in the

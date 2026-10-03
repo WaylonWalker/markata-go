@@ -1,0 +1,11 @@
+{
+  "name": "markata-go-serve-diffs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun ./build.mjs"
+  },
+  "dependencies": {
+    "@pierre/diffs": "1.5.1"
+  }
+}

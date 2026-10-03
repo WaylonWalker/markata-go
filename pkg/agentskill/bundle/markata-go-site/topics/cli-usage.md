@@ -42,8 +42,8 @@ item, and filter for sharing or browser Back/Forward. Use `j`/`k` or arrows to
 move through results, Enter to inspect, `/` to focus the filter, `w`/`e` for
 warnings/errors, and `p`/`f`/`l` for pages/feeds/logs. Press `?` for the full key
 list. Press `r` in Jobs to rerun the selected completed job. These shortcuts
-pause while editing text. Preview suggested source fixes
-before applying them; the local source actions are not part of deployed
+pause while editing text. Review each source file's full before/after diff
+before applying suggested fixes; the local source actions are not part of deployed
 Builder Admin.
 
 `serve` and `builder-admin` also accept `--dag`; an explicit `--dag=false`
