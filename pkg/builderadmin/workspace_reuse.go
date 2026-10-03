@@ -48,9 +48,8 @@ func claimReusableWorkspace(workDir, currentReleaseID string) (bool, error) {
 }
 
 // markReusableWorkspace records that the retained node-local workspace is an
-// exact successful build of releaseID. Same-filesystem promotion renames the
-// workspace away; in that case any stale marker is removed and reuse is simply
-// unavailable until a later cross-filesystem promotion leaves a workspace.
+// exact successful build of releaseID. Staged incremental publication keeps
+// this workspace independent of every immutable release.
 func markReusableWorkspace(workDir, releaseID string) error {
 	markerPath := workspaceReuseMarkerPath(workDir)
 	info, err := os.Stat(workDir)

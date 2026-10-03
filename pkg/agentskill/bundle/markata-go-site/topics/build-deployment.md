@@ -173,3 +173,13 @@ When builder-admin preparation dominates warm builds, inspect the workspace moun
 When promotion latency overlaps release pruning, check the deployed engine version. Builder-admin detaches obsolete releases under the publication lock and deletes their trees afterward; internal `.pruning-` and `.staging-` directories are not rollback targets. Interrupted pruning is retried on the next cleanup.
 
 A successful build record alone does not prove the static server can read the release. Check readiness and public endpoints. For nginx `current/index.html` permission errors after staged publication, inspect the release root: builder-admin normalizes it to `0755`; older versions could retain `0700` from a temporary directory. Correct only affected root permissions and upgrade the engine.
+
+## Builder Admin Workspace Reuse
+
+Builder Admin retains an independent workspace after successful publication.
+Release staging links unchanged files from the previous immutable release and
+copies changed files. Never hard-link a mutable workspace to a published release.
+Warm logs report `reusing build work from current release`. Publication logs show
+linked files, copied files, copied bytes, and compared bytes. Failed builds and
+rollbacks force independent reseeding. Compare complete build timings, including
+preparation and publication. Direct comparison still reads unchanged output.

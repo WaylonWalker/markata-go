@@ -1150,7 +1150,7 @@ func (s *Service) runBuild(ctx context.Context, req queueRequest) {
 
 	phaseStart = time.Now()
 	s.updateRunningPhase("promote")
-	releaseID, releasePath, err := s.promoteBuild(buildWork)
+	releaseID, releasePath, err := s.promoteBuildLogged(buildWork, logFile)
 	if err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
@@ -1360,11 +1360,16 @@ func (s *Service) buildCommandArgs(id, buildWork string) ([]string, func(), erro
 }
 
 func (s *Service) promoteBuild(buildWork string) (string, string, error) {
+	return s.promoteBuildLogged(buildWork, io.Discard)
+}
+
+func (s *Service) promoteBuildLogged(buildWork string, log io.Writer) (string, string, error) {
 	s.releaseMu.Lock()
 	defer s.releaseMu.Unlock()
 	releaseID := time.Now().UTC().Format("20060102T150405Z") + "-" + hostSuffix()
 	releasesDir := filepath.Join(s.cfg.SiteDir, "releases")
-	releasePath, err := promoteWorkspaceRelease(buildWork, releasesDir, releaseID)
+	releasePath, stats, err := stageIncrementalWorkspace(buildWork, releasesDir, releaseID, s.currentReleaseID())
+	_, _ = fmt.Fprintf(log, "incremental publication: linked_files=%d copied_files=%d copied_bytes=%d compared_bytes=%d\n", stats.LinkedFiles, stats.CopiedFiles, stats.CopiedBytes, stats.ComparedBytes)
 	if err != nil {
 		return "", "", err
 	}

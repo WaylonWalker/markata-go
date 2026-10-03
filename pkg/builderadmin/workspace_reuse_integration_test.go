@@ -11,14 +11,25 @@ import (
 )
 
 func TestBuilderAdminBuild_RetainedWorkspaceSuccessFailureAndDeletion(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("cross-filesystem fixture uses Linux tmpfs")
+	if runtime.GOOS == "windows" {
+		t.Skip("shell fixture")
 	}
-	workRoot, err := os.MkdirTemp("/dev/shm", "markata-workspace-")
-	if err != nil {
-		t.Skipf("tmpfs unavailable: %v", err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(workRoot) })
+	t.Run("same-filesystem", func(t *testing.T) { testRetainedWorkspaceLifecycle(t, t.TempDir()) })
+	t.Run("cross-filesystem", func(t *testing.T) {
+		if runtime.GOOS != "linux" {
+			t.Skip("Linux tmpfs fixture")
+		}
+		workRoot, err := os.MkdirTemp("/dev/shm", "markata-workspace-")
+		if err != nil {
+			t.Skipf("tmpfs unavailable: %v", err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(workRoot) })
+		testRetainedWorkspaceLifecycle(t, workRoot)
+	})
+}
+
+func testRetainedWorkspaceLifecycle(t *testing.T, workRoot string) {
+	t.Helper()
 	source := t.TempDir()
 	script := filepath.Join(source, "worker.sh")
 	contents := `#!/bin/sh

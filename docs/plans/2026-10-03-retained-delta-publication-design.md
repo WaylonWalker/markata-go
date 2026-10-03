@@ -1,0 +1,31 @@
+---
+title: Retained builder workspace and incremental publication
+description: Preserve immutable releases while avoiding full-tree workspace copies
+date: 2026-10-03
+published: false
+---
+
+# Retained workspace and incremental publication
+
+Issue #1421 tracks repeated full-tree preparation. Production spends approximately
+169 seconds in preparation and 30 seconds in the engine. Same-filesystem promotion
+consumes the workspace, so the existing reuse marker cannot avoid the next copy.
+
+Retain the independent workspace and stage each release. Compare regular files
+with the previous immutable release. Link matching bytes and permissions from
+that release, and independently copy changed files. Never link workspace files
+into releases. Build a fresh directory tree so deleted paths remain absent.
+
+Direct comparisons avoid a new manifest trust contract. They still read unchanged
+output. Logs report linked files, copied files, copied bytes, and compared bytes.
+Hard-link failures fall back to independent copies. Constrained filesystem roots
+prevent baseline symlinks from redirecting publication outside the release tree.
+
+The existing marker handles successful reuse, interruption, failure, and rollback.
+A failed stage never becomes current. Tests cover unchanged and changed bytes,
+permissions, symlinks, deletion, unsupported links, isolation, and recovery.
+A synthetic benchmark compares full copying with incremental publication.
+Production validation measures complete jobs and verifies old-release bytes.
+
+Reflinks alone cannot serve the production ext4 volume. A manifest cache remains
+a later optimization after direct comparison provides deployment measurements.

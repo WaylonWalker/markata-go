@@ -80,7 +80,7 @@ Successful builds MUST preserve the existing atomic release publication model:
 1. prepare cache symlinks when a dedicated cache mount is configured
 2. seed a stable work directory from the current release when one exists
 3. run `markata-go build` into the work directory
-4. move the finished output into `releases/<release-id>/`
+4. stage an independent release under `releases/`, then atomically rename it to `releases/<release-id>/`
 5. atomically repoint `current` to the new release
 6. publish build success and queue release pruning according to retention policy
 
@@ -375,7 +375,7 @@ The default rendered-release retention MUST keep at least 25 releases, including
 
 ## Retained build workspace reuse
 
-A workspace retained after cross-filesystem promotion MUST be marked with the exact successfully promoted release ID. The marker MUST live beside the workspace, outside generated output. Preparation MAY reuse the retained workspace only when its marker matches the current live release, and MUST consume the marker before mutation. Missing or mismatched proof, a failed or interrupted build, and rollback MUST force a fresh seed from current. Same-filesystem promotion consumes the workspace by rename and MUST clear stale proof. A marker write failure after successful publication MUST be logged without changing the successful build result. Warm preparation MUST log when it reuses output instead of copying current.
+A workspace retained after successful staged publication MUST be marked with the exact successfully promoted release ID. The marker MUST live beside the workspace, outside generated output. Preparation MAY reuse the retained workspace only when its marker matches the current live release, and MUST consume the marker before mutation. Missing or mismatched proof, a failed or interrupted build, and rollback MUST force a fresh seed from current. Same-filesystem publication MUST also retain an independent workspace. A marker write failure after successful publication MUST be logged without changing the successful build result. Warm preparation MUST log when it reuses output instead of copying current.
 
 ## Prune and promotion concurrency
 
@@ -400,3 +400,30 @@ chain. This heuristic MUST NOT be described as a dependency-aware critical path.
 
 The initial model is internal groundwork. It does not require benchmark artifact
 retention, API exposure, or an operator waterfall; those remain follow-up work.
+
+## Retained Workspace And Incremental Publication
+
+Builder Admin MUST retain the mutable workspace after successful publication on
+both same-filesystem and cross-filesystem layouts. A successful-release marker
+MUST match current before reuse. Preparation MUST consume the marker before
+mutation. Failure, interruption, missing markers, and rollback MUST force reseeding.
+
+Publication MUST enumerate the completed workspace into a fresh hidden staging
+tree. It MUST omit paths absent from the workspace. An unchanged regular file
+MAY share an inode with the previous immutable release only after byte and mode
+comparison. A workspace file MUST NOT share an inode with a published release.
+Changed files and unsupported hard-link operations MUST use independent copies.
+Symlinks MUST be copied as links, never traversed during workspace enumeration.
+Baseline lookup and hard linking MUST remain confined to the release root.
+
+The staging root MUST use mode 0755. Copied files MUST retain their permissions
+and modification times. Linked files retain the previous release's modification
+time. Publication MUST finish the staged tree before exposing its final name or
+switching current. A failure MUST preserve current and historical releases.
+
+Publication logs MUST report linked and copied file counts, copied bytes, and
+compared bytes. Timings alone MUST NOT substitute for these work counts.
+Direct byte comparison is the initial implementation: warm publication still
+reads unchanged output, but avoids copying its bytes to replicated storage.
+This feature MUST NOT claim power-loss durability beyond the existing staged
+publication contract.
