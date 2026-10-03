@@ -399,7 +399,7 @@ markata-go build [flags]
 # Standard build
 markata-go build
 
-# Clean build (removes output directory and build cache)
+# Clean build (replaces output after the new build succeeds)
 markata-go build --clean
 
 # Also clear external plugin caches

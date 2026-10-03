@@ -7,6 +7,7 @@ Use this topic when the task involves local preview, CI, publishing, or hosting 
 - `markata-go serve --fast` for active editing
 - `markata-go build` for full output validation
 - `markata-go build --clean` only when you need to rule out stale output
+- a clean build publishes its output after the new build succeeds; a failed build leaves the previous output available
 - `markata-go build -o dist` when CI or previews need an isolated artifact directory
 - `markata-go buildlab run --fixture /path/to/site` when you need clean, incremental, and deterministic build evidence
 
