@@ -22,6 +22,13 @@ stages, output formats, and cache behavior. The DAG executor runs one graph
 task at a time; existing plugins may still use their own internal worker pools.
 It is not a switch for additional parallelism or a guarantee of faster builds.
 
+The DAG executor takes one snapshot of the plugins scheduled for each stage.
+It builds each plugin's graph when that plugin is reached, after earlier plugins
+have finished. A plugin added during a stage can run in a later stage, but does
+not join the stage already in progress. This preserves the normal lifecycle's
+plugin ordering while allowing later graphs to use the current post and feed
+state.
+
 The flag is also available on `serve` and `builder-admin`. Builder Admin passes
 the choice to queued build processes. Use `MARKATA_GO_DAG=true` for an
 environment-wide opt-in, and `--dag=false` to override it for one command.

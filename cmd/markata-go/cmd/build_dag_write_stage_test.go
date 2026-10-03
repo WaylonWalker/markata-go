@@ -56,7 +56,7 @@ func TestDAGWritePluginStagePreservesOrderAndObserver(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageWrite)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageWrite, nil, provided, observe)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageWrite, provided, observe)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)
@@ -110,7 +110,7 @@ func TestDAGWritePluginStageStopsOnPluginDeclaredCriticalError(t *testing.T) {
 
 	builder := builddag.NewBuilder()
 	provided := builddag.ArtifactID{Kind: "lifecycle-stage", Key: string(lifecycle.StageWrite)}
-	addDAGLegacyPluginStage(builder, manager, lifecycle.StageWrite, nil, provided, observe)
+	addDAGLegacyPluginStage(builder, manager, lifecycle.StageWrite, provided, observe)
 	graph, err := builder.Compile()
 	if err != nil {
 		t.Fatalf("Compile() = %v", err)

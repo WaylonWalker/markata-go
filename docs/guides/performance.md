@@ -597,3 +597,45 @@ signals for feeds, tags, and garden output remain unchanged.
 - [Configuration Guide](/docs/guides/configuration/) - Concurrency settings
 - [Plugin Development](/docs/guides/plugin-development/) - Writing efficient plugins
 - [Go Profiling](https://go.dev/blog/pprof) - Official pprof documentation
+
+## Nested operation spans
+
+Save build measurements with `markata-go build --benchmark-json=benchmark.json`,
+then inspect completed spans with `jq '.benchmark.Spans' benchmark.json`.
+Durations and start offsets use nanoseconds; a zero duration is valid on clocks
+with coarse resolution. IDs and parent IDs describe nesting, and stage/plugin
+fields identify the active build work when the span started.
+
+Plugin authors can instrument an operation using `buildstats.StartSpan(ctx,
+"template.execute")` and finish the returned handle with `End()` or
+`EndError(err)` before the build profile stops. Pass the returned context to
+child operations to preserve nesting. With no active profile, these calls are
+safe no-ops. This release provides the recording API; builds without explicit
+span instrumentation may report an empty span list.
+
+Use fixed operation names and safe attributes. Credential-bearing attribute
+keys are dropped, and error text is discarded, but values under other keys are
+not automatically redacted. Avoid query strings, sensitive paths, and secrets.
+See the [lifecycle specification](../../spec/spec/LIFECYCLE.md) for the API
+contract and limits.
+
+## OTLP configuration foundation
+
+The Go API `buildstats.ResolveOTLPConfig(os.Getenv)` resolves optional trace
+settings. For example, a generic endpoint `http://collector:4318` resolves to
+`http://collector:4318/v1/traces` with the default `http/protobuf` protocol.
+The resolver alone does not send traces, and setting these variables does not
+yet enable export from `markata-go build`.
+
+| Variable | Meaning |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Complete trace URL; takes precedence over the generic endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Generic URL; HTTP protocols append `/v1/traces`, while gRPC preserves the URL |
+| `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` | Trace protocol; takes precedence over the generic protocol |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | Generic protocol; defaults to `http/protobuf` |
+
+Supported protocols are `grpc`, `http/protobuf`, and `http/json`. Endpoints must
+use HTTP or HTTPS and include a host. With no endpoint, the returned config is
+disabled. This foundation follows [OpenTelemetry endpoint conventions](https://opentelemetry.io/docs/specs/otel/protocol/exporter/);
+exporter integration, headers, sampling, and collector deployment remain
+follow-up work.
