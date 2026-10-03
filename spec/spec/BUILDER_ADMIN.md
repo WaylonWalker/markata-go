@@ -410,7 +410,7 @@ mutation. Failure, interruption, missing markers, and rollback MUST force reseed
 
 Publication MUST enumerate the completed workspace into a fresh hidden staging
 tree. It MUST omit paths absent from the workspace. An unchanged regular file
-MAY share an inode with the previous immutable release only after byte and mode
+MAY share an inode with the previous immutable release only after content-digest and mode
 comparison. A workspace file MUST NOT share an inode with a published release.
 Changed files and unsupported hard-link operations MUST use independent copies.
 Symlinks MUST be copied as links, never traversed during workspace enumeration.
@@ -423,8 +423,19 @@ switching current. A failure MUST preserve current and historical releases.
 
 Publication logs MUST report linked and copied file counts, copied bytes, and
 compared bytes. Timings alone MUST NOT substitute for these work counts.
-Direct byte comparison is the initial implementation: warm publication still
-reads unchanged output, but avoids copying its bytes to replicated storage.
+Publication MAY retain a private SHA-256 manifest beside the workspace. The
+manifest MUST bind its checksum, workspace path, and baseline release. On Linux,
+a cached source digest requires unchanged device, inode, size, mode, modification
+time, and change time. Both timestamps MUST precede the manifest commit by more
+than one second. A backwards clock MUST disable this shortcut. Other platforms
+MUST read source content. Immutable baseline digests require matching device,
+inode, size, mode, and modification time; hard-link change times are excluded.
+Missing, corrupt, or mismatched records MUST fall back to content hashing.
+Manifest write failure MUST NOT fail publication. The manifest MUST be private,
+atomically replaced, bounded to 32 MiB when loading, and omitted from releases.
+Logs MUST report source and baseline digest cache hits and manifest persistence.
+Retained releases MUST remain immutable; privileged out-of-band modifications
+that preserve all metadata are outside this cache contract.
 This feature MUST NOT claim power-loss durability beyond the existing staged
 publication contract.
 

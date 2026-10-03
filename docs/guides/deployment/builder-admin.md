@@ -415,3 +415,17 @@ Builder Admin first removes obsolete releases from the published release list wi
 ### Successful build but nginx returns 403
 
 If nginx reports `current/index.html is forbidden (13: Permission denied)`, inspect the completed release root permissions. Builder-admin publishes release roots as `0755` so nginx can traverse them. Older cross-filesystem publication could retain a private `0700` staging directory, and subsequent seeded builds could inherit it. Upgrade the engine and correct affected retained release roots to `0755`; child file permissions do not need a recursive change for this defect.
+
+### Warm publication digest cache
+
+Builder Admin stores a private SHA-256 manifest beside its mutable workspace.
+On Linux, unchanged file identity and change timestamps allow cached digest reuse.
+Files with recent or changed timestamps require content hashing. Missing or corrupt
+cache records fall back to hashing. Other platforms always hash source files.
+
+The manifest binds the workspace and previous release. Published releases must
+stay immutable. Do not edit retained releases in place. Delete the workspace's
+`.publication.json` sibling to force content verification on the next publication.
+Manifest write failures leave publication usable but disable cache reuse. Logs
+report `cached_source_hashes`, `cached_release_hashes`, and `manifest_saved`.
+The manifest contains file identities and digests and never appears in a release.
