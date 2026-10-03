@@ -53,6 +53,27 @@ reverse = true
 items_per_page = 10
 ```
 
+### Presentation Views
+
+For requests to hide Simple or Calendar, inspect `feed_defaults.views` and the
+feed's `views` before editing templates. Use a subset of `default`, `simple`,
+and `calendar`; always retain `default`. Omitted per-feed lists inherit global
+views, while explicit lists replace them. Empty lists are invalid.
+
+```toml
+[markata-go.feed_defaults]
+views = ["default", "simple"]
+
+[[markata-go.feeds]]
+slug = "archive"
+views = ["default", "calendar"]
+```
+
+Disabling Simple suppresses `/simple/` output even if `formats.simple_html` is
+true and removes stale generated pages on rebuild. Disabling Calendar removes
+its controls, assets, and hidden source payload. Syndication formats remain
+independent. Rebuild and inspect rendered links before completing the change.
+
 ### Calendar View
 
 Normal built-in HTML feeds expose Calendar by default. Do not duplicate the feed or replace its primary template just to show publishing rhythm.
