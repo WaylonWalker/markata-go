@@ -65,8 +65,8 @@ func stageIncrementalWorkspaceWithLink(workspace, releasesDir, releaseID, baseli
 			_ = os.RemoveAll(staging)
 		}
 	}()
-	publisher := workspaceDeltaPublisher{workspace: workspace, staging: staging, baselineID: baselineID, root: root, link: link, sourceBuffer: make([]byte, 64<<10), baselineBuffer: make([]byte, 64<<10)}
-	err = filepath.WalkDir(workspace, publisher.copyEntry)
+	publisher := workspaceDeltaPublisher{workspace: workspace, staging: staging, baselineID: baselineID, root: root, link: link}
+	err = publisher.copyTree()
 	stats = publisher.stats
 	stageName := filepath.Base(staging)
 	if err != nil {
@@ -220,4 +220,55 @@ func (p *workspaceDeltaPublisher) finishDirectories() error {
 		}
 	}
 	return nil
+}
+
+const workspacePublicationWorkers = 8
+
+type workspaceCopyJob struct {
+	path  string
+	entry fs.DirEntry
+}
+
+type workspaceCopyResult struct {
+	stats workspacePublicationStats
+	err   error
+}
+
+func (p *workspaceDeltaPublisher) copyTree() error {
+	jobs := make(chan workspaceCopyJob, workspacePublicationWorkers)
+	results := make(chan workspaceCopyResult, workspacePublicationWorkers)
+	for range workspacePublicationWorkers {
+		go func() {
+			worker := workspaceDeltaPublisher{workspace: p.workspace, staging: p.staging, baselineID: p.baselineID, root: p.root, link: p.link, sourceBuffer: make([]byte, 64<<10), baselineBuffer: make([]byte, 64<<10)}
+			var workerErr error
+			for job := range jobs {
+				if workerErr == nil {
+					workerErr = worker.copyEntry(job.path, job.entry, nil)
+				}
+			}
+			results <- workspaceCopyResult{stats: worker.stats, err: workerErr}
+		}()
+	}
+	walkErr := filepath.WalkDir(p.workspace, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return p.copyEntry(path, entry, nil)
+		}
+		jobs <- workspaceCopyJob{path: path, entry: entry}
+		return nil
+	})
+	close(jobs)
+	for range workspacePublicationWorkers {
+		result := <-results
+		p.stats.LinkedFiles += result.stats.LinkedFiles
+		p.stats.CopiedFiles += result.stats.CopiedFiles
+		p.stats.CopiedBytes += result.stats.CopiedBytes
+		p.stats.ComparedBytes += result.stats.ComparedBytes
+		if walkErr == nil {
+			walkErr = result.err
+		}
+	}
+	return walkErr
 }

@@ -95,6 +95,10 @@ guarantee covers atomic visibility, not full power-loss durability. Linked files
 retain the previous release's modification time.
 
 Logs report `linked_files`, `copied_files`, `copied_bytes`, and `compared_bytes`.
+A bounded pool processes up to eight files concurrently. Each worker owns its
+comparison buffers. Publication waits for all workers before exposing a release.
+Independent copies retain per-file synchronization.
+
 Direct byte comparisons still read unchanged output. They avoid copying those
 bytes onto replicated storage. The first publication needs independent copies
 when no baseline exists, and requires space for both the workspace and release.

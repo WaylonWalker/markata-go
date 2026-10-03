@@ -427,3 +427,10 @@ Direct byte comparison is the initial implementation: warm publication still
 reads unchanged output, but avoids copying its bytes to replicated storage.
 This feature MUST NOT claim power-loss durability beyond the existing staged
 publication contract.
+
+Incremental publication MUST use a bounded pool with at most eight concurrent
+file operations. Each worker MUST own its comparison buffers and counters.
+Parent directories MUST exist before file processing. Publication MUST wait for
+all workers before applying directory metadata or exposing the release. A worker
+failure MUST prevent publication, and all workers MUST finish before staging
+cleanup. Independent copies MUST retain the existing per-file synchronization.
