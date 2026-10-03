@@ -597,3 +597,24 @@ signals for feeds, tags, and garden output remain unchanged.
 - [Configuration Guide](/docs/guides/configuration/) - Concurrency settings
 - [Plugin Development](/docs/guides/plugin-development/) - Writing efficient plugins
 - [Go Profiling](https://go.dev/blog/pprof) - Official pprof documentation
+
+## Nested operation spans
+
+Save build measurements with `markata-go build --benchmark-json=benchmark.json`,
+then inspect completed spans with `jq '.benchmark.Spans' benchmark.json`.
+Durations and start offsets use nanoseconds; a zero duration is valid on clocks
+with coarse resolution. IDs and parent IDs describe nesting, and stage/plugin
+fields identify the active build work when the span started.
+
+Plugin authors can instrument an operation using `buildstats.StartSpan(ctx,
+"template.execute")` and finish the returned handle with `End()` or
+`EndError(err)` before the build profile stops. Pass the returned context to
+child operations to preserve nesting. With no active profile, these calls are
+safe no-ops. This release provides the recording API; builds without explicit
+span instrumentation may report an empty span list.
+
+Use fixed operation names and safe attributes. Credential-bearing attribute
+keys are dropped, and error text is discarded, but values under other keys are
+not automatically redacted. Avoid query strings, sensitive paths, and secrets.
+See the [lifecycle specification](../../spec/spec/LIFECYCLE.md) for the API
+contract and limits.
