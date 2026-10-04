@@ -155,7 +155,7 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 			PaginationType: models.PaginationManual,
 			Title:          "Pins",
 			Description:    "A field notebook of saved links",
-			Filter:         "published == true and link",
+			Filter:         "published == true and (link or url or 'thought' in tags or templateKey == 'thoughts')",
 			Sort:           "date",
 			Reverse:        true,
 			Templates: models.FeedTemplates{

@@ -152,7 +152,7 @@ func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredArchive(t *testing.T
 				t.Errorf("archive = %#v, want configured archive %#v", fc, archive)
 			}
 		case "pins":
-			if fc.Filter != "published == true and link" || !fc.Formats.HTML || fc.Templates.HTML != "pins.html" {
+			if fc.Filter != "published == true and (link or url or 'thought' in tags or templateKey == 'thoughts')" || !fc.Formats.HTML || fc.Templates.HTML != "pins.html" {
 				t.Errorf("pins = %#v, want implicit HTML link board", fc)
 			}
 		default:

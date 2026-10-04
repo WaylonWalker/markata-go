@@ -55,9 +55,10 @@
       {% endif %}
       <div class="pin-card-content">
         <div class="pin-source-row">
-          {% if post.link %}
-          <a class="pin-source" href="{{ post.link }}" target="_blank" rel="noopener noreferrer" aria-label="Visit {{ post.link | domain }} (opens in a new tab)">
-            <span class="pin-source-mark" aria-hidden="true">↗</span>{{ post.link | domain }}
+          {% set pin_source = post.link | default:post.url %}
+          {% if pin_source %}
+          <a class="pin-source" href="{{ pin_source }}" target="_blank" rel="noopener noreferrer" aria-label="Visit {{ pin_source | domain }} (opens in a new tab)">
+            <span class="pin-source-mark" aria-hidden="true">↗</span>{{ pin_source | domain }}
           </a>
           {% else %}<span class="pin-source">Saved link</span>{% endif %}
           {% if post.date %}<time class="pin-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | human_date }}</time>{% endif %}
@@ -89,7 +90,7 @@
   </div>
 
   {% if not feed.posts %}
-  <p class="feed-empty">No links collected yet. Add a <code>link</code> URL to a published post to save it here.</p>
+  <p class="feed-empty">No saved links or thoughts yet. Add a <code>link</code> or <code>url</code> to a published post, or tag it as a thought.</p>
   {% endif %}
   {% if page.total_pages > 1 %}{% include "partials/pagination.html" %}{% endif %}
 </div>

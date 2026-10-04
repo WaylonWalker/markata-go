@@ -12,7 +12,9 @@ tags:
 
 # Pins
 
-Markata includes a built-in `/pins/` page for bookmarking and link posts. Any published post with a non-empty `link` field appears there, newest first:
+Markata includes a built-in `/pins/` page for saved links and thoughts. Published
+posts appear there when they have a non-empty `link` or `url` field, use the
+`thoughts` template, or include the `thought` tag. Items appear newest first.
 
 ```yaml
 ---
@@ -26,6 +28,10 @@ published: true
 
 A note about why this is worth saving.
 ```
+
+Link posts can also use `url` for their destination. Thought posts are included
+by their `thought` tag or `thoughts` template, including thoughts without an
+external destination.
 
 The pinboard keeps the title linked to your local post and provides a separate source link to the external URL. Images, descriptions, dates, tags, and authored notes remain ordinary post data.
 
@@ -61,7 +67,7 @@ Define a Pins feed to use a different page size or pagination mode:
 [[markata-go.feeds]]
 slug = "pins"
 title = "Pins"
-filter = "published == true and link"
+filter = "published == true and (link or url or 'thought' in tags or templateKey == 'thoughts')"
 sort = "date"
 reverse = true
 items_per_page = 50
@@ -90,7 +96,7 @@ An explicitly configured feed with the slug `pins` also takes precedence over th
 The implicit Pins feed uses:
 
 ```text
-filter: published == true and link
+filter: published == true and (link or url or 'thought' in tags or templateKey == 'thoughts')
 sort: date
 reverse: true
 items_per_page: 100
