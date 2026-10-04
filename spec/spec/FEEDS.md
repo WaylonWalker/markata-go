@@ -1233,10 +1233,8 @@ Or define your own feeds with `slug = ""` or `slug = "archive"` to override the 
 ### Pins Feed (slug="pins")
 
 When subscription feeds are enabled, the plugin MUST also provide an implicit
-HTML-only `/pins/` feed using `pins.html`. It MUST include published posts with
-a non-empty `link` or `url` field, posts tagged `thought`, and posts using the
-`thoughts` template. Results MUST be sorted by descending date, with 100 posts
-per page and manual pagination.
+HTML-only `/pins/` feed using `pins.html`, the filter `published == true and link`,
+and descending date order, with 100 posts per page and manual pagination.
 A configured archive MUST remain unchanged alongside
 the implicit root and Pins feeds.
 
