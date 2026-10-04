@@ -18,11 +18,10 @@ reverse = true
 ### Saved Links (Pins)
 
 For a link board, use the built-in `/pins/` feed: published posts with non-empty
-`link` or `url` frontmatter, posts tagged `thought`, and posts using the
-`thoughts` template appear newest first. A configured `pins` feed takes precedence;
-a publishable authored `pins` post keeps the route. Generic `link` frontmatter
-remains render-neutral outside Pins. Disabling subscription feeds also disables
-implicit Pins injection.
+`link` or `url` frontmatter appear newest first. A configured `pins` feed takes
+precedence; a publishable authored `pins` post keeps the route. Generic `link`
+frontmatter remains render-neutral outside Pins. Disabling subscription feeds
+also disables implicit Pins injection.
 
 The default Pins board uses the viewport width and 100 items per page. It reuses
 explicit cover fields or already-rendered embed media; plain `link` frontmatter
