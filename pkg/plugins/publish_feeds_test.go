@@ -189,6 +189,37 @@ func TestGenerateFeedPageHTML_UsesConfiguredHTMLTemplate(t *testing.T) {
 	}
 }
 
+func TestGenerateFeedPageHTML_PinsSourcePrefersLinkThenURL(t *testing.T) {
+	t.Parallel()
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{"url": "https://example.com", "title": "Example Site"}
+	title := "Saved source"
+	posts := []*models.Post{
+		{Slug: "url-only", Href: "/url-only/", Title: &title, Published: true,
+			Extra: map[string]interface{}{"url": "https://source.example/url-only"}},
+		{Slug: "both", Href: "/both/", Title: &title, Published: true,
+			Extra: map[string]interface{}{"link": "https://source.example/preferred", "url": "https://source.example/fallback"}},
+	}
+	feed := &models.FeedConfig{
+		Slug: "pins", Title: "Pins", Templates: models.FeedTemplates{HTML: "pins.html"}, Posts: posts,
+	}
+	page := &models.FeedPage{Posts: posts, TotalPages: 1}
+
+	html, err := NewPublishFeedsPlugin().generateFeedPageHTML(feed, page, config, nil, buildFeedRenderContext(feed))
+	if err != nil {
+		t.Fatalf("generateFeedPageHTML() error = %v", err)
+	}
+	for _, source := range []string{"https://source.example/url-only", "https://source.example/preferred"} {
+		if !strings.Contains(html, `class="pin-source" href="`+source+`"`) {
+			t.Errorf("Pins source link %q missing", source)
+		}
+	}
+	if strings.Contains(html, `class="pin-source" href="https://source.example/fallback"`) {
+		t.Error("Pins source used url when link was present")
+	}
+}
+
 func TestGenerateSimpleFeedPageHTML_LoadsDecryptionAssets(t *testing.T) {
 	t.Parallel()
 

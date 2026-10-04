@@ -3,6 +3,7 @@ package plugins
 import (
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -25,7 +26,7 @@ func TestSubscriptionFeedsPlugin_Collect_AddsPinsFeed(t *testing.T) {
 		if !feed.Formats.HTML || feed.Templates.HTML != "pins.html" {
 			t.Fatalf("pins feed = %#v, want HTML pins template", feed)
 		}
-		if feed.Filter != "published == true and link" {
+		if feed.Filter != "published == true and (link or url)" {
 			t.Fatalf("pins filter = %q", feed.Filter)
 		}
 		if feed.ItemsPerPage != 100 || feed.PaginationType != models.PaginationManual {
@@ -34,6 +35,55 @@ func TestSubscriptionFeedsPlugin_Collect_AddsPinsFeed(t *testing.T) {
 		return
 	}
 	t.Fatal("implicit pins feed was not injected")
+}
+
+func TestSubscriptionFeedsPlugin_Collect_PinsFilterSelectsSavedLinks(t *testing.T) {
+	config := lifecycle.NewConfig()
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+	if err := NewSubscriptionFeedsPlugin().Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+
+	var pinsFilter *filter.Filter
+	for _, feed := range getFeedConfigs(m.Config()) {
+		if feed.Slug == pinsFeedSlug {
+			var err error
+			pinsFilter, err = filter.Parse(feed.Filter)
+			if err != nil {
+				t.Fatalf("Parse(%q) error = %v", feed.Filter, err)
+			}
+			break
+		}
+	}
+	if pinsFilter == nil {
+		t.Fatal("implicit pins feed was not injected")
+	}
+
+	for _, tt := range []struct {
+		name      string
+		published bool
+		extra     map[string]interface{}
+		want      bool
+	}{
+		{name: "link", published: true, extra: map[string]interface{}{"link": "https://example.com/link"}, want: true},
+		{name: "url", published: true, extra: map[string]interface{}{"url": "https://example.com/url"}, want: true},
+		{name: "both", published: true, extra: map[string]interface{}{"link": "https://example.com/link", "url": "https://example.com/url"}, want: true},
+		{name: "empty link", published: true, extra: map[string]interface{}{"link": ""}},
+		{name: "empty url", published: true, extra: map[string]interface{}{"url": ""}},
+		{name: "no source", published: true},
+		{name: "unpublished", extra: map[string]interface{}{"url": "https://example.com/url"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := pinsFilter.Match(&models.Post{Published: tt.published, Extra: tt.extra})
+			if err != nil {
+				t.Fatalf("Match() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("Match() = %t, want %t", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestSubscriptionFeedsPlugin_Collect_PreservesConfiguredPins(t *testing.T) {
