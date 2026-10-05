@@ -40,7 +40,7 @@ jobs:
       - name: Detect changed inputs
         id: filter
         if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # PRs use the changed-files API (also for forks). Pushes compare
           # against the previous commit, not main against itself.
