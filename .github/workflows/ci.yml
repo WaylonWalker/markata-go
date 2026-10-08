@@ -80,11 +80,8 @@ jobs:
           go-version: ${{ env.LINT_GO_VERSION }}
           cache: true
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6.5.2
-        with:
-          version: v1.64.8
-          install-mode: goinstall
-          args: --timeout=5m
+        # Match just lint: v1 releases do not use the /v2 module path.
+        run: go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run --timeout=5m
 
   manifest-completeness:
     name: Font Manifest Completeness
