@@ -29,6 +29,14 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 - use `markata-go buildlab run --fixture <path>` to check clean, incremental, and deterministic build behavior
 - read the `Slowest requests` footer section before assuming a slow plugin is CPU-bound
 
+## Client-Side Loading
+
+- use the site's **Loading** control to compare Auto, Save Data, and Full Quality
+- keep Markdown video defaults at `autoplay = false` and `preload = "none"`; opt in only when autoplay is part of the page's purpose
+- use responsive images, intrinsic dimensions, native lazy loading, and posters before adding client-side loading code
+- keep third-party players behind a lightweight facade and reader interaction; do not add unconditional preconnect or preload hints for linked media
+- benchmark generated pages on a mobile viewport with a constrained connection, and check that scrolling does not fetch every offscreen video card
+
 Benchmark JSON retains every content entry and feed disposition/reason, along
 with summaries, timings, warnings, and blogroll status. Its content serialization
 is streamed with reusable per-entry buffers and buffered writes, not a slimmed

@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"html"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -118,7 +119,7 @@ func (p *MDVideoPlugin) Render(m *lifecycle.Manager) error {
 		if post.Skip || post.ArticleHTML == "" {
 			return false
 		}
-		return strings.Contains(post.ArticleHTML, "<img")
+		return strings.Contains(post.ArticleHTML, "<img") || strings.Contains(strings.ToLower(post.ArticleHTML), "<video")
 	})
 
 	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
@@ -127,6 +128,20 @@ func (p *MDVideoPlugin) Render(m *lifecycle.Manager) error {
 // imgTagRegex matches <img> tags and captures src and alt attributes.
 // It handles both src="..." and alt="..." in either order.
 var imgTagRegex = regexp.MustCompile(`<img\s+([^>]*)>`)
+
+var videoTagRegex = regexp.MustCompile(`(?i)<video\b[^>]*>`)
+
+var videoBlockRegex = regexp.MustCompile(`(?is)<video\b[^>]*>.*?</video\s*>`)
+
+var videoAutoplayAttrRegex = regexp.MustCompile(`(?i)\s+autoplay(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?`)
+
+var videoPreloadAttrRegex = regexp.MustCompile(`(?i)\s+preload\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)`)
+
+var videoPosterAttrRegex = regexp.MustCompile(`(?i)\s+poster\s*=`)
+
+var videoSourceRegex = regexp.MustCompile(`(?i)<source\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*>`)
+
+var videoSrcRegex = regexp.MustCompile(`(?i)\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')`)
 
 // srcAttrRegex extracts the src attribute value.
 var srcAttrRegex = regexp.MustCompile(`src="([^"]*)"`)
@@ -141,7 +156,18 @@ func (p *MDVideoPlugin) processPost(post *models.Post) error {
 		return nil
 	}
 
-	// Check if there are any img tags at all
+	// Normalize raw video tags as well as Markdown image syntax converted below.
+	if strings.Contains(strings.ToLower(post.ArticleHTML), "<video") {
+		post.ArticleHTML = videoBlockRegex.ReplaceAllStringFunc(post.ArticleHTML, func(block string) string {
+			tag := videoTagRegex.FindString(block)
+			if tag == "" {
+				return block
+			}
+			normalized := p.normalizeVideoTag(post, tag, block)
+			return strings.Replace(block, tag, normalized, 1)
+		})
+	}
+
 	if !strings.Contains(post.ArticleHTML, "<img") {
 		return nil
 	}
@@ -173,6 +199,41 @@ func (p *MDVideoPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
+}
+
+func (p *MDVideoPlugin) normalizeVideoTag(post *models.Post, tag, block string) string {
+	if p.config.Autoplay {
+		if !videoAutoplayAttrRegex.MatchString(tag) {
+			tag = strings.TrimSuffix(tag, ">") + " autoplay>"
+		}
+	} else {
+		tag = videoAutoplayAttrRegex.ReplaceAllString(tag, "")
+	}
+
+	preload := p.config.Preload
+	if preload != "none" && preload != "metadata" && preload != "auto" {
+		preload = "none"
+	}
+	tag = videoPreloadAttrRegex.ReplaceAllString(tag, "")
+	tag = strings.TrimSuffix(tag, ">") + ` preload="` + preload + `">`
+	if !videoPosterAttrRegex.MatchString(tag) {
+		source := videoSourceRegex.FindStringSubmatch(block)
+		if len(source) == 0 {
+			openTag := strings.SplitN(tag, ">", 2)[0]
+			source = videoSrcRegex.FindStringSubmatch(openTag)
+		}
+		if len(source) > 0 {
+			mediaURL := source[1]
+			if mediaURL == "" && len(source) > 2 {
+				mediaURL = source[2]
+			}
+			if poster := templates.PosterURLFromMap(templates.GetPostMap(post), html.UnescapeString(mediaURL)); poster != "" {
+				poster = templates.WithSize(poster, 1200, 675)
+				tag = strings.TrimSuffix(tag, ">") + ` poster="` + html.EscapeString(poster) + `">`
+			}
+		}
+	}
+	return tag
 }
 
 // isVideoURL checks if a URL ends with a recognized video extension.

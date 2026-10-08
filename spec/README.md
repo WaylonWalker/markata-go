@@ -41,6 +41,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `CONFIG.md` | `docs/guides/configuration.md` |
 | `AGENTS.md` | `docs/guides/agent-skills.md`, `docs/reference/cli.md` |
 | `THEMES.md` | `docs/guides/themes.md` |
+| `ADAPTIVE_LOADING.md` | `docs/guides/adaptive-loading.md` |
 | `FEEDS.md` | `docs/guides/feeds.md` |
 | `TEMPLATES.md` | `docs/guides/templates.md` |
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |

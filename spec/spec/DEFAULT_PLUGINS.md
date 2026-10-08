@@ -735,7 +735,7 @@ for post in core.filter("not skip"):
 
 **Stage:** `render` (with late priority, after `render_markdown`)
 
-**Purpose:** Convert markdown image syntax for video files into HTML video elements with GIF-like autoplay behavior.
+**Purpose:** Convert markdown image syntax for video files into native video elements that load when the reader requests playback.
 
 **Configuration:**
 ```toml
@@ -744,11 +744,11 @@ enabled = true
 video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"]
 video_class = "md-video"
 controls = true
-autoplay = true                    # GIF-like behavior
+autoplay = false                   # Opt in to automatic playback
 loop = true                        # GIF-like behavior
 muted = true                       # Required for autoplay
 playsinline = true                 # Inline on mobile
-preload = "metadata"
+preload = "none"
 ```
 
 **Configuration Fields:**
@@ -759,11 +759,11 @@ preload = "metadata"
 | `video_extensions` | []string | `[".mp4", ".webm", ...]` | Extensions to treat as video |
 | `video_class` | string | `"md-video"` | CSS class for video elements |
 | `controls` | bool | `true` | Show video controls |
-| `autoplay` | bool | `true` | Auto-start playback |
+| `autoplay` | bool | `false` | Auto-start playback; off by default to avoid surprise media downloads |
 | `loop` | bool | `true` | Loop continuously |
 | `muted` | bool | `true` | Mute audio |
 | `playsinline` | bool | `true` | Play inline on iOS |
-| `preload` | string | `"metadata"` | Preload hint |
+| `preload` | string | `"none"` | Preload hint |
 
 **Behavior:**
 1. Find all `<img>` tags in `article_html` after markdown rendering
@@ -782,7 +782,7 @@ preload = "metadata"
 
 **Example output:**
 ```html
-<video autoplay loop muted playsinline controls preload="metadata" class="md-video">
+<video loop muted playsinline controls preload="none" class="md-video">
   <source src="https://example.com/video.mp4" type="video/mp4">
   kickflip down the 3 stair
 </video>

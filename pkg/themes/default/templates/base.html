@@ -1,6 +1,6 @@
 {# Canonical rendering fixture template. #}
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
+<html lang="{{ config.lang | default:'en' }}" data-theme-texture-scope="{{ config.theme.texture.scope | default:'all' }}" data-palette="{% if config.theme.fallback_mode == "light" %}{{ config.Extra.palette_light_effective | default:config.theme.palette }}{% else %}{{ config.Extra.palette_dark_effective | default:config.theme.palette }}{% endif %}" data-aesthetic="{{ config.theme.aesthetic }}" data-fontpack="{{ config.theme.fontpack }}" data-text-size="{{ config.theme.text_size | default:'large' }}" data-loading-mode="auto" data-loading-policy="unknown" data-loading-recommendation="unknown"{% if needs_webawesome %} class="{{ config.Extra.webawesome_theme_class }}"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -335,9 +335,6 @@
   </script>
   {% endif %}
 
-  {% if config.Extra.lite_youtube_enabled %}
-  <link rel="stylesheet" href="{% if config.Extra.asset_urls.lite-youtube-css %}{{ config.Extra.asset_urls.lite-youtube-css }}{% else %}https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.css{% endif %}">
-  {% endif %}
 
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
@@ -584,8 +581,9 @@
          width: 1280px !important;
          max-width: none !important;
        }
-   </style>
+  </style>
   {% endblock %}
+  <script src="{{ 'js/adaptive-loading.js' | theme_asset_hashed }}" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -601,7 +599,28 @@
         {% if config.search.enabled and config.search.position == 'navbar' %}
         {% include "components/search.html" %}
         {% endif %}
-        {% include "partials/palette-switcher.html" %}
+        <div class="header-action-controls">
+          {% include "partials/palette-switcher.html" %}
+          <div class="adaptive-loading" data-adaptive-loading>
+          <details>
+            <summary><span data-loading-label>Loading: Auto</span></summary>
+            <div class="adaptive-loading__panel">
+              <p class="adaptive-loading__message" data-loading-mismatch role="status" aria-live="polite" hidden></p>
+              <fieldset>
+                <legend>Loading preference</legend>
+                <label><input type="radio" name="loading-mode" value="auto" checked> Auto <span>Recommended</span></label>
+                <label><input type="radio" name="loading-mode" value="save-data"> Save Data</label>
+                <label><input type="radio" name="loading-mode" value="full-quality"> Full Quality</label>
+              </fieldset>
+              <div class="adaptive-loading__actions" data-loading-actions hidden>
+                <button type="button" data-loading-use-auto>Use Auto</button>
+                <button type="button" data-loading-keep>Keep my choice</button>
+              </div>
+            </div>
+          </details>
+          <button class="adaptive-loading__status" type="button" data-loading-status aria-label="A connection suggestion is available" hidden>Suggestion</button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -747,7 +766,7 @@
       document.body.appendChild(paginationScript);
     }
 
-    if (document.querySelector('video[data-hover-play]')) {
+    if (document.querySelector('video[data-hover-play], video[data-adaptive-preview]')) {
       const hoverPlayVideoScript = document.createElement('script');
       hoverPlayVideoScript.src = '{{ 'js/hover-play-video.js' | theme_asset_hashed }}';
       hoverPlayVideoScript.defer = true;
@@ -787,12 +806,19 @@
 
     // Lite YouTube embeds (oEmbed)
     {% if config.Extra.lite_youtube_enabled %}
+    if (document.querySelector('lite-youtube')) {
+    var liteYouTubeCSS = document.createElement('link');
+    liteYouTubeCSS.rel = 'stylesheet';
+    liteYouTubeCSS.href = '{% if config.Extra.asset_urls.lite-youtube-css %}{{ config.Extra.asset_urls.lite-youtube-css }}{% else %}https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.css{% endif %}';
+    document.head.appendChild(liteYouTubeCSS);
     const liteYouTubeScript = document.createElement('script');
     liteYouTubeScript.src = '{% if config.Extra.asset_urls.lite-youtube-js %}{{ config.Extra.asset_urls.lite-youtube-js }}{% else %}https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.js{% endif %}';
     liteYouTubeScript.defer = true;
     document.body.appendChild(liteYouTubeScript);
+    }
     {% endif %}
   </script>
+
 
   <!-- Pagefind Search JS: lazy-loaded on user interaction -->
   {% if config.search.enabled %}

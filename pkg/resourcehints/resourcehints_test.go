@@ -135,15 +135,21 @@ func TestDetector_SuggestHints(t *testing.T) {
 			expectedCross: "",
 		},
 		{
+			name:          "YouTube links do not open a connection early",
+			domain:        "www.youtube.com",
+			expectedTypes: []HintType{HintTypeDNSPrefetch},
+			expectedCross: "",
+		},
+		{
 			name:          "YouTube privacy-enhanced embed",
 			domain:        "www.youtube-nocookie.com",
-			expectedTypes: []HintType{HintTypePreconnect},
+			expectedTypes: []HintType{HintTypeDNSPrefetch},
 			expectedCross: "",
 		},
 		{
 			name:          "Vimeo player",
 			domain:        "player.vimeo.com",
-			expectedTypes: []HintType{HintTypePreconnect},
+			expectedTypes: []HintType{HintTypeDNSPrefetch},
 			expectedCross: "",
 		},
 	}
