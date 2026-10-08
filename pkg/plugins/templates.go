@@ -780,17 +780,12 @@ func isCanonicalRenderingFixture(post *models.Post) bool {
 //  4. Auto-discovery – find the best (smallest non-excluded) feed containing this post,
 //     preferring primary feeds only as a tie-breaker for equally specific candidates.
 func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
-	maxPosts := 0
-	if config != nil {
-		if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
-			maxPosts = components.FeedSidebar.MaxPosts
-		}
-	}
+	maxPosts := feedSidebarMaxPosts(config)
 
 	// 1. Series
 	seriesPosts, seriesFeed := p.getSeriesSidebarPosts(post, config, m)
 	if seriesPosts != nil {
-		return seriesPosts, seriesFeed
+		return trimSidebarPosts(seriesPosts, post.Slug, maxPosts), seriesFeed
 	}
 
 	// 2. Explicit frontmatter: sidebar_feed or PrevNextFeed
@@ -851,6 +846,17 @@ func trimSidebarPosts(posts []*models.Post, currentSlug string, maxPosts int) []
 	trimmed := make([]*models.Post, end-start)
 	copy(trimmed, posts[start:end])
 	return trimmed
+}
+
+func feedSidebarMaxPosts(config *lifecycle.Config) int {
+	if config == nil {
+		return 0
+	}
+	components, ok := config.Extra["components"].(models.ComponentsConfig)
+	if !ok {
+		return 0
+	}
+	return components.FeedSidebar.MaxPosts
 }
 
 // getExplicitFeedSlug returns a feed slug from post frontmatter, if any.
@@ -1208,6 +1214,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 	}
 
 	syndication := getSyndicationConfig(config)
+	maxPosts := feedSidebarMaxPosts(config)
 	seen := make(map[string]bool)
 	var feeds []sidebarFeedJSON
 
@@ -1220,7 +1227,7 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 			return
 		}
 		seen[fc.Slug] = true
-		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication, postFormats))
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, posts, priority, syndication, postFormats, maxPosts))
 	}
 
 	// 1. Series
@@ -1251,8 +1258,9 @@ func (p *TemplatesPlugin) getAllCandidateFeeds(
 func (p *TemplatesPlugin) buildSidebarFeedEntry(
 	currentPost *models.Post, fc *models.FeedConfig,
 	posts []*models.Post, priority string, syndication models.SyndicationConfig, postFormats models.PostFormatsConfig,
+	maxPosts int,
 ) sidebarFeedJSON {
-	const maxWindowPosts = 50
+	const legacyMaxWindowPosts = 50
 
 	prev, next := p.getSidebarPrevNext(currentPost, posts)
 
@@ -1265,10 +1273,15 @@ func (p *TemplatesPlugin) buildSidebarFeedEntry(
 		}
 	}
 
-	// Window the posts if the feed is large
+	// A configured max_posts is the shared contract for both the static sidebar
+	// and feed-cycling JSON. Preserve the historical member-feed window when the
+	// setting is unset, while configured limits also bound feeds that do not
+	// contain the current post.
 	windowedPosts := posts
-	if len(posts) > maxWindowPosts && currentPos >= 0 {
-		half := maxWindowPosts / 2
+	if maxPosts > 0 {
+		windowedPosts = trimSidebarPosts(posts, currentPost.Slug, maxPosts)
+	} else if len(posts) > legacyMaxWindowPosts && currentPos >= 0 {
+		half := legacyMaxWindowPosts / 2
 		start := currentPos - half
 		end := currentPos + half + 1
 		if start < 0 {
@@ -1637,6 +1650,7 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 	feeds []sidebarFeedJSON, seen map[string]bool, post *models.Post,
 	config *lifecycle.Config, m *lifecycle.Manager, postFormats models.PostFormatsConfig,
 ) []sidebarFeedJSON {
+	maxPosts := feedSidebarMaxPosts(config)
 	cached, ok := m.Cache().Get("feed_configs")
 	if !ok {
 		return feeds
@@ -1660,7 +1674,7 @@ func (p *TemplatesPlugin) appendMissingPrimarySidebarFeeds(
 		if !sidebarExplicit && !fc.Primary {
 			continue
 		}
-		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication, postFormats))
+		feeds = append(feeds, p.buildSidebarFeedEntry(post, fc, fc.Posts, "primary", syndication, postFormats, maxPosts))
 		seen[fc.Slug] = true
 	}
 
