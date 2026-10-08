@@ -26,6 +26,8 @@ import (
 //	  <source src="video.mp4" type="video/mp4">
 //	  Your browser does not support the video tag.
 //	</video>
+const mdVideoPreloadNone = "none"
+
 type MDVideoPlugin struct {
 	config models.MDVideoConfig
 }
@@ -211,10 +213,10 @@ func (p *MDVideoPlugin) normalizeVideoTag(post *models.Post, tag, block string) 
 
 	preload := p.config.Preload
 	if strings.Contains(tag, `data-authored-autoplay="true"`) {
-		preload = "none"
+		preload = mdVideoPreloadNone
 	}
-	if preload != "none" && preload != "metadata" && preload != "auto" {
-		preload = "none"
+	if preload != mdVideoPreloadNone && preload != "metadata" && preload != "auto" {
+		preload = mdVideoPreloadNone
 	}
 	tag = videoPreloadAttrRegex.ReplaceAllString(tag, "")
 	tag = strings.TrimSuffix(tag, ">") + ` preload="` + preload + `">`
