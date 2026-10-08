@@ -73,3 +73,10 @@ explicit and preserve the existing check names and commands.
   MUST remain unchanged.
 
 See [Maintainer CI](../../docs/guides/maintainer-ci.md) for operational guidance.
+
+## Pinned lint installation
+
+CI MUST run the full pinned golangci-lint v1.64.8 check using its v1
+module path, matching `just lint`. Installation MUST use the selected Go
+toolchain. A newer action must not substitute a v2 module path for a v1
+release. All configured lint rules and the five-minute timeout remain active.
