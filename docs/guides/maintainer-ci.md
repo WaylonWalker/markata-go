@@ -104,3 +104,11 @@ The bundled `markata-go-site` skill was reviewed (entrypoint, build/deployment,
 and faster-build guidance). No update is needed: these changes govern product
 maintainer CI, not site-author commands, build behavior, deployment workflows,
 or benchmarking guidance.
+
+## Linter installation
+
+CI runs the same pinned v1.64.8 `go run` command as `just lint`, using
+the configured Go toolchain and all rules in `.golangci.yml`. The v1 module
+path has no `/v2` segment. `just lint-new` remains the local changed-code
+check; CI continues to lint the full repository. No bundled site-skill update
+is needed because this repair changes only product-repository CI installation.
