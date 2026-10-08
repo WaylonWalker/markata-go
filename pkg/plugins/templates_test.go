@@ -223,6 +223,88 @@ func TestTemplatesPlugin_BuildSidebarFeedsJSON_RotationFollowsConfigOrder(t *tes
 	}
 }
 
+func TestTemplatesPlugin_BuildSidebarFeedsJSON_HonorsConfiguredMaxPosts(t *testing.T) {
+	p := NewTemplatesPlugin()
+	m := lifecycle.NewManager()
+
+	enabled := true
+	config := m.Config()
+	config.Extra["components"] = models.ComponentsConfig{
+		FeedSidebar: models.FeedSidebarConfig{Enabled: &enabled, MaxPosts: 3},
+	}
+
+	current := &models.Post{Slug: "current", Href: "/current/"}
+	memberPosts := []*models.Post{
+		{Slug: "one", Href: "/one/"},
+		{Slug: "two", Href: "/two/"},
+		current,
+		{Slug: "four", Href: "/four/"},
+		{Slug: "five", Href: "/five/"},
+	}
+	nonmemberPosts := []*models.Post{
+		{Slug: "alpha", Href: "/alpha/"},
+		{Slug: "beta", Href: "/beta/"},
+		{Slug: "gamma", Href: "/gamma/"},
+		{Slug: "delta", Href: "/delta/"},
+		{Slug: "epsilon", Href: "/epsilon/"},
+	}
+	member := models.FeedConfig{Slug: "member", Title: "Member", Primary: true, Posts: memberPosts}
+	nonmember := models.FeedConfig{Slug: "nonmember", Title: "Nonmember", Primary: true, Posts: nonmemberPosts}
+	m.Cache().Set("feed_configs", []models.FeedConfig{member, nonmember})
+
+	jsonText := p.buildSidebarFeedsJSON(current, config, m, &member)
+	if jsonText == "" {
+		t.Fatal("expected sidebar feeds JSON")
+	}
+
+	var data sidebarFeedsDataJSON
+	if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+		t.Fatalf("unmarshal sidebar feeds JSON: %v", err)
+	}
+
+	bySlug := make(map[string]sidebarFeedJSON, len(data.Feeds))
+	for _, feed := range data.Feeds {
+		bySlug[feed.Slug] = feed
+	}
+
+	memberData, ok := bySlug["member"]
+	if !ok {
+		t.Fatal("expected member feed")
+	}
+	if got := len(memberData.Posts); got != 3 {
+		t.Fatalf("member posts = %d, want 3", got)
+	}
+	wantMember := []string{"two", "current", "four"}
+	for i, want := range wantMember {
+		if memberData.Posts[i].Slug != want {
+			t.Fatalf("member posts = %#v, want %#v", memberData.Posts, wantMember)
+		}
+	}
+	if memberData.Prev == nil || memberData.Prev.Slug != "two" {
+		t.Fatalf("member prev = %#v, want two", memberData.Prev)
+	}
+	if memberData.Next == nil || memberData.Next.Slug != "four" {
+		t.Fatalf("member next = %#v, want four", memberData.Next)
+	}
+
+	nonmemberData, ok := bySlug["nonmember"]
+	if !ok {
+		t.Fatal("expected nonmember feed")
+	}
+	if got := len(nonmemberData.Posts); got != 3 {
+		t.Fatalf("nonmember posts = %d, want 3", got)
+	}
+	wantNonmember := []string{"alpha", "beta", "gamma"}
+	for i, want := range wantNonmember {
+		if nonmemberData.Posts[i].Slug != want {
+			t.Fatalf("nonmember posts = %#v, want %#v", nonmemberData.Posts, wantNonmember)
+		}
+	}
+	if nonmemberData.TotalPosts != len(nonmemberPosts) {
+		t.Fatalf("nonmember total posts = %d, want %d", nonmemberData.TotalPosts, len(nonmemberPosts))
+	}
+}
+
 func TestAppendFeedParamToHref_PreservesSidebarFlow(t *testing.T) {
 	tests := []struct {
 		name string
@@ -257,7 +339,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_AppendsFeedParamToLinks(t *testin
 		Posts: []*models.Post{prev, current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig(), 0)
 	if len(entry.Posts) != 2 {
 		t.Fatalf("expected 2 posts, got %d", len(entry.Posts))
 	}
@@ -289,7 +371,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_IncludesEnabledVariants(t *testin
 		Posts: []*models.Post{current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig(), 0)
 	got := make([]string, 0, len(entry.Variants))
 	for _, variant := range entry.Variants {
 		got = append(got, variant.Key)
@@ -325,7 +407,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_UsesCanonicalVariantURLs(t *testi
 		Posts: []*models.Post{current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig(), 0)
 	for _, variant := range entry.Variants {
 		switch variant.Key {
 		case "md":
@@ -353,7 +435,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_UsesCanonicalVariantURLsForRootFe
 		Posts: []*models.Post{current},
 	}
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig())
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, models.NewPostFormatsConfig(), 0)
 	for _, variant := range entry.Variants {
 		switch variant.Key {
 		case "md":
@@ -390,7 +472,7 @@ func TestTemplatesPlugin_BuildSidebarFeedEntry_HidesDisabledPostFormats(t *testi
 	postFormats.Markdown = false
 	postFormats.Text = false
 
-	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, postFormats)
+	entry := p.buildSidebarFeedEntry(current, feed, feed.Posts, "primary", models.NewFeedDefaults().Syndication, postFormats, 0)
 	for _, variant := range entry.Variants {
 		if variant.Key == "md" || variant.Key == "txt" {
 			t.Fatalf("unexpected variant %q in %#v", variant.Key, entry.Variants)
