@@ -29,3 +29,15 @@ router. Compare ordinary navigation, hx-boost/full document, HTMX projection,
 and native projection with actual runtime byte costs. Weak measured savings
 are a valid reason to stop. This experiment may conclude NOT JUSTIFIED or
 NEEDS MORE EVIDENCE without making a production feature.
+
+## Experiment outcome
+
+The broad canonical projection was measured on five real-site routes. It saved
+about 8 KB gzip per destination and 21–44 ms of constrained fetch+inert-parse
+time. This does not justify implementing the proposed lifecycle/publication
+contract now. Stop before production navigation or DAG changes. The offline
+fixture producer is not a supported publisher. Production write counts, real
+transitions, asset initialization, history and shell fallback remain unverified.
+
+See `docs/reports/content-validated-navigation-investigation.md` and its raw
+per-run JSON for methods, limits, hosting validation and runtime comparison.
