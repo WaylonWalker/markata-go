@@ -155,12 +155,18 @@
     openSiteSearch(query);
   }
 
+  // Remember the opener so keyboard users return to their previous position.
+  var shortcutsModalOpener = null;
+
   /**
    * Show the shortcuts help modal
    */
   function showShortcutsModal() {
     var modal = document.getElementById('shortcuts-modal');
     if (modal) {
+      shortcutsModalOpener = document.activeElement;
+      // Reveal the dialog to keyboard users before moving focus inside.
+      modal.removeAttribute('inert');
       modal.classList.add('shortcuts-modal--open');
       modal.setAttribute('aria-hidden', 'false');
       // Focus the close button for accessibility
@@ -180,6 +186,14 @@
     var modal = document.getElementById('shortcuts-modal');
     if (modal && modal.classList.contains('shortcuts-modal--open')) {
       modal.classList.remove('shortcuts-modal--open');
+      // Move focus out before making its subtree inert.
+      if (shortcutsModalOpener && shortcutsModalOpener.isConnected && typeof shortcutsModalOpener.focus === 'function') {
+        shortcutsModalOpener.focus();
+      } else if (modal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+      shortcutsModalOpener = null;
+      modal.setAttribute('inert', '');
       modal.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
       return true;
