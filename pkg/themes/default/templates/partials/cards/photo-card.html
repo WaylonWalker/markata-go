@@ -4,7 +4,7 @@
 {# when this template is used inside render_feed() (output injected into markdown). #}
 {% with post.image|media_url:post.video as media_src %}{% if media_src %}{% with media_src|with_size:"600" as sized_media %}<figure class="photo-figure h-entry" data-card>
 <a href="{{ post.href }}" class="u-url" aria-label="{{ post.description | default:post.title | default:'Photo' }}">
-{% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"600" }}"{% endif %}>
+{% if media_src|is_video %}{% set poster_candidate = post | poster_url:media_src %}<video class="u-video" muted loop playsinline preload="none" data-adaptive-preview{% if poster_candidate %} poster="{{ poster_candidate | with_size:"600" }}"{% endif %}>
 <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
 </video>
 {% else %}<img src="{{ sized_media }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="u-photo" loading="lazy">

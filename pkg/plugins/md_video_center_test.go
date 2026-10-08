@@ -17,7 +17,7 @@ func TestMDVideoPlugin_ProcessPost_CentersSizedVideo(t *testing.T) {
 		t.Fatalf("processPost() error = %v", err)
 	}
 
-	if !strings.Contains(post.ArticleHTML, `style="margin-inline:auto"`) {
+	if !strings.Contains(post.ArticleHTML, `margin-inline:auto`) {
 		t.Errorf("expected generated video to be centered, got: %s", post.ArticleHTML)
 	}
 	if !strings.Contains(post.ArticleHTML, `src="https://dropper.waylonwalker.com/file/demo.mp4?width=400"`) {

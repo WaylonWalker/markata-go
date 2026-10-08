@@ -108,7 +108,9 @@ crossorigin = "anonymous"
 **When to use**:
 - Critical resources (fonts, critical CSS/JS)
 - Domains you know will be used immediately
-- High-value media origins like YouTube or Vimeo embeds
+- A media origin only when the media starts immediately; YouTube and Vimeo
+  discovered from page links use `dns-prefetch` so a link alone does not open a
+  TCP/TLS connection
 - Limit to 3-5 per page for best results
 
 ### Preload
