@@ -172,6 +172,44 @@ func TestFeed_HomePageFeed(t *testing.T) {
 // FeedConfig Tests
 // =============================================================================
 
+func TestFeedConfig_Paginate_RootBaseURLAvoidsProtocolRelativeLinks(t *testing.T) {
+	feed := &FeedConfig{
+		ItemsPerPage: 2,
+		Posts: []*Post{
+			{Slug: "one"},
+			{Slug: "two"},
+			{Slug: "three"},
+			{Slug: "four"},
+			{Slug: "five"},
+		},
+	}
+
+	feed.Paginate("/")
+
+	if got, want := len(feed.Pages), 3; got != want {
+		t.Fatalf("pages = %d, want %d", got, want)
+	}
+
+	wantURLs := []string{"/", "/page/2/", "/page/3/"}
+	for i, want := range wantURLs {
+		if got := feed.Pages[0].PageURLs[i]; got != want {
+			t.Errorf("PageURLs[%d] = %q, want %q", i, got, want)
+		}
+	}
+	if got, want := feed.Pages[0].NextURL, "/page/2/"; got != want {
+		t.Errorf("first NextURL = %q, want %q", got, want)
+	}
+	if got, want := feed.Pages[1].PrevURL, "/"; got != want {
+		t.Errorf("second PrevURL = %q, want %q", got, want)
+	}
+	if got, want := feed.Pages[1].NextURL, "/page/3/"; got != want {
+		t.Errorf("second NextURL = %q, want %q", got, want)
+	}
+	if got, want := feed.Pages[2].PrevURL, "/page/2/"; got != want {
+		t.Errorf("third PrevURL = %q, want %q", got, want)
+	}
+}
+
 func TestFeedConfig_ApplyDefaults(t *testing.T) {
 	defaults := FeedDefaults{
 		ItemsPerPage:    15,
