@@ -22,7 +22,7 @@ import (
 //
 // Example output (HTML):
 //
-//	<video autoplay loop muted playsinline controls class="md-video" style="margin-inline:auto">
+//	<video loop muted playsinline controls preload="none" class="md-video" style="margin-inline:auto">
 //	  <source src="video.mp4" type="video/mp4">
 //	  Your browser does not support the video tag.
 //	</video>
@@ -137,6 +137,8 @@ var videoAutoplayAttrRegex = regexp.MustCompile(`(?i)\s+autoplay(?:\s*=\s*(?:"[^
 
 var videoPreloadAttrRegex = regexp.MustCompile(`(?i)\s+preload\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)`)
 
+var videoGeometryAttrRegex = regexp.MustCompile(`(?i)\s+(?:height|style)\s*=`)
+
 var videoPosterAttrRegex = regexp.MustCompile(`(?i)\s+poster\s*=`)
 
 var videoSourceRegex = regexp.MustCompile(`(?i)<source\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*>`)
@@ -202,15 +204,15 @@ func (p *MDVideoPlugin) processPost(post *models.Post) error {
 }
 
 func (p *MDVideoPlugin) normalizeVideoTag(post *models.Post, tag, block string) string {
-	if p.config.Autoplay {
-		if !videoAutoplayAttrRegex.MatchString(tag) {
-			tag = strings.TrimSuffix(tag, ">") + " autoplay>"
-		}
-	} else {
+	if videoAutoplayAttrRegex.MatchString(tag) {
 		tag = videoAutoplayAttrRegex.ReplaceAllString(tag, "")
+		tag = strings.TrimSuffix(tag, ">") + ` data-authored-autoplay="true">`
 	}
 
 	preload := p.config.Preload
+	if strings.Contains(tag, `data-authored-autoplay="true"`) {
+		preload = "none"
+	}
 	if preload != "none" && preload != "metadata" && preload != "auto" {
 		preload = "none"
 	}
@@ -229,6 +231,9 @@ func (p *MDVideoPlugin) normalizeVideoTag(post *models.Post, tag, block string) 
 			}
 			if poster := templates.PosterURLFromMap(templates.GetPostMap(post), html.UnescapeString(mediaURL)); poster != "" {
 				poster = templates.WithSize(poster, 1200, 675)
+				if !videoGeometryAttrRegex.MatchString(tag) {
+					tag = strings.TrimSuffix(tag, ">") + ` style="aspect-ratio:16/9">`
+				}
 				tag = strings.TrimSuffix(tag, ">") + ` poster="` + html.EscapeString(poster) + `">`
 			}
 		}
@@ -270,7 +275,7 @@ func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string
 
 	// Add boolean attributes (order matters for consistency)
 	if p.config.Autoplay {
-		attrs = append(attrs, "autoplay")
+		attrs = append(attrs, `data-authored-autoplay="true"`)
 	}
 	if p.config.Loop {
 		attrs = append(attrs, "loop")
@@ -286,7 +291,9 @@ func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string
 	}
 
 	// Add preload attribute if not empty
-	if p.config.Preload != "" {
+	if p.config.Autoplay {
+		attrs = append(attrs, `preload="none"`)
+	} else if p.config.Preload != "" {
 		attrs = append(attrs, `preload="`+p.config.Preload+`"`)
 	}
 
@@ -298,12 +305,15 @@ func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string
 	// Markdown images are centered when they are standalone block media. Preserve
 	// that layout when md_video replaces the image with a video, including when a
 	// Dropper query parameter gives the video a narrower intrinsic width.
-	attrs = append(attrs, `style="margin-inline:auto"`)
+	style := "margin-inline:auto"
 
 	if poster := templates.PosterURLFromMap(templates.GetPostMap(post), src); poster != "" {
 		poster = templates.WithSize(poster, 1200, 675)
+		style += ";aspect-ratio:16/9"
 		attrs = append(attrs, `poster="`+poster+`"`)
 	}
+
+	attrs = append(attrs, `style="`+style+`"`)
 
 	// Build the opening tag
 	attrStr := ""

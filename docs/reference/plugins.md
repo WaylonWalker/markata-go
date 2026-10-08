@@ -1248,7 +1248,7 @@ h4:hover .heading-anchor {
 
 **Name:** `md_video`  
 **Stage:** Render (post_render)  
-**Purpose:** Converts markdown image syntax for video files into HTML video elements with GIF-like autoplay behavior by default.
+**Purpose:** Converts markdown image syntax for video files into HTML video elements with native controls and on-demand loading.
 
 **Configuration (TOML):**
 ```toml
@@ -1257,16 +1257,22 @@ enabled = true                    # Enable the plugin (default: true)
 video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"]  # Extensions to treat as video
 video_class = "md-video"          # CSS class for video elements (default)
 controls = true                   # Show video controls (default: true)
-autoplay = true                   # Auto-start playback (default: true)
+autoplay = false                  # Authored autoplay intent (default: false)
 loop = true                       # Loop video continuously (default: true)
 muted = true                      # Mute audio (default: true, required for autoplay)
 playsinline = true                # Play inline on mobile (default: true)
-preload = "metadata"              # Preload hint: "none", "metadata", "auto" (default: "metadata")
+preload = "none"                  # Preload hint: "none", "metadata", "auto" (default: "none")
 ```
 
-**Why GIF-like defaults?**
+**Autoplay intent and loading policy**
 
-The default configuration mimics animated GIF behavior because most embedded videos in blog posts are short demonstrations, screen recordings, or animations. Users expect these to play automatically without sound, similar to GIFs.
+Set `autoplay = true` to author GIF-like Markdown playback. Generated HTML stores
+that intent in `data-authored-autoplay="true"` and keeps `preload="none"`.
+Full Quality or already-confident fast Auto at page entry may start unrequested authored videos.
+Save Data, constrained Auto, reduced motion, and the no-JS baseline keep native
+interaction. Raw HTML preserves its own autoplay intent; the Markdown setting
+never adds autoplay to a raw video that omitted it. See
+[Adaptive loading](../adaptive-loading/) for policy and recovery behavior.
 
 To use traditional video behavior (click to play with sound):
 ```toml
@@ -1296,7 +1302,7 @@ controls = true
 
 **HTML output:**
 ```html
-<video autoplay loop muted playsinline controls preload="metadata" class="md-video">
+<video loop muted playsinline controls preload="none" class="md-video" style="margin-inline:auto">
   <source src="https://example.com/video.mp4" type="video/mp4">
   kickflip down the 3 stair - fingerboarding
 </video>

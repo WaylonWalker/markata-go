@@ -345,7 +345,7 @@ func TestMDVideoPlugin_ProcessPost_RawVideoDefaultsToOnDemand(t *testing.T) {
 	if err := p.processPost(post); err != nil {
 		t.Fatalf("processPost() error = %v", err)
 	}
-	if contains(post.ArticleHTML, "autoplay") {
+	if videoAutoplayAttrRegex.MatchString(videoTagRegex.FindString(post.ArticleHTML)) {
 		t.Errorf("raw video should not autoplay by default: %s", post.ArticleHTML)
 	}
 	if !contains(post.ArticleHTML, `preload="none"`) {
@@ -365,12 +365,12 @@ func TestMDVideoPlugin_ProcessPost_RawVideoAutoplayCanBeOptedIn(t *testing.T) {
 	cfg.Autoplay = true
 	cfg.Preload = "metadata"
 	p.SetConfig(cfg)
-	post := &models.Post{ArticleHTML: `<video controls><source src="clip.mp4"></video>`}
+	post := &models.Post{ArticleHTML: `<video autoplay controls><source src="clip.mp4"></video>`}
 
 	if err := p.processPost(post); err != nil {
 		t.Fatalf("processPost() error = %v", err)
 	}
-	if !contains(post.ArticleHTML, "autoplay") || !contains(post.ArticleHTML, `preload="metadata"`) {
+	if !contains(post.ArticleHTML, `data-authored-autoplay="true"`) || !contains(post.ArticleHTML, `preload="none"`) {
 		t.Errorf("explicit autoplay config was not honored: %s", post.ArticleHTML)
 	}
 }
@@ -562,4 +562,59 @@ func countOccurrences(s, substr string) int {
 		}
 	}
 	return count
+}
+
+func TestMDVideoPlugin_AuthoredIntent(t *testing.T) {
+	p := NewMDVideoPlugin()
+	cfg := p.config
+	cfg.Autoplay = true
+	p.SetConfig(cfg)
+	for _, tt := range []struct {
+		name       string
+		html       string
+		wantIntent bool
+	}{
+		{"raw manual", `<video controls><source src="clip.mp4"></video>`, false},
+		{"raw autoplay", `<video autoplay controls><source src="clip.mp4"></video>`, true},
+		{"Markdown configured autoplay", `<img src="clip.mp4" alt="clip">`, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{ArticleHTML: tt.html}
+			if err := p.processPost(post); err != nil {
+				t.Fatal(err)
+			}
+			tag := videoTagRegex.FindString(post.ArticleHTML)
+			if videoAutoplayAttrRegex.MatchString(tag) {
+				t.Fatalf("premature native autoplay: %s", tag)
+			}
+			if got := strings.Contains(tag, `data-authored-autoplay="true"`); got != tt.wantIntent {
+				t.Fatalf("intent = %v, want %v: %s", got, tt.wantIntent, tag)
+			}
+			if tt.wantIntent && !strings.Contains(tag, `preload="none"`) {
+				t.Fatalf("premature preload: %s", tag)
+			}
+		})
+	}
+}
+
+func TestMDVideoPlugin_PosterReservesGeometry(t *testing.T) {
+	p := NewMDVideoPlugin()
+	for _, tt := range []struct{ name, opening, want string }{
+		{"default frame", `<video controls width="100%">`, `style="aspect-ratio:16/9"`},
+		{"author style", `<video controls style="aspect-ratio:1/1">`, `style="aspect-ratio:1/1"`},
+		{"author height", `<video controls height="240">`, `height="240"`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{ArticleHTML: tt.opening + `<source src="https://dropper.waylonwalker.com/api/file/clip.mp4"></video>`}
+			if err := p.processPost(post); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(post.ArticleHTML, tt.want) {
+				t.Fatalf("geometry lost: %s", post.ArticleHTML)
+			}
+			if tt.name != "default frame" && strings.Contains(post.ArticleHTML, `aspect-ratio:16/9`) {
+				t.Fatalf("author geometry overridden: %s", post.ArticleHTML)
+			}
+		})
+	}
 }

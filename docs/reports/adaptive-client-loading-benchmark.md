@@ -11,6 +11,10 @@ tags:
 
 # Adaptive Client Loading Benchmark
 
+Historical measurements from implementation commit `bbb5cb53`. The hardening
+report supersedes its policy, autoplay, browser coverage, and readiness findings.
+See [Adaptive loading hardening](../adaptive-client-loading-hardening/).
+
 This report records browser measurements before and after adaptive client loading on the real `waylonwalker.com` corpus. The source site was not edited. Both builds used the worktree binary and wrote to temporary output directories.
 
 ## Reproduce

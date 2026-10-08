@@ -8,7 +8,7 @@
   var SESSION_KEY = 'markata-loading-auto-v1';
   var DISMISS_KEY = 'markata-loading-dismissed-v1';
   var SESSION_TTL = 10 * 60 * 1000;
-  var MAX_SAMPLES = 6;
+  var MAX_SAMPLES = 12;
 
   function state() {
     return { recommendation: 'unknown', poor: 0, good: 0, samples: 0, offline: false };
@@ -18,6 +18,7 @@
     var next = Object.assign(state(), current || {});
     if (kind === 'offline') {
       next.offline = true;
+      next.good = 0;
       next.recommendation = 'constrained';
       return next;
     }
@@ -36,14 +37,8 @@
     } else if (kind === 'strong-poor') {
       next.poor = Math.max(2, next.poor + 2);
       next.good = 0;
-    } else if (kind === 'hint-good') {
-      next.good = Math.min(8, next.good + 1);
-      next.poor = 0;
-    } else if (kind === 'strong-good') {
-      next.good = Math.max(4, next.good + 2);
-      next.poor = 0;
     }
-    if (next.poor >= 2) next.recommendation = 'constrained';
+    if (next.offline || next.poor >= 2) next.recommendation = 'constrained';
     else if (next.good >= 4) next.recommendation = 'full-quality';
     else if (next.recommendation === 'unknown') next.recommendation = 'normal';
     return next;
@@ -79,12 +74,13 @@
 
   function networkHint(current, info) {
     if (!info) return current || state();
+    if (info.saveData) return vote(current, 'strong-poor');
+    if (current && (current.samples || current.offline || current.recommendation === 'constrained')) return current;
+    var next = Object.assign(state(), current || {});
     var type = String(info.effectiveType || '').toLowerCase();
-    if (info.saveData || type === 'slow-2g') return vote(current, 'strong-poor');
-    if (type === '2g') return vote(current, 'poor');
-    if (type === '4g' && Number(info.downlink) >= 5) return vote(current, 'strong-good');
-    if (type === '4g' || Number(info.downlink) >= 1.5) return vote(current, 'hint-good');
-    return current || state();
+    if (type === 'slow-2g' || type === '2g') next.recommendation = 'constrained';
+    else if (type === '4g' || Number(info.downlink) >= 1.5) next.recommendation = 'normal';
+    return next;
   }
 
   function restore(serialized, now) {
@@ -97,7 +93,7 @@
       restored.samples = Math.max(0, Math.min(MAX_SAMPLES, saved.samples | 0));
       restored.offline = !!saved.offline;
       if (restored.offline) restored.recommendation = 'constrained';
-      else if (restored.poor >= 2) restored.recommendation = 'constrained';
+      else if (saved.recommendation === 'constrained' || restored.poor >= 2) restored.recommendation = 'constrained';
       else if (restored.good >= 4) restored.recommendation = 'full-quality';
       else if (restored.poor || restored.good) restored.recommendation = 'normal';
       return restored;
@@ -105,7 +101,7 @@
   }
 
   function savedState(current, now) {
-    return JSON.stringify({ poor: current.poor, good: current.good, samples: current.samples, offline: current.offline, at: now });
+    return JSON.stringify({ poor: current.poor, good: current.good, samples: current.samples, offline: current.offline, recommendation: current.recommendation, at: now });
   }
 
   var api = { state: state, vote: vote, networkHint: networkHint, effectiveMode: effectiveMode, readMode: readMode, persistMode: persistMode, mismatch: mismatch, restore: restore, savedState: savedState };
@@ -128,7 +124,10 @@
   try { localStore = window.localStorage; } catch (_) { /* storage may be blocked */ }
   var current = restore(readStorage(sessionStore, SESSION_KEY), Date.now());
   var userMode = readMode(localStore, KEY);
-  var samples = current.samples;
+  var samples = 0;
+  var seen = new Set();
+  var observer;
+  var initialized = false;
   if (navigator.onLine && current.offline) current = vote(current, 'online');
 
   function readStorage(storage, key) {
@@ -151,18 +150,29 @@
 
   function update() {
     if (!navigator.onLine) current = vote(current, 'offline');
-    var automatic = current.recommendation;
+    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var automatic = current.offline || (connection && connection.saveData) ? 'constrained' : current.recommendation;
     var effective = effectiveMode(userMode, automatic);
     rootElement.dataset.loadingMode = userMode;
     rootElement.dataset.loadingPolicy = effective;
     rootElement.dataset.loadingEffective = effective;
     rootElement.dataset.loadingRecommendation = automatic;
     rootElement.dataset.adaptiveReady = 'true';
+    if (effective === 'full-quality' && (!initialized || userMode === 'full-quality') && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      document.querySelectorAll('video[data-authored-autoplay="true"]').forEach(function(video) {
+        if (video.dataset.autoplayStarted || video.networkState === 2 || video.readyState || video.currentTime || !video.paused) return;
+        video.dataset.autoplayStarted = 'true';
+        video.autoplay = true;
+        var playing = video.play();
+        if (playing && playing.catch) playing.catch(function() {});
+      });
+    }
+    initialized = true;
     for (var i = 0; i < radios.length; i++) radios[i].checked = radios[i].value === userMode;
     var labels = { auto: 'Auto', 'save-data': 'Save Data', 'full-quality': 'Full Quality' };
     var summary = control.querySelector('[data-loading-label]');
     if (summary) summary.textContent = 'Loading: ' + labels[userMode];
-    var suggestion = mismatch(userMode, current);
+    var suggestion = userMode === 'save-data' && automatic === 'constrained' ? '' : mismatch(userMode, current);
     var dismissed = readStorage(sessionStore, DISMISS_KEY);
     if (actions) actions.hidden = !suggestion || dismissed === suggestion;
     if (keepMode) keepMode.textContent = 'Keep ' + labels[userMode];
@@ -184,7 +194,7 @@
     if (samples >= MAX_SAMPLES) return;
     current = vote(current, kind);
     if (kind === 'good' || kind === 'poor') samples++;
-    current.samples = samples;
+    if (samples >= MAX_SAMPLES && observer) observer.disconnect();
     writeStorage(sessionStore, SESSION_KEY, savedState(current, Date.now()));
     update();
   }
@@ -198,12 +208,15 @@
 
   function inspect(entry) {
     if (samples >= MAX_SAMPLES || !entry || (entry.entryType !== 'navigation' && entry.initiatorType !== 'img' && entry.initiatorType !== 'video' && entry.initiatorType !== 'audio')) return;
-    var bytes = Number(entry.transferSize || entry.encodedBodySize || 0);
+    var identity = entry.entryType + ':' + entry.name + ':' + entry.startTime;
+    if (seen.has(identity)) return;
+    seen.add(identity);
+    var bytes = Number(entry.transferSize || 0);
     var elapsed = Number(entry.responseEnd - entry.responseStart);
-    if (bytes < 24000 || elapsed < 100 || elapsed > 30000) return;
+    if (bytes < 24000 || elapsed <= 0 || elapsed > 30000) return;
     var rate = bytes * 8 / (elapsed / 1000);
-    if (rate < 250000) record('poor');
-    else if (rate > 1000000) record('good');
+    if (rate < 2000000) record('poor');
+    else if (rate > 4000000 && entry.responseStart - entry.startTime < 500) record('good');
   }
 
   for (var r = 0; r < radios.length; r++) radios[r].addEventListener('change', function() {
@@ -236,6 +249,13 @@
     if (navigation.length) inspect(navigation[0]);
     var entries = performance.getEntriesByType('resource');
     for (var e = 0; e < entries.length && samples < MAX_SAMPLES; e++) inspect(entries[e]);
+  }
+  if (window.PerformanceObserver) {
+    try {
+      observer = new PerformanceObserver(function(list) { list.getEntries().forEach(inspect); });
+      observer.observe({ type: 'resource', buffered: true });
+      window.setTimeout(function() { observer.disconnect(); }, 30000);
+    } catch (_) { /* load snapshot remains available */ }
   }
   if (document.readyState === 'complete') collectTimings();
   else window.addEventListener('load', collectTimings, { once: true });

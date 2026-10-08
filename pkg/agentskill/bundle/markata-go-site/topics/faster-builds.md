@@ -33,6 +33,8 @@ Use this topic when the task is build speed, local iteration speed, or profiling
 
 - use the site's **Loading** control to compare Auto, Save Data, and Full Quality
 - keep Markdown video defaults at `autoplay = false` and `preload = "none"`; opt in only when autoplay is part of the page's purpose
+- authored autoplay becomes a data attribute; Full Quality or already measured fast Auto at page entry can start unrequested videos, while Save Data and the no-JS baseline require interaction
+- benchmark Auto separately from manual Save Data: verify real timing evidence without seeding session confidence, and use several runs with medians
 - use responsive images, intrinsic dimensions, native lazy loading, and posters before adding client-side loading code
 - keep third-party players behind a lightweight facade and reader interaction; do not add unconditional preconnect or preload hints for linked media
 - benchmark generated pages on a mobile viewport with a constrained connection, and check that scrolling does not fetch every offscreen video card

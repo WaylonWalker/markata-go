@@ -1649,7 +1649,8 @@ type MDVideoConfig struct {
 	// Controls shows video controls (default: true)
 	Controls bool `json:"controls" yaml:"controls" toml:"controls"`
 
-	// Autoplay starts video automatically (default: false to avoid surprise downloads)
+	// Autoplay records authored playback intent; the client loading policy decides
+	// whether unrequested video may start automatically (default: false).
 	Autoplay bool `json:"autoplay" yaml:"autoplay" toml:"autoplay"`
 
 	// Loop repeats the video (default: true for GIF-like behavior)

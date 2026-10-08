@@ -83,3 +83,40 @@ native media defaults and verify both active template trees. Use the
 waylonwalker.com site as the real corpus and compare desktop plus constrained
 mobile loads in Chromium. Report browser automation limits for Firefox and
 Brave when unavailable locally.
+
+## Hardening decisions (2026-10-08)
+
+Keep the existing controller and static media architecture. Generic connection
+hints initialize a recommendation without contributing measured confidence.
+Browser Save Data is explicit constrained intent. Real timing observations take
+priority, with two poor votes to constrain and four consecutive good votes to
+recover; manual preferences remain absolute. Preserve constrained recommendation
+in session storage during recovery, reset fast confidence offline, and allow new
+measurements on each page rather than consuming the entire session's budget.
+
+Collect timings at load when deferred startup precedes load, plus a resource
+observer for late work. Deduplicate the load snapshot and observer entries. Stop
+at twelve measured samples per page or thirty seconds. Ignore cache hits and
+opaque/insignificant transfers. The 2 Mbps/4 Mbps thresholds leave a neutral band
+and cover the benchmark's 192 KiB/s profile without requiring browser detection.
+
+Preserve raw HTML's own autoplay intent and Markdown's configured intent in a
+data attribute. Initial markup uses preload none without native autoplay. Only
+Full Quality or measured fast Auto may start unrequested authored media;
+reduced motion suppresses automatic playback. Policy changes never rewind,
+pause, or replace media already loading or playing. The no-JS tradeoff is
+explicit: native controls work, but authored autoplay requires interaction.
+
+Validation uses real delayed HTTP image responses in Chromium, Firefox, and
+Brave, including a disabled PerformanceObserver to prove the load fallback.
+Corpus comparisons use isolated copies of the real site's current inputs,
+fresh browser contexts, three repetitions, and medians. CDP and Lighthouse
+results remain separate. Video LCP attribution includes the actual paint element
+and poster resource timing, rather than assuming transfer savings improve LCP.
+
+
+Auto honors authored autoplay when measured confidence is already fast at page
+entry. Learning that the network is fast during a page view affects subsequent
+pages; it does not suddenly animate an existing poster. An explicit Full Quality
+choice may start unrequested authored video on the current page. Active media
+remains untouched in either case.

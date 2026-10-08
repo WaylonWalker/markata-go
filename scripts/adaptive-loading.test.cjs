@@ -12,12 +12,12 @@ test('strong Network Information signal recommends a matching policy', () => {
   const slow = policy.networkHint(policy.state(), { saveData: true });
   const fast = policy.networkHint(policy.state(), { effectiveType: '4g', downlink: 8 });
   assert.equal(slow.recommendation, 'constrained');
-  assert.equal(fast.recommendation, 'full-quality');
+  assert.equal(fast.recommendation, 'normal');
 });
 
 test('one weak hint does not change policy, repeated poor resources do', () => {
   let current = policy.networkHint(policy.state(), { effectiveType: '2g' });
-  assert.equal(current.recommendation, 'normal');
+  assert.equal(current.recommendation, 'constrained');
   current = policy.vote(current, 'poor');
   assert.equal(current.recommendation, 'constrained');
 });
@@ -94,7 +94,29 @@ test('offline applies immediately and online recovery still uses hysteresis', ()
 
 test('sample count is bounded', () => {
   let current = policy.state();
-  for (let i = 0; i < 12; i++) current = policy.vote(current, 'poor');
-  assert.equal(current.samples, 6);
+  for (let i = 0; i < 20; i++) current = policy.vote(current, 'poor');
+  assert.equal(current.samples, 12);
   assert.equal(current.poor, 8);
 });
+
+ test('generic fast hints cannot erase measured poor evidence', () => {
+  let current = policy.state();
+  for (let i = 0; i < 4; i++) current = policy.vote(current, 'poor');
+  current = policy.networkHint(current, {effectiveType: '4g', downlink: 10});
+  assert.equal(current.poor, 4);
+  assert.equal(current.recommendation, 'constrained');
+  for (let i = 0; i < 3; i++) current = policy.vote(current, 'good');
+  assert.equal(current.recommendation, 'constrained');
+  assert.equal(policy.restore(policy.savedState(current, 1000), 1001).recommendation, 'constrained');
+  current = policy.vote(current, 'good');
+  assert.equal(current.recommendation, 'full-quality');
+ });
+ test('offline discards old fast confidence', () => {
+  let current = policy.state();
+  for (let i = 0; i < 5; i++) current = policy.vote(current, 'good');
+  current = policy.vote(current, 'offline');
+  current = policy.vote(current, 'online');
+  current = policy.networkHint(current, {effectiveType:'4g', downlink:10});
+  current = policy.vote(current, 'good');
+  assert.equal(current.recommendation, 'constrained');
+ });

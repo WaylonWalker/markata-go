@@ -33,6 +33,15 @@ independent good observations than entry into constrained state. Unknown or
 incomplete evidence MUST choose conservative behavior for optional/speculative
 work while leaving critical HTML, CSS, and native content available.
 
+Measured timings MUST outrank generic effective-type/downlink hints. Generic hints
+MAY bootstrap unknown state but MUST NOT erase measured confidence. Save Data
+browser intent MUST keep Auto constrained while active. Startup before window
+load MUST still collect navigation and resource timings at load. Late resource
+observations MUST end after 30 seconds or twelve samples per page. A later page
+MUST permit fresh measurements while retaining short-lived confidence.
+Poor timing means meaningful transfer below 2 Mbps; good timing means above
+4 Mbps with response latency below 500 ms. Cached/zero-duration entries do not vote.
+
 Observation MUST be bounded by sample count. Implementations MUST NOT poll or
 continuously scan the document. Session state MAY persist briefly across page
 navigations and MUST expire so old connection conditions do not become
@@ -54,9 +63,18 @@ Save Data on a newly fast connection.
 Images SHOULD use native responsive sources, lazy loading below the fold,
 asynchronous decoding, and intrinsic dimensions. Video MUST retain a poster and
 native source/control path. Video previews MUST NOT autoplay or preload media
-bytes unless a site author explicitly configures autoplay. Raw HTML and
-Markdown video elements SHOULD follow the same site-level autoplay and preload
-defaults. Article video SHOULD default to `preload="none"`. Optional player code MUST load only on pages that
+bytes unless a site author explicitly configures autoplay. Explicit raw HTML autoplay and Markdown site-configured autoplay MUST survive
+as `data-authored-autoplay="true"`, without a native autoplay attribute. Static
+output MUST use preload none for those videos. Full Quality or already-confident fast
+Auto at page entry MAY start authored autoplay only for unstarted videos. Save Data, unknown,
+normal, reduced motion, and constrained Auto MUST NOT start it. Policy changes
+MUST NOT pause or restart already requested/playing media. Raw HTML without
+autoplay MUST NOT gain autoplay from site-wide configuration. With no JavaScript,
+authored autoplay becomes native user-initiated playback; this conservative
+baseline is an intentional tradeoff. Derived 1200×675 posters MUST reserve a 16:9 aspect ratio when raw HTML has
+no authored height/style; explicit author geometry MUST be retained. Markdown
+video with a derived poster MUST reserve the same ratio.
+Article video SHOULD default to `preload="none"`. Optional player code MUST load only on pages that
 contain that player, and expensive external embeds SHOULD wait for reader
 interaction.
 
@@ -67,7 +85,7 @@ critical hint MUST NOT depend on JavaScript to be removed later.
 ## Runtime budget and compatibility
 
 The adaptive controller SHOULD compress to at most 2 KB and MUST NOT exceed
-3 KB gzip without a documented justification. It MUST avoid frameworks,
+3 KB gzip. It MUST avoid frameworks,
 polling, broad repeated DOM queries, and layout-dependent behavior. It MUST
 work in Chromium, Brave, and Firefox without Network Information API support,
 and SHOULD use APIs that degrade cleanly in Safari/iOS.
@@ -77,3 +95,10 @@ fast observations; all three user modes; mismatch confidence; hysteresis;
 session expiry; and offline/online transitions. Browser checks SHOULD cover
 mobile viewport, constrained networking, no premature media requests, no
 visible-content mutation, and layout stability.
+
+
+Auto honors authored autoplay when measured confidence is already fast at page
+entry. Learning that the network is fast during a page view affects subsequent
+pages; it does not suddenly animate an existing poster. An explicit Full Quality
+choice may start unrequested authored video on the current page. Active media
+remains untouched in either case.
