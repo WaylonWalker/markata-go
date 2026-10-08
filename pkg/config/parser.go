@@ -1349,6 +1349,7 @@ type tomlFeedSidebarConfig struct {
 	Width    string   `toml:"width"`
 	Title    string   `toml:"title"`
 	Feeds    []string `toml:"feeds"`
+	MaxPosts int      `toml:"max_posts"`
 }
 
 type tomlContentSidebarConfig struct {
@@ -1898,6 +1899,7 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.FeedSidebar.Width,
 			Title:    c.FeedSidebar.Title,
 			Feeds:    c.FeedSidebar.Feeds,
+			MaxPosts: c.FeedSidebar.MaxPosts,
 		},
 		ContentSidebar: models.ContentSidebarConfig{
 			Enabled:  c.ContentSidebar.Enabled,
@@ -3153,6 +3155,7 @@ type yamlFeedSidebarConfig struct {
 	Width    string   `yaml:"width"`
 	Title    string   `yaml:"title"`
 	Feeds    []string `yaml:"feeds"`
+	MaxPosts int      `yaml:"max_posts"`
 }
 
 type yamlContentSidebarConfig struct {
@@ -3582,6 +3585,7 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.FeedSidebar.Width,
 			Title:    c.FeedSidebar.Title,
 			Feeds:    c.FeedSidebar.Feeds,
+			MaxPosts: c.FeedSidebar.MaxPosts,
 		},
 		ContentSidebar: models.ContentSidebarConfig{
 			Enabled:  c.ContentSidebar.Enabled,
@@ -4756,6 +4760,7 @@ type jsonFeedSidebarConfig struct {
 	Width    string   `json:"width"`
 	Title    string   `json:"title"`
 	Feeds    []string `json:"feeds"`
+	MaxPosts int      `json:"max_posts"`
 }
 
 type jsonContentSidebarConfig struct {
@@ -5185,6 +5190,7 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.FeedSidebar.Width,
 			Title:    c.FeedSidebar.Title,
 			Feeds:    c.FeedSidebar.Feeds,
+			MaxPosts: c.FeedSidebar.MaxPosts,
 		},
 		ContentSidebar: models.ContentSidebarConfig{
 			Enabled:  c.ContentSidebar.Enabled,
