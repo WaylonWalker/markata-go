@@ -89,3 +89,10 @@ remains untouched in either case.
 Keep native controls enabled (or supply an accessible play action) for deferred
 videos. A video deliberately authored without controls needs its own interaction
 path in Save Data and no-JS mode; autoplay intent alone is not a play control.
+
+
+The existing full-document View Transition navigator preserves loading-mode
+attributes and the persistent control. Each completed route initializes only
+its newly inserted authored media, expires stale session evidence, and opens a
+fresh bounded timing window. It does not rerun the controller or reset the
+visitor's manual choice.

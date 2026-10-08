@@ -11,14 +11,23 @@ tags:
 
 # Adaptive Loading Hardening
 
+An audit of the existing full-document View Transition navigator found that it
+could reset loading attributes to server defaults. The final follow-up preserves
+those attributes, initializes new-route authored media, and restarts a bounded
+timing window on its existing completion event. Chromium integration exercises
+that actual navigator for Auto and both manual modes. The CDP/Lighthouse tables
+below measure checkpoint `aa86d8ec`; this route-entry follow-up adds about 68 gzip
+bytes to the controller and runs on subsequent route completion, not initial
+paint. Initial-load policies and representative media markup are unchanged.
+
 Issue [#1524](https://github.com/WaylonWalker/markata-go/issues/1524), existing
 `feat/adaptive-client-loading` branch. This continues the design and implementation
 commits rather than replacing their architecture.
 
 ## Benefit
 
-The final controller is 11,628 source bytes, 6,219 generated/minified bytes,
-2,325 bytes gzip (levels 6 and 9), and 2,065 bytes Brotli.
+The final controller is 12,072 source bytes, 6,408 generated/minified bytes,
+2,393 bytes gzip (level 6), and 2,125 bytes Brotli.
 The generated main stylesheet delta is 2,134 bytes uncompressed and 433 bytes
 gzip. One deferred controller request is added; CSS uses the existing request.
 Overall route request counts also reflect removed optional player assets.

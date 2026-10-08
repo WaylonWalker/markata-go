@@ -127,6 +127,7 @@
   var samples = 0;
   var seen = new Set();
   var observer;
+  var stopTimer;
   var initialized = false;
   if (navigator.onLine && current.offline) current = vote(current, 'online');
 
@@ -250,13 +251,25 @@
     var entries = performance.getEntriesByType('resource');
     for (var e = 0; e < entries.length && samples < MAX_SAMPLES; e++) inspect(entries[e]);
   }
-  if (window.PerformanceObserver) {
+  function observeTimings(buffered) {
+    if (!window.PerformanceObserver) return;
     try {
-      observer = new PerformanceObserver(function(list) { list.getEntries().forEach(inspect); });
-      observer.observe({ type: 'resource', buffered: true });
-      window.setTimeout(function() { observer.disconnect(); }, 30000);
+      if (!observer) observer = new PerformanceObserver(function(list) { list.getEntries().forEach(inspect); });
+      observer.observe({ type: 'resource', buffered: buffered });
+      window.clearTimeout(stopTimer);
+      stopTimer = window.setTimeout(function() { observer.disconnect(); }, 30000);
     } catch (_) { /* load snapshot remains available */ }
   }
+  window.addEventListener('view-transition-complete', function() {
+    var saved = readStorage(sessionStore, SESSION_KEY);
+    if (saved) current = restore(saved, Date.now());
+    samples = 0;
+    seen = new Set();
+    initialized = false;
+    update();
+    observeTimings(false);
+  });
+  observeTimings(true);
   if (document.readyState === 'complete') collectTimings();
   else window.addEventListener('load', collectTimings, { once: true });
   return api;

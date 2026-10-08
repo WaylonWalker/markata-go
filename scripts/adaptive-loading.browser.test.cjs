@@ -16,6 +16,7 @@ function serve() {
   return http.createServer((req, res) => {
     if (req.url === '/clip.webm') {res.setHeader('Content-Type','video/webm'); return res.end(fs.readFileSync(path.join(__dirname,'fixtures/adaptive-video.webm')));}
     if (req.url === '/adaptive.js') return res.end(controller);
+    if (req.url === '/view.js') return res.end(fs.readFileSync(path.join(__dirname,'../pkg/themes/default/static/js/view-transitions.js')));
     if (req.url === '/startup.js') return res.end('window.controllerReadyState = document.readyState;');
     if (req.url.startsWith('/sample/')) {
       res.setHeader('Content-Type','image/svg+xml');
@@ -31,11 +32,11 @@ function serve() {
       return;
     }
     res.setHeader('Content-Type','text/html');
-    res.end('<!doctype html><html><body>' + control + '<main><p>Useful content</p>' +
+    res.end('<!doctype html><html><body>' + control + '<div id="view-transition-page"><main><p>Useful content</p>' +
       '<video width="160" height="90" muted controls preload="none" data-authored-autoplay="true"><source src="/clip.webm" type="video/webm"></video>' +
       '<video width="160" height="90" muted controls preload="none" id="no-intent"><source src="/clip.webm" type="video/webm"></video>' +
       [0,1,2,3].map(i => '<img width="160" height="90" src="/sample/' + (req.url.includes('good') ? 'good' : 'poor') + i + '">').join('') +
-      '</main><script src="/startup.js" defer></script><script src="/adaptive.js" defer></script></body></html>');
+      '<a id="next-route" href="/good-native-next">Next route</a></main></div><script src="/startup.js" defer></script><script src="/adaptive.js" defer></script><script src="/view.js" defer></script></body></html>');
   });
 }
 async function more(page, kind, count) {
@@ -141,6 +142,37 @@ for (const engine of (process.env.ADAPTIVE_BROWSERS || 'chromium,firefox,brave')
       assert.ok(await intentPage.locator('[data-loading-actions]').isHidden());
       await intent.close();
 
+      if (engine === 'chromium') {
+        for (const mode of ['auto','save-data','full-quality']) {
+          const nav = await browser.newContext();
+          await nav.addInitScript(mode => {
+            Object.defineProperty(navigator,'connection',{value:undefined});
+            if (mode !== 'auto') localStorage.setItem('markata-loading-mode-v1',mode);
+            window.routeSwaps = 0;
+            window.entryRecommendations = [];
+            window.addEventListener('view-transition-complete', () => {
+              entryRecommendations.push(document.documentElement.dataset.loadingRecommendation);
+              routeSwaps++;
+            });
+          },mode);
+          const n = await nav.newPage(); await n.goto(origin + '/poor-native');
+          await n.locator('#next-route').click();
+          await n.waitForFunction(() => routeSwaps > 0);
+          await recommendation(n,'full-quality');
+          assert.equal(await n.getAttribute('html','data-loading-mode'),mode);
+          assert.equal(await n.getAttribute('html','data-loading-policy'),mode === 'save-data' ? 'constrained' : 'full-quality');
+          // Auto learns fast on this destination but keeps it still. The next
+          // user-requested route may honor that already-measured confidence.
+          if (mode === 'auto') {
+            const atEntry = await n.evaluate(() => entryRecommendations[0]);
+            assert.equal(await n.locator('video').first().getAttribute('data-autoplay-started'),atEntry === 'full-quality' ? 'true' : null);
+            await n.evaluate(() => window.navigateWithViewTransition('/good-native-last'));
+            await n.waitForFunction(() => routeSwaps >= 2);
+            assert.equal(await n.locator('video').first().getAttribute('data-autoplay-started'),'true');
+          }
+          await nav.close();
+        }
+      }
       // With the observer unavailable, only the deferred load listener can
       // collect these real Resource Timing entries.
       for (const connection of [undefined, {effectiveType:'4g', downlink:10}, {saveData:true}]) {

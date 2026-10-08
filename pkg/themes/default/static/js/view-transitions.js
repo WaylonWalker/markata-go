@@ -44,6 +44,8 @@
   const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size', 'data-palette', 'data-aesthetic']);
   const RUNTIME_HTML_CLASS_NAMES = new Set(['dark']);
   const RUNTIME_HTML_ATTRIBUTE_PREFIXES = [
+    'data-loading-',
+    'data-adaptive-',
     'data-shared-transition-',
     'data-post-transition-',
   ];

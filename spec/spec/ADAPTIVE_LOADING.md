@@ -102,3 +102,10 @@ entry. Learning that the network is fast during a page view affects subsequent
 pages; it does not suddenly animate an existing poster. An explicit Full Quality
 choice may start unrequested authored video on the current page. Active media
 remains untouched in either case.
+
+
+The existing full-document View Transition navigator preserves loading-mode
+attributes and the persistent control. Each completed route initializes only
+its newly inserted authored media, expires stale session evidence, and opens a
+fresh bounded timing window. It does not rerun the controller or reset the
+visitor's manual choice.
