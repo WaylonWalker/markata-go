@@ -367,6 +367,8 @@ link.dataset.transitionType = 'slide';
 
 markata-go prefetches transition-managed links on hover/focus and can eagerly warm nearby pagination targets so `[` and `]` navigation feels more immediate. Prefetching is debounced and bounded to avoid excessive fetch/parse work when a user moves across a dense sidebar or feed.
 
+Prefetched documents are reused for five seconds after they finish loading. Expired entries are evicted before the bounded cache admits new work; navigating to an older entry fetches it again with HTTP cache revalidation, so a published update can replace an older in-memory page. HTTP caches can use retained ETag and Last-Modified validators; servers that mark responses `no-store` may require a full response. If revalidation fails, navigation falls back to the ordinary static page request.
+
 ```javascript
 document.addEventListener('mouseover', (event) => {
   const link = event.target.closest('a');

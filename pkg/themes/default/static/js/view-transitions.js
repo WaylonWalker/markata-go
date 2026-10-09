@@ -39,6 +39,9 @@
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
   const MAX_PREFETCHED_DOCUMENTS = 8;
   const PREFETCH_DEBOUNCE_MS = 120;
+  // Keep hover/focus work useful for an ordinary click, but revalidate a
+  // document left in the in-memory cache for longer than this window.
+  const PREFETCH_FRESHNESS_MS = 5000;
   // Visitor-controlled theme state must survive in-site navigation; the new
   // document only carries server defaults.
   const RUNTIME_HTML_ATTRIBUTES = new Set(['data-theme', 'data-text-size', 'data-palette', 'data-aesthetic']);
@@ -561,12 +564,22 @@
   }
 
   async function resolveDocument(url, metrics) {
-    if (prefetchedDocuments.has(url)) {
-      metrics.prefetched = true;
-
-      const prefetchedDocument = prefetchedDocuments.get(url);
+    const prefetched = prefetchedDocuments.get(url);
+    if (prefetched) {
       prefetchedDocuments.delete(url);
-      return prefetchedDocument;
+
+      if (getNow() - prefetched.prefetchedAt <= PREFETCH_FRESHNESS_MS) {
+        metrics.prefetched = true;
+        return prefetched.promise;
+      }
+
+      // Abort any old in-flight speculative request and ask the HTTP cache to
+      // validate with ETag/Last-Modified when it retained those validators.
+      prefetched.controller.abort();
+      return fetchDocument(url, {
+        metrics: metrics,
+        fetchOptions: { cache: 'no-cache' },
+      });
     }
 
     return fetchDocument(url, { metrics: metrics });
@@ -1210,6 +1223,15 @@
   /**
    * Prefetch a URL to make subsequent navigation instant
    */
+  function evictStalePrefetches(now) {
+    for (const [url, prefetched] of prefetchedDocuments) {
+      if (now - prefetched.prefetchedAt <= PREFETCH_FRESHNESS_MS) continue;
+
+      prefetched.controller.abort();
+      prefetchedDocuments.delete(url);
+    }
+  }
+
   function prefetchUrl(url) {
     // Only prefetch if we're not heavily resource constrained
     if (navigator.connection && navigator.connection.saveData) {
@@ -1219,6 +1241,7 @@
     if (!url || prefetchedDocuments.has(url)) return;
 
     const now = getNow();
+    evictStalePrefetches(now);
     if (url === lastPrefetchUrl && now - lastPrefetchAt < PREFETCH_DEBOUNCE_MS) {
       return;
     }
@@ -1232,10 +1255,27 @@
 
     if (config.debug) console.log('Prefetching URL:', url);
 
-    const prefetchedDocument = fetchDocument(url, {
-      fetchOptions: { priority: 'low' },
+    const controller = new AbortController();
+    const prefetched = {
+      prefetchedAt: now,
+      controller: controller,
+      promise: null,
+    };
+    prefetched.promise = fetchDocument(url, {
+      fetchOptions: { priority: 'low', signal: controller.signal },
+    }).then((document) => {
+      // Age the cache from when the document is ready to consume, not from
+      // when a slow speculative request started.
+      prefetched.prefetchedAt = getNow();
+      return document;
     }).catch((error) => {
-      prefetchedDocuments.delete(url);
+      if (prefetchedDocuments.get(url) === prefetched) {
+        prefetchedDocuments.delete(url);
+      }
+
+      if (controller.signal.aborted) {
+        return null;
+      }
 
       if (config.debug) {
         console.warn('[view-transitions] prefetch failed', url, error);
@@ -1244,7 +1284,7 @@
       throw error;
     });
 
-    prefetchedDocuments.set(url, prefetchedDocument);
+    prefetchedDocuments.set(url, prefetched);
   }
 
   /**
