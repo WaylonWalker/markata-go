@@ -32,6 +32,12 @@ func CollectCoverage(reader io.Reader) (Coverage, error) {
 			if skipElement == "" {
 				for _, r := range string(tokenizer.Text()) {
 					if r != utf8.RuneError {
+						// HTML collapses tabs, line breaks, form feeds, and
+						// carriage returns to ordinary spaces during rendering.
+						// Subset fonts need U+0020, not separate control glyphs.
+						if r == '\t' || r == '\n' || r == '\f' || r == '\r' {
+							r = ' '
+						}
 						seen[r] = struct{}{}
 					}
 				}

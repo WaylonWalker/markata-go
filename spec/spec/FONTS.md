@@ -29,7 +29,10 @@ cache entry triggers ordinary resolution instead of serving stale hints.
 A build MUST compute a canonical set of distinct visible runes once and reuse
 it for the coverage signature and all requested packs. The extraction MUST
 ignore script/style contents, decode HTML entities, ignore replacement runes,
-and preserve the existing whitespace and concatenated-article parsing semantics.
+normalize HTML tabs, line breaks, form feeds, and carriage returns to U+0020 as
+browsers do when collapsing whitespace, and preserve concatenated-article
+parsing semantics. Non-breaking spaces and supported Unicode text remain
+distinct coverage runes.
 It SHOULD accept a reader so article HTML need not be copied into a site-sized
 intermediate string. Reader errors MUST be surfaced.
 

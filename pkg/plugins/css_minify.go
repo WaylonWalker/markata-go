@@ -179,6 +179,12 @@ func (p *CSSMinifyPlugin) isExcluded(filePath string) bool {
 	}
 
 	filename := filepath.Base(filePath)
+	// Font pack CSS contains generated unicode-range declarations. The CSS
+	// minifier can rewrite those ranges differently on repeated passes, so
+	// minifying its prior output makes incremental builds nondeterministic.
+	if filename == "fonts.css" {
+		return true
+	}
 	return isExcludedByPatterns(filename, p.exclude)
 }
 
