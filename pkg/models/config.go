@@ -1649,7 +1649,8 @@ type MDVideoConfig struct {
 	// Controls shows video controls (default: true)
 	Controls bool `json:"controls" yaml:"controls" toml:"controls"`
 
-	// Autoplay starts video automatically (default: true for GIF-like behavior)
+	// Autoplay records authored playback intent; the client loading policy decides
+	// whether unrequested video may start automatically (default: false).
 	Autoplay bool `json:"autoplay" yaml:"autoplay" toml:"autoplay"`
 
 	// Loop repeats the video (default: true for GIF-like behavior)
@@ -1661,23 +1662,23 @@ type MDVideoConfig struct {
 	// Playsinline enables inline playback on mobile (default: true)
 	Playsinline bool `json:"playsinline" yaml:"playsinline" toml:"playsinline"`
 
-	// Preload hints how much to preload: "none", "metadata", "auto" (default: "metadata")
+	// Preload hints how much to preload: "none", "metadata", "auto" (default: "none")
 	Preload string `json:"preload" yaml:"preload" toml:"preload"`
 }
 
 // NewMDVideoConfig creates a new MDVideoConfig with sensible defaults.
-// Default behavior is GIF-like: autoplay, loop, muted, with controls available.
+// Videos show their poster and begin loading only after playback is requested.
 func NewMDVideoConfig() MDVideoConfig {
 	return MDVideoConfig{
 		Enabled:         true,
 		VideoExtensions: []string{".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v", ".avi", ".mkv"},
 		VideoClass:      "md-video",
 		Controls:        true,
-		Autoplay:        true,
+		Autoplay:        false,
 		Loop:            true,
 		Muted:           true,
 		Playsinline:     true,
-		Preload:         "metadata",
+		Preload:         "none",
 	}
 }
 

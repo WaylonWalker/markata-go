@@ -2977,3 +2977,21 @@ markata-go config validate
 - [Frontmatter Guide](/docs/guides/frontmatter/) - Post metadata reference
 - [CLI Reference](/docs/reference/cli/) - Command-line interface reference
 - [Plugin Reference](/docs/reference/plugins/) - Plugin configuration and development
+
+
+## Video loading preferences
+
+```toml
+[markata-go.md_video]
+autoplay = false
+preload = "none"
+controls = true
+```
+
+These defaults show native controls without automatic video downloads. Setting
+`autoplay = true` preserves author intent in generated markup. Full Quality or
+already measured fast Auto at page entry can start unrequested authored videos; Save Data and
+constrained Auto suppress expensive automatic playback. Raw HTML follows its
+own autoplay attribute rather than the Markdown setting. See
+[Adaptive loading](../adaptive-loading/) for user modes and no-JS behavior, and
+[md_video](../plugins/#md_video) for the full plugin configuration.

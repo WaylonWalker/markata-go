@@ -244,6 +244,57 @@ outlinks_limit = 6
 	}
 }
 
+func TestParseFeedSidebarMaxPostsAcrossFormats(t *testing.T) {
+	t.Run("toml", func(t *testing.T) {
+		config, err := ParseTOML([]byte(`
+[markata-go.components.feed_sidebar]
+enabled = true
+max_posts = 51
+`))
+		if err != nil {
+			t.Fatalf("ParseTOML() error = %v", err)
+		}
+		if config.Components.FeedSidebar.MaxPosts != 51 {
+			t.Fatalf("FeedSidebar.MaxPosts = %d, want 51", config.Components.FeedSidebar.MaxPosts)
+		}
+	})
+
+	t.Run("yaml", func(t *testing.T) {
+		config, err := ParseYAML([]byte(`
+markata-go:
+  components:
+    feed_sidebar:
+      enabled: true
+      max_posts: 51
+`))
+		if err != nil {
+			t.Fatalf("ParseYAML() error = %v", err)
+		}
+		if config.Components.FeedSidebar.MaxPosts != 51 {
+			t.Fatalf("FeedSidebar.MaxPosts = %d, want 51", config.Components.FeedSidebar.MaxPosts)
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		config, err := ParseJSON([]byte(`{
+  "markata-go": {
+    "components": {
+      "feed_sidebar": {
+        "enabled": true,
+        "max_posts": 51
+      }
+    }
+  }
+}`))
+		if err != nil {
+			t.Fatalf("ParseJSON() error = %v", err)
+		}
+		if config.Components.FeedSidebar.MaxPosts != 51 {
+			t.Fatalf("FeedSidebar.MaxPosts = %d, want 51", config.Components.FeedSidebar.MaxPosts)
+		}
+	})
+}
+
 func TestParseTOML_InvalidSyntax(t *testing.T) {
 	data := []byte(`invalid toml {{{{ syntax`)
 

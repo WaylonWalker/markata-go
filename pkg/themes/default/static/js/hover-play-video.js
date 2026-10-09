@@ -15,7 +15,8 @@
   }
 
   function playVideo(video) {
-    if (!video || prefersReducedMotion()) return;
+    var policy = document.documentElement.dataset.loadingPolicy;
+    if (!video || prefersReducedMotion() || policy === 'constrained') return;
     var playPromise = video.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(function() {
@@ -26,14 +27,22 @@
 
   function bindVideo(video) {
     if (!video || video.dataset.hoverPlayBound === 'true') return;
+    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     video.dataset.hoverPlayBound = 'true';
 
-    var card = video.closest('.shot-card');
+    var card = video.closest('.shot-card, .card, [data-card], .photo-figure');
     if (!card) return;
+    var hoverTimer = null;
 
-    card.addEventListener('mouseenter', function() { playVideo(video); });
+    card.addEventListener('mouseenter', function() {
+      hoverTimer = window.setTimeout(function() { playVideo(video); }, 250);
+    });
     card.addEventListener('focusin', function() { playVideo(video); });
-    card.addEventListener('mouseleave', function() { resetVideo(video); });
+    card.addEventListener('mouseleave', function() {
+      if (hoverTimer) window.clearTimeout(hoverTimer);
+      hoverTimer = null;
+      resetVideo(video);
+    });
     card.addEventListener('focusout', function(event) {
       if (card.contains(event.relatedTarget)) return;
       resetVideo(video);
@@ -41,7 +50,7 @@
   }
 
   function initHoverPlayVideo() {
-    document.querySelectorAll('video[data-hover-play]').forEach(bindVideo);
+    document.querySelectorAll('video[data-hover-play], video[data-adaptive-preview]').forEach(bindVideo);
   }
 
   window.initHoverPlayVideo = initHoverPlayVideo;
@@ -55,6 +64,6 @@
   window.addEventListener('view-transition-complete', initHoverPlayVideo);
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) return;
-    document.querySelectorAll('video[data-hover-play]').forEach(resetVideo);
+    document.querySelectorAll('video[data-hover-play], video[data-adaptive-preview]').forEach(resetVideo);
   });
 })();

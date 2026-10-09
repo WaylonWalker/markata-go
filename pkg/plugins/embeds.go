@@ -397,9 +397,9 @@ const (
 	oembedProviderYouTube = "youtube"
 
 	oembedCacheVersion = "v2"
-	// v3 invalidates transformed embed cards so the external-card marker is
-	// added to content restored from an older cache.
-	embedsCacheVersion = "v3"
+	// v4 invalidates transformed content so absolute Obsidian-style HTTP(S)
+	// embeds previously rewritten as local attachments are processed again.
+	embedsCacheVersion = "v4"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -476,7 +476,7 @@ func (p *EmbedsPlugin) processAttachmentEmbedsInText(text string) string {
 			altText = strings.TrimSpace(groups[2])
 		}
 
-		if filename == "" {
+		if filename == "" || isExternalEmbedURL(filename) {
 			return match
 		}
 

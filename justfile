@@ -47,6 +47,10 @@ clean:
 test:
     go test -v ./...
 
+# Run the dependency-free adaptive loading policy tests with Node.js.
+test-adaptive-loading:
+    node --test scripts/adaptive-loading.test.cjs
+
 # Test the rendered Helm nginx configuration and HTTP behavior.
 test-helm:
     ./helm-chart/tests/nginx-cors.sh

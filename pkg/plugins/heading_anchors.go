@@ -58,7 +58,7 @@ func (p *HeadingWearPlugin) Priority(stage lifecycle.Stage) int {
 func (p *HeadingWearPlugin) Configure(m *lifecycle.Manager) error {
 	p.enabled = false
 	if configured, ok := m.Config().Extra["models_config"].(*models.Config); ok {
-		p.enabled = configured.Theme.HeadingTexture.Kind != "none" && configured.Theme.HeadingTexture.ColorMix > 0
+		p.enabled = configured.Theme.HeadingTexture.Kind != renderingTextureNone && configured.Theme.HeadingTexture.ColorMix > 0
 	}
 	return nil
 }
