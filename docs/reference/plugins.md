@@ -1011,13 +1011,30 @@ The extended frontmatter format supports key aliases for convenience (`name`/`ha
     Helpful information here.
 ```
 
-**Supported types:**
+**Built-in types (examples):**
 - `note` - General information
 - `warning` - Caution/warning
 - `tip` - Helpful tips
 - `important` - Important information
 - `danger` - Dangerous/critical warnings
 - `caution` - Proceed with care
+
+**Custom types:** Any type name using letters, numbers, underscores, or hyphens
+is accepted, even if it is not built in. The type is included in the HTML class
+(for example, `class="admonition scripture"`), and its first letter is
+capitalized for the default title. A quoted or unquoted title overrides it.
+Custom types can be styled with site CSS.
+
+```markdown
+!!! scripture
+    A passage of scripture.
+
+!!! background-thought "A side thought"
+    More context.
+
+???+ source "Further reading"
+    Expanded by default.
+```
 
 **HTML output:**
 ```html
