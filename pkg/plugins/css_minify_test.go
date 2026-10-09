@@ -311,6 +311,9 @@ func TestCSSMinifyPlugin_IsExcluded_PagefindAssets(t *testing.T) {
 	if !p.isExcluded("/tmp/output/css/fonts.css") {
 		t.Fatal("expected generated font CSS to be excluded")
 	}
+	if p.isExcluded("/tmp/output/other/fonts.css") || p.isExcluded("/tmp/output/fonts.css") {
+		t.Fatal("did not expect unrelated files named fonts.css to be excluded")
+	}
 	if p.isExcluded("/tmp/output/css/main.css") {
 		t.Fatal("did not expect normal CSS asset to be excluded")
 	}
