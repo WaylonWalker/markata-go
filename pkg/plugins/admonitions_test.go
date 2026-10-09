@@ -183,16 +183,87 @@ func TestAdmonitionRender_AllSupportedTypes(t *testing.T) {
 	}
 }
 
-func TestAdmonitionRender_InvalidTypeNotParsed(t *testing.T) {
-	// Invalid admonition types should not be parsed as admonitions
-	input := `!!! invalid
-    Content here.`
+func TestAdmonitionRender_CustomTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "custom type uses capitalized default title",
+			input: "!!! scripture\n    Verse text.",
+			want: []string{
+				"<div class=\"admonition scripture\">",
+				"<p class=\"admonition-title\">Scripture</p>",
+				"<p>Verse text.</p>",
+				"</div>",
+			},
+		},
+		{
+			name:  "hyphenated custom type",
+			input: "!!! background-thought\n    A passing thought.",
+			want: []string{
+				"<div class=\"admonition background-thought\">",
+				"<p class=\"admonition-title\">Background-thought</p>",
+				"<p>A passing thought.</p>",
+			},
+		},
+		{
+			name:  "custom type with quoted title",
+			input: "!!! source \"Primary Source\"\n    Source text.",
+			want: []string{
+				"<div class=\"admonition source\">",
+				"<p class=\"admonition-title\">Primary Source</p>",
+				"<p>Source text.</p>",
+			},
+		},
+		{
+			name:  "custom type with unquoted title",
+			input: "!!! scripture Ancient Text\n    Passage.",
+			want: []string{
+				"<p class=\"admonition-title\">Ancient Text</p>",
+				"<p>Passage.</p>",
+			},
+		},
+		{
+			name:  "collapsed custom type",
+			input: "??? scripture\n    Hidden verse.",
+			want: []string{
+				"<details class=\"admonition scripture\">",
+				"<summary class=\"admonition-title\">Scripture</summary>",
+				"<p>Hidden verse.</p>",
+				"</details>",
+			},
+		},
+		{
+			name:  "expanded custom type with title",
+			input: "???+ source \"Further reading\"\n    Visible source.",
+			want: []string{
+				"<details class=\"admonition source\" open>",
+				"<summary class=\"admonition-title\">Further reading</summary>",
+				"<p>Visible source.</p>",
+				"</details>",
+			},
+		},
+		{
+			name:  "custom type is case insensitive",
+			input: "!!! ScRiPtUrE\n    Verse.",
+			want: []string{
+				"<div class=\"admonition scripture\">",
+				"<p class=\"admonition-title\">Scripture</p>",
+			},
+		},
+	}
 
-	output := renderAdmonitionMarkdown(input)
-
-	// Should NOT contain admonition class
-	if strings.Contains(output, `class="admonition`) {
-		t.Errorf("invalid type should not create admonition, got %q", output)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := renderAdmonitionMarkdown(tt.input)
+			for _, want := range tt.want {
+				if !strings.Contains(output, want) {
+					t.Errorf("expected %q in output, got %q", want, output)
+				}
+			}
+		})
 	}
 }
 
@@ -577,17 +648,6 @@ func TestAdmonitionRegex_Matching(t *testing.T) {
 	}
 }
 
-func TestAdmonitionTypes_ContainsExpected(t *testing.T) {
-	// Test that admonitionTypes map contains all expected types
-	expectedTypes := []string{"note", "info", "tip", "hint", "success", "warning", "caution", "important", "danger", "error", "bug", "example", "quote", "abstract", "aside"}
-
-	for _, typ := range expectedTypes {
-		if !admonitionTypes[typ] {
-			t.Errorf("expected type %q in admonitionTypes map", typ)
-		}
-	}
-}
-
 func TestAdmonitionRender_StructureWithDiv(t *testing.T) {
 	input := `!!! note "Test Title"
     Test content.`
@@ -623,7 +683,8 @@ func TestAdmonitionParser_Open(t *testing.T) {
 		{"aside left", "!!! aside left\n", true},
 		{"aside right", "!!! aside right\n", true},
 		{"aside inline", "!!! aside inline\n", true},
-		{"invalid type", "!!! invalid\n", false},
+		{"custom type", "!!! invalid\n", true},
+		{"invalid marker", "!! invalid\n", false},
 		{"not admonition", "Not an admonition\n", false},
 		{"only exclamation", "!!!\n", false},
 	}
