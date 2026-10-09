@@ -960,18 +960,22 @@ func TestAdmonitionIntegration_Aside(t *testing.T) {
 	}
 }
 
-func TestAdmonitionIntegration_InvalidTypeNotRendered(t *testing.T) {
+func TestAdmonitionIntegration_CustomTypeRendered(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
-	post := &models.Post{Content: "!!! invalidtype\n    Content here"}
+	post := &models.Post{Content: "!!! scripture\n    Content here"}
 
-	err := p.renderPost(post)
-	if err != nil {
+	if err := p.renderPost(post); err != nil {
 		t.Fatalf("renderPost error: %v", err)
 	}
 
-	// Should not be parsed as an admonition
-	if strings.Contains(post.ArticleHTML, `class="admonition`) {
-		t.Errorf("invalid type should not create admonition, got %q", post.ArticleHTML)
+	for _, want := range []string{
+		"<div class=\"admonition scripture\">",
+		"<p class=\"admonition-title\">Scripture</p>",
+		"<p>Content here</p>",
+	} {
+		if !strings.Contains(post.ArticleHTML, want) {
+			t.Errorf("expected %q in output, got %q", want, post.ArticleHTML)
+		}
 	}
 }
 
