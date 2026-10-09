@@ -252,8 +252,8 @@ func (c *Catalog) RequiredTiers(pack FontPack, renderedHTML string) map[string]m
 }
 
 // RequiredTiersForManifest makes optional coverage decisions against the
-// tiers that a particular family actually ships. A family without latin-ext
-// must use full coverage rather than failing the entire pack resolution.
+// tiers that a particular family actually ships. Missing optional subsets use
+// the CSS family fallback rather than promoting an unrestricted full face.
 func (c *Catalog) RequiredTiersForManifest(pack FontPack, renderedHTML string, manifests map[string]Manifest) map[string]map[string]bool {
 	return requiredTiers(pack, coverageFromString(renderedHTML), compileSubsetProfiles(c.SubsetProfiles), manifests)
 }

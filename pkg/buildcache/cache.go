@@ -68,6 +68,8 @@ type Cache struct {
 	TemplatesHash string `json:"templates_hash"`
 	// NavPreviewHash invalidates pages when shared navigation preview data changes.
 	NavPreviewHash string `json:"nav_preview_hash,omitempty"`
+	// FontpackHash invalidates rendered HTML when shared font CSS or preloads change.
+	FontpackHash string `json:"fontpack_hash,omitempty"`
 
 	// TemplatesFingerprint is a cheap filesystem fingerprint used to skip
 	// recomputing TemplatesHash when the template tree is unchanged.
@@ -451,6 +453,24 @@ func (c *Cache) SetNavPreviewHash(hash string) bool {
 	c.preservePostOwnershipLocked()
 	c.Posts = make(map[string]*PostCache)
 	c.Feeds = make(map[string]*FeedCache)
+	c.dirty = true
+	return true
+}
+
+// SetFontpackHash invalidates cached rendered pages when shared font CSS or
+// preload URLs change. The fontpack plugin runs after content loading, so this
+// separate context hash avoids changing source input hashes and warm load work.
+func (c *Cache) SetFontpackHash(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.FontpackHash == hash {
+		return false
+	}
+	c.FontpackHash = hash
+	c.preservePostOwnershipLocked()
+	c.Posts = make(map[string]*PostCache)
+	c.Feeds = make(map[string]*FeedCache)
+	c.FeedsListingHash = ""
 	c.dirty = true
 	return true
 }

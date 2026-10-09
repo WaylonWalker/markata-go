@@ -21,12 +21,13 @@ type Asset struct {
 	Weight                  []float64
 }
 type Resolved struct {
-	Name   string
-	Pack   FontPack
-	Packs  map[string]FontPack
-	CSS    string
-	Assets []Asset
-	Bytes  int64
+	Name        string
+	Pack        FontPack
+	Packs       map[string]FontPack
+	CSS         string
+	Assets      []Asset
+	Bytes       int64
+	fullSources map[string]bool
 }
 
 // ResolveOptions controls validation performed while resolving bundled font
@@ -65,6 +66,7 @@ func (c *Catalog) ResolveManyFSWithCoverage(names []string, assetFS fs.FS, asset
 		names = []string{"system"}
 	}
 	result := &Resolved{Packs: map[string]FontPack{}}
+	fullSources := map[string]map[string]bool{}
 	resolver := newCoverageResolver(c, assetFS, assetRoot, coverage, options.ValidateChecksums)
 	seen := map[string]bool{}
 	for _, name := range names {
@@ -73,6 +75,9 @@ func (c *Catalog) ResolveManyFSWithCoverage(names []string, assetFS fs.FS, asset
 			return nil, err
 		}
 		result.Packs[resolved.Name] = resolved.Pack
+		if len(resolved.fullSources) > 0 {
+			fullSources[resolved.Name] = resolved.fullSources
+		}
 		if result.Name == "" {
 			result.Name, result.Pack = resolved.Name, resolved.Pack
 		}
@@ -87,7 +92,7 @@ func (c *Catalog) ResolveManyFSWithCoverage(names []string, assetFS fs.FS, asset
 			result.Bytes += asset.Bytes
 		}
 	}
-	result.CSS = c.cssForPacks(result.Packs, result.Assets)
+	result.CSS = c.cssForPacks(result.Packs, result.Assets, fullSources)
 	return result, nil
 }
 
@@ -106,7 +111,7 @@ func (c *Catalog) ResolveFS(name string, assetFS fs.FS, assetRoot, renderedHTML 
 	if err != nil {
 		return nil, err
 	}
-	resolved.CSS = c.css(resolved.Pack, resolved.Assets)
+	resolved.CSS = c.css(resolved.Name, resolved.Pack, resolved.Assets, resolved.fullSources)
 	return resolved, nil
 }
 
@@ -155,9 +160,13 @@ func (resolver *coverageResolver) resolve(name string) (*Resolved, error) {
 		return nil, err
 	}
 	required := requiredTiers(pack, resolver.coverage, resolver.profiles, resolver.manifests)
+	r.fullSources = map[string]bool{}
 	for _, source := range SortedKeys(required) {
 		manifest := resolver.manifests[source]
 		for _, tier := range SortedKeys(required[source]) {
+			if tier == "full" {
+				r.fullSources[source] = true
+			}
 			key := source + "\x00" + tier
 			if asset, ok := resolver.assets[key]; ok {
 				r.Assets = append(r.Assets, asset)
@@ -195,17 +204,14 @@ func (resolver *coverageResolver) resolve(name string) (*Resolved, error) {
 func yamlUnmarshal(data []byte, v any) error { return yaml.Unmarshal(data, v) }
 
 //nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
-func (c *Catalog) css(pack FontPack, assets []Asset) string {
+func (c *Catalog) css(packName string, pack FontPack, assets []Asset, fullSources map[string]bool) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font pack: ")
 	b.WriteString(pack.Name)
 	b.WriteString(" */\n")
 	for i := range assets {
 		a := assets[i]
-		family := ""
-		if src, ok := c.FontSources[a.Source]; ok {
-			family = src.Family
-		}
+		family := c.assetFamily(a, packName)
 		b.WriteString("@font-face {\n  font-family: ")
 		b.WriteString(cssQuote(family))
 		b.WriteString(";\n  src: url('")
@@ -228,51 +234,81 @@ func (c *Catalog) css(pack FontPack, assets []Asset) string {
 		}
 		b.WriteString("}\n")
 	}
-	b.WriteString(rolesCSS(c, pack))
+	b.WriteString(rolesCSS(c, packName, pack, fullSources))
 	return b.String()
 }
 
 //nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
-func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset) string {
+func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset, fullSources map[string]map[string]bool) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font packs */\n")
 	for i := range assets {
 		a := assets[i]
-		family := ""
-		if src, ok := c.FontSources[a.Source]; ok {
-			family = src.Family
+		family := c.assetFamily(a, "")
+		if a.Tier == "full" {
+			// Full faces have no unicode-range and would otherwise compete with
+			// every smaller face sharing their family. Give each explicit full
+			// pack its own family so only that pack can request the unrestricted
+			// asset.
+			for _, name := range SortedKeys(packs) {
+				if !fullSources[name][a.Source] {
+					continue
+				}
+				c.writeFace(&b, a, packFullFamily(c, name, a.Source))
+			}
+			continue
 		}
-		b.WriteString("@font-face {\n  font-family: ")
-		b.WriteString(cssQuote(family))
-		b.WriteString(";\n  src: url('")
-		b.WriteString(a.URL)
-		b.WriteString("') format('woff2');\n  font-display: swap;\n")
-		if a.Style != "" {
-			b.WriteString("  font-style: ")
-			b.WriteString(a.Style)
-			b.WriteString(";\n")
-		}
-		if len(a.Weight) == 2 {
-			b.WriteString(fmt.Sprintf("  font-weight: %g %g;\n", a.Weight[0], a.Weight[1]))
-		} else if len(a.Weight) == 1 {
-			b.WriteString(fmt.Sprintf("  font-weight: %g;\n", a.Weight[0]))
-		}
-		if len(a.UnicodeRange) > 0 {
-			b.WriteString("  unicode-range: ")
-			b.WriteString(strings.Join(a.UnicodeRange, ", "))
-			b.WriteString(";\n")
-		}
-		b.WriteString("}\n")
+		c.writeFace(&b, a, family)
 	}
 	for _, name := range SortedKeys(packs) {
 		b.WriteString("[data-fontpack=\"")
 		b.WriteString(name)
 		b.WriteString("\"] {\n")
-		b.WriteString(roleDeclarations(c, packs[name]))
+		b.WriteString(roleDeclarations(c, name, packs[name], fullSources[name]))
 		b.WriteString("}\n")
 	}
 	writeLayeredRoleRules(&b, roleRulesForPacks(packs))
 	return b.String()
+}
+
+func (c *Catalog) assetFamily(asset Asset, packName string) string {
+	source, ok := c.FontSources[asset.Source]
+	if !ok {
+		return ""
+	}
+	if asset.Tier == "full" && packName != "" {
+		return packFullFamily(c, packName, asset.Source)
+	}
+	return source.Family
+}
+
+func packFullFamily(c *Catalog, packName, sourceName string) string {
+	source := c.FontSources[sourceName]
+	return source.Family + " [Markata " + packName + " full]"
+}
+
+func (c *Catalog) writeFace(b *strings.Builder, a Asset, family string) {
+	b.WriteString("@font-face {\n  font-family: ")
+	b.WriteString(cssQuote(family))
+	b.WriteString(";\n  src: url('")
+	b.WriteString(a.URL)
+	b.WriteString("') format('woff2');\n  font-display: swap;\n")
+	if a.Style != "" {
+		b.WriteString("  font-style: ")
+		b.WriteString(a.Style)
+		b.WriteString(";\n")
+	}
+	if len(a.Weight) == 2 {
+		b.WriteString(fmt.Sprintf("  font-weight: %g %g;\n", a.Weight[0], a.Weight[1]))
+	} else if len(a.Weight) == 1 {
+		b.WriteString(fmt.Sprintf("  font-weight: %g;\n", a.Weight[0]))
+	}
+	if len(a.UnicodeRange) > 0 {
+		b.WriteString("  unicode-range: ")
+		b.WriteString(strings.Join(a.UnicodeRange, ", "))
+		b.WriteString(";\n")
+	}
+	b.WriteString("}\n")
 }
 
 // writeLayeredRoleRules emits element role rules inside @layer base so that
@@ -288,16 +324,16 @@ func writeLayeredRoleRules(b *strings.Builder, rules string) {
 	b.WriteString("}\n")
 }
 
-func rolesCSS(c *Catalog, pack FontPack) string {
+func rolesCSS(c *Catalog, packName string, pack FontPack, fullSources map[string]bool) string {
 	var b strings.Builder
 	b.WriteString(":root {\n")
-	b.WriteString(roleDeclarations(c, pack))
+	b.WriteString(roleDeclarations(c, packName, pack, fullSources))
 	b.WriteString("}\n")
 	writeLayeredRoleRules(&b, roleRulesForPack(pack))
 	return b.String()
 }
 
-func roleDeclarations(c *Catalog, pack FontPack) string {
+func roleDeclarations(c *Catalog, packName string, pack FontPack, fullSources map[string]bool) string {
 	var b strings.Builder
 	for _, role := range SortedKeys(pack.Roles) {
 		r := pack.Roles[role]
@@ -305,7 +341,11 @@ func roleDeclarations(c *Catalog, pack FontPack) string {
 		if r.Stack != "" {
 			value = c.SystemStacks[r.Stack].CSS
 		} else if src, ok := c.FontSources[r.Source]; ok {
-			value = cssQuote(src.Family) + ", " + fallback(c, r.Fallback)
+			family := src.Family
+			if fullSources[r.Source] {
+				family = packFullFamily(c, packName, r.Source)
+			}
+			value = cssQuote(family) + ", " + fallback(c, r.Fallback)
 		}
 		if value != "" {
 			b.WriteString("  --font-")
@@ -326,6 +366,12 @@ func roleDeclarations(c *Catalog, pack FontPack) string {
 		if r.OpticalSize != 0 {
 			writeRoleProperty(&b, role, "variation", fmt.Sprintf(`"opsz" %g`, r.OpticalSize))
 		}
+	}
+	if _, ok := pack.Roles["code"]; ok {
+		// Shared component CSS still uses the historical --font-mono token for
+		// kbd and small interface labels. Keep it aligned with the active pack's
+		// code role so a system stack does not select an unrelated bundled face.
+		b.WriteString("  --font-mono: var(--font-code);\n")
 	}
 	return b.String()
 }

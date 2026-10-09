@@ -22,9 +22,11 @@
   {% include "partials/theme-bootstrap.html" %}
 
   {% if config.Extra.fontpack_css %}
+  {% if not config.Extra.fontpack_preloads_json %}
   {% for url in post.Extra._fontpack_preload_urls | default:config.Extra.fontpack_preload_urls %}
   <link rel="preload" href="{{ url }}" as="font" type="font/woff2" crossorigin>
   {% endfor %}
+  {% endif %}
   {% endif %}
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">

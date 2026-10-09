@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func testCatalog(t *testing.T) *Catalog {
@@ -86,7 +87,7 @@ func TestBuiltinBrushAssetsHaveCanonicalDigests(t *testing.T) {
 	}
 }
 
-func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
+func TestRequiredTiersSelectExtendedAndFallback(t *testing.T) {
 	c := testCatalog(t)
 	_, pack, err := c.ResolvePack("bundled")
 	if err != nil {
@@ -100,8 +101,8 @@ func TestRequiredTiersSelectExtendedAndFull(t *testing.T) {
 		t.Fatalf("extended tiers = %#v", got)
 	}
 	got = c.RequiredTiers(pack, "<p>Ж</p>")["demo"]
-	if !got["full"] || len(got) != 1 {
-		t.Fatalf("unsupported tiers = %#v", got)
+	if !got["prose-core"] || got["full"] || len(got) != 1 {
+		t.Fatalf("unsupported rune should retain core tier and use CSS fallback: %#v", got)
 	}
 }
 
@@ -112,7 +113,7 @@ func TestVisibleTextSkipsCodeAndDecodesEntities(t *testing.T) {
 	}
 }
 
-func TestRequiredTiersUseFullWhenSourceLacksOptionalTier(t *testing.T) {
+func TestRequiredTiersUseSystemFallbackWhenSourceLacksOptionalTier(t *testing.T) {
 	c := testCatalog(t)
 	_, pack, err := c.ResolvePack("bundled")
 	if err != nil {
@@ -122,8 +123,8 @@ func TestRequiredTiersUseFullWhenSourceLacksOptionalTier(t *testing.T) {
 		"prose-core": {Profile: "prose-core"}, "full": {Profile: "full"},
 	}}}
 	got := c.RequiredTiersForManifest(pack, "<p>Ā</p>", manifests)["demo"]
-	if !got["full"] || len(got) != 1 {
-		t.Fatalf("source without latin-ext selected %#v, want full only", got)
+	if !got["prose-core"] || got["full"] || len(got) != 1 {
+		t.Fatalf("source without latin-ext selected %#v, want core with CSS fallback", got)
 	}
 }
 
@@ -170,6 +171,49 @@ func TestBuiltinFieldNotebookResolvesStableBaseTiers(t *testing.T) {
 	}
 }
 
+func TestBuiltinDisplayRoleUsesProseCoreWhenDisplayCoreIsAbsent(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveFS("brutalist", source.FS, source.Root, "<h1>Ordinary heading</h1>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[string]bool)
+	for _, asset := range resolved.Assets {
+		seen[asset.Source+":"+asset.Tier] = true
+	}
+	if !seen["space-grotesk:prose-core"] || seen["space-grotesk:full"] {
+		t.Fatalf("missing display-core did not resolve to compact prose-core: %v", seen)
+	}
+}
+
+func TestResolveManyScopesFullFaceToItsExplicitPack(t *testing.T) {
+	c := testCatalog(t)
+	c.FontPacks["explicit"] = FontPack{Name: "Explicit", Performance: Performance{Class: "bundled"}, Roles: map[string]Role{
+		"body": {Source: "demo", Tier: "full", Fallback: "sans"},
+	}}
+	assets := fstest.MapFS{
+		"demo/manifest.yaml": {Data: []byte("tiers:\n  prose-core: {file: core.woff2, profile: prose-core}\n  full: {file: full.woff2, profile: full}\n")},
+		"demo/core.woff2":    {Data: []byte("wOF2-core")},
+		"demo/full.woff2":    {Data: []byte("wOF2-full")},
+	}
+	resolved, err := c.ResolveManyFSWithCoverage([]string{"bundled", "explicit"}, assets, ".", coverageFromString("<p>Ordinary text</p>"), ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resolved.CSS, `font-family: "Demo [Markata explicit full]";`) {
+		t.Fatalf("full face lacks its pack-specific family:\n%s", resolved.CSS)
+	}
+	if !strings.Contains(resolved.CSS, `--font-body: "Demo [Markata explicit full]", system-ui, sans-serif;`) {
+		t.Fatalf("explicit pack role does not select its full face alias:\n%s", resolved.CSS)
+	}
+	if strings.Contains(resolved.CSS, `font-family: "Demo";\n  src: url('/assets/fonts/full.woff2')`) {
+		t.Fatalf("unrestricted full face competes with the shared core family:\n%s", resolved.CSS)
+	}
+}
+
 func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
 	source, err := BuiltinSource()
 	if err != nil {
@@ -194,6 +238,21 @@ func TestBuiltinPaintedSignUsesExpressiveAndReadableRoles(t *testing.T) {
 	}
 	if !strings.Contains(resolved.CSS, "h2, h3, h4, h5, h6 {\n  font-family: var(--font-heading)") {
 		t.Fatalf("heading role is not consumed by h2-h6:\n%s", resolved.CSS)
+	}
+}
+
+func TestBuiltinHandwrittenMapsLegacyMonoTokenToItsCodeRole(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := source.Catalog.ResolveFS("handwritten", source.FS, source.Root, "<kbd>Key</kbd>")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resolved.CSS, `--font-mono: var(--font-code);`) ||
+		!strings.Contains(resolved.CSS, `--font-code: "DM Mono"`) {
+		t.Fatalf("legacy mono token does not use the pack's code role:\n%s", resolved.CSS)
 	}
 }
 
@@ -273,7 +332,7 @@ func TestDisplayFallsBackToHeadingWhenAbsent(t *testing.T) {
 	}
 }
 
-func TestBuiltinPaintedSignCoversExtendedCharactersPerSource(t *testing.T) {
+func TestBuiltinPaintedSignUsesFallbackForDisplayFontsWithoutExtendedTier(t *testing.T) {
 	source, err := BuiltinSource()
 	if err != nil {
 		t.Fatal(err)
@@ -286,10 +345,13 @@ func TestBuiltinPaintedSignCoversExtendedCharactersPerSource(t *testing.T) {
 	for _, asset := range resolved.Assets {
 		seen[asset.Source+":"+asset.Tier] = true
 	}
-	for _, want := range []string{"finger-paint:full", "rock-salt:full", "source-sans-3:latin-ext", "dm-mono:latin-ext"} {
+	for _, want := range []string{"finger-paint:display-core", "rock-salt:display-core", "source-sans-3:latin-ext", "dm-mono:latin-ext"} {
 		if !seen[want] {
 			t.Errorf("extended painted-sign coverage missing %s (assets=%v)", want, seen)
 		}
+	}
+	if seen["finger-paint:full"] || seen["rock-salt:full"] {
+		t.Fatalf("display fonts without extended tiers should use CSS fallback: %v", seen)
 	}
 }
 
