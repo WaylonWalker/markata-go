@@ -839,19 +839,22 @@ func TestRenderMarkdownPlugin_AdmonitionDefaultTitle(t *testing.T) {
 	}
 }
 
-func TestRenderMarkdownPlugin_AdmonitionInvalidType(t *testing.T) {
+func TestRenderMarkdownPlugin_AdmonitionCustomType(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
-	// Using an invalid type should not create an admonition
-	post := &models.Post{Content: "!!! invalid\n    Content"}
+	post := &models.Post{Content: "!!! source \"Primary Source\"\n    Content"}
 
-	err := p.renderPost(post)
-	if err != nil {
+	if err := p.renderPost(post); err != nil {
 		t.Fatalf("renderPost error: %v", err)
 	}
 
-	// Should not be parsed as admonition
-	if strings.Contains(post.ArticleHTML, `class="admonition`) {
-		t.Errorf("invalid type should not create admonition, got %q", post.ArticleHTML)
+	for _, want := range []string{
+		"<div class=\"admonition source\">",
+		"<p class=\"admonition-title\">Primary Source</p>",
+		"<p>Content</p>",
+	} {
+		if !strings.Contains(post.ArticleHTML, want) {
+			t.Errorf("expected %q in output, got %q", want, post.ArticleHTML)
+		}
 	}
 }
 

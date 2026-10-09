@@ -13,33 +13,6 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// Supported admonition types
-var admonitionTypes = map[string]bool{
-	"note":       true,
-	"info":       true,
-	"tip":        true,
-	"hint":       true,
-	"success":    true,
-	"warning":    true,
-	"caution":    true,
-	"important":  true,
-	"danger":     true,
-	"error":      true,
-	"bug":        true,
-	"example":    true,
-	"quote":      true,
-	"abstract":   true,
-	"aside":      true,
-	"seealso":    true,
-	"reminder":   true,
-	"attention":  true,
-	"todo":       true,
-	"settings":   true,
-	"vsplit":     true,
-	"chat":       true,
-	"chat-reply": true,
-}
-
 // admonitionRegex matches admonition syntax:
 // - !!! type "title" (standard with quoted title)
 // - !!! type title text (standard with unquoted title)
@@ -137,10 +110,6 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 	modifier := strings.ToLower(matches[3])
 	quotedTitle := matches[4]
 	unquotedTitle := strings.TrimSpace(matches[5])
-
-	if !admonitionTypes[adType] {
-		return nil, parser.NoChildren
-	}
 
 	// Determine collapsible state from marker
 	collapsible := strings.HasPrefix(marker, "???")
