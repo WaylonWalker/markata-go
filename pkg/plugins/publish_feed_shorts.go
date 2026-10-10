@@ -75,14 +75,21 @@ func validateShortsPath(route string) error {
 
 // cleanupDisabledShorts only deletes output previously identified as a Shorts
 // artifact, never an arbitrary directory that happens to share a path.
-func cleanupDisabledShorts(outputDir, route string) error {
+func cleanupDisabledShorts(outputDir, route, feedSlug string) error {
 	if err := validateShortsPath(route); err != nil {
 		return nil // A legacy disabled setting must not delete arbitrary files.
 	}
 	dir := filepath.Join(outputDir, strings.Trim(route, "/"))
 	marker := filepath.Join(dir, "data", "index.json")
-	if _, err := os.Stat(marker); err != nil {
+	raw, err := os.ReadFile(marker)
+	if err != nil {
 		return nil
+	}
+	var identity struct {
+		FeedSlug string `json:"feed_slug"`
+	}
+	if json.Unmarshal(raw, &identity) != nil || identity.FeedSlug != feedSlug {
+		return nil // Another feed owns this Shorts route.
 	}
 	if err := os.Remove(filepath.Join(dir, "index.html")); err != nil && !os.IsNotExist(err) {
 		return err
@@ -239,6 +246,7 @@ func (p *PublishFeedsPlugin) publishShortsPages(feed *models.FeedConfig, cfg *li
 
 	index, err := json.Marshal(map[string]interface{}{
 		"version": 1,
+		"feed_slug": feed.Slug,
 		"total": len(entries),
 		"chunk_size": shortsChunkSize,
 		"ids": ids,
