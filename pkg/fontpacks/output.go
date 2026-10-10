@@ -38,6 +38,7 @@ type ResolveOptions struct {
 }
 
 const roleStyleProperty = "style"
+const fontFullTier = "full"
 
 const managedFontsManifest = ".markata-fonts.json"
 
@@ -164,7 +165,7 @@ func (resolver *coverageResolver) resolve(name string) (*Resolved, error) {
 	for _, source := range SortedKeys(required) {
 		manifest := resolver.manifests[source]
 		for _, tier := range SortedKeys(required[source]) {
-			if tier == "full" {
+			if tier == fontFullTier {
 				r.fullSources[source] = true
 			}
 			key := source + "\x00" + tier
@@ -203,7 +204,6 @@ func (resolver *coverageResolver) resolve(name string) (*Resolved, error) {
 
 func yamlUnmarshal(data []byte, v any) error { return yaml.Unmarshal(data, v) }
 
-//nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
 func (c *Catalog) css(packName string, pack FontPack, assets []Asset, fullSources map[string]bool) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font pack: ")
@@ -238,14 +238,13 @@ func (c *Catalog) css(packName string, pack FontPack, assets []Asset, fullSource
 	return b.String()
 }
 
-//nolint:dupl // css and cssForPacks intentionally share the same @font-face serialization.
 func (c *Catalog) cssForPacks(packs map[string]FontPack, assets []Asset, fullSources map[string]map[string]bool) string {
 	var b strings.Builder
 	b.WriteString("/* Markata font packs */\n")
 	for i := range assets {
 		a := assets[i]
 		family := c.assetFamily(a, "")
-		if a.Tier == "full" {
+		if a.Tier == fontFullTier {
 			// Full faces have no unicode-range and would otherwise compete with
 			// every smaller face sharing their family. Give each explicit full
 			// pack its own family so only that pack can request the unrestricted
@@ -276,7 +275,7 @@ func (c *Catalog) assetFamily(asset Asset, packName string) string {
 	if !ok {
 		return ""
 	}
-	if asset.Tier == "full" && packName != "" {
+	if asset.Tier == fontFullTier && packName != "" {
 		return packFullFamily(c, packName, asset.Source)
 	}
 	return source.Family
@@ -299,9 +298,9 @@ func (c *Catalog) writeFace(b *strings.Builder, a Asset, family string) {
 		b.WriteString(";\n")
 	}
 	if len(a.Weight) == 2 {
-		b.WriteString(fmt.Sprintf("  font-weight: %g %g;\n", a.Weight[0], a.Weight[1]))
+		fmt.Fprintf(b, "  font-weight: %g %g;\n", a.Weight[0], a.Weight[1])
 	} else if len(a.Weight) == 1 {
-		b.WriteString(fmt.Sprintf("  font-weight: %g;\n", a.Weight[0]))
+		fmt.Fprintf(b, "  font-weight: %g;\n", a.Weight[0])
 	}
 	if len(a.UnicodeRange) > 0 {
 		b.WriteString("  unicode-range: ")
