@@ -217,11 +217,11 @@ func TestFontpackHTMLCacheHashTracksPreloadSelection(t *testing.T) {
 	if fontpackHTMLCacheHash(first) == fontpackHTMLCacheHash(second) {
 		t.Fatal("preload URL change did not invalidate cached HTML")
 	}
-	if fontpackHTMLCacheHash(first) != fontpackHTMLCacheHash(first) {
+	same := fontpackPreloadCache{Hash: first.Hash, URLs: map[string][]string{"handwritten": {"/fonts/body-core.woff2"}}}
+	if fontpackHTMLCacheHash(first) != fontpackHTMLCacheHash(same) {
 		t.Fatal("same font CSS and preload URLs changed the HTML cache identity")
 	}
 }
-
 
 func TestFontpackHTMLCacheHashIsIndependentOfMapOrder(t *testing.T) {
 	first := fontpackPreloadCache{
