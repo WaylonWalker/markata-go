@@ -191,8 +191,14 @@ func runFontsReport(*cobra.Command, []string) error {
 			}
 		}
 	}
-	outlnf("Pack: %s\nPerformance class: %s\nFamilies: %d\nFiles emitted: %d\nTransferred font bytes: %d", resolvedName, p.Performance.Class, len(families), files, bytes)
+	outln(fontReportSummary(resolvedName, p.Performance.Class, len(families), files, bytes))
 	return nil
+}
+
+// fontReportSummary describes files emitted to the output directory, not fonts
+// transferred by a browser. The latter depends on each page and the font cache.
+func fontReportSummary(name, performanceClass string, familyCount, fileCount int, assetBytes int64) string {
+	return fmt.Sprintf("Pack: %s\nPerformance class: %s\nFamilies: %d\nFiles emitted: %d\nEmitted font asset bytes: %d", name, performanceClass, familyCount, fileCount, assetBytes)
 }
 func runFontsLicenses(*cobra.Command, []string) error {
 	c, err := loadFontCatalog()
