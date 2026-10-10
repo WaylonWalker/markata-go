@@ -222,6 +222,27 @@ func TestFontpackHTMLCacheHashTracksPreloadSelection(t *testing.T) {
 	}
 }
 
+
+func TestFontpackHTMLCacheHashIsIndependentOfMapOrder(t *testing.T) {
+	first := fontpackPreloadCache{
+		Hash: "1234abcd",
+		URLs: map[string][]string{
+			"handwritten": {"/fonts/body-core.woff2"},
+			"brutalist":   {"/fonts/heading-core.woff2"},
+		},
+	}
+	second := fontpackPreloadCache{Hash: "1234abcd", URLs: make(map[string][]string)}
+	second.URLs["brutalist"] = []string{"/fonts/heading-core.woff2"}
+	second.URLs["handwritten"] = []string{"/fonts/body-core.woff2"}
+	if got, want := fontpackHTMLCacheHash(second), fontpackHTMLCacheHash(first); got != want {
+		t.Fatalf("identical preload data in different map orders changed HTML cache hash: %s != %s", got, want)
+	}
+	second.Hash = "5678efab"
+	if fontpackHTMLCacheHash(second) == fontpackHTMLCacheHash(first) {
+		t.Fatal("font CSS hash change did not invalidate HTML cache")
+	}
+}
+
 func TestValidFontpackPreloadCache(t *testing.T) {
 	output := t.TempDir()
 	catalog := &fontpacks.Catalog{FontPacks: map[string]fontpacks.FontPack{"system": {}}}
