@@ -281,7 +281,12 @@ func (p *PublishFeedsPlugin) publishShortsPages(feed *models.FeedConfig, cfg *li
 		return fmt.Errorf("missing feed-shorts.html template for Shorts view")
 	}
 	page := &models.FeedPage{Number: 1, TotalPages: 1}
-	ctx := templates.NewFeedContext(feed, page, modelsConfig)
+	// The manifest owns the complete collection. Avoid eagerly materializing
+	// thousands of post maps while rendering this lightweight HTML shell.
+	shellFeed := *feed
+	shellFeed.Posts = nil
+	shellFeed.Pages = nil
+	ctx := templates.NewFeedContext(&shellFeed, page, modelsConfig)
 	ctx.Set("shorts_manifest_url", route+"data/index.json")
 	ctx.Set("feed_robots", feed.Robots)
 	rendered, err := engine.Render("feed-shorts.html", ctx)
