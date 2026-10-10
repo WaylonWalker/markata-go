@@ -131,6 +131,13 @@ func TestShortsIndexPrivacyAndCleanup(t *testing.T) {
 	if len(entries) != 1 || entries[0].Kind != "video" || entries[0].ID != "shots/public" {
 		t.Fatalf("wrong safe selection: %+v", entries)
 	}
+	// A disabled root feed must never remove the Shots feed's /shorts/ route.
+	if err := cleanupDisabledShorts(output, "/shorts/", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(output, "shorts", "index.html")); err != nil {
+		t.Fatalf("unrelated feed removed Shorts: %v", err)
+	}
 	feed.Views = []string{models.FeedViewDefault}
 	if err := cleanupDisabledShorts(output, feed.ShortsURL(), feed.Slug); err != nil {
 		t.Fatal(err)
