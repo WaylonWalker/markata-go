@@ -132,7 +132,7 @@ func TestShortsIndexPrivacyAndCleanup(t *testing.T) {
 		t.Fatalf("wrong safe selection: %+v", entries)
 	}
 	feed.Views = []string{models.FeedViewDefault}
-	if err := cleanupDisabledShorts(output, feed.ShortsURL()); err != nil {
+	if err := cleanupDisabledShorts(output, feed.ShortsURL(), feed.Slug); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(output, "shorts", "index.html")); !os.IsNotExist(err) {
