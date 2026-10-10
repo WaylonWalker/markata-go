@@ -16,6 +16,9 @@ jobs:
   compare:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      PHASE3C_PAIRS: "1"
+      PHASE3C_OBSERVE_MS: "55000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
