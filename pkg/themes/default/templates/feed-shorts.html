@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ feed.title | default:"Shorts" }} — Shorts{% endblock %}
+{% block description %}{{ feed.description | default:"Full-screen photos and videos" }}{% endblock %}
+{% block body_class %}shorts-body{% endblock %}
+{% block page_wrapper_class %} page-wrapper--feed-only{% endblock %}
+{% block head %}
+{{ block.Super() }}
+{% if feed_robots %}<meta name="robots" content="{{ feed_robots }}">{% endif %}
+<link rel="stylesheet" href="{{ 'css/feed-shorts.css' | theme_asset_hashed }}">
+<script defer src="{{ 'js/feed-shorts.js' | theme_asset_hashed }}"></script>
+{% endblock %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+<section class="shorts-viewer" id="shorts-viewer" data-manifest="{{ shorts_manifest_url }}" aria-label="Shorts media viewer">
+  <div id="shorts-slides" class="shorts-slides" aria-hidden="true"></div>
+  <header class="shorts-top">
+    <a href="{{ feed.base_url }}/" class="shorts-grid-link" aria-label="Return to photo grid">← Shots</a>
+    <span class="shorts-counter" id="shorts-counter" aria-live="polite">Shorts</span>
+  </header>
+  <div class="shorts-hud" id="shorts-hud">
+    <div class="shorts-hud-copy">
+      <h1 class="shorts-title" id="shorts-title">Shorts</h1>
+      <p class="shorts-description" id="shorts-description"></p>
+      <button type="button" class="shorts-more" id="shorts-more" hidden aria-expanded="false">More</button>
+      <a id="shorts-permalink" class="shorts-permalink" href="{{ feed.base_url }}/">View post ↗</a>
+    </div>
+    <div class="shorts-actions" aria-label="Playback and navigation">
+      <button type="button" class="shorts-action" id="shorts-up" aria-label="Previous short" title="Previous (↑)">↑</button>
+      <button type="button" class="shorts-action" id="shorts-down" aria-label="Next short" title="Next (↓)">↓</button>
+      <button type="button" class="shorts-action" id="shorts-play" aria-label="Pause video" title="Pause or play" hidden>Ⅱ</button>
+      <button type="button" class="shorts-action" id="shorts-sound" aria-label="Unmute video" title="Mute or unmute" hidden>♪</button>
+    </div>
+  </div>
+  <div class="shorts-end" id="shorts-end" hidden>
+    <span>You've seen every shot.</span>
+    <button type="button" id="shorts-restart">Back to first</button>
+  </div>
+  <div class="shorts-message" id="shorts-message" role="status" aria-live="polite">Loading shorts…</div>
+  <noscript><div class="shorts-noscript">JavaScript is required for this full-screen view. <a href="{{ feed.base_url }}/">Browse the photo grid</a>.</div></noscript>
+</section>
+{% endblock %}
