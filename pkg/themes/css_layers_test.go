@@ -104,7 +104,6 @@ func firstLine(s string) string {
 	return s
 }
 
-
 // TestPhotoGridUsesAvailableLayoutWidth guards the full-bleed Shots layout.
 // Sidebars may exist in the DOM while collapsed, so sizing must not depend on
 // :not(:has(.feed-sidebar)). Pinned drawers still reserve usable space.
