@@ -123,7 +123,9 @@ async def test_once(browser, variant, pair_index):
         "offline":False,"latency":400,"downloadThroughput":51200,"uploadThroughput":51200})
     await cdp.send("Emulation.setCPUThrottlingRate",{"rate":4})
     failed=[]
-    cdp.on("Network.loadingFailed",lambda e: failed.append(e.get("errorText","unknown")))
+    requrls={}
+    cdp.on("Network.requestWillBeSent",lambda e: requrls.__setitem__(e["requestId"], e["request"].get("url","")))
+    cdp.on("Network.loadingFailed",lambda e: failed.append({"url":requrls.get(e["requestId"],""),"error":e.get("errorText","unknown")}))
     frames=[]
     latest=None
     start=None
@@ -140,8 +142,9 @@ async def test_once(browser, variant, pair_index):
         task.add_done_callback(pending.discard)
     cdp.on("Page.screencastFrame",frame)
     await cdp.send("Page.enable")
-    await cdp.send("Page.startScreencast",{"format":"jpeg","quality":65,"everyNthFrame":1})
-    checkpoints=[1000,2000,3000,5000,8000,12000,18000,25000]
+    # Starting a screencast before navigation captures the old blank renderer;
+    # navigation swaps the renderer and no subsequent frames arrive.
+    checkpoints=[1000,2000,3000,5000,8000,12000,18000,25000,35000,45000,55000]
     start=time.monotonic()
     async def capture(target):
         delay=target/1000-(time.monotonic()-start)
@@ -157,11 +160,12 @@ async def test_once(browser, variant, pair_index):
     nav_error=None
     try:
         await page.goto(f"http://127.0.0.1:8898/{variant}/archive/",wait_until="commit",timeout=50000)
+        await cdp.send("Page.startScreencast",{"format":"jpeg","quality":65,"everyNthFrame":1})
     except Exception as ex: nav_error=str(ex)
-    remain=26000-(time.monotonic()-start)*1000
+    remain=int(os.environ.get("PHASE3C_OBSERVE_MS","55000"))-(time.monotonic()-start)*1000
     if remain>0: await asyncio.sleep(remain/1000)
     await asyncio.gather(*tasks,return_exceptions=True)
-    try: metrics=await asyncio.wait_for(page.evaluate("() => window.phase3 || {}"),timeout=10)
+    try: metrics=await asyncio.wait_for(page.evaluate("() => ({...window.phase3, readyState:document.readyState, bodyLength:document.body?.innerText?.length, mainPresent:!!document.querySelector('main h1')})"),timeout=10)
     except Exception as ex: metrics={"error":str(ex)}
     try: await cdp.send("Page.stopScreencast")
     except Exception: pass
@@ -169,7 +173,7 @@ async def test_once(browser, variant, pair_index):
     await ctx.close()
     return {"variant":variant,"pair":pair_index,"metrics":metrics,
             "frames":frames,"network_errors":failed[:20],"navigation_error":nav_error,
-            "observed_ms":round((time.monotonic()-start)*1000)}
+            "observed_ms":round((time.monotonic()-start)*1000), "page_url":page.url}
 
 async def main():
     app=web.Application()
@@ -188,7 +192,7 @@ async def main():
                 try: await warm.goto("http://127.0.0.1:8898/before/archive/",wait_until="domcontentloaded",timeout=120000)
                 except Exception as ex: print("WARM_WARNING",str(ex)[:300],flush=True)
                 await warm.close()
-                for pair in range(1,6):
+                for pair in range(1,int(os.environ.get("PHASE3C_PAIRS","1"))+1):
                     order=["before","after"] if pair%2 else ["after","before"]
                     for v in order:
                         print("START",pair,v,flush=True)
@@ -199,7 +203,9 @@ async def main():
                             "pair":pair,"variant":v,"fcp":result["metrics"].get("fcp"),
                             "lcp":result["metrics"].get("lcp"),"cls":result["metrics"].get("cls"),
                             "frames":len([f for f in result["frames"] if "file" in f]),
-                            "network_errors":len(result["network_errors"]),
+                            "network_errors":result["network_errors"],
+                            "readystate":result["metrics"].get("readyState"),
+                            "bodyLength":result["metrics"].get("bodyLength"),
                             "navigation_error":result["navigation_error"]}),flush=True)
             finally: await browser.close()
     finally: await runner.cleanup()
