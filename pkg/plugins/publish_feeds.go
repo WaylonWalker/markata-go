@@ -394,6 +394,13 @@ func (p *PublishFeedsPlugin) computeFeedHashWithConfigAndCache(fc *models.FeedCo
 	for _, post := range fc.Posts {
 		writeStringField(post.Slug)
 		writeStringField(p.getPostFeedItemHash(post, cache))
+		if fc.HasView(models.FeedViewShorts) && post != nil {
+			for _, key := range []string{"video", "cover", "cover_image", "og_image", "image_alt", "alt", "caption", "poster", "poster_image", "video_poster", "video_thumbnail", "thumbnail", "thumb"} {
+				if value, ok := post.Extra[key].(string); ok {
+					writeStringField(value)
+				}
+			}
+		}
 	}
 
 	for i := range fc.Pages {
@@ -610,8 +617,8 @@ func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outp
 		shortsDir := filepath.Join(outputDir, strings.Trim(fc.ShortsURL(), "/"))
 		add(filepath.Join(shortsDir, "index.html"))
 		add(filepath.Join(shortsDir, "data", "index.json"))
-		if len(fc.Posts) > 0 {
-			add(filepath.Join(shortsDir, "data", fmt.Sprintf("%04d.json", (len(fc.Posts)-1)/shortsChunkSize)))
+		if count := shortsPostCount(fc.Posts); count > 0 {
+			add(filepath.Join(shortsDir, "data", fmt.Sprintf("%04d.json", (count-1)/shortsChunkSize)))
 		}
 	}
 
