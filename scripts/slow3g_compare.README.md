@@ -4,9 +4,10 @@ Tracking: [#1553](https://github.com/WaylonWalker/markata-go/issues/1553).
 
 This is a reproducible **browser capture and comparison tool**, not evidence of a
 site performance improvement. It addresses the Chromium/Pyppeteer problems
-encountered during Phase 3B/3C investigation. It has passed **offline fixture
-smoke tests**, but it has **not** completed a compressed HTTP A/B on a real
-Markata site.
+encountered during Phase 3B/3C investigation. Offline frame-capture and
+**synthetic gzip HTTP A/B smoke tests** now pass in GitHub Actions. The HTTP
+test serves real CSS, JS and image responses and rejects a deliberate 200/HTML
+response for CSS. It has **not** completed a real Markata site A/B.
 
 ## Requirements
 
@@ -35,6 +36,18 @@ Open `slow3g-smoke/filmstrip.html`. The fixture mode uses
 `page.set_content()`: it validates screencast frames and asynchronous
 acknowledgments, **not network throttling**, document arrival, or browser
 resource fetches. FCP/LCP may be null for the fixture.
+
+## Automated gzip HTTP smoke
+
+The [Slow 3G filmstrip smoke workflow](../.github/workflows/slow3g-harness.yml)
+runs `scripts/slow3g_fixture_server.py` with before/after HTML, actual
+CSS/JS/SVG endpoints and `Content-Encoding: gzip`. It verifies complete CDP
+filmstrip frames, fetched asset types, response MIME types and compression.
+
+It also serves deliberately broken CSS (HTML with status 200) and confirms
+that the benchmark rejects the run. The workflow uploads filmstrip artifacts
+for debugging. This is a **test of the benchmark**, not evidence of a faster
+production site.
 
 ## Real A/B validation
 
@@ -70,6 +83,11 @@ Results:
 may reflect only the nav shell. DOM geometry does not prove that pixels were
 painted. `encoded_bytes_completed` counts completed transfers, not bytes
 received at FCP or readability.
+
+The harness marks a run invalid if a CSS/JS/image/font response has an
+inappropriate MIME type or HTTP status, even if an incorrect server responds
+with 200. The `document_delivery` metadata records protocol and compression
+when visible through CDP.
 
 Treat major asset failures, HTTP error responses, missing frames, layout
 shifts, or inconsistent page content as invalid comparisons. Repeat warm-cache
