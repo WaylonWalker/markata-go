@@ -138,4 +138,14 @@ func TestPhotoGridUsesAvailableLayoutWidth(t *testing.T) {
 	if strings.Contains(css, legacy) {
 		t.Error("photo-grid main-content sizing still depends on the absence of sidebar elements")
 	}
+
+	// Both classes appear together on photo-grid feeds that enable the Calendar
+	// peer view. The shared Calendar stylesheet must not override this width.
+	calendarCSS, err := fs.ReadFile(DefaultStatic(), "css/calendar-feed.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(calendarCSS), "calendar-feed:not(.feed--photo-grid)") {
+		t.Error("calendar feed width rule must exclude photo grids")
+	}
 }
