@@ -4,7 +4,7 @@ body.shorts-body { overflow: hidden !important; }
 .shorts-viewer *, .shorts-viewer *::before, .shorts-viewer *::after { box-sizing: border-box; }
 .shorts-slides { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .shorts-slide { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; display: grid; place-items: center; background: #111; transition: transform 240ms cubic-bezier(.19,.77,.29,1); will-change: transform; }
-.shorts-slide[aria-hidden="true"] { visibility: hidden; transition: none; }
+.shorts-slide[aria-hidden="true"] { pointer-events: none; }
 .shorts-media { display: block; width: 100%; height: 100%; object-fit: contain; background: #0e0e0e; }
 .shorts-slide--video .shorts-media { object-fit: contain; }
 .shorts-slide--empty { background: radial-gradient(ellipse at 50% 30%, #30303c, #111 75%); }
@@ -20,7 +20,7 @@ body.shorts-body { overflow: hidden !important; }
 .shorts-hud .shorts-title { font-size: clamp(1.1rem, 2.5vw, 1.6rem); line-height: 1.25; margin: 0 0 .5rem; color: #fff; text-shadow: 0 1px 5px #000; }
 .shorts-description { font-size: .91rem; line-height: 1.45; margin: 0 0 6px; white-space: pre-line; overflow: hidden; max-height: 3.0em; color: #eee; }
 .shorts-description.expanded { max-height: min(42vh, 28em); overflow-y: auto; overscroll-behavior: contain; }
-.shorts-more { display: inline-flex; color: #fff; padding: 4px 8px; margin: 0 0 4px; background: #fff2; border: 0; border-radius: 6px; font: inherit; font-size: .88rem; cursor: pointer; }
+.shorts-more { display: inline-flex; color: #fff; padding: 6px 10px; min-height: 44px; margin: 0 0 4px; background: #fff2; border: 0; border-radius: 6px; font: inherit; font-size: .88rem; cursor: pointer; }
 .shorts-permalink { display: inline-flex; align-items: center; color: #eee !important; min-height: 44px; font-size: .92rem; text-decoration: underline; text-underline-offset: 3px; }
 .shorts-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: auto; }
 .shorts-action { width: 48px; height: 48px; min-height: 44px; display: grid; place-items: center; border: 1px solid #fff5; border-radius: 50%; color: #fff; background: #131313a8; backdrop-filter: blur(8px); font-size: 1.25rem; font-family: system-ui, sans-serif; cursor: pointer; }
