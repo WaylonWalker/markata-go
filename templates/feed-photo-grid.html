@@ -31,6 +31,7 @@
       <div class="feed-header-copy">
         <h1 class="p-name">{{ feed.title }}</h1>
         {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
+        {% if feed.views.shorts %}<a class="feed-view-link" href="{{ feed.shorts_url }}" aria-label="Browse this feed as full-screen Shorts">Shorts ↗</a>{% endif %}
         <div class="feed-stats">
           <span><strong>{{ feed_stats_total_posts }}</strong> posts</span>
           {% if feed_stats_latest_post %}<span>latest post {{ feed_stats_latest_post }}</span>{% endif %}
