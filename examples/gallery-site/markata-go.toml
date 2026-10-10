@@ -21,6 +21,10 @@ url = "/gallery/"
 label = "Shots"
 url = "/shots/"
 
+[[markata-go.nav]]
+label = "Shorts"
+url = "/shorts/"
+
 [[markata-go.feeds]]
 slug = "shots"
 title = "Shots"
@@ -28,6 +32,8 @@ description = "Individual frames and their stories"
 filter = "published == true and 'shots' in tags"
 sort = "date"
 reverse = true
+views = ["default", "simple", "calendar", "shorts"]
+shorts_path = "/shorts/"
 
 [markata-go.feeds.templates]
 html = "feed-photo-grid.html"
