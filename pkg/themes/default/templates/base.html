@@ -635,6 +635,13 @@
   <div class="page-wrapper{% block page_wrapper_class %}{% if not config.components.feed_sidebar.enabled and not resolved_content_sidebar.enabled and not resolved_doc_sidebar.enabled %} page-wrapper--content-only{% endif %}{% endblock %}" id="view-transition-page" style="--feed-sidebar-width: {{ config.components.feed_sidebar.width | default:'250px' }}; --doc-sidebar-width: {{ resolved_doc_sidebar.width | default:'250px' }}">
     {% block main %}
 
+      <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
+        {% if canonical_rendering_fixture %}<span class="markata-canonical-texture-layer" data-canonical-texture-owner="markata-go" aria-hidden="true" style="display:block;position:absolute;inset:0;width:1280px;height:1000px;"></span>{% endif %}
+         {% block content %}{% endblock %}
+      </main>
+
+      {# Keep large secondary navigation after main in the HTML stream. #}
+      {# Existing flex order:-1 rules preserve the left-side visual layout. #}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
       {% include "components/feed_sidebar.html" %}
@@ -644,11 +651,6 @@
       {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'left' %}
       {% include "components/doc_sidebar.html" %}
       {% endif %}
-
-      <main class="main-content" id="main-content" tabindex="-1"{% if canonical_rendering_fixture %} data-rendering-specimen="canonical-headings" data-rendering-profile="canonical-document-v1" data-rendering-profile-hash="dfe8f24bf33f8b8bf2fa922fcdfbbdf75b9958620b1ba65e886283f7020f3f7f" data-rendering-content-width="68ch" data-rendering-viewport="1280x1000" data-rendering-device-scale-factor="1" data-rendering-layer-roles="surface,document,heading-wear,motif,texture"{% endif %}>
-        {% if canonical_rendering_fixture %}<span class="markata-canonical-texture-layer" data-canonical-texture-owner="markata-go" aria-hidden="true" style="display:block;position:absolute;inset:0;width:1280px;height:1000px;"></span>{% endif %}
-         {% block content %}{% endblock %}
-      </main>
 
       {# Right sidebar for document TOC (if enabled) #}
       {% if resolved_doc_sidebar.enabled and resolved_doc_sidebar.position == 'right' %}
