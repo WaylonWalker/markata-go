@@ -1255,6 +1255,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"default":  f.HasView(models.FeedViewDefault),
 		"simple":   f.HasView(models.FeedViewSimple),
 		"calendar": f.HasView(models.FeedViewCalendar),
+		"shorts":   f.HasView(models.FeedViewShorts),
 	}
 
 	formats := map[string]interface{}{
@@ -1274,6 +1275,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 	return map[string]interface{}{
 		"slug":           f.Slug,
 		"base_url":       baseURL,
+		"shorts_url":     f.ShortsURL(),
 		"title":          f.Title,
 		"description":    f.Description,
 		"robots":         f.Robots,

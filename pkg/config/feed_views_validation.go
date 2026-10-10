@@ -21,7 +21,7 @@ func validateFeedViews(field string, views []string) []error {
 		if !models.IsKnownFeedView(view) {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("%s[%d]", field, i),
-				Message: fmt.Sprintf("unknown feed view %q; supported views are %q, %q, %q", view, models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar),
+				Message: fmt.Sprintf("unknown feed view %q; supported views are %q, %q, %q, %q", view, models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar, models.FeedViewShorts),
 			})
 		}
 	}
@@ -48,7 +48,7 @@ func validateFeedViewsWithPositions(field string, views []string, tracker *Posit
 			validationErr.Field,
 			strings.Join(views, ", "),
 			validationErr.Message,
-			fmt.Sprintf("Use a subset of [%s, %s, %s] and always keep %s.", models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar, models.FeedViewDefault),
+			fmt.Sprintf("Use a subset of [%s, %s, %s, %s] and always keep %s.", models.FeedViewDefault, models.FeedViewSimple, models.FeedViewCalendar, models.FeedViewShorts, models.FeedViewDefault),
 			false,
 		))
 	}

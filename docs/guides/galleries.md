@@ -51,12 +51,14 @@ title = "Shots"
 filter = "published == true and 'shots' in tags"
 sort = "date"
 reverse = true
+views = ["default", "simple", "calendar", "shorts"]
+shorts_path = "/shorts/"
 
 [markata-go.feeds.templates]
 html = "feed-photo-grid.html"
 ```
 
-Set each post's `image` or `cover_image`, plus a title and description. Add `card_classes: "col-span-2"` to let a selected card span two columns. The grid shows a date and, for longer posts, a word count when those values are available. See [feeds](/docs/guides/feeds/) for filtering and pagination.
+Set each post's `image` or `cover_image`, plus a title and description. Add `card_classes: "col-span-2"` to let a selected card span two columns. The grid shows a date and, for longer posts, a word count when those values are available. With the opt-in Shorts view, `/shorts/` presents every item in the same filtered and sorted feed as a full-screen image/video viewer. Swipe vertically, scroll, or use keyboard arrows; the URL hash tracks the stable post ID and can be shared. See [feeds](/docs/guides/feeds/) for filtering and pagination.
 
 ## Long post titles
 

@@ -40,6 +40,8 @@ const (
 	FeedViewSimple = "simple"
 	// FeedViewCalendar is the publishing-calendar presentation.
 	FeedViewCalendar = "calendar"
+	// FeedViewShorts is the immersive full-screen media presentation.
+	FeedViewShorts = "shorts"
 )
 
 // DefaultFeedViews returns the presentation views enabled for feeds by default.
@@ -50,7 +52,7 @@ func DefaultFeedViews() []string {
 // IsKnownFeedView reports whether view names a built-in feed presentation.
 func IsKnownFeedView(view string) bool {
 	switch view {
-	case FeedViewDefault, FeedViewSimple, FeedViewCalendar:
+	case FeedViewDefault, FeedViewSimple, FeedViewCalendar, FeedViewShorts:
 		return true
 	default:
 		return false
@@ -83,6 +85,9 @@ type FeedConfig struct {
 	// Views controls which HTML presentations are exposed for this feed.
 	// Nil/unset inherits FeedDefaults.Views; an explicit empty list is invalid.
 	Views []string `json:"views,omitempty" yaml:"views,omitempty" toml:"views,omitempty"`
+
+	// ShortsPath optionally moves the immersive view to /shorts/ (or another route).
+	ShortsPath string `json:"shorts_path,omitempty" yaml:"shorts_path,omitempty" toml:"shorts_path,omitempty"`
 
 	// ItemsPerPage is the number of items per page (default: 10)
 	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
@@ -162,6 +167,17 @@ func (f FeedConfig) HasView(view string) bool {
 		}
 	}
 	return false
+}
+
+// ShortsURL returns the canonical path of this feed's full-screen viewer.
+func (f FeedConfig) ShortsURL() string {
+	if f.ShortsPath != "" {
+		return f.ShortsPath
+	}
+	if strings.Trim(f.Slug, "/") == "" {
+		return "/shorts/"
+	}
+	return "/" + strings.Trim(f.Slug, "/") + "/shorts/"
 }
 
 // GetSidebarTitle returns the effective title for sidebar navigation.

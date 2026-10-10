@@ -1,0 +1,35 @@
+/* Isolated immersive media view. Ordinary feed styles remain untouched. */
+body.shorts-body { overflow: hidden !important; }
+.shorts-viewer { position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; z-index: 99999; overflow: hidden; background: #090909; color: #fff; color-scheme: dark; font-family: var(--font-body, system-ui, sans-serif); touch-action: pan-x; overscroll-behavior: contain; isolation: isolate; }
+.shorts-viewer *, .shorts-viewer *::before, .shorts-viewer *::after { box-sizing: border-box; }
+.shorts-slides { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.shorts-slide { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; display: grid; place-items: center; background: #111; transition: transform 240ms cubic-bezier(.19,.77,.29,1); will-change: transform; }
+.shorts-slide[aria-hidden="true"] { pointer-events: none; }
+.shorts-media { display: block; width: 100%; height: 100%; object-fit: contain; background: #0e0e0e; }
+.shorts-slide--video .shorts-media { object-fit: contain; }
+.shorts-slide--empty { background: radial-gradient(ellipse at 50% 30%, #30303c, #111 75%); }
+.shorts-blur { position: absolute; inset: -24px; filter: blur(35px) brightness(.34); object-fit: cover; width: calc(100% + 48px); height: calc(100% + 48px); opacity: .65; }
+.shorts-media { position: relative; }
+.shorts-top { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left)); background: linear-gradient(to bottom, #0009, transparent); pointer-events: none; }
+.shorts-top > * { pointer-events: auto; }
+.shorts-top a, .shorts-counter { font-size: .94rem; font-weight: 650; text-shadow: 0 1px 5px #000b; color: white; }
+.shorts-grid-link { display: inline-flex; min-height: 44px; align-items: center; padding: 0 10px; border-radius: 10px; text-decoration: none !important; background: #0005; }
+.shorts-counter { font-variant-numeric: tabular-nums; }
+.shorts-hud { position: absolute; bottom: 0; left: 0; right: 0; z-index: 3; min-height: 160px; padding: 85px max(14px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; background: linear-gradient(to top, #000e 0%, #000a 50%, transparent); pointer-events: none; }
+.shorts-hud-copy { flex: 1; min-width: 0; max-width: min(65ch, calc(100% - 78px)); pointer-events: auto; }
+.shorts-hud .shorts-title { font-size: clamp(1.1rem, 2.5vw, 1.6rem); line-height: 1.25; margin: 0 0 .5rem; color: #fff; text-shadow: 0 1px 5px #000; }
+.shorts-description { font-size: .91rem; line-height: 1.45; margin: 0 0 6px; white-space: pre-line; overflow: hidden; max-height: 3.0em; color: #eee; }
+.shorts-description.expanded { max-height: min(42vh, 28em); overflow-y: auto; overscroll-behavior: contain; }
+.shorts-more { display: inline-flex; color: #fff; padding: 6px 10px; min-height: 44px; margin: 0 0 4px; background: #fff2; border: 0; border-radius: 6px; font: inherit; font-size: .88rem; cursor: pointer; }
+.shorts-permalink { display: inline-flex; align-items: center; color: #eee !important; min-height: 44px; font-size: .92rem; text-decoration: underline; text-underline-offset: 3px; }
+.shorts-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: auto; }
+.shorts-action { width: 48px; height: 48px; min-height: 44px; display: grid; place-items: center; border: 1px solid #fff5; border-radius: 50%; color: #fff; background: #131313a8; backdrop-filter: blur(8px); font-size: 1.25rem; font-family: system-ui, sans-serif; cursor: pointer; }
+.shorts-action:disabled { opacity: .25; cursor: default; }
+.shorts-action[hidden], .shorts-more[hidden], .shorts-end[hidden], .shorts-message[hidden] { display: none !important; }
+.shorts-action:focus-visible, .shorts-permalink:focus-visible, .shorts-more:focus-visible, .shorts-top a:focus-visible, .shorts-end button:focus-visible { outline: 3px solid #b7dcff; outline-offset: 3px; }
+.shorts-end { z-index: 4; position: absolute; top: max(90px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); text-align: center; padding: 12px 18px; width: min(90vw, 350px); border-radius: 12px; background: #000b; display: grid; gap: 8px; }
+.shorts-end button { background: #fff; color: #111; border: none; border-radius: 8px; min-height: 44px; cursor: pointer; }
+.shorts-message, .shorts-noscript { z-index: 5; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center; padding: 1rem; color: white; background: #0008; border-radius: 12px; }
+.shorts-noscript a { color: #fff; text-decoration: underline; }
+@media (min-width: 850px) { .shorts-hud { padding-left: max(32px, env(safe-area-inset-left)); padding-right: max(32px, env(safe-area-inset-right)); } .shorts-media { max-width: min(100%, 1050px); } }
+@media (prefers-reduced-motion: reduce) { .shorts-slide { transition: none !important; } }

@@ -315,6 +315,7 @@ var settingDocs = map[string]string{
 	"FeedConfig.SidebarGroupBy":                    "SidebarGroupBy groups posts by a frontmatter field in the sidebar (e.g., \"category\")",
 	"FeedConfig.SidebarOrder":                      "SidebarOrder controls the position in multi-feed sidebars (lower = first, default: 0)",
 	"FeedConfig.SidebarTitle":                      "SidebarTitle overrides the feed title in sidebar navigation",
+	"FeedConfig.ShortsPath":                        "ShortsPath optionally moves the immersive view to /shorts/ (or another route).",
 	"FeedConfig.Slug":                              "Slug is the URL-safe identifier for the feed",
 	"FeedConfig.Sort":                              "Sort is the field to sort posts by",
 	"FeedConfig.Templates":                         "Templates specifies custom templates for each format",

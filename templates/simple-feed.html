@@ -25,6 +25,7 @@
           <a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}">Posts</a>
           <span class="feed-simple-nav-current" aria-current="page">Simple</span>
           {% if feed.views.calendar %}<a href="{% if feed.slug %}/{{ feed.slug }}/{% else %}/{% endif %}?view=calendar">Calendar</a>{% endif %}
+          {% if feed.views.shorts %}<a href="{{ feed.shorts_url }}">Shorts</a>{% endif %}
         </nav>
       </div>
       {% if feed_sparkline_points %}
