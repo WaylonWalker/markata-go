@@ -42,9 +42,9 @@ func TestShortsPublishesAllPagesAtRootRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	var index struct {
-		Total int `json:"total"`
-		ChunkSize int `json:"chunk_size"`
-		IDs []string `json:"ids"`
+		Total     int      `json:"total"`
+		ChunkSize int      `json:"chunk_size"`
+		IDs       []string `json:"ids"`
 	}
 	if err := json.Unmarshal(raw, &index); err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestShortsIndexPrivacyAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(raw) == "" || containsShortsPrivateData(string(raw)) {
+	if len(raw) == 0 || containsShortsPrivateData(string(raw)) {
 		t.Fatal("private posts leaked into the Shorts manifest")
 	}
 	chunk, err := os.ReadFile(filepath.Join(output, "shorts", "data", "0000.json"))
@@ -121,8 +121,8 @@ func TestShortsIndexPrivacyAndCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	var entries []struct {
-		ID string `json:"id"`
-		Kind string `json:"kind"`
+		ID     string `json:"id"`
+		Kind   string `json:"kind"`
 		Poster string `json:"poster"`
 	}
 	if err := json.Unmarshal(chunk, &entries); err != nil {
