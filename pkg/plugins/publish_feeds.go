@@ -730,7 +730,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		return fmt.Errorf("creating feed directory: %w", err)
 	}
 	if !fc.HasView(models.FeedViewShorts) {
-		if err := cleanupDisabledShorts(outputDir, fc.ShortsURL()); err != nil {
+		if err := cleanupDisabledShorts(outputDir, fc.ShortsURL(), fc.Slug); err != nil {
 			return err
 		}
 	}
