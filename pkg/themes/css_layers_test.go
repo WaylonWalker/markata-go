@@ -103,3 +103,48 @@ func firstLine(s string) string {
 	}
 	return s
 }
+
+// TestPhotoGridUsesAvailableLayoutWidth guards the full-bleed Shots layout.
+// Sidebars may exist in the DOM while collapsed, so sizing must not depend on
+// :not(:has(.feed-sidebar)). Pinned drawers still reserve usable space.
+func TestPhotoGridUsesAvailableLayoutWidth(t *testing.T) {
+	raw, err := fs.ReadFile(DefaultStatic(), "css/feeds.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+
+	for _, want := range []string{
+		".page-wrapper.page-wrapper--feed-only:has(> .main-content > .feed.h-feed.feed--photo-grid) > .main-content {",
+		"width: max(0px, calc(100% - var(--push-left, 0px) - var(--push-right, 0px)));",
+		"margin-left: var(--push-left, 0px);",
+		".main-content > .feed.h-feed.feed--photo-grid {\n  width: 100%;\n  max-width: 100%;",
+		"container-name: shots-feed;",
+		"container-type: inline-size;",
+		"@container shots-feed (min-width: 700px)",
+		"@container shots-feed (min-width: 1200px)",
+		"@container shots-feed (min-width: 1500px)",
+		"@container shots-feed (min-width: 1800px)",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("photo grid sizing missing %q", want)
+		}
+	}
+
+	// The older selector failed as soon as a collapsed/hidden sidebar existed
+	// in the page. Keep the new width rule independent of the DOM sidebar count.
+	legacy := ".page-wrapper:has(> .main-content > .feed.h-feed.feed--photo-grid):not(:has("
+	if strings.Contains(css, legacy) {
+		t.Error("photo-grid main-content sizing still depends on the absence of sidebar elements")
+	}
+
+	// Both classes appear together on photo-grid feeds that enable the Calendar
+	// peer view. The shared Calendar stylesheet must not override this width.
+	calendarCSS, err := fs.ReadFile(DefaultStatic(), "css/calendar-feed.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(calendarCSS), "calendar-feed:not(.feed--photo-grid)") {
+		t.Error("calendar feed width rule must exclude photo grids")
+	}
+}

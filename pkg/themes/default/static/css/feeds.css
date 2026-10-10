@@ -61,25 +61,36 @@ article.post > .post-content > .feed.h-feed {
   gap: var(--space-6, 1.5rem);
 }
 
-.page-wrapper:has(> .main-content > .feed.h-feed.feed--photo-grid):not(:has(.feed-sidebar, .content-sidebar, .doc-sidebar)) > .main-content {
-  width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
-  max-width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
+/*
+ * The photo grid must widen its main-content parent, not only the feed itself.
+ * Even an unpinned (hidden) sidebar exists in the DOM, so the generic
+ * :not(:has(.feed-sidebar, ...)) rule does not apply on ordinary Shots pages.
+ * Respect docked sidebar offsets when the drawer is pinned.
+ */
+.page-wrapper.page-wrapper--feed-only:has(> .main-content > .feed.h-feed.feed--photo-grid) > .main-content {
+  width: max(0px, calc(100% - var(--push-left, 0px) - var(--push-right, 0px)));
+  max-width: max(0px, calc(100% - var(--push-left, 0px) - var(--push-right, 0px)));
+  margin-left: var(--push-left, 0px);
+  margin-right: 0;
 }
 
 .main-content > .feed.h-feed.feed--photo-grid {
-  width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
-  max-width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
+  width: 100%;
+  max-width: 100%;
 }
 
 .feed.h-feed.feed--photo-grid {
-  --feed-content-width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
+  --feed-content-width: 100%;
+  /* Column count follows actual available width, not the viewport. */
+  container-name: shots-feed;
+  container-type: inline-size;
 }
 
 .feed.h-feed.feed--photo-grid > .feed-header,
 .feed.h-feed.feed--photo-grid > .pagination,
 .feed.h-feed.feed--photo-grid > .pagination-infinite {
-  width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
-  max-width: min(100%, calc(100vw - (clamp(0.75rem, 1.4vw, 1.5rem) * 2)));
+  width: 100%;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -254,7 +265,7 @@ article.post > .post-content > .feed.h-feed {
   pointer-events: none;
 }
 
-@media (min-width: 700px) {
+@container shots-feed (min-width: 700px) {
   .feed.h-feed.feed--photo-grid > .posts-list,
   .feed.h-feed.feed--photo-grid > .posts.posts-list,
   .feed--photo-grid .posts-list--photo-grid {
@@ -282,7 +293,7 @@ article.post > .post-content > .feed.h-feed {
   }
 }
 
-@media (min-width: 1200px) {
+@container shots-feed (min-width: 1200px) {
   .feed.h-feed.feed--photo-grid > .posts-list,
   .feed.h-feed.feed--photo-grid > .posts.posts-list,
   .feed--photo-grid .posts-list--photo-grid {
@@ -290,7 +301,7 @@ article.post > .post-content > .feed.h-feed {
   }
 }
 
-@media (min-width: 1500px) {
+@container shots-feed (min-width: 1500px) {
   .feed.h-feed.feed--photo-grid > .posts-list,
   .feed.h-feed.feed--photo-grid > .posts.posts-list,
   .feed--photo-grid .posts-list--photo-grid {
@@ -298,7 +309,7 @@ article.post > .post-content > .feed.h-feed {
   }
 }
 
-@media (min-width: 1800px) {
+@container shots-feed (min-width: 1800px) {
   .feed.h-feed.feed--photo-grid > .posts-list,
   .feed.h-feed.feed--photo-grid > .posts.posts-list,
   .feed--photo-grid .posts-list--photo-grid {
