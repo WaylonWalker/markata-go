@@ -860,6 +860,7 @@ type tomlFeedConfig struct {
 	Sort            string            `toml:"sort"`
 	Reverse         bool              `toml:"reverse"`
 	Views           []string          `toml:"views"`
+	ShortsPath      string            `toml:"shorts_path"`
 	Primary         bool              `toml:"primary"`
 	IncludePrivate  bool              `toml:"include_private"`
 	Private         bool              `toml:"private"`
@@ -2202,6 +2203,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Views:           f.Views,
+		ShortsPath:      f.ShortsPath,
 		Primary:         f.Primary,
 		IncludePrivate:  f.IncludePrivate,
 		Private:         f.Private,
@@ -2389,6 +2391,7 @@ type yamlFeedConfig struct {
 	Sort            string            `yaml:"sort"`
 	Reverse         bool              `yaml:"reverse"`
 	Views           []string          `yaml:"views"`
+	ShortsPath      string            `yaml:"shorts_path"`
 	Primary         bool              `yaml:"primary"`
 	IncludePrivate  bool              `yaml:"include_private"`
 	Private         bool              `yaml:"private"`
@@ -3783,6 +3786,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Views:           f.Views,
+		ShortsPath:      f.ShortsPath,
 		Primary:         f.Primary,
 		IncludePrivate:  f.IncludePrivate,
 		Private:         f.Private,
@@ -3994,6 +3998,7 @@ type jsonFeedConfig struct {
 	Sort            string            `json:"sort"`
 	Reverse         bool              `json:"reverse"`
 	Views           []string          `json:"views"`
+	ShortsPath      string            `json:"shorts_path"`
 	Primary         bool              `json:"primary"`
 	IncludePrivate  bool              `json:"include_private"`
 	Private         bool              `json:"private"`
@@ -5388,6 +5393,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Sort:            f.Sort,
 		Reverse:         f.Reverse,
 		Views:           f.Views,
+		ShortsPath:      f.ShortsPath,
 		Primary:         f.Primary,
 		IncludePrivate:  f.IncludePrivate,
 		Private:         f.Private,
