@@ -253,11 +253,11 @@ func (p *PublishFeedsPlugin) writeShortsManifest(feed *models.FeedConfig, dataDi
 	}
 
 	index, err := json.Marshal(map[string]interface{}{
-		"version": 1,
-		"feed_slug": feed.Slug,
-		"total": len(entries),
+		"version":    1,
+		"feed_slug":  feed.Slug,
+		"total":      len(entries),
 		"chunk_size": shortsChunkSize,
-		"ids": ids,
+		"ids":        ids,
 	})
 	if err != nil {
 		return err
