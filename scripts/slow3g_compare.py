@@ -66,6 +66,27 @@ def ms(value: float | None) -> float | None:
     return round(value, 2) if value is not None else None
 
 
+def asset_response_problem(kind: str, mime: str, status: int) -> str | None:
+    """Flag a broken essential asset even if HTTP returned 200 with HTML."""
+    if kind not in {"Stylesheet", "Script", "Image", "Font"}:
+        return None
+    if status >= 400:
+        return f"HTTP {status}"
+    content_type = (mime or "").lower().split(";", 1)[0].strip()
+    if kind == "Stylesheet" and content_type != "text/css":
+        return f"CSS returned {content_type or 'unknown MIME'}"
+    if kind == "Script" and not ("javascript" in content_type or "ecmascript" in content_type):
+        return f"JavaScript returned {content_type or 'unknown MIME'}"
+    if kind == "Image" and not content_type.startswith("image/"):
+        return f"image returned {content_type or 'unknown MIME'}"
+    if kind == "Font" and not (
+        content_type.startswith("font/")
+        or content_type in {"application/font-woff", "application/x-font-woff", "application/octet-stream"}
+    ):
+        return f"font returned {content_type or 'unknown MIME'}"
+    return None
+
+
 def percentile_nearest_rank(values: list[float], percentile: float) -> float | None:
     if not values:
         return None
@@ -100,6 +121,8 @@ async def one_run(browser: Any, args: argparse.Namespace, variant: str, run: int
     await cdp.send("Emulation.setCPUThrottlingRate", {"rate": args.cpu_slowdown})
     requests: dict[str, dict[str, Any]] = {}
     failures: list[dict[str, str]] = []
+    invalid_assets: list[dict[str, Any]] = []
+    document_delivery: dict[str, Any] = {}
     frames: list[dict[str, Any]] = []
     latest_frame: dict[str, Any] | None = None
     received_frame_count = 0
@@ -123,6 +146,29 @@ async def one_run(browser: Any, args: argparse.Namespace, variant: str, run: int
             r["bytesDecodedChunks"] += e.get("dataLength", 0)
             r["bytesEncodedChunks"] += e.get("encodedDataLength", 0)
 
+    def on_response(e: dict[str, Any]) -> None:
+        kind = e.get("type", "")
+        response = e.get("response", {})
+        status = int(response.get("status", 0))
+        mime = response.get("mimeType", "")
+        request = requests.get(e.get("requestId"), {})
+        request["http_status"] = status
+        request["mime_type"] = mime
+        if kind == "Document":
+            headers = {str(k).lower(): v for k, v in response.get("headers", {}).items()}
+            document_delivery.update({
+                "status": status,
+                "protocol": response.get("protocol"),
+                "content_encoding": headers.get("content-encoding"),
+                "mime_type": mime,
+            })
+        problem = asset_response_problem(kind, mime, status)
+        if problem:
+            invalid_assets.append({
+                "url": request.get("url", "")[:400],
+                "type": kind, "status": status, "mime_type": mime, "problem": problem,
+            })
+
     def on_finished(e: dict[str, Any]) -> None:
         r = requests.get(e["requestId"])
         if r is not None:
@@ -134,6 +180,7 @@ async def one_run(browser: Any, args: argparse.Namespace, variant: str, run: int
 
     cdp.on("Network.requestWillBeSent", on_request)
     cdp.on("Network.dataReceived", on_data)
+    cdp.on("Network.responseReceived", on_response)
     cdp.on("Network.loadingFinished", on_finished)
     cdp.on("Network.loadingFailed", on_failed)
 
@@ -250,10 +297,15 @@ async def one_run(browser: Any, args: argparse.Namespace, variant: str, run: int
         "missing_checkpoints_ms": [f["requested_checkpoint_ms"] for f in frames if not f.get("file")],
         "requests": list(requests.values()),
         "network_failures": failures,
+        "invalid_asset_responses": invalid_assets,
+        "document_delivery": document_delivery,
         "encoded_bytes_completed": sum(int(v["bytesEncodedFinished"] or 0) for v in requests.values()),
         "error": error,
         # A short smoke test may request fewer checkpoints than the usual 5.
-        "valid_filmstrip": len(saved_frames) >= min(args.min_frames, sum(t <= args.observe_ms for t in args.checkpoints)) and not error,
+        "valid_filmstrip": (
+            len(saved_frames) >= min(args.min_frames, sum(t <= args.observe_ms for t in args.checkpoints))
+            and not error and not invalid_assets
+        ),
     }
 
 
@@ -272,6 +324,7 @@ def write_report(results: list[dict[str, Any]], output: Path, args: argparse.Nam
             "valid_filmstrips": len(usable),
             "attempted": len(subset),
             "failed_network_requests": sum(len(r.get("network_failures", [])) for r in subset),
+            "invalid_asset_responses": sum(len(r.get("invalid_asset_responses", [])) for r in subset),
             "median_fcp_ms": ms(statistics.median(fcps)) if fcps else None,
             "p90_fcp_ms": ms(percentile_nearest_rank(fcps, .9)),
             "median_lcp_ms": ms(statistics.median(lcps)) if lcps else None,
