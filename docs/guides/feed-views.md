@@ -10,7 +10,7 @@ tags:
 
 # Feed views
 
-Built-in feeds expose three presentation views by default: `default`, `simple`, and `calendar`.
+Built-in feeds expose three presentation views by default: `default`, `simple`, and `calendar`. An opt-in fourth view, `shorts`, adds a full-screen photo/video player.
 `default` is the feed's normal card/grid page and is always required. `simple` is the compact
 `/simple/` page, and `calendar` is the interactive `?view=calendar` peer view.
 
@@ -41,3 +41,21 @@ Simple removes its stale generated `/simple/` pages.
 
 See [feed configuration](./configuration.md) and [the feed guide](./feeds.md)
 for pagination and output-format options.
+
+## Shorts view
+
+The Shorts presentation uses the existing feed's selected posts and sort order, without copying the filter. To enable it for a Shots gallery:
+
+```toml
+[[markata-go.feeds]]
+slug = "shots"
+views = ["default", "simple", "calendar", "shorts"]
+shorts_path = "/shorts/"
+
+[markata-go.feeds.templates]
+html = "feed-photo-grid.html"
+```
+
+The grid remains at `/shots/`, and the full-screen player is available at `/shorts/`. A URL fragment such as `#id=shots%2Fdog` identifies an individual post. The reader traverses the complete feed using static JSON chunks, independent of normal feed pagination. Only one video plays at a time; surrounding posts are loaded as previews.
+
+If not configured, the Shorts route defaults to `/<feed-slug>/shorts/`. Only enable Shorts on a feed that should expose a full-screen player.
