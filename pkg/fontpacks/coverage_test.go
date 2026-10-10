@@ -16,6 +16,9 @@ func visibleSignature(source string) string {
 	seen := map[rune]bool{}
 	for _, r := range VisibleText(source) {
 		if r != utf8.RuneError {
+			if r == '\t' || r == '\n' || r == '\f' || r == '\r' {
+				r = ' '
+			}
 			seen[r] = true
 		}
 	}
@@ -83,6 +86,16 @@ func TestCoverageReaderError(t *testing.T) {
 	}
 }
 
+func TestCoverageNormalizesCollapsedHTMLWhitespace(t *testing.T) {
+	coverage, err := CollectCoverage(strings.NewReader("<p>A\tB\nC\fD\rE&nbsp;中</p>"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := coverage.Signature(), " ABCDE\u00a0中"; got != want {
+		t.Fatalf("coverage signature = %q, want %q", got, want)
+	}
+}
+
 func TestCoverageFullAndFallback(t *testing.T) {
 	c := testCatalog(t)
 	profiles := compileSubsetProfiles(c.SubsetProfiles)
@@ -108,6 +121,52 @@ func TestCoverageFullAndFallback(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuiltinHandwrittenTiersWithArticleSeparators(t *testing.T) {
+	source, err := BuiltinSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	article, err := CollectCoverage(strings.NewReader("<p>Hello world</p>"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	withSeparator, err := CollectCoverage(io.MultiReader(strings.NewReader("<p>Hello world</p>"), strings.NewReader("\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, picker := range []bool{false, true} {
+		names := []string{"handwritten"}
+		if picker {
+			names = SortedKeys(source.Catalog.FontPacks)
+		}
+		base, err := source.Catalog.ResolveManyFSWithCoverage(names, source.FS, source.Root, article, ResolveOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		separated, err := source.Catalog.ResolveManyFSWithCoverage(names, source.FS, source.Root, withSeparator, ResolveOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(base.Assets) == 0 {
+			t.Fatal("expected built-in font assets")
+		}
+		if len(separated.Assets) == 0 {
+			t.Fatal("expected assets with article separator")
+		}
+		if !reflect.DeepEqual(separated.Assets, base.Assets) {
+			t.Errorf("picker=%t: newline changed tiers; plain=%v separated=%v", picker, summarizeAssetTiers(base.Assets), summarizeAssetTiers(separated.Assets))
+		}
+	}
+}
+
+func summarizeAssetTiers(assets []Asset) map[string]string {
+	result := make(map[string]string, len(assets))
+	for _, asset := range assets {
+		result[asset.Source] = asset.Tier
+	}
+	return result
 }
 
 type countingCoverageFS struct {

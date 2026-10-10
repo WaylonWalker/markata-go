@@ -179,6 +179,12 @@ func (p *CSSMinifyPlugin) isExcluded(filePath string) bool {
 	}
 
 	filename := filepath.Base(filePath)
+	// The generated font stylesheet lives at css/fonts.css. Minifying it
+	// again can rewrite unicode-range declarations on incremental builds.
+	// Do not exclude unrelated stylesheets just because they share its name.
+	if filename == "fonts.css" && filepath.Base(filepath.Dir(filePath)) == "css" {
+		return true
+	}
 	return isExcludedByPatterns(filename, p.exclude)
 }
 
