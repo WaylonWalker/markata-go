@@ -343,6 +343,25 @@ func TestCache_NavPreviewHash_InvalidatesSharedPages(t *testing.T) {
 	}
 }
 
+func TestCache_FontpackHashInvalidatesRenderedPagesOnlyWhenChanged(t *testing.T) {
+	cache := New(t.TempDir())
+	cache.Posts["post.md"] = &PostCache{}
+	cache.Feeds["journal"] = &FeedCache{}
+	if !cache.SetFontpackHash("first") {
+		t.Fatal("initial fontpack hash should invalidate rendered pages")
+	}
+	if len(cache.Posts) != 0 || len(cache.Feeds) != 0 {
+		t.Fatal("fontpack change left stale rendered pages in cache")
+	}
+	cache.Posts["post.md"] = &PostCache{}
+	if cache.SetFontpackHash("first") || len(cache.Posts) != 1 {
+		t.Fatal("unchanged fontpack hash invalidated a warm page")
+	}
+	if !cache.SetFontpackHash("second") || len(cache.Posts) != 0 {
+		t.Fatal("changed fontpack hash did not invalidate rendered pages")
+	}
+}
+
 func TestCache_ImageLibraryMedia_PersistsFingerprints(t *testing.T) {
 	dir := t.TempDir()
 	cache := New(dir)

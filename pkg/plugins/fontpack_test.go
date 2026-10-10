@@ -185,7 +185,7 @@ func TestFontpackPreloadURLs(t *testing.T) {
 	}
 
 	pack := fontpacks.FontPack{Roles: map[string]fontpacks.Role{
-		"body": {Source: "body"}, "display": {Source: "display"},
+		"body": {Source: "body", Tier: "prose-core"}, "display": {Source: "display", Tier: "full"},
 		"heading": {Source: "body"}, "code": {Source: "code"},
 	}}
 	got := fontpackPreloadURLs(pack, assets)
@@ -197,8 +197,49 @@ func TestFontpackPreloadURLs(t *testing.T) {
 		t.Fatalf("system pack preloads = %v", got)
 	}
 	assets = append(assets, fontpacks.Asset{Source: "body", Tier: "full", URL: "/assets/fonts/body-full.woff2"})
-	if got := fontpackPreloadURLs(pack, assets); got[0] != "/assets/fonts/body-full.woff2" {
-		t.Fatalf("full tier must supersede subsets: %v", got)
+	if got := fontpackPreloadURLs(pack, assets); got[0] != "/assets/fonts/body-core.woff2" {
+		t.Fatalf("unrelated full tier replaced the requested core preload: %v", got)
+	}
+	fullPack := fontpacks.FontPack{Roles: map[string]fontpacks.Role{"body": {Source: "body", Tier: "full"}}}
+	if got := fontpackPreloadURLs(fullPack, assets); got[0] != "/assets/fonts/body-full.woff2" {
+		t.Fatalf("explicit full role did not preload its requested tier: %v", got)
+	}
+	assets = []fontpacks.Asset{{Source: "body", Tier: "full", URL: "/assets/fonts/body-full.woff2"}}
+	missingTierPack := fontpacks.FontPack{Roles: map[string]fontpacks.Role{"body": {Source: "body", Tier: "prose-core"}}}
+	if got := fontpackPreloadURLs(missingTierPack, assets); len(got) != 1 || got[0] != "/assets/fonts/body-full.woff2" {
+		t.Fatalf("full fallback was not preloaded when no subset exists: %v", got)
+	}
+}
+
+func TestFontpackHTMLCacheHashTracksPreloadSelection(t *testing.T) {
+	first := fontpackPreloadCache{Hash: "1234abcd", URLs: map[string][]string{"handwritten": {"/fonts/body-core.woff2"}}}
+	second := fontpackPreloadCache{Hash: "1234abcd", URLs: map[string][]string{"handwritten": {"/fonts/body-full.woff2"}}}
+	if fontpackHTMLCacheHash(first) == fontpackHTMLCacheHash(second) {
+		t.Fatal("preload URL change did not invalidate cached HTML")
+	}
+	same := fontpackPreloadCache{Hash: first.Hash, URLs: map[string][]string{"handwritten": {"/fonts/body-core.woff2"}}}
+	if fontpackHTMLCacheHash(first) != fontpackHTMLCacheHash(same) {
+		t.Fatal("same font CSS and preload URLs changed the HTML cache identity")
+	}
+}
+
+func TestFontpackHTMLCacheHashIsIndependentOfMapOrder(t *testing.T) {
+	first := fontpackPreloadCache{
+		Hash: "1234abcd",
+		URLs: map[string][]string{
+			"handwritten": {"/fonts/body-core.woff2"},
+			"brutalist":   {"/fonts/heading-core.woff2"},
+		},
+	}
+	second := fontpackPreloadCache{Hash: "1234abcd", URLs: make(map[string][]string)}
+	second.URLs["brutalist"] = []string{"/fonts/heading-core.woff2"}
+	second.URLs["handwritten"] = []string{"/fonts/body-core.woff2"}
+	if got, want := fontpackHTMLCacheHash(second), fontpackHTMLCacheHash(first); got != want {
+		t.Fatalf("identical preload data in different map orders changed HTML cache hash: %s != %s", got, want)
+	}
+	second.Hash = "5678efab"
+	if fontpackHTMLCacheHash(second) == fontpackHTMLCacheHash(first) {
+		t.Fatal("font CSS hash change did not invalidate HTML cache")
 	}
 }
 

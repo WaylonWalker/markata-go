@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/fontpacks"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -20,7 +21,7 @@ import (
 const (
 	fontpackCacheFile        = ".markata-fontpack-cache"
 	fontpackPreloadCacheFile = ".markata-fontpack-preloads.json"
-	fontpackCacheVersion     = "5"
+	fontpackCacheVersion     = "10"
 )
 
 const fontpackRoleHeading = "heading"
@@ -185,6 +186,15 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 			build.preloads.URLs[name] = fontpackPreloadURLs(pack, resolved.Assets)
 		}
 	}
+	if raw, ok := m.Cache().Get("build_cache"); ok {
+		if cache, ok := raw.(*buildcache.Cache); ok {
+			// Only invalidate rendered HTML when its font CSS/preload URLs have
+			// actually changed. Coverage can change without changing the emitted
+			// tiers, and should not turn an ordinary content edit into a full page
+			// rebuild.
+			cache.SetFontpackHash(fontpackHTMLCacheHash(build.preloads))
+		}
+	}
 	m.SetAssetHash("css/fonts.css", build.preloads.Hash)
 	templates.SetAssetHashes(map[string]string{"css/fonts.css": build.preloads.Hash})
 	m.Config().Extra["fontpack_preload_urls"] = build.preloads.URLs[defaultName]
@@ -204,6 +214,15 @@ func (p *FontpackPlugin) prepare(m *lifecycle.Manager) (*fontpackBuild, error) {
 	}
 	p.prepared = build
 	return p.prepared, nil
+}
+
+func fontpackHTMLCacheHash(preloads fontpackPreloadCache) string {
+	urls, err := json.Marshal(preloads.URLs)
+	if err != nil {
+		return preloads.Hash
+	}
+	sum := sha256.Sum256(append([]byte(preloads.Hash+"\x00"), urls...))
+	return hex.EncodeToString(sum[:])
 }
 
 func validFontpackPreloadCache(output string, names []string, catalog *fontpacks.Catalog, cached fontpackPreloadCache) bool {
@@ -245,16 +264,32 @@ func fontpackPreloadURLs(pack fontpacks.FontPack, assets []fontpacks.Asset) []st
 			continue
 		}
 		source := pack.Roles[role].Source
+		tier := pack.Roles[role].Tier
 		if source == "" || seen[source] {
 			continue
 		}
 		seen[source] = true
 		var best *fontpacks.Asset
+		var full *fontpacks.Asset
 		for i := range assets {
 			a := &assets[i]
-			if a.Source == source && (best == nil || a.Tier == "full" || (best.Tier != "prose-core" && a.Tier == "prose-core")) {
+			if a.Source != source {
+				continue
+			}
+			if a.Tier == tier {
+				best = a
+				break
+			}
+			if a.Tier == "full" {
+				full = a
+				continue
+			}
+			if best == nil && (a.Tier == "prose-core" || a.Tier == "display-core" || a.Tier == "code-core") {
 				best = a
 			}
+		}
+		if best == nil {
+			best = full
 		}
 		if best != nil {
 			urls = append(urls, best.URL)

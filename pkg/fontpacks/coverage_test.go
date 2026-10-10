@@ -107,10 +107,10 @@ func TestCoverageFullAndFallback(t *testing.T) {
 		expected map[string]bool
 	}{
 		{"base full", "full", "Ā Ж", map[string]Tier{"full": {}}, map[string]bool{"full": true}},
-		{"unsupported", "prose-core", "Hello Ā Ж 中", map[string]Tier{"prose-core": {}, "latin-ext": {}, "full": {}}, map[string]bool{"full": true}},
-		{"extended fallback", "prose-core", "Hello Ā Ȁ", map[string]Tier{"prose-core": {}, "full": {}}, map[string]bool{"full": true}},
+		{"unsupported uses system fallback", "prose-core", "Hello Ā Ж 中", map[string]Tier{"prose-core": {}, "latin-ext": {}, "full": {}}, map[string]bool{"prose-core": true, "latin-ext": true}},
+		{"missing extended tier uses system fallback", "prose-core", "Hello Ā Ȁ", map[string]Tier{"prose-core": {}, "full": {}}, map[string]bool{"prose-core": true}},
 		{"base fallback", "missing", "Hello Ā", map[string]Tier{"full": {}}, map[string]bool{"full": true}},
-		{"missing retained", "prose-core", "Ā", map[string]Tier{"prose-core": {}}, map[string]bool{"prose-core": true, "latin-ext": true}},
+		{"missing manifest tier uses system fallback", "prose-core", "Ā", map[string]Tier{"prose-core": {}}, map[string]bool{"prose-core": true}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			pack := FontPack{Roles: map[string]Role{"body": {Source: "demo", Tier: test.base}}}
@@ -209,7 +209,7 @@ func TestCoverageResolutionSharesValidationAndPreservesOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.CSS != c.cssForPacks(got.Packs, single.Assets) || !reflect.DeepEqual(got.Assets, single.Assets) || got.Bytes != single.Bytes {
+	if got.CSS != c.cssForPacks(got.Packs, single.Assets, nil) || !reflect.DeepEqual(got.Assets, single.Assets) || got.Bytes != single.Bytes {
 		t.Fatal("multi-pack output differs from existing serialization")
 	}
 	reversed, err := c.ResolveManyFS([]string{"other", "bundled"}, data, ".", "<p>Hello</p>")
@@ -232,7 +232,9 @@ func TestCoverageResolutionErrors(t *testing.T) {
 		edit func(*Catalog, fstest.MapFS)
 		want string
 	}{
-		{"missing tier", func(_ *Catalog, _ fstest.MapFS) {}, `no required tier "full"`},
+		{"missing tier", func(c *Catalog, _ fstest.MapFS) {
+			c.FontPacks["bundled"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{"body": {Source: "demo", Tier: "full"}}}
+		}, `no required tier "full"`},
 		{"capability", func(c *Catalog, _ fstest.MapFS) {
 			c.FontPacks["other"] = FontPack{Performance: Performance{Class: "bundled"}, Roles: map[string]Role{"body": {Source: "demo", Tier: "prose-core", OpticalSize: 12}}}
 		}, "cannot satisfy"},

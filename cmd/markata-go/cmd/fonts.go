@@ -174,6 +174,8 @@ func runFontsReport(*cobra.Command, []string) error {
 		}
 	}
 	files, bytes := 0, int64(0)
+	tierFiles := map[string]int{}
+	tierBytes := map[string]int64{}
 	outputDir := defaultOutputDir
 	if path, discoverErr := config.Discover(); discoverErr == nil {
 		if cfg, loadErr := config.Load(path); loadErr == nil {
@@ -188,12 +190,29 @@ func runFontsReport(*cobra.Command, []string) error {
 		for _, name := range names {
 			if info, infoErr := os.Stat(filepath.Join(outputDir, "assets", "fonts", name)); infoErr == nil {
 				bytes += info.Size()
+				for _, tier := range []string{"display-core", "prose-core", "code-core", "latin-ext", "full"} {
+					if strings.HasSuffix(name, "-"+tier+".woff2") {
+						tierFiles[tier]++
+						tierBytes[tier] += info.Size()
+						break
+					}
+				}
 			}
 		}
 	}
-	outlnf("Pack: %s\nPerformance class: %s\nFamilies: %d\nFiles emitted: %d\nTransferred font bytes: %d", resolvedName, p.Performance.Class, len(families), files, bytes)
+	outlnf("Pack: %s\nPerformance class: %s\nFamilies: %d\nFiles emitted: %d\n%s", resolvedName, p.Performance.Class, len(families), files, fontReportAssetBytesLine(bytes))
+	for _, tier := range []string{"display-core", "prose-core", "code-core", "latin-ext", "full"} {
+		if tierFiles[tier] > 0 {
+			outlnf("  %s: %d files, %d bytes", tier, tierFiles[tier], tierBytes[tier])
+		}
+	}
 	return nil
 }
+
+func fontReportAssetBytesLine(bytes int64) string {
+	return fmt.Sprintf("Emitted font asset bytes: %d", bytes)
+}
+
 func runFontsLicenses(*cobra.Command, []string) error {
 	c, err := loadFontCatalog()
 	if err != nil {

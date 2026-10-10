@@ -97,20 +97,24 @@ func requiredTiers(pack FontPack, coverage Coverage, profiles map[string]compile
 		if !tiers["full"] {
 			for _, r := range coverage.runes {
 				if compiledProfileContains(profiles["latin-ext"], r) {
+					// A source without a latin-ext tier can use the browser's
+					// normal family fallback for these characters. Loading its
+					// unrestricted full face would make that large file eligible
+					// for every character and defeat the smaller base tier.
 					if manifest, ok := manifests[source]; ok {
-						_, hasExtended := manifest.Tiers["latin-ext"]
-						_, hasFull := manifest.Tiers["full"]
-						if !hasExtended && hasFull {
-							tiers["full"] = true
-							break
+						if _, hasExtended := manifest.Tiers["latin-ext"]; !hasExtended {
+							continue
 						}
 					}
 					tiers["latin-ext"] = true
 					continue
 				}
 				if !inAnyCompiledProfile(profiles, tiers, r) {
-					tiers["full"] = true
-					break
+					// Characters outside the bundled subsets use the next family
+					// in the CSS font stack (typically the system fallback). Do not
+					// add an unrestricted full face just to cover an exceptional
+					// character; it can otherwise replace the core face for ASCII.
+					continue
 				}
 			}
 		}
@@ -129,6 +133,16 @@ func tiersForManifests(requested map[string]map[string]bool, manifests map[strin
 		for tier := range tiers {
 			if _, ok := manifest.Tiers[tier]; ok {
 				selected[tier] = true
+			} else if tier == "display-core" {
+				if _, ok := manifest.Tiers["prose-core"]; ok {
+					// prose-core includes the display-core repertoire and remains a
+					// small subset. Prefer it over an unrestricted full face.
+					selected["prose-core"] = true
+				} else if _, ok := manifest.Tiers["full"]; ok {
+					selected["full"] = true
+				} else {
+					selected[tier] = true // retain the useful missing-tier diagnostic
+				}
 			} else if _, ok := manifest.Tiers["full"]; ok {
 				selected["full"] = true
 			} else {
