@@ -19,7 +19,8 @@ const shortsChunkSize = 128
 // It is called before any feed publisher workers start writing.
 func validateShortsRoutes(feeds []models.FeedConfig, posts []*models.Post) error {
 	owners := make(map[string]string)
-	for _, feed := range feeds {
+	for i := range feeds {
+		feed := &feeds[i]
 		if feed.Formats.HTML {
 			route := "/" + strings.Trim(feed.Slug, "/") + "/"
 			if feed.Slug == "" {
@@ -34,7 +35,8 @@ func validateShortsRoutes(feeds []models.FeedConfig, posts []*models.Post) error
 		}
 		owners["/"+strings.Trim(post.Slug, "/")+"/"] = "post " + post.Slug
 	}
-	for _, feed := range feeds {
+	for i := range feeds {
+		feed := &feeds[i]
 		if !feed.HasView(models.FeedViewShorts) {
 			continue
 		}
@@ -130,18 +132,18 @@ func shortsPostItem(post *models.Post) map[string]interface{} {
 	if extra == nil {
 		extra = map[string]interface{}{}
 	}
-	image := safeShortsMediaURL(extraMediaString(extra, "image", "cover", "cover_image", "og_image"))
-	video := safeShortsMediaURL(extraMediaString(extra, "video"))
+	image := safeShortsMediaURL(extraMediaString(extra, embedOptionImage, "cover", "cover_image", "og_image"))
+	video := safeShortsMediaURL(extraMediaString(extra, templateTypeVideo))
 	media := image
 	if video != "" {
 		media = video
 	}
-	kind := "image"
+	kind := embedOptionImage
 	if templates.IsVideoURL(media) {
-		kind = "video"
+		kind = templateTypeVideo
 	}
 	poster := ""
-	if kind == "video" {
+	if kind == templateTypeVideo {
 		poster = safeShortsMediaURL(templates.PosterURLFromMap(extra, media))
 		if poster == "" && image != "" && !templates.IsVideoURL(image) {
 			poster = image
@@ -149,7 +151,7 @@ func shortsPostItem(post *models.Post) map[string]interface{} {
 	}
 	thumb := templates.WithSize(media, 640, 0)
 	src := templates.WithSize(media, 1280, 0)
-	if kind == "video" {
+	if kind == templateTypeVideo {
 		src = media
 		thumb = templates.WithSize(poster, 640, 0)
 	}
@@ -166,16 +168,16 @@ func shortsPostItem(post *models.Post) map[string]interface{} {
 		title = post.Slug
 	}
 	return map[string]interface{}{
-		"id": post.Slug,
-		"href": href,
-		"title": title,
+		"id":          post.Slug,
+		"href":        href,
+		"title":       title,
 		"description": description,
-		"alt": extraMediaString(extra, "image_alt", "alt", "caption"),
-		"kind": kind,
-		"src": src,
-		"thumb": thumb,
-		"poster": templates.WithSize(poster, 720, 0),
-		"mime": templates.VideoMIMEType(media),
+		"alt":         extraMediaString(extra, "image_alt", "alt", "caption"),
+		"kind":        kind,
+		"src":         src,
+		"thumb":       thumb,
+		"poster":     templates.WithSize(poster, 720, 0),
+		"mime":       templates.VideoMIMEType(media),
 	}
 }
 
@@ -200,7 +202,13 @@ func (p *PublishFeedsPlugin) publishShortsPages(feed *models.FeedConfig, cfg *li
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return err
 	}
+	if err := p.writeShortsManifest(feed, dataDir); err != nil {
+		return err
+	}
+	return p.writeShortsHTML(feed, cfg, dir)
+}
 
+func (p *PublishFeedsPlugin) writeShortsManifest(feed *models.FeedConfig, dataDir string) error {
 	entries := make([]map[string]interface{}, 0, len(feed.Posts))
 	ids := make([]string, 0, len(feed.Posts))
 	for _, post := range feed.Posts {
@@ -257,7 +265,11 @@ func (p *PublishFeedsPlugin) publishShortsPages(feed *models.FeedConfig, cfg *li
 	if err := p.safeWriteFile(filepath.Join(dataDir, "index.json"), append(index, '\n')); err != nil {
 		return err
 	}
+	return nil
+}
 
+func (p *PublishFeedsPlugin) writeShortsHTML(feed *models.FeedConfig, cfg *lifecycle.Config, dir string) error {
+	route := feed.ShortsURL()
 	modelsConfig := ToModelsConfig(cfg)
 	templateDir := PluginNameTemplates
 	if v, ok := cfg.Extra["templates_dir"].(string); ok && v != "" {
