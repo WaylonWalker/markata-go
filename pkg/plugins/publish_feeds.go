@@ -729,15 +729,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
 	}
-	if !fc.HasView(models.FeedViewShorts) {
-		if err := cleanupDisabledShorts(outputDir, fc.ShortsURL(), fc.Slug); err != nil {
-			return err
-		}
-	}
-	if !simpleHTMLViewEnabled(fc) {
-		if err := os.RemoveAll(filepath.Join(feedDir, "simple")); err != nil {
-			return fmt.Errorf("removing disabled simple feed output: %w", err)
-		}
+	if err := cleanupDisabledFeedViewOutputs(fc, outputDir, feedDir); err != nil {
+		return err
 	}
 
 	// Define all format publishers with their configurations
@@ -778,6 +771,21 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		}
 	}
 
+	return nil
+}
+
+// cleanupDisabledFeedViewOutputs prunes only outputs owned by this feed.
+func cleanupDisabledFeedViewOutputs(fc *models.FeedConfig, outputDir, feedDir string) error {
+	if !fc.HasView(models.FeedViewShorts) {
+		if err := cleanupDisabledShorts(outputDir, fc.ShortsURL(), fc.Slug); err != nil {
+			return err
+		}
+	}
+	if !simpleHTMLViewEnabled(fc) {
+		if err := os.RemoveAll(filepath.Join(feedDir, "simple")); err != nil {
+			return fmt.Errorf("removing disabled simple feed output: %w", err)
+		}
+	}
 	return nil
 }
 
