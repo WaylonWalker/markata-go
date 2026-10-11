@@ -5,11 +5,9 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const {execFileSync} = require('node:child_process');
-const playwright = require(process.env.PLAYWRIGHT_MODULE || path.join(
-  execFileSync('npm', ['root', '-g'], {encoding: 'utf8'}).trim(),
-  'agent-browser/node_modules/playwright-core',
-));
+// Install a pinned Playwright version via the dedicated Shorts CI workflow.
+// PLAYWRIGHT_MODULE remains available for developer environments using playwright-core.
+const playwright = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
 const player = fs.readFileSync(path.join(__dirname, '../pkg/themes/default/static/js/feed-shorts.js'));
 const css = fs.readFileSync(path.join(__dirname, '../pkg/themes/default/static/css/feed-shorts.css'));
@@ -99,7 +97,9 @@ test('Shorts uses a decoded blur-up and a bounded preview window', async (t) => 
   const server = serve();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}/`;
-  const browser = await playwright.chromium.launch({executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+  const browserOptions = {headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']};
+  if (process.env.CHROMIUM_PATH) browserOptions.executablePath = process.env.CHROMIUM_PATH;
+  const browser = await playwright.chromium.launch(browserOptions);
   const evidence = process.env.SHORTS_EVIDENCE_DIR || '/tmp/markata-shorts-browser-evidence';
   fs.mkdirSync(evidence, {recursive: true});
   t.after(async () => {await browser.close(); await new Promise((resolve) => server.close(resolve));});
@@ -130,6 +130,20 @@ test('Shorts uses a decoded blur-up and a bounded preview window', async (t) => 
   assert.deepEqual(requests.filter((url) => url.startsWith('/media/')).sort(), [
     '/media/photo-0.webp?w=1280', '/media/photo-0.webp?w=72', '/media/photo-1.webp?w=240',
   ].sort(), 'normal mobile should load active image, active placeholder, and one upcoming preview');
+  // Promoting a 240px preloaded slide must reuse its already-fetched preview,
+  // rather than issuing a second 72px placeholder request.
+  await normal.page.waitForFunction(() => {
+    const preview = document.querySelector('.shorts-slide[data-index="1"] img.shorts-media');
+    return preview && preview.complete && preview.naturalWidth === 240;
+  });
+  requests.length = 0;
+  await normal.page.evaluate(() => window.__markataShorts.goTo(1));
+  await normal.page.waitForFunction(() =>
+    document.querySelector('.shorts-slide[aria-hidden="false"] .shorts-media-wrap--sharp .shorts-image--full')?.naturalWidth === 1280
+  );
+  const promotedPreview = await normal.page.locator('.shorts-slide[aria-hidden="false"] .shorts-image-placeholder').getAttribute('src');
+  assert.equal(promotedPreview, '/media/photo-1.webp?w=240', 'reuses the loaded preview as the blurred placeholder');
+  assert.ok(!requests.some((url) => url.includes('photo-1.webp?w=72')), 'must not download a redundant placeholder on swipe');
   await normal.context.close();
 
   requests.length = 0;
