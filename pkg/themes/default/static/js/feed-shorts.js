@@ -107,7 +107,7 @@
   }
 
   function loadImages(wrap) {
-    wrap.querySelectorAll('img[data-shorts-src]').forEach(loadImage);
+    wrap.querySelectorAll('img[data-shorts-src]:not([data-shorts-hold])').forEach(loadImage);
   }
 
   function prefetchSecondPreview() {
@@ -139,21 +139,24 @@
     });
   }
 
-  function mediaFor(item, active, loadPreview) {
+  function mediaFor(item, active, loadPreview, reusedPreview) {
     var wrap = document.createElement('div');
     wrap.className = 'shorts-media-wrap';
     wrap.style.cssText = 'position:absolute;inset:0;overflow:hidden;display:grid;place-items:center';
     if (!active && !loadPreview) return wrap;
 
-    if (active && item.kind === 'image' && item.placeholder) {
-      var placeholder = document.createElement('img');
+    var placeholder = null;
+    if (active && item.kind === 'image' && (reusedPreview || item.placeholder)) {
+      // Keep the already-loaded 240px upcoming preview when it becomes active.
+      // A 72px request would add bytes and visibly downgrade the image.
+      placeholder = reusedPreview || document.createElement('img');
       placeholder.className = 'shorts-image-placeholder';
       placeholder.alt = '';
       placeholder.setAttribute('aria-hidden', 'true');
       placeholder.loading = 'eager';
       placeholder.decoding = 'async';
-      placeholder.fetchPriority = 'low';
-      placeholder.dataset.shortsSrc = item.placeholder;
+      placeholder.fetchPriority = 'high';
+      if (!reusedPreview) placeholder.dataset.shortsSrc = item.placeholder;
       wrap.appendChild(placeholder);
     }
     if (item.thumb && active && item.kind === 'video') {
@@ -200,6 +203,24 @@
       if (active) {
         el.className = 'shorts-media shorts-image--full';
         el.fetchPriority = 'high';
+        if (placeholder && !reusedPreview) {
+          // Give the tiny preview a brief head start without delaying the
+          // sharp photo indefinitely if the placeholder fails or stalls.
+          el.dataset.shortsHold = 'true';
+          var started = false;
+          var startSharp = function () {
+            if (started) return;
+            started = true;
+            delete el.dataset.shortsHold;
+            if (el.isConnected) loadImage(el);
+          };
+          placeholder.addEventListener('load', startSharp, { once: true });
+          placeholder.addEventListener('error', function () {
+            placeholder.remove();
+            startSharp();
+          }, { once: true });
+          setTimeout(startSharp, 180);
+        }
         el.addEventListener('load', function () {
           var decoded = typeof el.decode === 'function' ? el.decode() : Promise.resolve();
           decoded.catch(function () {}).then(function () {
@@ -266,8 +287,14 @@
       var mediaMode = active ? 'active' : (loadPreview ? 'preview' : 'mounted');
       if (node.dataset.role !== role || node.dataset.id !== item.id || node.dataset.mediaMode !== mediaMode) {
         if (active) stopVideo();
+        var reusedPreview = null;
+        if (active && item.kind === 'image' &&
+            node.dataset.mediaMode === 'preview' && node.dataset.id === item.id) {
+          reusedPreview = node.querySelector('img.shorts-media');
+          if (reusedPreview) reusedPreview.remove();
+        }
         releaseSlideMedia(node);
-        var media = mediaFor(item, active, loadPreview);
+        var media = mediaFor(item, active, loadPreview, reusedPreview);
         node.replaceChildren(media);
         loadImages(media);
         node.dataset.role = role;
