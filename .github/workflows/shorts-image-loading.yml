@@ -14,6 +14,18 @@ permissions:
   contents: read
 
 jobs:
+  go-shorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Shorts manifest regression tests
+        run: go test ./pkg/plugins -run '^TestShorts' -count=1
+
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -29,7 +41,9 @@ jobs:
       - name: Run browser regression tests
         env:
           SHORTS_EVIDENCE_DIR: ${{ runner.temp }}/shorts-evidence
-        run: node --test scripts/shorts-image-loading.browser.test.cjs
+        run: |
+          node --check pkg/themes/default/static/js/feed-shorts.js
+          node --test scripts/shorts-image-loading.browser.test.cjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
