@@ -307,10 +307,7 @@ func (p *PublishFeedsPlugin) writeShortsManifest(feed *models.FeedConfig, dataDi
 	if err != nil {
 		return err
 	}
-	if err := p.safeWriteFile(filepath.Join(dataDir, "index.json"), append(index, '\n')); err != nil {
-		return err
-	}
-	return nil
+	return p.safeWriteFile(filepath.Join(dataDir, "index.json"), append(index, '\n'))
 }
 
 func (p *PublishFeedsPlugin) writeShortsHTML(feed *models.FeedConfig, cfg *lifecycle.Config, dir string) error {
